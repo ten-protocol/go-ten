@@ -234,7 +234,8 @@ func userAddrsContainAccount(account *gethcommon.Address, userAddrs []string) bo
 	return false
 }
 
-// Applies `filterLogs`, below, to determine whether the log should be filtered out based on the user's subscription criteria.
+// Applies `filterLogs`, below, to determine whether the log should be filtered out based on the user's subscription
+// criteria.
 func logMatchesFilter(log *types.Log, filterCriteria *filters.FilterCriteria) bool {
 	filteredLogs := filterLogs([]*types.Log{log}, filterCriteria.FromBlock, filterCriteria.ToBlock, filterCriteria.Addresses, filterCriteria.Topics)
 	return len(filteredLogs) != 0
