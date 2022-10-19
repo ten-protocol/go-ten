@@ -90,19 +90,20 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	delete(s.subscriptions, id)
 }
 
-// FilteredLogsHead retrieves the logs for the head of the chain and filters out irrelevant logs.
-func (s *SubscriptionManager) FilteredLogsHead(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
+// FilterHeadBlockLogs returns the logs of the head block, filtered based on the provided account and filter.
+func (s *SubscriptionManager) FilterHeadBlockLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
 	headBlockHash := s.storage.FetchHeadBlock().Hash()
 	_, logs, found := s.storage.FetchBlockState(headBlockHash)
 	if !found {
 		log.Error("could not retrieve logs for head state. Something is wrong")
 		return nil, fmt.Errorf("could not retrieve logs for head state. Something is wrong")
 	}
-	return s.FilteredLogs(logs, s.storage.FetchHeadRollup().Hash(), account, filter), nil
+	return s.FilterLogs(logs, s.storage.FetchHeadRollup().Hash(), account, filter), nil
 }
 
-// FilteredLogs filters out irrelevant logs from the list provided.
-func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.L2RootHash, account *gethcommon.Address, filter *filters.FilterCriteria) []*types.Log {
+// FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs
+// filtered based on the provided account and filter.
+func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2RootHash, account *gethcommon.Address, filter *filters.FilterCriteria) []*types.Log {
 	filteredLogs := []*types.Log{}
 	stateDB := s.storage.CreateStateDB(rollupHash)
 
@@ -116,14 +117,14 @@ func (s *SubscriptionManager) FilteredLogs(logs []*types.Log, rollupHash common.
 	return filteredLogs
 }
 
-// EncryptSubscribedLogs filters the logs based on the current subscriptions, then encrypts them the appropriate
-// viewing keys.
-func (s *SubscriptionManager) EncryptSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) (map[gethrpc.ID][]byte, error) {
+// GetSubscribedLogsEncrypted returns, for each subscription, the logs filtered and encrypted with the appropriate
+// viewing key.
+func (s *SubscriptionManager) GetSubscribedLogsEncrypted(logs []*types.Log, rollupHash common.L2RootHash) (map[gethrpc.ID][]byte, error) {
 	filteredLogs := s.getSubscribedLogs(logs, rollupHash)
 	return s.encryptLogs(filteredLogs)
 }
 
-// Filters out irrelevant logs, those that are not subscribed to, and those a subscription has seen before, and
+// Filters out irrelevant logs, those that are not subscribed to, and those the subscription has seen before, and
 // organises them by their subscribing ID.
 func (s *SubscriptionManager) getSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[gethrpc.ID][]*types.Log {
 	relevantLogsByID := map[gethrpc.ID][]*types.Log{}
