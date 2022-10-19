@@ -176,19 +176,18 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 	for _, topic := range log.Topics {
 		potentialAddr := gethcommon.HexToAddress(topic.Hex())
 
-		// An address is considered a user address if all the following are true:
-		// * There are (at least) 12 leading zero bytes (since addresses are 20 bytes long, while hashes are 32)
-		// * It exists in the state
-		// * It has a non-zero balance
-		// * It has a non-zero nonce
-		// * It does not have associated code
-		if topic.Hex()[2:len(zeroBytesHex)+2] == zeroBytesHex &&
-			db.Exist(potentialAddr) &&
-			db.GetBalance(potentialAddr).Cmp(big.NewInt(0)) != 0 &&
-			db.GetNonce(potentialAddr) != 0 &&
-			db.GetCode(potentialAddr) == nil { //nolint:whitespace
+		// A user address must have (at least) 12 leading zero bytes (since addresses are 20 bytes long, while hashes
+		// are 32).
+		if topic.Hex()[2:len(zeroBytesHex)+2] != zeroBytesHex {
+			continue
+		}
 
-			userAddrs = append(userAddrs, potentialAddr.Hex())
+		// A user address must exist in the state DB, and have a non-zero balance and nonce.
+		if db.Exist(potentialAddr) && db.GetBalance(potentialAddr).Cmp(big.NewInt(0)) != 0 && db.GetNonce(potentialAddr) != 0 {
+			// If the address has code, it's a smart contract address.
+			if db.GetCode(potentialAddr) == nil {
+				userAddrs = append(userAddrs, potentialAddr.Hex())
+			}
 		}
 	}
 
