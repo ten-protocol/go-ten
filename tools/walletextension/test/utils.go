@@ -291,12 +291,12 @@ func assertNoDupeLogs(t *testing.T, logsJSON [][]byte) {
 	}
 }
 
-// Checks that the response to a subscription request is correctly-formatted.
-func validateSubscriptionResponse(t *testing.T, resp []byte) {
+// Checks that the response to a request is correctly formatted, and returns the result field.
+func validateJSONResponse(t *testing.T, resp []byte) interface{} {
 	var respJSON map[string]interface{}
 	err := json.Unmarshal(resp, &respJSON)
 	if err != nil {
-		t.Fatalf("could not unmarshal subscription response to JSON")
+		t.Fatalf("could not unmarshal response to JSON")
 	}
 
 	id := respJSON[common.JSONKeyID]
@@ -304,11 +304,21 @@ func validateSubscriptionResponse(t *testing.T, resp []byte) {
 	result := respJSON[common.JSONKeyResult]
 
 	if id != jsonID {
-		t.Fatalf("subscription response did not contain expected ID. Expected 1, got %s", id)
+		t.Fatalf("response did not contain expected ID. Expected 1, got %s", id)
 	}
 	if jsonRPCVersion != jsonrpc.Version {
-		t.Fatalf("subscription response did not contain expected RPC version. Expected 2.0, got %s", jsonRPCVersion)
+		t.Fatalf("response did not contain expected RPC version. Expected 2.0, got %s", jsonRPCVersion)
 	}
+	if result == nil {
+		t.Fatalf("response did not contain `result` field")
+	}
+
+	return result
+}
+
+// Checks that the response to a subscription request is correctly formatted.
+func validateSubscriptionResponse(t *testing.T, resp []byte) {
+	result := validateJSONResponse(t, resp)
 	pattern := "0x.*"
 	resultString, ok := result.(string)
 	if !ok || !regexp.MustCompile(pattern).MatchString(resultString) {
