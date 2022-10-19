@@ -463,10 +463,15 @@ func assertLogsValid(t *testing.T, owner string, logs []*types.Log) {
 // Asserts that the log is relevant to the recipient (either a lifecycle event or a relevant user event).
 func assertRelevantLogsOnly(t *testing.T, owner string, receivedLog types.Log) {
 	// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can (potentially)
-	// be user addresses. We filter these out. In theory, we should also check whether the topics are contract
-	// addresses, but in practice no events of this type are sent in the simulations.
+	// be user addresses. We filter these out. In theory, we should also check whether the topics exist in the state DB
+	// and are contract addresses, but we cannot do this as part of chain validation.
 	var userAddrs []string
-	for _, topic := range receivedLog.Topics {
+	for idx, topic := range receivedLog.Topics {
+		// The first topic is always the hash of the event.
+		if idx == 0 {
+			continue
+		}
+
 		// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can
 		// (potentially) be user addresses.
 		topicHex := topic.Hex()

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -15,11 +17,11 @@ import (
 )
 
 var (
-	depositTxAddr          = gethcommon.HexToAddress("0x01")
-	rollupTxAddr           = gethcommon.HexToAddress("0x02")
-	storeSecretTxAddr      = gethcommon.HexToAddress("0x03")
-	requestSecretTxAddr    = gethcommon.HexToAddress("0x04")
-	initializeSecretTxAddr = gethcommon.HexToAddress("0x05")
+	depositTxAddr          = datagenerator.RandomAddress()
+	rollupTxAddr           = datagenerator.RandomAddress()
+	storeSecretTxAddr      = datagenerator.RandomAddress()
+	requestSecretTxAddr    = datagenerator.RandomAddress()
+	initializeSecretTxAddr = datagenerator.RandomAddress()
 )
 
 // mockContractLib is an implementation of the mgmtcontractlib.MgmtContractLib
