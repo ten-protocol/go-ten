@@ -184,7 +184,7 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 
 		// A user address must exist in the state DB, and have a non-zero balance and nonce.
 		if db.Exist(potentialAddr) && db.GetBalance(potentialAddr).Cmp(big.NewInt(0)) != 0 && db.GetNonce(potentialAddr) != 0 {
-			// If the address has code, it's a smart contract address.
+			// If the address has code, it's a smart contract address instead.
 			if db.GetCode(potentialAddr) == nil {
 				userAddrs = append(userAddrs, potentialAddr.Hex())
 			}
