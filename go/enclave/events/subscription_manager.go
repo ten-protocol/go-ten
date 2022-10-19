@@ -171,28 +171,25 @@ func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 
 // Extracts the user addresses from the topics.
 func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
-	var userAddrs []string //nolint:prealloc
+	var userAddrs []string
 
 	for _, topic := range log.Topics {
-		topicHex := topic.Hex()
-		potentialAddr := gethcommon.HexToAddress(topicHex)
+		potentialAddr := gethcommon.HexToAddress(topic.Hex())
 
-		// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can
-		// (potentially) be user addresses.
-		if topicHex[2:len(zeroBytesHex)+2] != zeroBytesHex {
-			continue
+		// An address is considered a user address if all the following are true:
+		// * There are (at least) 12 leading zero bytes (since addresses are 20 bytes long, while hashes are 32)
+		// * It exists in the state
+		// * It has a non-zero balance
+		// * It has a non-zero nonce
+		// * It does not have associated code
+		if topic.Hex()[2:len(zeroBytesHex)+2] == zeroBytesHex &&
+			db.Exist(potentialAddr) &&
+			db.GetBalance(potentialAddr).Cmp(big.NewInt(0)) != 0 &&
+			db.GetNonce(potentialAddr) != 0 &&
+			db.GetCode(potentialAddr) == nil { //nolint:whitespace
+
+			userAddrs = append(userAddrs, potentialAddr.Hex())
 		}
-
-		// We also assume that a potential address is *not* a user address if any of the following is true:
-		// * It does not exist in the state
-		// * It has a zero balance
-		// * It has a zero nonce
-		// * It has associated code
-		if !db.Exist(potentialAddr) || db.GetBalance(potentialAddr) == big.NewInt(0) || db.GetNonce(potentialAddr) == 0 || db.GetCode(potentialAddr) != nil {
-			continue
-		}
-
-		userAddrs = append(userAddrs, potentialAddr.Hex())
 	}
 
 	return userAddrs
