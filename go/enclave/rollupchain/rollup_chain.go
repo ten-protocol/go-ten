@@ -447,7 +447,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 		return rc.noBlockStateBlockSubmissionResponse(&block)
 	}
 
-	encryptedLogs, err := rc.subscriptionManager.EncryptFilteredLogs(logs, blockState.HeadRollup)
+	encryptedLogs, err := rc.subscriptionManager.EncryptSubscribedLogs(logs, blockState.HeadRollup)
 	if err != nil {
 		log.Panic("Could not encrypt logs. Cause: %s", err)
 	}
