@@ -169,26 +169,32 @@ func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 	return encryptedLogsByID, nil
 }
 
-// Extracts the (potential) user addresses from the topics. If there is no code associated with an address, it's a user
-// address.
+// Extracts the (potential) user addresses from the topics. An address is considered a user address if it exists in the
+// state, there is no code associated with the address, and it has at least 12 leading zero bytes.
 func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 	var userAddrs []string //nolint:prealloc
 
 	for _, topic := range log.Topics {
+		topicHex := topic.Hex()
+		potentialAddr := gethcommon.HexToAddress(topicHex)
+
+		// If the potential account address does not exist in the state, it is not a user address.
+		if !db.Exist(potentialAddr) {
+			continue
+		}
+
+		// If there is code associated with the address, it is not a user address.
+		if db.GetCode(potentialAddr) != nil {
+			continue
+		}
+
 		// Since addresses are 20 bytes long, while hashes are 32, only topics with 12 leading zero bytes can
 		// (potentially) be user addresses.
-		topicHex := topic.Hex()
 		if topicHex[2:len(zeroBytesHex)+2] != zeroBytesHex {
 			continue
 		}
 
-		// If there is code associated with an address, it is not a user address.
-		addr := gethcommon.HexToAddress(topicHex)
-		if db.GetCode(addr) != nil {
-			continue
-		}
-
-		userAddrs = append(userAddrs, addr.Hex())
+		userAddrs = append(userAddrs, potentialAddr.Hex())
 	}
 
 	return userAddrs
