@@ -173,7 +173,12 @@ func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 	var userAddrs []string
 
-	for _, topic := range log.Topics {
+	for idx, topic := range log.Topics {
+		// The first topic is always the hash of the event.
+		if idx == 0 {
+			continue
+		}
+
 		potentialAddr := gethcommon.HexToAddress(topic.Hex())
 
 		// A user address must have (at least) 12 leading zero bytes, since addresses are 20 bytes long, while hashes

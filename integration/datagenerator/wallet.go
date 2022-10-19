@@ -1,7 +1,6 @@
 package datagenerator
 
 import (
-	"crypto/rand"
 	"encoding/hex"
 
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -11,10 +10,7 @@ import (
 
 // RandomWallet returns a wallet with a random private key
 func RandomWallet(chainID int64) wallet.Wallet {
-	pk, err := randomHex(32)
-	if err != nil {
-		panic(err) // this should never panic - world should stop if it does
-	}
+	pk := randomHex(32)
 	walletConfig := config.HostConfig{
 		PrivateKeyString: pk,
 		L1ChainID:        chainID,
@@ -22,10 +18,6 @@ func RandomWallet(chainID int64) wallet.Wallet {
 	return wallet.NewInMemoryWalletFromConfig(walletConfig)
 }
 
-func randomHex(n int) (string, error) {
-	bytes := make([]byte, n)
-	if _, err := rand.Read(bytes); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(bytes), nil
+func randomHex(n int) string {
+	return hex.EncodeToString(RandomBytes(n))
 }

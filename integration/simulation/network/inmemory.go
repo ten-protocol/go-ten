@@ -3,11 +3,12 @@ package network
 import (
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+
 	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -39,9 +40,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
-	dummyOBXAddress := common.HexToAddress("AA")
+	dummyOBXAddress := datagenerator.RandomAddress()
 	params.Wallets.Tokens[bridge.HOC].L1ContractAddress = &dummyOBXAddress
-	dummyETHAddress := common.HexToAddress("BB")
+	dummyETHAddress := datagenerator.RandomAddress()
 	params.Wallets.Tokens[bridge.POC].L1ContractAddress = &dummyETHAddress
 
 	for i := 0; i < params.NumberOfNodes; i++ {
