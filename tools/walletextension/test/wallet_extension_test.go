@@ -35,6 +35,7 @@ func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	createWalExt(t, createWalExtCfg())
 
 	respBody, _ := makeWSEthJSONReq(rpc.RPCChainID, []interface{}{})
+	validateJSONResponse(t, respBody)
 
 	if !strings.Contains(string(respBody), l2ChainIDHex) {
 		t.Fatalf("expected response containing '%s', got '%s'", l2ChainIDHex, string(respBody))
@@ -48,7 +49,6 @@ func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	for _, method := range rpc.SensitiveMethods {
 		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
 		respBody, _ := makeWSEthJSONReq(method, []interface{}{})
-
 		if !strings.Contains(string(respBody), fmt.Sprintf(accountmanager.ErrNoViewingKey, method)) {
 			t.Fatalf("expected response containing '%s', got '%s'", fmt.Sprintf(accountmanager.ErrNoViewingKey, method), string(respBody))
 		}
@@ -69,6 +69,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 		}
 
 		respBody := makeHTTPEthJSONReq(method, []interface{}{map[string]interface{}{"params": dummyParams}})
+		validateJSONResponse(t, respBody)
 
 		if !strings.Contains(string(respBody), dummyParams) {
 			t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
@@ -97,7 +98,6 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 		}
 
 		respBody := makeHTTPEthJSONReq(method, []interface{}{map[string]interface{}{}})
-
 		if !strings.Contains(string(respBody), errFailedDecrypt) {
 			t.Fatalf("expected response containing '%s', got '%s'", errFailedDecrypt, string(respBody))
 		}
@@ -120,6 +120,7 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 	dummyAPI.setViewingKey(arbitraryViewingKey)
 
 	respBody := makeHTTPEthJSONReq(rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
+	validateJSONResponse(t, respBody)
 
 	if !strings.Contains(string(respBody), dummyParams) {
 		t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
@@ -140,6 +141,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 			"value": nil,
 			"Value": "",
 		}})
+		validateJSONResponse(t, respBody)
 
 		// RPCCall and RPCEstimateGas payload might be manipulated ( added the From field information )
 		if !strings.Contains(strings.ToLower(string(respBody)), strings.ToLower(vkAddress.Hex())) {
@@ -161,6 +163,7 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	createWalExt(t, walExtCfg)
 
 	respBody := makeHTTPEthJSONReq(rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
+	validateJSONResponse(t, respBody)
 
 	if !strings.Contains(string(respBody), dummyParams) {
 		t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
@@ -191,6 +194,7 @@ func TestCanRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T) {
 		}
 
 		respBody, _ := makeWSEthJSONReq(method, []interface{}{map[string]interface{}{"params": dummyParams}})
+		validateJSONResponse(t, respBody)
 
 		if !strings.Contains(string(respBody), dummyParams) {
 			t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
