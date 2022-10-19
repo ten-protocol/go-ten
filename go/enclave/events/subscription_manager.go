@@ -176,8 +176,8 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 	for _, topic := range log.Topics {
 		potentialAddr := gethcommon.HexToAddress(topic.Hex())
 
-		// A user address must have (at least) 12 leading zero bytes (since addresses are 20 bytes long, while hashes
-		// are 32).
+		// A user address must have (at least) 12 leading zero bytes, since addresses are 20 bytes long, while hashes
+		// are 32.
 		if topic.Hex()[2:len(zeroBytesHex)+2] != zeroBytesHex {
 			continue
 		}
