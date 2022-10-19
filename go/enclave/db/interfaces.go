@@ -54,15 +54,15 @@ type RollupResolver interface {
 }
 
 type BlockStateStorage interface {
-	// FetchBlockState returns the block state and logs for the given block, and a boolean indicating if the block was found.
+	// FetchBlockState returns the block's state, all the logs up to this block in the chain, and a boolean indicating if the block was found.
 	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, []*types.Log, bool)
 	// FetchHeadState returns the head block state. Returns nil if nothing recorded yet
 	FetchHeadState() *core.BlockState
-	// SaveNewHead save the rollup-block mapping
+	// SaveNewHead saves the block state alongside its rollup, receipts and all the logs up to this block in the chain.
 	SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log)
-	// CreateStateDB create a database that can be used to execute transactions
+	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) *state.StateDB
-	// EmptyStateDB create the original empty StateDB
+	// EmptyStateDB creates the original empty StateDB
 	EmptyStateDB() *state.StateDB
 }
 

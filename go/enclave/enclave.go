@@ -438,7 +438,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We filter out irrelevant logs.
-	txReceipt.Logs = e.subscriptionManager.FilteredLogs(txReceipt.Logs, txRollupHash, &sender, &filters.FilterCriteria{})
+	txReceipt.Logs = e.subscriptionManager.FilterLogs(txReceipt.Logs, txRollupHash, &sender, &filters.FilterCriteria{})
 
 	// We marshal the receipt to JSON.
 	txReceiptBytes, err := txReceipt.MarshalJSON()
@@ -614,7 +614,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 	}
 
 	// We retrieve the relevant logs that match the filter.
-	filteredLogs, err := e.subscriptionManager.FilteredLogsHead(forAddress, filter)
+	filteredLogs, err := e.subscriptionManager.FilterHeadBlockLogs(forAddress, filter)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
 	}
