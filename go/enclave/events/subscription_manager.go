@@ -109,7 +109,7 @@ func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2
 
 	for _, logItem := range logs {
 		userAddrs := getUserAddrsFromLogTopics(logItem, stateDB)
-		if userAddrsContainAccount(account, userAddrs) && logMatchesFilter(logItem, filter) {
+		if isRelevant(logItem, userAddrs, account, filter) {
 			filteredLogs = append(filteredLogs, logItem)
 		}
 	}
@@ -201,7 +201,7 @@ func (s *SubscriptionManager) updateRelevantLogs(logItem *types.Log, userAddrs [
 
 	for subscriptionID, subscription := range s.subscriptions {
 		// We ignore irrelevant logs.
-		if !isRelevant(logItem, userAddrs, subscription) {
+		if !isRelevant(logItem, userAddrs, subscription.Account, subscription.Filter) {
 			continue
 		}
 
@@ -214,8 +214,8 @@ func (s *SubscriptionManager) updateRelevantLogs(logItem *types.Log, userAddrs [
 }
 
 // Indicates whether the log is relevant for the subscription.
-func isRelevant(logItem *types.Log, userAddrs []string, subscription *common.LogSubscription) bool {
-	return userAddrsContainAccount(subscription.Account, userAddrs) && logMatchesFilter(logItem, subscription.Filter)
+func isRelevant(logItem *types.Log, userAddrs []string, account *gethcommon.Address, filter *filters.FilterCriteria) bool {
+	return userAddrsContainAccount(account, userAddrs) && logMatchesFilter(logItem, filter)
 }
 
 // Indicates whether the account is contained in the user addresses.
