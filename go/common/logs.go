@@ -17,8 +17,6 @@ type LogSubscription struct {
 	Signature *[]byte
 	// A subscriber-defined filter to apply to the stream of logs.
 	Filter *filters.FilterCriteria
-	// Used to track which rollups the subscription has already been sent logs for.
-	LastSeenRollup uint64
 }
 
 // IDAndEncLog pairs an encrypted log with the ID of the subscription that generated it.
