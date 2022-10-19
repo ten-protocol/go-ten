@@ -150,8 +150,7 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 
 //  STATE
 
-// todo - joel - update description here
-// Recursively calculates the state and logs for the given block.
+// Recursively calculates the block state, all the logs in the chain so far, and new logs for the given block.
 func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*types.Log, []*types.Log) {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
 	blockState, _, found := rc.storage.FetchBlockState(b.Hash())
