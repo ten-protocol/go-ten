@@ -199,9 +199,9 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 				logCh <- idAndLog
 			}
 
-		case <-subscription.Err():
-			log.Error("subscription closed")
-			break
+		case err := <-subscription.Err():
+			log.Error("subscription closed. Cause: %s", err)
+			return
 		}
 	}
 }
