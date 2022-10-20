@@ -1,12 +1,13 @@
 package simulation
 
 import (
+	"testing"
+	"time"
+
 	"github.com/obscuronet/go-obscuro/integration"
 	ethereum_mock "github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-	"testing"
-	"time"
 )
 
 // This test creates a network of in memory L1 and L2 nodes, then injects transactions, and finally checks the resulting output blockchain.
