@@ -153,7 +153,7 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 // Recursively calculates the block state and new logs for the given block.
 func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*types.Log) {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
-	blockState, _, found := rc.storage.FetchBlockState(b.Hash())
+	blockState, found := rc.storage.FetchBlockState(b.Hash())
 	if found {
 		return blockState, nil
 	}
@@ -175,7 +175,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	parentState, allLogs, parentFound := rc.storage.FetchBlockState(b.ParentHash())
+	parentState, parentFound := rc.storage.FetchBlockState(b.ParentHash())
 	if !parentFound {
 		// go back and calculate the Root of the Parent
 		parent, found := rc.storage.FetchBlock(b.ParentHash())
@@ -206,7 +206,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*
 		newLogs = append(newLogs, receipt.Logs...)
 	}
 
-	rc.storage.SaveNewHead(bs, head, receipts, allLogs)
+	rc.storage.StoreNewHead(bs, head, receipts, newLogs)
 
 	return bs, newLogs
 }
@@ -227,7 +227,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
 		}
-		rc.storage.SaveNewHead(&bs, genesis, nil, nil)
+		rc.storage.StoreNewHead(&bs, genesis, nil, nil)
 		err := rc.faucet.CalculateGenesisState(rc.storage)
 		if err != nil {
 			return nil, false

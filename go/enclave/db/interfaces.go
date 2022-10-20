@@ -54,12 +54,14 @@ type RollupResolver interface {
 }
 
 type BlockStateStorage interface {
-	// FetchBlockState returns the block's state, all the logs up to this block in the chain, and a boolean indicating if the block was found.
-	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, []*types.Log, bool)
+	// FetchBlockState returns the block's state, and a boolean indicating if the block was found.
+	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, bool)
+	// FetchLogs returns the block's logs, and a boolean indicating if the block was found.
+	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, bool)
 	// FetchHeadState returns the head block state. Returns nil if nothing recorded yet
 	FetchHeadState() *core.BlockState
-	// SaveNewHead saves the block state alongside its rollup, receipts and all the logs up to this block in the chain.
-	SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log)
+	// StoreNewHead saves the block state alongside its rollup, receipts and logs.
+	StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log)
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) *state.StateDB
 	// EmptyStateDB creates the original empty StateDB
@@ -74,22 +76,19 @@ type SharedSecretStorage interface {
 }
 
 type TransactionStorage interface {
-	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
-	GetReceiptsByHash(hash gethcommon.Hash) types.Receipts
-
 	// GetTransaction - returns the positional metadata of the tx by hash
 	GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error)
-
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error)
-
+	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
+	GetReceiptsByHash(hash gethcommon.Hash) types.Receipts
+	// GetSender returns the sender of the tx by hash
 	GetSender(txHash gethcommon.Hash) (gethcommon.Address, error)
 }
 
 type AttestationStorage interface {
 	// FetchAttestedKey returns the public key of an attested aggregator, returns nil if not found
 	FetchAttestedKey(aggregator gethcommon.Address) *ecdsa.PublicKey
-
 	// StoreAttestedKey - store the public key of an attested aggregator
 	StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey)
 }
