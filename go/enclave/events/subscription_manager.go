@@ -110,7 +110,7 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 		}
 	}
 
-	// We gather the logs across each block in the canonical chain.
+	// We gather the logs across all the blocks in the canonical chain.
 	logs := []*types.Log{}
 	for _, hash := range blockHashes {
 		blockLogs, found := s.storage.FetchLogs(hash)
