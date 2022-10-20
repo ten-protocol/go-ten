@@ -180,19 +180,17 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*
 		// go back and calculate the Root of the Parent
 		parent, found := rc.storage.FetchBlock(b.ParentHash())
 		if !found {
-			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
-			return nil, nil
+			log.Panic("Could not find parent block when calculating block state. This should not happen.")
 		}
 		parentState, _ = rc.updateState(parent)
 	}
 
 	if parentState == nil {
-		common.LogWithID(rc.nodeID, "Something went wrong. There should be a parent here, blockNum=%d. \n Block: %d, Block Parent: %d ",
+		log.Panic(fmt.Sprintf("Could not calculate parent block state when calculating block state. BlockNum=%d. \n Block: %d, Block Parent: %d ",
 			b.Number(),
 			common.ShortHash(b.Hash()),
 			common.ShortHash(b.Header().ParentHash),
-		)
-		return nil, nil
+		))
 	}
 
 	bs, head, receipts := rc.calculateBlockState(b, parentState, rollups)

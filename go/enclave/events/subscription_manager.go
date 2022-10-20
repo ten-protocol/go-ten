@@ -92,23 +92,30 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
 	headBlock := s.storage.FetchHeadBlock()
 
+	// We collect all the block hashes in the canonical chain.
 	blockHashes := []gethcommon.Hash{}
 	currentBlock := headBlock
 	for {
 		blockHashes = append(blockHashes, currentBlock.Hash())
+
+		if currentBlock.NumberU64() <= common.L1GenesisHeight {
+			break // We have reached the end of the chain.
+		}
+
 		parentHash := currentBlock.ParentHash()
 		var found bool
 		currentBlock, found = s.storage.FetchBlock(parentHash)
 		if !found {
-			break
+			return nil, fmt.Errorf("could not retrieve block %s to extract its logs", parentHash)
 		}
 	}
 
+	// We gather the logs across each block in the canonical chain.
 	logs := []*types.Log{}
 	for _, hash := range blockHashes {
 		blockLogs, found := s.storage.FetchLogs(hash)
 		if !found {
-			continue // Some blocks do not have any block state or logs saved against them.
+			break // Blocks before the genesis rollup do not have associated logs (or block state).
 		}
 		logs = append(logs, blockLogs...)
 	}
