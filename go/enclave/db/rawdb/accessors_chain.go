@@ -182,9 +182,9 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) *core.BlockSt
 func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log) {
 	// Geth serialises its logs in a reduced form to minimise storage space. For now, it is more straightforward for us
 	// to serialise all the fields by converting the logs to this type.
-	logsForStorage := []*logForStorage{}
-	for _, fullFatLog := range logs {
-		logsForStorage = append(logsForStorage, toLogForStorage(fullFatLog))
+	logsForStorage := make([]*logForStorage, len(logs))
+	for idx, fullFatLog := range logs {
+		logsForStorage[idx] = toLogForStorage(fullFatLog)
 	}
 
 	logBytes, err := rlp.EncodeToBytes(logsForStorage)
