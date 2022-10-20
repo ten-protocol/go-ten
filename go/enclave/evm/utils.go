@@ -40,6 +40,7 @@ func convertToEthHeader(h *common.Header, secret []byte) *types.Header {
 	}
 }
 
+/*
 func convertFromEthHeader(header *types.Header) *common.Header {
 	h := new(common.Header)
 	err := rlp.DecodeBytes(header.Extra, h)
@@ -48,3 +49,4 @@ func convertFromEthHeader(header *types.Header) *common.Header {
 	}
 	return h
 }
+*/
