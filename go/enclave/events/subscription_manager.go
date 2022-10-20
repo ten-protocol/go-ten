@@ -90,8 +90,10 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 
 // GetFilteredLogs returns the logs across the entire canonical chain that match the provided account and filter.
 func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
-	currentBlock := s.storage.FetchHeadBlock()
+	headBlock := s.storage.FetchHeadBlock()
+
 	blockHashes := []gethcommon.Hash{}
+	currentBlock := headBlock
 	for {
 		blockHashes = append(blockHashes, currentBlock.Hash())
 		parentHash := currentBlock.ParentHash()
@@ -111,7 +113,13 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 		logs = append(logs, blockLogs...)
 	}
 
-	return s.FilterLogs(logs, s.storage.FetchHeadRollup().Hash(), account, filter), nil
+	// We proceed in this way instead of calling `FetchHeadRollup` because we want to ensure the chain has not advanced
+	// causing a head block/head rollup mismatch.
+	headBlockState, found := s.storage.FetchBlockState(headBlock.Hash())
+	if !found {
+		return nil, fmt.Errorf("could not filter logs as block state for head block could not be found")
+	}
+	return s.FilterLogs(logs, headBlockState.HeadRollup, account, filter), nil
 }
 
 // FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs
