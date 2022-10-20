@@ -150,12 +150,12 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 
 //  STATE
 
-// Recursively calculates the block state, all the logs in the chain so far, and new logs for the given block.
-func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*types.Log, []*types.Log) {
+// Recursively calculates and stores the block state, receipts and logs for the given block.
+func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
-	blockState, _, found := rc.storage.FetchBlockState(b.Hash())
+	blockState, found := rc.storage.FetchBlockState(b.Hash())
 	if found {
-		return blockState, nil, nil
+		return blockState
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
@@ -163,53 +163,49 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*
 
 	// processing blocks before genesis, so there is nothing to do
 	if genesisRollup == nil && len(rollups) == 0 {
-		return nil, nil, nil
+		return nil
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handles the case of the block containing the genesis being processed multiple times.
 	genesisState, isGenesis := rc.handleGenesisRollup(b, rollups, genesisRollup)
 	if isGenesis {
-		return genesisState, nil, nil
+		return genesisState
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	parentState, allLogs, parentFound := rc.storage.FetchBlockState(b.ParentHash())
+	parentState, parentFound := rc.storage.FetchBlockState(b.ParentHash())
 	if !parentFound {
 		// go back and calculate the Root of the Parent
 		parent, found := rc.storage.FetchBlock(b.ParentHash())
 		if !found {
-			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
-			return nil, nil, nil
+			log.Panic("Could not find parent block when calculating block state. This should not happen.")
 		}
-		parentState, allLogs, _ = rc.updateState(parent)
+		parentState = rc.updateState(parent)
 	}
 
 	if parentState == nil {
-		common.LogWithID(rc.nodeID, "Something went wrong. There should be a parent here, blockNum=%d. \n Block: %d, Block Parent: %d ",
+		log.Panic(fmt.Sprintf("Could not calculate parent block state when calculating block state. BlockNum=%d. \n Block: %d, Block Parent: %d ",
 			b.Number(),
 			common.ShortHash(b.Hash()),
 			common.ShortHash(b.Header().ParentHash),
-		)
-		return nil, nil, nil
+		))
 	}
 
-	bs, head, receipts := rc.calculateBlockState(b, parentState, rollups)
+	blockState, head, receipts := rc.calculateBlockState(b, parentState, rollups)
 	common.TraceWithID(rc.nodeID, "Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(b.Hash()),
-		bs.FoundNewRollup,
-		common.ShortHash(bs.HeadRollup))
+		blockState.FoundNewRollup,
+		common.ShortHash(blockState.HeadRollup))
 
-	newLogs := []*types.Log{}
+	logs := []*types.Log{}
 	for _, receipt := range receipts {
-		newLogs = append(newLogs, receipt.Logs...)
+		logs = append(logs, receipt.Logs...)
 	}
-	allLogs = append(allLogs, newLogs...)
+	rc.storage.StoreNewHead(blockState, head, receipts, logs)
 
-	rc.storage.SaveNewHead(bs, head, receipts, allLogs)
-
-	return bs, allLogs, newLogs
+	return blockState
 }
 
 func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (genesisState *obscurocore.BlockState, isGenesis bool) {
@@ -228,7 +224,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
 		}
-		rc.storage.SaveNewHead(&bs, genesis, nil, nil)
+		rc.storage.StoreNewHead(&bs, genesis, nil, []*types.Log{})
 		err := rc.faucet.CalculateGenesisState(rc.storage)
 		if err != nil {
 			return nil, false
@@ -444,12 +440,20 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 	}
 
 	common.TraceWithID(rc.nodeID, "Update state: b_%d", common.ShortHash(block.Hash()))
-	blockState, _, newLogs := rc.updateState(&block)
+	blockState := rc.updateState(&block)
 	if blockState == nil {
 		return rc.noBlockStateBlockSubmissionResponse(&block)
 	}
 
-	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(newLogs, blockState.HeadRollup)
+	logs := []*types.Log{}
+	fetchedLogs, found := rc.storage.FetchLogs(block.Hash())
+	if found {
+		logs = fetchedLogs
+	} else {
+		log.Error("Could not retrieve logs for stored block state. Returning no logs")
+	}
+
+	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.HeadRollup)
 	if err != nil {
 		log.Panic("Could not get subscribed logs in encrypted form. Cause: %s", err)
 	}

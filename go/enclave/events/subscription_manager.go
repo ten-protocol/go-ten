@@ -6,8 +6,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -90,15 +88,46 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	delete(s.subscriptions, id)
 }
 
-// FilterHeadBlockLogs returns the logs of the head block, filtered based on the provided account and filter.
-func (s *SubscriptionManager) FilterHeadBlockLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
-	headBlockHash := s.storage.FetchHeadBlock().Hash()
-	_, logs, found := s.storage.FetchBlockState(headBlockHash)
-	if !found {
-		log.Error("could not retrieve logs for head state. Something is wrong")
-		return nil, fmt.Errorf("could not retrieve logs for head state. Something is wrong")
+// GetFilteredLogs returns the logs across the entire canonical chain that match the provided account and filter.
+func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
+	headBlock := s.storage.FetchHeadBlock()
+
+	// We collect all the block hashes in the canonical chain.
+	// TODO: Only collect blocks within the filter's range.
+	blockHashes := []gethcommon.Hash{}
+	currentBlock := headBlock
+	for {
+		blockHashes = append(blockHashes, currentBlock.Hash())
+
+		if currentBlock.NumberU64() <= common.L1GenesisHeight {
+			break // We have reached the end of the chain.
+		}
+
+		parentHash := currentBlock.ParentHash()
+		var found bool
+		currentBlock, found = s.storage.FetchBlock(parentHash)
+		if !found {
+			return nil, fmt.Errorf("could not retrieve block %s to extract its logs", parentHash)
+		}
 	}
-	return s.FilterLogs(logs, s.storage.FetchHeadRollup().Hash(), account, filter), nil
+
+	// We gather the logs across all the blocks in the canonical chain.
+	logs := []*types.Log{}
+	for _, hash := range blockHashes {
+		blockLogs, found := s.storage.FetchLogs(hash)
+		if !found {
+			break // Blocks before the genesis rollup do not have associated logs (or block state).
+		}
+		logs = append(logs, blockLogs...)
+	}
+
+	// We proceed in this way instead of calling `FetchHeadRollup` because we want to ensure the chain has not advanced
+	// causing a head block/head rollup mismatch.
+	headBlockState, found := s.storage.FetchBlockState(headBlock.Hash())
+	if !found {
+		return nil, fmt.Errorf("could not filter logs as block state for head block could not be found")
+	}
+	return s.FilterLogs(logs, headBlockState.HeadRollup, account, filter), nil
 }
 
 // FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs

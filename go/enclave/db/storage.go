@@ -222,17 +222,23 @@ func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 	return v
 }
 
-func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, []*types.Log, bool) {
+func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, bool) {
 	bs := obscurorawdb.ReadBlockState(s.db, hash)
-	logs := obscurorawdb.ReadBlockLogs(s.db, hash)
-	// We expect both the block state and the logs to be stored. If one isn't, we return neither.
-	if bs != nil && logs != nil {
-		return bs, logs, true
+	if bs != nil {
+		return bs, true
 	}
-	return nil, nil, false
+	return nil, false
 }
 
-func (s *storageImpl) SaveNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) {
+func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, bool) {
+	logs := obscurorawdb.ReadBlockLogs(s.db, hash)
+	if logs != nil {
+		return logs, true
+	}
+	return nil, false
+}
+
+func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) {
 	batch := s.db.NewBatch()
 
 	if state.FoundNewRollup {
