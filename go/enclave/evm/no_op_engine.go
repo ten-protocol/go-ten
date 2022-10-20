@@ -10,13 +10,17 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+// PoolAddress - address of the pool where the gas will go
+// TODO - this has to be reworked when the gas/fee work starts
+var PoolAddress = common.HexToAddress("0x0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A")
+
 // ObscuroNoOpConsensusEngine - implements the geth consensus.Engine, but doesn't do anything
 // This is needed for running evm transactions
 type ObscuroNoOpConsensusEngine struct{}
 
+// Author is used to determine where to send the gas collected from the fees.
 func (e *ObscuroNoOpConsensusEngine) Author(header *types.Header) (common.Address, error) {
-	h := convertFromEthHeader(header)
-	return h.Agg, nil
+	return PoolAddress, nil
 }
 
 func (e *ObscuroNoOpConsensusEngine) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error {
