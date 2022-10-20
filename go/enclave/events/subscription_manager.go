@@ -6,8 +6,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -92,13 +90,27 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 
 // GetFilteredLogs returns the logs across the entire canonical chain that match the provided account and filter.
 func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
-	headBlockHash := s.storage.FetchHeadBlock().Hash()
-	// todo - joel - need to return all logs here, and not just the latest
-	logs, found := s.storage.FetchLogs(headBlockHash)
-	if !found {
-		log.Error("could not retrieve logs for head state. Something is wrong")
-		return nil, fmt.Errorf("could not retrieve logs for head state. Something is wrong")
+	currentBlock := s.storage.FetchHeadBlock()
+	blockHashes := []gethcommon.Hash{}
+	for {
+		blockHashes = append(blockHashes, currentBlock.Hash())
+		parentHash := currentBlock.ParentHash()
+		var found bool
+		currentBlock, found = s.storage.FetchBlock(parentHash)
+		if !found {
+			break
+		}
 	}
+
+	logs := []*types.Log{}
+	for _, hash := range blockHashes {
+		blockLogs, found := s.storage.FetchLogs(hash)
+		if !found {
+			continue
+		}
+		logs = append(logs, blockLogs...)
+	}
+
 	return s.FilterLogs(logs, s.storage.FetchHeadRollup().Hash(), account, filter), nil
 }
 
