@@ -445,10 +445,14 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 		return rc.noBlockStateBlockSubmissionResponse(&block)
 	}
 
-	logs, found := rc.storage.FetchLogs(block.Hash())
-	if !found {
-		log.Panic("Could not retrieve logs for stored block state")
+	logs := []*types.Log{}
+	fetchedLogs, found := rc.storage.FetchLogs(block.Hash())
+	if found {
+		logs = fetchedLogs
+	} else {
+		log.Error("Could not retrieve logs for stored block state. Returning no logs")
 	}
+
 	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.HeadRollup)
 	if err != nil {
 		log.Panic("Could not get subscribed logs in encrypted form. Cause: %s", err)
