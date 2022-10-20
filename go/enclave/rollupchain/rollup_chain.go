@@ -150,12 +150,12 @@ func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
 
 //  STATE
 
-// Recursively calculates the block state, all the logs in the chain so far, and new logs for the given block.
-func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*types.Log, []*types.Log) {
+// Recursively calculates the block state and new logs for the given block.
+func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*types.Log) {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
 	blockState, _, found := rc.storage.FetchBlockState(b.Hash())
 	if found {
-		return blockState, nil, nil
+		return blockState, nil
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
@@ -163,14 +163,14 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*
 
 	// processing blocks before genesis, so there is nothing to do
 	if genesisRollup == nil && len(rollups) == 0 {
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handles the case of the block containing the genesis being processed multiple times.
 	genesisState, isGenesis := rc.handleGenesisRollup(b, rollups, genesisRollup)
 	if isGenesis {
-		return genesisState, nil, nil
+		return genesisState, nil
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
@@ -181,9 +181,9 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*
 		parent, found := rc.storage.FetchBlock(b.ParentHash())
 		if !found {
 			common.LogWithID(rc.nodeID, "Could not find block parent. This should not happen.")
-			return nil, nil, nil
+			return nil, nil
 		}
-		parentState, allLogs, _ = rc.updateState(parent)
+		parentState, _ = rc.updateState(parent)
 	}
 
 	if parentState == nil {
@@ -192,7 +192,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*
 			common.ShortHash(b.Hash()),
 			common.ShortHash(b.Header().ParentHash),
 		)
-		return nil, nil, nil
+		return nil, nil
 	}
 
 	bs, head, receipts := rc.calculateBlockState(b, parentState, rollups)
@@ -205,11 +205,10 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*
 	for _, receipt := range receipts {
 		newLogs = append(newLogs, receipt.Logs...)
 	}
-	allLogs = append(allLogs, newLogs...)
 
 	rc.storage.SaveNewHead(bs, head, receipts, allLogs)
 
-	return bs, allLogs, newLogs
+	return bs, newLogs
 }
 
 func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (genesisState *obscurocore.BlockState, isGenesis bool) {
@@ -444,7 +443,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 	}
 
 	common.TraceWithID(rc.nodeID, "Update state: b_%d", common.ShortHash(block.Hash()))
-	blockState, _, newLogs := rc.updateState(&block)
+	blockState, newLogs := rc.updateState(&block)
 	if blockState == nil {
 		return rc.noBlockStateBlockSubmissionResponse(&block)
 	}

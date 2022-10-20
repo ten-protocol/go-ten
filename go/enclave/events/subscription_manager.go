@@ -90,9 +90,10 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	delete(s.subscriptions, id)
 }
 
-// FilterHeadBlockLogs returns the logs of the head block, filtered based on the provided account and filter.
-func (s *SubscriptionManager) FilterHeadBlockLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
+// GetFilteredLogs returns the logs across the entire canonical chain that match the provided account and filter.
+func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
 	headBlockHash := s.storage.FetchHeadBlock().Hash()
+	// todo - joel - need to return all logs here, and not just the latest
 	_, logs, found := s.storage.FetchBlockState(headBlockHash)
 	if !found {
 		log.Error("could not retrieve logs for head state. Something is wrong")
