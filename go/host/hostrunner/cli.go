@@ -17,6 +17,7 @@ import (
 type HostConfigToml struct {
 	ID                     string
 	IsGenesis              bool
+	IsAggregator           bool
 	GossipRoundDuration    int
 	HasClientRPCHTTP       bool
 	ClientRPCPortHTTP      uint
@@ -50,6 +51,7 @@ func ParseConfig() config.HostConfig {
 	configPath := flag.String(configName, "", flagUsageMap[configName])
 	nodeID := flag.String(nodeIDName, cfg.ID.Hex(), flagUsageMap[nodeIDName])
 	isGenesis := flag.Bool(isGenesisName, cfg.IsGenesis, flagUsageMap[isGenesisName])
+	isAggregator := flag.Bool(isAggregatorName, cfg.IsAggregator, flagUsageMap[isAggregatorName])
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(cfg.GossipRoundDuration), flagUsageMap[gossipRoundNanosName])
 	clientRPCPortHTTP := flag.Uint64(clientRPCPortHTTPName, cfg.ClientRPCPortHTTP, flagUsageMap[clientRPCPortHTTPName])
 	clientRPCPortWS := flag.Uint64(clientRPCPortWSName, cfg.ClientRPCPortWS, flagUsageMap[clientRPCPortWSName])
@@ -79,6 +81,7 @@ func ParseConfig() config.HostConfig {
 
 	cfg.ID = common.HexToAddress(*nodeID)
 	cfg.IsGenesis = *isGenesis
+	cfg.IsAggregator = *isAggregator
 	cfg.GossipRoundDuration = time.Duration(*gossipRoundNanos)
 	cfg.HasClientRPCHTTP = true
 	cfg.ClientRPCPortHTTP = *clientRPCPortHTTP

@@ -1,5 +1,6 @@
 id = ""
 isGenesis = true
+isAggregator = true
 gossipRoundDuration = 777
 hasClientRPCHTTP = true
 clientRPCPortHTTP = 13000

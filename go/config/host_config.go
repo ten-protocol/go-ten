@@ -18,6 +18,8 @@ type HostConfig struct {
 	ID common.Address
 	// Whether the host is the genesis Obscuro node
 	IsGenesis bool
+	// Whether the host is an aggregator (as opposed to a validator)
+	IsAggregator bool
 	// Duration of the gossip round
 	GossipRoundDuration time.Duration
 	// Whether to serve client RPC requests over HTTP
@@ -69,6 +71,7 @@ func DefaultHostConfig() HostConfig {
 	return HostConfig{
 		ID:                     common.BytesToAddress([]byte("")),
 		IsGenesis:              true,
+		IsAggregator:           true,
 		GossipRoundDuration:    8333,
 		HasClientRPCHTTP:       true,
 		ClientRPCPortHTTP:      13000,
