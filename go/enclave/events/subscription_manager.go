@@ -106,7 +106,7 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 	for _, hash := range blockHashes {
 		blockLogs, found := s.storage.FetchLogs(hash)
 		if !found {
-			continue
+			continue // Some blocks do not have any block state or logs saved against them.
 		}
 		logs = append(logs, blockLogs...)
 	}
