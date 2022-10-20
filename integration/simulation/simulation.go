@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	allocObsWallets = 750000000000000 // The amount the faucet allocates to each Obscuro wallet.
+	allocObsWallets = 750_000_000_000_000 // The amount the faucet allocates to each Obscuro wallet.
 )
 
 var initialBalance = common.ValueInWei(big.NewInt(5000))
