@@ -215,8 +215,9 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 			continue
 		}
 
-		// A user address must exist in the state DB.
-		if db.Exist(potentialAddr) {
+		// A user address must have a non-zero nonce. This prevents accidental or malicious sending of funds to an
+		// address matching a topic, forcing its events to become permanently private.
+		if db.GetNonce(potentialAddr) != 0 {
 			// If the address has code, it's a smart contract address instead.
 			if db.GetCode(potentialAddr) == nil {
 				userAddrs = append(userAddrs, potentialAddr.Hex())
