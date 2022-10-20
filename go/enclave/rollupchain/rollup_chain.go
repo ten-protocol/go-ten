@@ -193,20 +193,19 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, []*
 		))
 	}
 
-	bs, head, receipts := rc.calculateBlockState(b, parentState, rollups)
+	blockState, head, receipts := rc.calculateBlockState(b, parentState, rollups)
 	common.TraceWithID(rc.nodeID, "Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(b.Hash()),
-		bs.FoundNewRollup,
-		common.ShortHash(bs.HeadRollup))
+		blockState.FoundNewRollup,
+		common.ShortHash(blockState.HeadRollup))
 
-	newLogs := []*types.Log{}
+	logs := []*types.Log{}
 	for _, receipt := range receipts {
-		newLogs = append(newLogs, receipt.Logs...)
+		logs = append(logs, receipt.Logs...)
 	}
 
-	rc.storage.StoreNewHead(bs, head, receipts, newLogs)
-
-	return bs, newLogs
+	rc.storage.StoreNewHead(blockState, head, receipts, logs)
+	return blockState, logs
 }
 
 func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (genesisState *obscurocore.BlockState, isGenesis bool) {

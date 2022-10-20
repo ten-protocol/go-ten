@@ -93,6 +93,7 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 	headBlock := s.storage.FetchHeadBlock()
 
 	// We collect all the block hashes in the canonical chain.
+	// TODO: Only collect blocks within the filter's range.
 	blockHashes := []gethcommon.Hash{}
 	currentBlock := headBlock
 	for {
