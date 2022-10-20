@@ -1,7 +1,12 @@
 package simulation
 
 import (
+	"github.com/obscuronet/go-obscuro/integration"
+	ethereum_mock "github.com/obscuronet/go-obscuro/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"testing"
+	"time"
 )
 
 // This test creates a network of in memory L1 and L2 nodes, then injects transactions, and finally checks the resulting output blockchain.
@@ -10,30 +15,29 @@ import (
 // Everything else is reported to this value. This number has to be adjusted in conjunction with the number of nodes. If it's too low,
 // the CPU usage will be very high during the simulation which might give inconclusive results.
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
-	// todo - commented out because it is extremely flaky
-	/*	setupSimTestLog("in-mem")
+	setupSimTestLog("in-mem")
 
-		numberOfNodes := 7
-		numberOfSimWallets := 10
-		wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
+	numberOfNodes := 7
+	numberOfSimWallets := 10
+	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
 
-		// temporarily increased the values
-		simParams := params.SimParams{
-			NumberOfNodes:             numberOfNodes,
-			AvgBlockDuration:          50 * time.Millisecond,
-			SimulationTime:            25 * time.Second,
-			L1EfficiencyThreshold:     0.2,
-			L2EfficiencyThreshold:     0.5,
-			L2ToL1EfficiencyThreshold: 0.5,
-			MgmtContractLib:           ethereum_mock.NewMgmtContractLibMock(),
-			ERC20ContractLib:          ethereum_mock.NewERC20ContractLibMock(),
-			Wallets:                   wallets,
-			StartPort:                 integration.StartPortSimulationInMem,
-			IsInMem:                   true,
-		}
+	// temporarily increased the values
+	simParams := params.SimParams{
+		NumberOfNodes:             numberOfNodes,
+		AvgBlockDuration:          50 * time.Millisecond,
+		SimulationTime:            25 * time.Second,
+		L1EfficiencyThreshold:     0.2,
+		L2EfficiencyThreshold:     0.5,
+		L2ToL1EfficiencyThreshold: 0.5,
+		MgmtContractLib:           ethereum_mock.NewMgmtContractLibMock(),
+		ERC20ContractLib:          ethereum_mock.NewERC20ContractLibMock(),
+		Wallets:                   wallets,
+		StartPort:                 integration.StartPortSimulationInMem,
+		IsInMem:                   true,
+	}
 
-		simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
-		simParams.AvgGossipPeriod = simParams.AvgBlockDuration * 2 / 7
+	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
+	simParams.AvgGossipPeriod = simParams.AvgBlockDuration * 2 / 7
 
-		testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), &simParams)*/
+	testSimulation(t, network.NewBasicNetworkOfInMemoryNodes(), &simParams)
 }
