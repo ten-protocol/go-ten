@@ -1,5 +1,11 @@
 # Obscuro Testnet Change Log
 
+## October 2022-10-21 (v0.5)
+* Event Subscriptions:
+  * Event subscriptions for logs are now supported via the eth_subscribe and eth_getLogs approaches. This has been 
+    tested using both the ethers and web3js libraries. Note that eth_newFilter is not currently supported. For more 
+    information see [the events design]((https://github.com/obscuronet/go-obscuro/blob/main/design/Events_design.md)).
+
 ## September 2022-09-22 (v0.4)
 * Wallet extension:
   * The wallet extension now supports separate ports for HTTP and WebSocket connections. Use the `--port` and `--portWS` 

@@ -373,9 +373,11 @@ account on the L1 network used to deploy the Obscuro Management and the ERC20 co
                                 
 
 ### Deploying contracts into a local testnet
-Deploying and interacting with contracts on Obscuro requires the wallet extension to be running. The wallet extension is the Obscuro 
-component that ensures that sensitive information in RPC requests between client applications and Obscuro cannot be seen by third parties. 
-The wallet extension should be run local to the client application and is described in more detail at 
+Deploying and interacting with contracts on Obscuro requires OBX to be allocated to an account via the faucet server, 
+and the wallet extension to be running. For more information on requesting OBX from the faucet server see 
+[docs/testnet/faucet.md](docs/testnet/faucet.md). The wallet extension is the Obscuro component that ensures that 
+sensitive information in RPC requests between client applications and Obscuro cannot be seen by third parties. The 
+wallet extension should be run local to the client application and is described in more detail at 
 [docs/wallet-extension/wallet-extension.md](docs/wallet-extension/wallet-extension.md).
 
 To start the wallet extension to run against a local testnet use the below;
