@@ -54,7 +54,6 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 	before := header.MixDigest
 	// calculate a random value per transaction
 	header.MixDigest = gethcommon.BytesToHash(crypto.PerTransactionRnd(before.Bytes(), tCount))
-	// todo - Author?
 	receipt, err := gethcore.ApplyTransaction(cc, chain, nil, gp, s, header, t, usedGas, vmCfg)
 	header.MixDigest = before
 	if err != nil {

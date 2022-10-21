@@ -1,6 +1,7 @@
 package rawdb
 
 import (
+	"bytes"
 	"errors"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -93,6 +94,28 @@ func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rec
 	if err := db.Put(rollupReceiptsKey(number, hash), bytes); err != nil {
 		log.Panic("Failed to store block receipts. Cause: %s", err)
 	}
+}
+
+// WriteContractCreateReceipts stores a mapping between each contract and the receipt that created it
+func WriteContractCreateReceipts(db ethdb.KeyValueWriter, receipts types.Receipts) {
+	// Convert the receipts into their storage form and serialize them
+	for _, receipt := range receipts {
+		if !bytes.Equal(receipt.ContractAddress.Bytes(), (common.Address{}).Bytes()) {
+			// Store the flattened receipt slice
+			if err := db.Put(contractReceiptKey(receipt.ContractAddress), receipt.TxHash.Bytes()); err != nil {
+				log.Panic("Failed to store contract receipt. Cause: %s", err)
+			}
+		}
+	}
+}
+
+// ReadContractTransaction - returns the tx that created a contract
+func ReadContractTransaction(db ethdb.Reader, address common.Address) common.Hash {
+	value, err := db.Get(contractReceiptKey(address))
+	if err != nil {
+		log.Error("failed to read the contract receipt. %s", err)
+	}
+	return common.BytesToHash(value)
 }
 
 // DeleteReceipts removes all receipt data associated with a block hash.

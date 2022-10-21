@@ -687,7 +687,7 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 		return nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
 	}
 	// TODO - Replace all usages of `HexToAddress` with a `SafeHexToAddress` that checks that the string does not exceed 20 bytes.
-	address := gethcommon.HexToAddress(paramList[0])
+	accountAddress := gethcommon.HexToAddress(paramList[0])
 	blockNumber := gethrpc.BlockNumber(0)
 	err = blockNumber.UnmarshalJSON([]byte(paramList[1]))
 	if err != nil {
@@ -705,9 +705,30 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	if blockchainState == nil || err != nil {
 		return nil, err
 	}
-	balance := (*hexutil.Big)(blockchainState.GetBalance(address))
+	balance := (*hexutil.Big)(blockchainState.GetBalance(accountAddress))
 
 	// We encrypt the result.
+	address := accountAddress
+	// If the accountAddress is a contract, encrypt with the address of the contract owner
+	code := blockchainState.GetCode(accountAddress)
+	if code != nil {
+		txHash, err := rc.storage.GetTxForContract(accountAddress)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
+		}
+		transaction, _, _, _, err := rc.storage.GetTransaction(txHash)
+		if err != nil {
+			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
+		}
+		signer := types.NewLondonSigner(rc.chainConfig.ChainID)
+
+		sender, err := signer.Sender(transaction)
+		if err != nil {
+			return nil, fmt.Errorf("failed to verify signature. Cause %w", err)
+		}
+		address = sender
+	}
+
 	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(balance.String()))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
