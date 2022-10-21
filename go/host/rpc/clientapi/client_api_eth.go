@@ -33,7 +33,11 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 
 // BlockNumber returns the height of the current head rollup.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	number := api.host.DB().GetCurrentRollupHead().Header.Number.Uint64()
+	head := api.host.DB().GetCurrentRollupHead()
+	if head == nil {
+		return 0
+	}
+	number := head.Header.Number.Uint64()
 	return hexutil.Uint64(number)
 }
 
