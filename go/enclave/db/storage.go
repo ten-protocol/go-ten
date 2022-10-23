@@ -248,6 +248,7 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup)
 		obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash())
 		obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts)
+		obscurorawdb.WriteContractCreationTx(batch, receipts)
 	}
 
 	obscurorawdb.WriteBlockState(batch, state)
@@ -319,6 +320,11 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 		return gethcommon.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 	return msg.From(), nil
+}
+
+func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (gethcommon.Hash, error) {
+	tx := obscurorawdb.ReadContractTransaction(s.db, address)
+	return tx, nil
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error) {
