@@ -96,12 +96,11 @@ func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rec
 	}
 }
 
-// WriteContractCreateReceipts stores a mapping between each contract and the receipt that created it
-func WriteContractCreateReceipts(db ethdb.KeyValueWriter, receipts types.Receipts) {
-	// Convert the receipts into their storage form and serialize them
+// WriteContractCreationTx stores a mapping between each contract and the tx that created it
+func WriteContractCreationTx(db ethdb.KeyValueWriter, receipts types.Receipts) {
 	for _, receipt := range receipts {
+		// determine receipts which create accounts and store the txHash
 		if !bytes.Equal(receipt.ContractAddress.Bytes(), (common.Address{}).Bytes()) {
-			// Store the flattened receipt slice
 			if err := db.Put(contractReceiptKey(receipt.ContractAddress), receipt.TxHash.Bytes()); err != nil {
 				log.Panic("Failed to store contract receipt. Cause: %s", err)
 			}

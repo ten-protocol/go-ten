@@ -712,7 +712,7 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	// If the accountAddress is a contract, encrypt with the address of the contract owner
 	code := blockchainState.GetCode(accountAddress)
 	if len(code) != 0 {
-		txHash, err := rc.storage.GetTxForContract(accountAddress)
+		txHash, err := rc.storage.GetContractCreationTx(accountAddress)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
 		}
