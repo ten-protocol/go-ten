@@ -3,8 +3,9 @@
 #
 # This script downloads and builds the obscuro node
 #
-# Note: Be aware that a network MUST always have AT LEAST ONE Genesis node -> Flag is_genesis=true
-#       Otherwise you might see your node getting stuck in waiting for a secret
+# Note: Be aware that a network MUST always have:
+#  * EXACTLY ONE genesis node -> Flag is_genesis=true (otherwise your node wil spin forever waiting for the network secret)
+#  * AT LEAST ONE aggregator  -> Flag node_type=aggregator (otherwise no rollups will be produced)
 #
 
 help_and_exit() {
@@ -36,6 +37,8 @@ help_and_exit() {
     echo ""
     echo "  is_genesis         *Optional* Set the node as genesis node. Defaults to false"
     echo ""
+    echo "  node_type          *Optional* Set the node's type. Defaults to validator"
+    echo ""
     echo "  log_level          *Optional* Sets the log level. Defaults to 2 (warn)."
     echo ""
     echo "  p2p_public_address *Optional* Set host p2p public address. Defaults to 127.0.0.1:10000"
@@ -60,6 +63,7 @@ testnet_path="${start_path}"
 # Define defaults
 l1_port=9000
 is_genesis=false
+node_type=aggregator
 profiler_enabled=false
 p2p_public_address="127.0.0.1:10000"
 debug_enclave=false
@@ -86,6 +90,7 @@ do
             --pkstring)                 pk_string=${value} ;;
             --sgx_enabled)              sgx_enabled=${value} ;;
             --is_genesis)               is_genesis=${value} ;;
+            --node_type)                node_type=${value} ;;
             --log_level)                log_level=${value} ;;
             --profiler_enabled)         profiler_enabled=${value} ;;
             --p2p_public_address)       p2p_public_address=${value} ;;
@@ -113,6 +118,7 @@ echo "POCERC20ADDR=${poc_erc20_addr}"  >> "${testnet_path}/.env"
 echo "L1HOST=${l1_host}" >> "${testnet_path}/.env"
 echo "L1PORT=${l1_port}" >> "${testnet_path}/.env"
 echo "ISGENESIS=${is_genesis}" >> "${testnet_path}/.env"
+echo "NODETYPE=${node_type}" >> "${testnet_path}/.env"
 echo "LOGLEVEL=${log_level}" >> "${testnet_path}/.env"
 echo "PROFILERENABLED=${profiler_enabled}" >> "${testnet_path}/.env"
 echo "P2PPUBLICADDRESS=${p2p_public_address}" >> "${testnet_path}/.env"
