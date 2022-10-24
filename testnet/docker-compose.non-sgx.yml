@@ -20,7 +20,7 @@ services:
       ISGENESIS: some_bool
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
-      LOGLEVEL: some_string
+      LOGLEVEL: some_int
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
@@ -32,6 +32,7 @@ services:
       "--privateKey=$PKSTRING",
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
+      "--logPath=sys_out",
       "--logLevel=$LOGLEVEL",
       "--profilerEnabled=$PROFILERENABLED",
       "--p2pPublicAddress=$P2PPUBLICADDRESS"
@@ -49,7 +50,7 @@ services:
       HOSTID: some_address
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
-      LOGLEVEL: some_string
+      LOGLEVEL: some_int
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
@@ -62,5 +63,6 @@ services:
                  "--hostAddress=host:10000",
                  "--profilerEnabled=$PROFILERENABLED",
                  "--hostAddress=$P2PPUBLICADDRESS",
+                 "--logPath=sys_out",
                  "--logLevel=$LOGLEVEL"
     ]

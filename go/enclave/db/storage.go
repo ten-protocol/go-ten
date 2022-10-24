@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -27,24 +29,24 @@ import (
 type storageImpl struct {
 	db          ethdb.Database
 	stateDB     state.Database
-	nodeID      uint64
 	chainConfig *params.ChainConfig
+	logger      gethlog.Logger
 }
 
 // ErrTxNotFound indicates that a transaction could not be found.
 var ErrTxNotFound = errors.New("transaction not found")
 
-func NewStorage(backingDB ethdb.Database, nodeID uint64, chainConfig *params.ChainConfig) Storage {
+func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	return &storageImpl{
 		db:          backingDB,
 		stateDB:     state.NewDatabase(backingDB),
-		nodeID:      nodeID,
 		chainConfig: chainConfig,
+		logger:      logger,
 	}
 }
 
 func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
-	obscurorawdb.WriteGenesisHash(s.db, rol.Hash())
+	obscurorawdb.WriteGenesisHash(s.db, rol.Hash(), s.logger)
 	s.StoreRollup(rol)
 }
 
@@ -70,15 +72,15 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
 	s.assertSecretAvailable()
 
 	batch := s.db.NewBatch()
-	obscurorawdb.WriteRollup(batch, rollup)
+	obscurorawdb.WriteRollup(batch, rollup, s.logger)
 	if err := batch.Write(); err != nil {
-		log.Panic("could not write rollup to storage. Cause: %s", err)
+		s.logger.Crit("could not write rollup to storage. ", log.ErrKey, err)
 	}
 }
 
 func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
 	s.assertSecretAvailable()
-	r := obscurorawdb.ReadRollup(s.db, hash)
+	r := obscurorawdb.ReadRollup(s.db, hash, s.logger)
 	if r != nil {
 		return r, true
 	}
@@ -99,7 +101,7 @@ func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, bool) {
 
 func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
 	s.assertSecretAvailable()
-	return obscurorawdb.ReadRollupsForHeight(s.db, height)
+	return obscurorawdb.ReadRollupsForHeight(s.db, height, s.logger)
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block) bool {
@@ -128,7 +130,7 @@ func (s *storageImpl) FetchHeadBlock() *types.Block {
 }
 
 func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) {
-	obscurorawdb.WriteSharedSecret(s.db, secret)
+	obscurorawdb.WriteSharedSecret(s.db, secret, s.logger)
 }
 
 func (s *storageImpl) FetchSecret() *crypto.SharedEnclaveSecret {
@@ -139,7 +141,7 @@ func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {
 	s.assertSecretAvailable()
 	parent, found := s.FetchRollup(r.Header.ParentHash)
 	if !found {
-		common.LogWithID(s.nodeID, "Could not find rollup: r_%d", common.ShortHash(r.Hash()))
+		s.logger.Info(fmt.Sprintf("Could not find rollup: r_%d", common.ShortHash(r.Hash())))
 		return nil
 	}
 	return parent
@@ -217,13 +219,13 @@ func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
 func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 	v, f := s.FetchBlock(r.Header.L1Proof)
 	if !f {
-		log.Panic("could not find proof for this rollup")
+		s.logger.Crit("could not find proof for this rollup")
 	}
 	return v
 }
 
 func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, bool) {
-	bs := obscurorawdb.ReadBlockState(s.db, hash)
+	bs := obscurorawdb.ReadBlockState(s.db, hash, s.logger)
 	if bs != nil {
 		return bs, true
 	}
@@ -231,7 +233,7 @@ func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState,
 }
 
 func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, bool) {
-	logs := obscurorawdb.ReadBlockLogs(s.db, hash)
+	logs := obscurorawdb.ReadBlockLogs(s.db, hash, s.logger)
 	if logs != nil {
 		return logs, true
 	}
@@ -242,34 +244,34 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 	batch := s.db.NewBatch()
 
 	if state.FoundNewRollup {
-		obscurorawdb.WriteRollup(batch, rollup)
-		obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash())
-		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64())
-		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup)
-		obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash())
-		obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts)
-		obscurorawdb.WriteContractCreationTx(batch, receipts)
+		obscurorawdb.WriteRollup(batch, rollup, s.logger)
+		obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash(), s.logger)
+		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64(), s.logger)
+		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup, s.logger)
+		obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash(), s.logger)
+		obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts, s.logger)
+		obscurorawdb.WriteContractCreationTx(batch, receipts, s.logger)
 	}
 
-	obscurorawdb.WriteBlockState(batch, state)
-	obscurorawdb.WriteBlockLogs(batch, state.Block, logs)
+	obscurorawdb.WriteBlockState(batch, state, s.logger)
+	obscurorawdb.WriteBlockLogs(batch, state.Block, logs, s.logger)
 
 	rawdb.WriteHeadHeaderHash(batch, state.Block)
 
 	if err := batch.Write(); err != nil {
-		log.Panic("could not save new head. Cause: %s", err)
+		s.logger.Crit("could not save new head. ", log.ErrKey, err)
 	}
 }
 
 func (s *storageImpl) CreateStateDB(hash common.L2RootHash) *state.StateDB {
 	rollup, f := s.FetchRollup(hash)
 	if !f {
-		log.Panic("could not retrieve rollup for hash %s", hash.String())
+		s.logger.Crit("could not retrieve rollup for hash %s", hash.String())
 	}
 	// todo - snapshots?
 	statedb, err := state.New(rollup.Header.Root, s.stateDB, nil)
 	if err != nil {
-		log.Panic("could not create state DB. Cause: %s", err)
+		s.logger.Crit("could not create state DB. ", log.ErrKey, err)
 	}
 	return statedb
 }
@@ -277,7 +279,7 @@ func (s *storageImpl) CreateStateDB(hash common.L2RootHash) *state.StateDB {
 func (s *storageImpl) EmptyStateDB() *state.StateDB {
 	statedb, err := state.New(gethcommon.BigToHash(big.NewInt(0)), s.stateDB, nil)
 	if err != nil {
-		log.Panic("could not create state DB. Cause: %s", err)
+		s.logger.Crit("could not create state DB. ", log.ErrKey, err)
 	}
 	return statedb
 }
@@ -285,10 +287,10 @@ func (s *storageImpl) EmptyStateDB() *state.StateDB {
 func (s *storageImpl) FetchHeadState() *core.BlockState {
 	h := rawdb.ReadHeadHeaderHash(s.db)
 	if (bytes.Equal(h.Bytes(), gethcommon.Hash{}.Bytes())) {
-		log.Error("Agg%d: could not read head header hash from storage", s.nodeID)
+		s.logger.Error("could not read head header hash from storage")
 		return nil
 	}
-	return obscurorawdb.ReadBlockState(s.db, h)
+	return obscurorawdb.ReadBlockState(s.db, h, s.logger)
 }
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
@@ -297,12 +299,12 @@ func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) types.Receipts {
 	if number == nil {
 		return nil
 	}
-	receipts := obscurorawdb.ReadReceipts(s.db, hash, *number, s.chainConfig)
+	receipts := obscurorawdb.ReadReceipts(s.db, hash, *number, s.chainConfig, s.logger)
 	return receipts
 }
 
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
-	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash)
+	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash, s.logger)
 	if tx == nil {
 		return nil, gethcommon.Hash{}, 0, 0, ErrTxNotFound
 	}
@@ -323,7 +325,7 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 }
 
 func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (gethcommon.Hash, error) {
-	tx := obscurorawdb.ReadContractTransaction(s.db, address)
+	tx := obscurorawdb.ReadContractTransaction(s.db, address, s.logger)
 	return tx, nil
 }
 
@@ -343,9 +345,9 @@ func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Rece
 }
 
 func (s *storageImpl) FetchAttestedKey(aggregator gethcommon.Address) *ecdsa.PublicKey {
-	return obscurorawdb.ReadAttestationKey(s.db, aggregator)
+	return obscurorawdb.ReadAttestationKey(s.db, aggregator, s.logger)
 }
 
 func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) {
-	obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
+	obscurorawdb.WriteAttestationKey(s.db, aggregator, key, s.logger)
 }

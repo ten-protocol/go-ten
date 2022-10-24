@@ -8,6 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"golang.org/x/sync/errgroup"
@@ -74,6 +77,8 @@ type TransactionInjector struct {
 
 	// context for the transaction injector so in-flight requests can be cancelled gracefully
 	ctx context.Context
+
+	logger gethlog.Logger
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of obsWallets
@@ -111,6 +116,7 @@ func NewTransactionInjector(
 		enclavePublicKey: enclavePublicKeyEcies,
 		txsToIssue:       txsToIssue,
 		ctx:              context.Background(), // for now we create a new context here, should allow it to be passed in
+		logger:           testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
 	}
 }
 
@@ -146,7 +152,7 @@ func (ti *TransactionInjector) Start() {
 func (ti *TransactionInjector) Stop() {
 	atomic.StoreInt32(ti.interruptRun, 1)
 	for range ti.fullyStoppedChan {
-		log.Info("TransactionInjector stopped successfully")
+		ti.logger.Info("TransactionInjector stopped successfully")
 		return
 	}
 }
@@ -165,18 +171,18 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		if err != nil {
 			panic(err)
 		}
-		log.Info(
+		ti.logger.Info(fmt.Sprintf(
 			"Transfer transaction injected into L2. Hash: %d. From address: %d. To address: %d",
 			common.ShortHash(signedTx.Hash()),
 			common.ShortAddress(fromWallet.Address()),
 			common.ShortAddress(toWallet.Address()),
-		)
+		))
 
 		ti.stats.Transfer()
 
 		err = ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
 		if err != nil {
-			log.Info("Failed to issue transfer via RPC. Cause: %s", err)
+			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
 			continue
 		}
 
@@ -204,11 +210,11 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		if err != nil {
 			panic(err)
 		}
-		log.Info(
+		ti.logger.Info(fmt.Sprintf(
 			"Deposit transaction injected into L1. Hash: %d. From address: %d",
 			common.ShortHash(signedTx.Hash()),
 			common.ShortAddress(ethWallet.Address()),
-		)
+		))
 		err = ti.rpcHandles.RndEthClient().SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
@@ -230,15 +236,15 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		if err != nil {
 			panic(err)
 		}
-		log.Info(
+		ti.logger.Info(fmt.Sprintf(
 			"Withdrawal transaction injected into L2. Hash: %d. From address: %d",
 			common.ShortHash(signedTx.Hash()),
 			common.ShortAddress(obsWallet.Address()),
-		)
+		))
 
 		err = ti.rpcHandles.ObscuroWalletRndClient(obsWallet).SendTransaction(ti.ctx, signedTx)
 		if err != nil {
-			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
+			ti.logger.Info("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
 			continue
 		}
 
@@ -265,7 +271,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 
 		err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
 		if err != nil {
-			log.Info("Failed to issue withdrawal via RPC. Cause: %s", err)
+			ti.logger.Info("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
 		}
 		time.Sleep(testcommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
 	}

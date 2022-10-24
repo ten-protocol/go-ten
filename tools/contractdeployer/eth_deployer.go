@@ -3,13 +3,15 @@ package contractdeployer
 import (
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 )
 
-func prepareEthDeployer(cfg *Config) (contractDeployerClient, error) {
-	client, err := ethadapter.NewEthClient(cfg.NodeHost, cfg.NodePort, 30*time.Second, common.HexToAddress("0x0"))
+func prepareEthDeployer(cfg *Config, logger gethlog.Logger) (contractDeployerClient, error) {
+	client, err := ethadapter.NewEthClient(cfg.NodeHost, cfg.NodePort, 30*time.Second, common.HexToAddress("0x0"), logger)
 	if err != nil {
 		return nil, err
 	}

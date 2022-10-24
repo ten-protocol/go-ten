@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/go/host"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -48,7 +48,7 @@ func (n *MockEthNetwork) BroadcastBlock(b common.EncodedBlock, p common.EncodedB
 			t := m
 			common.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
-			log.Info(printBlock(bl, *m))
+			m.logger.Info(printBlock(bl, *m))
 		}
 	}
 
@@ -90,7 +90,7 @@ func printBlock(b *types.Block, m Node) string {
 		case *ethadapter.L1RollupTx:
 			r, err := common.DecodeRollup(l1Tx.Rollup)
 			if err != nil {
-				log.Panic("failed to decode rollup")
+				testlog.Logger().Crit("failed to decode rollup")
 			}
 			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", common.ShortHash(r.Hash()), tx.Nonce()))
 
@@ -104,9 +104,9 @@ func printBlock(b *types.Block, m Node) string {
 	}
 	p, f := m.Resolver.ParentBlock(b)
 	if !f {
-		log.Panic("Should not happen. Parent not found")
+		testlog.Logger().Crit("Should not happen. Parent not found")
 	}
 
-	return fmt.Sprintf("> M%d: create b_%d(Height=%d, RollupNonce=%d)[parent=b_%d]. Txs: %v",
-		common.ShortAddress(m.Info().L2ID), common.ShortHash(b.Hash()), b.NumberU64(), common.ShortNonce(b.Header().Nonce), common.ShortHash(p.Hash()), txs)
+	return fmt.Sprintf(" create b_%d(Height=%d, RollupNonce=%d)[parent=b_%d]. Txs: %v",
+		common.ShortHash(b.Hash()), b.NumberU64(), common.ShortNonce(b.Header().Nonce), common.ShortHash(p.Hash()), txs)
 }

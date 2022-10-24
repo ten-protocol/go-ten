@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 	_ "github.com/mattn/go-sqlite3" // this imports the sqlite driver to make the sql.Open() connection work
@@ -21,7 +21,7 @@ const (
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the db file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteDB(dbPath string) (ethdb.Database, error) {
+func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (ethdb.Database, error) {
 	if dbPath == "" {
 		tempPath, err := getTempDBFile()
 		if err != nil {
@@ -45,7 +45,7 @@ func CreateTemporarySQLiteDB(dbPath string) (ethdb.Database, error) {
 		}
 		desc = "new"
 	}
-	log.Info("Opened %s sqlite db file at %s", desc, dbPath)
+	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", desc, dbPath))
 	return CreateSQLEthDatabase(db)
 }
 

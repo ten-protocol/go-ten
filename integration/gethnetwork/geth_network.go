@@ -17,6 +17,8 @@ import (
 	"sync"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
@@ -121,6 +123,7 @@ type GethNetwork struct {
 	wsStartPort      int
 	blockTimeSecs    int
 	id               int64 // A random ID used to identify the network in logging.
+	logger           gethlog.Logger
 }
 
 // NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
@@ -152,7 +155,8 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	if err != nil {
 		panic(err)
 	}
-	logFile, err := os.Create(path.Join(buildDir, logFile))
+	logPath := path.Join(buildDir, logFile)
+	logFile, err := os.Create(logPath)
 	if err != nil {
 		panic(err)
 	}
@@ -172,6 +176,8 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		panic(err)
 	}
 
+	logger := log.New(log.TestGethNetwCmp, int(gethlog.LvlDebug), logPath, log.NetworkIDKey, networkID.Int64())
+
 	network := GethNetwork{
 		gethBinaryPath:   gethBinaryPath,
 		dataDirs:         dataDirs,
@@ -184,6 +190,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		wsStartPort:      websocketPortStart,
 		blockTimeSecs:    blockTimeSecs,
 		id:               networkID.Int64(),
+		logger:           logger,
 	}
 
 	// We create an account for each node.
@@ -307,13 +314,13 @@ func (network *GethNetwork) StopNodes() {
 				defer wg.Done()
 				err := process.Kill()
 				if err != nil {
-					log.Error("geth node could not be killed: %s", err)
+					network.logger.Error("geth node could not be killed", log.ErrKey, err)
 				}
 				_, err = process.Wait()
 				if err != nil {
-					log.Error("geth node was killed successfully but did not exit: %s", err)
+					network.logger.Error("geth node was killed successfully but did not exit", log.ErrKey, err)
 				} else {
-					fmt.Printf("Geth node %d on network %d stopped.\n", nodeNumber, network.id)
+					network.logger.Info(fmt.Sprintf("Geth node %d on network %d stopped.", nodeNumber, network.id))
 				}
 			}(process, idx)
 		}
@@ -404,7 +411,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) error {
 
 	network.nodesProcs[idx] = cmd.Process
 	network.WebSocketPorts[idx] = uint(webSocketPort)
-	fmt.Printf("Geth node %d on network %d started on ports %d (WebSocket) and %d (HTTP).\n", idx, network.id, webSocketPort, httpPort)
+	network.logger.Info(fmt.Sprintf("Geth node %d on network %d started on ports %d (WebSocket) and %d (HTTP).\n", idx, network.id, webSocketPort, httpPort))
 	return nil
 }
 
@@ -439,7 +446,7 @@ func (network *GethNetwork) waitForIPC(dataDir string) {
 		}
 
 		if counter > 20 {
-			log.Trace("Waiting for .ipc file of node at %s", dataDir)
+			network.logger.Trace(fmt.Sprintf("Waiting for .ipc file of node at %s", dataDir))
 			totalCounter += counter
 			counter = 0
 		}
@@ -471,9 +478,6 @@ func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes 
 
 func isPortAvailable(port int) bool {
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		log.Error("Listen port %d. Err: %s. ", port, err)
-	}
 	if ln != nil {
 		_ = ln.Close()
 	}

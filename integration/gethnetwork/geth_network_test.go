@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
 	"github.com/obscuronet/go-obscuro/integration"
@@ -32,7 +34,17 @@ const (
 	defaultL1RPCTimeout = 15 * time.Second
 
 	localhost = "127.0.0.1"
+
+	testLogs = "../.build/noderunner/"
 )
+
+func init() { //nolint:gochecknoinits
+	testlog.Setup(&testlog.Cfg{
+		LogDir:      testLogs,
+		TestType:    "noderunner",
+		TestSubtype: "test",
+	})
+}
 
 var timeout = 15 * time.Second
 
@@ -110,7 +122,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
 	defer network.StopNodes()
 
-	ethClient, err := ethadapter.NewEthClient(localhost, network.WebSocketPorts[0], defaultL1RPCTimeout, common.HexToAddress("0x0"))
+	ethClient, err := ethadapter.NewEthClient(localhost, network.WebSocketPorts[0], defaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
 		panic(err)
 	}

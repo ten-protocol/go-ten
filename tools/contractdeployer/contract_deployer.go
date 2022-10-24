@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
@@ -17,7 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
@@ -46,26 +47,27 @@ type contractDeployer struct {
 	deployer     contractDeployerClient
 	wallet       wallet.Wallet
 	contractCode []byte
+	logger       gethlog.Logger
 }
 
 // Deploy deploys the contract specified in the config, and returns its deployed address.
-func Deploy(config *Config) (string, error) {
-	deployer, err := newContractDeployer(config)
+func Deploy(config *Config, logger gethlog.Logger) (string, error) {
+	deployer, err := newContractDeployer(config, logger)
 	if err != nil {
 		return "", err
 	}
 	return deployer.run()
 }
 
-func newContractDeployer(config *Config) (*contractDeployer, error) {
+func newContractDeployer(config *Config, logger gethlog.Logger) (*contractDeployer, error) {
 	cfgStr, _ := json.MarshalIndent(config, "", "  ")
 	fmt.Printf("Preparing contract deployer with config: %s\n", cfgStr)
-	wal, err := setupWallet(config)
+	wal, err := setupWallet(config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup wallet - %w", err)
 	}
 
-	deployerClient, err := prepareDeployerClient(config, wal)
+	deployerClient, err := prepareDeployerClient(config, wal, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +81,7 @@ func newContractDeployer(config *Config) (*contractDeployer, error) {
 		wallet:       wal,
 		deployer:     deployerClient,
 		contractCode: contractCode,
+		logger:       logger,
 	}
 
 	return deployer, nil
@@ -98,7 +101,7 @@ func (cd *contractDeployer) run() (string, error) {
 		Data:     cd.contractCode,
 	}
 
-	contractAddr, err := signAndSendTxWithReceipt(cd.wallet, cd.deployer, &deployContractTx)
+	contractAddr, err := cd.signAndSendTxWithReceipt(cd.wallet, cd.deployer, &deployContractTx)
 	if err != nil {
 		return "", err
 	}
@@ -109,24 +112,24 @@ func (cd *contractDeployer) run() (string, error) {
 	return contractAddr.Hex(), nil
 }
 
-func setupWallet(cfg *Config) (wallet.Wallet, error) {
+func setupWallet(cfg *Config, logger gethlog.Logger) (wallet.Wallet, error) {
 	privateKey, err := crypto.HexToECDSA(cfg.PrivateKey)
 	if err != nil {
 		return nil, fmt.Errorf("could not recover private key from hex. Cause: %w", err)
 	}
 
 	// load the wallet
-	return wallet.NewInMemoryWalletFromPK(cfg.ChainID, privateKey), nil
+	return wallet.NewInMemoryWalletFromPK(cfg.ChainID, privateKey, logger), nil
 }
 
-func prepareDeployerClient(config *Config, wal wallet.Wallet) (contractDeployerClient, error) {
+func prepareDeployerClient(config *Config, wal wallet.Wallet, logger gethlog.Logger) (contractDeployerClient, error) {
 	if config.IsL1Deployment {
-		return prepareEthDeployer(config)
+		return prepareEthDeployer(config, logger)
 	}
-	return prepareObscuroDeployer(config, wal)
+	return prepareObscuroDeployer(config, wal, logger)
 }
 
-func signAndSendTxWithReceipt(wallet wallet.Wallet, deployer contractDeployerClient, tx *types.LegacyTx) (*common.Address, error) {
+func (cd *contractDeployer) signAndSendTxWithReceipt(wallet wallet.Wallet, deployer contractDeployerClient, tx *types.LegacyTx) (*common.Address, error) {
 	signedTx, err := wallet.SignTransaction(tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign contract deploy transaction: %w", err)
@@ -137,7 +140,7 @@ func signAndSendTxWithReceipt(wallet wallet.Wallet, deployer contractDeployerCli
 		return nil, fmt.Errorf("failed to send contract deploy transaction: %w", err)
 	}
 
-	log.Info("Waiting (up to %s) for deploy tx to be mined into a block...", timeoutWait)
+	cd.logger.Info(fmt.Sprintf("Waiting (up to %s) for deploy tx to be mined into a block...", timeoutWait))
 
 	var receipt *types.Receipt
 	err = retry.Do(func() error {

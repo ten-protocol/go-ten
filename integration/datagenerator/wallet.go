@@ -3,6 +3,8 @@ package datagenerator
 import (
 	"encoding/hex"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/go/config"
 
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -15,7 +17,7 @@ func RandomWallet(chainID int64) wallet.Wallet {
 		PrivateKeyString: pk,
 		L1ChainID:        chainID,
 	}
-	return wallet.NewInMemoryWalletFromConfig(walletConfig)
+	return wallet.NewInMemoryWalletFromConfig(walletConfig, testlog.Logger())
 }
 
 func randomHex(n int) string {
