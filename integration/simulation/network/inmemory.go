@@ -3,6 +3,8 @@ package network
 import (
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common"
+
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -51,11 +53,16 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgNetworkLatency)
-		isAggregator := i%2 == 0 // We assign every other node the role of aggregator.
+		// We assign every other node the role of aggregator.
+		nodeType := common.Aggregator
+		if i%2 == 0 {
+			nodeType = common.Validator
+		}
+
 		agg := createInMemObscuroNode(
 			int64(i),
 			isGenesis,
-			isAggregator,
+			nodeType,
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
 			params.AvgGossipPeriod,

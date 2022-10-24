@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common"
+
 	"github.com/obscuronet/go-obscuro/go/host/node"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
@@ -57,7 +59,7 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 func createInMemObscuroNode(
 	id int64,
 	isGenesis bool,
-	isAggregator bool,
+	nodeType common.NodeType,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	stableTokenContractLib erc20contractlib.ERC20ContractLib,
 	avgGossipPeriod time.Duration,
@@ -72,14 +74,14 @@ func createInMemObscuroNode(
 	hostConfig := config.HostConfig{
 		ID:                  gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
-		IsAggregator:        isAggregator,
+		NodeType:            nodeType,
 		GossipRoundDuration: avgGossipPeriod,
 		HasClientRPCHTTP:    false,
 	}
 
 	enclaveConfig := config.EnclaveConfig{
 		HostID:                 hostConfig.ID,
-		IsAggregator:           isAggregator,
+		NodeType:               nodeType,
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,
 		WillAttest:             false,
@@ -108,7 +110,7 @@ func createInMemObscuroNode(
 func createSocketObscuroNode(
 	id int64,
 	isGenesis bool,
-	isAggregator bool,
+	nodeType common.NodeType,
 	avgGossipPeriod time.Duration,
 	stats *stats.Stats,
 	p2pAddr string,
@@ -123,7 +125,7 @@ func createSocketObscuroNode(
 	hostConfig := config.HostConfig{
 		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:              isGenesis,
-		IsAggregator:           isAggregator,
+		NodeType:               nodeType,
 		GossipRoundDuration:    avgGossipPeriod,
 		HasClientRPCHTTP:       true,
 		ClientRPCPortHTTP:      clientRPCPortHTTP,

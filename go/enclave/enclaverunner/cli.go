@@ -7,7 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/naoina/toml"
 	"github.com/obscuronet/go-obscuro/go/config"
 )
@@ -17,7 +19,7 @@ type EnclaveConfigToml struct {
 	HostID                    string
 	HostAddress               string
 	Address                   string
-	IsAggregator              bool
+	NodeType                  string
 	L1ChainID                 int64
 	ObscuroChainID            int64
 	WillAttest                bool
@@ -37,7 +39,7 @@ type EnclaveConfigToml struct {
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
 // with specific defaults (if the `config` flag isn't specified).
-func ParseConfig() config.EnclaveConfig {
+func ParseConfig() (config.EnclaveConfig, error) {
 	cfg := config.DefaultEnclaveConfig()
 	flagUsageMap := getFlagUsageMap()
 
@@ -45,7 +47,7 @@ func ParseConfig() config.EnclaveConfig {
 	hostID := flag.String(hostIDName, cfg.HostID.Hex(), flagUsageMap[hostIDName])
 	hostAddress := flag.String(hostAddressName, cfg.HostAddress, flagUsageMap[hostAddressName])
 	address := flag.String(addressName, cfg.Address, flagUsageMap[addressName])
-	isAggregator := flag.Bool(isAggregatorName, cfg.IsAggregator, flagUsageMap[isAggregatorName])
+	nodeTypeStr := flag.String(nodeTypeName, cfg.NodeType.String(), flagUsageMap[nodeTypeName])
 	l1ChainID := flag.Int64(l1ChainIDName, cfg.L1ChainID, flagUsageMap[l1ChainIDName])
 	obscuroChainID := flag.Int64(obscuroChainIDName, cfg.ObscuroChainID, flagUsageMap[obscuroChainIDName])
 	willAttest := flag.Bool(willAttestName, cfg.WillAttest, flagUsageMap[willAttestName])
@@ -68,27 +70,32 @@ func ParseConfig() config.EnclaveConfig {
 	}
 
 	parsedERC20ContractAddrs := strings.Split(*erc20ContractAddrs, ",")
-	erc20contractAddresses := make([]*common.Address, len(parsedERC20ContractAddrs))
+	erc20contractAddresses := make([]*gethcommon.Address, len(parsedERC20ContractAddrs))
 	if *erc20ContractAddrs != "" {
 		for i, addr := range parsedERC20ContractAddrs {
-			hexAddr := common.HexToAddress(addr)
+			hexAddr := gethcommon.HexToAddress(addr)
 			erc20contractAddresses[i] = &hexAddr
 		}
 	} else {
 		// We handle the special case of an empty list.
-		erc20contractAddresses = []*common.Address{}
+		erc20contractAddresses = []*gethcommon.Address{}
 	}
 
-	cfg.HostID = common.HexToAddress(*hostID)
+	nodeType, err := common.ToNodeType(*nodeTypeStr)
+	if err != nil {
+		return config.EnclaveConfig{}, fmt.Errorf("unrecognised node type '%s'", *nodeTypeStr)
+	}
+
+	cfg.HostID = gethcommon.HexToAddress(*hostID)
 	cfg.HostAddress = *hostAddress
 	cfg.Address = *address
-	cfg.IsAggregator = *isAggregator
+	cfg.NodeType = nodeType
 	cfg.L1ChainID = *l1ChainID
 	cfg.ObscuroChainID = *obscuroChainID
 	cfg.WillAttest = *willAttest
 	cfg.ValidateL1Blocks = *validateL1Blocks
 	cfg.SpeculativeExecution = *speculativeExecution
-	cfg.ManagementContractAddress = common.HexToAddress(*managementContractAddress)
+	cfg.ManagementContractAddress = gethcommon.HexToAddress(*managementContractAddress)
 	cfg.ERC20ContractAddresses = erc20contractAddresses
 	cfg.LogLevel = *loglevel
 	cfg.LogPath = *logPath
@@ -98,11 +105,11 @@ func ParseConfig() config.EnclaveConfig {
 	cfg.ProfilerEnabled = *profilerEnabled
 	cfg.MinGasPrice = big.NewInt(*minGasPrice)
 
-	return cfg
+	return cfg, nil
 }
 
 // Parses the config from the .toml file at configPath.
-func fileBasedConfig(configPath string) config.EnclaveConfig {
+func fileBasedConfig(configPath string) (config.EnclaveConfig, error) {
 	bytes, err := os.ReadFile(configPath)
 	if err != nil {
 		panic(fmt.Sprintf("could not read config file at %s. Cause: %s", configPath, err))
@@ -114,23 +121,28 @@ func fileBasedConfig(configPath string) config.EnclaveConfig {
 		panic(fmt.Sprintf("could not read config file at %s. Cause: %s", configPath, err))
 	}
 
-	erc20contractAddresses := make([]*common.Address, len(tomlConfig.ERC20ContractAddresses))
+	erc20contractAddresses := make([]*gethcommon.Address, len(tomlConfig.ERC20ContractAddresses))
 	for i, addr := range tomlConfig.ERC20ContractAddresses {
-		hexAddr := common.HexToAddress(addr)
+		hexAddr := gethcommon.HexToAddress(addr)
 		erc20contractAddresses[i] = &hexAddr
 	}
 
+	nodeType, err := common.ToNodeType(tomlConfig.NodeType)
+	if err != nil {
+		return config.EnclaveConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
+	}
+
 	return config.EnclaveConfig{
-		HostID:                    common.HexToAddress(tomlConfig.HostID),
+		HostID:                    gethcommon.HexToAddress(tomlConfig.HostID),
 		HostAddress:               tomlConfig.HostAddress,
 		Address:                   tomlConfig.Address,
-		IsAggregator:              tomlConfig.IsAggregator,
+		NodeType:                  nodeType,
 		L1ChainID:                 tomlConfig.L1ChainID,
 		ObscuroChainID:            tomlConfig.ObscuroChainID,
 		WillAttest:                tomlConfig.WillAttest,
 		ValidateL1Blocks:          tomlConfig.ValidateL1Blocks,
 		SpeculativeExecution:      tomlConfig.SpeculativeExecution,
-		ManagementContractAddress: common.HexToAddress(tomlConfig.ManagementContractAddress),
+		ManagementContractAddress: gethcommon.HexToAddress(tomlConfig.ManagementContractAddress),
 		ERC20ContractAddresses:    erc20contractAddresses,
 		LogLevel:                  tomlConfig.LogLevel,
 		LogPath:                   tomlConfig.LogPath,
@@ -139,5 +151,5 @@ func fileBasedConfig(configPath string) config.EnclaveConfig {
 		EdgelessDBHost:            tomlConfig.EdgelessDBHost,
 		SqliteDBPath:              tomlConfig.SqliteDBPath,
 		ProfilerEnabled:           tomlConfig.ProfilerEnabled,
-	}
+	}, nil
 }

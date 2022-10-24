@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common"
+
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -15,7 +17,7 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave"
 	"github.com/obscuronet/go-obscuro/integration"
@@ -39,11 +41,16 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgNetworkLatency)
-		isAggregator := i%2 == 0 // We assign every other node the role of aggregator.
+		// We assign every other node the role of aggregator.
+		nodeType := common.Aggregator
+		if i%2 == 0 {
+			nodeType = common.Validator
+		}
+
 		obscuroNodes[i] = createInMemObscuroNode(
 			int64(i),
 			isGenesis,
-			isAggregator,
+			nodeType,
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
 			params.AvgGossipPeriod,
@@ -91,11 +98,16 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		nodeRPCPortWS := params.StartPort + DefaultHostRPCWSOffset + i
 
 		// create an Obscuro node
-		isAggregator := i%2 == 0 // We assign every other node the role of aggregator.
+		// We assign every other node the role of aggregator.
+		nodeType := common.Aggregator
+		if i%2 == 0 {
+			nodeType = common.Validator
+		}
+
 		obscuroNodes[i] = createSocketObscuroNode(
 			int64(i),
 			isGenesis,
-			isAggregator,
+			nodeType,
 			params.AvgGossipPeriod,
 			stats,
 			fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i),
@@ -173,12 +185,17 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 		// create a remote enclave server
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
-		isAggregator := i%2 == 0 // We assign every other node the role of aggregator.
+		// We assign every other node the role of aggregator.
+		nodeType := common.Aggregator
+		if i%2 == 0 {
+			nodeType = common.Validator
+		}
+
 		enclaveConfig := config.EnclaveConfig{
-			HostID:                 common.BigToAddress(big.NewInt(int64(i))),
+			HostID:                 gethcommon.BigToAddress(big.NewInt(int64(i))),
 			HostAddress:            hostAddr,
 			Address:                enclaveAddr,
-			IsAggregator:           isAggregator,
+			NodeType:               nodeType,
 			L1ChainID:              integration.EthereumChainID,
 			ObscuroChainID:         integration.ObscuroChainID,
 			ValidateL1Blocks:       false,

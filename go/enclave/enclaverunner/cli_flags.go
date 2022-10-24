@@ -6,7 +6,7 @@ const (
 	hostIDName                    = "hostID"
 	hostAddressName               = "hostAddress"
 	addressName                   = "address"
-	isAggregatorName              = "isAggregator"
+	nodeTypeName                  = "nodeType"
 	l1ChainIDName                 = "l1ChainID"
 	obscuroChainIDName            = "obscuroChainID"
 	willAttestName                = "willAttest"
@@ -31,7 +31,7 @@ func getFlagUsageMap() map[string]string {
 		hostIDName:                    "The 20 bytes of the address of the Obscuro host this enclave serves",
 		hostAddressName:               "The peer-to-peer IP address of the Obscuro host this enclave serves",
 		addressName:                   "The address on which to serve the Obscuro enclave service",
-		isAggregatorName:              "Whether the enclave is an aggregator (as opposed to a validator)",
+		nodeTypeName:                  "The node's type (e.g. aggregator, validator)",
 		l1ChainIDName:                 "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)",
 		obscuroChainIDName:            "An integer representing the unique chain id of the Obscuro chain (default 777)",
 		willAttestName:                "Whether the enclave will produce a verified attestation report",

@@ -5,7 +5,7 @@ const (
 	configName                   = "config"
 	nodeIDName                   = "id"
 	isGenesisName                = "isGenesis"
-	isAggregatorName             = "isAggregator"
+	nodeTypeName                 = "nodeType"
 	gossipRoundNanosName         = "gossipRoundNanos"
 	clientRPCPortHTTPName        = "clientRPCPortHttp"
 	clientRPCPortWSName          = "clientRPCPortWs"
@@ -35,7 +35,7 @@ func getFlagUsageMap() map[string]string {
 		configName:                   "The path to the host's config file. Overrides all other flags",
 		nodeIDName:                   "The 20 bytes of the host's address",
 		isGenesisName:                "Whether the host is the first host to join the network",
-		isAggregatorName:             "Whether the host is an aggregator (as opposed to a validator)",
+		nodeTypeName:                 "The node's type (e.g. aggregator, validator)",
 		gossipRoundNanosName:         "The duration of the gossip round",
 		clientRPCPortHTTPName:        "The port on which to listen for client application RPC requests over HTTP",
 		clientRPCPortWSName:          "The port on which to listen for client application RPC requests over websockets",

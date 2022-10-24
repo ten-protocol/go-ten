@@ -22,7 +22,11 @@ func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
 		panic(err)
 	}
 
-	if cfg := fileBasedConfig(path.Join(wd, testToml)); cfg.GossipRoundDuration != expectedGossipRoundNanos {
+	cfg, err := fileBasedConfig(path.Join(wd, testToml))
+	if err != nil {
+		t.Fatalf("could not parse config. Cause: %s", err)
+	}
+	if cfg.GossipRoundDuration != expectedGossipRoundNanos {
 		t.Fatalf("config file was not parsed from TOML. Expected GossipRoundNanos of %d, got %d", expectedGossipRoundNanos, cfg.GossipRoundDuration)
 	}
 }
@@ -31,7 +35,11 @@ func TestConfigIsParsedFromCmdLineFlagsIfConfigFlagIsNotPresent(t *testing.T) {
 	expectedGossipRoundNanos := time.Duration(666)
 	os.Args = append(os.Args, "--"+gossipRoundNanosName, strconv.FormatInt(expectedGossipRoundNanos.Nanoseconds(), 10))
 
-	if cfg := ParseConfig(); cfg.GossipRoundDuration != expectedGossipRoundNanos {
+	cfg, err := ParseConfig()
+	if err != nil {
+		t.Fatalf("could not parse config. Cause: %s", err)
+	}
+	if cfg.GossipRoundDuration != expectedGossipRoundNanos {
 		t.Fatalf("config file was not parsed from flags. Expected GossipRoundNanos of %d, got %d", expectedGossipRoundNanos, cfg.GossipRoundDuration)
 	}
 }
