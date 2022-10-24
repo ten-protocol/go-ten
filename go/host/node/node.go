@@ -497,12 +497,12 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		}
 	}
 
-	// Nodes can start before the genesis was published, and it makes no sense to enter the protocol.
-	if result.ProducedRollup.Header == nil {
+	// The first part of this check is redundant - if the node is configured correctly, a validator's enclave will
+	// never produce a rollup anyway. However, we include it here for resiliency.
+	if a.config.NodeType == common.Validator || result.ProducedRollup.Header == nil {
 		return nil
 	}
 
-	// TODO - #718 - Handle the validator case, where no rollup is produced.
 	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
 	if err != nil {
 		return fmt.Errorf("could not encode rollup. Cause: %w", err)

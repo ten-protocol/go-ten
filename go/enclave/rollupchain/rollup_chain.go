@@ -43,6 +43,7 @@ const (
 // RollupChain represents the canonical chain, and manages the state.
 type RollupChain struct {
 	hostID          gethcommon.Address
+	nodeType        common.NodeType
 	ethereumChainID int64
 	chainConfig     *params.ChainConfig
 
@@ -60,9 +61,10 @@ type RollupChain struct {
 	logger               gethlog.Logger
 }
 
-func New(hostID gethcommon.Address, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
+func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
 	return &RollupChain{
 		hostID:                hostID,
+		nodeType:              nodeType,
 		storage:               storage,
 		l1Blockchain:          l1Blockchain,
 		bridge:                bridge,
@@ -460,19 +462,17 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 		rc.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
 	}
 
-	// TODO - #718 - Handle the validator case, where no rollup is produced.
-	if !isLatest {
-		// no need to produce rollup, we're behind the L1, so rollup will be outdated
+	// We do not produce a rollup if we're a validator, or we're behind the L1 (in which case the rollup will be outdated).
+	if !isLatest || rc.nodeType == common.Validator {
 		return rc.newBlockSubmissionResponse(blockState, common.ExtRollup{}, encryptedLogs)
 	}
 
-	// todo - A verifier node will not produce rollups, we can check the e.mining to get the node behaviour
+	// As an aggregator on the latest L1 block, we produce a rollup.
 	r := rc.produceRollup(&block, blockState)
 	rc.signRollup(r)
 	rc.checkRollup(r) // Sanity check the produced rollup
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	rc.storage.StoreRollup(r)
-
 	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash())))
 
 	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), encryptedLogs)

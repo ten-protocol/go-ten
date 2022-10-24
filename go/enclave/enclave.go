@@ -166,7 +166,7 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 	memp := mempool.New(config.ObscuroChainID)
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
-	chain := rollupchain.New(config.HostID, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig, logger)
+	chain := rollupchain.New(config.HostID, config.NodeType, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig, logger)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
