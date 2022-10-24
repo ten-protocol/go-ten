@@ -502,7 +502,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 	}
 	// We check that a rollup wasn't somehow produced by a non-aggregator.
 	if a.config.NodeType != common.Aggregator {
-		panic("node produced a rollup but was not an aggregator")
+		a.logger.Crit("node produced a rollup but was not an aggregator")
 	}
 
 	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
