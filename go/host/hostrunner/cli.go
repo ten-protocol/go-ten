@@ -124,6 +124,7 @@ func fileBasedConfig(configPath string) config.HostConfig {
 	return config.HostConfig{
 		ID:                     common.HexToAddress(tomlConfig.ID),
 		IsGenesis:              tomlConfig.IsGenesis,
+		IsAggregator:           tomlConfig.IsAggregator,
 		GossipRoundDuration:    time.Duration(tomlConfig.GossipRoundDuration),
 		HasClientRPCHTTP:       tomlConfig.HasClientRPCHTTP,
 		ClientRPCPortHTTP:      uint64(tomlConfig.ClientRPCPortHTTP),

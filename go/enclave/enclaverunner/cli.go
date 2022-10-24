@@ -17,6 +17,7 @@ type EnclaveConfigToml struct {
 	HostID                    string
 	HostAddress               string
 	Address                   string
+	IsAggregator              bool
 	L1ChainID                 int64
 	ObscuroChainID            int64
 	WillAttest                bool
@@ -41,9 +42,10 @@ func ParseConfig() config.EnclaveConfig {
 	flagUsageMap := getFlagUsageMap()
 
 	configPath := flag.String(configName, "", flagUsageMap[configName])
-	hostID := flag.String(HostIDName, cfg.HostID.Hex(), flagUsageMap[HostIDName])
-	hostAddress := flag.String(HostAddressName, cfg.HostAddress, flagUsageMap[HostAddressName])
-	address := flag.String(AddressName, cfg.Address, flagUsageMap[AddressName])
+	hostID := flag.String(hostIDName, cfg.HostID.Hex(), flagUsageMap[hostIDName])
+	hostAddress := flag.String(hostAddressName, cfg.HostAddress, flagUsageMap[hostAddressName])
+	address := flag.String(addressName, cfg.Address, flagUsageMap[addressName])
+	isAggregator := flag.Bool(isAggregatorName, cfg.IsAggregator, flagUsageMap[isAggregatorName])
 	l1ChainID := flag.Int64(l1ChainIDName, cfg.L1ChainID, flagUsageMap[l1ChainIDName])
 	obscuroChainID := flag.Int64(obscuroChainIDName, cfg.ObscuroChainID, flagUsageMap[obscuroChainIDName])
 	willAttest := flag.Bool(willAttestName, cfg.WillAttest, flagUsageMap[willAttestName])
@@ -80,6 +82,7 @@ func ParseConfig() config.EnclaveConfig {
 	cfg.HostID = common.HexToAddress(*hostID)
 	cfg.HostAddress = *hostAddress
 	cfg.Address = *address
+	cfg.IsAggregator = *isAggregator
 	cfg.L1ChainID = *l1ChainID
 	cfg.ObscuroChainID = *obscuroChainID
 	cfg.WillAttest = *willAttest
@@ -121,6 +124,7 @@ func fileBasedConfig(configPath string) config.EnclaveConfig {
 		HostID:                    common.HexToAddress(tomlConfig.HostID),
 		HostAddress:               tomlConfig.HostAddress,
 		Address:                   tomlConfig.Address,
+		IsAggregator:              tomlConfig.IsAggregator,
 		L1ChainID:                 tomlConfig.L1ChainID,
 		ObscuroChainID:            tomlConfig.ObscuroChainID,
 		WillAttest:                tomlConfig.WillAttest,

@@ -14,6 +14,8 @@ type EnclaveConfig struct {
 	HostAddress string
 	// The address on which to serve requests
 	Address string
+	// Whether the enclave is an aggregator (as opposed to a validator)
+	IsAggregator bool
 	// The ID of the L1 chain
 	L1ChainID int64
 	// The ID of the Obscuro chain
@@ -53,6 +55,7 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		HostID:                    common.BytesToAddress([]byte("")),
 		HostAddress:               "127.0.0.1:10000",
 		Address:                   "127.0.0.1:11000",
+		IsAggregator:              true,
 		L1ChainID:                 1337,
 		ObscuroChainID:            777,
 		WillAttest:                false, // todo: attestation should be on by default before production release

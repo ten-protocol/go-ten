@@ -39,7 +39,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgNetworkLatency)
-
+		// todo - joel - randomly make half the nodes validators
 		obscuroNodes[i] = createInMemObscuroNode(
 			int64(i),
 			isGenesis,
@@ -90,6 +90,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		nodeRPCPortWS := params.StartPort + DefaultHostRPCWSOffset + i
 
 		// create an Obscuro node
+		// todo - joel - randomly make half the nodes validators
 		obscuroNodes[i] = createSocketObscuroNode(
 			int64(i),
 			isGenesis,
