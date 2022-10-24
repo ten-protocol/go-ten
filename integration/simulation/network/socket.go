@@ -3,6 +3,8 @@ package network
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
@@ -43,11 +45,11 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		int(params.AvgBlockDuration.Seconds()),
 	)
 
-	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr)
+	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr, testlog.Logger())
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
 
 	// Start the enclaves
-	startRemoteEnclaveServers(0, params, stats)
+	startRemoteEnclaveServers(0, params)
 
 	n.enclaveAddresses = make([]string, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {

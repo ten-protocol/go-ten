@@ -27,7 +27,7 @@ type EnclaveConfigToml struct {
 	SpeculativeExecution      bool
 	ManagementContractAddress string
 	ERC20ContractAddresses    []string
-	LogLevel                  string
+	LogLevel                  int
 	LogPath                   string
 	UseInMemoryDB             bool
 	GenesisJSON               string
@@ -55,7 +55,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	speculativeExecution := flag.Bool(speculativeExecutionName, cfg.SpeculativeExecution, flagUsageMap[speculativeExecutionName])
 	managementContractAddress := flag.String(ManagementContractAddressName, cfg.ManagementContractAddress.Hex(), flagUsageMap[ManagementContractAddressName])
 	erc20ContractAddrs := flag.String(Erc20ContractAddrsName, "", flagUsageMap[Erc20ContractAddrsName])
-	loglevel := flag.String(logLevelName, cfg.LogLevel, flagUsageMap[logLevelName])
+	loglevel := flag.Int(logLevelName, cfg.LogLevel, flagUsageMap[logLevelName])
 	logPath := flag.String(logPathName, cfg.LogPath, flagUsageMap[logPathName])
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
 	edgelessDBHost := flag.String(edgelessDBHostName, cfg.EdgelessDBHost, flagUsageMap[edgelessDBHostName])

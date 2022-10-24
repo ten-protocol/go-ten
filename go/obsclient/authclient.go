@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/big"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -50,12 +52,12 @@ func NewAuthObsClient(client *rpc.EncRPCClient) *AuthObsClient {
 // DialWithAuth will generate and sign a viewing key for given wallet, then initiate a connection with the RPC node and
 //
 //	register the viewing key
-func DialWithAuth(rpcurl string, wal wallet.Wallet) (*AuthObsClient, error) {
+func DialWithAuth(rpcurl string, wal wallet.Wallet, logger gethlog.Logger) (*AuthObsClient, error) {
 	viewingKey, err := rpc.GenerateAndSignViewingKey(wal)
 	if err != nil {
 		return nil, err
 	}
-	encClient, err := rpc.NewEncNetworkClient(rpcurl, viewingKey)
+	encClient, err := rpc.NewEncNetworkClient(rpcurl, viewingKey, logger)
 	if err != nil {
 		return nil, err
 	}

@@ -36,7 +36,7 @@ type HostConfigToml struct {
 	L1RPCTimeout           int
 	P2PConnectionTimeout   int
 	RollupContractAddress  string
-	LogLevel               string
+	LogLevel               int
 	LogPath                string
 	PrivateKeyString       string
 	L1ChainID              int64
@@ -68,7 +68,7 @@ func ParseConfig() (config.HostConfig, error) {
 	l1RPCTimeoutSecs := flag.Uint64(l1RPCTimeoutSecsName, uint64(cfg.L1RPCTimeout.Seconds()), flagUsageMap[l1RPCTimeoutSecsName])
 	p2pConnectionTimeoutSecs := flag.Uint64(p2pConnectionTimeoutSecsName, uint64(cfg.P2PConnectionTimeout.Seconds()), flagUsageMap[p2pConnectionTimeoutSecsName])
 	rollupContractAddress := flag.String(rollupContractAddrName, cfg.RollupContractAddress.Hex(), flagUsageMap[rollupContractAddrName])
-	logLevel := flag.String(logLevelName, cfg.LogLevel, flagUsageMap[logLevelName])
+	logLevel := flag.Int(logLevelName, cfg.LogLevel, flagUsageMap[logLevelName])
 	logPath := flag.String(logPathName, cfg.LogPath, flagUsageMap[logPathName])
 	l1ChainID := flag.Int64(l1ChainIDName, cfg.L1ChainID, flagUsageMap[l1ChainIDName])
 	obscuroChainID := flag.Int64(obscuroChainIDName, cfg.ObscuroChainID, flagUsageMap[obscuroChainIDName])

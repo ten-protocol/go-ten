@@ -9,6 +9,8 @@ import (
 	"math/big"
 	"strings"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -51,9 +53,10 @@ type MgmtContractLib interface {
 type contractLibImpl struct {
 	addr        *gethcommon.Address
 	contractABI abi.ABI
+	logger      gethlog.Logger
 }
 
-func NewMgmtContractLib(addr *gethcommon.Address) MgmtContractLib {
+func NewMgmtContractLib(addr *gethcommon.Address, logger gethlog.Logger) MgmtContractLib {
 	contractABI, err := abi.JSON(strings.NewReader(MgmtContractABI))
 	if err != nil {
 		panic(err)
@@ -62,6 +65,7 @@ func NewMgmtContractLib(addr *gethcommon.Address) MgmtContractLib {
 	return &contractLibImpl{
 		addr:        addr,
 		contractABI: contractABI,
+		logger:      logger,
 	}
 }
 
@@ -95,13 +99,13 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 		}
 
 	case RespondSecretMethod:
-		return unpackRespondSecretTx(tx, method, contractCallData)
+		return c.unpackRespondSecretTx(tx, method, contractCallData)
 
 	case RequestSecretMethod:
-		return unpackRequestSecretTx(tx, method, contractCallData)
+		return c.unpackRequestSecretTx(tx, method, contractCallData)
 
 	case InitializeSecretMethod:
-		return unpackInitSecretTx(tx, method, contractCallData)
+		return c.unpackInitSecretTx(tx, method, contractCallData)
 	}
 
 	return nil
@@ -225,7 +229,7 @@ func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) ([][]string, e
 	return unpackedResponseStrings, nil
 }
 
-func unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1InitializeSecretTx {
+func (c *contractLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1InitializeSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		panic(err)
@@ -237,7 +241,7 @@ func unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallD
 
 	att := Base64DecodeFromString(callData.(string))
 	if err != nil {
-		log.Panic("could not decode attestation request. Cause: %s", err)
+		c.logger.Crit("could not decode genesis attestation request.", log.ErrKey, err)
 	}
 
 	// todo - add the other fields
@@ -246,7 +250,7 @@ func unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallD
 	}
 }
 
-func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1RequestSecretTx {
+func (c *contractLibImpl) unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1RequestSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		panic(err)
@@ -258,53 +262,53 @@ func unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCa
 
 	att := Base64DecodeFromString(callData.(string))
 	if err != nil {
-		log.Panic("could not decode attestation request. Cause: %s", err)
+		c.logger.Crit("could not decode attestation request.", log.ErrKey, err)
 	}
 	return &ethadapter.L1RequestSecretTx{
 		Attestation: att,
 	}
 }
 
-func unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1RespondSecretTx {
+func (c *contractLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1RespondSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
-		log.Panic("could not unpack transaction. Cause: %s", err)
+		c.logger.Crit("could not unpack transaction.", log.ErrKey, err)
 	}
 
 	requesterData, found := contractCallData["requesterID"]
 	if !found {
-		log.Panic("call data not found for requesterID")
+		c.logger.Crit("call data not found for requesterID")
 	}
 	requesterAddr, ok := requesterData.(gethcommon.Address)
 	if !ok {
-		log.Panic("could not decode requester data")
+		c.logger.Crit("could not decode requester data")
 	}
 
 	attesterData, found := contractCallData["attesterID"]
 	if !found {
-		log.Panic("call data not found for attesterID")
+		c.logger.Crit("call data not found for attesterID")
 	}
 	attesterAddr, ok := attesterData.(gethcommon.Address)
 	if !ok {
-		log.Panic("could not decode attester data")
+		c.logger.Crit("could not decode attester data")
 	}
 
 	responseSecretData, found := contractCallData["responseSecret"]
 	if !found {
-		log.Panic("call data not found for responseSecret")
+		c.logger.Crit("call data not found for responseSecret")
 	}
 	responseSecretBytes, ok := responseSecretData.([]uint8)
 	if !ok {
-		log.Panic("could not decode responseSecret data")
+		c.logger.Crit("could not decode responseSecret data")
 	}
 
 	hostAddressData, found := contractCallData["hostAddress"]
 	if !found {
-		log.Panic("call data not found for hostAddress")
+		c.logger.Crit("call data not found for hostAddress")
 	}
 	hostAddressString, ok := hostAddressData.(string)
 	if !ok {
-		log.Panic("could not decode hostAddress data")
+		c.logger.Crit("could not decode hostAddress data")
 	}
 
 	return &ethadapter.L1RespondSecretTx{

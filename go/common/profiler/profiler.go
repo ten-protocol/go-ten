@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	_ "net/http/pprof" //nolint:gosec
 )
@@ -16,20 +16,21 @@ const (
 
 // Profiler stores the data relevant to the profiler instance
 type Profiler struct {
-	port int
+	port   int
+	logger gethlog.Logger
 }
 
 // NewProfiler returns a new profiler that binds on 0.0.0.0:port
-func NewProfiler(port int) *Profiler {
-	return &Profiler{port: port}
+func NewProfiler(port int, logger gethlog.Logger) *Profiler {
+	return &Profiler{port: port, logger: logger}
 }
 
 // Start starts the profiler
 func (p *Profiler) Start() error {
 	go func() {
 		address := fmt.Sprintf("0.0.0.0:%d", p.port)
-		log.Info("Profiler started @%s ", address)
-		log.Info("%v", http.ListenAndServe(address, nil))
+		p.logger.Info(fmt.Sprintf("Profiler started @%s ", address))
+		p.logger.Info(fmt.Sprintf("%v", http.ListenAndServe(address, nil)))
 	}()
 	return nil
 }

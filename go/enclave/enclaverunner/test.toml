@@ -8,6 +8,6 @@ validateL1Blocks = false
 speculativeExecution = false
 managementContractAddress = "0x0000000000000000000000000000000000000000"
 erc20ContractAddresses = []
-logLevel = "info"
+logLevel = 3
 logPath = "enclave_logs.txt"
 useInMemoryDb = true

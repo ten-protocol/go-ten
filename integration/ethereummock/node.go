@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -30,6 +32,7 @@ type L1Network interface {
 
 type MiningConfig struct {
 	PowTime common.Latency
+	LogFile string
 }
 
 type TxDB interface {
@@ -72,6 +75,8 @@ type Node struct {
 	headOutCh        chan *types.Block
 	erc20ContractLib erc20contractlib.ERC20ContractLib
 	mgmtContractLib  mgmtcontractlib.MgmtContractLib
+
+	logger gethlog.Logger
 }
 
 func (m *Node) SendTransaction(tx *types.Transaction) error {
@@ -101,7 +106,11 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	}
 	// TODO this should be a method in the resolver
 	var f bool
-	for blk := m.Resolver.FetchHeadBlock(); !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()); {
+	blk := m.Resolver.FetchHeadBlock()
+	if blk == nil {
+		return nil, ethereum.NotFound
+	}
+	for !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()) {
 		if blk.NumberU64() == n.Uint64() {
 			return blk, nil
 		}
@@ -190,7 +199,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 
 	// only proceed if the parent is available
 	if !f {
-		log.Info(fmt.Sprintf("> M%d: Parent block not found=b_%d", common.ShortAddress(m.l2ID), common.ShortHash(b.Header().ParentHash)))
+		m.logger.Info(fmt.Sprintf("Parent block not found=b_%d", common.ShortHash(b.Header().ParentHash)))
 		return head
 	}
 
@@ -203,12 +212,13 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	if !m.Resolver.IsAncestor(b, head) {
 		m.stats.L1Reorg(m.l2ID)
 		fork := LCA(head, b, m.Resolver)
-		log.Info(fmt.Sprintf("> M%d: L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortAddress(m.l2ID), common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.Hash()), fork.NumberU64()))
+		m.logger.Info(
+			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.Hash()), fork.NumberU64()))
 		return m.setFork(m.BlocksBetween(fork, b))
 	}
 
 	if b.NumberU64() > (head.NumberU64() + 1) {
-		panic(fmt.Sprintf("> M%d: Should not happen", common.ShortAddress(m.l2ID)))
+		m.logger.Crit("Should not happen")
 	}
 
 	return m.setHead(b)
@@ -291,7 +301,7 @@ func (m *Node) P2PReceiveBlock(b common.EncodedBlock, p common.EncodedBlock) {
 // startMining - listens on the canonicalCh and schedule a go routine that produces a block after a PowTime and drop it
 // on the miningCh channel
 func (m *Node) startMining() {
-	log.Info(fmt.Sprintf("Node-%d: starting miner...", common.ShortAddress(m.l2ID)))
+	m.logger.Info(" starting miner...")
 	// stores all transactions seen from the beginning of time.
 	mempool := make([]*types.Transaction, 0)
 	z := int32(0)
@@ -308,7 +318,7 @@ func (m *Node) startMining() {
 			// A new canonical block was found. Start a new round based on that block.
 
 			// remove transactions that are already considered committed
-			mempool = removeCommittedTransactions(canonicalBlock, mempool, m.Resolver, m.db)
+			mempool = m.removeCommittedTransactions(canonicalBlock, mempool, m.Resolver, m.db)
 
 			// notify the existing mining go routine to stop mining
 			atomic.StoreInt32(interrupt, 1)
@@ -414,6 +424,7 @@ func NewMiner(
 		headOutCh:        make(chan *types.Block),
 		erc20ContractLib: NewERC20ContractLibMock(),
 		mgmtContractLib:  NewMgmtContractLibMock(),
+		logger:           log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), cfg.LogFile, log.NodeIDKey, id),
 	}
 }
 

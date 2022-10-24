@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/host/events"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
@@ -75,17 +77,11 @@ type Node struct {
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	ethWallet       wallet.Wallet                   // Wallet used to issue ethereum transactions
 	logEventManager events.LogEventManager
+
+	logger gethlog.Logger
 }
 
-func NewHost(
-	config config.HostConfig,
-	stats host.StatsCollector,
-	p2p host.P2P,
-	ethClient ethadapter.EthClient,
-	enclaveClient common.Enclave,
-	ethWallet wallet.Wallet,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-) host.MockHost {
+func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) host.MockHost {
 	node := &Node{
 		// config
 		config:  config,
@@ -116,7 +112,9 @@ func NewHost(
 
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
 		ethWallet:       ethWallet,       // the node's ethereum wallet
-		logEventManager: events.NewLogEventManager(),
+		logEventManager: events.NewLogEventManager(logger),
+
+		logger: logger,
 	}
 
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
@@ -154,24 +152,24 @@ func NewHost(
 			{
 				Namespace: APINamespaceEth,
 				Version:   APIVersion1,
-				Service:   clientapi.NewFilterAPI(node),
+				Service:   clientapi.NewFilterAPI(node, logger),
 				Public:    true,
 			},
 		}
-		node.rpcServer = clientrpc.NewServer(config, rpcAPIs)
+		node.rpcServer = clientrpc.NewServer(config, rpcAPIs, logger)
 	}
 
 	var prof *profiler.Profiler
 	if config.ProfilerEnabled {
-		prof = profiler.NewProfiler(profiler.DefaultHostPort)
+		prof = profiler.NewProfiler(profiler.DefaultHostPort, logger)
 		err := prof.Start()
 		if err != nil {
-			log.Panic("unable to start the profiler: %s", err)
+			logger.Crit("unable to start the profiler: %s", log.ErrKey, err)
 		}
 	}
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
-	log.Info("Host service created with following config:\n%s", string(jsonConfig))
+	logger.Info("Host service created with following config:", log.CfgKey, string(jsonConfig))
 
 	return node
 }
@@ -179,9 +177,9 @@ func NewHost(
 func (a *Node) Start() {
 	tomlConfig, err := toml.Marshal(a.config)
 	if err != nil {
-		log.Panic("could not print host config")
+		a.logger.Crit("could not print host config")
 	}
-	common.LogWithID(a.shortID, "Host started with following config:\n%s", tomlConfig)
+	a.logger.Info("Host started with following config", log.CfgKey, string(tomlConfig))
 
 	// wait for the Enclave to be available
 	a.waitForEnclave()
@@ -190,12 +188,12 @@ func (a *Node) Start() {
 	if a.config.IsGenesis {
 		err = a.broadcastSecret()
 		if err != nil {
-			log.Panic(err.Error())
+			a.logger.Crit("Could not broadcast secret", log.ErrKey, err.Error())
 		}
 	} else {
 		err = a.requestSecret()
 		if err != nil {
-			log.Panic(err.Error())
+			a.logger.Crit("Could not request secret", log.ErrKey, err.Error())
 		}
 	}
 
@@ -208,19 +206,19 @@ func (a *Node) Start() {
 	// start the enclave speculative work from last block
 	err = a.enclaveClient.Start(latestBlock)
 	if err != nil {
-		log.Panic(err.Error())
+		a.logger.Crit("Could not start the enclave.", log.ErrKey, err.Error())
 	}
 
 	if a.config.IsGenesis {
 		_, err = a.initialiseProtocol(&latestBlock)
 		if err != nil {
-			log.Panic(err.Error())
+			a.logger.Crit("Could not bootstrap.", log.ErrKey, err.Error())
 		}
 	}
 	// start the obscuro RPC endpoints
 	if a.rpcServer != nil {
 		a.rpcServer.Start()
-		common.LogWithID(a.shortID, "Started client server.")
+		a.logger.Info("Started client server.")
 	}
 
 	// start the node main processing loop
@@ -228,7 +226,7 @@ func (a *Node) Start() {
 }
 
 func (a *Node) broadcastSecret() error {
-	common.LogWithID(a.shortID, "Node is genesis node. Broadcasting secret.")
+	a.logger.Info("Node is genesis node. Broadcasting secret.")
 	// Create the shared secret and submit it to the management contract for storage
 	attestation, err := a.enclaveClient.Attestation()
 	if err != nil {
@@ -259,7 +257,7 @@ func (a *Node) broadcastSecret() error {
 	if err != nil {
 		return fmt.Errorf("failed to initialise enclave secret. Cause: %w", err)
 	}
-	common.LogWithID(a.shortID, "Node is genesis node. Secret was broadcast.")
+	a.logger.Info("Node is genesis node. Secret was broadcast.")
 	return nil
 }
 
@@ -293,7 +291,7 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 	encryptedResponse, err := a.enclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
-		common.LogWithID(a.shortID, "Could not submit transaction: %s", err)
+		a.logger.Info("Could not submit transaction", log.ErrKey, err)
 		return nil, err
 	}
 
@@ -334,7 +332,7 @@ func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 func (a *Node) Unsubscribe(id rpc.ID) {
 	err := a.EnclaveClient().Unsubscribe(id)
 	if err != nil {
-		log.Error("could not terminate subscription %s with enclave. Cause: %s", id, err)
+		a.logger.Error("could not terminate subscription", log.SubIDKey, id, log.ErrKey, err)
 	}
 	a.logEventManager.RemoveSubscription(id)
 }
@@ -344,13 +342,13 @@ func (a *Node) Stop() {
 	atomic.StoreInt32(a.stopNodeInterrupt, 1)
 
 	if err := a.p2p.StopListening(); err != nil {
-		common.ErrorWithID(a.shortID, "failed to close transaction P2P listener cleanly: %s", err)
+		a.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
 	}
 	if err := a.enclaveClient.Stop(); err != nil {
-		common.ErrorWithID(a.shortID, "could not stop enclave server. Cause: %s", err)
+		a.logger.Error("could not stop enclave server", log.ErrKey, err)
 	}
 	if err := a.enclaveClient.StopClient(); err != nil {
-		common.ErrorWithID(a.shortID, "failed to stop enclave RPC client. Cause: %s", err)
+		a.logger.Error("failed to stop enclave RPC client", log.ErrKey, err)
 	}
 	if a.rpcServer != nil {
 		// We cannot stop the RPC server synchronously. This is because the host itself is being stopped by an RPC
@@ -363,7 +361,7 @@ func (a *Node) Stop() {
 	time.Sleep(time.Second)
 	a.exitNodeCh <- true
 
-	common.LogWithID(a.shortID, "Node shut down successfully.")
+	a.logger.Info("Node shut down successfully.")
 }
 
 // Waits for enclave to be available, printing a wait message every two seconds.
@@ -371,14 +369,14 @@ func (a *Node) waitForEnclave() {
 	counter := 0
 	for _, err := a.enclaveClient.Status(); err != nil; {
 		if counter >= 20 {
-			common.LogWithID(a.shortID, "Waiting for enclave on %s. Latest connection attempt failed with: %v", a.config.EnclaveRPCAddress, err)
+			a.logger.Info(fmt.Sprintf("Waiting for enclave on %s. Latest connection attempt failed", a.config.EnclaveRPCAddress), log.ErrKey, err)
 			counter = 0
 		}
 
 		time.Sleep(100 * time.Millisecond)
 		counter++
 	}
-	common.LogWithID(a.shortID, "Connected to enclave service.")
+	a.logger.Info("Connected to enclave service.")
 }
 
 // starts the host main processing loop
@@ -402,26 +400,26 @@ func (a *Node) startProcessing() {
 			roundInterrupt = triggerInterrupt(roundInterrupt)
 			err := a.processBlocks([]common.EncodedBlock{b.p, b.b}, roundInterrupt)
 			if err != nil {
-				common.WarnWithID(a.shortID, "Could not process block received via RPC. Cause: %v", err)
+				a.logger.Warn("Could not process block received via RPC. ", log.ErrKey, err)
 			}
 
 		case f := <-a.forkRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
 			err := a.processBlocks(f, roundInterrupt)
 			if err != nil {
-				common.WarnWithID(a.shortID, "Could not process fork received via RPC. Cause: %v", err)
+				a.logger.Warn("Could not process fork received via RPC. ", log.ErrKey, err)
 			}
 
 		case r := <-a.rollupsP2PCh:
 			rol, err := common.DecodeRollup(r)
-			common.TraceWithID(a.shortID, "Received rollup: r_%d(%d) parent: r_%d from A%d",
+			a.logger.Trace(fmt.Sprintf("Received rollup: r_%d(%d) parent: r_%d from A%d",
 				common.ShortHash(rol.Hash()),
 				rol.Header.Number,
 				common.ShortHash(rol.Header.ParentHash),
 				common.ShortAddress(rol.Header.Agg),
-			)
+			))
 			if err != nil {
-				common.WarnWithID(a.shortID, "Could not check enclave initialisation. Cause: %v", err)
+				a.logger.Warn("Could not check enclave initialisation. ", log.ErrKey, err)
 			}
 
 			go func() {
@@ -431,13 +429,13 @@ func (a *Node) startProcessing() {
 					EncryptedTxBlob: rol.Transactions,
 				})
 				if err != nil {
-					common.ErrorWithID(a.shortID, err.Error())
+					a.logger.Error("Could not submit rollup.", log.ErrKey, err)
 				}
 			}()
 
 		case tx := <-a.txP2PCh:
 			if _, err := a.enclaveClient.SubmitTx(tx); err != nil {
-				common.WarnWithID(a.shortID, "Could not submit transaction. Cause: %s", err)
+				a.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
 			}
 
 		case <-a.exitNodeCh:
@@ -495,7 +493,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 	for _, secretResponse := range result.ProducedSecretResponses {
 		err := a.publishSharedSecretResponse(secretResponse)
 		if err != nil {
-			common.ErrorWithID(a.shortID, "failed to publish response to secret request - %s", err)
+			a.logger.Error("failed to publish response to secret request", log.ErrKey, err)
 		}
 	}
 
@@ -529,7 +527,7 @@ func (a *Node) processBlock(b *types.Block) {
 		if scrtRespTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
 			err := a.processSharedSecretResponse(scrtRespTx)
 			if err != nil {
-				common.ErrorWithID(a.shortID, "Failed to process shared secret response. Cause: %s", err)
+				a.logger.Error("Failed to process shared secret response", log.ErrKey, err)
 				continue
 			}
 		}
@@ -544,21 +542,22 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 		// Request the round winner for the current head
 		winnerRollup, isWinner, err := a.enclaveClient.RoundWinner(result.ProducedRollup.Header.ParentHash)
 		if err != nil {
-			log.Panic("could not determine round winner. Cause: %s", err)
+			a.logger.Crit("could not determine round winner.", log.ErrKey, err)
 		}
 		if !isWinner {
 			return
 		}
 
-		common.LogWithID(a.shortID, "Winner (b_%d) r_%d(%d).",
-			common.ShortHash(result.BlockHeader.Hash()),
-			common.ShortHash(winnerRollup.Header.Hash()),
-			winnerRollup.Header.Number,
-		)
+		a.logger.Info(
+			fmt.Sprintf("Winner (b_%d) r_%d(%d).",
+				common.ShortHash(result.BlockHeader.Hash()),
+				common.ShortHash(winnerRollup.Header.Hash()),
+				winnerRollup.Header.Number,
+			))
 
 		encodedRollup, err := common.EncodeRollup(winnerRollup.ToRollup())
 		if err != nil {
-			log.Panic("could not encode rollup. Cause: %s", err)
+			a.logger.Crit("could not encode rollup.", log.ErrKey, err)
 		}
 		tx := &ethadapter.L1RollupTx{
 			Rollup: encodedRollup,
@@ -570,7 +569,7 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 			rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
 			err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
 			if err != nil {
-				log.Error("could not broadcast winning rollup. Cause: %s", err)
+				a.logger.Error("could not broadcast winning rollup", log.ErrKey, err)
 			}
 			a.nodeDB.AddSubmittedRollup(winnerRollup.Header.Hash())
 		}
@@ -598,11 +597,10 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not produce genesis. Cause: %w", err)
 	}
-	common.LogWithID(
-		a.shortID,
-		"Initialising network. Genesis rollup r_%d.",
-		common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
-	)
+	a.logger.Info(
+		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
+			common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
+		))
 	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
@@ -637,7 +635,7 @@ func (a *Node) signAndBroadcastTx(tx types.TxData, tries int) error {
 
 // This method implements the procedure by which a node obtains the secret
 func (a *Node) requestSecret() error {
-	common.LogWithID(a.shortID, "Requesting secret.")
+	a.logger.Info("Requesting secret.")
 	att, err := a.enclaveClient.Attestation()
 	if err != nil {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
@@ -660,7 +658,7 @@ func (a *Node) requestSecret() error {
 
 	err = a.awaitSecret()
 	if err != nil {
-		log.Panic(err.Error())
+		a.logger.Crit("could not receive the secret", log.ErrKey, err)
 	}
 	return nil
 }
@@ -674,7 +672,7 @@ func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 	// someone has replied for us
 	err := a.enclaveClient.InitEnclave(t.Secret)
 	if err != nil {
-		common.LogWithID(a.shortID, "Failed to initialise enclave with received secret. Err: %s", err)
+		a.logger.Info("Failed to initialise enclave with received secret.", log.ErrKey, err.Error())
 		return false
 	}
 	return true
@@ -753,20 +751,20 @@ func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 func (a *Node) monitorBlocks() {
 	var lastKnownBlkHash gethcommon.Hash
 	listener, subs := a.ethClient.BlockListener()
-	common.LogWithID(a.shortID, "Start monitoring Ethereum blocks..")
+	a.logger.Info("Start monitoring Ethereum blocks..")
 
 	// only process blocks if the node is running
 	for atomic.LoadInt32(a.stopNodeInterrupt) == 0 {
 		select {
 		case err := <-subs.Err():
-			log.Error("L1 block monitoring error: %s", err)
-			log.Info("Restarting L1 block Monitoring...")
+			a.logger.Error("L1 block monitoring error", log.ErrKey, err)
+			a.logger.Info("Restarting L1 block Monitoring...")
 			// it's fine to immediately restart the listener, any incoming blocks will be on hold in the queue
 			listener, subs = a.ethClient.BlockListener()
 
 			err = a.catchupMissedBlocks(lastKnownBlkHash)
 			if err != nil {
-				log.Panic("could not catch up missed blocks. Cause: %s", err)
+				a.logger.Crit("could not catch up missed blocks.", log.ErrKey, err)
 			}
 
 		case blkHeader := <-listener:
@@ -777,36 +775,35 @@ func (a *Node) monitorBlocks() {
 
 			// ignore blocks if bootstrapping is happening
 			if atomic.LoadInt32(a.bootstrappingComplete) == 0 {
-				log.Trace("Node in bootstrap - ignoring block %s", blkHeader.Hash())
+				a.logger.Trace(fmt.Sprintf("Node in bootstrap - ignoring block %s", blkHeader.Hash()))
 				continue
 			}
 
 			block, err := a.ethClient.BlockByHash(blkHeader.Hash())
 			if err != nil {
-				log.Panic("could not fetch block for hash %s. Cause: %s", blkHeader.Hash().String(), err)
+				a.logger.Crit(fmt.Sprintf("could not fetch block for hash %s.", blkHeader.Hash().String()), log.ErrKey, err)
 			}
 			blockParent, err := a.ethClient.BlockByHash(block.ParentHash())
 			if err != nil {
-				log.Panic("could not fetch block's parent with hash %s. Cause: %s", block.ParentHash().String(), err)
+				a.logger.Crit(fmt.Sprintf("could not fetch block's parent with hash %s.", block.ParentHash().String()), log.ErrKey, err)
 			}
 
-			common.LogWithID(
-				a.shortID,
+			a.logger.Info(fmt.Sprintf(
 				"Received a new block b_%d(%d)",
 				common.ShortHash(blkHeader.Hash()),
 				blkHeader.Number.Uint64(),
-			)
+			))
 
 			// issue the block to the ingestion channel
 			err = a.encodeAndIngest(block, blockParent)
 			if err != nil {
-				log.Panic(err.Error())
+				a.logger.Crit("Internal error", log.ErrKey, err)
 			}
 			lastKnownBlkHash = block.Hash()
 		}
 	}
 
-	log.Info("Stopped monitoring for l1 blocks")
+	a.logger.Info("Stopped monitoring for l1 blocks")
 	// make sure it cleanly unsubscribes
 	// todo this should be defered when the errors are upstreamed instead of panic'd
 	subs.Unsubscribe()
@@ -848,10 +845,10 @@ func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) error {
 
 	// issue the block to the ingestion channel in reverse, with the parent attached too
 	for i := len(reingestBlocks) - 2; i >= 0; i-- {
-		log.Debug("Ingesting %s and %s blocks of %v", reingestBlocks[i].Hash(), reingestBlocks[i+1].Hash(), reingestBlocks)
+		a.logger.Debug(fmt.Sprintf("Ingesting %s and %s blocks of %v", reingestBlocks[i].Hash(), reingestBlocks[i+1].Hash(), reingestBlocks))
 		err = a.encodeAndIngest(reingestBlocks[i], reingestBlocks[i+1])
 		if err != nil {
-			log.Panic(err.Error())
+			a.logger.Crit("Internal error", log.ErrKey, err)
 		}
 	}
 
@@ -882,10 +879,10 @@ func (a *Node) bootstrapNode() types.Block {
 	// todo the genesis block should be the block where the contract was deployed
 	currentBlock, err := a.ethClient.BlockByNumber(big.NewInt(0))
 	if err != nil {
-		log.Panic(err.Error())
+		a.logger.Crit("Internal error", log.ErrKey, err)
 	}
 
-	common.LogWithID(a.shortID, "Started node bootstrap with block %d", currentBlock.NumberU64())
+	a.logger.Info(fmt.Sprintf("Started node bootstrap with block %d", currentBlock.NumberU64()))
 
 	startTime, logTime := time.Now(), time.Now()
 	for {
@@ -893,15 +890,13 @@ func (a *Node) bootstrapNode() types.Block {
 		a.processBlock(&cb)
 		result, err := a.enclaveClient.SubmitBlock(cb, false)
 		if err != nil {
-			log.Panic(err.Error())
+			a.logger.Crit("Internal error", log.ErrKey, err)
 		}
 		if !result.IngestedBlock && result.BlockNotIngestedCause != "" {
-			common.LogWithID(
-				a.shortID,
-				"Failed to ingest block b_%d. Cause: %s",
+			a.logger.Info(fmt.Sprintf("Failed to ingest block b_%d. Cause: %s",
 				common.ShortHash(result.BlockHeader.Hash()),
 				result.BlockNotIngestedCause,
-			)
+			))
 		}
 		a.storeBlockProcessingResult(result)
 
@@ -910,22 +905,20 @@ func (a *Node) bootstrapNode() types.Block {
 			if errors.Is(err, ethereum.NotFound) {
 				break
 			}
-			log.Panic(err.Error())
+			a.logger.Crit("Internal error", log.ErrKey, err)
 		}
 		currentBlock = nextBlk
 
 		if time.Since(logTime) > 30*time.Second {
-			common.LogWithID(a.shortID, "Bootstrapping node at block... %d", cb.NumberU64())
+			a.logger.Info(fmt.Sprintf("Bootstrapping node at block... %d", cb.NumberU64()))
 			logTime = time.Now()
 		}
 	}
 	atomic.StoreInt32(a.bootstrappingComplete, 1)
-	common.LogWithID(
-		a.shortID,
-		"Finished bootstrap process with block %d after %s",
+	a.logger.Info(fmt.Sprintf("Finished bootstrap process with block %d after %s",
 		currentBlock.NumberU64(),
 		time.Since(startTime),
-	)
+	))
 	return *currentBlock
 }
 
@@ -936,7 +929,7 @@ func (a *Node) awaitSecret() error {
 	for {
 		select {
 		case err := <-subs.Err():
-			log.Error("Restarting L1 block monitoring while awaiting for secret. Errored with: %s", err)
+			a.logger.Error("Restarting L1 block monitoring while awaiting for secret. Errored with: %s", log.ErrKey, err)
 			// todo this is a very simple way of reconnecting the node, it might need catching up logic
 			listener, subs = a.ethClient.BlockListener()
 
@@ -964,7 +957,7 @@ func (a *Node) awaitSecret() error {
 
 		case <-time.After(time.Second * 10):
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select
-			common.LogWithID(a.shortID, "Still waiting for secret from the L1...")
+			a.logger.Info("Still waiting for secret from the L1...")
 
 		case <-a.exitNodeCh:
 			subs.Unsubscribe()
@@ -982,7 +975,7 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
 			ok := a.handleStoreSecretTx(scrtTx)
 			if ok {
-				common.LogWithID(a.shortID, "Stored enclave secret.")
+				a.logger.Info("Stored enclave secret.")
 				return true
 			}
 		}

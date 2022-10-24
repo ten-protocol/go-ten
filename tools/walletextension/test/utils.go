@@ -13,6 +13,9 @@ import (
 	"testing"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	gethnode "github.com/ethereum/go-ethereum/node"
@@ -56,7 +59,10 @@ func createWalExtCfg() *walletextension.Config {
 }
 
 func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
-	walExt := walletextension.NewWalletExtension(*walExtCfg)
+	// todo - log somewhere else?
+	logger := log.New(log.WalletExtCmp, int(gethlog.LvlInfo), log.SysOut)
+
+	walExt := walletextension.NewWalletExtension(*walExtCfg, logger)
 	t.Cleanup(walExt.Shutdown)
 	go walExt.Serve(common.Localhost, walExtPort, walExtPortWS)
 

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/host/node"
 
@@ -91,18 +93,12 @@ func createInMemObscuroNode(
 		ERC20ContractAddresses: wallets.AllEthAddresses(),
 		MinGasPrice:            big.NewInt(1),
 	}
-	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, stats)
+	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
+	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, enclaveLogger)
 
 	// create an in memory obscuro node
-	inMemNode := node.NewHost(
-		hostConfig,
-		stats,
-		mockP2P,
-		ethClient,
-		enclaveClient,
-		ethWallet,
-		mgmtContractLib,
-	)
+	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
+	inMemNode := node.NewHost(hostConfig, stats, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
 	mockP2P.CurrentNode = inMemNode
 	return inMemNode
 }
@@ -141,20 +137,15 @@ func createSocketObscuroNode(
 	}
 
 	// create an enclave client
-	enclaveClient := enclaverpc.NewClient(hostConfig)
+	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, id))
+
+	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 
 	// create a socket P2P layer
-	nodeP2p := p2p.NewSocketP2PLayer(hostConfig)
+	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
+	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, p2pLogger)
 
-	return node.NewHost(
-		hostConfig,
-		stats,
-		nodeP2p,
-		ethClient,
-		enclaveClient,
-		ethWallet,
-		mgmtContractLib,
-	)
+	return node.NewHost(hostConfig, stats, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {
@@ -168,5 +159,6 @@ func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum
 			span := math.Max(2, float64(nrNodes)) // We handle the special cases of zero or one nodes.
 			return testcommon.RndBtwTime(avgBlockDuration/time.Duration(span), avgBlockDuration*time.Duration(span))
 		},
+		LogFile: testlog.LogFile(),
 	}
 }

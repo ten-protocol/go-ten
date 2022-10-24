@@ -5,6 +5,10 @@ import (
 	"context"
 	"fmt"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -39,6 +43,7 @@ type inMemObscuroClient struct {
 }
 
 func NewInMemObscuroClient(nodeHost host.Host) rpc.Client {
+	logger := testlog.Logger().New(log.CmpKey, log.RPCClientCmp)
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
@@ -49,16 +54,16 @@ func NewInMemObscuroClient(nodeHost host.Host) rpc.Client {
 	return &inMemObscuroClient{
 		obscuroAPI:       clientapi.NewObscuroAPI(nodeHost),
 		ethAPI:           clientapi.NewEthereumAPI(nodeHost),
-		filterAPI:        clientapi.NewFilterAPI(nodeHost),
+		filterAPI:        clientapi.NewFilterAPI(nodeHost, logger),
 		obscuroScanAPI:   clientapi.NewObscuroScanAPI(nodeHost),
 		testAPI:          clientapi.NewTestAPI(nodeHost),
 		enclavePublicKey: enclPubKey,
 	}
 }
 
-func NewInMemoryEncRPCClient(host host.Host, viewingKey *rpc.ViewingKey) *rpc.EncRPCClient {
+func NewInMemoryEncRPCClient(host host.Host, viewingKey *rpc.ViewingKey, logger gethlog.Logger) *rpc.EncRPCClient {
 	inMemClient := NewInMemObscuroClient(host)
-	encClient, err := rpc.NewEncRPCClient(inMemClient, viewingKey)
+	encClient, err := rpc.NewEncRPCClient(inMemClient, viewingKey, logger)
 	if err != nil {
 		panic(err)
 	}

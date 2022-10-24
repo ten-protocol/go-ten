@@ -60,12 +60,14 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig.ClientRPCPortWS = obscuroWebsocketPort
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 	hostConfig.ProfilerEnabled = true
+	hostConfig.LogPath = testlog.LogFile()
 
 	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
 	dummyContractAddress := common.BytesToAddress([]byte("AA"))
 	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
 	enclaveConfig.ProfilerEnabled = true
+	enclaveConfig.LogPath = testlog.LogFile()
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
