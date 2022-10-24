@@ -253,7 +253,7 @@ func (a *Node) broadcastSecret() error {
 		HostAddress:   a.config.P2PPublicAddress,
 	}
 	initialiseSecretTx := a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
-	err = a.signAndBroadcastTx(initialiseSecretTx, l1TxTriesSecret)
+	err = a.signAndBroadcastL1Tx(initialiseSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("failed to initialise enclave secret. Cause: %w", err)
 	}
@@ -303,7 +303,7 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	return encryptedResponse, nil
 }
 
-// ReceiveRollup is called by counterparties when there is a Rollup to broadcast
+// ReceiveRollup is called when receiving a rollup from a counterparty.
 // All it does is forward the rollup for processing to the enclave
 func (a *Node) ReceiveRollup(r common.EncodedRollup) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
@@ -569,7 +569,7 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 		// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
 		if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
 			rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
-			err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
+			err = a.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 			if err != nil {
 				a.logger.Error("could not broadcast winning rollup", log.ErrKey, err)
 			}
@@ -612,7 +612,7 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	}
 
 	rollupTx := a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement())
-	err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
+	err = a.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
 	}
@@ -621,7 +621,7 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.
-func (a *Node) signAndBroadcastTx(tx types.TxData, tries int) error {
+func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries int) error {
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
 		return err
@@ -653,7 +653,7 @@ func (a *Node) requestSecret() error {
 		Attestation: encodedAttestation,
 	}
 	requestSecretTx := a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
-	err = a.signAndBroadcastTx(requestSecretTx, l1TxTriesSecret)
+	err = a.signAndBroadcastL1Tx(requestSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return err
 	}
@@ -695,7 +695,7 @@ func (a *Node) publishSharedSecretResponse(scrtResponse *common.ProducedSecretRe
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 	respondSecretTx := a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false)
-	err := a.signAndBroadcastTx(respondSecretTx, l1TxTriesSecret)
+	err := a.signAndBroadcastL1Tx(respondSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("could not broadcast secret response. Cause %w", err)
 	}
