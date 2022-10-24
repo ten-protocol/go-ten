@@ -57,6 +57,7 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 func createInMemObscuroNode(
 	id int64,
 	isGenesis bool,
+	isAggregator bool,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	stableTokenContractLib erc20contractlib.ERC20ContractLib,
 	avgGossipPeriod time.Duration,
@@ -71,12 +72,14 @@ func createInMemObscuroNode(
 	hostConfig := config.HostConfig{
 		ID:                  gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
+		IsAggregator:        isAggregator,
 		GossipRoundDuration: avgGossipPeriod,
 		HasClientRPCHTTP:    false,
 	}
 
 	enclaveConfig := config.EnclaveConfig{
 		HostID:                 hostConfig.ID,
+		IsAggregator:           isAggregator,
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,
 		WillAttest:             false,
@@ -105,6 +108,7 @@ func createInMemObscuroNode(
 func createSocketObscuroNode(
 	id int64,
 	isGenesis bool,
+	isAggregator bool,
 	avgGossipPeriod time.Duration,
 	stats *stats.Stats,
 	p2pAddr string,
@@ -119,6 +123,7 @@ func createSocketObscuroNode(
 	hostConfig := config.HostConfig{
 		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:              isGenesis,
+		IsAggregator:           isAggregator,
 		GossipRoundDuration:    avgGossipPeriod,
 		HasClientRPCHTTP:       true,
 		ClientRPCPortHTTP:      clientRPCPortHTTP,
