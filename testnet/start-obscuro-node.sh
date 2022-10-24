@@ -63,7 +63,7 @@ testnet_path="${start_path}"
 # Define defaults
 l1_port=9000
 is_genesis=false
-node_type=aggregator
+node_type=validator
 profiler_enabled=false
 p2p_public_address="127.0.0.1:10000"
 debug_enclave=false
