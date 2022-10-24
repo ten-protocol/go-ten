@@ -244,7 +244,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (common.Bloc
 }
 
 func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) error {
-	r := core.ToEnclaveRollup(rollup.ToRollup(), e.transactionBlobCrypto)
+	r := core.ToEnclaveRollup(rollup.ToEncryptedRollup(), e.transactionBlobCrypto)
 
 	// only store if the parent exists
 	_, found := e.storage.FetchRollup(r.Header.ParentHash)
