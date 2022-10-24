@@ -462,8 +462,8 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 		rc.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
 	}
 
-	// We do not produce a rollup if we're a validator, or we're behind the L1 (in which case the rollup will be outdated).
-	if !isLatest || rc.nodeType == common.Validator {
+	// We do not produce a rollup if we're not an aggregator, or we're behind the L1 (in which case the rollup will be outdated).
+	if !isLatest || rc.nodeType != common.Aggregator {
 		return rc.newBlockSubmissionResponse(blockState, common.ExtRollup{}, encryptedLogs)
 	}
 

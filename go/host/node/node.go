@@ -499,7 +499,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 
 	// The first part of this check is redundant - if the node is configured correctly, a validator's enclave will
 	// never produce a rollup anyway. However, we include it here for resiliency.
-	if a.config.NodeType == common.Validator || result.ProducedRollup.Header == nil {
+	if a.config.NodeType != common.Aggregator || result.ProducedRollup.Header == nil {
 		return nil
 	}
 
