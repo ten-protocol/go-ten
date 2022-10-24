@@ -502,6 +502,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		return nil
 	}
 
+	// TODO - #718 - Handle the validator case, where no rollup is produced.
 	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
 	if err != nil {
 		return fmt.Errorf("could not encode rollup. Cause: %w", err)
@@ -543,32 +544,34 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 		if err != nil {
 			a.logger.Crit("could not determine round winner.", log.ErrKey, err)
 		}
-		if isWinner {
-			a.logger.Info(
-				fmt.Sprintf("Winner (b_%d) r_%d(%d).",
-					common.ShortHash(result.BlockHeader.Hash()),
-					common.ShortHash(winnerRollup.Header.Hash()),
-					winnerRollup.Header.Number,
-				))
+		if !isWinner {
+			return
+		}
 
-			encodedRollup, err := common.EncodeRollup(winnerRollup.ToRollup())
+		a.logger.Info(
+			fmt.Sprintf("Winner (b_%d) r_%d(%d).",
+				common.ShortHash(result.BlockHeader.Hash()),
+				common.ShortHash(winnerRollup.Header.Hash()),
+				winnerRollup.Header.Number,
+			))
+
+		encodedRollup, err := common.EncodeRollup(winnerRollup.ToRollup())
+		if err != nil {
+			a.logger.Crit("could not encode rollup.", log.ErrKey, err)
+		}
+		tx := &ethadapter.L1RollupTx{
+			Rollup: encodedRollup,
+		}
+
+		// That handler can get called multiple times for the same height. And it will return the same winner rollup.
+		// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
+		if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
+			rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
+			err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
 			if err != nil {
-				a.logger.Crit("could not encode rollup.", log.ErrKey, err)
+				a.logger.Error("could not broadcast winning rollup", log.ErrKey, err)
 			}
-			tx := &ethadapter.L1RollupTx{
-				Rollup: encodedRollup,
-			}
-
-			// That handler can get called multiple times for the same height. And it will return the same winner rollup.
-			// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
-			if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
-				rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
-				err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
-				if err != nil {
-					a.logger.Error("could not broadcast winning rollup", log.ErrKey, err)
-				}
-				a.nodeDB.AddSubmittedRollup(winnerRollup.Header.Hash())
-			}
+			a.nodeDB.AddSubmittedRollup(winnerRollup.Header.Hash())
 		}
 	}
 }

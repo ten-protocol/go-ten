@@ -3,21 +3,24 @@ package config
 import (
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ethereum/go-ethereum/common"
 )
 
 // EnclaveConfig contains the full configuration for an Obscuro enclave service.
 type EnclaveConfig struct {
 	// The identity of the host the enclave service is tied to
-	HostID common.Address
+	HostID gethcommon.Address
 	// The peer-to-peer IP address of the host the enclave service is tied to
 	HostAddress string
 	// The address on which to serve requests
 	Address string
+	// The type of the node.
+	NodeType common.NodeType
 	// The ID of the L1 chain
 	L1ChainID int64
 	// The ID of the Obscuro chain
@@ -31,9 +34,9 @@ type EnclaveConfig struct {
 	// Toggles the speculative execution background process
 	SpeculativeExecution bool
 	// The management contract address on the L1 network
-	ManagementContractAddress common.Address
+	ManagementContractAddress gethcommon.Address
 	// The addresses of ERC20 contracts to monitor on the L1 network
-	ERC20ContractAddresses []*common.Address
+	ERC20ContractAddresses []*gethcommon.Address
 	// LogLevel determines the verbosity of output logs
 	LogLevel int
 	// The path that the enclave's logs are written to
@@ -54,17 +57,18 @@ type EnclaveConfig struct {
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
 func DefaultEnclaveConfig() EnclaveConfig {
 	return EnclaveConfig{
-		HostID:                    common.BytesToAddress([]byte("")),
+		HostID:                    gethcommon.BytesToAddress([]byte("")),
 		HostAddress:               "127.0.0.1:10000",
 		Address:                   "127.0.0.1:11000",
+		NodeType:                  common.Aggregator,
 		L1ChainID:                 1337,
 		ObscuroChainID:            777,
 		WillAttest:                false, // todo: attestation should be on by default before production release
 		ValidateL1Blocks:          false,
 		GenesisJSON:               nil,
 		SpeculativeExecution:      false,
-		ManagementContractAddress: common.BytesToAddress([]byte("")),
-		ERC20ContractAddresses:    []*common.Address{},
+		ManagementContractAddress: gethcommon.BytesToAddress([]byte("")),
+		ERC20ContractAddresses:    []*gethcommon.Address{},
 		LogLevel:                  int(gethlog.LvlInfo),
 		LogPath:                   log.SysOut,
 		UseInMemoryDB:             true, // todo: persistence should be on by default before production release
