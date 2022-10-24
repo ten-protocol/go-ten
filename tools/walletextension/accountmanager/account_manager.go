@@ -244,7 +244,7 @@ func (m *AccountManager) executeSubscribe(client *rpc.EncRPCClient, req *RPCRequ
 					continue
 				}
 
-				m.logger.Info(fmt.Sprintf("Forwarding log from Obscuro noe: %s", jsonResponse), log.SubIDKey, idAndLog.SubID)
+				m.logger.Info(fmt.Sprintf("Forwarding log from Obscuro node: %s", jsonResponse), log.SubIDKey, idAndLog.SubID)
 				err = userConn.WriteResponse(jsonResponse)
 				if err != nil {
 					m.logger.Error("could not write the JSON log to the websocket on subscription %", log.SubIDKey, idAndLog.SubID, log.ErrKey, err)
