@@ -18,6 +18,7 @@ services:
       L1PORT: some_port
       HOSTID: some_address
       ISGENESIS: some_bool
+      NODETYPE: some_string
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
       LOGLEVEL: some_int
@@ -32,6 +33,7 @@ services:
       "--privateKey=$PKSTRING",
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
+      "--nodeType=$NODETYPE",
       "--logLevel=$LOGLEVEL",
       "--logPath=sys_out",
       "--profilerEnabled=$PROFILERENABLED",
@@ -49,6 +51,7 @@ services:
       HOCERC20ADDR: some_address
       POCERC20ADDR: some_address
       HOSTID: some_address
+      NODETYPE: some_string
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
       LOGLEVEL: some_int
@@ -64,6 +67,7 @@ services:
       "--",
       "--hostID=$HOSTID",
       "--address=:11000",
+      "--nodeType=$NODETYPE"
       "--useInMemoryDB=false",
       "--sqliteDBPath=/data/sqlite.db",
       "--managementContractAddress=$MGMTCONTRACTADDR",
