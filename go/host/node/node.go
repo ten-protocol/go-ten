@@ -497,12 +497,14 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		}
 	}
 
-	// Nodes can start before the genesis was published, and it makes no sense to enter the protocol.
 	if result.ProducedRollup.Header == nil {
 		return nil
 	}
+	// We check that a rollup wasn't somehow produced by a non-aggregator.
+	if a.config.NodeType != common.Aggregator {
+		a.logger.Crit("node produced a rollup but was not an aggregator")
+	}
 
-	// TODO - #718 - Handle the validator case, where no rollup is produced.
 	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
 	if err != nil {
 		return fmt.Errorf("could not encode rollup. Cause: %w", err)

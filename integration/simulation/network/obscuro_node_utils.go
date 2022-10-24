@@ -42,16 +42,11 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgNetworkLatency)
-		// We assign every other node the role of aggregator.
-		nodeType := common.Aggregator
-		if i%2 == 0 {
-			nodeType = common.Validator
-		}
 
 		obscuroNodes[i] = createInMemObscuroNode(
 			int64(i),
 			isGenesis,
-			nodeType,
+			GetNodeType(i),
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
 			params.AvgGossipPeriod,
@@ -99,16 +94,10 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		nodeRPCPortWS := params.StartPort + DefaultHostRPCWSOffset + i
 
 		// create an Obscuro node
-		// We assign every other node the role of aggregator.
-		nodeType := common.Aggregator
-		if i%2 == 0 {
-			nodeType = common.Validator
-		}
-
 		obscuroNodes[i] = createSocketObscuroNode(
 			int64(i),
 			isGenesis,
-			nodeType,
+			GetNodeType(i),
 			params.AvgGossipPeriod,
 			stats,
 			fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i),
@@ -187,17 +176,12 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams) {
 		// create a remote enclave server
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
-		// We assign every other node the role of aggregator.
-		nodeType := common.Aggregator
-		if i%2 == 0 {
-			nodeType = common.Validator
-		}
 
 		enclaveConfig := config.EnclaveConfig{
 			HostID:                 gethcommon.BigToAddress(big.NewInt(int64(i))),
 			HostAddress:            hostAddr,
 			Address:                enclaveAddr,
-			NodeType:               nodeType,
+			NodeType:               GetNodeType(i),
 			L1ChainID:              integration.EthereumChainID,
 			ObscuroChainID:         integration.ObscuroChainID,
 			ValidateL1Blocks:       false,
@@ -298,4 +282,13 @@ func isAddressAvailable(address string) bool {
 	}
 
 	return true
+}
+
+// GetNodeType returns the type of the node based on its ID.
+func GetNodeType(i int) common.NodeType {
+	// We assign every other node the role of aggregator.
+	if i%2 == 0 {
+		return common.Aggregator
+	}
+	return common.Validator
 }
