@@ -20,7 +20,7 @@ services:
       L1PORT: some_port
       HOSTID: some_address
       ISGENESIS: some_bool
-      NODETYPE: some_bool
+      NODETYPE: some_string
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
       LOGLEVEL: some_int
@@ -55,7 +55,7 @@ services:
       HOCERC20ADDR: some_address
       POCERC20ADDR: some_address
       HOSTID: some_address
-      NODETYPE: some_bool
+      NODETYPE: some_string
       OE_SIMULATION: 0
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
