@@ -90,7 +90,7 @@ See the  "Escape hatch" design
 
 ### Fast Finality
 
-By publishing rollpups less frequently we solved the cost problem (during bootstrapping).
+By publishing rollups less frequently we solved the cost problem (during bootstrapping).
 
 The challenge now is to achieve practical fast finality.
 
@@ -134,14 +134,14 @@ Our business requirement is to respond to users with a "soft finality" in no mor
 Note: That might be a bit ambitious given there are network latencies involved.
 
 The other requirement is that all L2 nodes must act as read-only replicas of the SA, able to serve data requests on behalf of the SA.
-Given that they are owend by byzantine hosts, the L2 node must only execute the transaction batches that are originating from the SA. 
+Given that they are owned by byzantine hosts, the L2 node must only execute the transaction batches that are originating from the SA. 
 If they were able to execute anything else, they could malicously produce wrong results.
 
 Users submit transactions to any L2 node, who gossip them among themselves, in a group that also includes the SA. (same as today)
 
 Every second the enclave of the SA produces a signed "Light Batch" (LB), which is a list of tx hashes, with a header pointing to the previous batch.
 This LB is encrypted, and gossiped to all the other nodes.
-Note: The enclave can only produce it once it calculated a chain of N hashes ( roughtly a second worth). This is necessary to prevent frontrunning by the SA. Basically the timer is not the clock of the host, but a mechanism based on a light proof of work.
+Note: The enclave can only produce it once it calculated a chain of N hashes (roughly a second worth). This is necessary to prevent frontrunning by the SA. Basically the timer is not the clock of the host, but a mechanism based on a light proof of work.
 
 Once the LB reaches the enclave of any other node, and they check it came from the SA, it will be similarly procesed as a canonical rollup in POBI. 
 It will be considered as soft-final, and it will generate receipts and events, which can be requested by the users who are connected to those nodes.
@@ -179,8 +179,8 @@ When a new node catches up, it will only create the PR database.
 
 #### Sequence:
 
-1. Txs are  received to non-Agg nodes and gossiped around, all nodes store them by their hashes in mempool cache.
-2. SA sequences them into a signed LB pointing to a previous LB ( or to a PB - for the second option)
+1. Txs are received to non-Agg nodes and gossiped around, all nodes store them by their hashes in mempool cache.
+2. SA sequences them into a signed LB pointing to a previous LB ( or to a PR - for the second option)
 3. SA performs some super light pow to get a timer which tells the enclave it's time to release a new LB, and broadcasts it to the other nodes.
 4. Nodes receive LB, they execute the same txes by hash from their mempool against their internal state and check the final header hash matches the LB.
 5. Nodes now have the full state to serve soft-final receipts and events, and respond to eth_call
