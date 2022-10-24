@@ -637,11 +637,15 @@ func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries int) error {
 		return err
 	}
 
-	funcBroadcastTx := func() error { return a.ethClient.SendTransaction(signedTx) }
+	funcBroadcastTx := func() error {
+		// TODO - #1089 - Await transaction receipt after sending the transaction.
+		return a.ethClient.SendTransaction(signedTx)
+	}
 	err = retryWithBackoff(tries, funcBroadcastTx)
 	if err == nil {
 		return nil
 	}
+
 	return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 }
 
