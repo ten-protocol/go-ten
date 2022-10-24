@@ -480,8 +480,14 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 
 		a.storeBlockProcessingResult(result)
 		a.logEventManager.SendLogsToSubscribers(result)
+
+		// We check that the rollup wasn't somehow produced by a non-aggregator.
+		if result.ProducedRollup.Header != nil && a.config.NodeType != common.Aggregator {
+			a.logger.Crit("node produced a rollup but was not an aggregator")
+		}
 	}
 
+	// TODO - Should these checks live in the `for` block above, so that they apply to all blocks, and not just the last?
 	if !result.IngestedBlock {
 		b, err := blocks[len(blocks)-1].DecodeBlock()
 		if err != nil {
@@ -499,10 +505,6 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 
 	if result.ProducedRollup.Header == nil {
 		return nil
-	}
-	// We check that a rollup wasn't somehow produced by a non-aggregator.
-	if a.config.NodeType != common.Aggregator {
-		a.logger.Crit("node produced a rollup but was not an aggregator")
 	}
 
 	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
