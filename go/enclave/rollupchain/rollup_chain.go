@@ -458,7 +458,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 		log.Panic("Could not get subscribed logs in encrypted form. Cause: %s", err)
 	}
 
-	// todo - joel - also skip rollup production on verifiers
+	// TODO - #718 - Handle the validator case, where no rollup is produced.
 	if !isLatest {
 		// no need to produce rollup, we're behind the L1, so rollup will be outdated
 		return rc.newBlockSubmissionResponse(blockState, common.ExtRollup{}, encryptedLogs)

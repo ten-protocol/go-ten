@@ -504,7 +504,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		return nil
 	}
 
-	// todo - joel - this will blow up. handle it when it does
+	// TODO - #718 - Handle the validator case, where no rollup is produced.
 	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
 	if err != nil {
 		return fmt.Errorf("could not encode rollup. Cause: %w", err)
