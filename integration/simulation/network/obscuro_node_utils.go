@@ -286,8 +286,8 @@ func isAddressAvailable(address string) bool {
 
 // GetNodeType returns the type of the node based on its ID.
 func GetNodeType(i int) common.NodeType {
-	// We assign every other node the role of aggregator.
-	if i%2 == 0 {
+	// Only the genesis node is assigned the role of aggregator.
+	if i == 0 {
 		return common.Aggregator
 	}
 	return common.Validator

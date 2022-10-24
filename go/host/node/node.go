@@ -86,6 +86,9 @@ func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, 
 	if config.IsGenesis && config.NodeType != common.Aggregator {
 		logger.Crit("genesis node must be an aggregator")
 	}
+	if !config.IsGenesis && config.NodeType == common.Aggregator {
+		logger.Crit("only the genesis node can be an aggregator")
+	}
 
 	node := &Node{
 		// config
