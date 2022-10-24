@@ -132,16 +132,16 @@ func findHashDups(list []gethcommon.Hash) map[gethcommon.Hash]int {
 }
 
 // FindRollupDups - returns a map of all L2 root hashes that appear multiple times, and how many times
-func findRollupDups(list []common.L2RootHash) map[common.L2RootHash]int {
+func findRollupDups(list []*common.EncryptedRollup) map[common.L2RootHash]int {
 	elementCount := make(map[common.L2RootHash]int)
 
 	for _, item := range list {
 		// check if the item/element exist in the duplicate_frequency map
-		_, exist := elementCount[item]
+		_, exist := elementCount[item.Hash()]
 		if exist {
-			elementCount[item]++ // increase counter by 1 if already in the map
+			elementCount[item.Hash()]++ // increase counter by 1 if already in the map
 		} else {
-			elementCount[item] = 1 // else start counting from 1
+			elementCount[item.Hash()] = 1 // else start counting from 1
 		}
 	}
 	dups := make(map[common.L2RootHash]int)
