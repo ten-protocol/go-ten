@@ -250,7 +250,7 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup, s.logger)
 		obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash(), s.logger)
 		obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts, s.logger)
-		obscurorawdb.WriteContractCreationTx(batch, receipts)
+		obscurorawdb.WriteContractCreationTx(batch, receipts, s.logger)
 	}
 
 	obscurorawdb.WriteBlockState(batch, state, s.logger)
@@ -325,7 +325,7 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 }
 
 func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (gethcommon.Hash, error) {
-	tx := obscurorawdb.ReadContractTransaction(s.db, address)
+	tx := obscurorawdb.ReadContractTransaction(s.db, address, s.logger)
 	return tx, nil
 }
 
