@@ -121,7 +121,7 @@ func (db *DB) AddRollupHeader(headerWithHashes *common.HeaderWithTxHashes) {
 	}
 }
 
-// AddSubmittedRollup adds a rollup hash to the list of rollup hashes already submitted to the enclave.
+// AddSubmittedRollup adds a rollup hash to the list of rollup hashes already submitted to the L1.
 func (db *DB) AddSubmittedRollup(hash gethcommon.Hash) {
 	err := db.kvStore.Put(submittedRollupHeaderKey(hash), []byte{})
 	if err != nil {
@@ -129,7 +129,7 @@ func (db *DB) AddSubmittedRollup(hash gethcommon.Hash) {
 	}
 }
 
-// WasSubmitted checks whether a rollup has already been submitted to the enclave.
+// WasSubmitted checks whether a rollup has already been submitted to the L1.
 func (db *DB) WasSubmitted(hash gethcommon.Hash) bool {
 	f, err := db.kvStore.Has(submittedRollupHeaderKey(hash))
 	if err != nil {

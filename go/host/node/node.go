@@ -52,8 +52,9 @@ const (
 
 // Node is an implementation of host.Host.
 type Node struct {
-	config  config.HostConfig
-	shortID uint64
+	config      config.HostConfig
+	shortID     uint64
+	isSequencer bool
 
 	p2p           host.P2P             // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
@@ -82,10 +83,15 @@ type Node struct {
 }
 
 func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) host.MockHost {
+	if config.IsGenesis && config.NodeType != common.Aggregator {
+		logger.Crit("genesis node must be an aggregator")
+	}
+
 	node := &Node{
 		// config
-		config:  config,
-		shortID: common.ShortAddress(config.ID),
+		config:      config,
+		isSequencer: config.IsGenesis && config.NodeType == common.Aggregator,
+		shortID:     common.ShortAddress(config.ID),
 
 		// Communication layers.
 		p2p:           p2p,
@@ -422,6 +428,8 @@ func (a *Node) startProcessing() {
 				a.logger.Warn("Could not check enclave initialisation. ", log.ErrKey, err)
 			}
 
+			// TODO - Check that the rollup was produced by an aggregator.
+
 			go func() {
 				err := a.enclaveClient.SubmitRollup(common.ExtRollup{
 					Header:          rol.Header,
@@ -481,7 +489,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		a.storeBlockProcessingResult(result)
 		a.logEventManager.SendLogsToSubscribers(result)
 
-		// We check that the rollup wasn't somehow produced by a non-aggregator.
+		// We check that we only produced a rollup if we're an aggregator.
 		if result.ProducedRollup.Header != nil && a.config.NodeType != common.Aggregator {
 			a.logger.Crit("node produced a rollup but was not an aggregator")
 		}
