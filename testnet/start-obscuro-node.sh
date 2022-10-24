@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
 #
-# This script downloads and builds the obscuro node
+# This script downloads and builds the Obscuro node.
 #
-# Note: Be aware that a network MUST always have:
-#  * EXACTLY ONE genesis node -> Flag is_genesis=true (otherwise your node wil spin forever waiting for the network secret)
-#  * AT LEAST ONE aggregator  -> Flag node_type=aggregator (otherwise no rollups will be produced)
+# Note: Be aware that a network MUST always have EXACTLY ONE genesis node (i.e. with flag `is_genesis=true`);
+# otherwise, your node wil spin forever waiting for the network secret. In addition, a network MUST always have AT
+# LEAST ONE aggregator (i.e. with flag `node_type=aggregator`); otherwise no rollups will be produced. In addition, the
+# genesis node MUST be one of the aggregators.
 #
 
 help_and_exit() {
