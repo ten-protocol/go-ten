@@ -10,15 +10,18 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 * Finality
   * Transaction *soft* finality (finality guaranteed by the sequencer) is achieved in less than two seconds
   * There is an eventual transaction *hard* finality (finality guaranteed by the L1)
+  * The sequencer achieves hard finality on the agreed cadence
+  * The sequencer is not able to "rewrite history" (or is strongly disincentivised from doing so), even for soft-final
+    transactions (e.g. to perform front-running)
+* Censorship resistance
+  * There is an "inbox" allowing nodes to force the inclusion of transactions on the L1
+  * The sequencer must distribute all light batches to all nodes
 * Cost
   * L1 transaction costs can be driven arbitrarily low, at the expense of extending the hard-finality window
 * User/dev experience
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
 * Operations
   * The sequencer is highly available
-* Security
-  * The sequencer is not able to "rewrite history" (or is strongly disincentivised from doing so), even for soft-final 
-    transactions (e.g. to perform front-running)
 
 ## Assumptions
 
@@ -63,9 +66,9 @@ the client behave as if the transactions were completely final).
 
 ### Production of rollups
 
-Every `x` blocks, the sequencer's host requests the creation of a rollup. This rollup contains all the light batches 
-created since the last rollup, in a Merkle tree structure. This rollup is sent to be included on the L1.  The rollup is 
-signed and encrypted by the sequencer.
+Every `x` blocks, the sequencer's host requests the creation of a rollup. The sequencer's enclave produces a rollup 
+containing all the light batches created since the last rollup, in a sparse Merkle tree structure. This rollup is 
+encrypted and signed, then sent to be included on the L1.
 
 A rollup is produced whenever one of the following conditions is met:
 
@@ -79,8 +82,10 @@ A rollup is produced whenever one of the following conditions is met:
 
 Nodes scan incoming L1 blocks for new rollups. They validate each new rollup by:
 
-* Checking that it is produced by the designated sequencer
-* Checking that it contains all the light batches since the last rollup
+* Checking that it is produced by the designated sequencer, based on the sequencer listed in the management contract
+* Checking that it contains all the light batches produced since the last rollup. Each light batch contains the number 
+  of the rollup that will contain it. Since the rollup is a sparse Merkle tree, proving non-inclusion of a given light 
+  batch is straightforward
 
 They then persist the rollup, so that they have a record of which light batches have been confirmed on the L1.
 
@@ -95,4 +100,4 @@ They then persist the rollup, so that they have a record of which light batches 
 
 * How do we prevent the sequencer from running `n` enclaves and using `n-1` of them to test the impact of various 
   transaction sets (e.g. to identify front-running opportunities)?
-* How do we provide proof that a given rollup does not contain a required light-batch transaction?
+* How do we ensure the sequencer distributes all light batches to all nodes?
