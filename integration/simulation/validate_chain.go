@@ -207,7 +207,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	defer wg.Done()
 	var nodeID gethcommon.Address
 	nodeClient := rpcHandles.ObscuroClients[nodeIdx]
-	err := nodeClient.Call(&nodeID, rpc.RPCGetID)
+	err := nodeClient.Call(&nodeID, rpc.GetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}

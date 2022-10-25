@@ -115,7 +115,7 @@ func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
 		go func() {
-			_ = temp.Call(nil, rpc.RPCStopHost)
+			_ = temp.Call(nil, rpc.StopHost)
 			temp.Stop()
 		}()
 	}

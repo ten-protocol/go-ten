@@ -34,7 +34,7 @@ func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t, createWalExtCfg())
 
-	respBody, _ := makeWSEthJSONReq(rpc.RPCChainID, []interface{}{})
+	respBody, _ := makeWSEthJSONReq(rpc.ChainID, []interface{}{})
 	validateJSONResponse(t, respBody)
 
 	if !strings.Contains(string(respBody), l2ChainIDHex) {
@@ -64,7 +64,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
-		if method == rpc.RPCSubscribe {
+		if method == rpc.Subscribe {
 			continue
 		}
 
@@ -93,7 +93,7 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
-		if method == rpc.RPCSubscribe {
+		if method == rpc.Subscribe {
 			continue
 		}
 
@@ -119,7 +119,7 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 	arbitraryViewingKey := viewingKeys[len(viewingKeys)/2]
 	dummyAPI.setViewingKey(arbitraryViewingKey)
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
+	respBody := makeHTTPEthJSONReq(rpc.GetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 	validateJSONResponse(t, respBody)
 
 	if !strings.Contains(string(respBody), dummyParams) {
@@ -134,7 +134,7 @@ func TestCanCallWithoutSettingFromField(t *testing.T) {
 	vkAddress, viewingKeyBytes := registerPrivateKey(t, false)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
-	for _, method := range []string{rpc.RPCCall, rpc.RPCEstimateGas} {
+	for _, method := range []string{rpc.Call, rpc.EstimateGas} {
 		respBody := makeHTTPEthJSONReq(method, []interface{}{map[string]interface{}{
 			"To":    "0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC",
 			"data":  "0x70a0823100000000000000000000000013e23ca74de0206c56ebae8d51b5622eff1e9944",
@@ -162,7 +162,7 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	shutdown()
 	createWalExt(t, walExtCfg)
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCGetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
+	respBody := makeHTTPEthJSONReq(rpc.GetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 	validateJSONResponse(t, respBody)
 
 	if !strings.Contains(string(respBody), dummyParams) {
@@ -174,7 +174,7 @@ func TestCannotSubscribeOverHTTP(t *testing.T) {
 	createDummyHost(t)
 	createWalExt(t, createWalExtCfg())
 
-	respBody := makeHTTPEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs})
+	respBody := makeHTTPEthJSONReq(rpc.Subscribe, []interface{}{rpc.SubscriptionTypeLogs})
 	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
 		t.Fatalf("expected response of '%s', got '%s'", walletextension.ErrSubscribeFailHTTP, string(respBody))
 	}
@@ -189,7 +189,7 @@ func TestCanRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T) {
 
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
-		if method == rpc.RPCSubscribe {
+		if method == rpc.Subscribe {
 			continue
 		}
 
@@ -212,7 +212,7 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	filter := common.FilterCriteriaJSON{Topics: []interface{}{dummyHash}}
-	resp, conn := makeWSEthJSONReq(rpc.RPCSubscribe, []interface{}{rpc.RPCSubscriptionTypeLogs, filter})
+	resp, conn := makeWSEthJSONReq(rpc.Subscribe, []interface{}{rpc.SubscriptionTypeLogs, filter})
 	validateSubscriptionResponse(t, resp)
 
 	logsJSON := readMessagesForDuration(t, conn, time.Second)
