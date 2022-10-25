@@ -1006,6 +1006,10 @@ func (a *Node) validateConfig() {
 	if !a.config.IsGenesis && a.config.NodeType == common.Aggregator {
 		a.logger.Crit("only the genesis node can be an aggregator")
 	}
+
+	if a.config.P2PPublicAddress == "" {
+		a.logger.Crit("the node must specify a public P2P address")
+	}
 }
 
 // We retry calling `funcToRetry`, with a pause in between that starts at one second and doubles on each retry.
