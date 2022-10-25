@@ -171,8 +171,8 @@ func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 	return authClients
 }
 
-func startRemoteEnclaveServers(startAt int, params *params.SimParams) {
-	for i := startAt; i < params.NumberOfNodes; i++ {
+func startRemoteEnclaveServers(params *params.SimParams) {
+	for i := 0; i < params.NumberOfNodes; i++ {
 		// create a remote enclave server
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
