@@ -63,9 +63,17 @@ the client behave as if the transactions were completely final).
 
 ### Creation of rollups
 
-Every `x` blocks, the sequencer creates a rollup. This rollup contains all the light batches created since the last 
-rollup, in a Merkle tree structure. This rollup is sent to be included on the L1.  The rollup is signed and encrypted 
-by the sequencer.
+Every `x` blocks, the sequencer's host requests the creation of a rollup. This rollup contains all the light batches 
+created since the last rollup, in a Merkle tree structure. This rollup is sent to be included on the L1.  The rollup is 
+signed and encrypted by the sequencer.
+
+A rollup is produced whenever one of the following conditions is met:
+
+* The number of transactions across all light-batches since the last rollup exceeds `y`
+* The value of all transactions across all light-batches since the last rollup exceeds `z`
+* The time since the last rollup was produced exceeds `w`
+
+`y`, `z` and `w` are configurable per network.
 
 The nodes scan incoming blocks to retrieve this rollup. They validate the received rollup by:
 
@@ -83,7 +91,5 @@ They then persist the rollup, so that they have a record of which light batches 
 
 ## Unresolved issues
 
-* Where do we store `x`, the frequency with which rollups are produced? Can it be changed at the sequencer's sole 
-  discretion?
 * How do we prevent the sequencer from running `n` enclaves and using `n-1` of them to test the impact of various 
   transaction sets (e.g. to identify front-running opportunities)?
