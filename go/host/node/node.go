@@ -86,8 +86,8 @@ func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, 
 	node := &Node{
 		// config
 		config:      config,
-		isSequencer: config.IsGenesis && config.NodeType == common.Aggregator,
 		shortID:     common.ShortAddress(config.ID),
+		isSequencer: config.IsGenesis && config.NodeType == common.Aggregator,
 
 		// Communication layers.
 		p2p:           p2p,
