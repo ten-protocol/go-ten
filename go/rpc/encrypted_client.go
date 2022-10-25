@@ -38,7 +38,7 @@ var SensitiveMethods = []string{
 	RPCGetBalance,
 	RPCGetTransactionByHash,
 	RPCGetTransactionCount,
-	RPCGetTxReceipt,
+	RPCGetTransactionReceipt,
 	RPCSendRawTransaction,
 	RPCSubscribe,
 	RPCEstimateGas,

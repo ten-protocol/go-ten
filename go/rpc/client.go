@@ -15,7 +15,7 @@ const (
 	RPCGetCode                 = "eth_getCode"
 	RPCGetTransactionByHash    = "eth_getTransactionByHash"
 	RPCGetTransactionCount     = "eth_getTransactionCount"
-	RPCGetTxReceipt            = "eth_getTransactionReceipt"
+	RPCGetTransactionReceipt   = "eth_getTransactionReceipt"
 	RPCSendRawTransaction      = "eth_sendRawTransaction"
 	RPCEstimateGas             = "eth_estimateGas"
 	RPCGetLogs                 = "eth_getLogs"
