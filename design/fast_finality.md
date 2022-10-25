@@ -44,7 +44,7 @@ If neither of these conditions is met, the host shuts down.
 The identity of the sequencer is listed in the management contract on the L1. This allows other nodes to verify that 
 the rollups are created by the sequencer.
 
-### Creation of light batches
+### Production of light batches
 
 On each block, the sequencer's host feeds a set of transactions to the enclave. The enclave responds by creating a 
 signed and encrypted *light batch*. This light batch is formally identical to the rollup of the final design, including 
@@ -61,7 +61,7 @@ different light batch (e.g. where the sequencer performs front-running) to be sh
 From the user's perspective, the transactions in the light batch are considered final (e.g. responses to RPC calls from 
 the client behave as if the transactions were completely final).
 
-### Creation of rollups
+### Production of rollups
 
 Every `x` blocks, the sequencer's host requests the creation of a rollup. This rollup contains all the light batches 
 created since the last rollup, in a Merkle tree structure. This rollup is sent to be included on the L1.  The rollup is 
@@ -75,7 +75,9 @@ A rollup is produced whenever one of the following conditions is met:
 
 `y`, `z` and `w` are configurable per network.
 
-The nodes scan incoming blocks to retrieve this rollup. They validate the received rollup by:
+### Discovery of rollups
+
+Nodes scan incoming L1 blocks for new rollups. They validate each new rollup by:
 
 * Checking that it is produced by the designated sequencer
 * Checking that it contains all the light batches since the last rollup
@@ -93,3 +95,4 @@ They then persist the rollup, so that they have a record of which light batches 
 
 * How do we prevent the sequencer from running `n` enclaves and using `n-1` of them to test the impact of various 
   transaction sets (e.g. to identify front-running opportunities)?
+* How do we provide proof that a given rollup does not contain a required light-batch transaction?
