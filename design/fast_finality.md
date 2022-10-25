@@ -2,8 +2,23 @@
 
 ## Scope
 
-The introduction of a centralised sequencer to improve cost-per-transaction during the bootstrapping phase, as 
+The introduction of a single sequencer to improve cost-per-transaction during the bootstrapping phase, as 
 described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md).
+
+## Requirements
+
+* Finality
+  * Transaction *soft* finality (finality guaranteed by the sequencer) is achieved in less than two seconds
+  * There is an eventual transaction *hard* finality (finality guaranteed by the L1)
+* Cost
+  * L1 transaction costs can be driven arbitrarily low, at the expense of extending the hard-finality window
+* User/dev experience
+  * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
+* Operations
+  * The sequencer is highly available
+* Security
+  * The sequencer is not able to "rewrite history" (or is strongly disincentivised from doing so), even for soft-final 
+    transactions (e.g. to perform front-running)
 
 ## Assumptions
 
@@ -12,7 +27,7 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 
 ## Constraints
 
-* Rollups are only published to the L1 every `x` blocks, where `x` >> 1
+* It must be possible to only publish rollups to the L1 every `x` blocks, where `x` >> 1
 * It must be possible to produce light batches (see below) at a higher frequency than L1 blocks
 
 ## Design
@@ -41,7 +56,7 @@ light batches are not sent to be included on the L1.
 
 The linkage of each light batch to its parent ensures that the sequencer's host cannot feed the enclave a light batch, 
 use RPC requests to gain information about the contents of the corresponding transactions, then feed the enclave a 
-different light batch (e.g. where the sequencer does front-running) to be shared with peers.
+different light batch (e.g. where the sequencer performs front-running) to be shared with peers.
 
 From the user's perspective, the transactions in the light batch are considered final (e.g. responses to RPC calls from 
 the client behave as if the transactions were completely final).
@@ -64,6 +79,7 @@ They then persist the rollup, so that they have a record of which light batches 
 * Allowing nodes to challenge the sequencer's rollups (e.g. if the light batches are missing transactions, or if a 
   certain light batch is not included in the rollup)
 * Creation of an inbox to allow transactions to be "forced through" if the sequencer is excluding them
+* High-availability of the sequencer
 
 ## Unresolved issues
 
