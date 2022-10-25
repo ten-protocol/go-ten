@@ -74,7 +74,7 @@ func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.
 
 func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
 	var receipt types.Receipt
-	err := ac.rpcClient.CallContext(ctx, &receipt, rpc.GetTxReceipt, txHash)
+	err := ac.rpcClient.CallContext(ctx, &receipt, rpc.GetTransactionReceipt, txHash)
 	return &receipt, err
 }
 

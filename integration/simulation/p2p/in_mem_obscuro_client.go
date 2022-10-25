@@ -103,7 +103,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.GetTransactionCount:
 		return c.getTransactionCount(result, args)
 
-	case rpc.GetTxReceipt:
+	case rpc.GetTransactionReceipt:
 		return c.getTransactionReceipt(result, args)
 
 	case rpc.StopHost:
@@ -174,13 +174,13 @@ func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) err
 }
 
 func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.GetTxReceipt)
+	enc, err := getEncryptedBytes(args, rpc.GetTransactionReceipt)
 	if err != nil {
 		return err
 	}
 	encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTxReceipt, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionReceipt, err)
 	}
 
 	// GetTransactionReceipt returns string pointer, we want string

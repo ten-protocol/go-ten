@@ -14,7 +14,7 @@ const (
 	GetCode                 = "eth_getCode"
 	GetTransactionByHash    = "eth_getTransactionByHash"
 	GetTransactionCount     = "eth_getTransactionCount"
-	GetTxReceipt            = "eth_getTransactionReceipt"
+	GetTransactionReceipt   = "eth_getTransactionReceipt"
 	SendRawTransaction      = "eth_sendRawTransaction"
 	EstimateGas             = "eth_estimateGas"
 	GetLogs                 = "eth_getLogs"
