@@ -83,13 +83,6 @@ type Node struct {
 }
 
 func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) host.MockHost {
-	if config.IsGenesis && config.NodeType != common.Aggregator {
-		logger.Crit("genesis node must be an aggregator")
-	}
-	if !config.IsGenesis && config.NodeType == common.Aggregator {
-		logger.Crit("only the genesis node can be an aggregator")
-	}
-
 	node := &Node{
 		// config
 		config:      config,
@@ -184,6 +177,8 @@ func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, 
 }
 
 func (a *Node) Start() {
+	a.validateConfig()
+
 	tomlConfig, err := toml.Marshal(a.config)
 	if err != nil {
 		a.logger.Crit("could not print host config")
@@ -1001,6 +996,16 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 	}
 	// response not found
 	return false
+}
+
+// Checks the node config is valid.
+func (a *Node) validateConfig() {
+	if a.config.IsGenesis && a.config.NodeType != common.Aggregator {
+		a.logger.Crit("genesis node must be an aggregator")
+	}
+	if !a.config.IsGenesis && a.config.NodeType == common.Aggregator {
+		a.logger.Crit("only the genesis node can be an aggregator")
+	}
 }
 
 // We retry calling `funcToRetry`, with a pause in between that starts at one second and doubles on each retry.
