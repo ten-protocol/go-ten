@@ -113,7 +113,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		var result types.Header
-		err = obscuroClient.Call(&result, rpc.RPCGetCurrentBlockHead)
+		err = obscuroClient.Call(&result, rpc.GetCurrentBlockHead)
 		if err == nil && result.Number.Uint64() > 0 {
 			return
 		}
@@ -127,7 +127,7 @@ func teardown(obscuroClient rpc.Client, rpcServerAddr string) {
 		return
 	}
 
-	obscuroClient.Call(nil, rpc.RPCStopHost) //nolint:errcheck
+	obscuroClient.Call(nil, rpc.StopHost) //nolint:errcheck
 
 	// We wait for the client server port to be closed.
 	wait := 0

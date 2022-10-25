@@ -67,7 +67,7 @@ services:
       "--",
       "--hostID=$HOSTID",
       "--address=:11000",
-      "--nodeType=$NODETYPE"
+      "--nodeType=$NODETYPE",
       "--useInMemoryDB=false",
       "--sqliteDBPath=/data/sqlite.db",
       "--managementContractAddress=$MGMTCONTRACTADDR",

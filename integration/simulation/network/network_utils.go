@@ -79,6 +79,7 @@ func createInMemObscuroNode(
 		NodeType:            nodeType,
 		GossipRoundDuration: avgGossipPeriod,
 		HasClientRPCHTTP:    false,
+		P2PPublicAddress:    "dummy_address", // Required because the node sanity-checks that this field is not empty at start-up.
 	}
 
 	enclaveConfig := config.EnclaveConfig{
@@ -132,6 +133,7 @@ func createSocketObscuroNode(
 		EnclaveRPCTimeout:      ClientRPCTimeout,
 		EnclaveRPCAddress:      enclaveAddr,
 		P2PBindAddress:         p2pAddr,
+		P2PPublicAddress:       p2pAddr,
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,
 	}

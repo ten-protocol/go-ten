@@ -162,7 +162,7 @@ func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
 // Retrieves the total number of transactions.
 func (o *Obscuroscan) getNumTransactions(resp http.ResponseWriter, _ *http.Request) {
 	var numTransactions *big.Int
-	err := o.client.Call(&numTransactions, rpc.RPCGetTotalTxs)
+	err := o.client.Call(&numTransactions, rpc.GetTotalTxs)
 	if err != nil {
 		o.logger.Error("Could not fetch latest transactions.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch total transactions.")
@@ -249,7 +249,7 @@ func (o *Obscuroscan) getLatestTxs(resp http.ResponseWriter, _ *http.Request) {
 	numTransactions := 5
 
 	var txHashes []gethcommon.Hash
-	err := o.client.Call(&txHashes, rpc.RPCGetLatestTxs, numTransactions)
+	err := o.client.Call(&txHashes, rpc.GetLatestTxs, numTransactions)
 	if err != nil {
 		o.logger.Error("Could not fetch latest transactions.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch latest transactions.")
@@ -294,7 +294,7 @@ func (o *Obscuroscan) getBlock(resp http.ResponseWriter, req *http.Request) {
 	blockHash := gethcommon.HexToHash(blockHashStr)
 
 	var blockHeader *types.Header
-	err = o.client.Call(&blockHeader, rpc.RPCGetBlockHeaderByHash, blockHash)
+	err = o.client.Call(&blockHeader, rpc.GetBlockHeaderByHash, blockHash)
 	if err != nil {
 		o.logger.Error(fmt.Sprintf("could not retrieve block with hash %s", blockHash), log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch block.")
@@ -332,7 +332,7 @@ func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http
 		// A "0x" prefix indicates that we should retrieve the rollup by transaction hash.
 		txHash := gethcommon.HexToHash(buffer.String())
 
-		err = o.client.Call(&rollup, rpc.RPCGetRollupForTx, txHash)
+		err = o.client.Call(&rollup, rpc.GetRollupForTx, txHash)
 		if err != nil {
 			o.logger.Error("could not retrieve rollup.", log.ErrKey, err)
 			logAndSendErr(resp, "Could not fetch rollup.")
@@ -399,7 +399,7 @@ func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request)
 // Retrieves the node's attestation.
 func (o *Obscuroscan) attestation(resp http.ResponseWriter, _ *http.Request) {
 	var attestation *common.AttestationReport
-	err := o.client.Call(&attestation, rpc.RPCAttestation)
+	err := o.client.Call(&attestation, rpc.Attestation)
 	if err != nil {
 		o.logger.Error("could not retrieve node's attestation.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not retrieve node's attestation.")
@@ -423,7 +423,7 @@ func (o *Obscuroscan) attestation(resp http.ResponseWriter, _ *http.Request) {
 // Retrieves the node's attestation report.
 func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Request) {
 	var attestation *common.AttestationReport
-	err := o.client.Call(&attestation, rpc.RPCAttestation)
+	err := o.client.Call(&attestation, rpc.Attestation)
 	if err != nil {
 		o.logger.Error("could not retrieve node's attestation.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not verify node's attestation.")
@@ -470,7 +470,7 @@ func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Reques
 // Returns the number of the latest rollup.
 func (o *Obscuroscan) getLatestRollupNumber() (int64, error) {
 	var rollupHeader *common.Header
-	err := o.client.Call(&rollupHeader, rpc.RPCGetCurrentRollupHead)
+	err := o.client.Call(&rollupHeader, rpc.GetCurrentRollupHead)
 	if err != nil {
 		return 0, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
 	}
@@ -483,7 +483,7 @@ func (o *Obscuroscan) getLatestRollupNumber() (int64, error) {
 func (o *Obscuroscan) getRollupByNumber(rollupNumber int) (*common.ExtRollup, error) {
 	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
 	var rollupHeader *common.Header
-	err := o.client.Call(&rollupHeader, rpc.RPCGetRollupHeaderByNumber, rollupNumber)
+	err := o.client.Call(&rollupHeader, rpc.GetRollupHeaderByNumber, rollupNumber)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", rollupNumber, err)
 	}
@@ -494,7 +494,7 @@ func (o *Obscuroscan) getRollupByNumber(rollupNumber int) (*common.ExtRollup, er
 	}
 
 	var rollup *common.ExtRollup
-	err = o.client.Call(&rollup, rpc.RPCGetRollup, rollupHash)
+	err = o.client.Call(&rollup, rpc.GetRollup, rollupHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup. Cause: %w", err)
 	}

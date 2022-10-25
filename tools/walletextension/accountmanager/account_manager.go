@@ -104,7 +104,7 @@ func (m *AccountManager) suggestAccountClient(req *RPCRequest, accClients map[ge
 		return nil
 	}
 
-	if req.Method == rpc.RPCCall {
+	if req.Method == rpc.Call {
 		// check if request params had a "from" address and if we had a client for that address
 		fromClient, found := checkForFromField(paramsMap, accClients)
 		if found {
@@ -212,7 +212,7 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 }
 
 func (m *AccountManager) performRequest(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
-	if req.Method == rpc.RPCSubscribe {
+	if req.Method == rpc.Subscribe {
 		return m.executeSubscribe(client, req, resp, userConn)
 	}
 	return executeCall(client, req, resp)
@@ -223,7 +223,7 @@ func (m *AccountManager) executeSubscribe(client *rpc.EncRPCClient, req *RPCRequ
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
 	ch := make(chan common.IDAndLog)
-	subscription, err := client.Subscribe(context.Background(), resp, rpc.RPCSubscribeNamespace, ch, req.Params...)
+	subscription, err := client.Subscribe(context.Background(), resp, rpc.SubscribeNamespace, ch, req.Params...)
 	if err != nil {
 		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 	}
@@ -244,7 +244,7 @@ func (m *AccountManager) executeSubscribe(client *rpc.EncRPCClient, req *RPCRequ
 					continue
 				}
 
-				m.logger.Info(fmt.Sprintf("Forwarding log from Obscuro noe: %s", jsonResponse), log.SubIDKey, idAndLog.SubID)
+				m.logger.Trace(fmt.Sprintf("Forwarding log from Obscuro node: %s", jsonResponse), log.SubIDKey, idAndLog.SubID)
 				err = userConn.WriteResponse(jsonResponse)
 				if err != nil {
 					m.logger.Error("could not write the JSON log to the websocket on subscription %", log.SubIDKey, idAndLog.SubID, log.ErrKey, err)
@@ -274,7 +274,7 @@ func (m *AccountManager) executeSubscribe(client *rpc.EncRPCClient, req *RPCRequ
 }
 
 func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
-	if req.Method == rpc.RPCCall || req.Method == rpc.RPCEstimateGas {
+	if req.Method == rpc.Call || req.Method == rpc.EstimateGas {
 		// Never modify the original request, as it might be reused.
 		req = req.Clone()
 
@@ -288,7 +288,7 @@ func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) e
 		}
 	}
 
-	if req.Method == rpc.RPCGetLogs {
+	if req.Method == rpc.GetLogs {
 		// Never modify the original request, as it might be reused.
 		req = req.Clone()
 

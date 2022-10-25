@@ -171,8 +171,8 @@ func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 	return authClients
 }
 
-func startRemoteEnclaveServers(startAt int, params *params.SimParams) {
-	for i := startAt; i < params.NumberOfNodes; i++ {
+func startRemoteEnclaveServers(params *params.SimParams) {
+	for i := 0; i < params.NumberOfNodes; i++ {
 		// create a remote enclave server
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
@@ -206,7 +206,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 		wg.Add(1)
 		go func(c rpc.Client) {
 			defer wg.Done()
-			err := c.Call(nil, rpc.RPCStopHost)
+			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
 				testlog.Logger().Error("Could not stop Obscuro node.", log.ErrKey, err)
 			}
@@ -286,8 +286,8 @@ func isAddressAvailable(address string) bool {
 
 // GetNodeType returns the type of the node based on its ID.
 func GetNodeType(i int) common.NodeType {
-	// We assign every other node the role of aggregator.
-	if i%2 == 0 {
+	// Only the genesis node is assigned the role of aggregator.
+	if i == 0 {
 		return common.Aggregator
 	}
 	return common.Validator

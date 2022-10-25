@@ -49,7 +49,7 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 
 			counter += 100
 			if counter > receiptTimeoutMillis {
-				return fmt.Errorf("could not retrieve transaction after timeout")
+				return fmt.Errorf("could not retrieve transaction %s after timeout", txHash.Hex())
 			}
 			time.Sleep(100 * time.Millisecond)
 			continue

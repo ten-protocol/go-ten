@@ -52,8 +52,9 @@ const (
 
 // Node is an implementation of host.Host.
 type Node struct {
-	config  config.HostConfig
-	shortID uint64
+	config      config.HostConfig
+	shortID     uint64
+	isSequencer bool
 
 	p2p           host.P2P             // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
@@ -84,8 +85,9 @@ type Node struct {
 func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) host.MockHost {
 	node := &Node{
 		// config
-		config:  config,
-		shortID: common.ShortAddress(config.ID),
+		config:      config,
+		shortID:     common.ShortAddress(config.ID),
+		isSequencer: config.IsGenesis && config.NodeType == common.Aggregator,
 
 		// Communication layers.
 		p2p:           p2p,
@@ -175,6 +177,8 @@ func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, 
 }
 
 func (a *Node) Start() {
+	a.validateConfig()
+
 	tomlConfig, err := toml.Marshal(a.config)
 	if err != nil {
 		a.logger.Crit("could not print host config")
@@ -253,7 +257,7 @@ func (a *Node) broadcastSecret() error {
 		HostAddress:   a.config.P2PPublicAddress,
 	}
 	initialiseSecretTx := a.mgmtContractLib.CreateInitializeSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
-	err = a.signAndBroadcastTx(initialiseSecretTx, l1TxTriesSecret)
+	err = a.signAndBroadcastL1Tx(initialiseSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("failed to initialise enclave secret. Cause: %w", err)
 	}
@@ -303,7 +307,7 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	return encryptedResponse, nil
 }
 
-// ReceiveRollup is called by counterparties when there is a Rollup to broadcast
+// ReceiveRollup is called when receiving a rollup from a counterparty.
 // All it does is forward the rollup for processing to the enclave
 func (a *Node) ReceiveRollup(r common.EncodedRollup) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
@@ -422,6 +426,8 @@ func (a *Node) startProcessing() {
 				a.logger.Warn("Could not check enclave initialisation. ", log.ErrKey, err)
 			}
 
+			// TODO - Check that the rollup was produced by an aggregator.
+
 			go func() {
 				err := a.enclaveClient.SubmitRollup(common.ExtRollup{
 					Header:          rol.Header,
@@ -480,8 +486,14 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 
 		a.storeBlockProcessingResult(result)
 		a.logEventManager.SendLogsToSubscribers(result)
+
+		// We check that we only produced a rollup if we're an aggregator.
+		if result.ProducedRollup.Header != nil && a.config.NodeType != common.Aggregator {
+			a.logger.Crit("node produced a rollup but was not an aggregator")
+		}
 	}
 
+	// TODO - Should these checks live in the `for` block above, so that they apply to all blocks, and not just the last?
 	if !result.IngestedBlock {
 		b, err := blocks[len(blocks)-1].DecodeBlock()
 		if err != nil {
@@ -500,12 +512,8 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 	if result.ProducedRollup.Header == nil {
 		return nil
 	}
-	// We check that a rollup wasn't somehow produced by a non-aggregator.
-	if a.config.NodeType != common.Aggregator {
-		a.logger.Crit("node produced a rollup but was not an aggregator")
-	}
 
-	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToRollup())
+	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToEncryptedRollup())
 	if err != nil {
 		return fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
@@ -557,7 +565,7 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 				winnerRollup.Header.Number,
 			))
 
-		encodedRollup, err := common.EncodeRollup(winnerRollup.ToRollup())
+		encodedRollup, err := common.EncodeRollup(winnerRollup.ToEncryptedRollup())
 		if err != nil {
 			a.logger.Crit("could not encode rollup.", log.ErrKey, err)
 		}
@@ -569,7 +577,7 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 		// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
 		if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
 			rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
-			err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
+			err = a.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 			if err != nil {
 				a.logger.Error("could not broadcast winning rollup", log.ErrKey, err)
 			}
@@ -603,7 +611,7 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
 			common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 		))
-	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToRollup())
+	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToEncryptedRollup())
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
@@ -612,7 +620,7 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	}
 
 	rollupTx := a.mgmtContractLib.CreateRollup(l1tx, a.ethWallet.GetNonceAndIncrement())
-	err = a.signAndBroadcastTx(rollupTx, l1TxTriesRollup)
+	err = a.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
 	}
@@ -621,17 +629,21 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.
-func (a *Node) signAndBroadcastTx(tx types.TxData, tries int) error {
+func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries int) error {
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
 		return err
 	}
 
-	funcBroadcastTx := func() error { return a.ethClient.SendTransaction(signedTx) }
+	funcBroadcastTx := func() error {
+		// TODO - #1089 - Await transaction receipt after sending the transaction.
+		return a.ethClient.SendTransaction(signedTx)
+	}
 	err = retryWithBackoff(tries, funcBroadcastTx)
 	if err == nil {
 		return nil
 	}
+
 	return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 }
 
@@ -653,7 +665,7 @@ func (a *Node) requestSecret() error {
 		Attestation: encodedAttestation,
 	}
 	requestSecretTx := a.mgmtContractLib.CreateRequestSecret(l1tx, a.ethWallet.GetNonceAndIncrement())
-	err = a.signAndBroadcastTx(requestSecretTx, l1TxTriesSecret)
+	err = a.signAndBroadcastL1Tx(requestSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return err
 	}
@@ -695,7 +707,7 @@ func (a *Node) publishSharedSecretResponse(scrtResponse *common.ProducedSecretRe
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 	respondSecretTx := a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false)
-	err := a.signAndBroadcastTx(respondSecretTx, l1TxTriesSecret)
+	err := a.signAndBroadcastL1Tx(respondSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("could not broadcast secret response. Cause %w", err)
 	}
@@ -942,7 +954,7 @@ func (a *Node) awaitSecret() error {
 				return fmt.Errorf("failed to retrieve block. Cause: %w", err)
 			}
 			if a.checkBlockForSecretResponse(block) {
-				// todo this should be defered when the errors are upstreamed instead of panic'd
+				// todo this should be deferred when the errors are upstreamed instead of panic'd
 				subs.Unsubscribe()
 				return nil
 			}
@@ -958,7 +970,7 @@ func (a *Node) awaitSecret() error {
 			}
 
 		case <-time.After(time.Second * 10):
-			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select
+			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select)
 			a.logger.Info("Still waiting for secret from the L1...")
 
 		case <-a.exitNodeCh:
@@ -984,6 +996,20 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 	}
 	// response not found
 	return false
+}
+
+// Checks the node config is valid.
+func (a *Node) validateConfig() {
+	if a.config.IsGenesis && a.config.NodeType != common.Aggregator {
+		a.logger.Crit("genesis node must be an aggregator")
+	}
+	if !a.config.IsGenesis && a.config.NodeType == common.Aggregator {
+		a.logger.Crit("only the genesis node can be an aggregator")
+	}
+
+	if a.config.P2PPublicAddress == "" {
+		a.logger.Crit("the node must specify a public P2P address")
+	}
 }
 
 // We retry calling `funcToRetry`, with a pause in between that starts at one second and doubles on each retry.
