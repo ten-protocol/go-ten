@@ -7,11 +7,13 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 
 ## Assumptions
 
-* There is a single aggregator that is also the genesis node. This node assumes the role of sequencer
+* There is a single aggregator that is also the genesis node. This node is known as the *sequencer*
+* The enclave has a start-up delay that exceeds the production time for light batches (see below)
 
 ## Constraints
 
 * Rollups are only published to the L1 every `x` blocks, where `x` >> 1
+* It must be possible to produce light batches (see below) at a higher frequency than L1 blocks
 
 ## Design
 
@@ -29,13 +31,17 @@ the rollups are created by the sequencer.
 
 ### Creation of light batches
 
-On each block, a *light batch* is created. This light batch is formally identical to the rollup of the final design, 
-including a list of finalised transactions and a header including information on the current light batch and the 
-hash of the "parent" light batch. The light batch is signed and encrypted by the sequencer.
+On each block, the sequencer's host feeds a set of transactions to the enclave. The enclave responds by creating a 
+signed and encrypted *light batch*. This light batch is formally identical to the rollup of the final design, including 
+a list of the provided transactions and a header including information on the current light batch and the hash of the 
+"parent" light batch.
 
-As in the final design, each light batch is linked to a specific L1 block, and (at most) a single light batch is 
-created per L1 block. The light batch is immediately distributed by the sequencer to all other nodes. Unlike in the 
-final design, these light batches are not sent to be included on the L1.
+The sequencer's host immediately distributes the light batch to all other nodes. Unlike in the final design, these 
+light batches are not sent to be included on the L1.
+
+The linkage of each light batch to its parent ensures that the sequencer's host cannot feed the enclave a light batch, 
+use RPC requests to gain information about the contents of the corresponding transactions, then feed the enclave a 
+different light batch (e.g. where the sequencer does front-running) to be shared with peers.
 
 From the user's perspective, the transactions in the light batch are considered final (e.g. responses to RPC calls from 
 the client behave as if the transactions were completely final).
@@ -63,4 +69,5 @@ They then persist the rollup, so that they have a record of which light batches 
 
 * Where do we store `x`, the frequency with which rollups are produced? Can it be changed at the sequencer's sole 
   discretion?
-* Should the creation of light batches be based on a proof-of-work timer, or should they be produced per block?
+* How do we prevent the sequencer from running `n` enclaves and using `n-1` of them to test the impact of various 
+  transaction sets (e.g. to identify front-running opportunities)?
