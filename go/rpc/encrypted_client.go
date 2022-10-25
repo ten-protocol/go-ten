@@ -34,15 +34,15 @@ const (
 
 // SensitiveMethods for which the RPC requests and responses should be encrypted
 var SensitiveMethods = []string{
-	RPCCall,
-	RPCGetBalance,
-	RPCGetTransactionByHash,
-	RPCGetTransactionCount,
-	RPCGetTransactionReceipt,
-	RPCSendRawTransaction,
-	RPCSubscribe,
-	RPCEstimateGas,
-	RPCGetLogs,
+	Call,
+	GetBalance,
+	GetTransactionByHash,
+	GetTransactionCount,
+	GetTransactionReceipt,
+	SendRawTransaction,
+	Subscribe,
+	EstimateGas,
+	GetLogs,
 }
 
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
@@ -136,8 +136,8 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namesp
 	}
 
 	subscriptionType := args[0]
-	if subscriptionType != RPCSubscriptionTypeLogs {
-		return nil, fmt.Errorf("only subscriptions of type %s are supported", RPCSubscriptionTypeLogs)
+	if subscriptionType != SubscriptionTypeLogs {
+		return nil, fmt.Errorf("only subscriptions of type %s are supported", SubscriptionTypeLogs)
 	}
 
 	logSubscription, err := c.createAuthenticatedLogSubscription(args)
@@ -358,7 +358,7 @@ func (c *EncRPCClient) registerViewingKey() error {
 	}
 
 	var rpcErr error
-	err = c.Call(&rpcErr, RPCAddViewingKey, encryptedViewingKeyBytes, c.viewingKey.SignedKey)
+	err = c.Call(&rpcErr, AddViewingKey, encryptedViewingKeyBytes, c.viewingKey.SignedKey)
 	if err != nil {
 		return fmt.Errorf("could not add viewing key: %w", err)
 	}

@@ -71,7 +71,7 @@ func TestCanDeployGuessingGameContract(t *testing.T) {
 	contractDeployerClient := getClient(contractDeployerWallet)
 
 	var deployedCode string
-	err = contractDeployerClient.Call(&deployedCode, rpc.RPCGetCode, contractAddr, latestBlock)
+	err = contractDeployerClient.Call(&deployedCode, rpc.GetCode, contractAddr, latestBlock)
 	if err != nil {
 		panic(err)
 	}
@@ -95,7 +95,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	// We check the faucet's balance before and after the deployment. Since the contract deployer has already been sent
 	// sufficient funds, the faucet should have been to dispense any more, leaving its balance unchanged.
 	var faucetInitialBalance string
-	err := faucetClient.Call(&faucetInitialBalance, rpc.RPCGetBalance, faucetWallet.Address().Hex(), latestBlock)
+	err := faucetClient.Call(&faucetInitialBalance, rpc.GetBalance, faucetWallet.Address().Hex(), latestBlock)
 	if err != nil {
 		panic(err)
 	}
@@ -108,7 +108,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	var faucetBalanceAfterDeploy string
 	// We create a new faucet client because deploying the contract will have overwritten the faucet's viewing key on the node.
 	faucetClient = getClient(faucetWallet)
-	err = faucetClient.Call(&faucetBalanceAfterDeploy, rpc.RPCGetBalance, faucetWallet.Address().Hex(), latestBlock)
+	err = faucetClient.Call(&faucetBalanceAfterDeploy, rpc.GetBalance, faucetWallet.Address().Hex(), latestBlock)
 	if err != nil {
 		panic(err)
 	}

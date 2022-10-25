@@ -206,7 +206,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 		wg.Add(1)
 		go func(c rpc.Client) {
 			defer wg.Done()
-			err := c.Call(nil, rpc.RPCStopHost)
+			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
 				testlog.Logger().Error("Could not stop Obscuro node.", log.ErrKey, err)
 			}

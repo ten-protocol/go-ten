@@ -53,7 +53,7 @@ const (
 	successMsg = "success"
 )
 
-var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe)
+var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
 
 //go:embed static
 var staticFiles embed.FS
@@ -232,7 +232,7 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 		return
 	}
 
-	if rpcReq.Method == rpc.RPCSubscribe && !userConn.SupportsSubscriptions() {
+	if rpcReq.Method == rpc.Subscribe && !userConn.SupportsSubscriptions() {
 		userConn.HandleError(ErrSubscribeFailHTTP)
 		return
 	}

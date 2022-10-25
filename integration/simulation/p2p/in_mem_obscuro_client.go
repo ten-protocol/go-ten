@@ -73,50 +73,50 @@ func NewInMemoryEncRPCClient(host host.Host, viewingKey *rpc.ViewingKey, logger 
 // Call bypasses RPC, and invokes methods on the node directly.
 func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
-	case rpc.RPCGetID:
+	case rpc.GetID:
 		*result.(*gethcommon.Address) = c.testAPI.GetID()
 		return nil
 
-	case rpc.RPCSendRawTransaction:
+	case rpc.SendRawTransaction:
 		return c.sendRawTransaction(args)
 
-	case rpc.RPCGetCurrentBlockHead:
+	case rpc.GetCurrentBlockHead:
 		*result.(**types.Header) = c.testAPI.GetCurrentBlockHead()
 		return nil
 
-	case rpc.RPCGetCurrentRollupHead:
+	case rpc.GetCurrentRollupHead:
 		*result.(**common.Header) = c.obscuroScanAPI.GetCurrentRollupHead()
 		return nil
 
-	case rpc.RPCGetRollupHeader:
+	case rpc.GetRollupHeader:
 		return c.getRollupHeader(result, args)
 
-	case rpc.RPCGetRollup:
+	case rpc.GetRollup:
 		return c.getRollup(result, args)
 
-	case rpc.RPCGetTransactionByHash:
+	case rpc.GetTransactionByHash:
 		return c.getTransactionByHash(result, args)
 
-	case rpc.RPCCall:
+	case rpc.Call:
 		return c.rpcCall(result, args)
 
-	case rpc.RPCGetTransactionCount:
+	case rpc.GetTransactionCount:
 		return c.getTransactionCount(result, args)
 
-	case rpc.RPCGetTransactionReceipt:
+	case rpc.GetTransactionReceipt:
 		return c.getTransactionReceipt(result, args)
 
-	case rpc.RPCStopHost:
+	case rpc.StopHost:
 		c.testAPI.StopHost()
 		return nil
 
-	case rpc.RPCAddViewingKey:
+	case rpc.AddViewingKey:
 		return c.addViewingKey(args)
 
-	case rpc.RPCGetBalance:
+	case rpc.GetBalance:
 		return c.getBalance(result, args)
 
-	case rpc.RPCGetLogs:
+	case rpc.GetLogs:
 		return c.getLogs(result, args)
 
 	default:
@@ -134,7 +134,7 @@ func (c *inMemObscuroClient) Subscribe(context.Context, interface{}, string, int
 }
 
 func (c *inMemObscuroClient) sendRawTransaction(args []interface{}) error {
-	encBytes, err := getEncryptedBytes(args, rpc.RPCSendRawTransaction)
+	encBytes, err := getEncryptedBytes(args, rpc.SendRawTransaction)
 	if err != nil {
 		return err
 	}
@@ -144,13 +144,13 @@ func (c *inMemObscuroClient) sendRawTransaction(args []interface{}) error {
 }
 
 func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.RPCGetTransactionByHash)
+	enc, err := getEncryptedBytes(args, rpc.GetTransactionByHash)
 	if err != nil {
 		return err
 	}
 	encryptedResponse, err := c.ethAPI.GetTransactionByHash(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetTransactionByHash, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionByHash, err)
 	}
 
 	// GetTransactionByHash returns string pointer, we want string
@@ -161,26 +161,26 @@ func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []int
 }
 
 func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.RPCCall)
+	enc, err := getEncryptedBytes(args, rpc.Call)
 	if err != nil {
 		return err
 	}
 	encryptedResponse, err := c.ethAPI.Call(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCCall, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.Call, err)
 	}
 	*result.(*interface{}) = encryptedResponse
 	return nil
 }
 
 func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.RPCGetTransactionReceipt)
+	enc, err := getEncryptedBytes(args, rpc.GetTransactionReceipt)
 	if err != nil {
 		return err
 	}
 	encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetTransactionReceipt, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionReceipt, err)
 	}
 
 	// GetTransactionReceipt returns string pointer, we want string
@@ -192,12 +192,12 @@ func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []in
 
 func (c *inMemObscuroClient) getRollupHeader(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.RPCGetRollupHeader, len(args))
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetRollupHeader, len(args))
 	}
 	// we expect a hex string representation of the hash, since that's what gets sent over RPC
 	hashStr, ok := args[0].(string)
 	if !ok {
-		return fmt.Errorf("arg to %s was not of expected type string", rpc.RPCGetRollupHeader)
+		return fmt.Errorf("arg to %s was not of expected type string", rpc.GetRollupHeader)
 	}
 	hash := gethcommon.HexToHash(hashStr)
 
@@ -207,29 +207,29 @@ func (c *inMemObscuroClient) getRollupHeader(result interface{}, args []interfac
 
 func (c *inMemObscuroClient) getRollup(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.RPCGetRollup, len(args))
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetRollup, len(args))
 	}
 	hash, ok := args[0].(gethcommon.Hash)
 	if !ok {
-		return fmt.Errorf("arg to %s was not of expected type common.Hash", rpc.RPCGetRollup)
+		return fmt.Errorf("arg to %s was not of expected type common.Hash", rpc.GetRollup)
 	}
 
 	extRollup, err := c.obscuroScanAPI.GetRollup(hash)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetRollup, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetRollup, err)
 	}
 	*result.(**common.ExtRollup) = extRollup
 	return nil
 }
 
 func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.RPCGetTransactionCount)
+	enc, err := getEncryptedBytes(args, rpc.GetTransactionCount)
 	if err != nil {
 		return err
 	}
 	encryptedResponse, err := c.ethAPI.GetTransactionCount(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetTransactionCount, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionCount, err)
 	}
 
 	*result.(*interface{}) = encryptedResponse
@@ -237,26 +237,26 @@ func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []inte
 }
 
 func (c *inMemObscuroClient) getBalance(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.RPCGetBalance)
+	enc, err := getEncryptedBytes(args, rpc.GetBalance)
 	if err != nil {
 		return err
 	}
 	encryptedResponse, err := c.ethAPI.GetBalance(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetBalance, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBalance, err)
 	}
 	*result.(*interface{}) = encryptedResponse
 	return nil
 }
 
 func (c *inMemObscuroClient) getLogs(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.RPCGetLogs)
+	enc, err := getEncryptedBytes(args, rpc.GetLogs)
 	if err != nil {
 		return err
 	}
 	encryptedResponse, err := c.filterAPI.GetLogs(context.Background(), enc)
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.RPCGetLogs, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetLogs, err)
 	}
 	*result.(*interface{}) = encryptedResponse
 	return nil
@@ -276,17 +276,17 @@ func (c *inMemObscuroClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) 
 
 func (c *inMemObscuroClient) addViewingKey(args []interface{}) error {
 	if len(args) != 2 {
-		return fmt.Errorf("expected 2 args to %s, got %d", rpc.RPCAddViewingKey, len(args))
+		return fmt.Errorf("expected 2 args to %s, got %d", rpc.AddViewingKey, len(args))
 	}
 
 	vk, ok := args[0].([]byte)
 	if !ok {
-		return fmt.Errorf("expected first arg to %s containing viewing key bytes but it had type %t", rpc.RPCAddViewingKey, args[0])
+		return fmt.Errorf("expected first arg to %s containing viewing key bytes but it had type %t", rpc.AddViewingKey, args[0])
 	}
 
 	sig, ok := args[1].([]byte)
 	if !ok {
-		return fmt.Errorf("expected second arg to %s containing signature bytes but it had type %t", rpc.RPCAddViewingKey, args[1])
+		return fmt.Errorf("expected second arg to %s containing signature bytes but it had type %t", rpc.AddViewingKey, args[1])
 	}
 	return c.obscuroAPI.AddViewingKey(vk, sig)
 }
