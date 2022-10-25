@@ -65,7 +65,7 @@ services:
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
                  "--hostID=$HOSTID",
                  "--address=:11000",
-                 "--nodeType=$NODETYPE"
+                 "--nodeType=$NODETYPE",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
                  "--erc20ContractAddresses=$HOCERC20ADDR,$POCERC20ADDR",
                  "--hostAddress=host:10000",
