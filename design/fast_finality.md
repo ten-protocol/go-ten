@@ -8,8 +8,8 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 ## Requirements
 
 * Finality
-  * Transaction *soft* finality (finality guaranteed by the sequencer) is achieved in less than two seconds
-  * There is an eventual transaction *hard* finality (finality guaranteed by the L1)
+  * Transaction *soft* finality (finality guaranteed by the sequencer) is achieved in under one second
+  * There is eventual transaction *hard* finality (finality guaranteed by the L1)
   * The sequencer achieves hard finality on the agreed cadence
   * The sequencer is not able to "rewrite history" (or is strongly disincentivised from doing so), even for soft-final
     transactions (e.g. to perform front-running)
