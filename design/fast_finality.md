@@ -1,4 +1,4 @@
-# Block explorer design
+# Fast finality design
 
 ## Scope
 
