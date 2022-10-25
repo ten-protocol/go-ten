@@ -959,7 +959,7 @@ func (a *Node) awaitSecret() error {
 				return fmt.Errorf("failed to retrieve block. Cause: %w", err)
 			}
 			if a.checkBlockForSecretResponse(block) {
-				// todo this should be defered when the errors are upstreamed instead of panic'd
+				// todo this should be deferred when the errors are upstreamed instead of panic'd
 				subs.Unsubscribe()
 				return nil
 			}
@@ -975,7 +975,7 @@ func (a *Node) awaitSecret() error {
 			}
 
 		case <-time.After(time.Second * 10):
-			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select
+			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select)
 			a.logger.Info("Still waiting for secret from the L1...")
 
 		case <-a.exitNodeCh:
