@@ -49,7 +49,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
 
 	// Start the enclaves
-	startRemoteEnclaveServers(0, params)
+	startRemoteEnclaveServers(params)
 
 	n.enclaveAddresses = make([]string, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {

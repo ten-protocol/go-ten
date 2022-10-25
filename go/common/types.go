@@ -123,7 +123,7 @@ type AttestationReport struct {
 	HostAddress string         // the IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
 }
 
-func (er ExtRollup) ToRollup() *EncryptedRollup {
+func (er ExtRollup) ToEncryptedRollup() *EncryptedRollup {
 	return &EncryptedRollup{
 		Header:       er.Header,
 		TxHashes:     er.TxHashes,
