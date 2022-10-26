@@ -82,8 +82,11 @@ creating a signed and encrypted *light batch*. This light batch is formally iden
 design, including a list of the provided transactions and a header including information on the current light batch and 
 the hash of the "parent" light batch.
 
-The sequencer's host immediately distributes the light batch to all other nodes. These light batches are not sent to be 
-included on the L1. When a node receives a light batch, it checks that it has also stored the light batch's parent. If 
+The sequencer's host immediately distributes the light batch to all other nodes, who gossip it onwards to other nodes
+(ensuring the sequencer cannot restrict the distribution of light batches to specific nodes). These light batches are 
+not sent to be included on the L1.
+
+When a node receives a light batch, it checks that it has also stored the light batch's parent. If 
 not, it walks the chain backwards, requesting any light batches it is missing until it hits a stored light batch. In 
 the current design, it requests these light batches from random nodes; once a gossip protocol is implemented, it will 
 request the light batches from its known peers.
@@ -124,8 +127,8 @@ They then persist the rollup, so that they have a record of which light batches 
 
 ## Future work
 
-* Allowing nodes to challenge the sequencer's rollups (e.g. if the light batches are missing transactions, or if a 
-  certain light batch is not included in the rollup)
+* Allowing nodes to challenge the sequencer (e.g. if the light batches are missing transactions, if a certain light 
+  batch is not included in the rollup, or if light batches and/or rollups are not produced at the correct frequency)
 * Creation of an inbox to allow transactions to be "forced through" if the sequencer is excluding them (the rough idea 
   is that there will be an inbox for transactions in the management contract, and validators will reject light batches 
   that do not contain any (valid) transactions that have sat in the inbox for a certain amount of time)
@@ -134,12 +137,9 @@ They then persist the rollup, so that they have a record of which light batches 
 
 * Select a design for preventing value extraction (see the section 
   `Designs considering for preventing value-extraction`, below)
-* How do we ensure the sequencer distributes all light batches to all nodes?
 * Do the light batches need to be linked to the latest block that was fed into the enclave?
-* How do we achieve high-availability of the sequencer, both for the enclave and for the host? How do we prevent 
-  denial-of-service attacks on both?
+* How do we prevent denial-of-service attacks on the sequencer?
 * How do we prevent attackers from "gumming up" the sequencer's enclaves with random, fake light-batches?
-* How do we address the issue of lost transactions during failover?
 
 ## Appendices
 
