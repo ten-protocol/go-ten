@@ -158,8 +158,8 @@ This approach is unworkable. We cannot achieve the desired high-availability wit
 #### Detect restarts on sequencer enclaves
 
 We allow validators to detect how often sequencer enclaves are restarted, incentivising good behaviour on behalf of the 
-sequencer, and allowing the issue of a malicious (or incompetent) sequencer to be handled as a governance action. For 
-this to work, validators would have to actively assess whether the sequencer is doing an adequate job.
+sequencer, and allowing the issue of a malicious (or incompetent) sequencer to be detected and handled as a governance 
+action. For this to work, validators would have to actively assess whether the sequencer is doing an adequate job.
 
 There are two flavours of this.
 
