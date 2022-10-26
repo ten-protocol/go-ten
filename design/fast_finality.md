@@ -28,8 +28,9 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 * User/dev experience
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
 * Operations
-  * The sequencer is highly available; the failure of a single component does not impact its ability to deliver on any 
-    of the requirements above
+  * The sequencer is hot-warm; if a single component fails, another is standing by in a ready state to take over
+  * Failover does not require a governance action, but may require manual intervention
+  * During failover, it is acceptable to break the one-second soft-finality guarantee 
 
 ## Assumptions
 
@@ -124,7 +125,8 @@ They then persist the rollup, so that they have a record of which light batches 
 * Do the light batches need to be linked to the latest block that was fed into the enclave?
 * How do we achieve high-availability of the sequencer, both for the enclave and for the host? How do we prevent 
   denial-of-service attacks on both?
-* How do we prevent attackers from "gumming up" the sequencer with random, fake light-batches?
+* How do we prevent attackers from "gumming up" the sequencer's enclaves with random, fake light-batches?
+* How do we address the issue of lost transactions during failover?
 
 ## Appendices
 
