@@ -52,10 +52,12 @@ the rollups are created by the sequencer.
 
 ### Production of light batches
 
-On each block, the sequencer's host feeds a set of transactions to the enclave. The enclave responds by creating a 
-signed and encrypted *light batch*. This light batch is formally identical to the rollup of the final design, including 
-a list of the provided transactions and a header including information on the current light batch and the hash of the 
-"parent" light batch.
+A light batch is produced on the required cadence to meet the network's soft-finality window of one second.
+
+To produce a light batch, the sequencer's host feeds a set of transactions to the enclave. The enclave responds by 
+creating a signed and encrypted *light batch*. This light batch is formally identical to the rollup of the final 
+design, including a list of the provided transactions and a header including information on the current light batch and 
+the hash of the "parent" light batch.
 
 The sequencer's host immediately distributes the light batch to all other nodes. Unlike in the final design, these 
 light batches are not sent to be included on the L1.
@@ -69,17 +71,17 @@ the client behave as if the transactions were completely final).
 
 ### Production of rollups
 
-Every `x` blocks, the sequencer's host requests the creation of a rollup. The sequencer's enclave produces a rollup 
-containing all the light batches created since the last rollup, in a sparse Merkle tree structure. This rollup is 
-encrypted and signed, then sent to be included on the L1.
-
 A rollup is produced whenever one of the following conditions is met:
 
-* The number of transactions across all light-batches since the last rollup exceeds `y`
-* The value of all transactions across all light-batches since the last rollup exceeds `z`
-* The time since the last rollup was produced exceeds `w`
+* The number of transactions across all light-batches since the last rollup exceeds `x`
+* The value of all transactions across all light-batches since the last rollup exceeds `y`
+* The number of blocks since the last rollup was produced exceeds `z`
 
-`y`, `z` and `w` are configurable per network.
+`x`, `y` and `z` are configurable per network.
+
+To produce a rollup, the sequencer's host requests the creation of a rollup. The sequencer's enclave produces a rollup 
+containing all the light batches created since the last rollup, in a sparse Merkle tree structure. This rollup is 
+encrypted and signed, then sent to be included on the L1.
 
 ### Discovery of rollups
 
@@ -104,3 +106,4 @@ They then persist the rollup, so that they have a record of which light batches 
 * How do we prevent the sequencer from running `n` enclaves and using `n-1` of them to test the impact of various 
   transaction sets (e.g. to identify front-running opportunities)?
 * How do we ensure the sequencer distributes all light batches to all nodes?
+* Do the light batches need to be linked to the latest block that was fed into the enclave (evaluate pros and cons)?
