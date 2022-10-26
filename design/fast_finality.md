@@ -125,6 +125,63 @@ Nodes scan incoming L1 blocks for new rollups. They validate each new rollup by:
 
 They then persist the rollup, so that they have a record of which light batches have been confirmed on the L1.
 
+### High availability
+
+#### Cluster configuration
+
+The sequencer can run a cluster of multiple hosts and enclaves to achieve high-availability. The setup must consist of 
+`n` host/enclave pairs. This approach was selected over having `n` hosts all speaking to `m` enclaves for several 
+reasons:
+
+* By allowing host/enclave pairs to be colocated and reducing the number of duplicated messages, performance is 
+  improved
+* It is easier to reason about whether the host and enclave are up-to-date
+
+To increase resilience, neither the hosts nor the enclaves share databases, with data redundancy achieved through 
+message passing instead. Due to the long "catch-up" time for a freshly started host or enclave, all the host/enclave 
+pairs should be active at once, with a leader host/enclave pair that produces light batches and rollups, and follower 
+host/enclave pairs that process and store these light batches and rollups.
+
+The cluster's leader is selected via an RPC operation on the host. It is the responsibility of the sequencer's operator 
+to monitor the healthiness of the hosts and enclaves, assign new leaders, and restart any down hosts and enclaves.
+
+#### Data recovery in case of failover
+
+There are three key types of data held by the sequencer:
+
+1. Transactions not yet included in a light batch
+2. Light batches (including their transactions)
+3. Rollups
+
+Of these, (1) can be dropped if needed, and (3) is recoverable from the L1 chain. Thus the key concern in a failover 
+event is the preservation of light batches.
+
+No special handling is required to keep the sequencer hosts and enclaves up to date during normal node operation. 
+Transactions and light batches are gossiped around the network and stored locally by each node. Rollups are retrieved 
+from the L1 blocks.
+
+##### Host failover
+
+The key risk for the host is that it will failover at the point where it has received a light batch from the enclave, 
+but without distributing it to the network. 
+
+  * POLL ALL LIGHT BATCHES FROM THE SEQUENCER'S ENCLAVES (OR JUST PREVIOUS LEADER?) - TO FIND MISSING LIGHT BATCHES
+  * HOW TO KNOW ALL LIGHT BATCHES HAVE BEEN DISTRIBUTED? POLL FOR LATEST AND DISTRIBUTE BASED ON THAT?
+
+##### Enclave failover
+
+The key risk for the enclave is that it will failover at the point where it has committed a light batch to the 
+database, but without the light batch having been correctly stored by the host. When the enclave comes back online, its 
+chain of light batches may have forked from the sequencer's other enclaves.
+
+The RPC mechanism used by Obscuro does not allow for a two-phase commit (to ensure that the light batch is committed by 
+the enclave if and only if it has been committed by the host). Instead, OVERWRITING. BUT THIS WOULD PROBS CAUSE ISSUES 
+FOR FRONT-RUNNING.
+
+##### Simultaneous failover
+
+TODO
+
 ## Future work
 
 * Allowing nodes to challenge the sequencer (e.g. if the light batches are missing transactions, if a certain light 
