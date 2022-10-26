@@ -152,7 +152,8 @@ This approach is unworkable. We cannot achieve the desired high-availability wit
 #### Detect restarts on sequencer enclaves
 
 We allow validators to detect how often sequencer enclaves are restarted, incentivising good behaviour on behalf of the 
-sequencer, and allowing the issue of a malicious (or incompetent) sequencer to be handled as a governance action.
+sequencer, and allowing the issue of a malicious (or incompetent) sequencer to be handled as a governance action. For 
+this to work, validators would have to actively assess whether the sequencer is doing an adequate job.
 
 There are two flavours of this.
 
@@ -163,6 +164,9 @@ enclave has been up. This creates a history of when each sequencer enclave was r
 
 This history can be queried via RPC from validators.
 
+In this model, the sequencer operator would get `n-1` shots at front-running before having to restart one or more 
+sequencer enclaves.
+
 ##### Include proofs from _all_ sequencer enclaves in each light batch
 
 Every light batch contains signatures from all sequencer enclaves that are currently up. Because enclaves have a 
@@ -171,3 +175,5 @@ sufficient for the light batch to be accepted, but this creates a history of whi
 point in time.
 
 This history can be queried via RPC from validators.
+
+In this model, the sequencer operator would have to restart a sequencer enclave after every shot at front-running.
