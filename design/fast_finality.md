@@ -166,7 +166,8 @@ There are two flavours of this.
 ##### Have sequencer enclaves produce lifetime proofs
 
 Every `x`th light batch includes a proof of how long (e.g. in terms of light batches or L1 blocks) each sequencer 
-enclave has been up. This creates a history of when each sequencer enclave was restarted.
+enclave has been up. This creates a history of when each sequencer enclave was restarted. `x` can be arbitrarily high, 
+since you can work backwards from this proof and the previous proof to check the enclave has been up the entire time.
 
 This history can be queried via RPC from validators.
 
