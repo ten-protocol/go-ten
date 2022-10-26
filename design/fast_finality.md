@@ -126,8 +126,9 @@ They then persist the rollup, so that they have a record of which light batches 
 
 * Allowing nodes to challenge the sequencer's rollups (e.g. if the light batches are missing transactions, or if a 
   certain light batch is not included in the rollup)
-* Creation of an inbox to allow transactions to be "forced through" if the sequencer is excluding them
-* High-availability of the sequencer
+* Creation of an inbox to allow transactions to be "forced through" if the sequencer is excluding them (the rough idea 
+  is that there will be an inbox for transactions in the management contract, and validators will reject light batches 
+  that do not contain any (valid) transactions that have sat in the inbox for a certain amount of time)
 
 ## Unresolved issues
 
