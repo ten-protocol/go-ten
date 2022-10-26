@@ -57,6 +57,11 @@ The sequencer's identity is listed in the management contract on the L1. This se
 * It allows other nodes to verify that the light batches and rollups are created by the sequencer
 * It prevents non-sequencer nodes from entering "sequencer mode" to evaluate the impact of a given light batch
 
+In the management contract, the sequencer's identity is given as a set of enclave attestations, with each attestation 
+matching one of the sequencer's enclaves. Since the attestations are unique per machine, the enclaves cannot be 
+impersonated. The foundation admin will then whitelist these attestations. If one of the sequencer's enclaves goes down 
+irrecoverably, a replacement attestation is added and whitelisted, following the same process.
+
 ### Production of light batches
 
 A light batch is produced on the required cadence to meet the network's soft-finality window of one second.
