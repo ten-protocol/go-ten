@@ -116,6 +116,9 @@ They then persist the rollup, so that they have a record of which light batches 
   `Designs considering for preventing value-extraction`, below)
 * How do we ensure the sequencer distributes all light batches to all nodes?
 * Do the light batches need to be linked to the latest block that was fed into the enclave?
+* How do we achieve high-availability of the sequencer, both for the enclave and for the host? How do we prevent 
+  denial-of-service attacks on both?
+* How do we prevent attackers from "gumming up" the sequencer with random, fake light-batches?
 
 ## Appendices
 
