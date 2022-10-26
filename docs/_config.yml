@@ -13,6 +13,12 @@ repository: "obscuronet/obscuro.github.io"
 search: true
 # logo: "/assets/images/obscuro-small_88x88.png"
 
+# Search Settings
+search_provider: lunr
+search_full_content: true # by default Lunr only does 50 words
+lunr:
+  search_within_pages: true
+
 # Outputting
 # permalink: /:categories/:title/
 paginate: 5 # amount of posts to show
