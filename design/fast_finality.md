@@ -151,10 +151,23 @@ This approach is unworkable. We cannot achieve the desired high-availability wit
 
 #### Detect restarts on sequencer enclaves
 
-##### Produce lifetime proofs from sequencer enclaves
+We allow validators to detect how often sequencer enclaves are restarted, incentivising good behaviour on behalf of the 
+sequencer, and allowing the issue of a malicious (or incompetent) sequencer to be handled as a governance action.
 
-TODO
+There are two flavours of this.
+
+##### Have sequencer enclaves produce lifetime proofs
+
+Every `x`th light batch includes a proof of how long (e.g. in terms of light batches or L1 blocks) each sequencer 
+enclave has been up. This creates a history of when each sequencer enclave was restarted.
+
+This history can be queried via RPC from validators.
 
 ##### Include proofs from _all_ sequencer enclaves in each light batch
 
-TODO
+Every light batch contains signatures from all sequencer enclaves that are currently up. Because enclaves have a 
+start-up delay, restarting the enclave will cause it to miss one or more light-batch signatures. A single signature is 
+sufficient for the light batch to be accepted, but this creates a history of which sequencer enclaves were up at each 
+point in time.
+
+This history can be queried via RPC from validators.
