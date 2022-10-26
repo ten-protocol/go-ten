@@ -48,8 +48,10 @@ At start-up, the host checks if one of the following applies:
 
 If neither of these conditions is met, the host shuts down.
 
-The identity of the sequencer is listed in the management contract on the L1. This allows other nodes to verify that 
-the rollups are created by the sequencer.
+The sequencer's identity is listed in the management contract on the L1. This serves two purposes:
+
+* It allows other nodes to verify that the light batches and rollups are created by the sequencer
+* It prevents non-sequencer nodes from entering "sequencer mode" to evaluate the impact of a given light batch
 
 ### Production of light batches
 
@@ -65,7 +67,8 @@ light batches are not sent to be included on the L1.
 
 The linkage of each light batch to its parent ensures that the sequencer's host cannot feed the enclave a light batch, 
 use RPC requests to gain information about the contents of the corresponding transactions, then feed the enclave a 
-different light batch (e.g. where the sequencer performs front-running) to be shared with peers.
+different light batch (e.g. one where the sequencer performs front-running) to be shared with peers. The enclave will 
+automatically reject a second light batch with the same parent.
 
 From the user's perspective, the transactions in the light batch are considered final (e.g. responses to RPC calls from 
 the client behave as if the transactions were completely final).
@@ -74,11 +77,12 @@ the client behave as if the transactions were completely final).
 
 A rollup is produced whenever one of the following conditions is met:
 
-* The number of transactions across all light-batches since the last rollup exceeds `x`
-* The value of all transactions across all light-batches since the last rollup exceeds `y`
-* The number of blocks since the last rollup was produced exceeds `z`
+1. The number of transactions across all light-batches since the last rollup exceeds `x`
+2. The total size of all transactions across all light-batches since the last rollup exceeds `y`
+3. The number of blocks since the last rollup was produced exceeds `z`
 
-`x`, `y` and `z` are configurable per network.
+`x`, `y` and `z` are configurable per network. Rules (1) and (2) ensure that the rollup can fit within the Ethereum gas 
+limit. Rule (3) reduces the risk associated with the sequencer failing.
 
 To produce a rollup, the sequencer's host requests the creation of a rollup. The sequencer's enclave produces a rollup 
 containing all the light batches created since the last rollup, in a sparse Merkle tree structure. This rollup is 
@@ -104,7 +108,46 @@ They then persist the rollup, so that they have a record of which light batches 
 
 ## Unresolved issues
 
-* How do we prevent the sequencer from running `n` enclaves and using `n-1` of them to test the impact of various 
-  transaction sets (e.g. to identify front-running opportunities)?
+* Select a design for preventing value extraction (see the section 
+  `Designs considering for preventing value-extraction`, below)
 * How do we ensure the sequencer distributes all light batches to all nodes?
-* Do the light batches need to be linked to the latest block that was fed into the enclave (evaluate pros and cons)?
+* Do the light batches need to be linked to the latest block that was fed into the enclave?
+
+## Appendices
+
+### Designs considering for preventing value-extraction
+
+In this section, we investigate various designs to prevent value-extraction. The specific attack we have in mind is one 
+where the sequencer runs `n` enclaves, and uses `n-1` of them to test the impact of various transaction sets to 
+identify value-extraction opportunities.
+
+#### Do nothing
+
+In this approach, we rely on trust in the sequencer and the fact that value-extraction opportunities are reduced in
+Obscuro due to its data-visibility rules.
+
+#### Disable `eth_call` on sequencer enclaves
+
+By disabling `eth_call` on the sequencer enclaves, we prevent the operator from extracting information about the impact
+of a given light batch.
+
+This approach is unworkable. The operator can run a separate, non-sequencer enclave, feed the light batches to that
+enclave, and use `eth_call`s on that enclave to determine the impact of a given light batch.
+
+#### Run a single sequencer enclave
+
+If there is a single sequencer enclave, there are no other enclaves to use to identify value-extraction opportunities. 
+The single sequencer cannot be restarted to identify value-extraction opportunities, since the enclave start-up delay 
+will then prevent the sequencer from reaching its block production target.
+
+This approach is unworkable. We cannot achieve the desired high-availability with a single sequencer enclave.
+
+#### Detect restarts on sequencer enclaves
+
+##### Produce lifetime proofs from sequencer enclaves
+
+TODO
+
+##### Include proofs from _all_ sequencer enclaves in each light batch
+
+TODO
