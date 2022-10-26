@@ -16,8 +16,11 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 * Censorship resistance
   * There is an "inbox" allowing nodes to force the inclusion of transactions on the L1
   * The sequencer must distribute all light batches to all nodes
+* Value-extraction resistance
+  * The sequencer cannot precompute the effects of running a given lightbatch without committing to that light batch
 * Cost
-  * L1 transaction costs can be driven arbitrarily low, at the expense of extending the hard-finality window
+  * L1 transaction costs can be driven down by reducing the frequency of rollups, at the expense of extending the 
+    hard-finality window
 * User/dev experience
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
 * Operations
