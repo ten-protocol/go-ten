@@ -17,7 +17,8 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
   * There is an "inbox" allowing nodes to force the inclusion of transactions on the L1
   * The sequencer must distribute all light batches to all nodes
 * Value-extraction resistance
-  * The sequencer cannot precompute the effects of running a given lightbatch without committing to that light batch
+  * The sequencer cannot precompute the effects of running a given light batch without committing to that light batch
+    (e.g. by running a single transaction, then `eth_call`ing to see how it has affected a smart contract's state)
 * Cost
   * L1 transaction costs can be driven down by reducing the frequency of rollups, at the expense of extending the 
     hard-finality window
