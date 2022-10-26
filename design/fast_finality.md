@@ -10,22 +10,26 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 * Finality
   * Transaction *soft* finality (finality guaranteed by the sequencer) is achieved in under one second
   * There is eventual transaction *hard* finality (finality guaranteed by the L1)
-  * The sequencer achieves hard finality on the agreed cadence
+  * The sequencer achieves hard finality on an agreed cadence
+  * Transactions are hard-finalised in the same order they are soft-finalised
   * The sequencer is not able to "rewrite history" (or is strongly disincentivised from doing so), even for soft-final
-    transactions (e.g. to perform front-running)
+    transactions
 * Censorship resistance
-  * There is an "inbox" allowing nodes to force the inclusion of transactions on the L1
-  * The sequencer must distribute all light batches to all nodes
+  * Nodes can bypass the sequencer to include transactions on the L1 directly (possibly at higher cost and slower 
+    finality)
+  * The sequencer distributes all soft-finalised transactions to all nodes
+  * Nodes can easily prove whether a given soft-finalised transaction was hard-finalised, and in the correct order
 * Value-extraction resistance
-  * The sequencer cannot precompute the effects of running a given light batch without committing to that light batch
-    (e.g. by running a single transaction, then `eth_call`ing to see how it has affected a smart contract's state)
+  * The sequencer cannot precompute the effects of running a given set of transactions without committing to that set 
+    of transactions (e.g. by running a single transaction, then `eth_call`ing to see how it has affected a smart 
+    contract's state)
 * Cost
-  * L1 transaction costs can be driven down by reducing the frequency of rollups, at the expense of extending the 
-    hard-finality window
+  * L1 transaction costs can be driven lower at the expense of extending the hard-finality window
 * User/dev experience
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
 * Operations
-  * The sequencer is highly available
+  * The sequencer is highly available; the failure of a single component does not impact its ability to deliver on any 
+    of the requirements above
 
 ## Assumptions
 
