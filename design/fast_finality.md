@@ -5,6 +5,10 @@
 The introduction of a single sequencer to improve cost-per-transaction during the bootstrapping phase, as 
 described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md).
 
+## Glossary
+
+* *Light batch*: A set of transactions considered to be soft-finalised
+
 ## Requirements
 
 * Finality
@@ -27,10 +31,13 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
   * L1 transaction costs can be driven lower at the expense of extending the hard-finality window
 * User/dev experience
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
-* Operations
-  * The sequencer is hot-warm; if a single component fails, another is standing by in a ready state to take over
-  * Failover does not require a governance action, but may require manual intervention
-  * During failover, it is acceptable to break the one-second soft-finality guarantee 
+* High availability
+  * The sequencer is (at least) hot-warm; if a single component fails, another is standing by in a ready state to take 
+    over
+  * Failover does not require a governance action; it is acceptable for failover to require manual intervention)
+  * During failover, it is acceptable to:
+    * Break the one-second soft-finality guarantee 
+    * Drop transactions that have not been soft-finalised
 
 ## Assumptions
 
@@ -44,6 +51,19 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 
 ## Design
 
+### Sequencer identity
+
+The sequencer's identity is given in the management contract on the L1 as a set of enclave attestations. This serves
+two purposes:
+
+* It allows other nodes to verify that the light batches and rollups are created by the sequencer
+* It prevents non-sequencer nodes from entering "sequencer mode" to evaluate the impact of a given light batch
+
+Each attestation matches one of the sequencer's enclaves, and contains the hash of that enclave's key. Since the
+attestations are unique per machine, the enclaves cannot be impersonated. The foundation admin will then whitelist
+these attestations. If one of the sequencer's enclaves goes down irrecoverably, a replacement attestation is added and
+whitelisted, following the same process.
+
 ### Node start-up
 
 At start-up, the host checks if one of the following applies:
@@ -52,17 +72,6 @@ At start-up, the host checks if one of the following applies:
 * They are *not* the genesis node and are *not* an aggregator
 
 If neither of these conditions is met, the host shuts down.
-
-The sequencer's identity is listed in the management contract on the L1. This serves two purposes:
-
-* It allows other nodes to verify that the light batches and rollups are created by the sequencer
-* It prevents non-sequencer nodes from entering "sequencer mode" to evaluate the impact of a given light batch
-
-In the management contract, the sequencer's identity is given as a set of enclave attestations. Each attestation 
-matches one of the sequencer's enclaves, and contains the hash of that enclave's key. Since the attestations are unique 
-per machine, the enclaves cannot be impersonated. The foundation admin will then whitelist these attestations. If one 
-of the sequencer's enclaves goes down irrecoverably, a replacement attestation is added and whitelisted, following the 
-same process.
 
 ### Production of light batches
 
@@ -73,15 +82,18 @@ creating a signed and encrypted *light batch*. This light batch is formally iden
 design, including a list of the provided transactions and a header including information on the current light batch and 
 the hash of the "parent" light batch.
 
-The sequencer's host immediately distributes the light batch to all other nodes. Unlike in the final design, these 
-light batches are not sent to be included on the L1.
+The sequencer's host immediately distributes the light batch to all other nodes. These light batches are not sent to be 
+included on the L1. When a node receives a light batch, it checks that it has also stored the light batch's parent. If 
+not, it walks the chain backwards, requesting any light batches it is missing until it hits a stored light batch. In 
+the current design, it requests these light batches from random nodes; once a gossip protocol is implemented, it will 
+request the light batches from its known peers.
 
-The linkage of each light batch to its parent ensures that the sequencer's host cannot feed the enclave a light batch, 
-use RPC requests to gain information about the contents of the corresponding transactions, then feed the enclave a 
-different light batch (e.g. one where the sequencer performs front-running) to be shared with peers. The enclave will 
+The linkage of each light batch to its parent also ensures that the sequencer's host cannot feed the enclave a light 
+batch, use RPC requests to gain information about the contents of the corresponding transactions, then feed the enclave 
+a different light batch (e.g. one where the sequencer performs front-running) to be shared with peers. The enclave will 
 automatically reject a second light batch with the same parent.
 
-From the user's perspective, the transactions in the light batch are considered final (e.g. responses to RPC calls from 
+From the user's perspective, the transactions in the light batch are considered final (e.g. responses to RPC calls from
 the client behave as if the transactions were completely final).
 
 ### Production of rollups
