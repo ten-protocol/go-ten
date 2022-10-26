@@ -169,6 +169,10 @@ Every `x`th light batch includes a proof of how long (e.g. in terms of light bat
 enclave has been up. This creates a history of when each sequencer enclave was restarted. `x` can be arbitrarily high, 
 since you can work backwards from this proof and the previous proof to check the enclave has been up the entire time.
 
+An alternative model is for each sequencer enclave to post a restart proof to the L1 whenever it starts, and wait for 
+that proof to be included in the L1 before producing light batches and rollups (thus forcing the proof to be posted on 
+each restart).
+
 This history can be queried via RPC from validators.
 
 In this model, the sequencer operator would get `n-1` shots at front-running before having to restart one or more 
