@@ -9,64 +9,11 @@ It covers two aspects:
 - the visibility rules for events.
 - technical implementation details.
 
-## Background - Ethereum Events Design
-
-To help dApp developers design applications with a good UX, the ethereum developers invented the concept of "events" or "logs", which
-are pieces of information emitted from smart contracts, which can be streamed in real time to external applications that
-subscribe to them.
-
-To better understand the anatomy of events, read this [blog](https://medium.com/mycrypto/understanding-event-logs-on-the-ethereum-blockchain-f4ae7ba50378)
-
-### Smart contracts
-
-This is how an event is declared in a smart contract.
-
-```solidity
-event Transfer(address indexed from, address indexed to, uint256 value);
-```
-
-And this is how it is emitted.
-```solidity
-emit Transfer(from, to, amount);
-```
-
-### Consuming events
-
-A web app can subscribe to events by doing something like:
-
-```javascript
-var subscription = web3.eth.subscribe('logs', {
-    address: '0x123456..', 
-    topics: ['0x12345...']
-}, function(error, result){
-    if (!error)
-        console.log(result);
-});
-- address - String|Array: An address or a list of addresses to only get logs from particular account(s).
-- topics - Array: An array of values which must each appear in the log entries. The order is important, if you want to leave topics out use null, e.g. [null, '0x00...']. You can also pass another array for each topic with options for that topic e.g. [null, ['option1', 'option2']]
-```
-
-A web app might request:
-
-- stream all "transfer" events where the 'to' field is my address
-- stream all "transfer" events from the USDC contract
-
-Apps can also request historic events starting from any block.
-
-### How events work
-
-`Note: this section might not be 100% accurate.`
-
-The query made on the UI side is transformed in a server-side query on the node, and there is some logic after a tx is
-executed and events are emitted, to match them against the filters requested by users and distribute them to the
-requester.
-
-*Note that there is no constraint on data access, since all data is public.*
-
 ## Obscuro Events Design
 
-In Obscuro, we aim to maintain the same building blocks that are found in Ethereum: events and subscriptions, and will try
-to implement the privacy concerns with as little disruption as possible.
+In Obscuro, we aim to maintain the same building blocks that are found in Ethereum: events and subscriptions, and will 
+try to implement the privacy concerns with as little disruption as possible. For background on how Ethereum handles 
+events, see the section "Background - Ethereum Events Design", below.
 
 ### Event types
 
@@ -391,7 +338,61 @@ Note: Adding this rule simplifies transaction receipts.
 
 ## Appendices
 
-### Events in Ethereum, Geth, and common Web3 libraries
+### Background - Ethereum Events Design
+
+To help dApp developers design applications with a good UX, the ethereum developers invented the concept of "events" or "logs", which
+are pieces of information emitted from smart contracts, which can be streamed in real time to external applications that
+subscribe to them.
+
+To better understand the anatomy of events, read this [blog](https://medium.com/mycrypto/understanding-event-logs-on-the-ethereum-blockchain-f4ae7ba50378)
+
+#### Smart contracts
+
+This is how an event is declared in a smart contract.
+
+```solidity
+event Transfer(address indexed from, address indexed to, uint256 value);
+```
+
+And this is how it is emitted.
+```solidity
+emit Transfer(from, to, amount);
+```
+
+#### Consuming events
+
+A web app can subscribe to events by doing something like:
+
+```javascript
+var subscription = web3.eth.subscribe('logs', {
+    address: '0x123456..', 
+    topics: ['0x12345...']
+}, function(error, result){
+    if (!error)
+        console.log(result);
+});
+- address - String|Array: An address or a list of addresses to only get logs from particular account(s).
+- topics - Array: An array of values which must each appear in the log entries. The order is important, if you want to leave topics out use null, e.g. [null, '0x00...']. You can also pass another array for each topic with options for that topic e.g. [null, ['option1', 'option2']]
+```
+
+A web app might request:
+
+- stream all "transfer" events where the 'to' field is my address
+- stream all "transfer" events from the USDC contract
+
+Apps can also request historic events starting from any block.
+
+#### How events work
+
+`Note: this section might not be 100% accurate.`
+
+The query made on the UI side is transformed in a server-side query on the node, and there is some logic after a tx is
+executed and events are emitted, to match them against the filters requested by users and distribute them to the
+requester.
+
+*Note that there is no constraint on data access, since all data is public.*
+
+### Events APIs in Ethereum, Geth, and common Web3 libraries
 
 #### Official Ethereum events API
 
