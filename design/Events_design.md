@@ -27,7 +27,8 @@ There are a couple of cases that must be considered in order to decide whether A
 ### Event relevancy
 
 In Obscuro, as in Ethereum, end users can have multiple accounts. The account address is how accounts are
-referenced.
+referenced. See the section "Events and address fields", below, for an analysis of several events from ERC20 and 
+Uniswap, grouped by whether they contain address fields.
 
 *Note: Smart contracts also have accounts referenced by an address. Given an account address, we can query the "code" property 
 to determine whether it is an end user or a contract.*
@@ -37,108 +38,6 @@ Events are structured objects containing multiple entries (topics or data fields
 If we were designing events from scratch, with privacy in mind, we could add metadata to declare which address should be
 able to view an event. Since we're trying to maintain the API of Ethereum unchanged, we'll try to infer this information
 from the existing information available in the event, and to also allow the developers to achieve the desired outcome.
-
-Let's analyse a couple of events from ERC20 and Uniswap, grouped by whether they contain address fields.
-
-#### With end-user address topics
-
-All the events in this section contain at least one end-user address topic.
-
-*Note: a topic is a field which is marked as `indexed`*
-
-```solidity
-    event Transfer(address indexed from, address indexed to, uint256 value);
-```
-
-```solidity   
-    /// @notice Emitted when the owner of the factory is changed
-    /// @param oldOwner The owner before the owner was changed
-    /// @param newOwner The owner after the owner was changed
-    event OwnerChanged(address indexed oldOwner, address indexed newOwner);
-```
-
-```solidity
-    event Swap(
-    address indexed sender,
-    uint amount0In,
-    uint amount1In,
-    uint amount0Out,
-    uint amount1Out,
-    address indexed to
-    );
-```
-
-```solidity
-    /// @notice Emitted when fees are collected by the owner of a position
-    /// @dev Collect events may be emitted with zero amount0 and amount1 when the caller chooses not to collect fees
-    /// @param owner The owner of the position for which fees are collected
-    /// @param tickLower The lower tick of the position
-    /// @param tickUpper The upper tick of the position
-    /// @param amount0 The amount of token0 fees collected
-    /// @param amount1 The amount of token1 fees collected
-    event Collect(
-        address indexed owner,
-        address recipient,
-        int24 indexed tickLower,
-        int24 indexed tickUpper,
-        uint128 amount0,
-        uint128 amount1
-    );
-```
-
-```solidity
-    /// @notice Emitted when the collected protocol fees are withdrawn by the factory owner
-    /// @param sender The address that collects the protocol fees
-    /// @param recipient The address that receives the collected protocol fees
-    /// @param amount0 The amount of token0 protocol fees that is withdrawn
-    /// @param amount0 The amount of token1 protocol fees that is withdrawn
-    event CollectProtocol(address indexed sender, address indexed recipient, uint128 amount0, uint128 amount1);
-```
-
-What all these events have in common is that the address topics like: `sender`, `recipient`, `owner`, `to`, etc, represent the 
-accounts which are affected by this transaction, and which are thus directly interested in it.
-
-#### Without end-user address fields
-
-```solidity
-    /// @notice Emitted when a pool is created
-    /// @param token0 The first token of the pool by address sort order
-    /// @param token1 The second token of the pool by address sort order
-    /// @param fee The fee collected upon every swap in the pool, denominated in hundredths of a bip
-    /// @param tickSpacing The minimum number of ticks between initialized ticks
-    /// @param pool The address of the created pool
-    event PoolCreated(
-        address indexed token0,
-        address indexed token1,
-        uint24 indexed fee,
-        int24 tickSpacing,
-        address pool
-    );
-```
-
-```solidity
-    /// @notice Emitted when a new fee amount is enabled for pool creation via the factory
-    /// @param fee The enabled fee, denominated in hundredths of a bip
-    /// @param tickSpacing The minimum number of ticks between initialized ticks for pools created with the given fee
-    event FeeAmountEnabled(uint24 indexed fee, int24 indexed tickSpacing);
-```
-
-```solidity
-    event Sync(uint112 reserve0, uint112 reserve1);
-```
-
-```solidity
-    /// @notice Emitted when the protocol fee is changed by the pool
-    /// @param feeProtocol0Old The previous value of the token0 protocol fee
-    /// @param feeProtocol1Old The previous value of the token1 protocol fee
-    /// @param feeProtocol0New The updated value of the token0 protocol fee
-    /// @param feeProtocol1New The updated value of the token1 protocol fee
-    event SetFeeProtocol(uint8 feeProtocol0Old, uint8 feeProtocol1Old, uint8 feeProtocol0New, uint8 feeProtocol1New);
-```
-
-What these events have in common is that they are not user-specific. They represent a general update of the smart contract.
-
-*Note that they might contain address fields, but these are addresses of smart contracts.*
 
 ### Event visibility rules
 
@@ -391,6 +290,110 @@ executed and events are emitted, to match them against the filters requested by 
 requester.
 
 *Note that there is no constraint on data access, since all data is public.*
+
+### Events and address fields
+
+Let's analyse a couple of events from ERC20 and Uniswap, grouped by whether they contain address fields.
+
+#### With end-user address topics
+
+All the events in this section contain at least one end-user address topic.
+
+*Note: a topic is a field which is marked as `indexed`*
+
+```solidity
+    event Transfer(address indexed from, address indexed to, uint256 value);
+```
+
+```solidity   
+    /// @notice Emitted when the owner of the factory is changed
+    /// @param oldOwner The owner before the owner was changed
+    /// @param newOwner The owner after the owner was changed
+    event OwnerChanged(address indexed oldOwner, address indexed newOwner);
+```
+
+```solidity
+    event Swap(
+    address indexed sender,
+    uint amount0In,
+    uint amount1In,
+    uint amount0Out,
+    uint amount1Out,
+    address indexed to
+    );
+```
+
+```solidity
+    /// @notice Emitted when fees are collected by the owner of a position
+    /// @dev Collect events may be emitted with zero amount0 and amount1 when the caller chooses not to collect fees
+    /// @param owner The owner of the position for which fees are collected
+    /// @param tickLower The lower tick of the position
+    /// @param tickUpper The upper tick of the position
+    /// @param amount0 The amount of token0 fees collected
+    /// @param amount1 The amount of token1 fees collected
+    event Collect(
+        address indexed owner,
+        address recipient,
+        int24 indexed tickLower,
+        int24 indexed tickUpper,
+        uint128 amount0,
+        uint128 amount1
+    );
+```
+
+```solidity
+    /// @notice Emitted when the collected protocol fees are withdrawn by the factory owner
+    /// @param sender The address that collects the protocol fees
+    /// @param recipient The address that receives the collected protocol fees
+    /// @param amount0 The amount of token0 protocol fees that is withdrawn
+    /// @param amount0 The amount of token1 protocol fees that is withdrawn
+    event CollectProtocol(address indexed sender, address indexed recipient, uint128 amount0, uint128 amount1);
+```
+
+What all these events have in common is that the address topics like: `sender`, `recipient`, `owner`, `to`, etc, represent the
+accounts which are affected by this transaction, and which are thus directly interested in it.
+
+#### Without end-user address fields
+
+```solidity
+    /// @notice Emitted when a pool is created
+    /// @param token0 The first token of the pool by address sort order
+    /// @param token1 The second token of the pool by address sort order
+    /// @param fee The fee collected upon every swap in the pool, denominated in hundredths of a bip
+    /// @param tickSpacing The minimum number of ticks between initialized ticks
+    /// @param pool The address of the created pool
+    event PoolCreated(
+        address indexed token0,
+        address indexed token1,
+        uint24 indexed fee,
+        int24 tickSpacing,
+        address pool
+    );
+```
+
+```solidity
+    /// @notice Emitted when a new fee amount is enabled for pool creation via the factory
+    /// @param fee The enabled fee, denominated in hundredths of a bip
+    /// @param tickSpacing The minimum number of ticks between initialized ticks for pools created with the given fee
+    event FeeAmountEnabled(uint24 indexed fee, int24 indexed tickSpacing);
+```
+
+```solidity
+    event Sync(uint112 reserve0, uint112 reserve1);
+```
+
+```solidity
+    /// @notice Emitted when the protocol fee is changed by the pool
+    /// @param feeProtocol0Old The previous value of the token0 protocol fee
+    /// @param feeProtocol1Old The previous value of the token1 protocol fee
+    /// @param feeProtocol0New The updated value of the token0 protocol fee
+    /// @param feeProtocol1New The updated value of the token1 protocol fee
+    event SetFeeProtocol(uint8 feeProtocol0Old, uint8 feeProtocol1Old, uint8 feeProtocol0New, uint8 feeProtocol1New);
+```
+
+What these events have in common is that they are not user-specific. They represent a general update of the smart contract.
+
+*Note that they might contain address fields, but these are addresses of smart contracts.*
 
 ### Events APIs in Ethereum, Geth, and common Web3 libraries
 
