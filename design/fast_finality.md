@@ -55,8 +55,9 @@ below).
 
 Each attestation matches one of the sequencer's enclaves, and contains the hash of that enclave's key. Since the
 attestations are unique per machine, the enclaves cannot be impersonated. The foundation admin will then whitelist
-these attestations. If one of the sequencer's enclaves goes down irrecoverably, a replacement attestation is added and
-whitelisted, following the same process.
+these attestations. If one of the sequencer's enclaves goes down irrecoverably, the old attestation can no longer be 
+used (since it is tied to the machine). A replacement attestation can then be added and whitelisted to induct a new 
+enclave into the sequencer's cluster, following the same process.
 
 ### Node start-up
 
