@@ -9,6 +9,18 @@ It covers two aspects:
 - the visibility rules for events.
 - technical implementation details.
 
+### Requirements
+
+* Each subscription is tied to a specific account, and will only return events relevant to that account (the concept of
+  relevancy is defined below)
+* Subscription requests and responses are encrypted in transit, and can only be decrypted by the enclave on one end, 
+  and the viewing key for the account the subscription is tied to on the other
+* Subscription requests are authenticated; a node cannot create a subscription on behalf of another account (e.g. to 
+  snoop on the pattern of traffic for that account)
+* This encryption reuses the wallet extension and its existing viewing keys, and is transparent to the user
+* The logs in transaction receipts are also filtered to only include events relevant to the account of the transaction 
+  submitter
+
 ## Obscuro Events Design
 
 In Obscuro, we aim to maintain the same building blocks that are found in Ethereum: events and subscriptions, and will 
@@ -99,25 +111,6 @@ To determine the visibility of an event, the Obscuro VM will do the following:
 ## Obscuro events technical implementation
 
 The task is to implement the visibility rules described above without changing the query and subscription API from a user's point of view.
-
-### Constraints and Considerations 
-
-We already have a tool called the "Wallet Extension", which acts as a proxy between the wallet and the obscuro node, and manages viewing keys.
-
-- Applications will connect to the "wallet extension", which will translate the plain web3 "Subscribe"
-  call into an encrypted Obscuro compatible one. The stream of received events will be decrypted automatically with the appropriate viewing keys.
-
-- Events should not leave the enclave space unencrypted or encrypted with a non-relevant account key. Transactions are 
-  executed inside a secure enclave, and events emitted during that, need to be collected, filtered, and encrypted before being returned from the enclave.
-  Optimisations need to be created as the load on the enclave could be significant. 
-
-- An account should be able to monitor only the events relevant to itself, and not subscribe to anything else. 
-  Basically, subscriptions need to be authenticated. Otherwise, someone could setup a subscription to monitor well-known addresses, 
-  and receive useful information, even if they cannot decrypt the actual event. 
-  They could determine  for example when a high profile individual has transferred some ERC20, even if they wouldn't know 
-  how much or to whom.
-
-- Events included in transaction receipts should be filtered to only include events which are visible to the transaction submitter.
 
 ### Implementation
 
