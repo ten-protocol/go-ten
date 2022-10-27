@@ -59,15 +59,6 @@ these attestations. If one of the sequencer's enclaves goes down irrecoverably, 
 used (since it is tied to the machine). A replacement attestation can then be added and whitelisted to induct a 
 replacement enclave into the sequencer's cluster, following the same process.
 
-### Node start-up
-
-At start-up, the host checks if one of the following applies:
-
-* They are the genesis node and are an aggregator
-* They are *not* the genesis node and are *not* an aggregator
-
-If neither of these conditions is met, the host shuts down.
-
 ### Production of light batches
 
 A light batch is produced on the required cadence to meet the network's soft-finality window of one second. Only the 
