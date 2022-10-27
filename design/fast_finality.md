@@ -152,11 +152,35 @@ batches and rollups, while the follower nodes behave like regular nodes, receivi
 process and retrieving the rollups from the L1. Other network nodes treat each node in the cluster as a regular node
 (e.g. transactions are gossiped normally, and not targeted specifically at the leader node).
 
-In the event that a follower crashes, it can be restarted and recover data from the leader, just like a regular node. 
-If the leader crashes, a single light batch (the latest) will be lost. TODO - HANDLING THIS LOST LIGHT BATCH
+The cluster's leader is selected via an RPC operation on the corresponding host. It is the responsibility of the
+sequencer's operator to monitor the healthiness of the hosts and enclaves, assign new leaders, and restart any down
+hosts and enclaves.
 
-The cluster's leader is selected via an RPC operation on the host. It is the responsibility of the sequencer's operator
-to monitor the healthiness of the hosts and enclaves, assign new leaders, and restart any down hosts and enclaves.
+In the event that a follower crashes, it can be restarted and recover data from the leader, just like a regular node. 
+If the event that the leader crashes, the sequencer operator must select a new leader.
+
+The key risk during failover is that a single light batch (the latest) may be lost. There are two specific issues that 
+must be handled:
+
+1. Determining whether the light batch was truly lost. A new leader may come online and consider the latest light batch 
+   to have been lost, when in fact it had already been sent to other nodes before the crash
+2. Returning the crashed leader to a consistent state. When the new leader comes back online, their database may 
+   contain a light batch that was never distributed, and now represents a fork
+
+To avert (1), the leader must prioritise its followers when gossiping light batches. There is still a risk that some 
+followers will have received the light batch before the crash, but another follower that hasn't received it is selected 
+as leader. For this reason, the new leader must also poll the other followers for the latest light batch when it comes 
+online.
+
+To avert (2), we need to be able to overwrite the state of the recovered leader. However, this must be handled 
+carefully - if a node's state can be overwritten arbitrarily, the node can be used to front-run by repeatedly writing 
+new light-batch chains and inspecting the results. To address this, an enclave's light-batch chain can only be 
+overwritten immediately after start-up. The recovered leader will poll its former followers for conflicting light 
+batches, and overwrite any light-batches at the same height. Once the leader starts normal execution, this overwriting 
+mechanism will be disabled (and thus an enclave restart, with the attendant start-up delay, must be incurred to 
+overwrite again and inspect the results).
+
+#### Alternatives considered
 
 This approach was selected over a number of alternatives:
 
