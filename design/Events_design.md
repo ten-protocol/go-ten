@@ -371,9 +371,7 @@ An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed
 
 3. Very minor information leak for the host about their users, host owner can see how many relevant events their subscribers are getting back. Tbf that's no different from it seeing how many transactions that user is submitting etc., just a measure of their activity I guess and not tied to their acc address at all
 
-4. Todo: Can you clarify in the doc whether the events are discarded after being distributed, or are stored for future subscribers?
-
-5. How do events interact with the revelation period?
+4. How do events interact with the revelation period?
 
 ### Alternatives considered
 
