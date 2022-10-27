@@ -178,7 +178,8 @@ host, and vice-versa).
 This approach has several downsides:
 
 * Recovery would be much slower in this approach, as a governance action would be required to whitelist the new 
-  sequencer attestation in the management contract
+  sequencer attestation in the management contract (this could be mitigated by preallocating some future enclave 
+  machines to use for failover, and whitelisting attestations for them in the management contract)
 * The latest light batches (those not contained in the backup) would have to be recovered from network peers, which 
   would be more complicated than recovering them from specific, sequencer-operator controlled nodes. In particular, 
   we'd to handle the case of a node receiving a light batch from the crashed leader that they then fail to gossip out 
