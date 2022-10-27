@@ -177,15 +177,25 @@ overwrite again and inspect the results).
 
 #### Alternatives considered
 
-This approach was selected over a number of alternatives:
+This approach was selected over a number of alternatives.
 
-* _As above, but with `n` hosts all speaking to `m` enclaves_: The selected approach is simpler and more closely 
-  aligned to our current implementation (which assumes one enclave per host, and vice-versa)
-* _Having a single node that is restored from backup_: Recovery would be much slower in this approach, as a governance 
-  action would be required to whitelist the new sequencer attestation in the management contract. Recovery of the 
-  latest light batches (those not contained in the backup) would also be dependent on requesting them from network 
-  peers, which would be more complicated than recovering them from specific, sequencer-operator controlled nodes. 
-  Finally, this approach is more difficult operationally (creation, storage and recreation from backups)
+##### As above, but with `n` hosts all speaking to `m` enclaves
+
+The selected approach is simpler and more closely aligned to our current implementation (which assumes one enclave per 
+host, and vice-versa).
+
+##### Having a single node that is restored from backup
+
+This approach has several downsides:
+
+* Recovery would be much slower in this approach, as a governance action would be required to whitelist the new 
+  sequencer attestation in the management contract
+* The latest light batches (those not contained in the backup) would have to be recovered from network peers, which 
+  would be more complicated than recovering them from specific, sequencer-operator controlled nodes. In particular, 
+  we'd to handle the case of a node receiving a light batch from the crashed leader that they then fail to gossip out 
+  correctly; some mechanism would have to be provided to allow them to return to the non-forked light-batch chain (e.g. 
+  overwriting the light-batch chain if they receive another with greater height)
+* This approach is more difficult operationally (creation, storage and recreation from backups)
 
 ## Future work
 
