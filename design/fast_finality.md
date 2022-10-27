@@ -134,9 +134,9 @@ unworkable.
 
 To achieve the desired data resiliency and recovery times, the sequencer can run a cluster of `n` nodes, each backed by 
 a separate database. All the nodes are active at once. A leader node is selected to be the sole producer of light 
-batches and rollups, while the follower nodes behave like regular nodes, receiving the light batches via a gossiping 
-process and retrieving the rollups from the L1. Other network nodes treat each node in the cluster as a regular node
-(e.g. transactions are gossiped normally, and not targeted specifically at the leader node).
+batches and rollups, while the follower nodes behave like regular validator nodes, receiving the light batches via a 
+gossiping process and retrieving the rollups from the L1. Other network nodes treat each node in the cluster as a 
+regular validator node (e.g. transactions are gossiped normally, and not targeted specifically at the leader node).
 
 The cluster's leader is selected via an RPC operation on the corresponding host. It is the responsibility of the
 sequencer's operator to monitor the healthiness of the nodes. In the event that a follower crashes, it can be restarted 
