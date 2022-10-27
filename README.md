@@ -280,12 +280,13 @@ written in [go](https://go.dev). Unless otherwise stated, all paths stated herei
 The following dependencies are required to be installed locally;
 
 - [go](https://go.dev) (version > 1.18)
-- [docker](https://docs.docker.com/get-docker/) (recommend latest version)
+- [docker](https://docs.docker.com/get-docker/) (recommend latest version*)
 - [docker compose](https://docs.docker.com/compose/install/) (recommend latest version)
 
 Whilst the recommended version of go is > 1.18, the reference implementation uses _only_ language features up to and 
 including 1.17. Using 1.18 is recommended for easier setup and installation and is backwards compatible with all 1.17 
 language features. 
+> :warning: Docker Desktop version 4.13 is known to have issues on ARM64 systems. If you experience daemon crashes and segmentation faults when running inside containers it is recommended to downgrade. Version 4.12 is the latest known to work.
 
 
 ### Building
