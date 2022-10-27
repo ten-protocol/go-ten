@@ -201,7 +201,6 @@ This approach was selected over a number of alternatives:
   `Possible designs for preventing value-extraction`, below)
 * Do the light batches need to be linked to the latest block that was fed into the enclave?
 * How do we prevent denial-of-service attacks on the sequencer?
-* How do we prevent attackers from "gumming up" the sequencer's enclaves with random, fake light-batches?
 
 ## Appendices
 
