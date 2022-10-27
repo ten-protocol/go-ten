@@ -7,19 +7,20 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 
 ## Glossary
 
-* *Light batch*: A set of transactions considered to be soft-finalised
+* *Light batch*: A set of transactions produced by the designated sequencer, considered to be soft-finalised in that 
+  order
 
 ## Requirements
 
 * Finality
   * Transaction *soft* finality (finality guaranteed by the sequencer) is achieved in under one second
   * There is eventual transaction *hard* finality (finality guaranteed by the L1)
-  * The sequencer achieves hard finality on an agreed cadence
-  * Transactions are hard-finalised in the same order they are soft-finalised
+  * The sequencer is incentivised to achieve hard finality on an agreed cadence
+  * The sequencer is incentivised to hard-finalise transactions in the same order they are soft-finalised
   * The sequencer is not able to "rewrite history" (or is strongly disincentivised from doing so), even for soft-final
     transactions
 * Censorship resistance
-  * Nodes can bypass the sequencer to include transactions on the L1 directly (possibly at higher cost and slower 
+  * End-users can bypass the sequencer to include transactions on the L1 directly (possibly at higher cost and slower 
     finality)
   * The sequencer distributes all soft-finalised transactions to all nodes
   * Nodes can easily prove whether a given soft-finalised transaction was hard-finalised, and in the correct order
