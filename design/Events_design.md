@@ -457,31 +457,3 @@ Geth has a `FilterAPI` that is registered under the `eth_` namespace and defines
 
 The first seven methods match up with those on the Ethereum JSON-RPC spec, while the remaining three 
 (`NewPendingTransactions`, `NewHeads` and `Logs`) are used to power the three types of subscriptions listed above.
-
-### Geth events implementation
-
-Obscuro gets access to Geth's pub/sub functionality for free because it reuses Geth's RPC layer.
-
-The events API and supporting code is implemented in the `eth/filters` package. It's possible we could reuse this code 
-wholesale. We could use the `func NewFilterAPI(backend Backend, lightMode bool, timeout time.Duration) *FilterAPI` 
-constructor, passing in our own implementation of the `filters.Backend` interface:
-
-```
-type Backend interface {
-	ChainDb() ethdb.Database
-	HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Header, error)
-	HeaderByHash(ctx context.Context, blockHash common.Hash) (*types.Header, error)
-	GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error)
-	GetLogs(ctx context.Context, blockHash common.Hash) ([][]*types.Log, error)
-	PendingBlockAndReceipts() (*types.Block, types.Receipts)
-
-	SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription
-	SubscribeChainEvent(ch chan<- core.ChainEvent) event.Subscription
-	SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription
-	SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription
-	SubscribePendingLogsEvent(ch chan<- []*types.Log) event.Subscription
-
-	BloomStatus() (uint64, uint64)
-	ServiceFilter(ctx context.Context, session *bloombits.MatcherSession)
-}
-```
