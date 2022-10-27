@@ -482,10 +482,9 @@ Geth has a `FilterAPI` that is registered under the `eth_` namespace and defines
 The first seven methods match up with those on the Ethereum JSON-RPC spec, while the remaining three 
 (`NewPendingTransactions`, `NewHeads` and `Logs`) are used to power the three types of subscriptions listed above.
 
-## Geth events implementation
+### Geth events implementation
 
-Obscuro gets access to Geth's pub/sub functionality for free because it reuses Geth's RPC layer. This PR shows a 
-working example of a subscription API and client in Obscuro: https://github.com/obscuronet/go-obscuro/pull/604.
+Obscuro gets access to Geth's pub/sub functionality for free because it reuses Geth's RPC layer.
 
 The events API and supporting code is implemented in the `eth/filters` package. It's possible we could reuse this code 
 wholesale. We could use the `func NewFilterAPI(backend Backend, lightMode bool, timeout time.Duration) *FilterAPI` 
