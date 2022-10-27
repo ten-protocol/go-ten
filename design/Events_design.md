@@ -277,8 +277,6 @@ We already have a tool called the "Wallet Extension", which acts as a proxy betw
 
 #### Obscuro enclave
 
-// TODO - Cover the GetLogs method, and other methods we've added in this space
-
 ##### Creating and deleting subscriptions
 
 The enclave exposes two methods, one to add a new logs subscription, and one to delete a logs subscription.
@@ -321,41 +319,16 @@ address.
 
 For each incoming logs subscription request via RPC, the host has to do two things:
 
-1. Request the creation of the new logs subscription on the enclave
-2. Create a Geth `rpc.Subscription` object to route any new logs for the subscription back to the client after each 
-   block ingestion
+1. Route the new subscription request to the enclave and create a new Geth `rpc.Subscription` to return to the client
+2. Extract the logs upon each block ingestion and route them to the corresponding client subscription
 
-// TODO - Cover the routing of logs from the block response to the client
+Since the log subscription request is encrypted by the client and can only be decrypted on the enclave, the host 
+forwards it blindly, and cannot learn anything about the contents of the subscription. However, it does generate a 
+fresh ID for the subscription, which it also forwards to the enclave. The enclave reuses this ID when sending back 
+logs for that subscription in the block submission response.
 
-##### Enclave subscription
-
-For (1), the host takes a log subscription object as a parameter, and forwarding it to the enclave via the API 
-described above. As above, the log subscription object is encrypted with the enclave's private key, to prevent 
-attackers from eavesdropping on the creation of subscriptions.
-
-##### Client subscription
-
-For (2), we reuse Geth's `PublicFilterAPI`, passing in a custom `Backend` object. The `Backend` object has a 
-`SubscribeLogsEvent` method, which takes as a parameter a channel, and is responsible for sending any new logs onto 
-that channel. We implement this method by pushing a new log onto the channel whenever a new log is returned from the 
-enclave via a block submission response.
-
-The host then creates individual logs subscriptions using the `PublicFilterAPI.Logs` method, which takes a filter 
-criteria and automatically applies it to the contents of the master list returned by `SubscribeLogsEvent` to determine 
-the set of logs to return on that subscription.
-
-There are two key limitations that had to be overcome here:
-
-1. The log events contained in the block submission response are encrypted by the enclave, and are thus of type 
-   `[]byte`, whereas the channel provided to `SubscribeLogsEvent` expects Geth's `types.Log` objects. To overcome this, 
-   the host performs an additional step where a fake "wrapper" log object is created, and the encrypted log bytes are 
-   placed into the `data` field of that wrapper log
-2. How do we prevent `PublicFilterAPI.Logs` from automatically returning all events over the subscription? To achieve 
-   this, when creating the wrapper log, we include the subscription ID as a topic. Then when we set up the logs 
-   subscription using `PublicFilterAPI.Logs`, we pass in a fake filter that filters based on that subscription ID as 
-   the topic. This ensures that only the logs for the specific subscription ID are returned. (Note that the "real" 
-   filter has already been passed encrypted to the enclave, and applied before returning the results as part of the 
-   block submission response)
+For each block submission response, the host extracts the encrypted logs for that subscription ID, and forwards them 
+on to the corresponding Geth `rpc.Subscription`.
 
 #### Obscuro encrypted RPC client
 
