@@ -88,7 +88,7 @@ const (
 	  },
 	  "alloc": {
 		"0x323AefbFC16159655514846a9e5433C457de9389": {
-		  "balance": "1000000000000000000000"
+		  "balance": "1000000000000000000000000"
 		},
 %s
 	  },
@@ -102,7 +102,7 @@ const (
 	  "timestamp": "0x00"
   }`
 	addrBlockTemplate = `		"%s": {
-		  "balance": "1000000000000000000000"
+		  "balance": "1000000000000000000000000"
 		}`
 	genesisJSONAddrKey = "address"
 )
