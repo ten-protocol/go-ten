@@ -199,14 +199,14 @@ This approach was selected over a number of alternatives:
 ## Unresolved issues
 
 * Select a design for preventing value extraction (see the section 
-  `Designs considering for preventing value-extraction`, below)
+  `Possible designs for preventing value-extraction`, below)
 * Do the light batches need to be linked to the latest block that was fed into the enclave?
 * How do we prevent denial-of-service attacks on the sequencer?
 * How do we prevent attackers from "gumming up" the sequencer's enclaves with random, fake light-batches?
 
 ## Appendices
 
-### Designs considering for preventing value-extraction
+### Possible designs for preventing value-extraction
 
 In this section, we investigate various designs to prevent value-extraction. The specific attack we have in mind is one 
 where the sequencer runs `n` enclaves, and uses `n-1` of them to test the impact of various transaction sets to 
