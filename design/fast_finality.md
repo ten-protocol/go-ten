@@ -30,6 +30,8 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
     contract's state)
 * Cost
   * L1 transaction costs can be driven lower at the expense of extending the hard-finality window
+  * The network can be configured to only publish rollups to the L1 every `x` blocks, where `x` >> 1
+  * The network can be configured to produce light batches (see below) at a higher frequency than L1 blocks
 * User/dev experience
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
 * Resilience
@@ -41,11 +43,6 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 
 * There is a single aggregator that is also the genesis node. This node is known as the *sequencer*
 * The enclave has a start-up delay that exceeds the production time for light batches (see below)
-
-## Constraints
-
-* It must be possible to only publish rollups to the L1 every `x` blocks, where `x` >> 1
-* It must be possible to produce light batches (see below) at a higher frequency than L1 blocks
 
 ## Design
 
