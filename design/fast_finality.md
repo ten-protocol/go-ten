@@ -31,7 +31,7 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
   * L1 transaction costs can be driven lower at the expense of extending the hard-finality window
 * User/dev experience
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
-* High availability
+* Resilience
   * The sequencer is (at least) hot-warm; if a single component fails, another is standing by in a ready state to take 
     over
   * Failover does not require a governance action; it is acceptable for failover to require manual intervention)
@@ -75,7 +75,8 @@ If neither of these conditions is met, the host shuts down.
 
 ### Production of light batches
 
-A light batch is produced on the required cadence to meet the network's soft-finality window of one second.
+A light batch is produced on the required cadence to meet the network's soft-finality window of one second. Only the 
+sequencer produces light batches.
 
 To produce a light batch, the sequencer's host feeds a set of transactions to the enclave. The enclave responds by 
 creating a signed and encrypted *light batch*. This light batch is formally identical to the rollup of the final 
@@ -101,7 +102,7 @@ the client behave as if the transactions were completely final).
 
 ### Production of rollups
 
-A rollup is produced whenever one of the following conditions is met:
+Only the sequencer produces rollups. A rollup is produced whenever one of the following conditions is met:
 
 1. The number of transactions across all light-batches since the last rollup exceeds `x`
 2. The total size of all transactions across all light-batches since the last rollup exceeds `y`
@@ -125,62 +126,46 @@ Nodes scan incoming L1 blocks for new rollups. They validate each new rollup by:
 
 They then persist the rollup, so that they have a record of which light batches have been confirmed on the L1.
 
-### High availability
+### Resilience
 
-#### Cluster configuration
+#### Goals
 
-The sequencer can run a cluster of multiple hosts and enclaves to achieve high-availability. The setup must consist of 
-`n` host/enclave pairs. This approach was selected over having `n` hosts all speaking to `m` enclaves for several 
-reasons:
+The sequencer holds three important types of data:
 
-* By allowing host/enclave pairs to be colocated and reducing the number of duplicated messages, performance is 
-  improved
-* It is easier to reason about whether the host and enclave are up-to-date
-
-To increase resilience, neither the hosts nor the enclaves share databases, with data redundancy achieved through 
-message passing instead. Due to the long "catch-up" time for a freshly started host or enclave, all the host/enclave 
-pairs should be active at once, with a leader host/enclave pair that produces light batches and rollups, and follower 
-host/enclave pairs that process and store these light batches and rollups.
-
-The cluster's leader is selected via an RPC operation on the host. It is the responsibility of the sequencer's operator 
-to monitor the healthiness of the hosts and enclaves, assign new leaders, and restart any down hosts and enclaves.
-
-#### Data recovery in case of failover
-
-There are three key types of data held by the sequencer:
-
-1. Transactions not yet included in a light batch
+1. Transactions submitted but not yet included in a light batch
 2. Light batches (including their transactions)
 3. Rollups
 
-Of these, (1) can be dropped if needed, and (3) is recoverable from the L1 chain. Thus the key concern in a failover 
-event is the preservation of light batches.
+In the case of failover, (1) can be dropped if needed, while (3) can be recovered from the L1 chain (once submitted) or 
+recreated (provided the light batches are available). Thus, during failover, the key concern in terms of data 
+resiliency is (2).
 
-No special handling is required to keep the sequencer hosts and enclaves up to date during normal node operation. 
-Transactions and light batches are gossiped around the network and stored locally by each node. Rollups are retrieved 
-from the L1 blocks.
+In addition, while it is acceptable to break the one-second soft-finality guarantee during failover, we should still 
+seek to minimise the recovery time. Solutions that require, for example, the full reingestion of the L1 chain are 
+unworkable.
 
-##### Host failover
+#### Cluster configuration
 
-The key risk for the host is that it will failover at the point where it has received a light batch from the enclave, 
-but without distributing it to the network. 
+To achieve the desired data resiliency and recovery times, the sequencer can run a cluster of `n` nodes, each backed by 
+a separate database. All the nodes are active at once. A leader node is selected to be the sole producer of light 
+batches and rollups, while the follower nodes behave like regular nodes, receiving the light batches via a gossiping 
+process and retrieving the rollups from the L1. Other network nodes treat each node in the cluster as a regular node
+(e.g. transactions are gossiped normally, and not targeted specifically at the leader node).
 
-  * POLL ALL LIGHT BATCHES FROM THE SEQUENCER'S ENCLAVES (OR JUST PREVIOUS LEADER?) - TO FIND MISSING LIGHT BATCHES
-  * HOW TO KNOW ALL LIGHT BATCHES HAVE BEEN DISTRIBUTED? POLL FOR LATEST AND DISTRIBUTE BASED ON THAT?
+In the event that a follower crashes, it can be restarted and recover data from the leader, just like a regular node. 
+If the leader crashes, a single light batch (the latest) will be lost. TODO - HANDLING THIS LOST LIGHT BATCH
 
-##### Enclave failover
+The cluster's leader is selected via an RPC operation on the host. It is the responsibility of the sequencer's operator
+to monitor the healthiness of the hosts and enclaves, assign new leaders, and restart any down hosts and enclaves.
 
-The key risk for the enclave is that it will failover at the point where it has committed a light batch to the 
-database, but without the light batch having been correctly stored by the host. When the enclave comes back online, its 
-chain of light batches may have forked from the sequencer's other enclaves.
+This approach was selected over a number of alternatives:
 
-The RPC mechanism used by Obscuro does not allow for a two-phase commit (to ensure that the light batch is committed by 
-the enclave if and only if it has been committed by the host). Instead, OVERWRITING. BUT THIS WOULD PROBS CAUSE ISSUES 
-FOR FRONT-RUNNING.
-
-##### Simultaneous failover
-
-TODO
+* _Having `n` hosts all speaking to `m` enclaves_: The selected approach is simpler and more closely aligned to our 
+  current implementation (which assumes one enclave per host, and vice-versa)
+* _Having a single node that is restored from backup_: Recovery would be much slower in this approach, as a governance 
+  action would be required to whitelist the new sequencer attestation in the management contract. Recovery of the 
+  latest light batches would also be dependent on requesting them from network peers, which would be more complicated 
+  than recovering them from specific, sequencer-operator controlled nodes
 
 ## Future work
 
