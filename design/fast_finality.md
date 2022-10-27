@@ -183,8 +183,9 @@ This approach was selected over a number of alternatives:
   current implementation (which assumes one enclave per host, and vice-versa)
 * _Having a single node that is restored from backup_: Recovery would be much slower in this approach, as a governance 
   action would be required to whitelist the new sequencer attestation in the management contract. Recovery of the 
-  latest light batches would also be dependent on requesting them from network peers, which would be more complicated 
-  than recovering them from specific, sequencer-operator controlled nodes
+  latest light batches (those not contained in the backup) would also be dependent on requesting them from network 
+  peers, which would be more complicated than recovering them from specific, sequencer-operator controlled nodes. 
+  Finally, this approach is more difficult operationally (creation, storage and recreation from backups)
 
 ## Future work
 
