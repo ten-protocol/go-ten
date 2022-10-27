@@ -33,12 +33,9 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 * User/dev experience
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
 * Resilience
-  * The sequencer is (at least) hot-warm; if a single component fails, another is standing by in a ready state to take 
-    over
-  * Failover does not require a governance action; it is acceptable for failover to require manual intervention)
-  * During failover, it is acceptable to:
-    * Break the one-second soft-finality guarantee 
-    * Drop transactions that have not been soft-finalised
+  * Failover does not require a governance action
+  * During failover, it is acceptable to break the one-second soft-finality guarantee 
+  * During failover, it is acceptable to drop transactions that have not been soft-finalised
 
 ## Assumptions
 
@@ -54,11 +51,10 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 
 ### Sequencer identity
 
-The sequencer's identity is given in the management contract on the L1 as a set of enclave attestations. This serves
-two purposes:
-
-* It allows other nodes to verify that the light batches and rollups are created by the sequencer
-* It prevents non-sequencer nodes from entering "sequencer mode" to evaluate the impact of a given light batch
+The sequencer's identity is given in the management contract on the L1 as a set of enclave attestations. This allows 
+other nodes to verify that the light batches and rollups are created by the sequencer. We use a set instead of a 
+single attestation to allow faster failover in the case of a sequencer node crashing (see the section `Resilience`, 
+below).
 
 Each attestation matches one of the sequencer's enclaves, and contains the hash of that enclave's key. Since the
 attestations are unique per machine, the enclaves cannot be impersonated. The foundation admin will then whitelist
@@ -231,11 +227,11 @@ enclave, and use `eth_call`s on that enclave to determine the impact of a given 
 
 #### Run a single sequencer enclave
 
-If there is a single sequencer enclave, there are no other enclaves to use to identify value-extraction opportunities. 
-The single sequencer cannot be restarted to identify value-extraction opportunities, since the enclave start-up delay 
-will then prevent the sequencer from reaching its block production target.
+If there is a single sequencer enclave across the entire network, there are no other enclaves to use to identify 
+value-extraction opportunities. The single sequencer cannot be restarted to identify value-extraction opportunities, 
+since the enclave start-up delay will then prevent the sequencer from reaching its block production target.
 
-This approach is unworkable. We cannot achieve the desired high-availability with a single sequencer enclave.
+This approach is unworkable. We cannot achieve the desired recovery times with a single sequencer enclave.
 
 #### Detect restarts on sequencer enclaves
 
@@ -251,9 +247,9 @@ Every `x`th light batch includes a proof of how long (e.g. in terms of light bat
 enclave has been up. This creates a history of when each sequencer enclave was restarted. `x` can be arbitrarily high, 
 since you can work backwards from this proof and the previous proof to check the enclave has been up the entire time.
 
-An alternative model is for each sequencer enclave to post a restart proof to the L1 whenever it starts, and wait for 
-that proof to be included in the L1 before producing light batches and rollups (thus forcing the proof to be posted on 
-each restart).
+An alternative model is for each sequencer enclave to post a restart proof to the L1 or light-batch chain whenever it 
+starts, and wait for that proof to be included in the chain before continuing execution (thus forcing the proof to be 
+posted on each restart).
 
 This history can be queried via RPC from validators.
 
