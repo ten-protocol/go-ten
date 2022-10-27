@@ -58,7 +58,7 @@ Apps can also request historic events starting from any block.
 `Note: this section might not be 100% accurate.`
 
 The query made on the UI side is transformed in a server-side query on the node, and there is some logic after a tx is
-executed and events are emmitted, to match them against the filters requested by users and distribute them to the
+executed and events are emitted, to match them against the filters requested by users and distribute them to the
 requester.
 
 *Note that there is no constraint on data access, since all data is public.*
@@ -79,7 +79,7 @@ There are a couple of cases that must be considered in order to decide whether A
 
 ### Event relevancy
 
-In Obscuro (inherited from Ethereum), end users can have multiple accounts. The account address is how accounts are
+In Obscuro, as in Ethereum, end users can have multiple accounts. The account address is how accounts are
 referenced.
 
 *Note: Smart contracts also have accounts referenced by an address. Given an account address, we can query the "code" property 
