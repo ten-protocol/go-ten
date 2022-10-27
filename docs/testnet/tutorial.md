@@ -1,112 +1,48 @@
-# Deploying a Smart Contract to Obscuro Testnet Programmatically
-The steps below demonstrate how to programmatically create a new contract on to Obscuro Testnet and interact with it via 
-call functions. The example uses [Python](https://www.python.org/) and [web3.py](https://web3py.readthedocs.io/en/stable/) 
-as a reference but the principles of usage will be the same in any web3 language implementation. 
+# Getting Started
+In this tutorial, you build your own Obscuro dApp from the start. This is a good way to experience a typical development process as you learn how Obscuro dApps are built, design concepts, tools and terminology.
 
-A full working example can be seen in [deploying-a-smart-contract-programmatically.py](deploying-a-smart-contract-programmatically.py).
-Usage of the example requires Python > 3.9.13, solc 0.8.15 and the web3, requests, and json modules. It is assumed solc 
-has been installed using homebrew and resides in `/opt/homebrew/bin/solc` and that the wallet extension is running on 
-the local host with default values `WHOST=127.0.0.1` and `WPORT=3000`.
+# Lets go
+This 'Guessing Game' tutorial provides an introduction to the fundamentals of Obscuro and shows you how to:
+- Set up your local Ethereum development environment for Obscuro.
+- Use Obscuro concepts to develop a dApp
 
-A walk through and explanation of the steps performed is given below;
+What is the *Guessing Game*?
 
-## Connect to the network and create a local private key
-The [wallet extension](../wallet-extension/wallet-extension.md) acts as an HTTP server to mediate RPC requests. In the 
-below a connection is made on the wallet extension host and port, a private key is locally created and the associated 
-account stored for later usage.
+The Guessing Game is a dApp that you will build that demonstrates a basic Obscuro use case, which is a simple number guessing game. The contract generates a random secret number when it's deployed, which is never revealed to an operator or end-user because of the privacy benefits of Obscuro. The goal of the game is to guess this number, and each time an attempt is made, an entrance fee of 1 token is paid. If a user correctly guesses the number, the contract will pay out all of the accumulated entrance fees to them, and reset itself with a new random number.
 
-```python
-    w3 = Web3(Web3.HTTPProvider('http://%s:%d' % (WHOST, WPORT)))
-    private_key = secrets.token_hex(32)
-    account = w3.eth.account.privateKeyToAccount(private_key)
-    logging.info('Using account with address %s' % account.address)
-```
+Without Obscuro, it would be possible to look up the internal state of the contract and cheat, and the game wouldn't work.
 
-## Request OBX from the faucet server for native OBX
-An account needs gas to perform transactions on Obscuro, where gas is paid in native OBX. Requests of native OBX can be 
-made through a POST to the faucet server where the address is supplied in the data payload.
-```python
-    headers = {'Content-Type': 'application/json'}
-    data = {"address": account.address}
-    requests.post(FAUCET_URL, data=json.dumps(data), headers=headers)
-```
+The dApp has many of the features that you'd expect to find, including:
+- Generating a random number known only to the dApp
+- Allow users to guess the numbers by depositing a token for each play
+- Colder/Warmer functionality to help guide users to the correct number
+- Events to alert users whether they have won or not
+- Track all users plays
+- Administrator privileges to start and stop the game
 
-## Generate a viewing key, sign and post back to the wallet extension
-The enclave encodes all communication to the wallet extension using viewing keys. HTTP endpoints exist in the wallet 
-extension to facilitate requesting a viewing key, and to sign and return it to the enclave. 
-```python 
-    headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
-    
-    data = {"address": account.address}
-    response = requests.post('http://%s:%d/generateviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
-    signed_msg = w3.eth.account.sign_message(encode_defunct(text='vk' + response.text), private_key=private_key)
+# Set up your environment
+- You'll need to install MetaMask following the instructions [here](https://metamask.io/)
+- Then download and run the Obscuro Wallet extension following the instructions [here](https://docs.obscu.ro/wallet-extension/wallet-extension.html)
+- Now configure MetaMask following the instructions [here](https://docs.obscu.ro/wallet-extension/configure-metamask.html)
+- Finally, check you can open the Remix IDE by visiting the following URL in your browser https://remix.ethereum.org
 
-    data = {"signature": signed_msg.signature.hex(), "address": account.address}
-    response = requests.post('http://%s:%d/submitviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
-```
+That's it, you're all set to start building your first dApp on Obscuro.
 
-## Compile the contract and build the local deployment transaction
-A contract can be compiled using solc and a transaction created for deploying the contract. Construction of the transaction 
-requires `gasPrice` and `gas` to be explicitly defined (the need to perform this will be removed in a later 
-release). An arbitrary `gasPrice` should be given e.g. the current price on the Ropsten test network. 
-```python 
-    compiled_sol = compile_source(guesser, output_values=['abi', 'bin'], solc_binary='/opt/homebrew/bin/solc')
-    contract_id, contract_interface = compiled_sol.popitem()
-    bytecode = contract_interface['bin']
-    abi = contract_interface['abi']
-    contract = w3.eth.contract(abi=abi, bytecode=bytecode)
-    build_tx = contract.constructor(random.randrange(0, 100)).buildTransaction(
-        {
-            'from': account.address,
-            'nonce': w3.eth.getTransactionCount(account.address),
-            'gasPrice': 1499934385,
-            'gas': 720000,
-            'chainId': 777
-        }
-    )
-```
+## 1. To begin, we'll clone a a basic repo from Github through Remix by following these instructions
 
-## Sign the transaction and send to the network 
-Using the account the transaction can be signed and submitted to the Obscuro Testnet. 
-```python
-    signed_tx = account.signTransaction(build_tx)
-    tx_hash = None
-    try:
-        tx_hash = w3.eth.sendRawTransaction(signed_tx.rawTransaction)
-    except Exception as e:
-        logging.error('Error sending raw transaction %s' % e)
-        return
-```
+### a. Click on GitHub from the main screen in Remix
+![Step 1 screenshot](https://images.tango.us/workflows/454b9fc4-c6f9-43d1-beef-9cbbff7f0b0b/steps/7cb0a9d9-2e3d-4c33-b10c-4f89dea34206/a3c964d3-6d40-4931-9ddc-8390f5744452.png?crop=focalpoint&fit=crop&fp-x=0.2873&fp-y=0.4869&fp-z=2.9198&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=1812%3A1226)
 
-## Wait for the transaction receipt 
-Once submitted the transaction receipt can be obtained in order to get the deployed contract address. An explicit loop 
-and timeout needs to be performed in the user implementation until the semantics of the call becomes fully blocking in 
-a later release. 
-```python
-    start = time.time()
-    tx_receipt = None
-    while True:
-        if (time.time() - start) > 30:
-            logging.error('Timed out waiting for transaction receipt ... aborting')
-            return
 
-        try:
-            tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-            if tx_receipt.status == 0:
-                logging.error('Transaction receipt has failed status ... aborting')
-                return
-            else:
-                logging.info('Received transaction receipt')
-                break
-        except Exception as e:
-            logging.info('Waiting for transaction receipt')
-            time.sleep(1)
-```
+### b. And enter "https://github.com/obscuronet/sample-applications/blob/main/contracts/GuessWarmerColder.sol" into form and hit import
+![Step 2 screenshot](https://images.tango.us/workflows/454b9fc4-c6f9-43d1-beef-9cbbff7f0b0b/steps/48d5b32f-eda8-4e7d-aefc-889d64147192/70a4e414-27b0-4238-9529-f1d64c7fbffd.png?crop=focalpoint&fit=crop&fp-x=0.5000&fp-y=0.2292&fp-z=1.8200&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=1812%3A1226)
 
-## Create the contract using the abi and contract address
-Once the transaction receipt is received function calls can be made against the contract. 
-```python
-    contract = w3.eth.contract(address=tx_receipt.contractAddress, abi=abi)
-    contract.functions.guess(guess).call()
-```
+
+### c. Select Guess.sol and we're ready
+![Step 3 screenshot](https://images.tango.us/workflows/454b9fc4-c6f9-43d1-beef-9cbbff7f0b0b/steps/e35c3f04-92f2-4edf-84ce-ea467feb8797/d401a509-0ab6-4ce8-892d-fbce81c0aeff.png?crop=focalpoint&fit=crop&fp-x=0.1076&fp-y=0.2406&fp-z=2.6507&w=1200&mark-w=0.2&mark-pad=0&mark64=aHR0cHM6Ly9pbWFnZXMudGFuZ28udXMvc3RhdGljL21hZGUtd2l0aC10YW5nby13YXRlcm1hcmsucG5n&ar=1812%3A1226)
+
+## 2. Exploring Guess.sol
+This a Solidity file and once we're done, it will contain everything we need for the 'Guessing Game'. Inside the file you'll find the classic ERC20 interface and a simple implementation named ERC20Basic representing USDT which we'll use as means of players entering to play and the prize pool.
+
+There's also an empty contract called Guess inside Guess.sol, and this is what we'll be extending
 
