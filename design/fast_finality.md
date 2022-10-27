@@ -179,8 +179,8 @@ overwrite again and inspect the results).
 
 This approach was selected over a number of alternatives:
 
-* _Having `n` hosts all speaking to `m` enclaves_: The selected approach is simpler and more closely aligned to our 
-  current implementation (which assumes one enclave per host, and vice-versa)
+* _As above, but with `n` hosts all speaking to `m` enclaves_: The selected approach is simpler and more closely 
+  aligned to our current implementation (which assumes one enclave per host, and vice-versa)
 * _Having a single node that is restored from backup_: Recovery would be much slower in this approach, as a governance 
   action would be required to whitelist the new sequencer attestation in the management contract. Recovery of the 
   latest light batches (those not contained in the backup) would also be dependent on requesting them from network 
