@@ -391,9 +391,8 @@ accounts which are affected by this transaction, and which are thus directly int
     event SetFeeProtocol(uint8 feeProtocol0Old, uint8 feeProtocol1Old, uint8 feeProtocol0New, uint8 feeProtocol1New);
 ```
 
-What these events have in common is that they are not user-specific. They represent a general update of the smart contract.
-
-*Note that they might contain address fields, but these are addresses of smart contracts.*
+What these events have in common is that they are not user-specific. They represent a general update of the smart 
+contract. While they might contain address fields, but these are addresses of smart contracts.
 
 ### Events APIs in Ethereum, Geth, and common Web3 libraries
 
