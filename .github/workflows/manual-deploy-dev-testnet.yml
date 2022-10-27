@@ -213,7 +213,7 @@ jobs:
                --mgmtcontractaddr=${{needs.build-l2.outputs.mgmtContractAddr}} \
                --hocerc20addr=${{needs.build-l2.outputs.hocErc20Addr}} \
                --pocerc20addr=${{needs.build-l2.outputs.pocErc20Addr}} \
-               --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
+               --pkaddress=${{ secrets[matrix.node_pk_addr] }} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --dev_testnet=true \
                --p2p_public_address=dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
