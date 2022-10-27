@@ -70,8 +70,8 @@ design, including a list of the provided transactions and a header including inf
 the hash of the "parent" light batch.
 
 The sequencer's host immediately distributes the light batch to all other nodes, who gossip it onwards to other nodes
-(ensuring the sequencer cannot restrict the distribution of light batches to specific nodes). These light batches are 
-not sent to be included on the L1.
+(ensuring the sequencer cannot restrict the distribution of light batches to specific nodes, provided one of the nodes 
+who received the light batch is honest). These light batches are not sent to be included on the L1.
 
 When a node receives a light batch, it checks that it has also stored the light batch's parent. If 
 not, it walks the chain backwards, requesting any light batches it is missing until it hits a stored light batch. In 
