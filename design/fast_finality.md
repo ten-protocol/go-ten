@@ -150,11 +150,9 @@ process and retrieving the rollups from the L1. Other network nodes treat each n
 (e.g. transactions are gossiped normally, and not targeted specifically at the leader node).
 
 The cluster's leader is selected via an RPC operation on the corresponding host. It is the responsibility of the
-sequencer's operator to monitor the healthiness of the hosts and enclaves, assign new leaders, and restart any down
-hosts and enclaves.
-
-In the event that a follower crashes, it can be restarted and recover data from the leader, just like a regular node. 
-If the event that the leader crashes, the sequencer operator must select a new leader.
+sequencer's operator to monitor the healthiness of the nodes. In the event that a follower crashes, it can be restarted 
+and recover data from the leader, just like a regular node. If the event that the leader crashes, the sequencer 
+operator must select a new leader.
 
 The key risk during failover is that a single light batch (the latest) may be lost. There are two specific issues that 
 must be handled:
