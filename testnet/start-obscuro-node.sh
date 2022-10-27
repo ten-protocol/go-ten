@@ -110,7 +110,7 @@ fi
 
 
 # set the data in the env file
-echo "PKSTRING=${pk_string}" > "${testnet_path}/.env"
+echo "PKSTRING=${pk_string}" >> "${testnet_path}/.env"
 echo "PKADDR=${pk_address}" >> "${testnet_path}/.env"
 echo "HOSTID=${host_id}"  >> "${testnet_path}/.env"
 echo "MGMTCONTRACTADDR=${mgmt_contract_addr}"  >> "${testnet_path}/.env"
