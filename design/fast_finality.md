@@ -250,8 +250,9 @@ posted on each restart).
 
 This history can be queried via RPC from validators.
 
-In this model, the sequencer operator would get `n-1` shots at front-running before having to restart one or more 
-sequencer enclaves.
+In this model, the sequencer operator would get `n-1` shots at front-running without being detected before having to 
+restart one or more sequencer enclaves. This front-running would come at the expense of making the enclave useless 
+until it's restarted.
 
 ##### Include proofs from _all_ sequencer enclaves in each light batch
 
