@@ -20,7 +20,7 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
   * The sequencer is not able to "rewrite history" (or is strongly disincentivised from doing so), even for soft-final
     transactions
 * Censorship resistance
-  * End-users can bypass the sequencer to include transactions on the L1 directly (possibly at higher cost and slower 
+  * End-users have a mechanism to force the sequencer to include their transactions (possibly at higher cost and slower 
     finality)
   * The sequencer distributes all soft-finalised transactions to all nodes
   * Nodes can easily prove whether a given soft-finalised transaction was hard-finalised, and in the correct order
