@@ -243,17 +243,20 @@ To help dApp developers design applications with a good UX, the ethereum develop
 are pieces of information emitted from smart contracts, which can be streamed in real time to external applications that
 subscribe to them.
 
+*Note that there is no constraint on data access, since all data is public.*
+
 To better understand the anatomy of events, read this [blog](https://medium.com/mycrypto/understanding-event-logs-on-the-ethereum-blockchain-f4ae7ba50378)
 
-#### Smart contracts
+#### Defining and emitting events
 
-This is how an event is declared in a smart contract.
+This is how an event is declared in a smart contract:
 
 ```solidity
 event Transfer(address indexed from, address indexed to, uint256 value);
 ```
 
-And this is how it is emitted.
+And this is how it is emitted:
+
 ```solidity
 emit Transfer(from, to, amount);
 ```
@@ -281,25 +284,15 @@ A web app might request:
 
 Apps can also request historic events starting from any block.
 
-#### How events work
+### Events and address topics
 
-`Note: this section might not be 100% accurate.`
+Let's analyse a couple of events from ERC20 and Uniswap, grouped by whether they contain address topics.
 
-The query made on the UI side is transformed in a server-side query on the node, and there is some logic after a tx is
-executed and events are emitted, to match them against the filters requested by users and distribute them to the
-requester.
+*A topic is a field which is marked as `indexed`.*
 
-*Note that there is no constraint on data access, since all data is public.*
-
-### Events and address fields
-
-Let's analyse a couple of events from ERC20 and Uniswap, grouped by whether they contain address fields.
-
-#### With end-user address topics
+#### Events with end-user address topics
 
 All the events in this section contain at least one end-user address topic.
-
-*Note: a topic is a field which is marked as `indexed`*
 
 ```solidity
     event Transfer(address indexed from, address indexed to, uint256 value);
@@ -353,7 +346,9 @@ All the events in this section contain at least one end-user address topic.
 What all these events have in common is that the address topics like: `sender`, `recipient`, `owner`, `to`, etc, represent the
 accounts which are affected by this transaction, and which are thus directly interested in it.
 
-#### Without end-user address fields
+#### Events without end-user address topics
+
+All the events in this section do not contain any end-user address topics.
 
 ```solidity
     /// @notice Emitted when a pool is created
