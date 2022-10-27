@@ -154,8 +154,8 @@ sequencer's operator to monitor the healthiness of the nodes. In the event that 
 and recover data from the leader, just like a regular node. If the event that the leader crashes, the sequencer 
 operator must select a new leader.
 
-The key risk during failover is that a single light batch (the latest) may be lost. There are two specific issues that 
-must be handled:
+The key risk during failover to a new leader is that a single light batch (the latest) may be lost. There are two 
+specific issues that must be handled:
 
 1. Determining whether the light batch was truly lost. A new leader may come online and consider the latest light batch 
    to have been lost, when in fact it had already been sent to other nodes before the crash
