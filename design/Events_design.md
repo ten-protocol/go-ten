@@ -223,7 +223,7 @@ An ERC20 transfer from Alice to Bob will show up on Bob's UI if he is subscribed
 
 #### All events are public by default 
 
-This is not possible as it breaks the most fundamental contact, the `ERC20`, which contains the `Transfer` event.
+This is not possible as it breaks the most fundamental contract, the `ERC20`, which contains the `Transfer` event.
 If all events were public by default then, we either break the ERC20 api by removing the event, or we lose privacy
 
 #### Add a third visibility rule giving the signer of the transaction total visibility
