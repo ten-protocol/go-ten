@@ -9,7 +9,7 @@ It covers two aspects:
 - the visibility rules for events.
 - technical implementation details.
 
-## Ethereum Events Design
+## Background - Ethereum Events Design
 
 To help dApp developers design applications with a good UX, the ethereum developers invented the concept of "events" or "logs", which
 are pieces of information emitted from smart contracts, which can be streamed in real time to external applications that
@@ -193,7 +193,7 @@ What these events have in common is that they are not user-specific. They repres
 
 *Note that they might contain address fields, but these are addresses of smart contracts.*
 
-### Event visibility Rules
+### Event visibility rules
 
 Users should be able to request and read all events that are relevant to them. By relevant, we mean that the user was 
 somehow involved in the transaction that emitted that event, and this event might be of interest to them.
@@ -205,11 +205,17 @@ The implicit rules we propose are:
 
 The purpose for these rules is to be simple, clear, intuitive, and to work as good as possible with the existing contracts.
 
-There is the case, as in the ``PoolCreated`` event from above, where the event contains addresses, but they are contract addresses. 
-There is another case, where an event might contain a field that happens to look like an address.
+There are several edge-cases:
 
-During the evaluation phase, the VM must check each address field for the ``getCode`` function, to determine what type of address it is.  
-If at least one of the addresses is not a smart contract, then the event will fall under rule 1.
+1. The event contains addresses, but they are contract address, as in the ``PoolCreated`` event from above
+2. The event contains a topics that looks like an address, but is not
+
+To handle this, for each potential account address in the topics, the VM must check:
+
+* If there is associated contract code, using the `GetCode` function
+* If it has a zero nonce, using the `GetNonce` function (only account and smart contract addresses have non-zero nonces)
+
+If either of these is true, the event will fall under rule 1.
 
 ### Adjusting the event visibility rules
 
