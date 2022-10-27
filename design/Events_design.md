@@ -207,15 +207,15 @@ The purpose for these rules is to be simple, clear, intuitive, and to work as go
 
 There are several edge-cases:
 
-1. The event contains addresses, but they are contract address, as in the ``PoolCreated`` event from above
-2. The event contains a topics that looks like an address, but is not
+* The event contains addresses, but they are contract addresses, as in the ``PoolCreated`` event from above
+* The event contains a topics that looks like an address, but is not
 
 To handle this, for each potential account address in the topics, the VM must check:
 
 * If there is associated contract code, using the `GetCode` function
 * If it has a zero nonce, using the `GetNonce` function (only account and smart contract addresses have non-zero nonces)
 
-If either of these is true, the event will fall under rule 1.
+If one or both of the above are true all the addresses in the event's topics, the event will fall under rule 2, above.
 
 ### Adjusting the event visibility rules
 
