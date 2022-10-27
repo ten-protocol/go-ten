@@ -277,6 +277,8 @@ We already have a tool called the "Wallet Extension", which acts as a proxy betw
 
 #### Obscuro enclave
 
+// TODO - Cover the GetLogs method, and other methods we've added in this space
+
 ##### Creating and deleting subscriptions
 
 The enclave exposes two methods, one to add a new logs subscription, and one to delete a logs subscription.
@@ -302,29 +304,28 @@ authenticated, so an attacker who discovered the subscription ID could request i
 ##### Block ingestion
 
 Each time the host sends the enclave a new block to ingest, the enclave responds with a block submission response. 
-This response will be extended to include a mapping from subscription IDs to the associated logs, where the logs are 
-encrypted with the viewing key corresponding to the `LogSubscription.Account`. By associated logs, we mean any logs 
-from any transactions in the current or historical blocks that meet the two following criteria:
+This response will include a mapping from subscription IDs to the associated logs, where the logs are encrypted with 
+the viewing key corresponding to the `LogSubscription.Account`. By associated logs, we mean any logs from any 
+transactions in the current block that meet the two following criteria:
 
 * They match the `LogSubscription.Filter`
-* They pass the relevancy test described above for the user address in `LogSubscription.Account`
-
-This means that the set of logs for a given subscription can become very large. For example, a subscription with no 
-filter would return all logs passing the relevancy test for that user since the start of time.
+* They pass the relevancy test described above, for the user address in `LogSubscription.Account`
 
 ##### Transaction receipts
 
 Logs are also included in transaction receipts. Whenever the host requests a transaction receipt, the enclave filters 
-out the receipt's logs to only include those that pass the relevancy test (using the transaction's sender as the user 
-address).
+out the receipt's logs to only include those that pass the relevancy test, using the transaction's sender as the user 
+address.
 
 #### Obscuro host
 
 For each incoming logs subscription request via RPC, the host has to do two things:
 
-1. Request the creation of the new subscription on the enclave
+1. Request the creation of the new logs subscription on the enclave
 2. Create a Geth `rpc.Subscription` object to route any new logs for the subscription back to the client after each 
    block ingestion
+
+// TODO - Cover the routing of logs from the block response to the client
 
 ##### Enclave subscription
 
