@@ -14,7 +14,7 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 
 * Finality
   * Transaction *soft* finality (finality guaranteed by the sequencer) has a median duration of one second, from when 
-    the client submits the transaction to when the host receives the light-batch confirmation
+    the user submits the transaction to when the user receives the transaction receipts and events
   * There is eventual transaction *hard* finality (finality guaranteed by the L1)
   * The sequencer is strongly incentivised to hard-finalise transactions in the same order they are soft-finalised, and 
     on the agreed cadence
