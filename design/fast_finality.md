@@ -126,8 +126,9 @@ The sequencer must put up a stake in the management contract.
 If a node finds that the contents of a given light-batch do not match the rollup published on the L1 (e.g. transactions 
 missing, transactions in the wrong order), it can post a challenge including the light batch and offending rollup to 
 the L1. The management contract will inspect this challenge. If successful, the sequencer will be slashed, with their  
-entire stake transferred to the challenger as a reward. This reward is greater than the cost of posting the challenge, 
-to incentivise prompt discovery of issues.
+entire stake split between the foundation and the challenger as a reward. This reward is greater than the cost of 
+posting the challenge, to incentivise prompt discovery of issues, but less than the total stake, to reduce the 
+incentive to mount an attack to win the stake.
 
 Initially, there will be no slashing mechanism to ensure light batches are produced at the correct cadence. It is 
 expected to be a sufficient incentive that the sequencer is operated by the foundation and has an interest in the 
