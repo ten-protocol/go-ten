@@ -158,10 +158,11 @@ specific issues that must be handled:
 2. Returning the crashed leader to a consistent state. When the new leader comes back online, their database may 
    contain a light batch that was never distributed, and now represents a fork
 
-To avert (1), the leader must prioritise its followers when gossiping light batches. There is still a risk that some 
-followers will have received the light batch before the crash, but another follower that hasn't received it is selected 
-as leader. For this reason, the new leader must also poll the other followers for the latest light batch when it comes 
-online.
+To avert (1), the sequencer's host must use databases with resiliency configured. When they receive a light batch, they 
+must store it and wait for the confirmation before proceeding. There is still a risk that some followers will have 
+received the light batch before the crash, but another follower that hasn't received it is selected as leader. For this 
+reason, the new leader must also poll the host databases of the other followers for the latest light batch when it 
+comes online.
 
 To avert (2), we need to be able to overwrite the state of the recovered leader. However, this must be handled 
 carefully - if a node's state can be overwritten arbitrarily, the node can be used to front-run by repeatedly writing 
