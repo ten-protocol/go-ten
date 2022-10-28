@@ -15,8 +15,9 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 * Finality
   * Transaction *soft* finality (finality guaranteed by the sequencer) is achieved in under one second
   * There is eventual transaction *hard* finality (finality guaranteed by the L1)
-  * The sequencer is incentivised to achieve hard finality on an agreed cadence
-  * The sequencer is incentivised to hard-finalise transactions in the same order they are soft-finalised
+  * The sequencer is strongly incentivised to hard-finalise transactions in the same order they are soft-finalised, and 
+    on the agreed cadence
+  * Nodes can easily prove whether a given soft-finalised transaction was hard-finalised, and in the correct order
   * The sequencer is not able to "rewrite history" (or is strongly disincentivised from doing so), even for soft-final
     transactions
   * Soft finality does not break the mechanism used by some smart contracts (e.g. SushiSwap) of using `block.number` as 
@@ -25,7 +26,6 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
   * End-users have a mechanism to force the sequencer to include their transactions (possibly at higher cost and slower 
     finality)
   * The sequencer distributes all soft-finalised transactions to all nodes
-  * Nodes can easily prove whether a given soft-finalised transaction was hard-finalised, and in the correct order
 * Value-extraction resistance
   * The sequencer cannot precompute the effects of running a given set of transactions without committing to that set 
     of transactions (e.g. by running a single transaction, then `eth_call`ing to see how it has affected a smart 
@@ -37,9 +37,9 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 * User/dev experience
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
 * Resilience
-  * Failover does not require a governance action
-  * During failover, it is acceptable to break the one-second soft-finality guarantee 
-  * During failover, it is acceptable to drop transactions that have not been soft-finalised
+  * Failover of the centralised sequencer does not require a governance action
+  * During failover of the centralised sequencer, it is acceptable to break the one-second soft-finality guarantee, and 
+    drop transactions that have not been soft-finalised
 
 ## Assumptions
 
@@ -64,7 +64,8 @@ replacement enclave into the sequencer's cluster, following the same process.
 ### Production of light batches
 
 A light batch is produced on the required cadence to meet the network's soft-finality window of one second. Only the 
-sequencer produces light batches.
+sequencer produces light batches, with the enclave code enforcing that only whitelisted enclaves can produce light 
+batches.
 
 To produce a light batch, the sequencer's host feeds a set of transactions to the enclave. The enclave responds by 
 creating a signed and encrypted *light batch*. This light batch is formally identical to the rollup of the final 
@@ -91,7 +92,9 @@ the client behave as if the transactions were completely final).
 
 ### Production of rollups
 
-Only the sequencer produces rollups. A rollup is produced whenever one of the following conditions is met:
+Only the sequencer produces rollups, with the enclave code enforcing that only whitelisted enclaves can produce rollups.
+
+A rollup is produced whenever one of the following conditions is met:
 
 1. The number of transactions across all light-batches since the last rollup exceeds `x`
 2. The total size of all transactions across all light-batches since the last rollup exceeds `y`
@@ -104,16 +107,16 @@ To produce a rollup, the sequencer's host requests the creation of a rollup. The
 containing all the light batches created since the last rollup, in a sparse Merkle tree structure. This rollup is 
 encrypted and signed, then sent to be included on the L1.
 
+The management contract on the L1 verifies that the rollup is produced by a designated sequencer.
+
 ### Discovery of rollups
 
-Nodes scan incoming L1 blocks for new rollups. They validate each new rollup by:
+Nodes scan incoming L1 blocks for new rollups and persist them, so that they have a record of which light batches have 
+been confirmed on the L1.
 
-* Checking that it is produced by the designated sequencer, based on the sequencer listed in the management contract
-* Checking that it contains all the light batches produced since the last rollup. Each light batch contains the number 
-  of the rollup that will contain it. Since the rollup is a sparse Merkle tree, proving non-inclusion of a given light 
-  batch is straightforward
-
-They then persist the rollup, so that they have a record of which light batches have been confirmed on the L1.
+Before storing each rollup, the node checks that it contains all the light batches produced since the last rollup. Each 
+light batch contains the number of the rollup that will contain it. Since the rollup is a sparse Merkle tree, proving 
+non-inclusion of a given light batch is straightforward.
 
 ### Resilience
 
@@ -183,11 +186,12 @@ This approach has several downsides:
 * Recovery would be much slower in this approach, as a governance action would be required to whitelist the new 
   sequencer attestation in the management contract (this could be mitigated by preallocating some future enclave 
   machines to use for failover, and whitelisting attestations for them in the management contract)
-* The latest light batches (those not contained in the backup) would have to be recovered from network peers, which 
-  would be more complicated than recovering them from specific, sequencer-operator controlled nodes. In particular, 
-  we'd to handle the case of a node receiving a light batch from the crashed leader that they then fail to gossip out 
-  correctly; some mechanism would have to be provided to allow them to return to the non-forked light-batch chain (e.g. 
-  overwriting the light-batch chain if they receive another with greater height)
+* If the database is lost and has to be restored from backup, the latest light batches (those not contained in the 
+  backup) would have to be recovered from network peers, which would be more complicated than recovering them from 
+  specific, sequencer-operator controlled nodes. In particular, we'd to handle the case of a node receiving a light 
+  batch from the crashed leader that they then fail to gossip out correctly; some mechanism would have to be provided 
+  to allow them to return to the non-forked light-batch chain (e.g. overwriting the light-batch chain if they receive 
+  another with greater height)
 * This approach is more difficult operationally (creation, storage and recreation from backups)
 
 ## Future work
