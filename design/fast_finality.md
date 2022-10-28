@@ -127,7 +127,8 @@ keep their stake topped up to a suitable level to continue posting rollups.
 If a node finds that the contents of a given light-batch do not match the rollup published on the L1 (e.g. transactions 
 missing, transactions in the wrong order), it can post a challenge including the light batch and offending rollup to 
 the L1. The management contract will inspect this challenge. If successful, the sequencer will be slashed, with part of 
-their stake transferred to the challenger.
+their stake transferred to the challenger as a reward. This reward is greater than the cost of posting the challenge, 
+to incentivise prompt discovery of issues.
 
 Initially, there will be no staking mechanism to ensure light batches are produced at the correct cadence. Since there 
 is no major upside to modifying the light-batch cadence, it is expected to be a sufficient incentive that the sequencer 
