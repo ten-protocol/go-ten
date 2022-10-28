@@ -111,13 +111,12 @@ It also reduces flexibility in sending lifecycle events to administrators.
 
 ## Obscuro events implementation
 
-Our goal is to implement the visibility rules described above without modifying the Ethereum events API.
+Our goal is to implement the visibility rules described above without modifying the Ethereum events API. We will look 
+first at the changes to the enclave, then those to the host, and finally those to the RPC client.
 
 ### Obscuro enclave
 
-// TODO - Discuss the getLogs method.
-
-#### Creating and deleting subscriptions
+#### Creating and deleting logs subscriptions
 
 The enclave exposes RPC methods to add or remove logs subscriptions. The request to create a new logs subscription must 
 contain the following information:
@@ -154,7 +153,16 @@ Transaction receipts also contain the logs for that transaction. Whenever the ho
 enclave filters out the receipt's logs to only include those that pass the relevancy test, using the transaction's 
 sender as the user address.
 
+#### Log snapshots
+
+The enclave also exposes an RPC method to get a snapshot of logs. It expects an encrypted set of params that include 
+the log filter and the address the logs are for. It then crawls the chain, extracts all the logs that match the filter 
+and are relevant based on the address provided. It returns these logs encrypted with the viewing key corresponding to 
+the address provided.
+
 ### Obscuro host
+
+#### Logs subscriptions
 
 For each incoming logs subscription request via RPC, the host has to do two things:
 
@@ -169,9 +177,16 @@ logs for that subscription in the block submission response.
 For each block submission response, the host extracts the encrypted logs for that subscription ID, and forwards them 
 on to the corresponding Geth `rpc.Subscription`.
 
+#### Logs snapshots
+
+For log snapshot requests, it is again forwarded blindly to the enclave, with the host unable to learn anything about 
+the request or response.
+
 ### Obscuro encrypted RPC client
 
-Due to their sensitive nature, logs subscription requests and responses must pass through the encrypted RPC client.
+Due to their sensitive nature, logs requests and log subscriptions must pass through the encrypted RPC client.
+
+#### Logs subscriptions
 
 The encrypted RPC client only handles logs subscriptions via the `eth_subscribe` and `eth_unsubscribe` APIs (see 
 [here](https://ethereum.org/en/developers/tutorials/using-websockets/#eth-subscribe)). A consequence of this is that 
@@ -185,6 +200,10 @@ account and generating the required signature.
 For each received event, the encrypted RPC client must retrieve the encrypted log bytes from the `data` field and 
 decrypt them with the corresponding private key before returning the log events to the user. It then pushes the 
 decrypted event onto a separate channel listened to by the client.
+
+#### Logs snapshots
+
+TODO - Write this section.
 
 ## Security and usability of the proposed design
 
