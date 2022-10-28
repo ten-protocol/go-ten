@@ -71,7 +71,7 @@ debug_enclave=false
 dev_testnet=false
 pk_address=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
-log_level=2
+log_level=4
 
 
 # Fetch options
