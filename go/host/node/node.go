@@ -469,7 +469,7 @@ type blockAndParent struct {
 }
 
 func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) error {
-	var result common.BlockSubmissionResponse
+	var result *common.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
 		if block == nil {
@@ -486,7 +486,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		// todo: isLatest should only be true when we're not behind
 		result, err = a.enclaveClient.SubmitBlock(*decoded, true)
 		if err != nil {
-			return err
+			return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
 		}
 
 		a.storeBlockProcessingResult(result)
@@ -498,14 +498,8 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		}
 	}
 
-	// TODO - Should these checks live in the `for` block above, so that they apply to all blocks, and not just the last?
-	if !result.IngestedBlock {
-		b, err := blocks[len(blocks)-1].DecodeBlock()
-		if err != nil {
-			return fmt.Errorf("did not ingest block. Cause: %s", result.BlockNotIngestedCause)
-		}
-		return fmt.Errorf("did not ingest block b_%d. Cause: %s", common.ShortHash(b.Hash()), result.BlockNotIngestedCause)
-	}
+	// TODO - once we get rid of the parent, child thing then the for-loop above goes away (currently this code only
+	// 		applies to the second block submission, i.e. the child submission)
 
 	for _, secretResponse := range result.ProducedSecretResponses {
 		err := a.publishSharedSecretResponse(secretResponse)
@@ -549,7 +543,7 @@ func (a *Node) processBlock(b *types.Block) {
 	}
 }
 
-func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
+func (a *Node) handleRoundWinner(result *common.BlockSubmissionResponse) func() {
 	return func() {
 		if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 			return
@@ -591,7 +585,7 @@ func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
 	}
 }
 
-func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse) {
+func (a *Node) storeBlockProcessingResult(result *common.BlockSubmissionResponse) {
 	// only update the node rollup headers if the enclave has found a new rollup head
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
@@ -600,9 +594,7 @@ func (a *Node) storeBlockProcessingResult(result common.BlockSubmissionResponse)
 	}
 
 	// adding a header will update the head if it has a higher height
-	if result.IngestedBlock {
-		a.nodeDB.AddBlockHeader(result.BlockHeader)
-	}
+	a.nodeDB.AddBlockHeader(result.BlockHeader)
 }
 
 // Called only by the first enclave to bootstrap the network
@@ -930,15 +922,21 @@ func (a *Node) bootstrapNode() types.Block {
 		a.processBlock(&cb)
 		result, err := a.enclaveClient.SubmitBlock(cb, false)
 		if err != nil {
-			a.logger.Crit("Internal error", log.ErrKey, err)
-		}
-		if !result.IngestedBlock && result.BlockNotIngestedCause != "" {
+			var bsErr *common.BlockSubmitError
+			isBSE := errors.As(err, bsErr)
+			if !isBSE {
+				// unexpected error
+				a.logger.Crit("Internal error", log.ErrKey, err)
+			}
+			// todo: we need to use the latest hash info from the BlockSubmitError to realign the block streaming for the enclave
 			a.logger.Info(fmt.Sprintf("Failed to ingest block b_%d. Cause: %s",
 				common.ShortHash(result.BlockHeader.Hash()),
 				result.BlockNotIngestedCause,
 			))
+		} else {
+			// submission was successful
+			a.storeBlockProcessingResult(result)
 		}
-		a.storeBlockProcessingResult(result)
 
 		nextBlk, err = a.ethClient.BlockByNumber(big.NewInt(cb.Number().Int64() + 1))
 		if err != nil {

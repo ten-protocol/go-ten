@@ -34,7 +34,7 @@ func (l *LogEventManager) RemoveSubscription(id rpc.ID) {
 }
 
 // SendLogsToSubscribers distributes logs to subscribed clients.
-func (l *LogEventManager) SendLogsToSubscribers(result common.BlockSubmissionResponse) {
+func (l *LogEventManager) SendLogsToSubscribers(result *common.BlockSubmissionResponse) {
 	for subscriptionID, encryptedLogs := range result.SubscribedLogs {
 		logSub, found := l.subscriptions[subscriptionID]
 		if !found {

@@ -217,18 +217,20 @@ func (e *enclaveImpl) Start(block types.Block) error {
 	return nil
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmissionResponse, error) {
+func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubmissionResponse, error) {
 	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
-	return common.BlockSubmissionResponse{
+	return &common.BlockSubmissionResponse{
 		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
 		BlockHeader:    b.Header(),
-		IngestedBlock:  true,
 	}, nil
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (common.BlockSubmissionResponse, error) {
-	bsr := e.chain.SubmitBlock(block, isLatest)
+func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+	bsr, err := e.chain.SubmitBlock(block, isLatest)
+	if err != nil {
+		return nil, err
+	}
 
 	if bsr.RollupHead != nil {
 		hr, f := e.storage.FetchRollup(bsr.RollupHead.Hash())

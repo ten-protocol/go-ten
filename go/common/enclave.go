@@ -1,6 +1,10 @@
 package common
 
 import (
+	"errors"
+	"fmt"
+	"strings"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -31,7 +35,7 @@ type Enclave interface {
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash gethcommon.Hash) (BlockSubmissionResponse, error)
+	ProduceGenesis(blkHash gethcommon.Hash) (*BlockSubmissionResponse, error)
 
 	// Start - start speculative execution
 	Start(block types.Block) error
@@ -42,7 +46,7 @@ type Enclave interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitBlock(block types.Block, isLatest bool) (BlockSubmissionResponse, error)
+	SubmitBlock(block types.Block, isLatest bool) (*BlockSubmissionResponse, error)
 
 	// SubmitRollup - receive gossiped rollups
 	SubmitRollup(rollup ExtRollup) error
@@ -112,7 +116,6 @@ type Enclave interface {
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
 	BlockHeader           *types.Header // the header of the consumed block. Todo - only the hash required
-	IngestedBlock         bool          // Whether the Block was ingested or discarded
 	BlockNotIngestedCause string        // The reason the block was not ingested. This message has to not disclose anything useful from the enclave.
 
 	ProducedRollup ExtRollup // The new Rollup when ingesting the block produces a new Rollup
@@ -129,4 +132,49 @@ type ProducedSecretResponse struct {
 	Secret      []byte
 	RequesterID gethcommon.Address
 	HostAddress string
+}
+
+const (
+	bsePrefix = "blockSubmitError: "
+	l1HeadKey = "l1Head"
+)
+
+var l1HeadErrorSeparator = fmt.Sprintf(", %s=", l1HeadKey)
+
+// BlockSubmitError is used as a standard format for error response from enclave for block submission errors
+// The L1 Head hash tells the host what the enclave knows as the canonical chain head, so it can feed it the appropriate block.
+type BlockSubmitError struct {
+	L1Head  *gethcommon.Hash
+	Wrapped error
+}
+
+func (r BlockSubmitError) Error() string {
+	head := "N/A"
+	if r.L1Head != nil && (*r.L1Head != gethcommon.Hash{}) {
+		head = r.L1Head.String()
+	}
+	return fmt.Sprintf("%s%s%s%s", bsePrefix, r.Wrapped.Error(), l1HeadErrorSeparator, head)
+}
+
+func (r BlockSubmitError) Unwrap() error {
+	return r.Wrapped
+}
+
+// RehydrateBlockSubmitError is used to rebuild a BlockSubmitError type from a string (useful after its type has been lost in RPC communication)
+// the format of the error is expected to be: "BlockSubmitError: {errorMsg}, l1Head={l1HeadHash}".
+func RehydrateBlockSubmitError(err error) (*BlockSubmitError, bool) {
+	str := err.Error()
+	split := strings.Split(str, l1HeadErrorSeparator)
+	if len(split) != 2 {
+		return nil, false
+	}
+	var hash *gethcommon.Hash
+	if len(split[1]) > 0 {
+		h := gethcommon.HexToHash(split[1])
+		hash = &h
+	}
+	return &BlockSubmitError{
+		L1Head:  hash,
+		Wrapped: errors.New(strings.TrimPrefix(split[0], bsePrefix)),
+	}, true
 }

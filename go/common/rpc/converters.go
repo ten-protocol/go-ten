@@ -29,7 +29,7 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 	}
 }
 
-func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
+func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
 	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
 
 	subscribedLogBytes, err := json.Marshal(response.SubscribedLogs)
@@ -39,7 +39,6 @@ func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (gene
 
 	return generated.BlockSubmissionResponseMsg{
 		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
-		IngestedBlock:           response.IngestedBlock,
 		BlockNotIngestedCause:   response.BlockNotIngestedCause,
 		ProducedRollup:          &producedRollupMsg,
 		IngestedNewRollup:       response.FoundNewHead,
@@ -78,15 +77,14 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 	return respList
 }
 
-func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (common.BlockSubmissionResponse, error) {
+func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (*common.BlockSubmissionResponse, error) {
 	var subscribedLogs map[rpc.ID][]byte
 	if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not unmarshal subscribed logs from JSON. Cause: %w", err)
+		return nil, fmt.Errorf("could not unmarshal subscribed logs from JSON. Cause: %w", err)
 	}
 
-	return common.BlockSubmissionResponse{
+	return &common.BlockSubmissionResponse{
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
-		IngestedBlock:           msg.IngestedBlock,
 		BlockNotIngestedCause:   msg.BlockNotIngestedCause,
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
 		FoundNewHead:            msg.IngestedNewRollup,
