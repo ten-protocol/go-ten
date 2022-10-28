@@ -117,41 +117,40 @@ Our goal is to implement the visibility rules described above without modifying 
 
 #### Creating and deleting subscriptions
 
-The enclave exposes two methods, one to add a new logs subscription, and one to delete a logs subscription.
+The enclave exposes RPC methods to add or remove logs subscriptions. The request to create a new logs subscription must 
+contain the following information:
 
-The method to create a subscription takes a `LogSubscription` object, defined as below. This object is encrypted with 
-the enclave's private key, to prevent attackers from eavesdropping on the creation of subscriptions.
+* `Account`: The account address the events relate to.
+* `Signature`: A signature over the account address using a private viewing key.
+* `Filter`: A subscriber-defined filter to apply to the stream of logs.
 
-```
-LogSubscription {
-    Account   // The account address the events relate to.
-    Signature // A signature over the account address using a private viewing key.
-    Filter    // A subscriber-defined filter to apply to the stream of logs.
-}
-```
+This object is encrypted with the enclave's private key, to prevent attackers from eavesdropping on the creation of 
+subscriptions.
 
-The signature ensures that the client is authorised to create a subscription for the given account. This prevents
-attackers from creating subscriptions to analyse the pattern of logs. Each new logs subscription is assigned a unique 
-subscription ID that is returned to the host.
+The signature field proves that the client is authorised to create a subscription for the given account. This prevents
+attackers from creating subscriptions for accounts other than their own to analyse the pattern of logs.
 
-The method to delete a subscription takes the subscription ID of the subscription to be deleted. This method is not 
-authenticated, so an attacker who discovered the subscription ID could request its deletion.
+Each new logs subscription is assigned a unique subscription ID that is returned to the host. The method to delete a 
+subscription takes the subscription ID of the subscription to be deleted. This method is not authenticated, so an 
+attacker who discovered the subscription ID could request its deletion.
 
 #### Block ingestion
 
-Each time the host sends the enclave a new block to ingest, the enclave responds with a block submission response. 
-This response will include a mapping from subscription IDs to the associated logs, where the logs are encrypted with 
-the viewing key corresponding to the `LogSubscription.Account`. By associated logs, we mean any logs from any 
-transactions in the current block that meet the two following criteria:
+Each time the host sends the enclave a new block to ingest, the enclave stores the logs for that block in its database. 
+It then produces a block submission response which it sends back to the host.
+
+This response includes a mapping from subscription IDs to a set of logs, where each set of logs is encrypted with 
+the viewing key corresponding to the subscription's `Account`. The set of logs is constructed by taking any logs from 
+the current block that meet the two following criteria:
 
 * They match the `LogSubscription.Filter`
-* They pass the relevancy test described above, for the account address in `LogSubscription.Account`
+* They pass the relevancy test described earlier in this document for the account address in `LogSubscription.Account`
 
 #### Transaction receipts
 
-Logs are also included in transaction receipts. Whenever the host requests a transaction receipt, the enclave filters 
-out the receipt's logs to only include those that pass the relevancy test, using the transaction's sender as the user 
-address.
+Transaction receipts also contain the logs for that transaction. Whenever the host requests a transaction receipt, the 
+enclave filters out the receipt's logs to only include those that pass the relevancy test, using the transaction's 
+sender as the user address.
 
 ### Obscuro host
 
