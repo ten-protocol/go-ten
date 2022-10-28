@@ -129,6 +129,11 @@ missing, transactions in the wrong order), it can post a challenge including the
 the L1. The management contract will inspect this challenge. If successful, the sequencer will be slashed, with part of 
 their stake transferred to the challenger.
 
+Initially, there will be no staking mechanism to ensure light batches are produced at the correct cadence. Since there 
+is no major upside to modifying the light-batch cadence, it is expected to be a sufficient incentive that the sequencer 
+is operated by the foundation and has an interest in the well-running of the network, including a reliable light batch 
+cadence.
+
 ### Resilience
 
 #### Goals
