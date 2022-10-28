@@ -13,7 +13,8 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 ## Requirements
 
 * Finality
-  * Transaction *soft* finality (finality guaranteed by the sequencer) is achieved in under one second
+  * Transaction *soft* finality (finality guaranteed by the sequencer) has a median duration of one second, from when 
+    the client submits the transaction to when the host receives the light-batch confirmation
   * There is eventual transaction *hard* finality (finality guaranteed by the L1)
   * The sequencer is strongly incentivised to hard-finalise transactions in the same order they are soft-finalised, and 
     on the agreed cadence
@@ -211,6 +212,8 @@ This approach has several downsides:
 * How do we achieve the desired cadence of light batches without tying ourselves to the L1 block cadence, in light of 
   the absence of time within an enclave? Can the host request light batches on the correct cadence, with some incentive 
   mechanism to prevent deviations from the "correct" cadence?
+* How should the counter in light-batch headers increase? Should it increase once per L1 block, or once per light 
+  batch?
 
 ## Appendices
 
