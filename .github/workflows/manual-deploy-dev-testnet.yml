@@ -59,8 +59,6 @@ jobs:
           ports: '8025 8026 9000 9001'
           cpu: 2
           memory: 4
-      - run:
-          echo "prefundedAddrs=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}"
 
   build-l2:
     needs: deploy-l1

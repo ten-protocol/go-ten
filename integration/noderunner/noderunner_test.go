@@ -3,6 +3,7 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"net"
 	"net/http"
 	"testing"
@@ -73,7 +74,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{address.String()})
+	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{address.String()}, "", int(gethlog.LvlDebug))
 	defer network.StopNodes()
 
 	go enclaverunner.RunEnclave(enclaveConfig)

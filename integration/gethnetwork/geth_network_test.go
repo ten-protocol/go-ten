@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"strconv"
 	"testing"
@@ -55,7 +56,7 @@ func TestGethAllNodesJoinSameNetwork(t *testing.T) {
 	}
 
 	startPort := int(integration.StartPortGethNetworkTest)
-	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil, "", int(gethlog.LvlDebug))
 	defer network.StopNodes()
 
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
@@ -74,7 +75,7 @@ func TestGethGenesisParamsAreUsed(t *testing.T) {
 	}
 
 	startPort := int(integration.StartPortGethNetworkTest) + numNodes
-	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil, "", int(gethlog.LvlDebug))
 	defer network.StopNodes()
 
 	chainID := network.IssueCommand(0, chainIDCmd)
@@ -90,7 +91,7 @@ func TestGethTransactionCanBeSubmitted(t *testing.T) {
 	}
 
 	startPort := int(integration.StartPortGethNetworkTest) + numNodes*2
-	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil)
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, nil, "", int(gethlog.LvlDebug))
 	defer network.StopNodes()
 
 	account := network.addresses[0]
@@ -119,7 +120,7 @@ func TestGethTransactionIsMintedOverRPC(t *testing.T) {
 	// wallet should be prefunded
 	w := datagenerator.RandomWallet(genesisChainID)
 	startPort := int(integration.StartPortGethNetworkTest) + numNodes*3
-	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()})
+	network := NewGethNetwork(startPort, startPort+defaultWsPortOffset, gethBinaryPath, numNodes, 1, []string{w.Address().String()}, "", int(gethlog.LvlDebug))
 	defer network.StopNodes()
 
 	ethClient, err := ethadapter.NewEthClient(localhost, network.WebSocketPorts[0], defaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())

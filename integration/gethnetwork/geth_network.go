@@ -29,7 +29,7 @@ const (
 
 	genesisFileName = "genesis.json"
 	ipcFileName     = "geth.ipc"
-	logFile         = "node_logs.txt"
+	logFileName     = "node_logs.txt"
 	passwordFile    = "password.txt"
 	password        = "password"
 
@@ -116,7 +116,7 @@ type GethNetwork struct {
 	dataDirs         []string
 	addresses        []string      // The public keys of the nodes' accounts.
 	nodesProcs       []*os.Process // The running Geth node processes.
-	logFile          *os.File
+	logFile          io.Writer
 	passwordFilePath string // The path to the file storing the password to unlock node accounts.
 	WebSocketPorts   []uint // Ports exposed by the geth nodes for
 	commStartPort    int
@@ -129,7 +129,7 @@ type GethNetwork struct {
 // NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
 // The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
 // A portStart is required for running multiple networks in the same host ( specially useful for unit tests )
-func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) *GethNetwork {
+func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string, logPathParam string, logLevel int) *GethNetwork {
 	err := ensurePortsAreAvailable(portStart, websocketPortStart, numNodes)
 	if err != nil {
 		panic(err)
@@ -155,10 +155,15 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	if err != nil {
 		panic(err)
 	}
-	logPath := path.Join(buildDir, logFile)
-	logFile, err := os.Create(logPath)
-	if err != nil {
-		panic(err)
+
+	logPath := log.SysOut
+	logFile := os.Stdout
+	if logPathParam == "" {
+		logPath = path.Join(buildDir, logFileName)
+		logFile, err = os.Create(logPathParam)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// We create a password file to unlock the node accounts.
@@ -176,7 +181,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		panic(err)
 	}
 
-	logger := log.New(log.TestGethNetwCmp, int(gethlog.LvlDebug), logPath, log.NetworkIDKey, networkID.Int64())
+	logger := log.New(log.TestGethNetwCmp, logLevel, logPath, log.NetworkIDKey, networkID.Int64())
 
 	network := GethNetwork{
 		gethBinaryPath:   gethBinaryPath,
@@ -421,7 +426,7 @@ func (network *GethNetwork) logNodeID(idx int) io.Writer {
 	go func() {
 		sc := bufio.NewScanner(r)
 		for sc.Scan() {
-			_, _ = network.logFile.WriteString(fmt.Sprintf("EthNode-%d: %s\n", idx, sc.Text()))
+			_, _ = network.logFile.Write([]byte(fmt.Sprintf("EthNode-%d: %s\n", idx, sc.Text())))
 		}
 	}()
 	return w

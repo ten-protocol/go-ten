@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"strings"
 )
 
@@ -21,6 +23,12 @@ const (
 
 	blockTimeSecsName  = "blockTimeSecs"
 	blockTimeSecsUsage = "The block time in seconds"
+
+	logLevelName  = "logLevel"
+	logLevelUsage = "logLevel"
+
+	logPathName  = "logPath"
+	logPathUsage = "logPath"
 )
 
 type gethConfig struct {
@@ -29,6 +37,8 @@ type gethConfig struct {
 	websocketStartPort int
 	prefundedAddrs     []string
 	blockTimeSecs      int
+	logLevel           int
+	logPath            string
 }
 
 func defaultHostConfig() gethConfig {
@@ -38,6 +48,8 @@ func defaultHostConfig() gethConfig {
 		websocketStartPort: 12100,
 		prefundedAddrs:     []string{},
 		blockTimeSecs:      1,
+		logPath:            log.SysOut,
+		logLevel:           int(gethlog.LvlDebug),
 	}
 }
 
@@ -49,6 +61,8 @@ func parseCLIArgs() gethConfig {
 	websocketStartPort := flag.Int(websocketStartPortName, defaultConfig.websocketStartPort, websocketStartPortUsage)
 	prefundedAddrs := flag.String(prefundedAddrsName, "", prefundedAddrsUsage)
 	blockTimeSecs := flag.Int(blockTimeSecsName, defaultConfig.blockTimeSecs, blockTimeSecsUsage)
+	logLevel := flag.Int(logLevelName, defaultConfig.logLevel, logLevelUsage)
+	logPath := flag.String(logPathName, defaultConfig.logPath, logPathUsage)
 
 	flag.Parse()
 
@@ -64,5 +78,7 @@ func parseCLIArgs() gethConfig {
 		websocketStartPort: *websocketStartPort,
 		prefundedAddrs:     parsedPrefundedAddrs,
 		blockTimeSecs:      *blockTimeSecs,
+		logLevel:           *logLevel,
+		logPath:            *logPath,
 	}
 }
