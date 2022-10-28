@@ -211,9 +211,12 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	wg.Wait()
 
 	// We generate the genesis config file based on the accounts above and the prefunded addresses.
-	allocs := make([]string, numNodes+len(preFundedAddrs))
-	for i, addr := range append(network.addresses, preFundedAddrs...) {
-		allocs[i] = fmt.Sprintf(addrBlockTemplate, addr)
+	allocs := make([]string, 0)
+	for _, addr := range network.addresses {
+		allocs = append(allocs, fmt.Sprintf(addrBlockTemplate, addr))
+	}
+	for _, addr := range preFundedAddrs {
+		allocs = append(allocs, fmt.Sprintf(addrBlockTemplate, addr))
 	}
 	network.GenesisJSON = []byte(
 		fmt.Sprintf(genesisJSONTemplate, blockTimeSecs, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, "")),
