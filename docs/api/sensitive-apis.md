@@ -20,6 +20,8 @@ Of the methods above, the following are deemed sensitive, and their requests and
 * `eth_getBalance`: Response can only be decrypted by:
     * For account addresses: The owner of the account
     * For contract addresses: The owner of the account that deployed the contract
+* `eth_getLogs`: Response can only be decrypted by the owner of the account, and only includes logs relevant to that 
+   account
 * `eth_getTransactionByHash`: Response can only be decrypted by the signer of the transaction
 * `eth_getTransactionCount`: Response can only be decrypted by the owner of the address
 * `eth_getTransactionReceipt`: Response can only be decrypted by the signer of the transaction
