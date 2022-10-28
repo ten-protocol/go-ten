@@ -202,11 +202,11 @@ This approach has several downsides:
 * Creation of an inbox to allow transactions to be "forced through" if the sequencer is excluding them (the rough idea 
   is that there will be an inbox for transactions in the management contract, and validators will reject light batches 
   that do not contain any (valid) transactions that have sat in the inbox for a certain amount of time)
+* Implement a mechanism to prevent value extraction (see the section 
+  `Possible designs for preventing value-extraction`, below)
 
 ## Unresolved issues
 
-* Select a design for preventing value extraction (see the section 
-  `Possible designs for preventing value-extraction`, below)
 * Do the light batches need to be linked to the latest block that was fed into the enclave?
 * How do we prevent denial-of-service attacks on the sequencer?
 * How do we achieve the desired cadence of light batches without tying ourselves to the L1 block cadence, in light of 
