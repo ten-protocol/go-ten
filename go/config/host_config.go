@@ -61,6 +61,8 @@ type HostConfig struct {
 	LogPath string
 	// The stringified private key for the host's L1 wallet
 	PrivateKeyString string
+	// The address of the host's L1 wallet
+	PKAddress string
 	// The ID of the L1 chain
 	L1ChainID int64
 	// The ID of the Obscuro chain
