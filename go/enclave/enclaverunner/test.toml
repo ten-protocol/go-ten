@@ -1,6 +1,7 @@
 hostID = "0x0000000000000000000000000000000000000000"
 hostAddress = "127.0.0.1:10000"
 address = "127.0.0.1:11000"
+nodeType = "aggregator"
 l1ChainID = 1377
 obscuroChainID = 777
 willAttest = false
@@ -8,6 +9,6 @@ validateL1Blocks = false
 speculativeExecution = false
 managementContractAddress = "0x0000000000000000000000000000000000000000"
 erc20ContractAddresses = []
-logLevel = "info"
+logLevel = 3
 logPath = "enclave_logs.txt"
 useInMemoryDb = true

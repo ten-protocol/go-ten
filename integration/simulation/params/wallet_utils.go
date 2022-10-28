@@ -3,6 +3,8 @@ package params
 import (
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -52,7 +54,7 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	simObsWallets := make([]wallet.Wallet, nrSimWallets)
 	for i := 0; i < nrSimWallets; i++ {
 		simEthWallets[i] = datagenerator.RandomWallet(ethereumChainID)
-		simObsWallets[i] = wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), simEthWallets[i].PrivateKey())
+		simObsWallets[i] = wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), simEthWallets[i].PrivateKey(), testlog.Logger())
 	}
 
 	// create the wallet to deploy the Management contract
@@ -63,19 +65,19 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}
-	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), l2FaucetPrivKey)
+	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), l2FaucetPrivKey, testlog.Logger())
 
 	// create the L1 addresses of the two tokens, and connect them to the hardcoded addresses from the enclave
 	hoc := SimToken{
 		Name:              bridge.HOC,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
-		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.HOCOwner),
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.HOCOwner, testlog.Logger()),
 		L2ContractAddress: &bridge.HOCContract,
 	}
 	poc := SimToken{
 		Name:              bridge.POC,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
-		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.POCOwner),
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), bridge.POCOwner, testlog.Logger()),
 		L2ContractAddress: &bridge.POCContract,
 	}
 

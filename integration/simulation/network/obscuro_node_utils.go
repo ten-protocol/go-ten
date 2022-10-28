@@ -8,6 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/go/host"
@@ -15,7 +18,7 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave"
 	"github.com/obscuronet/go-obscuro/integration"
@@ -43,6 +46,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 		obscuroNodes[i] = createInMemObscuroNode(
 			int64(i),
 			isGenesis,
+			GetNodeType(i),
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
 			params.AvgGossipPeriod,
@@ -93,6 +97,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 		obscuroNodes[i] = createSocketObscuroNode(
 			int64(i),
 			isGenesis,
+			GetNodeType(i),
 			params.AvgGossipPeriod,
 			stats,
 			fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i),
@@ -125,7 +130,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			client, err = rpc.NewNetworkClient(rpcAddress)
 			started = err == nil // The client cannot be created until the node has started.
 			if !started {
-				log.Info("Could not create client %d. Err %s. Retrying...\n", i, err)
+				testlog.Logger().Info(fmt.Sprintf("Could not create client %d. Retrying...", i), log.ErrKey, err)
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -156,7 +161,8 @@ func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 		if err != nil {
 			panic(err)
 		}
-		encClient, err := rpc.NewEncRPCClient(client, vk)
+		// todo - use a child logger
+		encClient, err := rpc.NewEncRPCClient(client, vk, testlog.Logger())
 		if err != nil {
 			panic(err)
 		}
@@ -165,15 +171,17 @@ func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 	return authClients
 }
 
-func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *stats.Stats) {
-	for i := startAt; i < params.NumberOfNodes; i++ {
+func startRemoteEnclaveServers(params *params.SimParams) {
+	for i := 0; i < params.NumberOfNodes; i++ {
 		// create a remote enclave server
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
+
 		enclaveConfig := config.EnclaveConfig{
-			HostID:                 common.BigToAddress(big.NewInt(int64(i))),
+			HostID:                 gethcommon.BigToAddress(big.NewInt(int64(i))),
 			HostAddress:            hostAddr,
 			Address:                enclaveAddr,
+			NodeType:               GetNodeType(i),
 			L1ChainID:              integration.EthereumChainID,
 			ObscuroChainID:         integration.ObscuroChainID,
 			ValidateL1Blocks:       false,
@@ -183,7 +191,8 @@ func startRemoteEnclaveServers(startAt int, params *params.SimParams, stats *sta
 			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
 			MinGasPrice:            big.NewInt(1),
 		}
-		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, stats)
+		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
+		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
 		if err != nil {
 			panic(fmt.Sprintf("could not create enclave server: %v", err))
 		}
@@ -197,9 +206,9 @@ func StopObscuroNodes(clients []rpc.Client) {
 		wg.Add(1)
 		go func(c rpc.Client) {
 			defer wg.Done()
-			err := c.Call(nil, rpc.RPCStopHost)
+			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
-				log.Error("Could not stop Obscuro node. Cause: %s", err)
+				testlog.Logger().Error("Could not stop Obscuro node.", log.ErrKey, err)
 			}
 			c.Stop()
 		}(client)
@@ -208,7 +217,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 	if waitTimeout(&wg, 10*time.Second) {
 		panic("Timed out waiting for the Obscuro nodes to stop")
 	} else {
-		log.Info("Obscuro nodes stopped")
+		testlog.Logger().Info("Obscuro nodes stopped")
 	}
 }
 
@@ -233,7 +242,7 @@ func CheckHostRPCServersStopped(hostRPCAddresses []string) {
 	if waitTimeout(&wg, 10*time.Second) {
 		panic("Timed out waiting for the Obscuro host RPC addresses to become available")
 	} else {
-		log.Info("Obscuro host RPC addresses freed")
+		testlog.Logger().Info("Obscuro host RPC addresses freed")
 	}
 }
 
@@ -265,7 +274,7 @@ func isAddressAvailable(address string) bool {
 	if ln != nil {
 		err = ln.Close()
 		if err != nil {
-			log.Error("could not close listener when checking if address %s was available", address)
+			testlog.Logger().Error(fmt.Sprintf("could not close listener when checking if address %s was available", address))
 		}
 	}
 	if err != nil {
@@ -273,4 +282,13 @@ func isAddressAvailable(address string) bool {
 	}
 
 	return true
+}
+
+// GetNodeType returns the type of the node based on its ID.
+func GetNodeType(i int) common.NodeType {
+	// Only the genesis node is assigned the role of aggregator.
+	if i == 0 {
+		return common.Aggregator
+	}
+	return common.Validator
 }

@@ -3,7 +3,10 @@ package config
 import (
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -15,9 +18,11 @@ const (
 // HostConfig contains the full configuration for an Obscuro host.
 type HostConfig struct {
 	// The host's identity
-	ID common.Address
+	ID gethcommon.Address
 	// Whether the host is the genesis Obscuro node
 	IsGenesis bool
+	// The type of the node.
+	NodeType common.NodeType
 	// Duration of the gossip round
 	GossipRoundDuration time.Duration
 	// Whether to serve client RPC requests over HTTP
@@ -49,9 +54,9 @@ type HostConfig struct {
 	// Timeout duration for messaging between hosts.
 	P2PConnectionTimeout time.Duration
 	// The rollup contract address on the L1 network
-	RollupContractAddress common.Address
+	RollupContractAddress gethcommon.Address
 	// LogLevel determines the verbosity of output logs
-	LogLevel string
+	LogLevel int
 	// The path that the node's logs are written to
 	LogPath string
 	// The stringified private key for the host's L1 wallet
@@ -67,8 +72,9 @@ type HostConfig struct {
 // DefaultHostConfig returns a HostConfig with default values.
 func DefaultHostConfig() HostConfig {
 	return HostConfig{
-		ID:                     common.BytesToAddress([]byte("")),
+		ID:                     gethcommon.BytesToAddress([]byte("")),
 		IsGenesis:              true,
+		NodeType:               common.Aggregator,
 		GossipRoundDuration:    8333,
 		HasClientRPCHTTP:       true,
 		ClientRPCPortHTTP:      13000,
@@ -84,8 +90,8 @@ func DefaultHostConfig() HostConfig {
 		EnclaveRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		L1RPCTimeout:           time.Duration(defaultL1RPCTimeoutSecs) * time.Second,
 		P2PConnectionTimeout:   time.Duration(defaultP2PTimeoutSecs) * time.Second,
-		RollupContractAddress:  common.BytesToAddress([]byte("")),
-		LogLevel:               "info",
+		RollupContractAddress:  gethcommon.BytesToAddress([]byte("")),
+		LogLevel:               int(log.LvlInfo),
 		LogPath:                "",
 		PrivateKeyString:       "0000000000000000000000000000000000000000000000000000000000000001",
 		L1ChainID:              1337,

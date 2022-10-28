@@ -6,6 +6,9 @@ import (
 	"math/big"
 	"testing"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -267,5 +270,6 @@ func createTestEnclave() common.Enclave {
 		ERC20ContractAddresses: []*gethcommon.Address{&rndAddr, &rndAddr2},
 		MinGasPrice:            big.NewInt(1),
 	}
-	return NewEnclave(enclaveConfig, nil, nil, nil)
+	logger := log.New(log.TestLogCmp, int(gethlog.LvlError), log.SysOut)
+	return NewEnclave(enclaveConfig, nil, nil, logger)
 }

@@ -6,8 +6,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/rs/zerolog"
-
 	"github.com/obscuronet/go-obscuro/go/host/node"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
@@ -27,47 +25,33 @@ import (
 
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(config config.HostConfig) {
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress)
+	logger := log.New(log.HostCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.ID)
 
-	// todo temporary
-	// log.SetLogLevel(log.ParseLevel(config.LogLevel))
-	log.SetLogLevel(zerolog.TraceLevel)
-
-	if config.LogPath != "" {
-		setLogs(config.LogPath)
-	}
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress, logger)
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := ethadapter.NewEthClient(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1RPCTimeout, config.ID)
+	l1Client, err := ethadapter.NewEthClient(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1RPCTimeout, config.ID, logger)
 	if err != nil {
-		log.Panic("could not create Ethereum client. Cause: %s", err)
+		logger.Crit("could not create Ethereum client.", log.ErrKey, err)
 	}
 
-	ethWallet := wallet.NewInMemoryWalletFromConfig(config)
+	ethWallet := wallet.NewInMemoryWalletFromConfig(config, logger)
 	nonce, err := l1Client.Nonce(ethWallet.Address())
 	if err != nil {
-		log.Panic("could not retrieve Ethereum account nonce. Cause: %s", err)
+		logger.Crit("could not retrieve Ethereum account nonce.", log.ErrKey, err)
 	}
 	ethWallet.SetNonce(nonce)
 
-	enclaveClient := enclaverpc.NewClient(config)
-	aggP2P := p2p.NewSocketP2PLayer(config)
-	agg := node.NewHost(config, nil, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib)
+	enclaveClient := enclaverpc.NewClient(config, logger)
+	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
+	aggP2P := p2p.NewSocketP2PLayer(config, p2pLogger)
+	agg := node.NewHost(config, nil, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib, logger)
 
 	fmt.Println("Starting Obscuro host...")
-	log.Info("Starting Obscuro host...")
+	logger.Info("Starting Obscuro host...")
 	agg.Start()
 
 	handleInterrupt(agg)
-}
-
-// setLogs sets the log file.
-func setLogs(logPath string) {
-	logFile, err := os.Create(logPath)
-	if err != nil {
-		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
-	}
-	log.OutputToFile(logFile)
 }
 
 // Shuts down the Obscuro host when an interrupt is received.

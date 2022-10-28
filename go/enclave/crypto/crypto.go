@@ -8,6 +8,8 @@ import (
 	"io"
 	"math/big"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -26,18 +28,18 @@ const (
 // SharedEnclaveSecret - the entropy
 type SharedEnclaveSecret [sharedSecretLen]byte
 
-func GetObscuroKey() *ecdsa.PrivateKey {
+func GetObscuroKey(logger gethlog.Logger) *ecdsa.PrivateKey {
 	key, err := crypto.HexToECDSA(obscuroPrivateKeyHex)
 	if err != nil {
-		log.Panic("failed to create enclave private key. Cause: %s", err)
+		logger.Crit("failed to create enclave private key", log.ErrKey, err)
 	}
 	return key
 }
 
-func GenerateEntropy() SharedEnclaveSecret {
+func GenerateEntropy(logger gethlog.Logger) SharedEnclaveSecret {
 	secret := make([]byte, sharedSecretLen)
 	if _, err := io.ReadFull(rand.Reader, secret); err != nil {
-		log.Panic("could not generate secret. Cause: %s", err)
+		logger.Crit("could not generate secret", log.ErrKey, err)
 	}
 	var temp [sharedSecretLen]byte
 	copy(temp[:], secret)
@@ -57,8 +59,8 @@ func DecryptSecret(secret common.EncryptedSharedEnclaveSecret, privateKey *ecdsa
 	return &temp, nil
 }
 
-func EncryptSecret(pubKeyEncoded []byte, secret SharedEnclaveSecret, nodeShortID uint64) (common.EncryptedSharedEnclaveSecret, error) {
-	common.LogWithID(nodeShortID, "Encrypting secret with public key %s", gethcommon.Bytes2Hex(pubKeyEncoded))
+func EncryptSecret(pubKeyEncoded []byte, secret SharedEnclaveSecret, logger gethlog.Logger) (common.EncryptedSharedEnclaveSecret, error) {
+	logger.Info(fmt.Sprintf("Encrypting secret with public key %s", gethcommon.Bytes2Hex(pubKeyEncoded)))
 	key, err := crypto.DecompressPubkey(pubKeyEncoded)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse public key %w", err)
@@ -66,7 +68,7 @@ func EncryptSecret(pubKeyEncoded []byte, secret SharedEnclaveSecret, nodeShortID
 
 	encKey, err := encryptWithPublicKey(secret[:], key)
 	if err != nil {
-		common.LogWithID(nodeShortID, "Failed to encrypt key, err: %s\nsecret: %v\npubkey: %v\nencKey:%v", err, secret, pubKeyEncoded, encKey)
+		logger.Info(fmt.Sprintf("Failed to encrypt key, err: %s\nsecret: %v\npubkey: %v\nencKey:%v", err, secret, pubKeyEncoded, encKey))
 	}
 	return encKey, err
 }

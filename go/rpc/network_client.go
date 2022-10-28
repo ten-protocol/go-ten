@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -19,12 +21,12 @@ type networkClient struct {
 }
 
 // NewEncNetworkClient returns a network RPC client with Viewing Key encryption/decryption
-func NewEncNetworkClient(rpcAddress string, viewingKey *ViewingKey) (*EncRPCClient, error) {
+func NewEncNetworkClient(rpcAddress string, viewingKey *ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
 	rpcClient, err := NewNetworkClient(rpcAddress)
 	if err != nil {
 		return nil, err
 	}
-	encClient, err := NewEncRPCClient(rpcClient, viewingKey)
+	encClient, err := NewEncRPCClient(rpcClient, viewingKey, logger)
 	if err != nil {
 		return nil, err
 	}

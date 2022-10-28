@@ -47,7 +47,7 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 
 // Uses the client to retrieve the height of the current block head.
 func getCurrentBlockHeadHeight(client rpc.Client) int64 {
-	method := rpc.RPCGetCurrentBlockHead
+	method := rpc.GetCurrentBlockHead
 
 	var blockHead *types.Header
 	err := client.Call(&blockHead, method)
@@ -64,7 +64,7 @@ func getCurrentBlockHeadHeight(client rpc.Client) int64 {
 
 // Uses the client to retrieve the current rollup head.
 func getCurrentRollupHead(client rpc.Client) *common.Header {
-	method := rpc.RPCGetCurrentRollupHead
+	method := rpc.GetCurrentRollupHead
 
 	var result *common.Header
 	err := client.Call(&result, method)
@@ -77,7 +77,7 @@ func getCurrentRollupHead(client rpc.Client) *common.Header {
 
 // Uses the client to retrieve the rollup header with the matching hash.
 func getRollupHeader(client rpc.Client, hash gethcommon.Hash) *common.Header {
-	method := rpc.RPCGetRollupHeader
+	method := rpc.GetRollupHeader
 
 	var result *common.Header
 	err := client.Call(&result, method, hash.Hex())
@@ -132,16 +132,16 @@ func findHashDups(list []gethcommon.Hash) map[gethcommon.Hash]int {
 }
 
 // FindRollupDups - returns a map of all L2 root hashes that appear multiple times, and how many times
-func findRollupDups(list []common.L2RootHash) map[common.L2RootHash]int {
+func findRollupDups(list []*common.EncryptedRollup) map[common.L2RootHash]int {
 	elementCount := make(map[common.L2RootHash]int)
 
 	for _, item := range list {
 		// check if the item/element exist in the duplicate_frequency map
-		_, exist := elementCount[item]
+		_, exist := elementCount[item.Hash()]
 		if exist {
-			elementCount[item]++ // increase counter by 1 if already in the map
+			elementCount[item.Hash()]++ // increase counter by 1 if already in the map
 		} else {
-			elementCount[item] = 1 // else start counting from 1
+			elementCount[item.Hash()] = 1 // else start counting from 1
 		}
 	}
 	dups := make(map[common.L2RootHash]int)

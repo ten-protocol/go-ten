@@ -4,6 +4,8 @@ import (
 	"os"
 	"path"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/consensus/clique"
@@ -34,12 +36,12 @@ const (
 
 // NewL1Blockchain creates a Geth BlockChain object. `genesisJSON` is the Genesis block config in JSON format.
 // A Geth node can be made to output this using the `dumpgenesis` startup command.
-func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
-	dataDir := createDataDir()
+func NewL1Blockchain(genesisJSON []byte, logger gethlog.Logger) *core.BlockChain {
+	dataDir := createDataDir(logger)
 
-	db := createDB(dataDir)
+	db := createDB(dataDir, logger)
 	cacheConfig := createCacheConfig(dataDir)
-	chainConfig := createChainConfig(db, genesisJSON)
+	chainConfig := createChainConfig(db, genesisJSON, logger)
 	engine := createEngine(dataDir, chainConfig, db)
 	vmConfig := createVMConfig()
 	shouldPreserve := createShouldPreserve()
@@ -47,25 +49,25 @@ func NewL1Blockchain(genesisJSON []byte) *core.BlockChain {
 
 	blockchain, err := core.NewBlockChain(db, cacheConfig, chainConfig, engine, vmConfig, shouldPreserve, &txLookupLimit)
 	if err != nil {
-		log.Panic("l1 blockchain could not be created. Cause: %s", err)
+		logger.Crit("l1 blockchain could not be created. ", log.ErrKey, err)
 	}
 	return blockchain
 }
 
-func createDataDir() string {
+func createDataDir(logger gethlog.Logger) string {
 	err := os.MkdirAll(dataDirRoot, 0o700)
 	if err != nil {
-		log.Panic("l1 blockchain data directory could not be created. Cause: %s", err)
+		logger.Crit("l1 blockchain data directory could not be created. ", log.ErrKey, err)
 	}
 	dataDir, err := os.MkdirTemp(dataDirRoot, "")
 	if err != nil {
-		log.Panic("l1 blockchain data directory could not be created. Cause: %s", err)
+		logger.Crit("l1 blockchain data directory could not be created. ", log.ErrKey, err)
 	}
 
 	return dataDir
 }
 
-func createDB(dataDir string) ethdb.Database {
+func createDB(dataDir string, logger gethlog.Logger) ethdb.Database {
 	root := path.Join(dataDir, gethDir, chainDataDir)           // Defaults to `geth/chaindata` in the node's data directory.
 	cache := 2048                                               // Default.
 	handles := 2048                                             // Default.
@@ -75,7 +77,7 @@ func createDB(dataDir string) ethdb.Database {
 
 	db, err := rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace, readonly)
 	if err != nil {
-		log.Panic("l1 blockchain database could not be created. Cause: %s", err)
+		logger.Crit("l1 blockchain database could not be created. ", log.ErrKey, err)
 	}
 	return db
 }
@@ -94,11 +96,11 @@ func createCacheConfig(dataDir string) *core.CacheConfig {
 	}
 }
 
-func createChainConfig(db ethdb.Database, genesisJSON []byte) *params.ChainConfig {
+func createChainConfig(db ethdb.Database, genesisJSON []byte, logger gethlog.Logger) *params.ChainConfig {
 	genesis := &core.Genesis{}
 	err := genesis.UnmarshalJSON(genesisJSON)
 	if err != nil {
-		log.Panic("l1 blockchain genesis JSON could not be parsed. Cause: %s", err)
+		logger.Crit("l1 blockchain genesis JSON could not be parsed. ", log.ErrKey, err)
 	}
 
 	chainConfig, _, err := core.SetupGenesisBlockWithOverride(
@@ -108,7 +110,7 @@ func createChainConfig(db ethdb.Database, genesisJSON []byte) *params.ChainConfi
 		nil, // Default.
 	)
 	if err != nil {
-		log.Panic("l1 blockchain genesis block could not be created. Cause: %s", err)
+		logger.Crit("l1 blockchain genesis block could not be created. ", log.ErrKey, err)
 	}
 	return chainConfig
 }

@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -29,20 +31,22 @@ type gethRPCClient struct {
 	client  *ethclient.Client  // the underlying eth rpc client
 	l2ID    gethcommon.Address // the address of the Obscuro node this client is dedicated to
 	timeout time.Duration      // the timeout for connecting to, or communicating with, the L1 node
+	logger  gethlog.Logger
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
-func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethcommon.Address) (EthClient, error) {
+func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethcommon.Address, logger gethlog.Logger) (EthClient, error) {
 	client, err := connect(ipaddress, port, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node - %w", err)
 	}
 
-	log.Trace("Initialized eth node connection - addr: %s port: %d", ipaddress, port)
+	logger.Trace(fmt.Sprintf("Initialized eth node connection - addr: %s port: %d", ipaddress, port))
 	return &gethRPCClient{
 		client:  client,
 		l2ID:    l2ID,
 		timeout: timeout,
+		logger:  logger,
 	}, nil
 }
 
@@ -52,7 +56,7 @@ func (e *gethRPCClient) FetchHeadBlock() *types.Block {
 
 	blk, err := e.client.BlockByNumber(ctx, nil)
 	if err != nil {
-		log.Panic("could not fetch head block. Cause: %s", err)
+		e.logger.Crit("could not fetch head block.", log.ErrKey, err)
 	}
 	return blk
 }
@@ -71,7 +75,7 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *typ
 	for currentBlk := lastBlock; currentBlk != nil && !bytes.Equal(currentBlk.Hash().Bytes(), startingBlock.Hash().Bytes()) && !bytes.Equal(currentBlk.ParentHash().Bytes(), gethcommon.HexToHash("").Bytes()); {
 		currentBlk, err = e.BlockByHash(currentBlk.ParentHash())
 		if err != nil {
-			log.Panic("could not fetch parent block with hash %s. Cause: %s", currentBlk.ParentHash().String(), err)
+			e.logger.Crit(fmt.Sprintf("could not fetch parent block with hash %s.", currentBlk.ParentHash().String()), log.ErrKey, err)
 		}
 		blocksBetween = append(blocksBetween, currentBlk)
 	}
@@ -90,7 +94,7 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor common
 
 	resolvedBlock, err := e.BlockByHash(maybeAncestor)
 	if err != nil {
-		log.Panic("could not fetch parent block with hash %s. Cause: %s", maybeAncestor.String(), err)
+		e.logger.Crit(fmt.Sprintf("could not fetch parent block with hash %s.", maybeAncestor.String()), log.ErrKey, err)
 	}
 	if resolvedBlock == nil {
 		if resolvedBlock.Number().Int64() >= block.Number().Int64() {
@@ -100,7 +104,7 @@ func (e *gethRPCClient) IsBlockAncestor(block *types.Block, maybeAncestor common
 
 	p, err := e.BlockByHash(block.ParentHash())
 	if err != nil {
-		log.Panic("could not fetch parent block with hash %s. Cause: %s", block.ParentHash().String(), err)
+		e.logger.Crit(fmt.Sprintf("could not fetch parent block with hash %s", block.ParentHash().String()), log.ErrKey, err)
 	}
 	if p == nil {
 		return false
@@ -142,14 +146,14 @@ func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscripti
 	err = retry.Do(func() error {
 		sub, err = e.client.SubscribeNewHead(ctx, ch)
 		if err != nil {
-			log.Warn("could not subscribe for new head blocks, retrying...")
+			e.logger.Warn("could not subscribe for new head blocks, retrying...")
 		}
 		return err
 	}, retry.NewTimeoutStrategy(e.timeout, connRetryInterval))
 	if err != nil {
 		// todo: handle this scenario better after refactor of node.go (health monitor report L1 unavailable, be able to recover without restarting host)
 		// couldn't connect after timeout period, cannot continue
-		log.Panic("could not subscribe for new head blocks. Cause: %s", err)
+		e.logger.Crit("could not subscribe for new head blocks.", log.ErrKey, err)
 	}
 
 	return ch, sub

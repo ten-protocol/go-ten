@@ -19,6 +19,7 @@ var (
 	blockStatePrefix         = []byte("obs")         // blockStatePrefix + hash -> num (uint64 big endian)
 	logsPrefix               = []byte("olg")         // logsPrefix + hash -> block logs
 	rollupReceiptsPrefix     = []byte("or")          // rollupReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
+	contractReceiptPrefix    = []byte("ocr")         // contractReceiptPrefix + address -> tx hash
 	txLookupPrefix           = []byte("ol")          // txLookupPrefix + hash -> transaction/receipt lookup metadata
 	bloomBitsPrefix          = []byte("oB")          // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
 	headRollupKey            = []byte("oLastBlock")  // headRollupKey tracks the latest known full block's hash.
@@ -65,6 +66,10 @@ func logsKey(hash common.Hash) []byte {
 // rollupReceiptsKey = rollupReceiptsPrefix + num (uint64 big endian) + hash
 func rollupReceiptsKey(number uint64, hash common.Hash) []byte {
 	return append(append(rollupReceiptsPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
+}
+
+func contractReceiptKey(contractAddress common.Address) []byte {
+	return append(contractReceiptPrefix, contractAddress.Bytes()...)
 }
 
 // txLookupKey = txLookupPrefix + hash

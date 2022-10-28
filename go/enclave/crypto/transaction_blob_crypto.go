@@ -4,8 +4,9 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"fmt"
 	"io"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -30,20 +31,22 @@ type TransactionBlobCrypto interface {
 
 type TransactionBlobCryptoImpl struct {
 	transactionCipher cipher.AEAD
+	logger            gethlog.Logger
 }
 
-func NewTransactionBlobCryptoImpl() TransactionBlobCrypto {
+func NewTransactionBlobCryptoImpl(logger gethlog.Logger) TransactionBlobCrypto {
 	key := gethcommon.Hex2Bytes(RollupEncryptionKeyHex)
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		panic(fmt.Sprintf("could not initialise AES cipher for enclave rollup key. Cause: %s", err))
+		logger.Crit("could not initialise AES cipher for enclave rollup key.", log.ErrKey, err)
 	}
 	transactionCipher, err := cipher.NewGCM(block)
 	if err != nil {
-		panic(fmt.Sprintf("could not initialise wrapper for AES cipher for enclave rollup key. Cause: %s", err))
+		logger.Crit("could not initialise wrapper for AES cipher for enclave rollup key. ", log.ErrKey, err)
 	}
 	return TransactionBlobCryptoImpl{
 		transactionCipher: transactionCipher,
+		logger:            logger,
 	}
 }
 
@@ -51,12 +54,12 @@ func NewTransactionBlobCryptoImpl() TransactionBlobCrypto {
 func (t TransactionBlobCryptoImpl) Encrypt(transactions []*common.L2Tx) common.EncryptedTransactions {
 	encodedTxs, err := rlp.EncodeToBytes(transactions)
 	if err != nil {
-		log.Panic("could not encrypt L2 transaction. Cause: %s", err)
+		t.logger.Crit("could not encrypt L2 transaction.", log.ErrKey, err)
 	}
 
 	nonce := make([]byte, NonceLength)
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
-		log.Panic("could not generate nonce to encrypt transactions. Cause: %s", err)
+		t.logger.Crit("could not generate nonce to encrypt transactions.", log.ErrKey, err)
 	}
 
 	// TODO - Ensure this nonce is not used too many times (2^32?) with the same key, to avoid risk of repeat.
@@ -72,12 +75,12 @@ func (t TransactionBlobCryptoImpl) Decrypt(encryptedTxs common.EncryptedTransact
 
 	encodedTxs, err := t.transactionCipher.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		log.Panic("could not decrypt encrypted L2 transactions. Cause: %s", err)
+		t.logger.Crit("could not decrypt encrypted L2 transactions.", log.ErrKey, err)
 	}
 
 	var txs []*common.L2Tx
 	if err := rlp.DecodeBytes(encodedTxs, &txs); err != nil {
-		log.Panic("could not decode encoded L2 transactions. Cause: %s", err)
+		t.logger.Crit("could not decode encoded L2 transactions.", log.ErrKey, err)
 	}
 
 	return txs

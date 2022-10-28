@@ -60,12 +60,14 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig.ClientRPCPortWS = obscuroWebsocketPort
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 	hostConfig.ProfilerEnabled = true
+	hostConfig.LogPath = testlog.LogFile()
 
 	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.Address = enclaveAddr
 	dummyContractAddress := common.BytesToAddress([]byte("AA"))
 	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
 	enclaveConfig.ProfilerEnabled = true
+	enclaveConfig.LogPath = testlog.LogFile()
 
 	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -111,7 +113,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		var result types.Header
-		err = obscuroClient.Call(&result, rpc.RPCGetCurrentBlockHead)
+		err = obscuroClient.Call(&result, rpc.GetCurrentBlockHead)
 		if err == nil && result.Number.Uint64() > 0 {
 			return
 		}
@@ -125,7 +127,7 @@ func teardown(obscuroClient rpc.Client, rpcServerAddr string) {
 		return
 	}
 
-	obscuroClient.Call(nil, rpc.RPCStopHost) //nolint:errcheck
+	obscuroClient.Call(nil, rpc.StopHost) //nolint:errcheck
 
 	// We wait for the client server port to be closed.
 	wait := 0

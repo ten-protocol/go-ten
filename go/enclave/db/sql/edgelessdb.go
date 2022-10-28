@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/httputil"
 
@@ -124,15 +124,15 @@ type EdgelessDBCredentials struct {
 	UserKeyPEM   string // db user private key, generated in our enclave
 }
 
-func EdgelessDBConnector(edbCfg *EdgelessDBConfig) (ethdb.Database, error) {
+func EdgelessDBConnector(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (ethdb.Database, error) {
 	// rather than fail immediately if EdgelessDB is not available yet we wait up for `edgelessDBStartTimeout` for it to be available
-	err := waitForEdgelessDBToStart(edbCfg.Host)
+	err := waitForEdgelessDBToStart(edbCfg.Host, logger)
 	if err != nil {
 		return nil, err
 	}
 
 	// load credentials from encrypted persistence if available, otherwise perform handshake and initialization to prepare them
-	edbCredentials, err := getHandshakeCredentials(edbCfg)
+	edbCredentials, err := getHandshakeCredentials(edbCfg, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func EdgelessDBConnector(edbCfg *EdgelessDBConfig) (ethdb.Database, error) {
 		return nil, err
 	}
 
-	sqlDB, err := connectToEdgelessDB(edbCfg.Host, tlsCfg)
+	sqlDB, err := connectToEdgelessDB(edbCfg.Host, tlsCfg, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -151,10 +151,10 @@ func EdgelessDBConnector(edbCfg *EdgelessDBConfig) (ethdb.Database, error) {
 	return CreateSQLEthDatabase(sqlDB)
 }
 
-func waitForEdgelessDBToStart(edbHost string) error {
+func waitForEdgelessDBToStart(edbHost string, logger gethlog.Logger) error {
 	start := time.Now()
 	edgelessHTTPAddr := fmt.Sprintf("%s:%s", edbHost, edbHTTPPort)
-	log.Info("Waiting to ensure Edgeless DB is available for http requests...")
+	logger.Info("Waiting to ensure Edgeless DB is available for http requests...")
 	var conn net.Conn
 	var err error
 	for time.Since(start) < edgelessDBStartTimeout {
@@ -169,7 +169,7 @@ func waitForEdgelessDBToStart(edbHost string) error {
 		edgelessDBStartTimeout, edgelessHTTPAddr, err)
 }
 
-func getHandshakeCredentials(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) {
+func getHandshakeCredentials(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*EdgelessDBCredentials, error) {
 	// if we have previously performed the handshake we can retrieve the creds from disk and proceed
 	edbCreds, found, err := loadCredentialsFromFile()
 	if err != nil {
@@ -177,7 +177,7 @@ func getHandshakeCredentials(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, 
 	}
 	if !found {
 		// they don't exist on disk so we have to perform the handshake and set them up
-		edbCreds, err = performHandshake(edbCfg)
+		edbCreds, err = performHandshake(edbCfg, logger)
 		if err != nil {
 			return nil, err
 		}
@@ -204,7 +204,7 @@ func loadCredentialsFromFile() (*EdgelessDBCredentials, bool, error) {
 	return edbCreds, true, nil
 }
 
-func performHandshake(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) {
+func performHandshake(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*EdgelessDBCredentials, error) {
 	// we need to make sure this dir exists before we start read/writing files in there
 	err := os.MkdirAll(dataDir, 0o644)
 	if err != nil {
@@ -217,7 +217,7 @@ func performHandshake(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) 
 	// The trust path is as follows:
 	// 1. The Obscuro Enclave performs RA on the database enclave, and the RA object contains a certificate which only the database enclave controls.
 	// 2. Connecting to the database via mutually authenticated TLS using the above certificate, will give the Obscuro enclave confidence that it is only giving data away to some code and hardware it trusts.
-	edbPEM, err := performEDBRemoteAttestation(edbCfg.Host, defaultEDBConstraints)
+	edbPEM, err := performEDBRemoteAttestation(edbCfg.Host, defaultEDBConstraints, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +241,7 @@ func performHandshake(edbCfg *EdgelessDBConfig) (*EdgelessDBCredentials, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal manifest to json - %w", err)
 	}
-	err = initialiseEdgelessDB(edbCfg.Host, manifest, edbHTTPClient)
+	err = initialiseEdgelessDB(edbCfg.Host, manifest, edbHTTPClient, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +362,7 @@ func prepareCerts() (string, string, string, error) {
 }
 
 // initialiseEdgelessDB sends a manifest over http to the edgeless DB with its initial config
-func initialiseEdgelessDB(edbHost string, manifest *manifest, httpClient *http.Client) error {
+func initialiseEdgelessDB(edbHost string, manifest *manifest, httpClient *http.Client, logger gethlog.Logger) error {
 	b, err := json.Marshal(manifest)
 	if err != nil {
 		return fmt.Errorf("failed to marshal manifest json - %w", err)
@@ -384,10 +384,10 @@ func initialiseEdgelessDB(edbHost string, manifest *manifest, httpClient *http.C
 	attempts := 0
 	for ; attempts < maxRetries; attempts++ {
 		time.Sleep(5 * time.Second)
-		log.Info("Verifying edgeless DB has initialized correctly - attempt %d", attempts)
-		err = verifyEdgelessDB(edbHost, manifest, httpClient)
+		logger.Info(fmt.Sprintf("Verifying edgeless DB has initialized correctly - attempt %d", attempts))
+		err = verifyEdgelessDB(edbHost, manifest, httpClient, logger)
 		if err == nil {
-			log.Info("Edgeless DB initialized successfully.")
+			logger.Info("Edgeless DB initialized successfully.")
 			break
 		}
 	}
@@ -401,7 +401,7 @@ func initialiseEdgelessDB(edbHost string, manifest *manifest, httpClient *http.C
 }
 
 // verifyEdgelessDB requests the /signature from the edb, it should match the hash of the manifest we expected
-func verifyEdgelessDB(edbHost string, m *manifest, httpClient *http.Client) error {
+func verifyEdgelessDB(edbHost string, m *manifest, httpClient *http.Client, logger gethlog.Logger) error {
 	b, err := json.Marshal(m)
 	if err != nil {
 		return fmt.Errorf("failed to marshal manifest to json - %w", err)
@@ -422,12 +422,12 @@ func verifyEdgelessDB(edbHost string, m *manifest, httpClient *http.Client) erro
 	if expectedHash != string(edbHash) {
 		return fmt.Errorf("hash from edb /signature request didn't match expected hash of manifest.json, expected=%s, found=%s", expectedHash, edbHash)
 	}
-	log.Info("EDB signature matched the expected hash from our manifest (%s)", expectedHash)
+	logger.Info(fmt.Sprintf("EDB signature matched the expected hash from our manifest (%s)", expectedHash))
 
 	return nil
 }
 
-func connectToEdgelessDB(edbHost string, tlsCfg *tls.Config) (*sql.DB, error) {
+func connectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logger) (*sql.DB, error) {
 	err := mysql.RegisterTLSConfig("custom", tlsCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register tls config for mysql connection - %w", err)
@@ -439,7 +439,7 @@ func connectToEdgelessDB(edbHost string, tlsCfg *tls.Config) (*sql.DB, error) {
 	cfg.DBName = dbName
 	cfg.TLSConfig = "custom"
 	dsn := cfg.FormatDSN()
-	log.Info("Configuring mysql connection: %s", dsn)
+	logger.Info(fmt.Sprintf("Configuring mysql connection: %s", dsn))
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize mysql connection to edb - %w", err)

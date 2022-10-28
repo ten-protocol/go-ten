@@ -18,9 +18,10 @@ services:
       L1PORT: some_port
       HOSTID: some_address
       ISGENESIS: some_bool
+      NODETYPE: some_string
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
-      LOGLEVEL: some_string
+      LOGLEVEL: some_int
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
@@ -32,6 +33,8 @@ services:
       "--privateKey=$PKSTRING",
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
+      "--nodeType=$NODETYPE",
+      "--logPath=sys_out",
       "--logLevel=$LOGLEVEL",
       "--profilerEnabled=$PROFILERENABLED",
       "--p2pPublicAddress=$P2PPUBLICADDRESS"
@@ -47,14 +50,16 @@ services:
       HOCERC20ADDR: some_address
       POCERC20ADDR: some_address
       HOSTID: some_address
+      NODETYPE: some_string
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
-      LOGLEVEL: some_string
+      LOGLEVEL: some_int
     image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
                  "--hostID=$HOSTID",
                  "--address=:11000",
+                 "--nodeType=$NODETYPE",
                  "--useInMemoryDB=false",
                  "--sqliteDBPath=/data/sqlite.db",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
@@ -62,5 +67,6 @@ services:
                  "--hostAddress=host:10000",
                  "--profilerEnabled=$PROFILERENABLED",
                  "--hostAddress=$P2PPUBLICADDRESS",
+                 "--logPath=sys_out",
                  "--logLevel=$LOGLEVEL"
     ]

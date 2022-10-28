@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -141,7 +139,7 @@ func (n *txDBInMem) AddTxs(b *types.Block, newMap map[common.TxHash]*types.Trans
 
 // removeCommittedTransactions returns a copy of `mempool` where all transactions that are exactly `committedBlocks`
 // deep have been removed.
-func removeCommittedTransactions(
+func (m *Node) removeCommittedTransactions(
 	cb *types.Block,
 	mempool []*types.Transaction,
 	resolver db.BlockResolver,
@@ -161,7 +159,7 @@ func removeCommittedTransactions(
 
 		p, f := resolver.ParentBlock(b)
 		if !f {
-			log.Panic("Should not happen. Parent not found")
+			m.logger.Crit("Should not happen. Parent not found")
 		}
 
 		b = p
