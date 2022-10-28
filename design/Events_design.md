@@ -169,6 +169,9 @@ For each incoming logs subscription request via RPC, the host has to do two thin
 1. Route the new subscription request to the enclave and create a new Geth `rpc.Subscription` to return to the client
 2. Extract the logs upon each block ingestion and route them to the corresponding client subscription
 
+Upon creating the new subscription, the host immediately sends the subscription ID as the first message. This is 
+required by the client, so that it can be returned to the user and used to unsubscribe if needed at a later time.
+
 Since the log subscription request is encrypted by the client and can only be decrypted on the enclave, the host 
 forwards it blindly, and cannot learn anything about the contents of the subscription. However, it does generate a 
 fresh ID for the subscription, which it also forwards to the enclave. The enclave reuses this ID when sending back 
@@ -197,13 +200,9 @@ In response to the incoming `eth_subscribe` request, the client creates a `logs`
 with the enclave's public key to protect the request from eavesdroppers, setting the `Account` to the client's 
 account and generating the required signature.
 
-For each received event, the encrypted RPC client must retrieve the encrypted log bytes from the `data` field and 
-decrypt them with the corresponding private key before returning the log events to the user. It then pushes the 
-decrypted event onto a separate channel listened to by the client.
-
-#### Logs snapshots
-
-TODO - Write this section.
+For each received event, the encrypted RPC client decrypts the encrypted log bytes with the corresponding private key 
+before returning the log events to the user. It then pushes the decrypted event onto a separate channel listened to by 
+the client.
 
 ## Security and usability of the proposed design
 
