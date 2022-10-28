@@ -78,9 +78,10 @@ The sequencer's host immediately distributes the light batch to all other nodes,
 (ensuring the sequencer cannot restrict the distribution of light batches to specific nodes, provided one of the nodes 
 who received the light batch is honest). These light batches are not sent to be included on the L1.
 
-When a node receives a light batch, it checks that it has also stored the light batch's parent. If 
-not, it walks the chain backwards, requesting any light batches it is missing until it hits a stored light batch. In 
-the current design, it requests these light batches from random nodes; once a gossip protocol is implemented, it will 
+When a node receives a light batch, it first checks whether the light batch is valid. If not, it rejects the light 
+batch as not part of the canonical chain. It then checks that it has also stored the light batch's parent. If not, it 
+walks the chain backwards, requesting any light batches it is missing until it hits a stored light batch. In the 
+current design, it requests these light batches from random nodes; once a gossip protocol is implemented, it will 
 request the light batches from its known peers.
 
 The linkage of each light batch to its parent also ensures that the sequencer's host cannot feed the enclave a light 
@@ -114,10 +115,13 @@ The management contract on the L1 verifies that the rollup is produced by a desi
 
 Nodes scan incoming L1 blocks for new rollups. For each new rollup, the node checks that it contains all the light 
 batches produced since the last rollup. Each light batch contains the number of the rollup that will contain it. Since 
-the rollup is a sparse Merkle tree, proving non-inclusion of a given light batch is straightforward. If they discover 
-an issue, they can mount a challenge, as per the "Staking and slashing" section, below.
+the rollup is a sparse Merkle tree, proving non-inclusion of a given light batch is straightforward.
 
-The node then persists the rollup, so that they have a record of which light batches have been confirmed on the L1.
+If they discover an issue, they can mount a challenge, as per the "Staking and slashing" section, below. They also 
+reject the rollup, waiting for a valid rollup at the same height to be produced.
+
+If the rollup is valid, the node persists the rollup, so that they have a record of which light batches have been 
+confirmed on the L1.
 
 ### Staking and slashing
 
