@@ -19,6 +19,8 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
   * The sequencer is incentivised to hard-finalise transactions in the same order they are soft-finalised
   * The sequencer is not able to "rewrite history" (or is strongly disincentivised from doing so), even for soft-final
     transactions
+  * Soft finality does not break the mechanism used by some smart contracts (e.g. SushiSwap) of using `block.number` as 
+    a rudimentary clock
 * Censorship resistance
   * End-users have a mechanism to force the sequencer to include their transactions (possibly at higher cost and slower 
     finality)
@@ -67,7 +69,8 @@ sequencer produces light batches.
 To produce a light batch, the sequencer's host feeds a set of transactions to the enclave. The enclave responds by 
 creating a signed and encrypted *light batch*. This light batch is formally identical to the rollup of the final 
 design, including a list of the provided transactions and a header including information on the current light batch and 
-the hash of the "parent" light batch.
+the hash of the "parent" light batch. This header also includes a monotonically increasing counter, in order to support 
+smart contracts that use `block.number` as a rudimentary clock (e.g. SushiSwap).
 
 The sequencer's host immediately distributes the light batch to all other nodes, who gossip it onwards to other nodes
 (ensuring the sequencer cannot restrict the distribution of light batches to specific nodes, provided one of the nodes 
@@ -201,6 +204,9 @@ This approach has several downsides:
   `Possible designs for preventing value-extraction`, below)
 * Do the light batches need to be linked to the latest block that was fed into the enclave?
 * How do we prevent denial-of-service attacks on the sequencer?
+* How do we achieve the desired cadence of light batches without tying ourselves to the L1 block cadence, in light of 
+  the absence of time within an enclave? Can the host request light batches on the correct cadence, with some incentive 
+  mechanism to prevent deviations from the "correct" cadence?
 
 ## Appendices
 
