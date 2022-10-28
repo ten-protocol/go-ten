@@ -160,7 +160,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	logFile := os.Stdout
 	if logPathParam == "" {
 		logPath = path.Join(buildDir, logFileName)
-		logFile, err = os.Create(logPathParam)
+		logFile, err = os.Create(logPath)
 		if err != nil {
 			panic(err)
 		}

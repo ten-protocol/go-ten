@@ -1,10 +1,11 @@
 package smartcontract
 
 import (
-	"github.com/ethereum/go-ethereum/log"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 

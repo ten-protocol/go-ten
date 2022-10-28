@@ -2,9 +2,10 @@ package main
 
 import (
 	"flag"
+	"strings"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"strings"
 )
 
 const (

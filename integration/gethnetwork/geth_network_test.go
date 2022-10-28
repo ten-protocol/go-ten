@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"strconv"
 	"testing"
 	"time"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 

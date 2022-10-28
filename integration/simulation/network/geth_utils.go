@@ -3,9 +3,10 @@ package network
 import (
 	"errors"
 	"fmt"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"time"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 

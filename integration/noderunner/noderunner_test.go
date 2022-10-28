@@ -3,11 +3,12 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"net"
 	"net/http"
 	"testing"
 	"time"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
