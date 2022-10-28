@@ -198,15 +198,13 @@ This approach has several downsides:
 
 ## Future work
 
-* Allowing nodes to challenge the sequencer (e.g. if the light batches are missing transactions, if a certain light 
-  batch is not included in the rollup, or if light batches and/or rollups are not produced at the correct frequency)
 * Creation of an inbox to allow transactions to be "forced through" if the sequencer is excluding them (the rough idea 
   is that there will be an inbox for transactions in the management contract, and validators will reject light batches 
   that do not contain any (valid) transactions that have sat in the inbox for a certain amount of time)
 * Implement a mechanism to prevent value extraction (see the section 
   `Possible designs for preventing value-extraction`, below)
-* Implement a mechanism to ensure we achieve the desired cadence of light batches without tying ourselves to the L1 
-  block cadence, in light of the absence of time within an enclave? Can the host request light batches on the correct 
+* Implement an incentive mechanism to ensure we achieve the desired cadence of light batches without tying ourselves to 
+  the L1 block cadence, in light of the absence of time within an enclave. Can the host request light batches on the correct 
   cadence, with some incentive mechanism to prevent deviations from the "correct" cadence?
 
 ## Unresolved issues
