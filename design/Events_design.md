@@ -115,6 +115,8 @@ Our goal is to implement the visibility rules described above without modifying 
 
 ### Obscuro enclave
 
+// TODO - Discuss the getLogs method.
+
 #### Creating and deleting subscriptions
 
 The enclave exposes RPC methods to add or remove logs subscriptions. The request to create a new logs subscription must 
