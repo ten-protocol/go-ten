@@ -371,17 +371,38 @@ account on the L1 network used to deploy the Obscuro Management and the ERC20 co
 - `0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF` is the address of the Obscuro Management contract which is known a-priori as a nonce of 0 is used 
 - `0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9` is the address of the ERC20 contract which represents OBX and is known a-priori as a nonce of 1 is used
 - `0x51D43a3Ca257584E770B6188232b199E76B022A2` is the address of the ERC20 contract which represents ETH and is known a-priori as a nonce of 2 is used
-                                
+
+
+### Building and running a local faucet
+Deploying and interacting with contracts on Obscuro requires OBX to be allocated to an account via the faucet. The 
+faucet [repo](https://github.com/obscuronet/faucet) should be cloned, and the container built and started to allow 
+requests to be made to it. To build and run use;
+
+```
+git clone git@github.com:obscuronet/faucet.git
+cd faucet
+./container_build.sh 
+./container_run.sh 
+```
+
+The faucet runs a web server within the container, with a port mapping of 8080 set to allow POST requests to be made to 
+it for an allocation to an externally owned addressed e.g. for the account `0x0d2166b7b3A1522186E809e83d925d7b0B6db084`
+the following curl command can be used;
+
+```bash
+curl --location --request POST 'http://127.0.0.1:8080/fund/obx' \
+--header 'Content-Type: application/json' \
+--data-raw '{ "address":"0x0d2166b7b3A1522186E809e83d925d7b0B6db084" }'
+```
+
 
 ### Deploying contracts into a local testnet
-Deploying and interacting with contracts on Obscuro requires OBX to be allocated to an account via the faucet server, 
-and the wallet extension to be running. For more information on requesting OBX from the faucet server see 
-[docs/testnet/faucet.md](docs/testnet/faucet.md). The wallet extension is the Obscuro component that ensures that 
-sensitive information in RPC requests between client applications and Obscuro cannot be seen by third parties. The 
-wallet extension should be run local to the client application and is described in more detail at 
-[docs/wallet-extension/wallet-extension.md](docs/wallet-extension/wallet-extension.md).
+Deploying and interacting with contracts on Obscuro requires the wallet extension to be running. The wallet extension is 
+the Obscuro component that ensures that sensitive information in RPC requests between client applications and Obscuro 
+cannot be seen by third parties. The wallet extension should be run local to the client application and is described in 
+more detail at [docs/wallet-extension/wallet-extension.md](docs/wallet-extension/wallet-extension.md).
 
-To start the wallet extension to run against a local testnet use the below;
+To start the wallet extension to run against a local testnet, in the go-obscuro repo use the below;
 
 ```
 cd ./tools/walletextension/main/
@@ -389,12 +410,12 @@ go build -o wallet_extension
 ./wallet_extension -nodeHost 127.0.0.1 -nodePortHTTP 13000 -nodePortWS 13001
 ```
 
-Once the wallet extension is running, a contract can be deployed and interacted with either manually using Metamask and Remix (see 
-[docs/testnet/deploying-a-smart-contract.md](docs/testnet/deploying-a-smart-contract.md)) or programmatically e.g. using web3.py
-(see [docs/testnet/deploying-a-smart-contract-programmatically.md](docs/testnet/deploying-a-smart-contract-programmatically.md)). 
+Once the wallet extension is running, a contract can be deployed and interacted with either manually using Metamask and 
+Remix (see[docs/testnet/deploying-a-smart-contract.md](docs/testnet/deploying-a-smart-contract.md)) or programmatically 
+e.g. using web3.py(see [docs/testnet/deploying-a-smart-contract-programmatically.md](docs/testnet/deploying-a-smart-contract-programmatically.md)). 
 
-Note that in order to interact with the main cloud hosted testnet, all that needs to be changed is to start the wallet extension using 
-the default parameters, where the `nodeHost` will default to the testnet host URL `testnet.obscu.ro` i.e. 
+Note that in order to interact with the main cloud hosted testnet, all that needs to be changed is to start the wallet 
+extension using the default parameters, where the `nodeHost` will default to the testnet host URL `testnet.obscu.ro` i.e. 
 
 ```
 cd ./tools/walletextension/main/
