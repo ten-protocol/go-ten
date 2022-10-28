@@ -38,9 +38,9 @@ described in the [Bootstrapping Strategy design doc](./Bootstrapping_strategy.md
 * User/dev experience
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
 * Resilience
-  * Failover of the centralised sequencer does not require a governance action
-  * During failover of the centralised sequencer, it is acceptable to break the one-second soft-finality guarantee, and 
-    drop transactions that have not been soft-finalised
+  * Failover of the sequencer does not require a governance action
+  * During failover of the sequencer, it is acceptable to break the one-second soft-finality guarantee, and drop 
+    transactions that have not been soft-finalised
 
 ## Assumptions
 
@@ -130,10 +130,10 @@ the L1. The management contract will inspect this challenge. If successful, the 
 their stake transferred to the challenger as a reward. This reward is greater than the cost of posting the challenge, 
 to incentivise prompt discovery of issues.
 
-Initially, there will be no staking mechanism to ensure light batches are produced at the correct cadence. Since there 
-is no major upside to modifying the light-batch cadence, it is expected to be a sufficient incentive that the sequencer 
-is operated by the foundation and has an interest in the well-running of the network, including a reliable light batch 
-cadence.
+Initially, there will be no slashing mechanism to ensure light batches are produced at the correct cadence. It is 
+expected to be a sufficient incentive that the sequencer is operated by the foundation and has an interest in the 
+well-running of the network, including a reliable light batch cadence. Any failure to preserve the correct light-batch 
+cadence will be immediately visible to all observers.
 
 ### Resilience
 
