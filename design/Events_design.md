@@ -111,54 +111,66 @@ It also reduces flexibility in sending lifecycle events to administrators.
 
 ## Obscuro events implementation
 
-Our goal is to implement the visibility rules described above without modifying the Ethereum events API.
+Our goal is to implement the visibility rules described above without modifying the Ethereum events API. We will look 
+first at the changes to the enclave, then those to the host, and finally those to the RPC client.
 
 ### Obscuro enclave
 
-#### Creating and deleting subscriptions
+#### Creating and deleting logs subscriptions
 
-The enclave exposes two methods, one to add a new logs subscription, and one to delete a logs subscription.
+The enclave exposes RPC methods to add or remove logs subscriptions. The request to create a new logs subscription must 
+contain the following information:
 
-The method to create a subscription takes a `LogSubscription` object, defined as below. This object is encrypted with 
-the enclave's private key, to prevent attackers from eavesdropping on the creation of subscriptions.
+* `Account`: The account address the events relate to.
+* `Signature`: A signature over the account address using a private viewing key.
+* `Filter`: A subscriber-defined filter to apply to the stream of logs.
 
-```
-LogSubscription {
-    Account   // The account address the events relate to.
-    Signature // A signature over the account address using a private viewing key.
-    Filter    // A subscriber-defined filter to apply to the stream of logs.
-}
-```
+This object is encrypted with the enclave's private key, to prevent attackers from eavesdropping on the creation of 
+subscriptions.
 
-The signature ensures that the client is authorised to create a subscription for the given account. This prevents
-attackers from creating subscriptions to analyse the pattern of logs. Each new logs subscription is assigned a unique 
-subscription ID that is returned to the host.
+The signature field proves that the client is authorised to create a subscription for the given account. This prevents
+attackers from creating subscriptions for accounts other than their own to analyse the pattern of logs.
 
-The method to delete a subscription takes the subscription ID of the subscription to be deleted. This method is not 
-authenticated, so an attacker who discovered the subscription ID could request its deletion.
+Each new logs subscription is assigned a unique subscription ID that is returned to the host. The method to delete a 
+subscription takes the subscription ID of the subscription to be deleted. This method is not authenticated, so an 
+attacker who discovered the subscription ID could request its deletion.
 
 #### Block ingestion
 
-Each time the host sends the enclave a new block to ingest, the enclave responds with a block submission response. 
-This response will include a mapping from subscription IDs to the associated logs, where the logs are encrypted with 
-the viewing key corresponding to the `LogSubscription.Account`. By associated logs, we mean any logs from any 
-transactions in the current block that meet the two following criteria:
+Each time the host sends the enclave a new block to ingest, the enclave stores the logs for that block in its database. 
+It then produces a block submission response which it sends back to the host.
+
+This response includes a mapping from subscription IDs to a set of logs, where each set of logs is encrypted with 
+the viewing key corresponding to the subscription's `Account`. The set of logs is constructed by taking any logs from 
+the current block that meet the two following criteria:
 
 * They match the `LogSubscription.Filter`
-* They pass the relevancy test described above, for the account address in `LogSubscription.Account`
+* They pass the relevancy test described earlier in this document for the account address in `LogSubscription.Account`
 
 #### Transaction receipts
 
-Logs are also included in transaction receipts. Whenever the host requests a transaction receipt, the enclave filters 
-out the receipt's logs to only include those that pass the relevancy test, using the transaction's sender as the user 
-address.
+Transaction receipts also contain the logs for that transaction. Whenever the host requests a transaction receipt, the 
+enclave filters out the receipt's logs to only include those that pass the relevancy test, using the transaction's 
+sender as the user address.
+
+#### Log snapshots
+
+The enclave also exposes an RPC method to get a snapshot of logs. It expects an encrypted set of params that include 
+the log filter and the address the logs are for. It then crawls the chain, extracts all the logs that match the filter 
+and are relevant based on the address provided. It returns these logs encrypted with the viewing key corresponding to 
+the address provided.
 
 ### Obscuro host
+
+#### Logs subscriptions
 
 For each incoming logs subscription request via RPC, the host has to do two things:
 
 1. Route the new subscription request to the enclave and create a new Geth `rpc.Subscription` to return to the client
 2. Extract the logs upon each block ingestion and route them to the corresponding client subscription
+
+Upon creating the new subscription, the host immediately sends the subscription ID as the first message. This is 
+required by the client, so that it can be returned to the user and used to unsubscribe if needed at a later time.
 
 Since the log subscription request is encrypted by the client and can only be decrypted on the enclave, the host 
 forwards it blindly, and cannot learn anything about the contents of the subscription. However, it does generate a 
@@ -168,9 +180,16 @@ logs for that subscription in the block submission response.
 For each block submission response, the host extracts the encrypted logs for that subscription ID, and forwards them 
 on to the corresponding Geth `rpc.Subscription`.
 
+#### Logs snapshots
+
+For log snapshot requests, it is again forwarded blindly to the enclave, with the host unable to learn anything about 
+the request or response.
+
 ### Obscuro encrypted RPC client
 
-Due to their sensitive nature, logs subscription requests and responses must pass through the encrypted RPC client.
+Due to their sensitive nature, logs requests and log subscriptions must pass through the encrypted RPC client.
+
+#### Logs subscriptions
 
 The encrypted RPC client only handles logs subscriptions via the `eth_subscribe` and `eth_unsubscribe` APIs (see 
 [here](https://ethereum.org/en/developers/tutorials/using-websockets/#eth-subscribe)). A consequence of this is that 
@@ -181,9 +200,9 @@ In response to the incoming `eth_subscribe` request, the client creates a `logs`
 with the enclave's public key to protect the request from eavesdroppers, setting the `Account` to the client's 
 account and generating the required signature.
 
-For each received event, the encrypted RPC client must retrieve the encrypted log bytes from the `data` field and 
-decrypt them with the corresponding private key before returning the log events to the user. It then pushes the 
-decrypted event onto a separate channel listened to by the client.
+For each received event, the encrypted RPC client decrypts the encrypted log bytes with the corresponding private key 
+before returning the log events to the user. It then pushes the decrypted event onto a separate channel listened to by 
+the client.
 
 ## Security and usability of the proposed design
 

@@ -190,8 +190,7 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 			var logs []*types.Log
 			err = json.Unmarshal(jsonLogs, &logs)
 			if err != nil {
-				c.logger.Error(fmt.Sprintf("could not unmarshal log from `data` field of log received from subscription. "+
-					"Data field contents: %s.", string(jsonLogs)), log.ErrKey, err)
+				c.logger.Error(fmt.Sprintf("could not unmarshal log from JSON. Received data: %s.", string(jsonLogs)), log.ErrKey, err)
 				continue
 			}
 
