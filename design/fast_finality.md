@@ -112,12 +112,22 @@ The management contract on the L1 verifies that the rollup is produced by a desi
 
 ### Discovery of rollups
 
-Nodes scan incoming L1 blocks for new rollups and persist them, so that they have a record of which light batches have 
-been confirmed on the L1.
+Nodes scan incoming L1 blocks for new rollups. For each new rollup, the node checks that it contains all the light 
+batches produced since the last rollup. Each light batch contains the number of the rollup that will contain it. Since 
+the rollup is a sparse Merkle tree, proving non-inclusion of a given light batch is straightforward. If they discover 
+an issue, they can mount a challenge, as per the "Staking and slashing" section, below.
 
-Before storing each rollup, the node checks that it contains all the light batches produced since the last rollup. Each 
-light batch contains the number of the rollup that will contain it. Since the rollup is a sparse Merkle tree, proving 
-non-inclusion of a given light batch is straightforward.
+The node then persists the rollup, so that they have a record of which light batches have been confirmed on the L1.
+
+### Staking and slashing
+
+The sequencer must put up a stake in the management contract. The management contract enforces that the sequencer must 
+keep their stake topped up to a suitable level to continue posting rollups.
+
+If a node finds that the contents of a given light-batch do not match the rollup published on the L1 (e.g. transactions 
+missing, transactions in the wrong order), it can post a challenge including the light batch and offending rollup to 
+the L1. The management contract will inspect this challenge. If successful, the sequencer will be slashed, with part of 
+their stake transferred to the challenger.
 
 ### Resilience
 
