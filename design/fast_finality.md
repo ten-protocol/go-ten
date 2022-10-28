@@ -205,14 +205,14 @@ This approach has several downsides:
   that do not contain any (valid) transactions that have sat in the inbox for a certain amount of time)
 * Implement a mechanism to prevent value extraction (see the section 
   `Possible designs for preventing value-extraction`, below)
+* Implement a mechanism to ensure we achieve the desired cadence of light batches without tying ourselves to the L1 
+  block cadence, in light of the absence of time within an enclave? Can the host request light batches on the correct 
+  cadence, with some incentive mechanism to prevent deviations from the "correct" cadence?
 
 ## Unresolved issues
 
 * Do the light batches need to be linked to the latest block that was fed into the enclave?
 * How do we prevent denial-of-service attacks on the sequencer?
-* How do we achieve the desired cadence of light batches without tying ourselves to the L1 block cadence, in light of 
-  the absence of time within an enclave? Can the host request light batches on the correct cadence, with some incentive 
-  mechanism to prevent deviations from the "correct" cadence?
 * How should the counter in light-batch headers increase? Should it increase once per L1 block, or once per light 
   batch?
 
