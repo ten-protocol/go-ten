@@ -16,6 +16,7 @@ Obscuro nodes support the following JSON-RPC API methods over both HTTP and webs
 * `eth_getBlockByHash`
 * `eth_getBlockByNumber`
 * `eth_getCode`
+* `eth_getLogs`
 * `eth_getTransactionByHash`
 * `eth_getTransactionCount`
 * `eth_getTransactionReceipt`
