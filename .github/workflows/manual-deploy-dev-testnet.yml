@@ -53,7 +53,7 @@ jobs:
           name: dev-testnet-gethnetwork
           location: 'uksouth'
           restart-policy: 'Never'
-          command-line: /home/go-obscuro/integration/gethnetwork/main/main --blockTimeSecs=15 --numNodes=2 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}
+          command-line: /home/go-obscuro/integration/gethnetwork/main/main --blockTimeSecs=15 --numNodes=2 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs="${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}"
           # Ports start at 9000 for Websockets and 8000 for Start port and 8025 for Http Port
           # Each node has Port + id
           ports: '8025 8026 9000 9001'
