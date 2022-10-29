@@ -67,8 +67,12 @@ func parseCLIArgs() gethConfig {
 
 	flag.Parse()
 
-	parsedPrefundedAddrs := strings.Split(*prefundedAddrs, ",")
-	if *prefundedAddrs == "" {
+	addrs := *prefundedAddrs
+	if strings.HasPrefix(addrs, "'") {
+		addrs = addrs[1 : len(addrs)-1]
+	}
+	parsedPrefundedAddrs := strings.Split(addrs, ",")
+	if addrs == "" {
 		// We handle the special case of an empty list.
 		parsedPrefundedAddrs = []string{}
 	}
