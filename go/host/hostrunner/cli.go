@@ -39,6 +39,7 @@ type HostConfigToml struct {
 	LogLevel               int
 	LogPath                string
 	PrivateKeyString       string
+	PKAddress              string
 	L1ChainID              int64
 	ObscuroChainID         int64
 	ProfilerEnabled        bool
@@ -158,6 +159,7 @@ func fileBasedConfig(configPath string) (config.HostConfig, error) {
 		LogLevel:               tomlConfig.LogLevel,
 		LogPath:                tomlConfig.LogPath,
 		PrivateKeyString:       tomlConfig.PrivateKeyString,
+		PKAddress:              tomlConfig.PKAddress,
 		L1ChainID:              tomlConfig.L1ChainID,
 		ObscuroChainID:         tomlConfig.ObscuroChainID,
 		ProfilerEnabled:        tomlConfig.ProfilerEnabled,
