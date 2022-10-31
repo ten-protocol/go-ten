@@ -40,3 +40,26 @@ func TestDoWithTimeoutStrategy_UnsuccessfulAfterTimeout(t *testing.T) {
 
 	assert.Greater(t, count, 5, "expected function to be called at least 5 times before timing out")
 }
+
+func TestDoublingBackoffStrategy_DoublingIntervalsAndRespectMaxRetries(t *testing.T) {
+	var count int
+	prevAttempt := time.Now()
+	expectedInterval := 20
+	testFunc := func() error {
+		count = count + 1
+		if count > 1 {
+			// we check it waited at least long enough (not checking for too long as that could be flaky)
+			assert.Greater(t, time.Since(prevAttempt), time.Duration(expectedInterval)*time.Millisecond)
+			expectedInterval = 2 * expectedInterval
+		}
+		prevAttempt = time.Now()
+		return fmt.Errorf("attempt number %d", count)
+	}
+
+	err := Do(testFunc, NewDoublingBackoffStrategy(20*time.Millisecond, 5))
+	if err == nil {
+		assert.Fail(t, "expected failure from hitting max retries but no err found")
+	}
+
+	assert.Equal(t, 5, count, "expected function to be called exactly 5 times before failing")
+}

@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/retry"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/host/events"
@@ -48,6 +50,9 @@ const (
 	l1TxTriesRollup = 3
 	// Attempts to send secret initialisation, request or response transactions to the L1. Worst-case, equates to 63 seconds, plus time per request.
 	l1TxTriesSecret = 7
+
+	maxWaitForL1Receipt       = 100 * time.Second
+	retryIntervalForL1Receipt = 10 * time.Second
 )
 
 // Node is an implementation of host.Host.
@@ -629,22 +634,43 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.
-func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries int) error {
+func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
 		return err
 	}
 
-	funcBroadcastTx := func() error {
-		// TODO - #1089 - Await transaction receipt after sending the transaction.
+	err = retry.Do(func() error {
 		return a.ethClient.SendTransaction(signedTx)
-	}
-	err = retryWithBackoff(tries, funcBroadcastTx)
-	if err == nil {
-		return nil
+	}, retry.NewDoublingBackoffStrategy(time.Second, tries)) // doubling retry wait (3 tries = 7sec, 7 tries = 63sec)
+	if err != nil {
+		return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 	}
 
-	return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Signer %s. Cause: %w", tries, a.ethWallet.Address().Hex(), err)
+	// asynchronously watch for a successful receipt
+	// todo: consider how to handle the various ways that L1 transactions could fail to improve node operator QoL
+	go a.watchForReceipt(signedTx.Hash())
+
+	return nil
+}
+
+func (a *Node) watchForReceipt(txHash common.TxHash) {
+	var receipt *types.Receipt
+	var err error
+	err = retry.Do(func() error {
+		receipt, err = a.ethClient.TransactionReceipt(txHash)
+		return err
+	}, retry.NewTimeoutStrategy(maxWaitForL1Receipt, retryIntervalForL1Receipt))
+	if err != nil {
+		a.logger.Error("receipt for L1 transaction never found despite 'successful' broadcast",
+			"err", err,
+			"signer", a.ethWallet.Address().Hex())
+	}
+	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
+		a.logger.Error("unsuccessful receipt found for published L1 transaction",
+			"status", receipt.Status,
+			"signer", a.ethWallet.Address().Hex())
+	}
 }
 
 // This method implements the procedure by which a node obtains the secret
@@ -1009,28 +1035,5 @@ func (a *Node) validateConfig() {
 
 	if a.config.P2PPublicAddress == "" {
 		a.logger.Crit("the node must specify a public P2P address")
-	}
-}
-
-// We retry calling `funcToRetry`, with a pause in between that starts at one second and doubles on each retry.
-// This is equal to 7 seconds for 3 tries, and 63 seconds for 7 tries.
-func retryWithBackoff(tries int, funcToRetry func() error) error {
-	pause := time.Second
-	var err error
-
-	for i := 0; ; i++ {
-		if i >= tries {
-			// We've performed all the tries, so we return the (possibly nil) error.
-			return err
-		}
-
-		err = funcToRetry()
-		if err == nil {
-			// If the transaction sent successfully, we break out.
-			return nil
-		}
-
-		time.Sleep(pause)
-		pause = pause * 2
 	}
 }
