@@ -51,8 +51,8 @@ const (
 	// Attempts to send secret initialisation, request or response transactions to the L1. Worst-case, equates to 63 seconds, plus time per request.
 	l1TxTriesSecret = 7
 
-	maxWaitForL1Receipt       = time.Minute
-	retryIntervalForL1Receipt = time.Second
+	maxWaitForL1Receipt       = 100 * time.Second
+	retryIntervalForL1Receipt = 10 * time.Second
 )
 
 // Node is an implementation of host.Host.
