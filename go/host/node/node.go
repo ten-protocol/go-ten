@@ -662,10 +662,10 @@ func (a *Node) watchForReceipt(txHash common.TxHash) {
 		return err
 	}, retry.NewTimeoutStrategy(maxWaitForL1Receipt, retryIntervalForL1Receipt))
 	if err != nil {
-		panic(fmt.Sprintf("receipt for L1 transaction never found despite 'successful' broadcast - %s", err))
+		a.logger.Error("receipt for L1 transaction never found despite 'successful' broadcast", "err", err)
 	}
 	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
-		panic(fmt.Sprintf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status))
+		a.logger.Error("unsuccessful receipt found for published L1 transaction", "status", receipt.Status)
 	}
 }
 
