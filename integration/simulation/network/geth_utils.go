@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
@@ -41,14 +43,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	}
 
 	// kickoff the network with the prefunded wallet addresses
-	gethNetwork := gethnetwork.NewGethNetwork(
-		StartPort,
-		StartPort+DefaultWsPortOffset,
-		path,
-		nrNodes,
-		blockDurationSeconds,
-		walletAddresses,
-	)
+	gethNetwork := gethnetwork.NewGethNetwork(StartPort, StartPort+DefaultWsPortOffset, path, nrNodes, blockDurationSeconds, walletAddresses, "", int(gethlog.LvlDebug))
 
 	// connect to the first host to deploy
 	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())

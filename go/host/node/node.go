@@ -644,7 +644,7 @@ func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries int) error {
 		return nil
 	}
 
-	return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
+	return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Signer %s. Cause: %w", tries, a.ethWallet.Address().Hex(), err)
 }
 
 // This method implements the procedure by which a node obtains the secret

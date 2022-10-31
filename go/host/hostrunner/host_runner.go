@@ -27,6 +27,8 @@ import (
 func RunHost(config config.HostConfig) {
 	logger := log.New(log.HostCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.ID)
 
+	fmt.Printf("Starting host with config: %+v", config)
+	logger.Info(fmt.Sprintf("Starting node with config: %+v", config))
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress, logger)
 
 	fmt.Println("Connecting to L1 network...")

@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
@@ -53,14 +55,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
 
 	// define + run the network
-	gethNetwork := gethnetwork.NewGethNetwork(
-		integration.StartPortSmartContractTests,
-		integration.StartPortSmartContractTests+100,
-		path,
-		3,
-		1,
-		[]string{workerWallet.Address().String()},
-	)
+	gethNetwork := gethnetwork.NewGethNetwork(integration.StartPortSmartContractTests, integration.StartPortSmartContractTests+100, path, 3, 1, []string{workerWallet.Address().String()}, "", int(log.LvlInfo))
 
 	// create a client that is connected to node 0 of the network
 	client, err := ethadapter.NewEthClient("127.0.0.1", gethNetwork.WebSocketPorts[0], 30*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
