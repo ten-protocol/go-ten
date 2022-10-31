@@ -68,6 +68,8 @@ func parseCLIArgs() gethConfig {
 	flag.Parse()
 
 	addrs := *prefundedAddrs
+	// When running locally, we don't have to add the quotes around the prefunded addresses.
+	// This is stripping them away in case they were added.
 	if strings.HasPrefix(addrs, "'") {
 		addrs = addrs[1 : len(addrs)-1]
 	}

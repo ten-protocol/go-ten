@@ -158,8 +158,15 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 
 	logPath := log.SysOut
 	logFile := os.Stdout
+	// In case there is no `logPathParam` passed in, logging defaults to a standard file in the current folder
 	if logPathParam == "" {
 		logPath = path.Join(buildDir, logFileName)
+		logFile, err = os.Create(logPath)
+		if err != nil {
+			panic(err)
+		}
+	} else if logPathParam != log.SysOut {
+		logPath = logPathParam
 		logFile, err = os.Create(logPath)
 		if err != nil {
 			panic(err)
