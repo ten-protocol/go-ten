@@ -647,7 +647,7 @@ func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
 		return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 	}
 
-	// asynchronously watch for a successful receipt, panic if transaction ends up failing
+	// asynchronously watch for a successful receipt
 	// todo: consider how to handle the various ways that L1 transactions could fail to improve node operator QoL
 	go a.watchForReceipt(signedTx.Hash())
 
