@@ -61,5 +61,5 @@ func TestDoublingBackoffStrategy_DoublingIntervalsAndRespectMaxRetries(t *testin
 		assert.Fail(t, "expected failure from hitting max retries but no err found")
 	}
 
-	assert.Equal(t, 6, count, "expected function to be called exactly 5 times before failing")
+	assert.Equal(t, 5, count, "expected function to be called exactly 5 times before failing")
 }

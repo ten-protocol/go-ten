@@ -17,10 +17,13 @@ func Do(fn func() error, retryStrat Strategy) error {
 			return nil
 		}
 
+		// calling NextRetryInterval() marks the end of an attempt for the retry strategy, so we call it before checking Done()
+		nextInterval := retryStrat.NextRetryInterval()
+
 		if retryStrat.Done() {
 			return fmt.Errorf("%s - latest error: %w", retryStrat.Summary(), err)
 		}
 
-		time.Sleep(retryStrat.NextRetryInterval())
+		time.Sleep(nextInterval)
 	}
 }
