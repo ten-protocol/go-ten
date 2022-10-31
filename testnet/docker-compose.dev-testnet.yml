@@ -33,6 +33,7 @@ services:
       "--enclaveRPCAddress=enclave:11000",
       "--rollupContractAddress=$MGMTCONTRACTADDR",
       "--privateKey=$PKSTRING",
+      "--pkAddress=$PKADDR",
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
       "--nodeType=$NODETYPE",

@@ -71,7 +71,7 @@ debug_enclave=false
 dev_testnet=false
 pk_address=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
-log_level=2
+log_level=4
 
 
 # Fetch options
@@ -110,7 +110,7 @@ fi
 
 
 # set the data in the env file
-echo "PKSTRING=${pk_string}" > "${testnet_path}/.env"
+echo "PKSTRING=${pk_string}" >> "${testnet_path}/.env"
 echo "PKADDR=${pk_address}" >> "${testnet_path}/.env"
 echo "HOSTID=${host_id}"  >> "${testnet_path}/.env"
 echo "MGMTCONTRACTADDR=${mgmt_contract_addr}"  >> "${testnet_path}/.env"

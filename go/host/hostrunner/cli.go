@@ -39,6 +39,7 @@ type HostConfigToml struct {
 	LogLevel               int
 	LogPath                string
 	PrivateKeyString       string
+	PKAddress              string
 	L1ChainID              int64
 	ObscuroChainID         int64
 	ProfilerEnabled        bool
@@ -73,6 +74,7 @@ func ParseConfig() (config.HostConfig, error) {
 	l1ChainID := flag.Int64(l1ChainIDName, cfg.L1ChainID, flagUsageMap[l1ChainIDName])
 	obscuroChainID := flag.Int64(obscuroChainIDName, cfg.ObscuroChainID, flagUsageMap[obscuroChainIDName])
 	privateKeyStr := flag.String(privateKeyName, cfg.PrivateKeyString, flagUsageMap[privateKeyName])
+	pkAddress := flag.String(pkAddressName, cfg.PKAddress, flagUsageMap[pkAddressName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
 
 	flag.Parse()
@@ -106,6 +108,7 @@ func ParseConfig() (config.HostConfig, error) {
 	cfg.P2PConnectionTimeout = time.Duration(*p2pConnectionTimeoutSecs) * time.Second
 	cfg.RollupContractAddress = gethcommon.HexToAddress(*rollupContractAddress)
 	cfg.PrivateKeyString = *privateKeyStr
+	cfg.PKAddress = *pkAddress
 	cfg.LogLevel = *logLevel
 	cfg.LogPath = *logPath
 	cfg.L1ChainID = *l1ChainID
@@ -156,6 +159,7 @@ func fileBasedConfig(configPath string) (config.HostConfig, error) {
 		LogLevel:               tomlConfig.LogLevel,
 		LogPath:                tomlConfig.LogPath,
 		PrivateKeyString:       tomlConfig.PrivateKeyString,
+		PKAddress:              tomlConfig.PKAddress,
 		L1ChainID:              tomlConfig.L1ChainID,
 		ObscuroChainID:         tomlConfig.ObscuroChainID,
 		ProfilerEnabled:        tomlConfig.ProfilerEnabled,

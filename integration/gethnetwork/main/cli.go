@@ -3,6 +3,9 @@ package main
 import (
 	"flag"
 	"strings"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
 const (
@@ -21,6 +24,12 @@ const (
 
 	blockTimeSecsName  = "blockTimeSecs"
 	blockTimeSecsUsage = "The block time in seconds"
+
+	logLevelName  = "logLevel"
+	logLevelUsage = "logLevel"
+
+	logPathName  = "logPath"
+	logPathUsage = "logPath"
 )
 
 type gethConfig struct {
@@ -29,6 +38,8 @@ type gethConfig struct {
 	websocketStartPort int
 	prefundedAddrs     []string
 	blockTimeSecs      int
+	logLevel           int
+	logPath            string
 }
 
 func defaultHostConfig() gethConfig {
@@ -38,6 +49,8 @@ func defaultHostConfig() gethConfig {
 		websocketStartPort: 12100,
 		prefundedAddrs:     []string{},
 		blockTimeSecs:      1,
+		logPath:            log.SysOut,
+		logLevel:           int(gethlog.LvlDebug),
 	}
 }
 
@@ -49,11 +62,19 @@ func parseCLIArgs() gethConfig {
 	websocketStartPort := flag.Int(websocketStartPortName, defaultConfig.websocketStartPort, websocketStartPortUsage)
 	prefundedAddrs := flag.String(prefundedAddrsName, "", prefundedAddrsUsage)
 	blockTimeSecs := flag.Int(blockTimeSecsName, defaultConfig.blockTimeSecs, blockTimeSecsUsage)
+	logLevel := flag.Int(logLevelName, defaultConfig.logLevel, logLevelUsage)
+	logPath := flag.String(logPathName, defaultConfig.logPath, logPathUsage)
 
 	flag.Parse()
 
-	parsedPrefundedAddrs := strings.Split(*prefundedAddrs, ",")
-	if *prefundedAddrs == "" {
+	addrs := *prefundedAddrs
+	// When running locally, we don't have to add the quotes around the prefunded addresses.
+	// This is stripping them away in case they were added.
+	if strings.HasPrefix(addrs, "'") {
+		addrs = addrs[1 : len(addrs)-1]
+	}
+	parsedPrefundedAddrs := strings.Split(addrs, ",")
+	if addrs == "" {
 		// We handle the special case of an empty list.
 		parsedPrefundedAddrs = []string{}
 	}
@@ -64,5 +85,7 @@ func parseCLIArgs() gethConfig {
 		websocketStartPort: *websocketStartPort,
 		prefundedAddrs:     parsedPrefundedAddrs,
 		blockTimeSecs:      *blockTimeSecs,
+		logLevel:           *logLevel,
+		logPath:            *logPath,
 	}
 }

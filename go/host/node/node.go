@@ -662,10 +662,14 @@ func (a *Node) watchForReceipt(txHash common.TxHash) {
 		return err
 	}, retry.NewTimeoutStrategy(maxWaitForL1Receipt, retryIntervalForL1Receipt))
 	if err != nil {
-		a.logger.Error("receipt for L1 transaction never found despite 'successful' broadcast", "err", err)
+		a.logger.Error("receipt for L1 transaction never found despite 'successful' broadcast",
+			"err", err,
+			"signer", a.ethWallet.Address().Hex())
 	}
 	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
-		a.logger.Error("unsuccessful receipt found for published L1 transaction", "status", receipt.Status)
+		a.logger.Error("unsuccessful receipt found for published L1 transaction",
+			"status", receipt.Status,
+			"signer", a.ethWallet.Address().Hex())
 	}
 }
 
