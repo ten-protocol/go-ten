@@ -647,19 +647,26 @@ func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
 		return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 	}
 
+	// asynchronously watch for a successful receipt, panic if transaction ends up failing
+	// todo: consider how to handle the various ways that L1 transactions could fail to improve node operator QoL
+	go a.watchForReceipt(signedTx.Hash())
+
+	return nil
+}
+
+func (a *Node) watchForReceipt(txHash common.TxHash) {
 	var receipt *types.Receipt
+	var err error
 	err = retry.Do(func() error {
-		receipt, err = a.ethClient.TransactionReceipt(signedTx.Hash())
+		receipt, err = a.ethClient.TransactionReceipt(txHash)
 		return err
 	}, retry.NewTimeoutStrategy(maxWaitForL1Receipt, retryIntervalForL1Receipt))
 	if err != nil {
-		return fmt.Errorf("receipt for L1 transaction never found despite 'successful' broadcast - %w", err)
+		panic(fmt.Sprintf("receipt for L1 transaction never found despite 'successful' broadcast - %s", err))
 	}
 	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
-		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
+		panic(fmt.Sprintf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status))
 	}
-
-	return nil
 }
 
 // This method implements the procedure by which a node obtains the secret
