@@ -29,12 +29,12 @@ import (
 
 const (
 	contractDeployerPrivateKeyHex = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
-	guessingGameParamOne          = "100"
-	guessingGameParamTwo          = "0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
 	latestBlock                   = "latest"
 	emptyCode                     = "0x"
-
-	testLogs = "../.build/noderunner/"
+	erc20ParamOne                 = "Hocus"
+	erc20ParamTwo                 = "Hoc"
+	erc20ParamThree               = "1000000000000000000"
+	testLogs                      = "../.build/noderunner/"
 )
 
 var (
@@ -44,8 +44,8 @@ var (
 		IsL1Deployment:    false,
 		PrivateKey:        contractDeployerPrivateKeyHex,
 		ChainID:           big.NewInt(integration.ObscuroChainID),
-		ContractName:      contractdeployer.GuessingGameContract,
-		ConstructorParams: []string{guessingGameParamOne, guessingGameParamTwo},
+		ContractName:      contractdeployer.Layer2Erc20Contract,
+		ConstructorParams: []string{erc20ParamOne, erc20ParamTwo, erc20ParamThree},
 	}
 	nodeAddress = fmt.Sprintf("ws://%s:%d", config.NodeHost, config.NodePort)
 )
@@ -58,7 +58,7 @@ func init() { //nolint:gochecknoinits
 	})
 }
 
-func TestCanDeployGuessingGameContract(t *testing.T) {
+func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 	createObscuroNetwork(t)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
 	time.Sleep(2 * time.Second)

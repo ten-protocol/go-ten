@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"strconv"
 	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-	"github.com/obscuronet/go-obscuro/integration/guessinggame"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -24,10 +22,9 @@ import (
 
 // The types of contracts supported by the deployer
 const (
-	mgmtContract         = "MGMT"
-	l2Erc20Contract      = "L2ERC20"
-	l1Erc20Contract      = "L1ERC20"
-	GuessingGameContract = "GUESS"
+	mgmtContract        = "MGMT"
+	Layer2Erc20Contract = "Layer2ERC20"
+	layer1Erc20Contract = "Layer1ERC20"
 )
 
 const (
@@ -163,26 +160,17 @@ func getContractCode(cfg *Config) ([]byte, error) {
 	case mgmtContract:
 		return managementcontract.Bytecode()
 
-	case l2Erc20Contract:
+	case Layer2Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]
 		tokenSymbol := cfg.ConstructorParams[1]
 		supply := cfg.ConstructorParams[2]
 		return erc20contract.L2Bytecode(tokenName, tokenSymbol, supply), nil
 
-	case l1Erc20Contract:
+	case layer1Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]
 		tokenSymbol := cfg.ConstructorParams[1]
 		supply := cfg.ConstructorParams[2]
 		return erc20contract.L1Bytecode(tokenName, tokenSymbol, supply), nil
-
-	case GuessingGameContract:
-		size, err := strconv.Atoi(cfg.ConstructorParams[0])
-		if err != nil {
-			return nil, err
-		}
-		address := common.HexToAddress(cfg.ConstructorParams[1])
-
-		return guessinggame.Bytecode(uint8(size), address)
 
 	default:
 		return nil, fmt.Errorf("unrecognised contract %s - no bytecode configured for that contract name", cfg.ContractName)
