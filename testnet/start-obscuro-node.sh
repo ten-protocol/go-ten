@@ -149,3 +149,6 @@ fi
 echo "Starting enclave with DISABLED SGX and host..."
 docker compose -f docker-compose.non-sgx.yml up enclave host -d
 
+echo "Waiting 20s for the node to be up..."
+sleep 20
+echo "Node should be up and running"
