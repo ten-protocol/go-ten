@@ -407,16 +407,23 @@ func (a *Node) startProcessing() {
 		select {
 		case b := <-a.blockRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			err := a.processBlocks([]common.EncodedBlock{b.p, b.b}, roundInterrupt)
+			err := a.processBlock(b.p, false, roundInterrupt)
 			if err != nil {
-				a.logger.Warn("Could not process block received via RPC. ", log.ErrKey, err)
+				a.logger.Info("Could not process parent block. ", log.ErrKey, err)
+			}
+			err = a.processBlock(b.b, true, roundInterrupt)
+			if err != nil {
+				a.logger.Warn("Could not process latest block. ", log.ErrKey, err)
 			}
 
 		case f := <-a.forkRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			err := a.processBlocks(f, roundInterrupt)
-			if err != nil {
-				a.logger.Warn("Could not process fork received via RPC. ", log.ErrKey, err)
+			for i, blk := range f {
+				isLatest := i == (len(f) - 1)
+				err := a.processBlock(blk, isLatest, roundInterrupt)
+				if err != nil && isLatest {
+					a.logger.Warn("Could not process latest fork block received via RPC.", log.ErrKey, err)
+				}
 			}
 
 		case r := <-a.rollupsP2PCh:
@@ -468,70 +475,63 @@ type blockAndParent struct {
 	p common.EncodedBlock
 }
 
-func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) error {
+func (a *Node) processBlock(block common.EncodedBlock, latest bool, interrupt *int32) error {
 	var result *common.BlockSubmissionResponse
-	for i, block := range blocks {
-		// For the genesis block the parent is nil
-		if block == nil {
-			continue
-		}
 
-		decoded, err := block.DecodeBlock()
-		if err != nil {
-			return err
-		}
-		a.processBlock(decoded)
-
-		// submit each block to the enclave for ingestion plus validation
-		// todo: isLatest should only be true when we're not behind
-		result, err = a.enclaveClient.SubmitBlock(*decoded, true)
-		if err != nil {
-			if i != len(blocks)-1 {
-				// todo: this goes away when processBlocks() gets broken up
-				continue // don't return an error until we're on the latest of the list
-			}
-			return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
-		}
-
-		a.storeBlockProcessingResult(result)
-		a.logEventManager.SendLogsToSubscribers(result)
-
-		// We check that we only produced a rollup if we're an aggregator.
-		if result.ProducedRollup.Header != nil && a.config.NodeType != common.Aggregator {
-			a.logger.Crit("node produced a rollup but was not an aggregator")
-		}
-
-		for _, secretResponse := range result.ProducedSecretResponses {
-			err := a.publishSharedSecretResponse(secretResponse)
-			if err != nil {
-				a.logger.Error("failed to publish response to secret request", log.ErrKey, err)
-			}
-		}
-	}
-
-	// TODO - once we get rid of the parent, child thing then the for-loop above goes away (currently this code only
-	// applies to the latest block submission in the list, i.e. the child submission, because we don't want to publish
-	// rollups based on a non-live L1 block)
-
-	if result.ProducedRollup.Header == nil {
+	// For the genesis block the parent is nil
+	if block == nil {
 		return nil
 	}
 
-	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToEncryptedRollup())
+	decoded, err := block.DecodeBlock()
 	if err != nil {
-		return fmt.Errorf("could not encode rollup. Cause: %w", err)
+		return err
 	}
-	err = a.p2p.BroadcastRollup(encodedRollup)
+	a.processBlockTransactions(decoded)
+
+	// submit each block to the enclave for ingestion plus validation
+	// todo: isLatest should only be true when we're not behind
+	result, err = a.enclaveClient.SubmitBlock(*decoded, latest)
 	if err != nil {
-		return fmt.Errorf("could not broadcast rollup. Cause: %w", err)
+		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
 	}
 
-	common.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
+	a.storeBlockProcessingResult(result)
+	a.logEventManager.SendLogsToSubscribers(result)
+
+	// We check that we only produced a rollup if we're an aggregator.
+	if result.ProducedRollup.Header != nil && a.config.NodeType != common.Aggregator {
+		a.logger.Crit("node produced a rollup but was not an aggregator")
+	}
+
+	for _, secretResponse := range result.ProducedSecretResponses {
+		err := a.publishSharedSecretResponse(secretResponse)
+		if err != nil {
+			a.logger.Error("failed to publish response to secret request", log.ErrKey, err)
+		}
+	}
+
+	if latest {
+		if result.ProducedRollup.Header == nil {
+			return nil
+		}
+
+		encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToEncryptedRollup())
+		if err != nil {
+			return fmt.Errorf("could not encode rollup. Cause: %w", err)
+		}
+		err = a.p2p.BroadcastRollup(encodedRollup)
+		if err != nil {
+			return fmt.Errorf("could not broadcast rollup. Cause: %w", err)
+		}
+
+		common.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
+	}
 	return nil
 }
 
 // Looks at each transaction in the block, and kicks off special handling for the transaction if needed.
-func (a *Node) processBlock(b *types.Block) {
+func (a *Node) processBlockTransactions(b *types.Block) {
 	for _, tx := range b.Transactions() {
 		t := a.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -929,7 +929,7 @@ func (a *Node) bootstrapNode() types.Block {
 	startTime, logTime := time.Now(), time.Now()
 	for {
 		cb := *currentBlock
-		a.processBlock(&cb)
+		a.processBlockTransactions(&cb)
 		result, err := a.enclaveClient.SubmitBlock(cb, false)
 		if err != nil {
 			var bsErr *common.BlockSubmitError
