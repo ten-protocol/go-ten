@@ -470,7 +470,7 @@ type blockAndParent struct {
 
 func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) error {
 	var result *common.BlockSubmissionResponse
-	for _, block := range blocks {
+	for i, block := range blocks {
 		// For the genesis block the parent is nil
 		if block == nil {
 			continue
@@ -486,6 +486,10 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		// todo: isLatest should only be true when we're not behind
 		result, err = a.enclaveClient.SubmitBlock(*decoded, true)
 		if err != nil {
+			if i != len(blocks)-1 {
+				// todo: this goes away when processBlocks() gets broken up
+				continue // don't return an error until we're on the latest of the list
+			}
 			return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
 		}
 
