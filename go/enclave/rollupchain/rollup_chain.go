@@ -108,8 +108,7 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 	return rolGenesis, b
 }
 
-// Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
-// BlockSubmissionResponse if the insertion failed.
+// Inserts the block into the L1 chain if it exists and the block is not the genesis block
 func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) error {
 	if rc.l1Blockchain != nil {
 		_, err := rc.l1Blockchain.InsertChain(types.Blocks{block})
