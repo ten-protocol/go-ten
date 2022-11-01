@@ -496,17 +496,18 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		if result.ProducedRollup.Header != nil && a.config.NodeType != common.Aggregator {
 			a.logger.Crit("node produced a rollup but was not an aggregator")
 		}
+
+		for _, secretResponse := range result.ProducedSecretResponses {
+			err := a.publishSharedSecretResponse(secretResponse)
+			if err != nil {
+				a.logger.Error("failed to publish response to secret request", log.ErrKey, err)
+			}
+		}
 	}
 
 	// TODO - once we get rid of the parent, child thing then the for-loop above goes away (currently this code only
-	// 		applies to the second block submission, i.e. the child submission)
-
-	for _, secretResponse := range result.ProducedSecretResponses {
-		err := a.publishSharedSecretResponse(secretResponse)
-		if err != nil {
-			a.logger.Error("failed to publish response to secret request", log.ErrKey, err)
-		}
-	}
+	// 		applies to the second block submission, i.e. the child submission, because we don't want to publish rollups
+	//		based on a non-live L1 block)
 
 	if result.ProducedRollup.Header == nil {
 		return nil
@@ -638,6 +639,7 @@ func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
 	if err != nil {
 		return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 	}
+	a.logger.Trace("L1 transaction sent successfully, watching for receipt.")
 
 	// asynchronously watch for a successful receipt
 	// todo: consider how to handle the various ways that L1 transactions could fail to improve node operator QoL
@@ -663,6 +665,7 @@ func (a *Node) watchForReceipt(txHash common.TxHash) {
 			"status", receipt.Status,
 			"signer", a.ethWallet.Address().Hex())
 	}
+	a.logger.Trace("Successful L1 transaction receipt found.", "blk", receipt.BlockNumber, "blkHash", receipt.BlockHash)
 }
 
 // This method implements the procedure by which a node obtains the secret
@@ -714,6 +717,8 @@ func (a *Node) publishSharedSecretResponse(scrtResponse *common.ProducedSecretRe
 	// todo: implement proper protocol so only one host responds to this secret requests initially
 	// 	for now we just have the genesis host respond until protocol implemented
 	if !a.config.IsGenesis {
+		a.logger.Trace("Not genesis node, not publishing response to secret request.",
+			"requester", scrtResponse.RequesterID)
 		return nil
 	}
 
@@ -725,6 +730,7 @@ func (a *Node) publishSharedSecretResponse(scrtResponse *common.ProducedSecretRe
 	}
 	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 	respondSecretTx := a.mgmtContractLib.CreateRespondSecret(l1tx, a.ethWallet.GetNonceAndIncrement(), false)
+	a.logger.Trace("Broadcasting secret response L1 tx.", "requester", scrtResponse.RequesterID)
 	err := a.signAndBroadcastL1Tx(respondSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("could not broadcast secret response. Cause %w", err)

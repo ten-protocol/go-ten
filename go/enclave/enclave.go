@@ -228,6 +228,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubm
 // SubmitBlock is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	bsr, err := e.chain.SubmitBlock(block, isLatest)
+	e.logger.Trace("Processed block submission", "success", err == nil, "blk", block.Number(), "blkHash", block.Hash())
 	if err != nil {
 		return nil, err
 	}
@@ -683,6 +684,7 @@ func (e *enclaveImpl) processSecretRequest(req *ethadapter.L1RequestSecretTx) (*
 		return nil, fmt.Errorf("could not store attestation, no response will be published. Cause: %w", err)
 	}
 
+	e.logger.Trace("Processed secret request.", "owner", att.Owner)
 	return &common.ProducedSecretResponse{
 		Secret:      secret,
 		RequesterID: att.Owner,
