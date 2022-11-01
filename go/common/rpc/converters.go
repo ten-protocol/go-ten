@@ -39,7 +39,6 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 
 	return generated.BlockSubmissionResponseMsg{
 		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
-		BlockNotIngestedCause:   response.BlockNotIngestedCause,
 		ProducedRollup:          &producedRollupMsg,
 		IngestedNewRollup:       response.FoundNewHead,
 		RollupHead:              ToRollupHeaderMsg(response.RollupHead),
@@ -85,7 +84,6 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 
 	return &common.BlockSubmissionResponse{
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
-		BlockNotIngestedCause:   msg.BlockNotIngestedCause,
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
 		FoundNewHead:            msg.IngestedNewRollup,
 		RollupHead:              FromRollupHeaderMsg(msg.RollupHead),

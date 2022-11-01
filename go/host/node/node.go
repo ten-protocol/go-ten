@@ -506,8 +506,8 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 	}
 
 	// TODO - once we get rid of the parent, child thing then the for-loop above goes away (currently this code only
-	// 		applies to the second block submission, i.e. the child submission, because we don't want to publish rollups
-	//		based on a non-live L1 block)
+	// applies to the latest block submission in the list, i.e. the child submission, because we don't want to publish
+	// rollups based on a non-live L1 block)
 
 	if result.ProducedRollup.Header == nil {
 		return nil
@@ -936,9 +936,7 @@ func (a *Node) bootstrapNode() types.Block {
 			}
 			// todo: we need to use the latest hash info from the BlockSubmitError to realign the block streaming for the enclave
 			a.logger.Info(fmt.Sprintf("Failed to ingest block b_%d. Cause: %s",
-				common.ShortHash(result.BlockHeader.Hash()),
-				result.BlockNotIngestedCause,
-			))
+				common.ShortHash(result.BlockHeader.Hash()), bsErr))
 		} else {
 			// submission was successful
 			a.storeBlockProcessingResult(result)

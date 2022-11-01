@@ -244,13 +244,11 @@ message AttestationReportMsg {
 
 message BlockSubmissionResponseMsg {
   BlockHeaderMsg blockHeader = 1;
-  string blockNotIngestedCause = 2;
-
-  ExtRollupMsg producedRollup = 3;
-  bool ingestedNewRollup = 4;
-  HeaderMsg rollupHead = 5;
-  repeated SecretResponseMsg producedSecretResponses = 6;
-  bytes subscribedLogs = 7;
+  ExtRollupMsg producedRollup = 2;
+  bool ingestedNewRollup = 3;
+  HeaderMsg rollupHead = 4;
+  repeated SecretResponseMsg producedSecretResponses = 5;
+  bytes subscribedLogs = 6;
 }
 
 message ExtRollupMsg {

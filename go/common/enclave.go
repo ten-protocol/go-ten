@@ -115,8 +115,7 @@ type Enclave interface {
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
-	BlockHeader           *types.Header // the header of the consumed block. Todo - only the hash required
-	BlockNotIngestedCause string        // The reason the block was not ingested. This message has to not disclose anything useful from the enclave.
+	BlockHeader *types.Header // the header of the consumed block. Todo - only the hash required
 
 	ProducedRollup ExtRollup // The new Rollup when ingesting the block produces a new Rollup
 	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
