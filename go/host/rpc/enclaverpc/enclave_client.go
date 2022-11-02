@@ -229,21 +229,6 @@ func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTx
 	return response.Result, nil
 }
 
-func (c *Client) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.RoundWinner(timeoutCtx, &generated.RoundWinnerRequest{Parent: parent.Bytes()})
-	if err != nil {
-		return common.ExtRollup{}, false, fmt.Errorf("could not determine round winner. Cause: %w", err)
-	}
-
-	if response.Winner {
-		return rpc.FromExtRollupMsg(response.ExtRollup), true, nil
-	}
-	return common.ExtRollup{}, false, nil
-}
-
 func (c *Client) Stop() error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

@@ -395,14 +395,14 @@ func (a *Node) startProcessing() {
 		select {
 		case b := <-a.blockRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			err := a.processBlocks([]common.EncodedBlock{b.p, b.b}, roundInterrupt)
+			err := a.processBlocks([]common.EncodedBlock{b.p, b.b})
 			if err != nil {
 				a.logger.Warn("Could not process block received via RPC. ", log.ErrKey, err)
 			}
 
 		case f := <-a.forkRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			err := a.processBlocks(f, roundInterrupt)
+			err := a.processBlocks(f)
 			if err != nil {
 				a.logger.Warn("Could not process fork received via RPC. ", log.ErrKey, err)
 			}
@@ -431,7 +431,7 @@ type blockAndParent struct {
 	p common.EncodedBlock
 }
 
-func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) error {
+func (a *Node) processBlocks(blocks []common.EncodedBlock) error {
 	var result common.BlockSubmissionResponse
 	for _, block := range blocks {
 		// For the genesis block the parent is nil
@@ -481,7 +481,7 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 		return nil
 	}
 
-	common.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
+	go a.publishRollup(result.ProducedRollup)
 	return nil
 }
 
@@ -503,45 +503,28 @@ func (a *Node) processBlock(b *types.Block) {
 	}
 }
 
-func (a *Node) handleRoundWinner(result common.BlockSubmissionResponse) func() {
-	return func() {
-		if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
-			return
-		}
-		// Request the round winner for the current head
-		winnerRollup, isWinner, err := a.enclaveClient.RoundWinner(result.ProducedRollup.Header.ParentHash)
+func (a *Node) publishRollup(producedRollup common.ExtRollup) {
+	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+		return
+	}
+
+	encodedRollup, err := common.EncodeRollup(producedRollup.ToEncryptedRollup())
+	if err != nil {
+		a.logger.Crit("could not encode rollup.", log.ErrKey, err)
+	}
+	tx := &ethadapter.L1RollupTx{
+		Rollup: encodedRollup,
+	}
+
+	// That handler can get called multiple times for the same height. And it will return the same winner rollup.
+	// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
+	if !a.nodeDB.WasSubmitted(producedRollup.Header.Hash()) {
+		rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
+		err = a.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 		if err != nil {
-			a.logger.Crit("could not determine round winner.", log.ErrKey, err)
+			a.logger.Error("could not broadcast winning rollup", log.ErrKey, err)
 		}
-		if !isWinner {
-			return
-		}
-
-		a.logger.Info(
-			fmt.Sprintf("Winner (b_%d) r_%d(%d).",
-				common.ShortHash(result.BlockHeader.Hash()),
-				common.ShortHash(winnerRollup.Header.Hash()),
-				winnerRollup.Header.Number,
-			))
-
-		encodedRollup, err := common.EncodeRollup(winnerRollup.ToEncryptedRollup())
-		if err != nil {
-			a.logger.Crit("could not encode rollup.", log.ErrKey, err)
-		}
-		tx := &ethadapter.L1RollupTx{
-			Rollup: encodedRollup,
-		}
-
-		// That handler can get called multiple times for the same height. And it will return the same winner rollup.
-		// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
-		if !a.nodeDB.WasSubmitted(winnerRollup.Header.Hash()) {
-			rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
-			err = a.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
-			if err != nil {
-				a.logger.Error("could not broadcast winning rollup", log.ErrKey, err)
-			}
-			a.nodeDB.AddSubmittedRollup(winnerRollup.Header.Hash())
-		}
+		a.nodeDB.AddSubmittedRollup(producedRollup.Header.Hash())
 	}
 }
 

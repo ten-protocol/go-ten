@@ -54,9 +54,6 @@ type Enclave interface {
 	// GetTransactionCount returns the nonce of the wallet with the given address (encrypted with the acc viewing key)
 	GetTransactionCount(encryptedParams EncryptedParamsGetTxCount) (EncryptedResponseGetTxCount, error)
 
-	// RoundWinner - calculates and returns the winner for a round, and whether this node is the winner
-	RoundWinner(parent L2RootHash) (ExtRollup, bool, error)
-
 	// Stop gracefully stops the enclave
 	Stop() error
 

@@ -163,15 +163,6 @@ func (s *server) GetTransactionCount(_ context.Context, request *generated.GetTr
 	return &generated.GetTransactionCountResponse{Result: result}, nil
 }
 
-func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRequest) (*generated.RoundWinnerResponse, error) {
-	extRollup, winner, err := s.enclave.RoundWinner(gethcommon.BytesToHash(request.Parent))
-	if err != nil {
-		return nil, err
-	}
-	extRollupMsg := rpc.ToExtRollupMsg(&extRollup)
-	return &generated.RoundWinnerResponse{Winner: winner, ExtRollup: &extRollupMsg}, nil
-}
-
 func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
 	defer s.rpcServer.GracefulStop()
 	err := s.enclave.Stop()

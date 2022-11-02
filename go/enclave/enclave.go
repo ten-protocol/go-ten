@@ -24,7 +24,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
@@ -52,9 +51,8 @@ type enclaveImpl struct {
 
 	chain *rollupchain.RollupChain
 
-	txCh          chan *common.L2Tx
-	roundWinnerCh chan *core.Rollup
-	exitCh        chan bool
+	txCh   chan *common.L2Tx
+	exitCh chan bool
 
 	// Todo - disabled temporarily until TN1 is released
 	// speculativeWorkInCh  chan bool
@@ -181,7 +179,6 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 		subscriptionManager:   subscriptionManager,
 		chain:                 chain,
 		txCh:                  make(chan *common.L2Tx),
-		roundWinnerCh:         make(chan *core.Rollup),
 		exitCh:                make(chan bool),
 		mgmtContractLib:       mgmtContractLib,
 		erc20ContractLib:      erc20ContractLib,
@@ -282,10 +279,6 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	}
 
 	return encryptedResult, nil
-}
-
-func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, error) {
-	return e.chain.RoundWinner(parent)
 }
 
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {

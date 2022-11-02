@@ -42,9 +42,6 @@ service EnclaveProto {
   // GetTransactionCount - returns the nonce of the wallet with the given address.
   rpc GetTransactionCount(GetTransactionCountRequest) returns (GetTransactionCountResponse) {}
 
-  // RoundWinner - calculates and returns the winner for a round
-  rpc RoundWinner(RoundWinnerRequest) returns (RoundWinnerResponse) {}
-
   // Stop gracefully stops the enclave
   rpc Stop(StopRequest) returns (StopResponse) {}
 
@@ -143,14 +140,6 @@ message GetTransactionCountRequest {
 message GetTransactionCountResponse {
   bytes result = 1;
   string error = 2;
-}
-
-message RoundWinnerRequest {
-  bytes parent = 1;
-}
-message RoundWinnerResponse {
-  bool winner = 1;
-  ExtRollupMsg extRollup = 2;
 }
 
 message StopRequest {}
