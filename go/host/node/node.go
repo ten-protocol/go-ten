@@ -516,15 +516,10 @@ func (a *Node) publishRollup(producedRollup common.ExtRollup) {
 		Rollup: encodedRollup,
 	}
 
-	// That handler can get called multiple times for the same height. And it will return the same winner rollup.
-	// In case the winning rollup belongs to the current enclave it will be submitted again, which is inefficient.
-	if !a.nodeDB.WasSubmitted(producedRollup.Header.Hash()) {
-		rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
-		err = a.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
-		if err != nil {
-			a.logger.Error("could not broadcast winning rollup", log.ErrKey, err)
-		}
-		a.nodeDB.AddSubmittedRollup(producedRollup.Header.Hash())
+	rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
+	err = a.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
+	if err != nil {
+		a.logger.Error("could not broadcast winning rollup", log.ErrKey, err)
 	}
 }
 

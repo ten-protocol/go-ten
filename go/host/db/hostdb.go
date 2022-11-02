@@ -121,23 +121,6 @@ func (db *DB) AddRollupHeader(headerWithHashes *common.HeaderWithTxHashes) {
 	}
 }
 
-// AddSubmittedRollup adds a rollup hash to the list of rollup hashes already submitted to the L1.
-func (db *DB) AddSubmittedRollup(hash gethcommon.Hash) {
-	err := db.kvStore.Put(submittedRollupHeaderKey(hash), []byte{})
-	if err != nil {
-		db.logger.Crit("Could not save submitted rollup.", log.ErrKey, err)
-	}
-}
-
-// WasSubmitted checks whether a rollup has already been submitted to the L1.
-func (db *DB) WasSubmitted(hash gethcommon.Hash) bool {
-	f, err := db.kvStore.Has(submittedRollupHeaderKey(hash))
-	if err != nil {
-		db.logger.Crit("Could not retrieve submitted rollup.", log.ErrKey, err)
-	}
-	return f
-}
-
 // GetRollupHash returns the hash of a rollup given its number
 func (db *DB) GetRollupHash(number *big.Int) *gethcommon.Hash {
 	return db.readRollupHash(db.kvStore, number)
@@ -155,14 +138,13 @@ func (db *DB) GetTotalTransactions() *big.Int {
 
 // schema
 var (
-	blockHeaderPrefix     = []byte("b")
-	rollupHeaderPrefix    = []byte("r")
-	headBlock             = []byte("hb")
-	headRollup            = []byte("hr")
-	submittedRollupPrefix = []byte("s")
-	rollupHashPrefix      = []byte("rh")
-	rollupNumberPrefix    = []byte("rn")
-	totalTransactionsKey  = []byte("t")
+	blockHeaderPrefix    = []byte("b")
+	rollupHeaderPrefix   = []byte("r")
+	headBlock            = []byte("hb")
+	headRollup           = []byte("hr")
+	rollupHashPrefix     = []byte("rh")
+	rollupNumberPrefix   = []byte("rn")
+	totalTransactionsKey = []byte("t")
 )
 
 // headerKey = rollupHeaderPrefix  + hash
@@ -173,11 +155,6 @@ func rollupHeaderKey(hash gethcommon.Hash) []byte {
 // headerKey = blockHeaderPrefix  + hash
 func blockHeaderKey(hash gethcommon.Hash) []byte {
 	return append(blockHeaderPrefix, hash.Bytes()...)
-}
-
-// headerKey = submittedRollupPrefix  + hash
-func submittedRollupHeaderKey(hash gethcommon.Hash) []byte {
-	return append(submittedRollupPrefix, hash.Bytes()...)
 }
 
 // headerKey = rollupHashPrefix + number
