@@ -8,8 +8,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
-func RandomRollup() common.EncryptedRollup {
-	return common.EncryptedRollup{
+func RandomRollup() common.ExtRollupWithHash {
+	extRollup := common.ExtRollup{
 		Header: &common.Header{
 			ParentHash:  randomHash(),
 			Agg:         RandomAddress(),
@@ -19,7 +19,10 @@ func RandomRollup() common.EncryptedRollup {
 			Number:      big.NewInt(int64(randomUInt64())),
 			Withdrawals: randomWithdrawals(10),
 		},
-		TxHashes:     []gethcommon.Hash{randomHash()},
-		Transactions: RandomBytes(10),
+		TxHashes:        []gethcommon.Hash{randomHash()},
+		EncryptedTxBlob: RandomBytes(10),
+	}
+	return common.ExtRollupWithHash{
+		ExtRollup: extRollup,
 	}
 }
