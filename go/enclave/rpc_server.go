@@ -132,8 +132,10 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 			// todo: we should avoid errors in response messages and use the gRPC error objects for this stuff (standardized across all enclave responses)
 			msg, err := rpc.ToBlockSubmissionRejectionMsg(&rejErr)
 			if err == nil {
-				// send back reject err response if we have one
+				// send back reject err response
 				return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
+			} else {
+				s.logger.Warn("failed to process the BlockRejectError, falling back to original error")
 			}
 		}
 		return nil, err
