@@ -249,6 +249,11 @@ message BlockSubmissionResponseMsg {
   HeaderMsg rollupHead = 4;
   repeated SecretResponseMsg producedSecretResponses = 5;
   bytes subscribedLogs = 6;
+  BlockSubmissionErrorMsg error = 7; // todo: avoid errors in Response objects, perhaps using gRPC Status responses
+}
+message BlockSubmissionErrorMsg {
+  string cause = 1; // error cause description
+  bytes l1Head = 2; // hash for the L1 head block in enclave's view of the canonical chain
 }
 
 message ExtRollupMsg {

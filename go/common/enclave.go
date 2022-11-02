@@ -1,10 +1,7 @@
 package common
 
 import (
-	"errors"
 	"fmt"
-	"strings"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -124,6 +121,8 @@ type BlockSubmissionResponse struct {
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
 
 	SubscribedLogs map[rpc.ID][]byte // The logs produced by the block and all its ancestors for each subscription ID.
+
+	RejectError *BlockRejectError // this is set if block was rejected, contains information about what block to submit next
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block
@@ -133,47 +132,21 @@ type ProducedSecretResponse struct {
 	HostAddress string
 }
 
-const (
-	bsePrefix = "blockSubmitError: "
-	l1HeadKey = "l1Head"
-)
-
-var l1HeadErrorSeparator = fmt.Sprintf(", %s=", l1HeadKey)
-
-// BlockSubmitError is used as a standard format for error response from enclave for block submission errors
+// BlockRejectError is used as a standard format for error response from enclave for block submission errors
 // The L1 Head hash tells the host what the enclave knows as the canonical chain head, so it can feed it the appropriate block.
-type BlockSubmitError struct {
-	L1Head  *gethcommon.Hash
+type BlockRejectError struct {
+	L1Head  gethcommon.Hash
 	Wrapped error
 }
 
-func (r BlockSubmitError) Error() string {
+func (r BlockRejectError) Error() string {
 	head := "N/A"
-	if r.L1Head != nil && (*r.L1Head != gethcommon.Hash{}) {
+	if r.L1Head != (gethcommon.Hash{}) {
 		head = r.L1Head.String()
 	}
-	return fmt.Sprintf("%s%s%s%s", bsePrefix, r.Wrapped.Error(), l1HeadErrorSeparator, head)
+	return fmt.Sprintf("%s l1Head=%s", r.Wrapped.Error(), head)
 }
 
-func (r BlockSubmitError) Unwrap() error {
+func (r BlockRejectError) Unwrap() error {
 	return r.Wrapped
-}
-
-// RehydrateBlockSubmitError is used to rebuild a BlockSubmitError type from a string (useful after its type has been lost in RPC communication)
-// the format of the error is expected to be: "BlockSubmitError: {errorMsg}, l1Head={l1HeadHash}".
-func RehydrateBlockSubmitError(err error) (*BlockSubmitError, bool) {
-	str := err.Error()
-	split := strings.Split(str, l1HeadErrorSeparator)
-	if len(split) != 2 {
-		return nil, false
-	}
-	var hash *gethcommon.Hash
-	if len(split[1]) > 0 {
-		h := gethcommon.HexToHash(split[1])
-		hash = &h
-	}
-	return &BlockSubmitError{
-		L1Head:  hash,
-		Wrapped: errors.New(strings.TrimPrefix(split[0], bsePrefix)),
-	}, true
 }

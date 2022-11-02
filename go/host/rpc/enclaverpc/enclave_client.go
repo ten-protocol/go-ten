@@ -172,16 +172,18 @@ func (c *Client) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSub
 
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), IsLatest: isLatest})
 	if err != nil {
-		blockSubmitErr, isBSE := common.RehydrateBlockSubmitError(err)
-		if isBSE {
-			return nil, blockSubmitErr
-		}
 		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
+	}
+	if blockSubmissionResponse.RejectError != nil {
+		return nil, common.BlockRejectError{
+			L1Head:  blockSubmissionResponse.RejectError.L1Head,
+			Wrapped: blockSubmissionResponse.RejectError.Wrapped,
+		}
 	}
 	return blockSubmissionResponse, nil
 }

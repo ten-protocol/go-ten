@@ -47,6 +47,16 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 	}, nil
 }
 
+func ToBlockSubmissionRejectionMsg(rejectError *common.BlockRejectError) (generated.BlockSubmissionResponseMsg, error) {
+	errMsg := &generated.BlockSubmissionErrorMsg{
+		Cause:  rejectError.Wrapped.Error(),
+		L1Head: rejectError.L1Head.Bytes(),
+	}
+	return generated.BlockSubmissionResponseMsg{
+		Error: errMsg,
+	}, nil
+}
+
 func ToSecretRespMsg(responses []*common.ProducedSecretResponse) []*generated.SecretResponseMsg {
 	respMsgs := make([]*generated.SecretResponseMsg, len(responses))
 

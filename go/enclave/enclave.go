@@ -232,10 +232,9 @@ func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (*common.Blo
 		e.logger.Trace("SubmitBlock failed",
 			"blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, err
-	} else {
-		e.logger.Trace("SubmitBlock successful",
-			"blk", block.Number(), "blkHash", block.Hash())
 	}
+	e.logger.Trace("SubmitBlock successful",
+		"blk", block.Number(), "blkHash", block.Hash())
 
 	if bsr.RollupHead != nil {
 		hr, f := e.storage.FetchRollup(bsr.RollupHead.Hash())

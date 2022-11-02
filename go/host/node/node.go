@@ -932,13 +932,13 @@ func (a *Node) bootstrapNode() types.Block {
 		a.processBlockTransactions(&cb)
 		result, err := a.enclaveClient.SubmitBlock(cb, false)
 		if err != nil {
-			var bsErr *common.BlockSubmitError
+			var bsErr *common.BlockRejectError
 			isBSE := errors.As(err, bsErr)
 			if !isBSE {
 				// unexpected error
 				a.logger.Crit("Internal error", log.ErrKey, err)
 			}
-			// todo: we need to use the latest hash info from the BlockSubmitError to realign the block streaming for the enclave
+			// todo: we need to use the latest hash info from the BlockRejectError to realign the block streaming for the enclave
 			a.logger.Info(fmt.Sprintf("Failed to ingest block b_%d. Cause: %s",
 				common.ShortHash(result.BlockHeader.Hash()), bsErr))
 		} else {

@@ -793,13 +793,12 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 	return rollup, nil
 }
 
-func (rc *RollupChain) rejectBlockErr(err error) *common.BlockSubmitError {
-	var hash *gethcommon.Hash
+func (rc *RollupChain) rejectBlockErr(err error) *common.BlockRejectError {
+	var hash gethcommon.Hash
 	if rc.l1Blockchain != nil && rc.l1Blockchain.CurrentHeader() != nil {
-		h := rc.l1Blockchain.CurrentHeader().Hash()
-		hash = &h
+		hash = rc.l1Blockchain.CurrentHeader().Hash()
 	}
-	return &common.BlockSubmitError{
+	return &common.BlockRejectError{
 		L1Head:  hash,
 		Wrapped: err,
 	}
