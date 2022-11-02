@@ -48,22 +48,6 @@ func (netw *MockP2P) UpdatePeerList([]string) {
 	// Do nothing.
 }
 
-// BroadcastRollup Broadcasts the rollup to all L2 peers
-func (netw *MockP2P) BroadcastRollup(r common.EncodedRollup) error {
-	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
-		return nil
-	}
-
-	for _, a := range netw.Nodes {
-		if !bytes.Equal(a.Config().ID.Bytes(), netw.CurrentNode.Config().ID.Bytes()) {
-			t := a
-			common.Schedule(netw.delay(), func() { t.ReceiveRollup(r) })
-		}
-	}
-
-	return nil
-}
-
 func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) error {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return nil

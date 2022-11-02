@@ -29,7 +29,6 @@ type msgType uint8
 
 const (
 	msgTypeTx msgType = iota
-	msgTypeRollup
 )
 
 // Message associates an encoded message to its type.
@@ -93,11 +92,6 @@ func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
 	return p.broadcast(msg)
 }
 
-func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) error {
-	msg := Message{Type: msgTypeRollup, Contents: r}
-	return p.broadcast(msg)
-}
-
 // Listens for connections and handles them in a separate goroutine.
 func (p *p2pImpl) handleConnections(callback host.Host) {
 	for {
@@ -135,14 +129,6 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	case msgTypeTx:
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		callback.ReceiveTx(msg.Contents)
-	case msgTypeRollup:
-		// We check that the rollup decodes correctly.
-		if err = rlp.DecodeBytes(msg.Contents, &common.EncryptedRollup{}); err != nil {
-			p.logger.Warn("failed to decode rollup received from peer:", log.ErrKey, err)
-			return
-		}
-
-		callback.ReceiveRollup(msg.Contents)
 	}
 }
 

@@ -73,10 +73,9 @@ type Node struct {
 	stopNodeInterrupt     *int32
 	bootstrappingComplete *int32 // Marks when the node is done bootstrapping
 
-	blockRPCCh   chan blockAndParent        // The channel that new blocks from the L1 node are sent to
-	forkRPCCh    chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
-	rollupsP2PCh chan common.EncodedRollup  // The channel that new rollups from peers are sent to
-	txP2PCh      chan common.EncryptedTx    // The channel that new transactions from peers are sent to
+	blockRPCCh chan blockAndParent        // The channel that new blocks from the L1 node are sent to
+	forkRPCCh  chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
+	txP2PCh    chan common.EncryptedTx    // The channel that new transactions from peers are sent to
 
 	nodeDB *db.DB // Stores the node's publicly-available data
 
@@ -108,10 +107,9 @@ func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, 
 		bootstrappingComplete: new(int32),
 
 		// incoming data
-		blockRPCCh:   make(chan blockAndParent),
-		forkRPCCh:    make(chan []common.EncodedBlock),
-		rollupsP2PCh: make(chan common.EncodedRollup),
-		txP2PCh:      make(chan common.EncryptedTx),
+		blockRPCCh: make(chan blockAndParent),
+		forkRPCCh:  make(chan []common.EncodedBlock),
+		txP2PCh:    make(chan common.EncryptedTx),
 
 		// Initialize the node DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -312,15 +310,6 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	return encryptedResponse, nil
 }
 
-// ReceiveRollup is called when receiving a rollup from a counterparty.
-// All it does is forward the rollup for processing to the enclave
-func (a *Node) ReceiveRollup(r common.EncodedRollup) {
-	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
-		return
-	}
-	a.rollupsP2PCh <- r
-}
-
 // ReceiveTx receives a new transaction
 func (a *Node) ReceiveTx(tx common.EncryptedTx) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
@@ -401,7 +390,6 @@ func (a *Node) startProcessing() {
 
 	// Main Processing Loop -
 	// - Process new blocks from the L1 node
-	// - Process new Rollups gossiped from L2 Peers
 	// - Process new Transactions gossiped from L2 Peers
 	for {
 		select {
@@ -418,31 +406,6 @@ func (a *Node) startProcessing() {
 			if err != nil {
 				a.logger.Warn("Could not process fork received via RPC. ", log.ErrKey, err)
 			}
-
-		case r := <-a.rollupsP2PCh:
-			rol, err := common.DecodeRollup(r)
-			a.logger.Trace(fmt.Sprintf("Received rollup: r_%d(%d) parent: r_%d from A%d",
-				common.ShortHash(rol.Hash()),
-				rol.Header.Number,
-				common.ShortHash(rol.Header.ParentHash),
-				common.ShortAddress(rol.Header.Agg),
-			))
-			if err != nil {
-				a.logger.Warn("Could not check enclave initialisation. ", log.ErrKey, err)
-			}
-
-			// TODO - Check that the rollup was produced by an aggregator.
-
-			go func() {
-				err := a.enclaveClient.SubmitRollup(common.ExtRollup{
-					Header:          rol.Header,
-					TxHashes:        rol.TxHashes,
-					EncryptedTxBlob: rol.Transactions,
-				})
-				if err != nil {
-					a.logger.Error("Could not submit rollup.", log.ErrKey, err)
-				}
-			}()
 
 		case tx := <-a.txP2PCh:
 			if _, err := a.enclaveClient.SubmitTx(tx); err != nil {
@@ -516,15 +479,6 @@ func (a *Node) processBlocks(blocks []common.EncodedBlock, interrupt *int32) err
 
 	if result.ProducedRollup.Header == nil {
 		return nil
-	}
-
-	encodedRollup, err := common.EncodeRollup(result.ProducedRollup.ToEncryptedRollup())
-	if err != nil {
-		return fmt.Errorf("could not encode rollup. Cause: %w", err)
-	}
-	err = a.p2p.BroadcastRollup(encodedRollup)
-	if err != nil {
-		return fmt.Errorf("could not broadcast rollup. Cause: %w", err)
 	}
 
 	common.ScheduleInterrupt(a.config.GossipRoundDuration, interrupt, a.handleRoundWinner(result))
