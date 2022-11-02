@@ -478,7 +478,7 @@ func (a *Node) processBlock(block common.EncodedBlock, latest bool) error {
 		if result.ProducedRollup.Header == nil {
 			return nil
 		}
-		go a.publishRollup(result.ProducedRollup)
+		a.publishRollup(result.ProducedRollup)
 	}
 	return nil
 }
@@ -517,7 +517,7 @@ func (a *Node) publishRollup(producedRollup common.ExtRollup) {
 	rollupTx := a.mgmtContractLib.CreateRollup(tx, a.ethWallet.GetNonceAndIncrement())
 	err = a.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 	if err != nil {
-		a.logger.Error("could not broadcast winning rollup", log.ErrKey, err)
+		a.logger.Error("could not broadcast rollup", log.ErrKey, err)
 	}
 }
 
