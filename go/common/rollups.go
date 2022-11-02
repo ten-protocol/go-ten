@@ -11,26 +11,27 @@ type ExtRollup struct {
 	EncryptedTxBlob EncryptedTransactions
 }
 
-// EncryptedRollup extends ExtRollup with additional fields.
+// ExtRollupWithHash extends ExtRollup with additional fields.
 // This parallels the Block/extblock split in Geth.
-type EncryptedRollup struct {
-	Header       *Header
-	TxHashes     []TxHash // The hashes of the transactions included in the rollup
-	Transactions EncryptedTransactions
-	hash         atomic.Value
+type ExtRollupWithHash struct {
+	ExtRollup
+	hash atomic.Value
 }
 
-func (er ExtRollup) ToEncryptedRollup() *EncryptedRollup {
-	return &EncryptedRollup{
-		Header:       er.Header,
-		TxHashes:     er.TxHashes,
-		Transactions: er.EncryptedTxBlob,
+func (er ExtRollup) ToExtRollupWithHash() *ExtRollupWithHash {
+	extRollup := ExtRollup{
+		Header:          er.Header,
+		TxHashes:        er.TxHashes,
+		EncryptedTxBlob: er.EncryptedTxBlob,
+	}
+	return &ExtRollupWithHash{
+		ExtRollup: extRollup,
 	}
 }
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
-func (r *EncryptedRollup) Hash() L2RootHash {
+func (r *ExtRollupWithHash) Hash() L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
 		return hash.(L2RootHash)
 	}

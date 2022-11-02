@@ -506,7 +506,7 @@ func (a *Node) publishRollup(producedRollup common.ExtRollup) {
 		return
 	}
 
-	encodedRollup, err := common.EncodeRollup(producedRollup.ToEncryptedRollup())
+	encodedRollup, err := common.EncodeRollup(producedRollup.ToExtRollupWithHash())
 	if err != nil {
 		a.logger.Crit("could not encode rollup.", log.ErrKey, err)
 	}
@@ -544,7 +544,7 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
 			common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 		))
-	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToEncryptedRollup())
+	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToExtRollupWithHash())
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}

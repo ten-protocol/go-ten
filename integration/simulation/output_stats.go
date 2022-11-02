@@ -73,7 +73,7 @@ func (o *OutputStats) countBlockChain() {
 				}
 				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
-					o.l2RollupTxCountInL1Blocks += len(r.Transactions)
+					o.l2RollupTxCountInL1Blocks += len(r.EncryptedTxBlob)
 				}
 
 			case *ethadapter.L1DepositTx:
