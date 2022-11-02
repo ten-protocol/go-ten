@@ -1,5 +1,9 @@
 # Obscuro Testnet Change Log
 
+## October 2022-10-08 (v0.6)
+* Number Guessing Game:
+  * The Number Guessing Game has been removed from static and auto deployment scripts, and is now hosted [in a sample applications repository](https://github.com/obscuronet/sample-applications). Given the move for Testnet to be long-running (or at least restartable without contract disappearance), the Guessing Game must be persisted across software updates, and redeployed manually if needed in the same way other applications are.
+
 ## October 2022-10-21 (v0.5)
 * Event Subscriptions:
   * Event subscriptions for logs are now supported via the eth_subscribe and eth_getLogs approaches. This has been 

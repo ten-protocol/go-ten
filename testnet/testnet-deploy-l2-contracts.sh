@@ -69,7 +69,7 @@ docker run --name=hocL2deployer \
      "${docker_image}" \
     --nodeHost=${l2host} \
     --nodePort=${l2port} \
-    --contractName="L2ERC20" \
+    --contractName="Layer2ERC20" \
     --privateKey=${hocpkstring}\
     --constructorParams="Hocus,HOC,1000000000000000000000000000000"
 echo ""
@@ -81,19 +81,7 @@ docker run --name=pocL2deployer \
      "${docker_image}" \
     --nodeHost=${l2host} \
     --nodePort=${l2port} \
-    --contractName="L2ERC20" \
+    --contractName="Layer2ERC20" \
     --privateKey=${pocpkstring}\
     --constructorParams="Pocus,POC,1000000000000000000000000000000"
-echo ""
-
-echo "Deploying Guessing game contract to the obscuro network..."
-docker run --name=guessingGameL2deployer \
-    --network=node_network \
-    --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
-     "${docker_image}" \
-    --nodeHost=${l2host} \
-    --nodePort=${l2port} \
-    --contractName="GUESS" \
-    --privateKey=${pocpkstring}\
-    --constructorParams="100,${hocerc20address}"
 echo ""
