@@ -27,9 +27,6 @@ Once the guess transaction is completed you can check the guess transaction on O
 1. You can see your guess as the number at the right hand end of the `input` value in a hexadecimal format, e.g. a guess of 99 is shown as 63.
 
 ### Known Issues and Limitations
-1. You have requested OBX tokens using the Discord thread but there was no response.
-    * **Cause**: this is a manual process for the moment.
-    * **Workaround**: please be patient. The game tokens will be sent to your account as soon as possible.
 1. When making a guess nothing appears to happen. MetaMask shows a failed transaction in the `Activity` tab for the guess submission.
     * **Cause**: the guessing game has been reset between this and your previous guess. As a result your nonce is out of sequence. 
     * **Workaround**: reset your MetaMask account data in MetaMask using the option `Settings > Advanced > Reset Account` 

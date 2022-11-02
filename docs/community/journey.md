@@ -46,7 +46,7 @@ The guessing game is a very basic contract that showcases some of Obscuro's capa
 
 Before we get into how the game works, let's see it in action and play. See the instructions [here](https://docs.obscu.ro/testnet/example-dapps.html)
 
-Now that we've played the game let's try deploying the Guessing game to the Obscuro testnet. You can clone the repo from [here](https://github.com/obscuronet/sample-applications/number-guessing-game). 
+Now that we've played the game let's try deploying the Guessing game to the Obscuro testnet. You can clone the sample-applications repo (which contains the game) from [here](https://github.com/obscuronet/sample-applications). 
 
 #### How the Guessing game works
 There are two main functions of interest. First, the *attempt* function allows a player to guess the number and check if they've correctly guessed the secret number. If they have, the prize pot is paid out to them.
