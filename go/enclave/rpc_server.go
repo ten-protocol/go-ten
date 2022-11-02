@@ -147,15 +147,6 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
-func (s *server) SubmitRollup(_ context.Context, request *generated.SubmitRollupRequest) (*generated.SubmitRollupResponse, error) {
-	extRollup := rpc.FromExtRollupMsg(request.ExtRollup)
-	err := s.enclave.SubmitRollup(extRollup)
-	if err != nil {
-		return nil, err
-	}
-	return &generated.SubmitRollupResponse{}, nil
-}
-
 func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
 	encryptedHash, err := s.enclave.SubmitTx(request.EncryptedTx)
 	return &generated.SubmitTxResponse{EncryptedHash: encryptedHash}, err
@@ -182,15 +173,6 @@ func (s *server) GetTransactionCount(_ context.Context, request *generated.GetTr
 		return nil, err
 	}
 	return &generated.GetTransactionCountResponse{Result: result}, nil
-}
-
-func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRequest) (*generated.RoundWinnerResponse, error) {
-	extRollup, winner, err := s.enclave.RoundWinner(gethcommon.BytesToHash(request.Parent))
-	if err != nil {
-		return nil, err
-	}
-	extRollupMsg := rpc.ToExtRollupMsg(&extRollup)
-	return &generated.RoundWinnerResponse{Winner: winner, ExtRollup: &extRollupMsg}, nil
 }
 
 func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {

@@ -50,8 +50,6 @@ type EnclaveProtoClient interface {
 	ExecuteOffChainTransaction(ctx context.Context, in *OffChainRequest, opts ...grpc.CallOption) (*OffChainResponse, error)
 	// GetTransactionCount - returns the nonce of the wallet with the given address.
 	GetTransactionCount(ctx context.Context, in *GetTransactionCountRequest, opts ...grpc.CallOption) (*GetTransactionCountResponse, error)
-	// RoundWinner - calculates and returns the winner for a round
-	RoundWinner(ctx context.Context, in *RoundWinnerRequest, opts ...grpc.CallOption) (*RoundWinnerResponse, error)
 	// Stop gracefully stops the enclave
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
 	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown

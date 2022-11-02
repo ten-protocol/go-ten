@@ -188,18 +188,6 @@ func (c *Client) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSub
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) SubmitRollup(rollup common.ExtRollup) error {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	extRollupMsg := rpc.ToExtRollupMsg(&rollup)
-	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
-	if err != nil {
-		return fmt.Errorf("could not submit rollup. Cause: %w", err)
-	}
-	return nil
-}
-
 func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
@@ -245,21 +233,6 @@ func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTx
 		return nil, errors.New(response.Error)
 	}
 	return response.Result, nil
-}
-
-func (c *Client) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.RoundWinner(timeoutCtx, &generated.RoundWinnerRequest{Parent: parent.Bytes()})
-	if err != nil {
-		return common.ExtRollup{}, false, fmt.Errorf("could not determine round winner. Cause: %w", err)
-	}
-
-	if response.Winner {
-		return rpc.FromExtRollupMsg(response.ExtRollup), true, nil
-	}
-	return common.ExtRollup{}, false, nil
 }
 
 func (c *Client) Stop() error {
