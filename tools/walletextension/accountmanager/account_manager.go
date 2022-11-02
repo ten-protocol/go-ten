@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -15,8 +17,6 @@ import (
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-
-	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -308,18 +308,18 @@ func setFromFieldIfMissing(args []interface{}, account gethcommon.Address) ([]in
 		return nil, fmt.Errorf("no params found to unmarshal")
 	}
 
-	callMsg, err := gethenconding.ExtractEthCallMapString(args[0])
+	callMsg, err := gethencoding.ExtractEthCallMapString(args[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshal callMsg - %w", err)
 	}
 
 	// We only modify `eth_call` requests where the `from` field is not set.
-	if callMsg[gethenconding.CallFieldFrom] != gethcommon.HexToAddress("0x0").Hex() {
+	if callMsg[gethencoding.CallFieldFrom] != gethcommon.HexToAddress("0x0").Hex() {
 		return args, nil
 	}
 
 	// override the existing args
-	callMsg[gethenconding.CallFieldFrom] = account.Hex()
+	callMsg[gethencoding.CallFieldFrom] = account.Hex()
 
 	// do not modify other existing arguments
 	request := []interface{}{callMsg}
