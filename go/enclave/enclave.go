@@ -13,7 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -570,7 +570,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, fmt.Errorf("required at least 1 params, but received %d", len(paramList))
 	}
 
-	callMsg, err := gethenconding.ExtractEthCall(paramList[0])
+	callMsg, err := gethencoding.ExtractEthCall(paramList[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
