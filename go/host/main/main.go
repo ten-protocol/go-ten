@@ -18,7 +18,7 @@ func main() {
 		panic(fmt.Errorf("could not parse config. Cause: %w", err))
 	}
 	addr := toAddress(config.PrivateKeyString)
-	if !bytes.Equal(hexutils.HexToBytes(config.PKAddress), addr.Bytes()) {
+	if config.PKAddress != "" && !bytes.Equal(hexutils.HexToBytes(config.PKAddress), addr.Bytes()) {
 		fmt.Printf("WARN: the address: %s does not match the private key %s\n", config.PKAddress, config.PrivateKeyString)
 	}
 	hostrunner.RunHost(config)
