@@ -134,9 +134,8 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 			if err == nil {
 				// send back reject err response
 				return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
-			} else {
-				s.logger.Warn("failed to process the BlockRejectError, falling back to original error")
 			}
+			s.logger.Warn("failed to process the BlockRejectError, falling back to original error")
 		}
 		return nil, err
 	}
