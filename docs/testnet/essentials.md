@@ -9,7 +9,7 @@ These are the key limitations to be aware of when developing for the Oikos testn
 1. Security is not fully implemented. Some keys are still hardcoded.
 1. The decentralised bridge is limited to two hardcoded ERC20 tokens.
 1. The Layer 1 is currently a hosted network. In the next iteration we'll connect Obscuro to Goerli.
-1. The "Wallet Extension" is not fully polished yet.
+1. The "Wallet Extension" is not fully polished yet. You can expect a better UX as Obscuro develops
 
 ## Connection to an Obscuro Node
 - **RPC http address:** `testnet.obscu.ro:13000`

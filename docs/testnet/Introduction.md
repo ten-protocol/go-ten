@@ -7,6 +7,7 @@ Developers can expect frequent updates which will be communicated [here](https:/
 * Obscuro Testnet will crash from time to time, and will frequently be updated with new features.
 * When Obscuro Testnet restarts expect to lose everything.
 * Obscuro Testnet code has not been optimised or audited yet. (Mainnet code will be audited prior to launch.)
-* The [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension.html) is still very experimental.
+* The [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension.html) is still being improved.
+* The decryption key is known by all allowing you to decrypt and view everything. This also allows the wider community to support you in development.
 
 All Obscuro code is under an open source licence. If you see something you think could be improved or reworked feel free to submit a PR in the [go-obscuro repo](https://github.com/obscuronet/go-obscuro), or to let us know about your suggestion on [Discord](https://discord.com/channels/916052669955727371/945360340613484684). 
