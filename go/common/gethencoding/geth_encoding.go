@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	// The relevant fields in a eth_call request's params.
+	// The relevant fields in an eth_call request's params.
 	callFieldTo    = "to"
 	CallFieldFrom  = "from"
 	callFieldData  = "data"
