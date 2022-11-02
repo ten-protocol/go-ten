@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -38,6 +39,11 @@ import (
 
 const (
 	msgNoRollup = "could not fetch rollup"
+)
+
+var (
+	errBlockAlreadyProcessed = errors.New("block already processed")
+	errBlockParentNotFound   = errors.New("block parent not found")
 )
 
 // RollupChain represents the canonical chain, and manages the state.
@@ -102,28 +108,25 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 	return rolGenesis, b
 }
 
-// Inserts the block into the L1 chain if it exists and the block is not the genesis block. Returns a non-nil
-// BlockSubmissionResponse if the insertion failed.
-func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) *common.BlockSubmissionResponse {
+// Inserts the block into the L1 chain if it exists and the block is not the genesis block
+func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) error {
 	if rc.l1Blockchain != nil {
 		_, err := rc.l1Blockchain.InsertChain(types.Blocks{block})
 		if err != nil {
-			causeMsg := fmt.Sprintf("Block was invalid: %v", err)
-			return &common.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: causeMsg}
+			return fmt.Errorf("block was invalid: %w", err)
 		}
 	}
 	return nil
 }
 
-func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) common.BlockSubmissionResponse {
-	return common.BlockSubmissionResponse{
-		BlockHeader:   block.Header(),
-		IngestedBlock: true,
-		FoundNewHead:  false,
+func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) *common.BlockSubmissionResponse {
+	return &common.BlockSubmissionResponse{
+		BlockHeader:  block.Header(),
+		FoundNewHead: false,
 	}
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, logs map[gethrpc.ID][]byte) common.BlockSubmissionResponse {
+func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, logs map[gethrpc.ID][]byte) *common.BlockSubmissionResponse {
 	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		rc.logger.Crit(msgNoRollup)
@@ -138,10 +141,9 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 	if bs.FoundNewRollup {
 		head = headRollup.Header
 	}
-	return common.BlockSubmissionResponse{
+	return &common.BlockSubmissionResponse{
 		BlockHeader:    headBlock.Header(),
 		ProducedRollup: rollup,
-		IngestedBlock:  true,
 		FoundNewHead:   bs.FoundNewRollup,
 		RollupHead:     head,
 		SubscribedLogs: logs,
@@ -419,34 +421,35 @@ func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) 
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.BlockSubmissionResponse {
+func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
 	_, foundBlock := rc.storage.FetchBlock(block.Hash())
 	if foundBlock {
-		return common.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block already ingested."}
+		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
 	}
 
-	if ingestionFailedResponse := rc.insertBlockIntoL1Chain(&block); !rc.isGenesisBlock(&block) && ingestionFailedResponse != nil {
-		return *ingestionFailedResponse
+	if err := rc.insertBlockIntoL1Chain(&block); !rc.isGenesisBlock(&block) && err != nil {
+		return nil, rc.rejectBlockErr(err)
 	}
 
 	_, f := rc.storage.FetchBlock(block.Header().ParentHash)
 	if !f && block.NumberU64() > common.L1GenesisHeight {
-		return common.BlockSubmissionResponse{IngestedBlock: false, BlockNotIngestedCause: "Block parent not stored."}
+		return nil, rc.rejectBlockErr(errBlockParentNotFound)
 	}
 
 	// Only store the block if the parent is available.
 	stored := rc.storage.StoreBlock(&block)
 	if !stored {
-		return common.BlockSubmissionResponse{IngestedBlock: false}
+		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
 	}
 
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
 	blockState := rc.updateState(&block)
 	if blockState == nil {
-		return rc.noBlockStateBlockSubmissionResponse(&block)
+		// not an error state, we ingested a block but no rollup head found
+		return rc.noBlockStateBlockSubmissionResponse(&block), nil
 	}
 
 	logs := []*types.Log{}
@@ -464,7 +467,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 
 	// We do not produce a rollup if we're not an aggregator, or we're behind the L1 (in which case the rollup will be outdated).
 	if !isLatest || rc.nodeType != common.Aggregator {
-		return rc.newBlockSubmissionResponse(blockState, common.ExtRollup{}, encryptedLogs)
+		return rc.newBlockSubmissionResponse(blockState, common.ExtRollup{}, encryptedLogs), nil
 	}
 
 	// As an aggregator on the latest L1 block, we produce a rollup.
@@ -475,7 +478,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) common.Bloc
 	rc.storage.StoreRollup(r)
 	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash())))
 
-	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), encryptedLogs)
+	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), encryptedLogs), nil
 }
 
 func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
@@ -788,4 +791,15 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 		rollup = maybeRollup
 	}
 	return rollup, nil
+}
+
+func (rc *RollupChain) rejectBlockErr(err error) *common.BlockRejectError {
+	var hash gethcommon.Hash
+	if rc.l1Blockchain != nil && rc.l1Blockchain.CurrentHeader() != nil {
+		hash = rc.l1Blockchain.CurrentHeader().Hash()
+	}
+	return &common.BlockRejectError{
+		L1Head:  hash,
+		Wrapped: err,
+	}
 }

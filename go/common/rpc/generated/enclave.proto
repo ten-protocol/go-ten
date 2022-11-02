@@ -244,14 +244,16 @@ message AttestationReportMsg {
 
 message BlockSubmissionResponseMsg {
   BlockHeaderMsg blockHeader = 1;
-  bool ingestedBlock = 2;
-  string blockNotIngestedCause = 3;
-
-  ExtRollupMsg producedRollup = 4;
-  bool ingestedNewRollup = 5;
-  HeaderMsg rollupHead = 6;
-  repeated SecretResponseMsg producedSecretResponses = 7;
-  bytes subscribedLogs = 8;
+  ExtRollupMsg producedRollup = 2;
+  bool ingestedNewRollup = 3;
+  HeaderMsg rollupHead = 4;
+  repeated SecretResponseMsg producedSecretResponses = 5;
+  bytes subscribedLogs = 6;
+  BlockSubmissionErrorMsg error = 7; // todo: avoid errors in Response objects, perhaps using gRPC Status responses
+}
+message BlockSubmissionErrorMsg {
+  string cause = 1; // error cause description
+  bytes l1Head = 2; // hash for the L1 head block in enclave's view of the canonical chain
 }
 
 message ExtRollupMsg {

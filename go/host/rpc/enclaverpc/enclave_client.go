@@ -128,18 +128,18 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	return nil
 }
 
-func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmissionResponse, error) {
+func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{BlockHash: blkHash.Bytes()})
 	if err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce genesis block. Cause: %w", err)
+		return nil, fmt.Errorf("could not produce genesis block. Cause: %w", err)
 	}
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce block submission response. Cause: %w", err)
+		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 	}
 	return blockSubmissionResponse, nil
 }
@@ -161,23 +161,29 @@ func (c *Client) Start(block types.Block) error {
 	return nil
 }
 
-func (c *Client) SubmitBlock(block types.Block, isLatest bool) (common.BlockSubmissionResponse, error) {
+func (c *Client) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not encode block. Cause: %w", err)
+		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), IsLatest: isLatest})
 	if err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not submit block. Cause: %w", err)
+		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce block submission response. Cause: %w", err)
+		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
+	}
+	if blockSubmissionResponse.RejectError != nil {
+		return nil, common.BlockRejectError{
+			L1Head:  blockSubmissionResponse.RejectError.L1Head,
+			Wrapped: blockSubmissionResponse.RejectError.Wrapped,
+		}
 	}
 	return blockSubmissionResponse, nil
 }
