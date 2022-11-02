@@ -32,9 +32,6 @@ service EnclaveProto {
   // submitting a block before receiving ancestors of it, will result in it being ignored
   rpc SubmitBlock(SubmitBlockRequest) returns (SubmitBlockResponse) {}
 
-  // SubmitRollup - receive gossiped rollups
-  rpc SubmitRollup(SubmitRollupRequest) returns (SubmitRollupResponse) {}
-
   // SubmitTx - user transactions
   rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
 
@@ -124,11 +121,6 @@ message SubmitBlockRequest {
 message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
 }
-
-message SubmitRollupRequest {
-  ExtRollupMsg extRollup = 1;
-}
-message SubmitRollupResponse {}
 
 message SubmitTxRequest {
   bytes encryptedTx = 1;

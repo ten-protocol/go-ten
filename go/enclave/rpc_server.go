@@ -135,15 +135,6 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
-func (s *server) SubmitRollup(_ context.Context, request *generated.SubmitRollupRequest) (*generated.SubmitRollupResponse, error) {
-	extRollup := rpc.FromExtRollupMsg(request.ExtRollup)
-	err := s.enclave.SubmitRollup(extRollup)
-	if err != nil {
-		return nil, err
-	}
-	return &generated.SubmitRollupResponse{}, nil
-}
-
 func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
 	encryptedHash, err := s.enclave.SubmitTx(request.EncryptedTx)
 	return &generated.SubmitTxResponse{EncryptedHash: encryptedHash}, err

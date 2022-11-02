@@ -44,9 +44,6 @@ type Enclave interface {
 	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitBlock(block types.Block, isLatest bool) (BlockSubmissionResponse, error)
 
-	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(rollup ExtRollup) error
-
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
 

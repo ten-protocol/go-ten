@@ -182,18 +182,6 @@ func (c *Client) SubmitBlock(block types.Block, isLatest bool) (common.BlockSubm
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) SubmitRollup(rollup common.ExtRollup) error {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	extRollupMsg := rpc.ToExtRollupMsg(&rollup)
-	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
-	if err != nil {
-		return fmt.Errorf("could not submit rollup. Cause: %w", err)
-	}
-	return nil
-}
-
 func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

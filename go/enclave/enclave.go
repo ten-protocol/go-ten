@@ -243,20 +243,6 @@ func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (common.Bloc
 	return bsr, nil
 }
 
-func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) error {
-	r := core.ToEnclaveRollup(rollup.ToEncryptedRollup(), e.transactionBlobCrypto)
-
-	// only store if the parent exists
-	_, found := e.storage.FetchRollup(r.Header.ParentHash)
-	if found {
-		e.storage.StoreRollup(r)
-	} else {
-		e.logger.Info(fmt.Sprintf("Received rollup with no parent: r_%d", common.ShortHash(r.Hash())))
-	}
-
-	return nil
-}
-
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
 	encodedTx, err := e.rpcEncryptionManager.DecryptBytes(tx)
 	if err != nil {
