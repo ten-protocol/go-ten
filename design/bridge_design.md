@@ -183,6 +183,10 @@ The security of the `MessageBus` is maintained by the `ManagementContract` and t
 
 > **_NOTE:_** The following section is only for fast finality that does not support block reorgs
 
+
+<details>
+  <summary> More on hard & fast finality </summary>
+
 **L2 to L1 Delivery** - The `ManagementContract` needs to ensure that information is exposed through the APIs and/or messages are submitted only after the challenge period of a rollup has passed. This means that anything that shows up there will be final.
 
 **L1 to L2 Delivery** - We need to implement a block confirmation mechanism to secure the `MessageBus` - when the enclave encounters the `LogMessagePublished` it will only create a synthetic transaction for it on the L2 once the required `consistencyLevel` is achieved.
@@ -192,6 +196,8 @@ We can also engineer a mechanism to insure delivered messages:
 * When a message that has been published gets reorganized the ObscuroDAO can pay for the financial loss from the insurance pool.
 
 > **_NOTE:_** The maximum possible payout should always be less than the penalty for PoS slashing on MainNet. This ensures there is no profit to attacking and claiming insurance.  
+
+</details>
 
 
 
