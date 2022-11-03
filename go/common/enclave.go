@@ -109,8 +109,9 @@ type Enclave interface {
 type BlockSubmissionResponse struct {
 	BlockHeader *types.Header // the header of the consumed block. Todo - only the hash required
 
-	HeadRollup      ExtRollup // The head rollup of the canonical L2 chain. If `FoundNewRollup` is true, its header will match `NewRollupHeader`.
-	NewRollupHeader *Header   // If the block contains a new rollup, the new rollup's header.
+	ProducedRollup       ExtRollup // The new rollup produced as a result of ingesting this block, if any.
+	FoundNewHead         bool      // Whether the block contained a new head rollup for the canonical rollup chain.
+	IngestedRollupHeader *Header   // The header of the rollup contained in the ingested block, if any.
 
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
 

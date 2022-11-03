@@ -121,7 +121,8 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) error {
 
 func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) *common.BlockSubmissionResponse {
 	return &common.BlockSubmissionResponse{
-		BlockHeader: block.Header(),
+		BlockHeader:  block.Header(),
+		FoundNewHead: false,
 	}
 }
 
@@ -141,10 +142,11 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		head = headRollup.Header
 	}
 	return &common.BlockSubmissionResponse{
-		BlockHeader:     headBlock.Header(),
-		HeadRollup:      rollup,
-		NewRollupHeader: head,
-		SubscribedLogs:  logs,
+		BlockHeader:          headBlock.Header(),
+		ProducedRollup:       rollup,
+		FoundNewHead:         bs.FoundNewRollup,
+		IngestedRollupHeader: head,
+		SubscribedLogs:       logs,
 	}
 }
 
@@ -361,21 +363,21 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 	if !found {
 		rc.logger.Crit("could not fetch parent rollup")
 	}
-	newRollup, found := FindWinner(currentHead, rollups, rc.storage)
+	newHeadRollup, found := FindWinner(currentHead, rollups, rc.storage)
 	var rollupTxReceipts []*types.Receipt
 	// only change the state if there is a new l2 HeadRollup in the current block
 	if found {
-		rollupTxReceipts, _ = rc.checkRollup(newRollup)
+		rollupTxReceipts, _ = rc.checkRollup(newHeadRollup)
 	} else {
-		newRollup = currentHead
+		newHeadRollup = currentHead
 	}
 
 	bs := obscurocore.BlockState{
 		Block:          b.Hash(),
-		HeadRollup:     newRollup.Hash(),
+		HeadRollup:     newHeadRollup.Hash(),
 		FoundNewRollup: found,
 	}
-	return &bs, newRollup, rollupTxReceipts
+	return &bs, newHeadRollup, rollupTxReceipts
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
