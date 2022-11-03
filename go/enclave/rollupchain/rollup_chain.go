@@ -130,8 +130,6 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) error {
 			"newHeadHeight", block.NumberU64(),
 			"newHeadHash", block.Hash())
 	}
-	rc.l1LatestHeight = block.NumberU64()
-	rc.l1LatestHash = block.Hash()
 	return nil
 }
 
@@ -450,16 +448,15 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 		return nil, rc.rejectBlockErr(err)
 	}
 
-	_, f := rc.storage.FetchBlock(block.Header().ParentHash)
-	if !f && block.NumberU64() > common.L1GenesisHeight {
-		return nil, rc.rejectBlockErr(errBlockParentNotFound)
-	}
-
-	// Only store the block if the parent is available.
+	// Only store the block if the L1 chain insertion succeeded
 	stored := rc.storage.StoreBlock(&block)
 	if !stored {
 		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
 	}
+
+	// block has been stored, we update the head record
+	rc.l1LatestHeight = block.NumberU64()
+	rc.l1LatestHash = block.Hash()
 
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
 	blockState := rc.updateState(&block)
