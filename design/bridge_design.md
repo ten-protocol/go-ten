@@ -239,7 +239,7 @@ There will be the following topics initially:
 ---
 
 **Diagram of the bridge process that happens on Obscuro's Layer 2**
-![Sequence Diagram not available](./resources/MainNet_MessageBus_Diagram.svg)
+![Sequence Diagram not available](./resources/ObscuroL2_MessageBus_Diagram.svg)
 
 The API to transfer assets from the perspective of the user is the same on both layers. The process is as follows:
 
