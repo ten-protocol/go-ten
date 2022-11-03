@@ -3,7 +3,7 @@
 This design proposal is inspired by the [wormhole protocol](https://wormhole.com/). The idea is we would allow for authenticated messaging between Layer 1 and Layer 2 on Obscuro through a smart contract API available on both layers. It will be provided by two smart contracts deployed on network creation on both layers. 
 These contracts will be owned by the ManagementContract and the enclave on their respective layers.
 
----
+
 
 ## Scope
 
@@ -11,11 +11,11 @@ These contracts will be owned by the ManagementContract and the enclave on their
 * Basic Bridge that wraps assets
 * Primitive fees implementation
 
----
+
 
 ### Out Of Scope
 * Being able to call functions across layers - this will require **gas budgeting** and further work
----
+
 
 ## Requirements
 
@@ -39,7 +39,7 @@ These contracts will be owned by the ManagementContract and the enclave on their
 * Withdrawals on the L2 cause extra processing on the L1 and thus cost more. This cost needs to be channeled to the user.
 * The messaging and bridge are decentralised as much as possible.
 
----
+
 
 ## Assumptions
 
@@ -51,20 +51,20 @@ These contracts will be owned by the ManagementContract and the enclave on their
    * The Rollup protocol will ensure the L1 blocks being consumed by the enclave and the resulting synthetic transactions are always bound to the blocks generating them.
    * Obscuro has fast finality over the transaction ordering rather than the results. When a deposit gets reorganized the results on Obscuro L2 should reorganize too if depending on it. 
 
----
+
 
 ## Modifications
 
 The Rollup header's right now are assumed to include withdraw instructions. These instructions will change to generalized messages. Those messages might be withdraw instructions or anything else.
 
----
+
 
 ## High Level-ish Design of the Obscuro data transmission
 
 The messaging API will be provided by the new `MessageBus` system contract. This contract's interface will be available for L1 and L2. This contract needs to be [`Ownable`](https://docs.openzeppelin.com/contracts/2.x/access-control) or alternatively [`RBAC`](https://docs.openzeppelin.com/contracts/2.x/access-control#role-based-access-control) based as some of the functions should only be callable from an administrative trusted address.
 This trusted address can either be the `Enclave` or the `ManagementContract`. As a system contract, the `MessageBus` should be created during the network bootstrap process.
 
----
+
 
 ### Publish Message
 
@@ -93,7 +93,7 @@ Any contract or user can call the `publishMessage` function. Any message passed 
 * When a block from `L1` arrives and creates such events, the enclave will submit them to the `L2` contract. This enables the `L2 smart contracts` to use/consume messages from `L1`. 
 * When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the rollup header by the `Enclave`. Then the management contract will submit them to the `MessageBus` or alternatively they will directly be exposed. 
 
----
+
 
 ### Verify Message
 
@@ -111,7 +111,7 @@ function verifyMessageReceived(
 
 Internally, the function will hash the message and compare it with the result of the key in `receivedMessages` map. If the map contains a `true` under this key, then the message has been received by this contract and `verifyMessageReceived` will return true. This is useful as a cheap-ish way to verify something has happened by utilizing the end user's client as a transfer mechanism of the full message.  
 
----
+
 
 ### Submit Out Of Network Messages
 
@@ -131,7 +131,7 @@ This function should not be callable by any users or contracts unless they have 
 
 When called, the function should store the message in storage. Along with it, the whole message should be stored inside of a map called `receivedMessages` that indexes if this message was received for quick access.
 
----
+
 
 ### Query Messages
 
@@ -148,7 +148,7 @@ function queryMessages(
 
 This function should return all the messages between the requested indexes, by the specified sender on the specified topic. It is a more expensive way to get messages on chain without relying on users to ferry them around. 
 
----
+
 
 ### Fees
 
@@ -170,7 +170,7 @@ I see a couple of possible solutions to this:
 
 An additional insurance fee might be required. It is described in [Security](#MessageBusSecurity)
 
----
+
 
 ### <a name="MessageBusSecurity"></a> Security 
 
@@ -188,7 +188,7 @@ We can also engineer a mechanism to insure delivered messages:
 
 > **_NOTE:_** The maximum possible payout should always be less than the penalty for PoS slashing on MainNet. This ensures there is no profit to attack and claim insurance. 
 
----
+
 
 ## Bridge
 
@@ -203,7 +203,7 @@ It will have the following functions:
 It will also have the following properties required for the OpenZeppelin whitelist to run. The whitelist is discussed in details further down this document.
 
 
----
+
 
 ### Cross chain messages definitions
 
@@ -212,7 +212,7 @@ There will be the following topics initially:
 * `Administrative` - messages here will be for administrative changes; Voted upgrades, whitelist changes.
 
 
----
+
 
 ### Transfers
 
@@ -238,7 +238,7 @@ The API to transfer assets from the perspective of the user is the same on both 
 
 > **_NOTE:_**  To send raw ETH users must first call into `bridgeETH`. This function internally will convert the `msg.value` to WETH and then internally call into `bridgeAssets` with the `receiver` being equal to the `msg.sender` and the amount being equal to the WETH converted. 
 
----
+
 
 ### Whitelist
 
@@ -246,7 +246,7 @@ The whitelist will be controlled by the DAO. This will be done by adding  OpenZe
 
 **When a contract is added to the whitelist**, the bridge calls `publishMessage` on the `MessageBus`. In turn, there should be another call on L2 that instructs the bridge over there to create a wrapper contract upon verifying the message.
 
----
+
 
 ### Differences between L1 and L2 for the bridge contract implementation
 
@@ -257,16 +257,15 @@ The whitelist will be controlled by the DAO. This will be done by adding  OpenZe
     *  `receiveAssets` makes the bridge mints tokens to the receiving address. The bridge can do that as it owns the ERC20 wrapper contracts.
     *  `bridgeAssets` makes the bridge burn wrapped assets from the address of `msg.sender` instead of transferring them.
 
----
+
 
 ### Bridge Security
 
 The security of the `MessageBus` guarantees that downstream dApps using it are also secure as far as cross chain messaging is concerned. One aspect however that needs to be managed by applications is marking messages as consumed. If this is not done for the bridge then users can simply run the same message again through `receiveAssets` to mint more. 
 
----
+
 
 ## Decentralization
 
 The `MessageBus` and `Bridge` contracts sit on chain and inherit the least common denominator properties of both Obscuro and Eth. If Obscuro is decentralized they both will be.
 
----
