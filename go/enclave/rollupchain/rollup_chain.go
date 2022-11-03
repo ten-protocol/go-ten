@@ -53,9 +53,8 @@ type RollupChain struct {
 	ethereumChainID int64
 	chainConfig     *params.ChainConfig
 
-	storage      db.Storage
-	l1Blockchain *core.BlockChain
-
+	storage               db.Storage
+	l1Blockchain          *core.BlockChain
 	bridge                *bridge.Bridge
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
 	rpcEncryptionManager  rpc.EncryptionManager
