@@ -82,7 +82,7 @@ docker run --name=hocerc20deployer \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
     --l1Deployment \
-    --contractName="L1ERC20" \
+    --contractName="Layer1ERC20" \
     --privateKey=${pkstring}\
     --constructorParams="Hocus,HOC,1000000000000000000000000000000"
 # storing the contract address to the .env file
@@ -99,7 +99,7 @@ docker run --name=pocerc20deployer \
     --nodeHost=${l1host} \
     --nodePort=${l1port} \
     --l1Deployment \
-    --contractName="L1ERC20" \
+    --contractName="Layer1ERC20" \
     --privateKey=${pkstring}\
     --constructorParams="Pocus,POC,1000000000000000000000000000000"
 # storing the contract address to the .env file
