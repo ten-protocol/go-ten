@@ -461,9 +461,9 @@ func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
 	h.storeBlockProcessingResult(result)
 	h.logEventManager.SendLogsToSubscribers(result)
 
-	// We check that we only produced a rollup if we're an aggregator.
-	if result.ProducedRollup.Header != nil && h.config.NodeType != common.Aggregator {
-		h.logger.Crit("node produced a rollup but was not an aggregator")
+	// We check that we only produced a rollup if we're the sequencer.
+	if result.ProducedRollup.Header != nil && !h.isSequencer {
+		h.logger.Crit("node produced a rollup but was not the sequencer")
 	}
 
 	for _, secretResponse := range result.ProducedSecretResponses {
@@ -478,6 +478,7 @@ func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
 			return nil
 		}
 		h.publishRollup(result.ProducedRollup)
+		h.distributeBatch(result.ProducedRollup)
 	}
 	return nil
 }
@@ -518,6 +519,12 @@ func (h *host) publishRollup(producedRollup common.ExtRollup) {
 	if err != nil {
 		h.logger.Error("could not broadcast rollup", log.ErrKey, err)
 	}
+}
+
+func (h *host) distributeBatch(producedRollup common.ExtRollup) {
+	batch := common.ExtBatch{EncryptedTxBlob: producedRollup.EncryptedTxBlob}
+	// todo - joel - distribute batch
+	println("jjj got a batch: ", batch.EncryptedTxBlob)
 }
 
 func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) {
