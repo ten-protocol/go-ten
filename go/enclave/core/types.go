@@ -7,6 +7,6 @@ import (
 // BlockState pairs a block with the rollup it contains.
 type BlockState struct {
 	Block          common.Hash
+	HeadRollup     common.Hash // The head rollup of the canonical L2 chain.
 	FoundNewRollup bool        // Whether the ingested block contains a new rollup.
-	NewRollup      common.Hash // If the block contains a new rollup, the new rollup.
 }
