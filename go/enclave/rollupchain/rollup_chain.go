@@ -247,15 +247,6 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 	return nil, false
 }
 
-func (rc *RollupChain) findRoundWinner(receivedRollups []*obscurocore.Rollup, parent *obscurocore.Rollup) *obscurocore.Rollup {
-	headRollup, found := FindNextRollup(parent, receivedRollups, rc.storage)
-	if !found {
-		rc.logger.Crit("could not find winner. This should not happen for gossip rounds")
-	}
-	rc.checkRollup(headRollup)
-	return headRollup
-}
-
 type sortByTxIndex []*types.Receipt
 
 func (c sortByTxIndex) Len() int           { return len(c) }
