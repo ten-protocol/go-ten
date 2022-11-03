@@ -1,10 +1,10 @@
-# Bootstrapping strategy
+# Sequencer bootstrapping strategy
 
 *Note: this document is still a WIP*
 
 As we are getting closer to production and have already designed implemented the key components of Obscuro, it's time to think about our bootstrapping strategy.
 
-The Pobi protocol described in the whitepaper assumes a network with significant traction. 
+The POBI protocol described in the whitepaper assumes a network with significant traction. 
 
 To get there, we estimate Obscuro will need at least one year, most likely more.
 
@@ -17,7 +17,7 @@ We propose that Obscuro starts out similarly to the L2s. Centralised block produ
 
 ## Single block producer
 
-This is in essence a very simplified "POBI" with a a single aggregator (SA).
+This is in essence a very simplified "POBI" with a single aggregator (SA).
 
 The SA is operated by the Obscuro Foundation, and is configured as a variable in the Obscuro Management Contract (MC) on Ethereum. 
 Only the foundation has the power to set the designated SA.
@@ -40,7 +40,7 @@ malfunctions or turns malicious.
 
 In POBI, there was no need for a challenge mechanism. In case of an invalid rollup, everyone would just ignore it and continue publishing rollups on a different fork.
 
-Tis is no longer possible because in this simplified model only the SA can submit rollups. (Unless we add signficant complexity) 
+Tis is no longer possible because in this simplified model only the SA can submit rollups. (Unless we add significant complexity) 
 
 To keep it simple, the challenge mechanism will be disruptive in the first stage. Basically withdrawals will be paused, and need to be manually re-enable by the Foundation. A challenge can only be produced as a result of a hack, same as the SA attempting malicious behaviour. 
 
@@ -135,7 +135,7 @@ Note: That might be a bit ambitious given there are network latencies involved.
 
 The other requirement is that all L2 nodes must act as read-only replicas of the SA, able to serve data requests on behalf of the SA.
 Given that they are owned by byzantine hosts, the L2 node must only execute the transaction batches that are originating from the SA. 
-If they were able to execute anything else, they could malicously produce wrong results.
+If they were able to execute anything else, they could maliciously produce wrong results.
 
 Users submit transactions to any L2 node, who gossip them among themselves, in a group that also includes the SA. (same as today)
 
@@ -143,7 +143,7 @@ Every second the enclave of the SA produces a signed "Light Batch" (LB), which i
 This LB is encrypted, and gossiped to all the other nodes.
 Note: The enclave can only produce it once it calculated a chain of N hashes (roughly a second worth). This is necessary to prevent frontrunning by the SA. Basically the timer is not the clock of the host, but a mechanism based on a light proof of work.
 
-Once the LB reaches the enclave of any other node, and they check it came from the SA, it will be similarly procesed as a canonical rollup in POBI. 
+Once the LB reaches the enclave of any other node, and they check it came from the SA, it will be similarly processed as a canonical rollup in POBI. 
 It will be considered as soft-final, and it will generate receipts and events, which can be requested by the users who are connected to those nodes.
 
 The SA itself will not respond to any user requests.
