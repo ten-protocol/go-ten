@@ -215,10 +215,8 @@ It will have the following functions:
   function receiveAssets(bytes calldata memory) public
   ```
 * ```solidity
-  function bridgeETH() payable public
+  function bridgeETH() payable public //this function will only be available on L1 as L2 will only have WETH
   ``` 
-  this function will only be available on L1 as L2 will only have WETH
-
 * functions to interact with OpenZeppelin's whitelist.
 
 It will also have the following properties required for the OpenZeppelin whitelist to run. The whitelist is discussed in detail further down this document.
@@ -261,7 +259,7 @@ The API to transfer assets from the perspective of the user is the same on both 
 
 ### Whitelist
 
-The whitelist will be controlled by the DAO. This will be done by adding  OpenZeppelin `RBAC` to the functions managing the whitelist. As for the actual whitelist we can use OpenZeppelin's `WhitelistedRole` 
+The whitelist will be controlled by the DAO. This will be done by adding  OpenZeppelin `RBAC` to the functions managing the whitelist. As for the actual whitelist we can use OpenZeppelin's [`WhitelistedRole`](https://docs.openzeppelin.com/contracts/2.x/api/access#WhitelistedRole). 
 
 **When a contract is added to the whitelist**, the bridge calls `publishMessage` on the `MessageBus`. In turn, there should be another call on L2 that instructs the bridge over there to create a wrapper contract upon verifying the message.
 
@@ -286,5 +284,5 @@ The security of the `MessageBus` guarantees that downstream dApps using it are a
 
 ## Decentralization
 
-The `MessageBus` and `Bridge` contracts sit on-chain and inherit the least common denominator properties of both Obscuro and Eth. If Obscuro is decentralized they both will be.
+The `MessageBus` and `Bridge` contracts sit on-chain and inherit the least common denominator properties of both Obscuro and Eth. If Obscuro is decentralized then the Bridge and MessageBus will be too.
 
