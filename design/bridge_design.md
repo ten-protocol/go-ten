@@ -19,9 +19,9 @@ These contracts will be owned by the ManagementContract and the enclave on their
 
 ## Requirements
 
-* Obscuro should be able to transmit authenticated data between L1 & L2.
+* Obscuro should be able to transmit authenticated data between L1 & L2. Example Message:
   ```json
-  ExampleMessage = { 
+  { 
     "message": "I've locked 25 tokens from address 0x5adaf", 
     "from": "0xLockContract", 
     "chainId": 1 
@@ -29,7 +29,7 @@ These contracts will be owned by the ManagementContract and the enclave on their
   ```  
    
 * Using this messaging API we should be able to transmit `msg.value` (ETH) and `ERC_*` tokens between L1 & L2.
-* We want the bridge to have an asset whitelist controlled by the foundation DAO or simply configured by the management contract.
+* We want the bridge to have an asset whitelist controlled by the Obscuro DAO or simply configured by the management contract.
 * Assets and their wrapped L2 counterparts should be mapped and exposed for querying.
 * Bridge functionality should utilize a [pull payment](https://docs.openzeppelin.com/contracts/2.x/api/payment#PullPayment) design. 
 * Bridge contracts should be separate from the management contract; The API should expose all the messaging bits required in order build the bridge independently from Obscuro
@@ -160,7 +160,7 @@ This function should return all the messages between the requested indexes, by t
 
 The wormhole implementation requires that a fee is paid for each published message. This is something we should implement exactly as is in order to prevent people spamming huge messages on L2 for little gas cost that result in Obscuro having to pay for them being submitted to the L1!
 
-The problem we will experience is that the native currency on Obscuro L2 will be different from the native currency on L1 - ETH. This means that if we were to collect fees in the native token, they might end up causing us a loss when publishing the messages if the price of ETH:OBX does not go in a favourable direction.
+The problem we will experience is that the native currency on Obscuro L2 will be different from the native currency on L1 - ETH. This means `ETH : OBX` pair volatility might result in losing money on gas costs.
 
 I see a couple of possible solutions to this:
 1. Collect the fees in `WETH` when calling `publishMessage`.
@@ -176,6 +176,7 @@ An additional insurance fee might be required. It is described in [Security](#Me
 
 The security of the `MessageBus` is maintained by the `ManagementContract` and the enclave. When the `MessageBus` is secure, then all the downstream apps are secure too. The maximum achievable security depends on the type of finality the Obscuro L2 has. If it is a probabilistic finality, then we can be fully secure as L1 reorgs will reorganize us too. However if we have fast finality then block reorgs can lead to instances of the enclave having delivered a message that got thrown away, even when accounting for confirmations.
 
+> **_NOTE:_** The following section is only for fast finality that does not support block reorgs
 
 **L2 to L1 Delivery** - The `ManagementContract` needs to ensure that information is exposed through the APIs and/or messages are submitted only after the challenge period of a rollup has passed. This means that anything that shows up there will be final.
 
