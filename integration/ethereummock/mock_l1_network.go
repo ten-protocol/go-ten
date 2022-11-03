@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/go/common/host"
 
-	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 

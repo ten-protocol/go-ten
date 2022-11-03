@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/host"
 
-	"github.com/obscuronet/go-obscuro/go/host"
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 

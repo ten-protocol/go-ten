@@ -6,11 +6,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/obscuronet/go-obscuro/go/enclave"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/config"
 
-	"github.com/obscuronet/go-obscuro/go/enclave"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 )

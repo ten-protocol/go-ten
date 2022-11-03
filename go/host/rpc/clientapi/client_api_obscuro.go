@@ -1,7 +1,7 @@
 package clientapi
 
 import (
-	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 // TODO - Some methods return nil for an unfound block/rollup, while others return an error. Harmonise.

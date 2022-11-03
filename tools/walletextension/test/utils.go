@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -21,7 +23,6 @@ import (
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/obscuronet/go-obscuro/go/host/node"
 	"github.com/obscuronet/go-obscuro/integration"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -84,14 +85,14 @@ func createDummyHost(t *testing.T) {
 	rpcServerNode, err := gethnode.New(&cfg)
 	rpcServerNode.RegisterAPIs([]gethrpc.API{
 		{
-			Namespace: node.APINamespaceObscuro,
-			Version:   node.APIVersion1,
+			Namespace: host.APINamespaceObscuro,
+			Version:   host.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},
 		{
-			Namespace: node.APINamespaceEth,
-			Version:   node.APIVersion1,
+			Namespace: host.APINamespaceEth,
+			Version:   host.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},
