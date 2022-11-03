@@ -248,7 +248,8 @@ This approach has several downsides:
 * How should the counter in batch headers increase? Should it increase once per L1 block, or once per batch?
 * How do we recover from a malicious sequencer, post a successful challenge? Is it sufficient for validators to just 
   wait for a successful rollup to be produced? Is there some unpicking or cleanup that needs to be done?
-* How do we prevent deposits from the L1 having to wait the full rollup duration to land on the L2? 
+* How do we prevent deposits from the L1 having to wait the full rollup duration to land on the L2? Do we include the 
+  withdrawals instructions in the batch header?
 
 ## Appendices
 
