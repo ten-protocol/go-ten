@@ -4,14 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/common/host"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/common"
-
-	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/ethereum/go-ethereum/rpc"
 )

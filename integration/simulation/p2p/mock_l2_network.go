@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/obscuronet/go-obscuro/go/common/host"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
