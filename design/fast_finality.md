@@ -179,30 +179,31 @@ unworkable.
 
 #### Cluster configuration
 
-To achieve the desired data resiliency and recovery times, the sequencer can run a cluster of `n` nodes, each backed by 
-a separate database. All the nodes are active at once. A leader node is selected to be the sole producer of batches and 
-rollups, while the follower nodes behave like regular validator nodes, receiving the batches via a gossiping process 
-and retrieving the rollups from the L1. Other network nodes treat each node in the cluster as a regular validator node 
-(e.g. transactions are gossiped normally, and not targeted specifically at the leader node).
+To achieve the desired data resiliency and recovery times, we must achieve resiliency of both the sequencer's host and 
+the sequencer's enclave.
 
-The cluster's leader is selected via an RPC operation on the corresponding host. It is the responsibility of the
-sequencer's operator to monitor the healthiness of the nodes. In the event that a follower crashes, it can be restarted 
-and recover data from the leader, just like a regular node. If the event that the leader crashes, the sequencer 
-operator must select a new leader.
+On the host side, the sequencer's host can use a database with resiliency configured. When they receive a batch, they 
+must store it and wait for the confirmation before proceeding. If the host crashes, we simply restart it and restore it 
+from its resilient database.
+
+On the enclave side, the sequencer can run a cluster of `n` enclaves, each backed by a separate database. All the 
+enclaves are active at once. A leader enclave is selected to be the sole producer of batches and rollups, while the 
+follower enclaves behave like regular validator enclaves, receiving the batches via a gossiping process and retrieving 
+the rollups from the L1.
+
+The cluster's leader is selected via an RPC operation on the host. It is the responsibility of the sequencer's operator 
+to monitor the healthiness of the host and enclaves. In the event that a follower crashes, it can be restarted and 
+recover data from the host, just like a regular node. If the event that the leader crashes, the sequencer operator 
+must select a new leader.
 
 The key risk during failover to a new leader is that a single batch (the latest) may be lost. There are two specific 
 issues that must be handled:
 
-1. Determining whether the batch was truly lost. A new leader may come online and consider the latest batch to have 
-   been lost, when in fact it had already been sent to other nodes before the crash
-2. Returning the crashed leader to a consistent state. When the new leader comes back online, their database may 
-   contain a batch that was never distributed, and now represents a fork
+1. A new leader may come online and be missing the latest batch
+2. The original leader comes back online, but their database contains a batch that was never distributed, and now 
+   represents a fork
 
-To avert (1), the sequencer's hosts must each use databases with resiliency configured. When they receive a batch, they 
-must store it and wait for the confirmation before proceeding. There is still a risk that some followers will have 
-received the batch before the crash, but another follower that hasn't received it is selected as leader. For this 
-reason, the new leader must also poll the host databases of the other followers for the latest batch when it comes 
-online.
+To avert (1), the sequencer's host must carefully update the new leader before it starts execution.
 
 To avert (2), we need to be able to overwrite the state of the recovered leader. However, this must be handled 
 carefully - if a node's state can be overwritten arbitrarily, the node can be used to front-run by repeatedly writing 
