@@ -522,7 +522,7 @@ func (h *host) publishRollup(producedRollup common.ExtRollup) {
 
 func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) {
 	// only update the host rollup headers if the enclave has found a new rollup head
-	if result.FoundNewRollup {
+	if result.NewRollupHeader != nil {
 		// adding a header will update the head if it has a higher height
 		headerWithHashes := common.HeaderWithTxHashes{Header: result.NewRollupHeader, TxHashes: result.HeadRollup.TxHashes}
 		h.hostDB.AddRollupHeader(&headerWithHashes)

@@ -52,8 +52,8 @@ func NewLevelDBBackedDB(logger gethlog.Logger) *DB {
 	}
 }
 
-// GetCurrentBlockHead returns the current block header (head) of the Node
-func (db *DB) GetCurrentBlockHead() *types.Header {
+// GetHeadBlockHeader returns the block header of the current head block
+func (db *DB) GetHeadBlockHeader() *types.Header {
 	head := db.readHeadBlock(db.kvStore)
 	if head == nil {
 		return nil
@@ -61,7 +61,7 @@ func (db *DB) GetCurrentBlockHead() *types.Header {
 	return db.readBlockHeader(db.kvStore, *head)
 }
 
-// GetBlockHeader returns the block header given the Hash
+// GetBlockHeader returns the block header given the hash
 func (db *DB) GetBlockHeader(hash gethcommon.Hash) *types.Header {
 	return db.readBlockHeader(db.kvStore, hash)
 }
@@ -72,8 +72,8 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 	db.writeBlockHeader(b, header)
 
 	// update the head if the new height is greater than the existing one
-	currentBlockHead := db.GetCurrentBlockHead()
-	if currentBlockHead == nil || currentBlockHead.Number.Int64() <= header.Number.Int64() {
+	headBlockHeader := db.GetHeadBlockHeader()
+	if headBlockHeader == nil || headBlockHeader.Number.Int64() <= header.Number.Int64() {
 		db.writeHeadBlock(b, header.Hash())
 	}
 

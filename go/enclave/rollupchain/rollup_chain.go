@@ -121,8 +121,7 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) error {
 
 func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) *common.BlockSubmissionResponse {
 	return &common.BlockSubmissionResponse{
-		BlockHeader:    block.Header(),
-		FoundNewRollup: false,
+		BlockHeader: block.Header(),
 	}
 }
 
@@ -144,7 +143,6 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 	return &common.BlockSubmissionResponse{
 		BlockHeader:     headBlock.Header(),
 		HeadRollup:      rollup,
-		FoundNewRollup:  bs.FoundNewRollup,
 		NewRollupHeader: head,
 		SubscribedLogs:  logs,
 	}

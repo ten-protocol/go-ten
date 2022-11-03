@@ -40,7 +40,6 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 	return generated.BlockSubmissionResponseMsg{
 		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
 		ProducedRollup:          &producedRollupMsg,
-		IngestedNewRollup:       response.FoundNewRollup,
 		RollupHead:              ToRollupHeaderMsg(response.NewRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
@@ -94,7 +93,6 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 
 	return &common.BlockSubmissionResponse{
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
-		FoundNewRollup:          msg.IngestedNewRollup,
 		HeadRollup:              FromExtRollupMsg(msg.ProducedRollup),
 		NewRollupHeader:         FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
