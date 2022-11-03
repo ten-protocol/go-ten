@@ -53,8 +53,12 @@ type RollupChain struct {
 	ethereumChainID int64
 	chainConfig     *params.ChainConfig
 
-	storage               db.Storage
-	l1Blockchain          *core.BlockChain
+	storage      db.Storage
+	l1Blockchain *core.BlockChain
+	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
+	l1LatestHash   gethcommon.Hash
+	l1LatestHeight uint64
+
 	bridge                *bridge.Bridge
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
 	rpcEncryptionManager  rpc.EncryptionManager
@@ -116,6 +120,18 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) error {
 			return fmt.Errorf("block was invalid: %w", err)
 		}
 	}
+	if block.ParentHash() != rc.l1LatestHash {
+		if block.NumberU64() > rc.l1LatestHeight {
+			return errBlockParentNotFound
+		}
+		rc.logger.Info("L1 fork detected, overwriting head",
+			"prevHeadHeight", rc.l1LatestHeight,
+			"prevHeadHash", rc.l1LatestHash,
+			"newHeadHeight", block.NumberU64(),
+			"newHeadHash", block.Hash())
+	}
+	rc.l1LatestHeight = block.NumberU64()
+	rc.l1LatestHash = block.Hash()
 	return nil
 }
 
@@ -794,12 +810,8 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 }
 
 func (rc *RollupChain) rejectBlockErr(err error) *common.BlockRejectError {
-	var hash gethcommon.Hash
-	if rc.l1Blockchain != nil && rc.l1Blockchain.CurrentHeader() != nil {
-		hash = rc.l1Blockchain.CurrentHeader().Hash()
-	}
 	return &common.BlockRejectError{
-		L1Head:  hash,
+		L1Head:  rc.l1LatestHash,
 		Wrapped: err,
 	}
 }
