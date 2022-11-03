@@ -2,10 +2,11 @@ package enclaverunner
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/obscuronet/go-obscuro/go/enclave"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 

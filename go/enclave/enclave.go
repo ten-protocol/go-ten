@@ -353,7 +353,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
 	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
 	signer := types.NewLondonSigner(tx.ChainId())
-	rpcTx := rpc.newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
+	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
 
 	txBytes, err := json.Marshal(rpcTx)
 	if err != nil {

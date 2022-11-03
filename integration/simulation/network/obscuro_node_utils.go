@@ -2,12 +2,13 @@ package network
 
 import (
 	"fmt"
-	rpc2 "github.com/obscuronet/go-obscuro/go/enclave"
 	"math/big"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	rpc2 "github.com/obscuronet/go-obscuro/go/enclave"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
