@@ -109,9 +109,9 @@ type Enclave interface {
 type BlockSubmissionResponse struct {
 	BlockHeader *types.Header // the header of the consumed block. Todo - only the hash required
 
-	FoundNewRollup  bool      // Whether the ingested block contained a new rollup.
-	NewRollup       ExtRollup // If the block contained a new rollup, the new rollup.
-	NewRollupHeader *Header   // If the block contained a new rollup, the new rollup's header.
+	FoundNewRollup  bool      // Whether the ingested block contains a new rollup.
+	NewRollup       ExtRollup // If the block contains a new rollup, the new rollup.
+	NewRollupHeader *Header   // If the block contains a new rollup, the new rollup's header.
 
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
 

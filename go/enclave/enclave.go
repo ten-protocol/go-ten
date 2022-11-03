@@ -310,7 +310,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if hs != nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
-		s := e.storage.CreateStateDB(hs.HeadRollup)
+		s := e.storage.CreateStateDB(hs.NewRollup)
 		nonce = s.GetNonce(address)
 	}
 
