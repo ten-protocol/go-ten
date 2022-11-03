@@ -69,15 +69,15 @@ type host struct {
 	stats hostcommon.StatsCollector
 
 	// control the host lifecycle
-	exitNodeCh            chan bool
-	stopNodeInterrupt     *int32
-	bootstrappingComplete *int32 // Marks when the node is done bootstrapping
+	exitHostCh            chan bool
+	stopHostInterrupt     *int32
+	bootstrappingComplete *int32 // Marks when the host is done bootstrapping
 
 	blockRPCCh chan blockAndParent        // The channel that new blocks from the L1 node are sent to
 	forkRPCCh  chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
 	txP2PCh    chan common.EncryptedTx    // The channel that new transactions from peers are sent to
 
-	nodeDB *db.DB // Stores the node's publicly-available data
+	hostDB *db.DB // Stores the host's publicly-available data
 
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	ethWallet       wallet.Wallet                   // Wallet used to issue ethereum transactions
@@ -87,7 +87,7 @@ type host struct {
 }
 
 func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p hostcommon.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) hostcommon.MockHost {
-	node := &host{
+	host := &host{
 		// config
 		config:      config,
 		shortID:     common.ShortAddress(config.ID),
@@ -102,8 +102,8 @@ func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p host
 		stats: stats,
 
 		// lifecycle channels
-		exitNodeCh:            make(chan bool),
-		stopNodeInterrupt:     new(int32),
+		exitHostCh:            make(chan bool),
+		stopHostInterrupt:     new(int32),
 		bootstrappingComplete: new(int32),
 
 		// incoming data
@@ -111,12 +111,12 @@ func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p host
 		forkRPCCh:  make(chan []common.EncodedBlock),
 		txP2PCh:    make(chan common.EncryptedTx),
 
-		// Initialize the node DB
+		// Initialize the host DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
-		nodeDB: db.NewInMemoryDB(),
+		hostDB: db.NewInMemoryDB(),
 
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
-		ethWallet:       ethWallet,       // the node's ethereum wallet
+		ethWallet:       ethWallet,       // the host's ethereum wallet
 		logEventManager: events.NewLogEventManager(logger),
 
 		logger: logger,
@@ -127,41 +127,41 @@ func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p host
 			{
 				Namespace: APINamespaceObscuro,
 				Version:   APIVersion1,
-				Service:   clientapi.NewObscuroAPI(node),
+				Service:   clientapi.NewObscuroAPI(host),
 				Public:    true,
 			},
 			{
 				Namespace: APINamespaceEth,
 				Version:   APIVersion1,
-				Service:   clientapi.NewEthereumAPI(node),
+				Service:   clientapi.NewEthereumAPI(host),
 				Public:    true,
 			},
 			{
 				Namespace: apiNamespaceObscuroScan,
 				Version:   APIVersion1,
-				Service:   clientapi.NewObscuroScanAPI(node),
+				Service:   clientapi.NewObscuroScanAPI(host),
 				Public:    true,
 			},
 			{
 				Namespace: apiNamespaceNetwork,
 				Version:   APIVersion1,
-				Service:   clientapi.NewNetworkAPI(node),
+				Service:   clientapi.NewNetworkAPI(host),
 				Public:    true,
 			},
 			{
 				Namespace: apiNamespaceTest,
 				Version:   APIVersion1,
-				Service:   clientapi.NewTestAPI(node),
+				Service:   clientapi.NewTestAPI(host),
 				Public:    true,
 			},
 			{
 				Namespace: APINamespaceEth,
 				Version:   APIVersion1,
-				Service:   clientapi.NewFilterAPI(node, logger),
+				Service:   clientapi.NewFilterAPI(host, logger),
 				Public:    true,
 			},
 		}
-		node.rpcServer = clientrpc.NewServer(config, rpcAPIs, logger)
+		host.rpcServer = clientrpc.NewServer(config, rpcAPIs, logger)
 	}
 
 	var prof *profiler.Profiler
@@ -176,7 +176,7 @@ func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p host
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Host service created with following config:", log.CfgKey, string(jsonConfig))
 
-	return node
+	return host
 }
 
 func (a *host) Start() {
@@ -207,8 +207,8 @@ func (a *host) Start() {
 	// attach the l1 monitor
 	go a.monitorBlocks()
 
-	// bootstrap the node
-	latestBlock := a.bootstrapNode()
+	// bootstrap the host
+	latestBlock := a.bootstrapHost()
 
 	// start the enclave speculative work from last block
 	err = a.enclaveClient.Start(latestBlock)
@@ -228,7 +228,7 @@ func (a *host) Start() {
 		a.logger.Info("Started client server.")
 	}
 
-	// start the node main processing loop
+	// start the host's main processing loop
 	a.startProcessing()
 }
 
@@ -273,7 +273,7 @@ func (a *host) Config() *config.HostConfig {
 }
 
 func (a *host) DB() *db.DB {
-	return a.nodeDB
+	return a.hostDB
 }
 
 func (a *host) EnclaveClient() common.Enclave {
@@ -281,14 +281,14 @@ func (a *host) EnclaveClient() common.Enclave {
 }
 
 func (a *host) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
-	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+	if atomic.LoadInt32(a.stopHostInterrupt) == 1 {
 		return
 	}
 	a.blockRPCCh <- blockAndParent{b, p}
 }
 
 func (a *host) MockedNewFork(b []common.EncodedBlock) {
-	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+	if atomic.LoadInt32(a.stopHostInterrupt) == 1 {
 		return
 	}
 	a.forkRPCCh <- b
@@ -312,7 +312,7 @@ func (a *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 
 // ReceiveTx receives a new transaction
 func (a *host) ReceiveTx(tx common.EncryptedTx) {
-	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+	if atomic.LoadInt32(a.stopHostInterrupt) == 1 {
 		return
 	}
 	a.txP2PCh <- tx
@@ -337,7 +337,7 @@ func (a *host) Unsubscribe(id rpc.ID) {
 
 func (a *host) Stop() {
 	// block all requests
-	atomic.StoreInt32(a.stopNodeInterrupt, 1)
+	atomic.StoreInt32(a.stopHostInterrupt, 1)
 
 	if err := a.p2p.StopListening(); err != nil {
 		a.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
@@ -357,9 +357,9 @@ func (a *host) Stop() {
 
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
-	a.exitNodeCh <- true
+	a.exitHostCh <- true
 
-	a.logger.Info("Node shut down successfully.")
+	a.logger.Info("Host shut down successfully.")
 }
 
 // Waits for enclave to be available, printing a wait message every two seconds.
@@ -379,8 +379,7 @@ func (a *host) waitForEnclave() {
 
 // starts the host main processing loop
 func (a *host) startProcessing() {
-	//	time.Sleep(time.Second)
-	// Only open the p2p connection when the node is fully initialised
+	// Only open the p2p connection when the host is fully initialised
 	a.p2p.StartListening(a)
 
 	// use the roundInterrupt as a signaling mechanism for interrupting block processing
@@ -419,7 +418,7 @@ func (a *host) startProcessing() {
 				a.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
 			}
 
-		case <-a.exitNodeCh:
+		case <-a.exitHostCh:
 			return
 		}
 	}
@@ -502,7 +501,7 @@ func (a *host) processBlockTransactions(b *types.Block) {
 }
 
 func (a *host) publishRollup(producedRollup common.ExtRollup) {
-	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+	if atomic.LoadInt32(a.stopHostInterrupt) == 1 {
 		return
 	}
 
@@ -522,15 +521,15 @@ func (a *host) publishRollup(producedRollup common.ExtRollup) {
 }
 
 func (a *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) {
-	// only update the node rollup headers if the enclave has found a new rollup head
+	// only update the host rollup headers if the enclave has found a new rollup head
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
 		headerWithHashes := common.HeaderWithTxHashes{Header: result.RollupHead, TxHashes: result.ProducedRollup.TxHashes}
-		a.nodeDB.AddRollupHeader(&headerWithHashes)
+		a.hostDB.AddRollupHeader(&headerWithHashes)
 	}
 
 	// adding a header will update the head if it has a higher height
-	a.nodeDB.AddBlockHeader(result.BlockHeader)
+	a.hostDB.AddBlockHeader(result.BlockHeader)
 }
 
 // Called only by the first enclave to bootstrap the network
@@ -611,7 +610,7 @@ func (a *host) requestSecret() error {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
 	}
 	if att.Owner != a.config.ID {
-		return fmt.Errorf("node has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), att.Owner.Hex())
+		return fmt.Errorf("host has ID %s, but its enclave produced an attestation using ID %s", a.config.ID.Hex(), att.Owner.Hex())
 	}
 	encodedAttestation, err := common.EncodeAttestation(att)
 	if err != nil {
@@ -726,8 +725,8 @@ func (a *host) monitorBlocks() {
 	listener, subs := a.ethClient.BlockListener()
 	a.logger.Info("Start monitoring Ethereum blocks..")
 
-	// only process blocks if the node is running
-	for atomic.LoadInt32(a.stopNodeInterrupt) == 0 {
+	// only process blocks if the host is running
+	for atomic.LoadInt32(a.stopHostInterrupt) == 0 {
 		select {
 		case err := <-subs.Err():
 			a.logger.Error("L1 block monitoring error", log.ErrKey, err)
@@ -741,14 +740,14 @@ func (a *host) monitorBlocks() {
 			}
 
 		case blkHeader := <-listener:
-			// don't process blocks if the node is stopping
-			if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
+			// don't process blocks if the host is stopping
+			if atomic.LoadInt32(a.stopHostInterrupt) == 1 {
 				break
 			}
 
 			// ignore blocks if bootstrapping is happening
 			if atomic.LoadInt32(a.bootstrappingComplete) == 0 {
-				a.logger.Trace(fmt.Sprintf("Node in bootstrap - ignoring block %s", blkHeader.Hash()))
+				a.logger.Trace(fmt.Sprintf("Host in bootstrap - ignoring block %s", blkHeader.Hash()))
 				continue
 			}
 
@@ -798,7 +797,7 @@ func (a *host) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) error {
 	}
 	reingestBlocks = append(reingestBlocks, blk)
 
-	// get all blocks from the blockchain tip to the last block ingested by the node
+	// get all blocks from the blockchain tip to the last block ingested by the host
 	for blk.Hash().Hex() != lastKnownBlkHash.Hex() {
 		blockParent, err := a.ethClient.BlockByHash(blk.ParentHash())
 		if err != nil {
@@ -843,7 +842,7 @@ func (a *host) encodeAndIngest(block *types.Block, blockParent *types.Block) err
 	return nil
 }
 
-func (a *host) bootstrapNode() types.Block {
+func (a *host) bootstrapHost() types.Block {
 	var err error
 	var nextBlk *types.Block
 
@@ -855,7 +854,7 @@ func (a *host) bootstrapNode() types.Block {
 		a.logger.Crit("Internal error", log.ErrKey, err)
 	}
 
-	a.logger.Info(fmt.Sprintf("Started node bootstrap with block %d", currentBlock.NumberU64()))
+	a.logger.Info(fmt.Sprintf("Started host bootstrap with block %d", currentBlock.NumberU64()))
 
 	startTime, logTime := time.Now(), time.Now()
 	for {
@@ -887,7 +886,7 @@ func (a *host) bootstrapNode() types.Block {
 		currentBlock = nextBlk
 
 		if time.Since(logTime) > 30*time.Second {
-			a.logger.Info(fmt.Sprintf("Bootstrapping node at block... %d", cb.NumberU64()))
+			a.logger.Info(fmt.Sprintf("Bootstrapping host at block... %d", cb.NumberU64()))
 			logTime = time.Now()
 		}
 	}
@@ -907,7 +906,7 @@ func (a *host) awaitSecret() error {
 		select {
 		case err := <-subs.Err():
 			a.logger.Error("Restarting L1 block monitoring while awaiting for secret. Errored with: %s", log.ErrKey, err)
-			// todo this is a very simple way of reconnecting the node, it might need catching up logic
+			// todo this is a very simple way of reconnecting the host, it might need catching up logic
 			listener, subs = a.ethClient.BlockListener()
 
 		// todo: find a way to get rid of this case and only listen for blocks on the expected channels
@@ -936,7 +935,7 @@ func (a *host) awaitSecret() error {
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select)
 			a.logger.Info("Still waiting for secret from the L1...")
 
-		case <-a.exitNodeCh:
+		case <-a.exitHostCh:
 			subs.Unsubscribe()
 			return nil
 		}
@@ -961,7 +960,7 @@ func (a *host) checkBlockForSecretResponse(block *types.Block) bool {
 	return false
 }
 
-// Checks the node config is valid.
+// Checks the host config is valid.
 func (a *host) validateConfig() {
 	if a.config.IsGenesis && a.config.NodeType != common.Aggregator {
 		a.logger.Crit("genesis node must be an aggregator")
@@ -971,6 +970,6 @@ func (a *host) validateConfig() {
 	}
 
 	if a.config.P2PPublicAddress == "" {
-		a.logger.Crit("the node must specify a public P2P address")
+		a.logger.Crit("the host must specify a public P2P address")
 	}
 }
