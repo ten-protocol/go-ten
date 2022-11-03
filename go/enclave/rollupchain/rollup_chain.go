@@ -55,9 +55,6 @@ type RollupChain struct {
 
 	storage      db.Storage
 	l1Blockchain *core.BlockChain
-	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	l1LatestHash   gethcommon.Hash
-	l1LatestHeight uint64
 
 	bridge                *bridge.Bridge
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
@@ -120,13 +117,22 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) error {
 			return fmt.Errorf("block was invalid: %w", err)
 		}
 	}
-	if block.ParentHash() != rc.l1LatestHash {
-		if block.NumberU64() > rc.l1LatestHeight {
+
+	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
+	l1Latest := rc.storage.FetchHeadBlock()
+
+	// we do a basic sanity check, comparing the received block to the latest known block on the chain
+	if l1Latest == nil {
+		rc.logger.Info("First L1 block received",
+			"height", block.NumberU64(),
+			"hash", block.Hash())
+	} else if block.ParentHash() != l1Latest.Hash() {
+		if block.NumberU64() > l1Latest.NumberU64() {
 			return errBlockParentNotFound
 		}
 		rc.logger.Info("L1 fork detected, overwriting head",
-			"prevHeadHeight", rc.l1LatestHeight,
-			"prevHeadHash", rc.l1LatestHash,
+			"prevHeadHeight", l1Latest.NumberU64(),
+			"prevHeadHash", l1Latest.Hash(),
 			"newHeadHeight", block.NumberU64(),
 			"newHeadHash", block.Hash())
 	}
@@ -453,10 +459,6 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 	if !stored {
 		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
 	}
-
-	// block has been stored, we update the head record
-	rc.l1LatestHeight = block.NumberU64()
-	rc.l1LatestHash = block.Hash()
 
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
 	blockState := rc.updateState(&block)
@@ -807,8 +809,13 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 }
 
 func (rc *RollupChain) rejectBlockErr(err error) *common.BlockRejectError {
+	l1Latest := rc.storage.FetchHeadBlock()
+	var hash gethcommon.Hash
+	if l1Latest != nil {
+		hash = l1Latest.Hash()
+	}
 	return &common.BlockRejectError{
-		L1Head:  rc.l1LatestHash,
+		L1Head:  hash,
 		Wrapped: err,
 	}
 }
