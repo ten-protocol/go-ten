@@ -139,11 +139,11 @@ If they were able to execute anything else, they could maliciously produce wrong
 
 Users submit transactions to any L2 node, who gossip them among themselves, in a group that also includes the SA. (same as today)
 
-Every second the enclave of the SA produces a signed "Light Batch" (LB), which is a list of tx hashes, with a header pointing to the previous batch.
-This LB is encrypted, and gossiped to all the other nodes.
+Every second the enclave of the SA produces a signed "batch", which is a list of tx hashes, with a header pointing to the previous batch.
+This batch is encrypted, and gossiped to all the other nodes.
 Note: The enclave can only produce it once it calculated a chain of N hashes (roughly a second worth). This is necessary to prevent frontrunning by the SA. Basically the timer is not the clock of the host, but a mechanism based on a light proof of work.
 
-Once the LB reaches the enclave of any other node, and they check it came from the SA, it will be similarly processed as a canonical rollup in POBI. 
+Once the batch reaches the enclave of any other node, and they check it came from the SA, it will be similarly processed as a canonical rollup in POBI. 
 It will be considered as soft-final, and it will generate receipts and events, which can be requested by the users who are connected to those nodes.
 
 The SA itself will not respond to any user requests.
@@ -152,13 +152,13 @@ After N such light rounds, when the Aggregator has gathered enough txs, it submi
 
 #### Implementation considerations
 
-##### LB as the canonical unit
+##### The batch as the canonical unit
 
-In the scenario, from the point of view of the ObscuroVM, each LB is the equivalent to an Ethereum block.
+In the scenario, from the point of view of the ObscuroVM, each batch is the equivalent to an Ethereum block.
 
 The rollups published to the L1 function more like logical checkpoints.
 
-In case there is a discrepancy between the distributed signed LBs, and the published rollup, it's a big problem.
+In case there is a discrepancy between the distributed signed batches, and the published rollup, it's a big problem.
 
 One big problem in this approach is how to handle catching up based on the data published in the L1.
 The node catching up needs to recreate the exact chain that everyone else that was live has.
@@ -170,8 +170,8 @@ Given that calldata space will be the most expensive resource, this has to be op
 
 This is more like the current POBI approach.
 
-The complexity here is that we need to implement a new special mechanism for LBs. Basically maintain two parallel databases.
-A temporary one, where the LB is the unit, to be used between PRs, and then the main database where the PR is the unit.
+The complexity here is that we need to implement a new special mechanism for batches. Basically maintain two parallel databases.
+A temporary one, where the batch is the unit, to be used between PRs, and then the main database where the PR is the unit.
 
 When a new node catches up, it will only create the PR database.
 
@@ -180,9 +180,9 @@ When a new node catches up, it will only create the PR database.
 #### Sequence:
 
 1. Txs are received to non-Agg nodes and gossiped around, all nodes store them by their hashes in mempool cache.
-2. SA sequences them into a signed LB pointing to a previous LB ( or to a PR - for the second option)
-3. SA performs some super light pow to get a timer which tells the enclave it's time to release a new LB, and broadcasts it to the other nodes.
-4. Nodes receive LB, they execute the same txes by hash from their mempool against their internal state and check the final header hash matches the LB.
+2. SA sequences them into a signed batch pointing to a previous batch ( or to a PR - for the second option)
+3. SA performs some super light pow to get a timer which tells the enclave it's time to release a new batch, and broadcasts it to the other nodes.
+4. Nodes receive batch, they execute the same txes by hash from their mempool against their internal state and check the final header hash matches the batch.
 5. Nodes now have the full state to serve soft-final receipts and events, and respond to eth_call
 
 
@@ -197,7 +197,7 @@ It is possible that users receive a soft finality confirmation that proves to be
 
 This may be due to:
 - malfunction of the protocol
-- SA signed multiple competing LBs
+- SA signed multiple competing batches
 - L2 node operator found a hack and was able to generate invalid data
 
 TBD How do we handle this?
