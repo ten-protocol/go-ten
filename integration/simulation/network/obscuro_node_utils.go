@@ -2,25 +2,26 @@ package network
 
 import (
 	"fmt"
+	rpc2 "github.com/obscuronet/go-obscuro/go/enclave"
 	"math/big"
 	"net"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/host"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
-	"github.com/obscuronet/go-obscuro/go/host"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/enclave"
 	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -192,7 +193,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 			MinGasPrice:            big.NewInt(1),
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
-		_, err := enclave.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
+		_, err := rpc2.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
 		if err != nil {
 			panic(fmt.Sprintf("could not create enclave server: %v", err))
 		}

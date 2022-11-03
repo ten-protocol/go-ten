@@ -1,4 +1,4 @@
-package node
+package host
 
 import (
 	"encoding/json"
@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/host"
+
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -15,8 +17,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/events"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
-
-	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/host/db"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"

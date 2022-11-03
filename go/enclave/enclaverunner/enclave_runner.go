@@ -2,6 +2,7 @@ package enclaverunner
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave"
 	"os"
 	"os/signal"
 	"syscall"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/config"
 
-	"github.com/obscuronet/go-obscuro/go/enclave"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 )

@@ -5,11 +5,12 @@ import (
 	"math/big"
 	"time"
 
+	commonhost "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/host"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	"github.com/obscuronet/go-obscuro/go/host/node"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
 
@@ -33,7 +34,6 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/host"
 	"github.com/obscuronet/go-obscuro/go/host/p2p"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 )
@@ -72,7 +72,7 @@ func createInMemObscuroNode(
 	ethClient ethadapter.EthClient,
 	wallets *params.SimWallets,
 	mockP2P *simp2p.MockP2P,
-) host.MockHost {
+) commonhost.MockHost {
 	hostConfig := config.HostConfig{
 		ID:                  gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
@@ -99,7 +99,7 @@ func createInMemObscuroNode(
 
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
-	inMemNode := node.NewHost(hostConfig, stats, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
+	inMemNode := host.NewHost(hostConfig, stats, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
 	mockP2P.CurrentNode = inMemNode
 	return inMemNode
 }
@@ -118,7 +118,7 @@ func createSocketObscuroNode(
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	ethClient ethadapter.EthClient,
-) host.Host {
+) commonhost.Host {
 	hostConfig := config.HostConfig{
 		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:              isGenesis,
@@ -147,7 +147,7 @@ func createSocketObscuroNode(
 	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, p2pLogger)
 
-	return node.NewHost(hostConfig, stats, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
+	return host.NewHost(hostConfig, stats, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {
