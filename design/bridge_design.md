@@ -92,9 +92,6 @@ function publishMessage(
 ```
 
 Any contract or user can call the `publishMessage` function. Any message passed will be bound to its sender so contracts cannot simply impersonate one another. As messages are not stored, but rather emitted as events all of our synchronization behind the scenes will happen inside of the `Enclave`. It will be subscribed to those events. 
-* When a block from `L1` arrives and creates `MessagePublished` events, the enclave will submit them as messages to the inbox of the `L2` contract. This enables the `L2 smart contracts` to use/consume messages from `L1`. 
-* When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the rollup header by the `Enclave`. Then the management contract will submit them to the `MessageBus` or they will directly be exposed. 
-
 
 
 ### Verify Message
@@ -150,7 +147,13 @@ function queryMessages(
 
 This function should return all the messages between the requested indexes, by the specified sender on the specified topic. It is a more expensive way to get messages on-chain without relying on users to ferry them around. 
 
+### MessageBus Internal workings - L1 to L2
 
+When a block from `L1` is processed by the `enclave` and transactions inside of it result in `MessagePublished` events, the `enclave` will submit them as messages to the inbox of the `L2` contract. This enables the `L2 smart contracts` to use/consume messages from `L1`. 
+
+### MessageBus Internal workings - L2 to L1
+
+When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the `Rollup header` by the `enclave`. Then the management contract will submit them to the `MessageBus` or they will directly be exposed. 
 
 ### Fees
 
