@@ -501,6 +501,7 @@ func (h *host) processBlockTransactions(b *types.Block) {
 	}
 }
 
+// Publishes a rollup to the L1.
 func (h *host) publishRollup(producedRollup common.ExtRollup) {
 	if atomic.LoadInt32(h.stopHostInterrupt) == 1 {
 		return
@@ -521,8 +522,10 @@ func (h *host) publishRollup(producedRollup common.ExtRollup) {
 	}
 }
 
+// Creates a batch based on the rollup and distributes it to all other nodes.
 func (h *host) distributeBatch(producedRollup common.ExtRollup) {
 	batch := common.ExtBatch{EncryptedTxBlob: producedRollup.EncryptedTxBlob}
+	// todo - joel - store batch
 	// todo - joel - distribute batch
 	println("jjj got a batch: ", batch.EncryptedTxBlob)
 }
