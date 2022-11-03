@@ -53,6 +53,7 @@ described in the [Bootstrapping Strategy design doc](./sequencer_bootstrapping_s
   * The responses to RPC calls reflect the soft-finalised transactions, and not just the hard-finalised transactions
 * Resilience
   * Failover of the sequencer does not require a governance action
+  * In the case of an L1 reorg, the sequencer must republish the rollups in the same order
 
 ## Non-requirements
 
