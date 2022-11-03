@@ -217,8 +217,8 @@ func (e *enclaveImpl) Start(block types.Block) error {
 func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubmissionResponse, error) {
 	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
 	return &common.BlockSubmissionResponse{
-		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
-		BlockHeader:    b.Header(),
+		NewRollup:   rolGenesis.ToExtRollup(e.transactionBlobCrypto),
+		BlockHeader: b.Header(),
 	}, nil
 }
 
@@ -233,8 +233,8 @@ func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (*common.Blo
 	e.logger.Trace("SubmitBlock successful",
 		"blk", block.Number(), "blkHash", block.Hash())
 
-	if bsr.RollupHead != nil {
-		hr, f := e.storage.FetchRollup(bsr.RollupHead.Hash())
+	if bsr.NewRollupHeader != nil {
+		hr, f := e.storage.FetchRollup(bsr.NewRollupHeader.Hash())
 		if !f {
 			e.logger.Crit("This should not happen because this rollup was just processed.")
 		}
