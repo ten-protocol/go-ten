@@ -7,8 +7,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-// FindWinner - implements the logic of determining the canonical chain rollup.
-func FindWinner(parent *obscurocore.Rollup, rollups []*obscurocore.Rollup, blockResolver db.BlockResolver) (*obscurocore.Rollup, bool) {
+// FindNextRollup implements the logic of determining the canonical chain rollup.
+func FindNextRollup(parent *obscurocore.Rollup, rollups []*obscurocore.Rollup, blockResolver db.BlockResolver) (*obscurocore.Rollup, bool) {
 	win := -1
 	// todo - add statistics to determine why there are conflicts.
 	for i, r := range rollups {
