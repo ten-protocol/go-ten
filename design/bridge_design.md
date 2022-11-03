@@ -59,7 +59,9 @@ The Rollup headers right now are assumed to include withdrawal instructions. The
 
 
 
-## High Level-ish Design of the Obscuro data transmission
+## MessageBus Design - Obscuro cross-chain data transmission 
+
+The `MessageBus` will be deployed as a [`Proxy`](https://docs.openzeppelin.com/contracts/4.x/api/proxy)
 
 The messaging API will be provided by the new `MessageBus` system contract. This contract's interface will be available for L1 and L2. This contract needs to be [`Ownable`](https://docs.openzeppelin.com/contracts/2.x/access-control) or [`RBAC`](https://docs.openzeppelin.com/contracts/2.x/access-control#role-based-access-control) based as some of the functions should only be callable from an administrative trusted address.
 This trusted address can either be the `Enclave` or the `ManagementContract`. As a system contract, the `MessageBus` should be created during the network bootstrap process.
@@ -90,7 +92,7 @@ function publishMessage(
 ```
 
 Any contract or user can call the `publishMessage` function. Any message passed will be bound to its sender so contracts cannot simply impersonate one another. As messages are not stored, but rather emitted as events all of our synchronization behind the scenes will happen inside of the `Enclave`. It will be subscribed to those events. 
-* When a block from `L1` arrives and creates such events, the enclave will submit them to the `L2` contract. This enables the `L2 smart contracts` to use/consume messages from `L1`. 
+* When a block from `L1` arrives and creates `MessagePublished` events, the enclave will submit them as messages to the inbox of the `L2` contract. This enables the `L2 smart contracts` to use/consume messages from `L1`. 
 * When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the rollup header by the `Enclave`. Then the management contract will submit them to the `MessageBus` or they will directly be exposed. 
 
 
@@ -109,7 +111,7 @@ function verifyMessageReceived(
 ) public returns (bool)
 ```
 
-Internally, the function will hash the message and compare it with the result of the key in `receivedMessages` map. If the map contains a `true` under this key, then the message has been received by this contract and `verifyMessageReceived` will return true. This is useful as a cheap-ish way to verify something has happened by utilizing the end user's client as a transfer mechanism of the full message.  
+Internally, the function will hash the message and compare it with the result of the key in `receivedMessages` map. If the map contains a `true` under this key, then the message has been received by this contract and `verifyMessageReceived` will return true. This is useful as a cheap-ish way to verify something has happened by utilizing the end user's client (or browser) as the transfer mechanism for the full message.  
 
 
 
@@ -166,7 +168,7 @@ I see a couple of possible solutions to this:
 1. Collect the fees in `WETH` when calling `publishMessage`.
     * This is a bad user experience. Anytime we want to withdraw we must source `WETH`
     * It does protect us from losing money when publishing rollups, however.
-2. Using a DEX when it becomes available on Obscuro's L2 we can exchange OBX tokens for the 
+2. Using a DEX when it becomes available on Obscuro's L2 we can exchange OBX tokens for the required amount of `WETH`.
 
 An additional insurance fee might be required. It is described in [Security](#MessageBusSecurity)
 
@@ -174,7 +176,10 @@ An additional insurance fee might be required. It is described in [Security](#Me
 
 ### <a name="MessageBusSecurity"></a> Security 
 
-The security of the `MessageBus` is maintained by the `ManagementContract` and the enclave. When the `MessageBus` is secure, then all the downstream apps are secure too. The maximum achievable security depends on the type of finality the Obscuro L2 has. If it is a probabilistic finality, then we can be fully secure as L1 reorgs will reorganize us too. However if we have fast finality then block reorgs can lead to instances of the enclave having delivered a message that got thrown away, even when accounting for confirmations.
+The security of the `MessageBus` is maintained by the `ManagementContract` and the enclave. When the `MessageBus` is secure, then all the downstream apps are secure too. **The maximum achievable security depends on the type of finality the Obscuro L2 has.** 
+
+ * For probabilistic finality - We can be fully secure as L1 block reorgs will reorganize us too.
+ * Fast & hard finality - Block reorgs can lead to instances of the enclave having delivered a message that got thrown away, even when accounting for confirmations.
 
 > **_NOTE:_** The following section is only for fast finality that does not support block reorgs
 
@@ -192,12 +197,22 @@ We can also engineer a mechanism to insure delivered messages:
 
 ## Bridge
 
-The initial version of the bridge is going to create wrapped versions of ERC tokens. The bridge will hook into the `MessageBus` API in order to provide its functionality.
+The actual bridge will be deployed as a [`Proxy`](https://docs.openzeppelin.com/contracts/4.x/api/proxy).
+
+The initial version of the bridge implementation is going to create wrapped versions of ERC tokens. The bridge will hook into the `MessageBus` API in order to provide its functionality.
 
 It will have the following functions:
-* `function bridgeAssets(address erc20token, uin256 amount) public`
-* `function receiveAssets(bytes calldata memory) public`
-* `function bridgeETH() payable public` - this function will only be available on L1 as L2 will only have WETH
+* ```solidity 
+  function bridgeAssets(address erc20token, uin256 amount) public
+  ```
+* ```solidity
+  function receiveAssets(bytes calldata memory) public
+  ```
+* ```solidity
+  function bridgeETH() payable public
+  ``` 
+  this function will only be available on L1 as L2 will only have WETH
+
 * functions to interact with OpenZeppelin's whitelist.
 
 It will also have the following properties required for the OpenZeppelin whitelist to run. The whitelist is discussed in detail further down this document.
@@ -210,8 +225,6 @@ It will also have the following properties required for the OpenZeppelin whiteli
 There will be the following topics initially: 
 * `Transfers` - messages here will be for users transferring value across chains.
 * `Administrative` - messages here will be for administrative changes; Voted upgrades, and whitelist changes.
-
-
 
 
 ### Transfers
