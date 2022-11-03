@@ -77,7 +77,7 @@ type host struct {
 	forkRPCCh  chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
 	txP2PCh    chan common.EncryptedTx    // The channel that new transactions from peers are sent to
 
-	hostDB *db.DB // Stores the host's publicly-available data
+	db *db.DB // Stores the host's publicly-available data
 
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	ethWallet       wallet.Wallet                   // Wallet used to issue ethereum transactions
@@ -113,7 +113,7 @@ func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p host
 
 		// Initialize the host DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
-		hostDB: db.NewInMemoryDB(),
+		db: db.NewInMemoryDB(),
 
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
 		ethWallet:       ethWallet,       // the host's ethereum wallet
@@ -273,7 +273,7 @@ func (h *host) Config() *config.HostConfig {
 }
 
 func (h *host) DB() *db.DB {
-	return h.hostDB
+	return h.db
 }
 
 func (h *host) EnclaveClient() common.Enclave {
@@ -535,11 +535,11 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
 		headerWithHashes := common.HeaderWithTxHashes{Header: result.RollupHead, TxHashes: result.ProducedRollup.TxHashes}
-		h.hostDB.AddRollupHeader(&headerWithHashes)
+		h.db.AddRollupHeader(&headerWithHashes)
 	}
 
 	// adding a header will update the head if it has a higher height
-	h.hostDB.AddBlockHeader(result.BlockHeader)
+	h.db.AddBlockHeader(result.BlockHeader)
 }
 
 // Called only by the first enclave to bootstrap the network
