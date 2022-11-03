@@ -67,6 +67,10 @@ described in the [Bootstrapping Strategy design doc](./sequencer_bootstrapping_s
 
 ## Design
 
+Here is an overview of the sequencer design:
+
+![architecture diagram](./fast_finality_arch.jpeg)
+
 ### Sequencer identity
 
 The sequencer's identity is given in the management contract on the L1 as a set of enclave attestations. This allows 
