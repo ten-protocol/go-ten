@@ -234,8 +234,9 @@ There will be the following topics initially:
 ### Transfers
 
 **Diagram of the bridge process that happens on the Ethereum MainNet**
-
 ![Sequence Diagram not available](./resources/MainNet_MessageBus_Diagram.svg)
+
+---
 
 **Diagram of the bridge process that happens on Obscuro's Layer 2**
 ![Sequence Diagram not available](./resources/MainNet_MessageBus_Diagram.svg)
