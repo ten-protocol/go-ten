@@ -127,7 +127,7 @@ func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) *
 }
 
 func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, logs map[gethrpc.ID][]byte) *common.BlockSubmissionResponse {
-	headRollup, f := rc.storage.FetchRollup(bs.NewRollup)
+	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		rc.logger.Crit(msgNoRollup)
 	}
@@ -143,7 +143,7 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 	}
 	return &common.BlockSubmissionResponse{
 		BlockHeader:     headBlock.Header(),
-		NewRollup:       rollup,
+		HeadRollup:      rollup,
 		FoundNewRollup:  bs.FoundNewRollup,
 		NewRollupHeader: head,
 		SubscribedLogs:  logs,
@@ -203,7 +203,7 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(b.Hash()),
 		blockState.FoundNewRollup,
-		common.ShortHash(blockState.NewRollup)))
+		common.ShortHash(blockState.HeadRollup)))
 
 	logs := []*types.Log{}
 	for _, receipt := range receipts {
@@ -227,7 +227,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
 		bs := obscurocore.BlockState{
 			Block:          b.Hash(),
-			NewRollup:      genesis.Hash(),
+			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
 		}
 		rc.storage.StoreNewHead(&bs, genesis, nil, []*types.Log{})
@@ -359,7 +359,7 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscurocore.BlockState, rollups []*obscurocore.Rollup) (*obscurocore.BlockState, *obscurocore.Rollup, []*types.Receipt) {
-	currentHead, found := rc.storage.FetchRollup(parentState.NewRollup)
+	currentHead, found := rc.storage.FetchRollup(parentState.HeadRollup)
 	if !found {
 		rc.logger.Crit("could not fetch parent rollup")
 	}
@@ -374,7 +374,7 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 
 	bs := obscurocore.BlockState{
 		Block:          b.Hash(),
-		NewRollup:      newRollup.Hash(),
+		HeadRollup:     newRollup.Hash(),
 		FoundNewRollup: found,
 	}
 	return &bs, newRollup, rollupTxReceipts
@@ -460,7 +460,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 		rc.logger.Error("Could not retrieve logs for stored block state. Returning no logs")
 	}
 
-	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.NewRollup)
+	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.HeadRollup)
 	if err != nil {
 		rc.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
 	}
@@ -482,7 +482,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 }
 
 func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
-	headRollup, f := rc.storage.FetchRollup(bs.NewRollup)
+	headRollup, f := rc.storage.FetchRollup(bs.HeadRollup)
 	if !f {
 		rc.logger.Crit(msgNoRollup)
 	}
@@ -571,7 +571,7 @@ func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, 
 	}
 
 	headState := rc.storage.FetchHeadState()
-	currentHeadRollup, found := rc.storage.FetchRollup(headState.NewRollup)
+	currentHeadRollup, found := rc.storage.FetchRollup(headState.HeadRollup)
 	if !found {
 		panic("Should not happen since the header hash and the rollup are stored in a batch.")
 	}
@@ -647,13 +647,13 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		panic("Not initialised")
 	}
 	// todo - get the parent
-	r, f := rc.storage.FetchRollup(hs.NewRollup)
+	r, f := rc.storage.FetchRollup(hs.HeadRollup)
 	if !f {
 		panic("not found")
 	}
 
 	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To.Hex(), callMsg.From.Hex(), hexutils.BytesToHex(callMsg.Data), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
-	s := rc.storage.CreateStateDB(hs.NewRollup)
+	s := rc.storage.CreateStateDB(hs.HeadRollup)
 	result, err := evm.ExecuteOffChainCall(callMsg.From, callMsg.To, callMsg.Data, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
 	// todo - clarify this error handling
 	if err != nil {
@@ -777,7 +777,7 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
-		rollupHash := rc.storage.FetchHeadState().NewRollup
+		rollupHash := rc.storage.FetchHeadState().HeadRollup
 		var found bool
 		rollup, found = rc.storage.FetchRollup(rollupHash)
 		if !found {

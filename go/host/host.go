@@ -462,7 +462,7 @@ func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
 	h.logEventManager.SendLogsToSubscribers(result)
 
 	// We check that we only produced a rollup if we're an aggregator.
-	if result.NewRollup.Header != nil && h.config.NodeType != common.Aggregator {
+	if result.HeadRollup.Header != nil && h.config.NodeType != common.Aggregator {
 		h.logger.Crit("node produced a rollup but was not an aggregator")
 	}
 
@@ -474,10 +474,10 @@ func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
 	}
 
 	if latest {
-		if result.NewRollup.Header == nil {
+		if result.HeadRollup.Header == nil {
 			return nil
 		}
-		h.publishRollup(result.NewRollup)
+		h.publishRollup(result.HeadRollup)
 	}
 	return nil
 }
@@ -524,7 +524,7 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 	// only update the host rollup headers if the enclave has found a new rollup head
 	if result.FoundNewRollup {
 		// adding a header will update the head if it has a higher height
-		headerWithHashes := common.HeaderWithTxHashes{Header: result.NewRollupHeader, TxHashes: result.NewRollup.TxHashes}
+		headerWithHashes := common.HeaderWithTxHashes{Header: result.NewRollupHeader, TxHashes: result.HeadRollup.TxHashes}
 		h.hostDB.AddRollupHeader(&headerWithHashes)
 	}
 
@@ -541,9 +541,9 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	}
 	h.logger.Info(
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
-			common.ShortHash(genesisResponse.NewRollup.Header.Hash()),
+			common.ShortHash(genesisResponse.HeadRollup.Header.Hash()),
 		))
-	encodedRollup, err := common.EncodeRollup(genesisResponse.NewRollup.ToExtRollupWithHash())
+	encodedRollup, err := common.EncodeRollup(genesisResponse.HeadRollup.ToExtRollupWithHash())
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
@@ -557,7 +557,7 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
 	}
 
-	return genesisResponse.NewRollup.Header.ParentHash, nil
+	return genesisResponse.HeadRollup.Header.ParentHash, nil
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.

@@ -30,7 +30,7 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 }
 
 func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
-	producedRollupMsg := ToExtRollupMsg(&response.NewRollup)
+	producedRollupMsg := ToExtRollupMsg(&response.HeadRollup)
 
 	subscribedLogBytes, err := json.Marshal(response.SubscribedLogs)
 	if err != nil {
@@ -95,7 +95,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 	return &common.BlockSubmissionResponse{
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
 		FoundNewRollup:          msg.IngestedNewRollup,
-		NewRollup:               FromExtRollupMsg(msg.ProducedRollup),
+		HeadRollup:              FromExtRollupMsg(msg.ProducedRollup),
 		NewRollupHeader:         FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),

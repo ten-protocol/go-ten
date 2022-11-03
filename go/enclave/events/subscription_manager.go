@@ -131,7 +131,7 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 	if !found {
 		return nil, fmt.Errorf("could not filter logs as block state for head block could not be found")
 	}
-	return s.FilterLogs(logs, headBlockState.NewRollup, account, filter), nil
+	return s.FilterLogs(logs, headBlockState.HeadRollup, account, filter), nil
 }
 
 // FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs

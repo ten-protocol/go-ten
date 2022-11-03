@@ -217,7 +217,7 @@ func (e *enclaveImpl) Start(block types.Block) error {
 func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubmissionResponse, error) {
 	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
 	return &common.BlockSubmissionResponse{
-		NewRollup:   rolGenesis.ToExtRollup(e.transactionBlobCrypto),
+		HeadRollup:  rolGenesis.ToExtRollup(e.transactionBlobCrypto),
 		BlockHeader: b.Header(),
 	}, nil
 }
@@ -310,7 +310,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if hs != nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
-		s := e.storage.CreateStateDB(hs.NewRollup)
+		s := e.storage.CreateStateDB(hs.HeadRollup)
 		nonce = s.GetNonce(address)
 	}
 
