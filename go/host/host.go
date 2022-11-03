@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 
@@ -55,18 +55,18 @@ const (
 	retryIntervalForL1Receipt = 10 * time.Second
 )
 
-// Node is an implementation of host.Host.
-type Node struct {
+// Implementation of host.Host.
+type host struct {
 	config      config.HostConfig
 	shortID     uint64
 	isSequencer bool
 
-	p2p           host.P2P             // For communication with other Obscuro nodes
+	p2p           hostcommon.P2P       // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	enclaveClient common.Enclave       // For communication with the enclave
 	rpcServer     clientrpc.Server     // For communication with Obscuro client applications
 
-	stats host.StatsCollector
+	stats hostcommon.StatsCollector
 
 	// control the host lifecycle
 	exitNodeCh            chan bool
@@ -86,8 +86,8 @@ type Node struct {
 	logger gethlog.Logger
 }
 
-func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) host.MockHost {
-	node := &Node{
+func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p hostcommon.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) hostcommon.MockHost {
+	node := &host{
 		// config
 		config:      config,
 		shortID:     common.ShortAddress(config.ID),
@@ -179,7 +179,7 @@ func NewHost(config config.HostConfig, stats host.StatsCollector, p2p host.P2P, 
 	return node
 }
 
-func (a *Node) Start() {
+func (a *host) Start() {
 	a.validateConfig()
 
 	tomlConfig, err := toml.Marshal(a.config)
@@ -232,7 +232,7 @@ func (a *Node) Start() {
 	a.startProcessing()
 }
 
-func (a *Node) broadcastSecret() error {
+func (a *host) broadcastSecret() error {
 	a.logger.Info("Node is genesis node. Broadcasting secret.")
 	// Create the shared secret and submit it to the management contract for storage
 	attestation, err := a.enclaveClient.Attestation()
@@ -268,33 +268,33 @@ func (a *Node) broadcastSecret() error {
 	return nil
 }
 
-func (a *Node) Config() *config.HostConfig {
+func (a *host) Config() *config.HostConfig {
 	return &a.config
 }
 
-func (a *Node) DB() *db.DB {
+func (a *host) DB() *db.DB {
 	return a.nodeDB
 }
 
-func (a *Node) EnclaveClient() common.Enclave {
+func (a *host) EnclaveClient() common.Enclave {
 	return a.enclaveClient
 }
 
-func (a *Node) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
+func (a *host) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
 	}
 	a.blockRPCCh <- blockAndParent{b, p}
 }
 
-func (a *Node) MockedNewFork(b []common.EncodedBlock) {
+func (a *host) MockedNewFork(b []common.EncodedBlock) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
 	}
 	a.forkRPCCh <- b
 }
 
-func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
+func (a *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 	encryptedResponse, err := a.enclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
@@ -311,14 +311,14 @@ func (a *Node) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 }
 
 // ReceiveTx receives a new transaction
-func (a *Node) ReceiveTx(tx common.EncryptedTx) {
+func (a *host) ReceiveTx(tx common.EncryptedTx) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
 	}
 	a.txP2PCh <- tx
 }
 
-func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
+func (a *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
 	err := a.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
@@ -327,7 +327,7 @@ func (a *Node) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 	return nil
 }
 
-func (a *Node) Unsubscribe(id rpc.ID) {
+func (a *host) Unsubscribe(id rpc.ID) {
 	err := a.EnclaveClient().Unsubscribe(id)
 	if err != nil {
 		a.logger.Error("could not terminate subscription", log.SubIDKey, id, log.ErrKey, err)
@@ -335,7 +335,7 @@ func (a *Node) Unsubscribe(id rpc.ID) {
 	a.logEventManager.RemoveSubscription(id)
 }
 
-func (a *Node) Stop() {
+func (a *host) Stop() {
 	// block all requests
 	atomic.StoreInt32(a.stopNodeInterrupt, 1)
 
@@ -363,7 +363,7 @@ func (a *Node) Stop() {
 }
 
 // Waits for enclave to be available, printing a wait message every two seconds.
-func (a *Node) waitForEnclave() {
+func (a *host) waitForEnclave() {
 	counter := 0
 	for _, err := a.enclaveClient.Status(); err != nil; {
 		if counter >= 20 {
@@ -378,7 +378,7 @@ func (a *Node) waitForEnclave() {
 }
 
 // starts the host main processing loop
-func (a *Node) startProcessing() {
+func (a *host) startProcessing() {
 	//	time.Sleep(time.Second)
 	// Only open the p2p connection when the node is fully initialised
 	a.p2p.StartListening(a)
@@ -438,7 +438,7 @@ type blockAndParent struct {
 	p common.EncodedBlock
 }
 
-func (a *Node) processBlock(block common.EncodedBlock, latest bool) error {
+func (a *host) processBlock(block common.EncodedBlock, latest bool) error {
 	var result *common.BlockSubmissionResponse
 
 	// For the genesis block the parent is nil
@@ -484,7 +484,7 @@ func (a *Node) processBlock(block common.EncodedBlock, latest bool) error {
 }
 
 // Looks at each transaction in the block, and kicks off special handling for the transaction if needed.
-func (a *Node) processBlockTransactions(b *types.Block) {
+func (a *host) processBlockTransactions(b *types.Block) {
 	for _, tx := range b.Transactions() {
 		t := a.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -501,7 +501,7 @@ func (a *Node) processBlockTransactions(b *types.Block) {
 	}
 }
 
-func (a *Node) publishRollup(producedRollup common.ExtRollup) {
+func (a *host) publishRollup(producedRollup common.ExtRollup) {
 	if atomic.LoadInt32(a.stopNodeInterrupt) == 1 {
 		return
 	}
@@ -521,7 +521,7 @@ func (a *Node) publishRollup(producedRollup common.ExtRollup) {
 	}
 }
 
-func (a *Node) storeBlockProcessingResult(result *common.BlockSubmissionResponse) {
+func (a *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) {
 	// only update the node rollup headers if the enclave has found a new rollup head
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
@@ -534,7 +534,7 @@ func (a *Node) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 }
 
 // Called only by the first enclave to bootstrap the network
-func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
+func (a *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
 	// Create the genesis rollup and submit it to the management contract
 	genesisResponse, err := a.enclaveClient.ProduceGenesis(block.Hash())
 	if err != nil {
@@ -562,7 +562,7 @@ func (a *Node) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.
-func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
+func (a *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
 	signedTx, err := a.ethWallet.SignTransaction(tx)
 	if err != nil {
 		return err
@@ -583,7 +583,7 @@ func (a *Node) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
 	return nil
 }
 
-func (a *Node) watchForReceipt(txHash common.TxHash) {
+func (a *host) watchForReceipt(txHash common.TxHash) {
 	var receipt *types.Receipt
 	var err error
 	err = retry.Do(func() error {
@@ -604,7 +604,7 @@ func (a *Node) watchForReceipt(txHash common.TxHash) {
 }
 
 // This method implements the procedure by which a node obtains the secret
-func (a *Node) requestSecret() error {
+func (a *host) requestSecret() error {
 	a.logger.Info("Requesting secret.")
 	att, err := a.enclaveClient.Attestation()
 	if err != nil {
@@ -633,7 +633,7 @@ func (a *Node) requestSecret() error {
 	return nil
 }
 
-func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
+func (a *host) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 	if t.RequesterID.Hex() != a.config.ID.Hex() {
 		// this secret is for somebody else
 		return false
@@ -648,7 +648,7 @@ func (a *Node) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 	return true
 }
 
-func (a *Node) publishSharedSecretResponse(scrtResponse *common.ProducedSecretResponse) error {
+func (a *host) publishSharedSecretResponse(scrtResponse *common.ProducedSecretResponse) error {
 	// todo: implement proper protocol so only one host responds to this secret requests initially
 	// 	for now we just have the genesis host respond until protocol implemented
 	if !a.config.IsGenesis {
@@ -675,7 +675,7 @@ func (a *Node) publishSharedSecretResponse(scrtResponse *common.ProducedSecretRe
 
 // Whenever we receive a new shared secret response transaction, we update our list of P2P peers, as another aggregator
 // may have joined the network.
-func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) error {
+func (a *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) error {
 	// We make a call to the L1 node to retrieve the new list of aggregators. An alternative would be to check that the
 	// transaction succeeded, and if so, extract the additional host address from the transaction arguments. But we
 	// believe this would be more brittle than just asking the L1 contract for its view of the current aggregators.
@@ -721,7 +721,7 @@ func (a *Node) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 }
 
 // monitors the L1 client for new blocks and injects them into the aggregator
-func (a *Node) monitorBlocks() {
+func (a *host) monitorBlocks() {
 	var lastKnownBlkHash gethcommon.Hash
 	listener, subs := a.ethClient.BlockListener()
 	a.logger.Info("Start monitoring Ethereum blocks..")
@@ -782,7 +782,7 @@ func (a *Node) monitorBlocks() {
 	subs.Unsubscribe()
 }
 
-func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) error {
+func (a *host) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) error {
 	var lastBlkNumber *big.Int
 	var reingestBlocks []*types.Block
 
@@ -828,7 +828,7 @@ func (a *Node) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) error {
 	return nil
 }
 
-func (a *Node) encodeAndIngest(block *types.Block, blockParent *types.Block) error {
+func (a *host) encodeAndIngest(block *types.Block, blockParent *types.Block) error {
 	encodedBlock, err := common.EncodeBlock(block)
 	if err != nil {
 		return fmt.Errorf("could not encode block with hash %s. Cause: %w", block.Hash().String(), err)
@@ -843,7 +843,7 @@ func (a *Node) encodeAndIngest(block *types.Block, blockParent *types.Block) err
 	return nil
 }
 
-func (a *Node) bootstrapNode() types.Block {
+func (a *host) bootstrapNode() types.Block {
 	var err error
 	var nextBlk *types.Block
 
@@ -899,7 +899,7 @@ func (a *Node) bootstrapNode() types.Block {
 	return *currentBlock
 }
 
-func (a *Node) awaitSecret() error {
+func (a *host) awaitSecret() error {
 	// start listening for l1 blocks that contain the response to the request
 	listener, subs := a.ethClient.BlockListener()
 
@@ -943,7 +943,7 @@ func (a *Node) awaitSecret() error {
 	}
 }
 
-func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
+func (a *host) checkBlockForSecretResponse(block *types.Block) bool {
 	for _, tx := range block.Transactions() {
 		t := a.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -962,7 +962,7 @@ func (a *Node) checkBlockForSecretResponse(block *types.Block) bool {
 }
 
 // Checks the node config is valid.
-func (a *Node) validateConfig() {
+func (a *host) validateConfig() {
 	if a.config.IsGenesis && a.config.NodeType != common.Aggregator {
 		a.logger.Crit("genesis node must be an aggregator")
 	}
