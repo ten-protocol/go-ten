@@ -1,6 +1,11 @@
 # Obscuro Cross Chain Messaging And Initial Bridge - Design Document
 
-This design proposal is inspired by the [wormhole protocol](https://wormhole.com/). The idea is we would allow for authenticated messaging between Layer 1 and Layer 2 on Obscuro through a smart contract API available on both layers. It will be provided by two smart contracts deployed on network creation on both layers. 
+We want to expose a system API that allows any developer to come and build a bridge on Obscuro. We also want this API to support all types of well known bridges - wrapping assets, liquidity bridges, etc. And ideally we want the system API to further allow even more exotic type of apps - providing randomness to the L1, hidden game state and anything other that can be enabled as a cross chain application!
+
+With the API we will build an initial bridge that wraps assets and might progress this further.
+
+The API design proposal is inspired by the [Wormhole protocol](https://wormhole.com/). The idea is we would allow for authenticated messaging between Layer 1 and Layer 2 on Obscuro through a smart contract API available on both layers.
+It will be provided by two smart contracts deployed on network creation on both layers. 
 These contracts will be owned by the ManagementContract and the enclave on their respective layers.
 
 
@@ -10,8 +15,6 @@ These contracts will be owned by the ManagementContract and the enclave on their
 * Messaging architecture between Obscuro and Mainnet Ethereum.
 * Basic Bridge that wraps assets
 * Primitive fees implementation
-
-
 
 ### Out Of Scope
 * Being able to call functions across layers - this will require **gas budgeting** and further work
