@@ -8,13 +8,7 @@ The API design proposal is inspired by the [Wormhole protocol](https://wormhole.
 It will be provided by two smart contracts deployed on network creation on both layers. 
 These contracts will be owned by the ManagementContract and the enclave on their respective layers.
 
-
-
-## Scope
-
-* Messaging architecture between Obscuro and Mainnet Ethereum.
-* Basic Bridge that wraps assets
-* Primitive fees implementation
+![Intro Diagram not found](./resources/IntroductionDiagram.svg)
 
 ## Requirements
 
@@ -41,9 +35,10 @@ These contracts will be owned by the ManagementContract and the enclave on their
   * Bridge functionality should be able to use the [pull payment](https://docs.openzeppelin.com/contracts/2.x/api/payment#PullPayment) design. 
    > If any current dApps want to extend or port their functionality on Obscuro then it should be possible for them to do it without collaborating with anyone else
 
-
-
-
+## Scope
+* Messaging architecture between Obscuro and Mainnet Ethereum.
+* Basic Bridge that wraps assets
+* Primitive fees implementation
 
 ## Assumptions
 
@@ -158,11 +153,15 @@ This function should return all the messages between the requested `fromIndex` a
 
 When a block from `L1` is processed by the `enclave` and transactions inside of it result in `MessagePublished` events, the `enclave` will submit them as messages to the inbox of the `L2` contract. This enables the `L2 smart contracts` to use/consume messages from `L1`. 
 
-> **_NOTE:_** The EVM should not accept user transactions to system contracts. Only internal/synthetic transactions should be able to call the system functions!
+![Diagram not found](./resources/PublishFromEthereum.svg)
+
+> **_NOTE:_** The enclave should not accept user transactions to system contracts. Only internal/synthetic transactions should be able to call the system functions!
 
 ### MessageBus Internal workings - L2 to L1
 
 When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the `Rollup header` by the `enclave`. Then the management contract will submit them to the `MessageBus` or they will directly be.
+
+![Diagram not found](./resources/PublishFromObscuro.svg)
 
 > **_NOTE:_** **The messages must not be accessible unless** the challenge period has passed! On top of that the block where the message is submitted to L1 must have confirmations equal to `consistencyLevel` before the message is released. Those are simply counted on-chain as "confirmations" is meaningless for Obscuro L2.  
 
