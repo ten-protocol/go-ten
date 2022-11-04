@@ -57,6 +57,14 @@ const (
 	extDivider  = "."
 	extHTML     = ".html"
 	httpCodeErr = 500
+
+	// CORS-related constants.
+	corsAllowOrigin  = "Access-Control-Allow-Origin"
+	originAll        = "*"
+	corsAllowMethods = "Access-Control-Allow-Methods"
+	reqOptions       = "OPTIONS"
+	corsAllowHeaders = "Access-Control-Allow-Headers"
+	corsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
 )
 
 //go:embed static
@@ -317,6 +325,10 @@ func (o *Obscuroscan) getBlock(resp http.ResponseWriter, req *http.Request) {
 
 // Retrieves a rollup given its number or the hash of a transaction it contains.
 func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http.Request) {
+	// Set a response header which allows the client to use a response served from a different domain, i.e. obscuroscan.io.
+	if o.enableCORS(resp, req) {
+		return
+	}
 	body := req.Body
 	defer body.Close()
 	buffer := new(bytes.Buffer)
@@ -543,4 +555,15 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 func logAndSendErr(resp http.ResponseWriter, msg string) {
 	fmt.Println(msg)
 	http.Error(resp, msg, httpCodeErr)
+}
+
+// Enables CORS to allow Obscuroscan API to serve other web apps. Returns true if the request was a pre-flight, e.g. OPTIONS, to stop further processing.
+func (o *Obscuroscan) enableCORS(resp http.ResponseWriter, req *http.Request) bool {
+	resp.Header().Set(corsAllowOrigin, originAll)
+	if (*req).Method == reqOptions {
+		resp.Header().Set(corsAllowMethods, reqOptions)
+		resp.Header().Set(corsAllowHeaders, corsHeaders)
+		return true
+	}
+	return false
 }
