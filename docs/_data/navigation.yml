@@ -9,7 +9,7 @@ main:
     url: https://discord.gg/yQfmKeNzNd
 
 
-pages:
+sidebar-list:
   - title: What is Obscuro?
     children:
       - title: Privacy

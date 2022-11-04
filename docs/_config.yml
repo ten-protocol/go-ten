@@ -38,7 +38,7 @@ defaults:
       type: docs
     values:
       sidebar:
-        nav: sidebar-list
+        nav: sidebar-list # has to match the name of the sidebar in navigation.yml
       layout: single
       classes: wide
       strip_title: true
@@ -48,7 +48,7 @@ defaults:
       type: posts
     values:
       sidebar:
-        nav: sidebar-list
+        nav: sidebar-list # has to match the name of the sidebar in navigation.yml
       layout: single
   # all other pages including landing page need to be listed to have correct layout applied
   - scope:
@@ -56,8 +56,10 @@ defaults:
       type: pages
     values:
       sidebar:
-        nav: sidebar-list
+        nav: sidebar-list # has to match the name of the sidebar in navigation.yml
       layout: single
+      classes: wide
+      strip_title: true
 
 # Outputting
 paginate: 5 # amount of posts to show
