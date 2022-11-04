@@ -4,7 +4,7 @@ main:
   - title: "Tokenomics"
     url: https://github.com/obscuronet/foundation/blob/main/token-utility-whitepaper.md
   - title: "Community Contributions"
-    url: https://docs.obscu.ro/community/contributions.html
+    url: https://docs.obscu.ro/community/contributions
   - title: "Get help"
     url: https://discord.gg/yQfmKeNzNd
 
@@ -13,48 +13,48 @@ pages:
   - title: What is Obscuro?
     children:
       - title: Privacy
-        url: what-is-obscuro/privacy-matters.html
+        url: what-is-obscuro/privacy-matters
       - title: Technology
-        url: what-is-obscuro/technology.html
+        url: what-is-obscuro/technology
       - title: User Experience
-        url: what-is-obscuro/user-experience.html
+        url: what-is-obscuro/user-experience
   - title: Getting Started
     children:
       - title: Wallet Extension
-        url: wallet-extension/wallet-extension.html
+        url: wallet-extension/wallet-extension
       - title: Configure MetaMask
-        url: wallet-extension/configure-metamask.html
+        url: wallet-extension/configure-metamask
       - title: Tutorial
-        url: testnet/tutorial.html
+        url: testnet/tutorial
 
   - title: Testnet
     children:
       - title: Introduction
-        url: testnet/Introduction.html
+        url: testnet/Introduction
       - title: Essential Information
-        url: testnet/essentials.html
+        url: testnet/essentials
       - title: Deploying a Smart Contract
-        url: testnet/deploying-a-smart-contract.html
+        url: testnet/deploying-a-smart-contract
       - title: Programmatic Deployment
-        url: testnet/deploying-a-smart-contract-programmatically.html
+        url: testnet/deploying-a-smart-contract-programmatically
       - title: Change Log
-        url: testnet/changelog.html
+        url: testnet/changelog
 
   - title: Example dApps
     children:
       - title: Guessing Game
-        url: testnet/example-dapps.html
+        url: testnet/example-dapps
 
   - title: Tools
     children:
       - title: ObscuroScan
-        url: testnet/obscuroscan.html
+        url: testnet/obscuroscan
       - title: Token Faucet
-        url: testnet/faucet.html
+        url: testnet/faucet
     
   - title: API
     children:
       - title: APIs
-        url: api/apis.html
+        url: api/apis
       - title: Sensitive APIs
-        url: api/sensitive-apis.html
+        url: api/sensitive-apis
