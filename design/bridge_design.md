@@ -33,7 +33,7 @@ These contracts will be owned by the ManagementContract and the enclave on their
   * We want the bridge to have an asset whitelist controlled by the Obscuro DAO or simply configured by the management contract.
   * Assets and their wrapped L2 counterparts should be mapped and exposed for querying.
   * Bridge functionality should be able to use the [pull payment](https://docs.openzeppelin.com/contracts/2.x/api/payment#PullPayment) design. 
-   > If any current dApps want to extend or port their functionality on Obscuro then it should be possible for them to do it without collaborating with anyone else
+   > If any current dApps want to extend or port their functionality on Obscuro then it should be possible for them to do it without collaborating with anyone else 
 
 ## Scope
 * Messaging architecture between Obscuro and Mainnet Ethereum.
@@ -116,8 +116,7 @@ Internally, the function will hash the message and compare it with the result of
 
 ### Submit Out Of Network Messages
 
-This is the administrative smart contract function that will be called by the `ManagementContract` on L1 and the `enclave` on L2. It's purpose is to store a message that was submitted from the other chain on this chain. It should be access controlled and called according to the `consistencyLevel` and Obscuro platform rules.  
-
+This is the administrative smart contract function that will be called by the `ManagementContract` on L1 and the `enclave` on L2. It's purpose is to store the messages that were submitted from the other linked chain. It should be access controlled and called according to the `consistencyLevel` and Obscuro platform rules.
 
 ```solidity 
 function submitOutOfNetworkMessage(
