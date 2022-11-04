@@ -78,10 +78,10 @@ Taking inspiration from the [Wormhole contract](https://github.com/wormhole-foun
 
 ```solidity
 function publishMessage(
-        uint32 nonce,
+        uint32 nonce, //deduplication/uniqueness mechanism
         bytes memory topic,
         bytes memory payload,
-        uint8 consistencyLevel
+        uint8 consistencyLevel //number of confirmation blocks to wait for
 ) public payable returns (uint64 sequence) {
     // check fee
     require(msg.value == messageFee(), "invalid fee");
@@ -162,7 +162,9 @@ When a block from `L1` is processed by the `enclave` and transactions inside of 
 
 ### MessageBus Internal workings - L2 to L1
 
-When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the `Rollup header` by the `enclave`. Then the management contract will submit them to the `MessageBus` or they will directly be. **The messages will not be accessible** unless the challenge period has passed.
+When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the `Rollup header` by the `enclave`. Then the management contract will submit them to the `MessageBus` or they will directly be.
+
+> **_NOTE:_** **The messages must not be accessible unless** the challenge period has passed! On top of that the block where the message is submitted to L1 must have confirmations equal to `consistencyLevel` before the message is released. Those are simply counted on-chain as "confirmations" is meaningless for Obscuro L2.  
 
 ### Fees
 
