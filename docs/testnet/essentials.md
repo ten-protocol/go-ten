@@ -1,8 +1,8 @@
 # Essential Information
-Essential information, parameters and configuration settings for the Oikos testnet.
+Essential information, parameters and configuration settings for the Evan's Cat testnet.
 
-## Limitations on Oikos
-These are the key limitations to be aware of when developing for the Oikos testnet:
+## Limitations on Evan's Cat
+These are the key limitations to be aware of when developing for the Evan's Cat testnet:
 
 1. New nodes cannot be added. For now the number of Obscuro nodes is fixed.
 1. Data revelation is not implemented yet.
