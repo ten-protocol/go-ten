@@ -1,3 +1,5 @@
+---
+---
 # Technology 
 
 Obscuro leverages a pragmatic technology for encrypting the ledger, Trusted Execution Environments (TEEs). TEEs provide robust confidentiality guarantees with certainty over the code running. They allow Obscuro to offer smart contracts, decentralisation, scalability and privacy in a way other privacy providing techniques cannot.

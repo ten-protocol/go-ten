@@ -1,3 +1,5 @@
+---
+---
 # Essential Information
 Essential information, parameters and configuration settings for the Evan's Cat testnet.
 
@@ -8,7 +10,7 @@ These are the key limitations to be aware of when developing for the Evan's Cat 
 1. Data revelation is not implemented yet.
 1. Security is not fully implemented. Some keys are still hardcoded.
 1. The decentralised bridge is limited to two hardcoded ERC20 tokens.
-1. The Layer 1 is currently a hosted network. In the next iteration we'll connect Obscuro to Goerli.
+1. The Layer 1 is currently a hosted network. In the next iteration we'll connect Obscuro to an Ethereum testnet.
 1. The "Wallet Extension" is not fully polished yet. You can expect a better UX as Obscuro develops
 
 ## Connection to an Obscuro Node

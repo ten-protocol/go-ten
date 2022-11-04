@@ -1,3 +1,5 @@
+---
+---
 # The Obscuro Wallet Extension
 
 The wallet extension is the Obscuro component that ensures that sensitive information in RPC requests between client

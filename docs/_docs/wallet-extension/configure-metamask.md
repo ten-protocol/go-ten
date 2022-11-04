@@ -1,3 +1,5 @@
+---
+---
 # Configuring MetaMask
 
 To keep data encrypted between MetaMask and the Obscuro network, MetaMask needs to be configured to point to the local Wallet Extension as follows:

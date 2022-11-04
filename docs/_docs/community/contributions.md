@@ -1,3 +1,5 @@
+---
+---
 # Contributing to Obscuro
 
 Obscuro will evolve to be *the* solution for privacy on Ethereum through the strength and dedication of the Obscuro community. Together we'll make Obscuro the most community-driven project in crypto.
