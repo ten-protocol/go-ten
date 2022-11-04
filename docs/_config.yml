@@ -26,7 +26,7 @@ plugins:
   - jekyll-relative-links
   - jekyll-archives
 
-breadcrumbs: true
+breadcrumbs: false
 breadcrumb_home_label: "Home"
 breadcrumb_seperator: ">"
 
