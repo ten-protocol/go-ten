@@ -22,7 +22,6 @@ var hasherPool = sync.Pool{
 type Header struct {
 	ParentHash  L2RootHash
 	Agg         common.Address
-	RollupNonce Nonce            // RollupNonce holds the lottery rollup nonce
 	Nonce       types.BlockNonce // Nonce ensure compatibility with ethereum
 	L1Proof     L1RootHash       // the L1 block where the Parent was published
 	Root        StateRoot

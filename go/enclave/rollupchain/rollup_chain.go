@@ -247,15 +247,6 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 	return nil, false
 }
 
-func (rc *RollupChain) findRoundWinner(receivedRollups []*obscurocore.Rollup, parent *obscurocore.Rollup) *obscurocore.Rollup {
-	headRollup, found := FindWinner(parent, receivedRollups, rc.storage)
-	if !found {
-		rc.logger.Crit("could not find winner. This should not happen for gossip rounds")
-	}
-	rc.checkRollup(headRollup)
-	return headRollup
-}
-
 func (rc *RollupChain) Config() *params.ChainConfig {
 	return rc.chainConfig
 }
@@ -367,7 +358,7 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 	if !found {
 		rc.logger.Crit("could not fetch parent rollup")
 	}
-	newHeadRollup, found := FindWinner(currentHead, rollups, rc.storage)
+	newHeadRollup, found := FindNextRollup(currentHead, rollups, rc.storage)
 	var rollupTxReceipts []*types.Receipt
 	// only change the state if there is a new l2 HeadRollup in the current block
 	if found {
@@ -566,63 +557,6 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	return r
 }
 
-// TODO - this belongs in the protocol
-
-func (rc *RollupChain) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, error) {
-	head, found := rc.storage.FetchRollup(parent)
-	if !found {
-		return common.ExtRollup{}, false, fmt.Errorf("rollup not found: r_%s", parent)
-	}
-
-	headState := rc.storage.FetchHeadState()
-	currentHeadRollup, found := rc.storage.FetchRollup(headState.HeadRollup)
-	if !found {
-		panic("Should not happen since the header hash and the rollup are stored in a batch.")
-	}
-	// Check if round.winner is being called on an old rollup
-	if !bytes.Equal(currentHeadRollup.Hash().Bytes(), parent.Bytes()) {
-		return common.ExtRollup{}, false, nil
-	}
-
-	rc.logger.Trace(fmt.Sprintf("Round winner height: %d", head.Header.Number))
-	rollupsReceivedFromPeers := rc.storage.FetchRollups(head.NumberU64() + 1)
-	// filter out rollups with a different Parent
-	var usefulRollups []*obscurocore.Rollup
-	for _, rol := range rollupsReceivedFromPeers {
-		p := rc.storage.ParentRollup(rol)
-		if p == nil {
-			rc.logger.Info("Received rollup from peer but don't have parent rollup - discarding...")
-			continue
-		}
-		if bytes.Equal(p.Hash().Bytes(), head.Hash().Bytes()) {
-			usefulRollups = append(usefulRollups, rol)
-		}
-	}
-
-	// determine the winner of the round
-	winnerRollup := rc.findRoundWinner(usefulRollups, head)
-	//if rc.config.SpeculativeExecution {
-	//	go rc.notifySpeculative(winnerRollup)
-	//}
-
-	// we are the winner
-	if bytes.Equal(winnerRollup.Header.Agg.Bytes(), rc.hostID.Bytes()) {
-		v := rc.storage.Proof(winnerRollup)
-		w := rc.storage.ParentRollup(winnerRollup)
-		rc.logger.Trace(fmt.Sprintf("Publish rollup=r_%d(%d)[r_%d]{proof=b_%d(%d)}. Num Txs: %d. Txs: %v.  Root=%v. ",
-			common.ShortHash(winnerRollup.Hash()), winnerRollup.Header.Number,
-			common.ShortHash(w.Hash()),
-			common.ShortHash(v.Hash()),
-			v.NumberU64(),
-			len(winnerRollup.Transactions),
-			obscurocore.PrintTxs(winnerRollup.Transactions),
-			winnerRollup.Header.Root,
-		))
-		return winnerRollup.ToExtRollup(rc.transactionBlobCrypto), true, nil
-	}
-	return common.ExtRollup{}, false, nil
-}
-
 func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
 	paramBytes, err := rc.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
@@ -633,7 +567,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	var paramList []interface{}
 	err = json.Unmarshal(paramBytes, &paramList)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode EthCall params - %w", err)
+		return nil, fmt.Errorf("unable to decode eth_call params - %w", err)
 	}
 
 	// params are [callMsg, block number (optional) ]

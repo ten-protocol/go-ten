@@ -13,7 +13,6 @@ func RandomRollup() common.ExtRollupWithHash {
 		Header: &common.Header{
 			ParentHash:  randomHash(),
 			Agg:         RandomAddress(),
-			RollupNonce: randomUInt64(),
 			L1Proof:     randomHash(),
 			Root:        randomHash(),
 			Number:      big.NewInt(int64(randomUInt64())),

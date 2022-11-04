@@ -3,9 +3,9 @@ package network
 import (
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/go/common/host"
 
-	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 

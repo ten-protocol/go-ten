@@ -62,11 +62,10 @@ func ToEnclaveRollup(encryptedRollup *common.ExtRollupWithHash, transactionBlobC
 
 func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcommon.Hash, nonce common.Nonce) *Rollup {
 	h := common.Header{
-		Agg:         agg,
-		ParentHash:  parent.Hash(),
-		L1Proof:     blkHash,
-		RollupNonce: nonce,
-		Number:      big.NewInt(int64(parent.Number.Uint64() + 1)),
+		Agg:        agg,
+		ParentHash: parent.Hash(),
+		L1Proof:    blkHash,
+		Number:     big.NewInt(int64(parent.Number.Uint64() + 1)),
 		// TODO - Consider how this time should align with the time of the L1 block used as proof.
 		Time: uint64(time.Now().Unix()),
 		// generate true randomness inside the enclave.
@@ -90,7 +89,6 @@ func NewRollup(blkHash gethcommon.Hash, parent *Rollup, height uint64, a gethcom
 		Agg:         a,
 		ParentHash:  parentHash,
 		L1Proof:     blkHash,
-		RollupNonce: nonce,
 		Root:        state,
 		TxHash:      types.EmptyRootHash,
 		Number:      big.NewInt(int64(height)),
