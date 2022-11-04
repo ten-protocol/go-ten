@@ -17,3 +17,7 @@ Notice the _Decrypted transaction blob_ section for each rollup. This allows you
 transactions in unencrypted plain text. This is a feature of Testnet aimed at helping you understand how Obscuro works, 
 and is only possible because Testnet uses a rollup encryption key that is long-lived and well-known. On Mainnet, 
 rollups will be encrypted with rotating keys that are not known to anyone, or anything, other than the Obscuro enclaves.
+
+## External API Calls
+
+The URL path [/rollup/](http://testnet.obscuroscan.io/rollup/) may be requested from external clients using a HTTP POST request with either a rollup number (integer) or transaction hash (string beginning with "0x"). A JSON object representing the rollup will be returned. Further API development of ObscuroScan with RESTful documentation will follow.

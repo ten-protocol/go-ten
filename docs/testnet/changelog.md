@@ -4,6 +4,9 @@
 * Number Guessing Game:
   * The Number Guessing Game has been removed from static and auto deployment scripts, and is now hosted [in a sample applications repository](https://github.com/obscuronet/sample-applications). Given the move for Testnet to be long-running (or at least restartable without contract disappearance), the Guessing Game must be persisted across software updates, and redeployed manually if needed in the same way other applications are.
 
+* ObscuroScan:
+  * ObscuroScan supports a single API at [/rollup/](http://testnet.obscuroscan.io/rollup/) which allows web clients to access a JSON representation of rollups and encrypted transactions. Further details [here](https://docs.obscu.ro/testnet/obscuroscan.html)
+
 ## October 2022-10-21 (v0.5)
 * Event Subscriptions:
   * Event subscriptions for logs are now supported via the eth_subscribe and eth_getLogs approaches. This has been 
