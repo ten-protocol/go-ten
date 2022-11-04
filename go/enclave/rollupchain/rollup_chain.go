@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"sort"
 	"strings"
 	"sync"
@@ -43,7 +44,7 @@ const (
 
 var (
 	errBlockAlreadyProcessed = errors.New("block already processed")
-	errBlockParentNotFound   = errors.New("block parent not found")
+	errBlockAncestorNotFound = errors.New("block ancestor not found")
 )
 
 // RollupChain represents the canonical chain, and manages the state.
@@ -109,33 +110,47 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block
-func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) error {
+// note: this method shouldn't be called for blocks we've seen before
+func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*blockIngestionType, error) {
 	if rc.l1Blockchain != nil {
 		_, err := rc.l1Blockchain.InsertChain(types.Blocks{block})
 		if err != nil {
-			return fmt.Errorf("block was invalid: %w", err)
+			return nil, fmt.Errorf("block was invalid: %w", err)
 		}
 	}
-
 	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
 	l1Latest := rc.storage.FetchHeadBlock()
 
 	// we do a basic sanity check, comparing the received block to the latest known block on the chain
 	if l1Latest == nil {
-		rc.logger.Info("First L1 block received",
-			"height", block.NumberU64(),
-			"hash", block.Hash())
+		// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
+		return &blockIngestionType{latest: isLatest, fork: false, first: true}, nil
 	} else if block.ParentHash() != l1Latest.Hash() {
-		if block.NumberU64() > l1Latest.NumberU64() {
-			return errBlockParentNotFound
+		lcaBlock, err := ethereummock.LCA(block, l1Latest, rc.storage)
+		if err != nil {
+			return nil, errBlockAncestorNotFound
 		}
-		rc.logger.Info("L1 fork detected, overwriting head",
-			"prevHeadHeight", l1Latest.NumberU64(),
-			"prevHeadHash", l1Latest.Hash(),
-			"newHeadHeight", block.NumberU64(),
-			"newHeadHash", block.Hash())
+		rc.logger.Trace("parent not found",
+			"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
+			"l1HeadHeight", l1Latest.NumberU64(), "l1HeadHash", l1Latest.Hash(),
+			"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
+		)
+		if lcaBlock.NumberU64() < l1Latest.NumberU64() {
+			return &blockIngestionType{latest: isLatest, fork: true, first: false}, nil
+		}
+		// I think we do not need to consider:
+		// lca == l1 latest (if L1 latest is (e.g) a grandfather of ingested block then why is ingested block's parent not l1 latest)
+		// lca > l1 latest (this would imply ingested block is earlier on the same branch as l1 latest, but ingested block should not have been seen before)
+		//
+		// therefore we're in an unexpected state (should only happen if this logic is wrong or a bug has been introduced)
+		rc.logger.Error("unexpected blockchain state, incoming block is not child of L1 head and not an earlier fork of L1 head",
+			"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
+			"l1HeadHeight", l1Latest.NumberU64(), "l1HeadHash", l1Latest.Hash(),
+			"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
+		)
+		return nil, errors.New("unexpected blockchain state")
 	}
-	return nil
+	return &blockIngestionType{latest: isLatest, fork: false, first: false}, nil
 }
 
 func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) *common.BlockSubmissionResponse {
@@ -449,9 +464,14 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
 	}
 
-	if err := rc.insertBlockIntoL1Chain(&block); !rc.isGenesisBlock(&block) && err != nil {
+	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
+	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
+	rc.logger.Info("block inserted successfully",
+		"height", block.NumberU64(),
+		"hash", block.Hash(),
+		"ingestionType", ingestionType)
 
 	// Only store the block if the L1 chain insertion succeeded
 	stored := rc.storage.StoreBlock(&block)

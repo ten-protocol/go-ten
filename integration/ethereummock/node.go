@@ -211,7 +211,10 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	// Check for Reorgs
 	if !m.Resolver.IsAncestor(b, head) {
 		m.stats.L1Reorg(m.l2ID)
-		fork := LCA(head, b, m.Resolver)
+		fork, err := LCA(head, b, m.Resolver)
+		if err != nil {
+			panic(err)
+		}
 		m.logger.Info(
 			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.Hash()), fork.NumberU64()))
 		return m.setFork(m.BlocksBetween(fork, b))

@@ -150,3 +150,16 @@ func createShouldPreserve() func(header *types.Header) bool {
 		return false
 	}
 }
+
+type blockIngestionType struct {
+	// latest is true if this block was the canonical head of the L1 chain at the time it was submitted to enclave
+	// (if false then we are behind and catching up, expect to be fed another block immediately afterwards)
+	latest bool
+
+	// fork is true if the ingested block is on a different branch to previously known head
+	// (resulting in rewinding of one or more blocks that we had previously considered canonical)
+	fork bool
+
+	// first is true if the block is the lowest height block we have ingested
+	first bool
+}
