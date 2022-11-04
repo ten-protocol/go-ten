@@ -1,7 +1,7 @@
-# Introducing Oikos
-This section contains detailed on how to connect, build and deploy on Oikos. Oikos is designed with developers in mind. It provides the latest upgrades and tooling for developers to deploy and test their dApps.
+# Introducing Obscuro's first testnet, Evan's Cat
+This section contains detailed on how to connect, build and deploy on Evan's Cat. Evan's Cat is designed with developers in mind. It provides the latest upgrades and tooling for developers to deploy and test their dApps.
 
-Oikos can also be used by end users to help test Obscuro and test developer dApps. Oikos does not focus on node operators. Support for node operators will arrive in the next version of testnet. 
+Evan's Cat can also be used by end users to help test Obscuro and test developer dApps. Evan's Cat does not focus on node operators. Support for node operators will arrive in the next version of testnet. 
 
 Developers can expect frequent updates which will be communicated [here](https://docs.obscu.ro/testnet/changelog.html). The trade-off is that in the early days Testnet will have some sharp edges and unexpected surprises. More specifically, whilst Testnet is in its infancy:
 * Obscuro Testnet will crash from time to time, and will frequently be updated with new features.
