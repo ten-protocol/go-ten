@@ -2,10 +2,15 @@ package enclave
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -562,11 +567,163 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 
 	// encrypt the gas cost with the callMsg.From viewing key
 	// TODO hook up the evm gas estimation
-	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(callMsg.From, []byte(hexutil.EncodeUint64(5_000_000_000)))
+	estimatedGas, err := e.estimateGas(context.Background(), *callMsg)
+	if err != nil {
+		return nil, fmt.Errorf("unable to estimate gas - %w", err)
+	}
+
+	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(callMsg.From, []byte(hexutil.EncodeUint64(estimatedGas)))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_estimateGas request. Cause: %w", err)
 	}
 	return encryptedGasCost, nil
+}
+
+func (e *enclaveImpl) estimateGas(ctx context.Context, call ethereum.CallMsg) (uint64, error) {
+	// Determine the lowest and highest possible gas limits to binary search in between
+	var (
+		lo  uint64 = params.TxGas - 1
+		hi  uint64
+		cap uint64
+	)
+	if call.Gas >= params.TxGas {
+		hi = call.Gas
+	} else {
+		// TODO change this when there is a variable block gas limit
+		// hi = b.pendingBlock.GasLimit()
+		hi = 1_000_000_000
+	}
+	// Normalize the max fee per gas the call is willing to spend.
+	var feeCap *big.Int
+	if call.GasPrice != nil && (call.GasFeeCap != nil || call.GasTipCap != nil) {
+		return 0, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+	} else if call.GasPrice != nil {
+		feeCap = call.GasPrice
+	} else if call.GasFeeCap != nil {
+		feeCap = call.GasFeeCap
+	} else {
+		feeCap = gethcommon.Big0
+	}
+	// Recap the highest gas allowance with account's balance.
+	if feeCap.BitLen() != 0 {
+		//balance := b.pendingState.GetBalance(call.From) // from can't be nil
+		balance, _, err := e.chain.GetBalanceLogic(gethrpc.BlockNumber(0), call.From)
+		if err != nil {
+			return 0, fmt.Errorf("unable to retrieve account balance - %w", err)
+		}
+
+		available := new(big.Int).Set(balance.ToInt())
+		if call.Value != nil {
+			if call.Value.Cmp(available) >= 0 {
+				return 0, errors.New("insufficient funds for transfer")
+			}
+			available.Sub(available, call.Value)
+		}
+		allowance := new(big.Int).Div(available, feeCap)
+		if allowance.IsUint64() && hi > allowance.Uint64() {
+			transfer := call.Value
+			if transfer == nil {
+				transfer = new(big.Int)
+			}
+			// TODO change this to log
+			fmt.Printf("Gas estimation capped by limited funds", "original", hi, "balance", balance,
+				"sent", transfer, "feecap", feeCap, "fundable", allowance)
+			hi = allowance.Uint64()
+		}
+	}
+	cap = hi
+
+	// Create a helper to check if a gas allowance results in an executable transaction
+	executable := func(gas uint64) (bool, *gethcore.ExecutionResult, error) {
+		call.Gas = gas
+
+		hs := e.storage.FetchHeadState()
+		if hs == nil {
+			return false, nil, fmt.Errorf("unexpected empty head state fetched")
+		}
+		snapshot := e.storage.CreateStateDB(hs.HeadRollup)
+		r, f := e.storage.FetchRollup(hs.HeadRollup)
+		if !f {
+			panic("not found")
+		}
+
+		res, err := evm.ExecuteOffChainCall(&call, snapshot, r.Header, e.storage, e.chain.Config(), e.logger)
+		// todo - clarify this error handling
+		if err != nil {
+			if errors.Is(err, gethcore.ErrIntrinsicGas) {
+				return true, nil, nil // Special case, raise gas limit
+			}
+			return true, nil, err // Bail out
+		}
+
+		//snapshot :=  b.pendingState.Snapshot()
+		//res, err := b.callContract(ctx, call, b.pendingBlock, b.pendingState)
+		//b.pendingState.RevertToSnapshot(snapshot)
+
+		//if err != nil {
+		//	if errors.Is(err, core.ErrIntrinsicGas) {
+		//		return true, nil, nil // Special case, raise gas limit
+		//	}
+		//	return true, nil, err // Bail out
+		//}
+		return res.Failed(), res, nil
+	}
+	// Execute the binary search and hone in on an executable gas limit
+	for lo+1 < hi {
+		mid := (hi + lo) / 2
+		failed, _, err := executable(mid)
+
+		// If the error is not nil(consensus error), it means the provided message
+		// call or transaction will never be accepted no matter how much gas it is
+		// assigned. Return the error directly, don't struggle any more
+		if err != nil {
+			return 0, err
+		}
+		if failed {
+			fmt.Printf("Failed: lo <- mid, %d <- %d\n", lo, mid)
+			lo = mid
+		} else {
+			fmt.Printf("Passed: hi <- mid, %d <- %d\n", hi, mid)
+			hi = mid
+		}
+	}
+	// Reject the transaction as invalid if it still fails at the highest allowance
+	if hi == cap {
+		failed, result, err := executable(hi)
+		if err != nil {
+			return 0, err
+		}
+		if failed {
+			if result != nil && result.Err != vm.ErrOutOfGas {
+				if len(result.Revert()) > 0 {
+					return 0, newRevertError(result)
+				}
+				return 0, result.Err
+			}
+			// Otherwise, the specified gas cap is too low
+			return 0, fmt.Errorf("gas required exceeds allowance (%d)", cap)
+		}
+	}
+	return hi, nil
+}
+
+func newRevertError(result *gethcore.ExecutionResult) *revertError {
+	reason, errUnpack := abi.UnpackRevert(result.Revert())
+	err := errors.New("execution reverted")
+	if errUnpack == nil {
+		err = fmt.Errorf("execution reverted: %v", reason)
+	}
+	return &revertError{
+		error:  err,
+		reason: hexutil.Encode(result.Revert()),
+	}
+}
+
+// revertError is an API error that encompasses an EVM revert with JSON error
+// code and a binary data blob.
+type revertError struct {
+	error
+	reason string // revert reason hex encoded
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {

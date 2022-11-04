@@ -256,6 +256,10 @@ func (rc *RollupChain) findRoundWinner(receivedRollups []*obscurocore.Rollup, pa
 	return headRollup
 }
 
+func (rc *RollupChain) Config() *params.ChainConfig {
+	return rc.chainConfig
+}
+
 type sortByTxIndex []*types.Receipt
 
 func (c sortByTxIndex) Len() int           { return len(c) }
@@ -654,7 +658,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 
 	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To.Hex(), callMsg.From.Hex(), hexutils.BytesToHex(callMsg.Data), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
 	s := rc.storage.CreateStateDB(hs.HeadRollup)
-	result, err := evm.ExecuteOffChainCall(callMsg.From, callMsg.To, callMsg.Data, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
+	result, err := evm.ExecuteOffChainCall(callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
 	// todo - clarify this error handling
 	if err != nil {
 		return nil, err
@@ -702,24 +706,15 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 		return nil, fmt.Errorf("could not parse requested rollup number")
 	}
 
-	// We retrieve the rollup of interest.
-	rollup, err := rc.getRollup(blockNumber)
+	balance, isContract, err := rc.GetBalanceLogic(blockNumber, accountAddress)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to retrieve balance - %w", err)
 	}
-
-	// We get the balance at that rollup.
-	blockchainState := rc.storage.CreateStateDB(rollup.Hash())
-	if blockchainState == nil || err != nil {
-		return nil, err
-	}
-	balance := (*hexutil.Big)(blockchainState.GetBalance(accountAddress))
 
 	// We encrypt the result.
 	address := accountAddress
 	// If the accountAddress is a contract, encrypt with the address of the contract owner
-	code := blockchainState.GetCode(accountAddress)
-	if len(code) != 0 {
+	if isContract {
 		txHash, err := rc.storage.GetContractCreationTx(accountAddress)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
@@ -741,7 +736,28 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
 	}
-	return encryptedBalance, blockchainState.Error()
+	return encryptedBalance, nil
+}
+
+func (rc *RollupChain) GetBalanceLogic(blkNum gethrpc.BlockNumber, addr gethcommon.Address) (*hexutil.Big, bool, error) {
+	// We retrieve the rollup of interest.
+	rollup, err := rc.getRollup(blkNum)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// We get the balance at that rollup.
+	blockchainState := rc.storage.CreateStateDB(rollup.Hash())
+	if blockchainState == nil {
+		return nil, false, fmt.Errorf("unable to fetch chain at rollup %s", rollup.Hash().Hex())
+	}
+	if blockchainState.Error() != nil {
+		return nil, false, fmt.Errorf("unable to produce chain state - %w", err)
+	}
+	balance := (*hexutil.Big)(blockchainState.GetBalance(addr))
+
+	code := blockchainState.GetCode(addr)
+	return balance, len(code) != 0, nil
 }
 
 func (rc *RollupChain) signRollup(r *obscurocore.Rollup) {

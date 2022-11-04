@@ -3,6 +3,7 @@ package evm
 import (
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum"
 	"math"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -84,13 +85,16 @@ func logReceipt(r *types.Receipt, logger gethlog.Logger) {
 }
 
 // ExecuteOffChainCall - executes the "data" command against the "to" smart contract
-func ExecuteOffChainCall(from gethcommon.Address, to *gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, logger gethlog.Logger) (*gethcore.ExecutionResult, error) {
+func ExecuteOffChainCall(call *ethereum.CallMsg, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, logger gethlog.Logger) (*gethcore.ExecutionResult, error) {
 	chain, vmCfg, gp := initParams(storage, true)
 
 	blockContext := gethcore.NewEVMBlockContext(convertToEthHeader(header, secret(storage)), chain, &header.Agg)
 	// todo use ToMessage
-	// 100_000_000_000 is just a huge number gasLimit for making sure the local tx doesn't fail with lack of gas
-	msg := types.NewMessage(from, to, 0, gethcommon.Big0, 100_000_000_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
+	// call values can't be nil or they will fail downstream
+	if call.Value == nil {
+		call.Value = gethcommon.Big0
+	}
+	msg := types.NewMessage(call.From, call.To, 0, call.Value, call.Gas, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, call.Data, nil, true)
 
 	// sets TxKey.origin
 	txContext := gethcore.NewEVMTxContext(msg)
@@ -98,8 +102,8 @@ func ExecuteOffChainCall(from gethcommon.Address, to *gethcommon.Address, data [
 
 	result, err := gethcore.ApplyMessage(vmenv, msg, gp)
 	if err != nil {
-		// this error is ignored by geth. logging just in case
 		logger.Error("ErrKey applying msg:", log.ErrKey, err)
+		return nil, err
 	}
 
 	// Read the error stored in the database.
