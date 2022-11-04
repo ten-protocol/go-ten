@@ -11,7 +11,7 @@ name: "Obscuro"
 repository: "obscuronet/obscuro.github.io"
 
 # Breadcrumb Settings
-breadcrumbs: true
+breadcrumbs: false
 breadcrumb_home_label: "Home"
 breadcrumb_seperator: ">"
 
@@ -53,7 +53,7 @@ defaults:
   # all other pages including landing page need to be listed to have correct layout applied
   - scope:
       path: ""
-      type: pages
+      type: docs
     values:
       sidebar:
         nav: sidebar-list # has to match the name of the sidebar in navigation.yml
