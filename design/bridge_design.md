@@ -16,31 +16,32 @@ These contracts will be owned by the ManagementContract and the enclave on their
 * Basic Bridge that wraps assets
 * Primitive fees implementation
 
-### Out Of Scope
-* Being able to call functions across layers - this will require **gas budgeting** and further work
-
-
 ## Requirements
 
-* Obscuro should be able to transmit authenticated data between L1 & L2. Example Message:
-  ```json
-  { 
-    "message": "I've locked 25 tokens from address 0x5adaf", 
-    "from": "0xLockContract", 
-    "chainId": 1 
-  }
-  ```  
-   
-* Using this messaging API we should be able to transmit `msg.value` (ETH) and `ERC_*` tokens between L1 & L2.
-* We want the bridge to have an asset whitelist controlled by the Obscuro DAO or simply configured by the management contract.
-* Assets and their wrapped L2 counterparts should be mapped and exposed for querying.
-* Bridge functionality should utilize a [pull payment](https://docs.openzeppelin.com/contracts/2.x/api/payment#PullPayment) design. 
-* Bridge contracts should be separate from the management contract; The API should expose all the messaging bits required in order to build the bridge independently from Obscuro
+1. **High Level Requirements**
+  * The Obscuro platform provides On-Chain system APIs that allow dApp developers to build cross-chain bridges and applications.
+  * Users should be able to transmit authenticated data between L1 & L2. Example Message:
+    ```json
+    { 
+      "message": "I've locked 25 tokens from address 0x5adaf", 
+      "from": "0xLockContract", 
+      "chainId": 1 
+    }
+    ```
+  * As an L2 developer I want to be able to query specific message topics coming from specific addresses.
+  * The Obscuro gas calculation should include the L1 fees of submitting a message that originates on the L2. Users should fully cover the storage fees and the Rollup publisher should not incur any financial loss.
+  * The messaging and bridge are decentralized as much as possible.
+  * Block reorganizations should have no impact on the security of the messaging protocol and the downstream apps that use this protocol.
+
+
+2. **Bridge Requirements**
+  * The reference bridge contracts should be completely ordinary and separate from the management contract; The API should expose all the messaging bits required in order to build the bridge independently from Obscuro
+  * We want the bridge to have an asset whitelist controlled by the Obscuro DAO or simply configured by the management contract.
+  * Assets and their wrapped L2 counterparts should be mapped and exposed for querying.
+  * Bridge functionality should be able to use the [pull payment](https://docs.openzeppelin.com/contracts/2.x/api/payment#PullPayment) design. 
    > If any current dApps want to extend or port their functionality on Obscuro then it should be possible for them to do it without collaborating with anyone else
-* The EVM should not accept user transactions to system contracts. Only internal/synthetic transactions should be able to call the system functions.
-* As an L2 developer I want to be able to query specific message topics coming from specific addresses.
-* Withdrawals on the L2 cause extra processing on the L1 and thus cost more. This cost needs to be channeled to the user.
-* The messaging and bridge are decentralized as much as possible.
+
+
 
 
 
@@ -75,9 +76,6 @@ This trusted address can either be the `Enclave` or the `ManagementContract`. As
 
 Taking inspiration from the [Wormhole contract](https://github.com/wormhole-foundation/wormhole/blob/dev.v2/ethereum/contracts/Implementation.sol) the main method of transferring information across networks would be the `publishMessage` function. For us, it will look like their definition with added `topic`.
 
-> **_NOTE:_**  `consistencyLevel` is only required if Obscuro has fast finality.
-
-
 ```solidity
 function publishMessage(
         uint32 nonce,
@@ -95,6 +93,12 @@ function publishMessage(
 ```
 
 Any contract or user can call the `publishMessage` function. Any message passed will be bound to its sender so contracts cannot simply impersonate one another. As messages are not stored, but rather emitted as events all of our synchronization behind the scenes will happen inside of the `Enclave`. It will be subscribed to those events. 
+
+`nonce` is a deduplication mechanism that enables uniqueness between two identical payloads on the same topic. An example is when the message __"I've received 50 USDC tokens from 0xBob"__ is received twice with different nonces, this should mean those were two different deposits. 
+
+`consistencyLevel` is a mechanism to introduce delay before the message is considered valid. The platform will only expose the message after the block producing it is confirmed by blocks equal to the `consistencyLevel`
+
+> **_NOTE:_**  `consistencyLevel` is only required if Obscuro does not reorganize when L1 deposits reorganize. In other instances it can be set to 0 or 1. There is however another use case for it described in [Security](#MessageBusSecurity).
 
 
 ### Verify Message
@@ -117,7 +121,8 @@ Internally, the function will hash the message and compare it with the result of
 
 ### Submit Out Of Network Messages
 
-The definition of the function allowing administrative addresses to provide out-of-network messages will look like this:
+This is the administrative smart contract function that will be called by the `ManagementContract` on L1 and the `enclave` on L2. It's purpose is to store a message that was submitted from the other chain on this chain. It should be access controlled and called according to the `consistencyLevel` and Obscuro platform rules.  
+
 
 ```solidity 
 function submitOutOfNetworkMessage(
@@ -131,9 +136,8 @@ function submitOutOfNetworkMessage(
 
 This function should not be callable by any users or contracts unless they have the `ADMINISTRATOR` role or are the `Owner` of the `MessageBus` contract. Along with those requirements, on the Obscuro layer 2, there is an additional security measure - Any incoming transaction to this function is blocked, even if it is coming from an address that has the correct role. The protocol will block transactions that do not originate from inside of the enclave due to consuming L1 blocks. This means that even if the enclave gets hacked and the keys leak the verifiers will block withdraws.
 
-When called, the function should store the message in storage. Along with it, the whole message should be stored inside of a map called `receivedMessages` that indexes if this message was received for quick access.
-
-
+When called, the function should store the message indexed in storage - map of `senders` that contains a map of `topics` which points to array of `messages` should be sufficient. 
+Along with it, the hash of the whole message should be used as a key to store a message received flag inside the map `receivedMessages`. This map enables quick verification that a message is valid and received.
 
 ### Query Messages
 
@@ -148,17 +152,21 @@ function queryMessages(
 ) public returns (bytes [] memory)
 ```
 
-This function should return all the messages between the requested indexes, by the specified sender on the specified topic. It is a more expensive way to get messages on-chain without relying on users to ferry them around. 
+This function should return all the messages between the requested `fromIndex` and `toIndex` of the array storing the submitted messages. The array can be found when going through the map of `senders` under the concrete `topic`. It is a more expensive way to get messages on-chain without relying on users to ferry them around. 
 
 ### MessageBus Internal workings - L1 to L2
 
 When a block from `L1` is processed by the `enclave` and transactions inside of it result in `MessagePublished` events, the `enclave` will submit them as messages to the inbox of the `L2` contract. This enables the `L2 smart contracts` to use/consume messages from `L1`. 
 
+> **_NOTE:_** The EVM should not accept user transactions to system contracts. Only internal/synthetic transactions should be able to call the system functions!
+
 ### MessageBus Internal workings - L2 to L1
 
-When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the `Rollup header` by the `enclave`. Then the management contract will submit them to the `MessageBus` or they will directly be exposed. 
+When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the `Rollup header` by the `enclave`. Then the management contract will submit them to the `MessageBus` or they will directly be. **The messages will not be accessible** unless the challenge period has passed.
 
 ### Fees
+
+When publishing a message on the Obscuro L2, storing the message will have a direct cost to the `Sequencer` who is publishing the Rollup in the form of gas. In order to channel this cost to the user who is publishing the message we would need some configurable properties.
 
 **Assumption: Obscuro DAO** will vote and set the following properties:
 * `fixedMessageStoringCost` - this is the gas cost for storing the fixed-size properties of the message
@@ -187,6 +195,20 @@ The security of the `MessageBus` is maintained by the `ManagementContract` and t
  * For probabilistic finality - We can be fully secure as L1 block reorgs will reorganize us too.
  * Fast & hard finality - Block reorgs can lead to instances of the enclave having delivered a message that got thrown away, even when accounting for confirmations.
 
+`consistencyLevel` should be used to prevent opportunistic attacks in protocols that use messages to transfer financial value. For example if the `consistencyLevel` is equal to `0` and a user bridges some tokens which he later on trades he would still have the possible chance of canceling the "final" trade. He can do this by submitting a conflicting transaction (same `tx_nonce` as the transaction that bridged assets ) on the `L1` which always has chance of going in before the other one in cases of block reorganizations. This statistical probability can be exponentially reduced by increasing the `consistencyLevel` as there will be more blocks confirming his initial bridged asset and in turn locking it down.
+
+**__Example cross-chain messaging and reorganization:__**
+> A user submits a transaction to bridge assets on `L1` and this transaction results in a message published from L1 -> L2. Immediately the user attempts to mint the equivalent assets from the bridge on `L2` using the message. Then the user bridges them back to the `L1`. The user transaction is immediately captured in a rollup which gets sent to `L1`. **In the meantime `L1` has experienced an reorg** and the deposit is no longer inside. 
+
+When the rollup reaches the management contract either one of those must be true:
+* The rollup must be bound to a specific `blockhash` for `block.number`. This would mean that if it contains synthetic transactions which were caused by messages that no longer exist, then the rollup will be rejected as the `blockhash` would be different for the `block.number`. The only way to ever have the same blockhash is to have the same state, transactions and order over them.
+* The rollup must be bound to a specific `MessageBus` state. Another approach is to have the `MessageBus` contract chain-hash the published messages it receives and the `ManagementContract` verifies if incoming rollups point to a historic or current hash of the `MessageBus`.
+
+This diagrams should help illustrate the control flow:
+![Control Diagram Not Available](./resources/RollupDiagram.svg)
+
+**If the canonical block remains the one without the message, then the enclave should regenerate a rollup from there by reapplying the transactions!**
+
 > **_NOTE:_** The following section is only for fast finality that does not support block reorgs
 
 
@@ -195,7 +217,7 @@ The security of the `MessageBus` is maintained by the `ManagementContract` and t
 
 **L2 to L1 Delivery** - The `ManagementContract` needs to ensure that information is exposed through the APIs and/or messages are submitted only after the challenge period of a rollup has passed. This means that anything that shows up there will be final.
 
-**L1 to L2 Delivery** - We need to implement a block confirmation mechanism to secure the `MessageBus` - when the enclave encounters the `LogMessagePublished` it will only create a synthetic transaction for it on the L2 once the required `consistencyLevel` is achieved.
+**L1 to L2 Delivery** - We need to implement a block confirmation mechanism to secure the `MessageBus` - when the enclave encounters the `LogMessagePublished` it will only create a synthetic transaction for it on the L2 once the required `consistencyLevel` is achieved. Otherwise if we publish the message instantly it might end being fake as the `L1` event that caused it has been reogranized.
 
 We can also engineer a mechanism to insure delivered messages:
 * When fees are collected for `publishMessage`, part of those fees is funneled to an insurance pool.
