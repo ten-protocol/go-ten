@@ -107,6 +107,9 @@ func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
 func (s *storageImpl) StoreBlock(b *types.Block) bool {
 	s.assertSecretAvailable()
 	rawdb.WriteBlock(s.db, b)
+	// we always set the stored block as the head block
+	// todo: seems safe at the moment with how we populate our L1 db but is this too magic?
+	rawdb.WriteHeadHeaderHash(s.db, b.Hash())
 	return true
 }
 
@@ -255,8 +258,6 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 
 	obscurorawdb.WriteBlockState(batch, state, s.logger)
 	obscurorawdb.WriteBlockLogs(batch, state.Block, logs, s.logger)
-
-	rawdb.WriteHeadHeaderHash(batch, state.Block)
 
 	if err := batch.Write(); err != nil {
 		s.logger.Crit("could not save new head. ", log.ErrKey, err)

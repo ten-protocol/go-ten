@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 
@@ -139,8 +140,8 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 			return &blockIngestionType{latest: isLatest, fork: true, first: false}, nil
 		}
 		// I think we do not need to consider:
-		// lca == l1 latest (if L1 latest is (e.g) a grandfather of ingested block then why is ingested block's parent not l1 latest)
-		// lca > l1 latest (this would imply ingested block is earlier on the same branch as l1 latest, but ingested block should not have been seen before)
+		// lca == l1Latest (if L1 latest is (e.g) a grandfather of ingested block, then why is ingested block's parent not l1 latest)
+		// lca > l1Latest (this would imply ingested block is earlier on the same branch as l1 latest, but ingested block should not have been seen before)
 		//
 		// therefore we're in an unexpected state (should only happen if this logic is wrong or a bug has been introduced)
 		rc.logger.Error("unexpected blockchain state, incoming block is not child of L1 head and not an earlier fork of L1 head",
@@ -182,10 +183,6 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		RollupHead:     head,
 		SubscribedLogs: logs,
 	}
-}
-
-func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
-	return rc.l1Blockchain != nil && bytes.Equal(block.Hash().Bytes(), rc.l1Blockchain.Genesis().Hash().Bytes())
 }
 
 //  STATE

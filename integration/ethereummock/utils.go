@@ -10,9 +10,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-var (
-	errNoCommonAncestor = errors.New("no common ancestor found")
-)
+var errNoCommonAncestor = errors.New("no common ancestor found")
 
 // LCA - returns the least common ancestor of the 2 blocks or an error if no common ancestor is found
 func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) (*types.Block, error) {
