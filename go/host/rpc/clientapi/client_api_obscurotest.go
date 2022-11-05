@@ -4,7 +4,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 // TODO - Disable these methods on a non-test node.

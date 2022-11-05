@@ -7,25 +7,29 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-// FindWinner - implements the logic of determining the canonical chain rollup.
-func FindWinner(parent *obscurocore.Rollup, rollups []*obscurocore.Rollup, blockResolver db.BlockResolver) (*obscurocore.Rollup, bool) {
-	win := -1
-	// todo - add statistics to determine why there are conflicts.
-	for i, r := range rollups {
-		switch {
-		case !bytes.Equal(r.Header.ParentHash.Bytes(), parent.Hash().Bytes()): // ignore rollups from L2 forks
-		case r.Header.Number.Int64() <= parent.Header.Number.Int64(): // ignore rollups that are older than the parent
-		case win == -1:
-			win = i
-		case blockResolver.ProofHeight(r) < blockResolver.ProofHeight(rollups[win]): // ignore rollups generated with an older proof
-		case blockResolver.ProofHeight(r) > blockResolver.ProofHeight(rollups[win]): // newer rollups win
-			win = i
-		case r.Header.RollupNonce < rollups[win].Header.RollupNonce: // for rollups with the same proof, the one with the lowest nonce wins
-			win = i
+// FindNextRollup returns the next rollup to publish, and a boolean indicating whether any of the provided rollups are suitable to be published next.
+// todo - add statistics to determine why there are conflicts.
+func FindNextRollup(parentRollup *obscurocore.Rollup, rollups []*obscurocore.Rollup, blockResolver db.BlockResolver) (*obscurocore.Rollup, bool) {
+	var nextRollup *obscurocore.Rollup
+
+	// We iterate over the proposed rollups to select the best next rollup.
+	for _, rollup := range rollups {
+		// We ignore rollups from L2 forks, or that are older than the parent rollup.
+		isFromFork := !bytes.Equal(rollup.Header.ParentHash.Bytes(), parentRollup.Hash().Bytes())
+		isOlderThanParent := rollup.Header.Number.Int64() <= parentRollup.Header.Number.Int64()
+		if isFromFork || isOlderThanParent {
+			continue
+		}
+
+		// If this is the first rollup to pass the checks above, or it is newer than the existing candidate, we make it
+		// the candidate next rollup.
+		if nextRollup == nil || blockResolver.ProofHeight(rollup) > blockResolver.ProofHeight(nextRollup) {
+			nextRollup = rollup
 		}
 	}
-	if win == -1 {
+
+	if nextRollup == nil {
 		return nil, false
 	}
-	return rollups[win], true
+	return nextRollup, true
 }
