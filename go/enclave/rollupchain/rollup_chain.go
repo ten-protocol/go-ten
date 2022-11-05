@@ -139,7 +139,7 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 		if lcaBlock.NumberU64() < l1Latest.NumberU64() {
 			return &blockIngestionType{latest: isLatest, fork: true, first: false}, nil
 		}
-		// I think we do not need to consider:
+		// I don't think we need to consider:
 		// lca == l1Latest (if L1 latest is (e.g) a grandfather of ingested block, then why is ingested block's parent not l1 latest)
 		// lca > l1Latest (this would imply ingested block is earlier on the same branch as l1 latest, but ingested block should not have been seen before)
 		//
