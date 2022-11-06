@@ -200,6 +200,7 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 
 	// processing blocks before genesis, so there is nothing to do
 	if genesisRollup == nil && len(rollups) == 0 {
+		rc.storage.StoreL1HeadBlock(b)
 		return nil
 	}
 
@@ -462,7 +463,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 		"ingestionType", ingestionType)
 
 	// Only store the block if the L1 chain insertion succeeded
-	stored := rc.storage.StoreBlock(&block)
+	stored := rc.storage.StoreL1HeadBlock(&block)
 	if !stored {
 		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
 	}

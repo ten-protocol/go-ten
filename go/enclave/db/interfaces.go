@@ -17,7 +17,7 @@ type BlockResolver interface {
 	// FetchBlock returns the L1 Block with the given hash and true, or (nil, false) if no such Block is stored
 	FetchBlock(hash common.L1RootHash) (*types.Block, bool)
 	// StoreBlock persists the L1 Block
-	StoreBlock(block *types.Block) bool
+	StoreL1HeadBlock(block *types.Block) bool
 	// ParentBlock returns the L1 Block's parent and true, or (nil, false)  if no parent Block is stored
 	ParentBlock(block *types.Block) (*types.Block, bool)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
