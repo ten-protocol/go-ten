@@ -107,9 +107,6 @@ func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
 func (s *storageImpl) StoreBlock(b *types.Block) bool {
 	s.assertSecretAvailable()
 	rawdb.WriteBlock(s.db, b)
-	// we always set the stored block as the head block
-	// todo: seems safe at the moment with how we populate our L1 db but is this too magic?
-	rawdb.WriteHeadHeaderHash(s.db, b.Hash())
 	return true
 }
 
