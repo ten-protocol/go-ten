@@ -104,10 +104,9 @@ func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
 	return obscurorawdb.ReadRollupsForHeight(s.db, height, s.logger)
 }
 
-func (s *storageImpl) StoreL1HeadBlock(b *types.Block) bool {
+func (s *storageImpl) StoreBlock(b *types.Block) bool {
 	s.assertSecretAvailable()
 	rawdb.WriteBlock(s.db, b)
-	rawdb.WriteHeadHeaderHash(s.db, b.Hash())
 	return true
 }
 

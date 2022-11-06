@@ -156,7 +156,7 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	m.Resolver.StoreL1HeadBlock(common.GenesisBlock)
+	m.Resolver.StoreBlock(common.GenesisBlock)
 	head := m.setHead(common.GenesisBlock)
 
 	for {
@@ -194,7 +194,7 @@ func (m *Node) Start() {
 }
 
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
-	m.Resolver.StoreL1HeadBlock(b)
+	m.Resolver.StoreBlock(b)
 	_, f := m.Resolver.FetchBlock(b.Header().ParentHash)
 
 	// only proceed if the parent is available

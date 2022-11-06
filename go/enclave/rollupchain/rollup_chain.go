@@ -125,7 +125,7 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	// we do a basic sanity check, comparing the received block to the latest known block on the chain
 	if l1Latest == nil {
 		// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
-		return &blockIngestionType{latest: isLatest, fork: false, first: true}, nil
+		return &blockIngestionType{latest: isLatest, fork: false, preGenesis: true}, nil
 	} else if block.ParentHash() != l1Latest.Hash() {
 		lcaBlock, err := ethereummock.LCA(block, l1Latest, rc.storage)
 		if err != nil {
@@ -137,7 +137,7 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 			"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
 		)
 		if lcaBlock.NumberU64() < l1Latest.NumberU64() {
-			return &blockIngestionType{latest: isLatest, fork: true, first: false}, nil
+			return &blockIngestionType{latest: isLatest, fork: true, preGenesis: false}, nil
 		}
 		// I don't think we need to consider:
 		// lca == l1Latest (if L1 latest is (e.g) a grandfather of ingested block, then why is ingested block's parent not l1 latest)
@@ -151,7 +151,7 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 		)
 		return nil, errors.New("unexpected blockchain state")
 	}
-	return &blockIngestionType{latest: isLatest, fork: false, first: false}, nil
+	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
 func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) *common.BlockSubmissionResponse {
@@ -200,7 +200,6 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 
 	// processing blocks before genesis, so there is nothing to do
 	if genesisRollup == nil && len(rollups) == 0 {
-		rc.storage.StoreL1HeadBlock(b)
 		return nil
 	}
 
@@ -251,7 +250,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 	// calculate and return the new block state
 	// todo change this to an hardcoded hash on testnet/mainnet
 	if genesisRollup == nil && len(rollups) == 1 {
-		rc.logger.Info("Found genesis rollup")
+		rc.logger.Info("Found genesis rollup", "l1Height", b.NumberU64(), "l1Hash", b.Hash())
 
 		genesis := rollups[0]
 		rc.storage.StoreGenesisRollup(genesis)
@@ -463,7 +462,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 		"ingestionType", ingestionType)
 
 	// Only store the block if the L1 chain insertion succeeded
-	stored := rc.storage.StoreL1HeadBlock(&block)
+	stored := rc.storage.StoreBlock(&block)
 	if !stored {
 		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
 	}

@@ -160,6 +160,6 @@ type blockIngestionType struct {
 	// (resulting in rewinding of one or more blocks that we had previously considered canonical)
 	fork bool
 
-	// first is true if the block is the lowest height block we have ingested
-	first bool
+	// preGenesis is true if there is no stored L1 block height
+	preGenesis bool
 }
