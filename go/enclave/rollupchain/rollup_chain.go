@@ -571,9 +571,14 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, fmt.Errorf("required at least 1 params, but received %d", len(paramList))
 	}
 
-	callMsg, err := gethencoding.ExtractEthCall(paramList[0])
+	apiArgs, err := gethencoding.ExtractEthCall(paramList[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
+	}
+
+	callMsg, err := apiArgs.ToMessage(0, gethcommon.Big0)
+	if err != nil {
+		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
 	}
 
 	hs := rc.storage.FetchHeadState()
@@ -586,15 +591,15 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		panic("not found")
 	}
 
-	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To.Hex(), callMsg.From.Hex(), hexutils.BytesToHex(callMsg.Data), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
+	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
 	s := rc.storage.CreateStateDB(hs.HeadRollup)
-	result, err := evm.ExecuteOffChainCall(callMsg.From, callMsg.To, callMsg.Data, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
+	result, err := evm.ExecuteOffChainCall(callMsg.From(), callMsg.To(), callMsg.Data(), s, r.Header, rc.storage, rc.chainConfig, rc.logger)
 	// todo - clarify this error handling
 	if err != nil {
 		return nil, err
 	}
 	if result.Failed() {
-		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To.Hex()), log.ErrKey, result.Err)
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
 		return nil, result.Err
 	}
 
@@ -604,7 +609,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if len(result.ReturnData) != 0 {
 		encodedResult = hexutil.Encode(result.ReturnData)
 	}
-	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(callMsg.From, []byte(encodedResult))
+	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(callMsg.From(), []byte(encodedResult))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
 	}

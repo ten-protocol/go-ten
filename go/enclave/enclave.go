@@ -562,7 +562,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 
 	// encrypt the gas cost with the callMsg.From viewing key
 	// TODO hook up the evm gas estimation
-	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(callMsg.From, []byte(hexutil.EncodeUint64(5_000_000_000)))
+	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(*callMsg.From, []byte(hexutil.EncodeUint64(5_000_000_000)))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_estimateGas request. Cause: %w", err)
 	}
