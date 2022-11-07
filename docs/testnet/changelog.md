@@ -1,5 +1,10 @@
 # Obscuro Testnet Change Log
 
+## Novemeber 2022-10-08 (v0.6)
+  * Calls to wait for a transaction receipt are now blocking, whereas previous they would return an error meaning the 
+    client side code needed to perform a specific wait and poll loop. The example on how to programmatically deploy
+    a contract has been updated accordingly. 
+
 ## October 2022-10-21 (v0.5)
 * Event Subscriptions:
   * Event subscriptions for logs are now supported via the eth_subscribe and eth_getLogs approaches. This has been 
