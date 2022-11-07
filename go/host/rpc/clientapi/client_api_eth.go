@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common/host"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/host"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // EthereumAPI implements a subset of the Ethereum JSON RPC operations. All the method signatures are copied from the
@@ -33,7 +33,11 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 
 // BlockNumber returns the height of the current head rollup.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	number := api.host.DB().GetCurrentRollupHead().Header.Number.Uint64()
+	head := api.host.DB().GetCurrentRollupHead()
+	if head == nil {
+		return 0
+	}
+	number := head.Header.Number.Uint64()
 	return hexutil.Uint64(number)
 }
 

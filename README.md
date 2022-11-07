@@ -280,12 +280,13 @@ written in [go](https://go.dev). Unless otherwise stated, all paths stated herei
 The following dependencies are required to be installed locally;
 
 - [go](https://go.dev) (version > 1.18)
-- [docker](https://docs.docker.com/get-docker/) (recommend latest version)
+- [docker](https://docs.docker.com/get-docker/) (recommend latest version*)
 - [docker compose](https://docs.docker.com/compose/install/) (recommend latest version)
 
 Whilst the recommended version of go is > 1.18, the reference implementation uses _only_ language features up to and 
 including 1.17. Using 1.18 is recommended for easier setup and installation and is backwards compatible with all 1.17 
 language features. 
+> :warning: Docker Desktop version 4.13 is known to have issues on ARM64 systems. If you experience daemon crashes and segmentation faults when running inside containers it is recommended to downgrade. Version 4.12 is the latest known to work.
 
 
 ### Building
@@ -349,12 +350,12 @@ To start the test network locally run the below scripts. Note that it is recomme
 as detailed below. The arguments are set to correspond to valid pre-determined public / private key pair values for 
 contract deployment and roll up publishing. Using these values, and starting with a nonce of zero, means the addresses 
 of the contracts deployed are known a-priori, and so can be supplied in the `start-obscuro-node.sh` script as shown. As 
-only a single Obscuro node is started, it must be set as a genesis node. 
+only a single Obscuro node is started, it must be set as a genesis node and as an aggregator.
 
 ```
 ./testnet-local-gethnetwork.sh --pkaddresses=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944,0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 ./testnet-deploy-contracts.sh --l1host=gethnetwork --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
-./start-obscuro-node.sh --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true
+./start-obscuro-node.sh --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true --node_type=aggregator
 ./testnet-deploy-l2-contracts.sh --l2host=testnet-host-1 
 ```
 
@@ -370,17 +371,38 @@ account on the L1 network used to deploy the Obscuro Management and the ERC20 co
 - `0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF` is the address of the Obscuro Management contract which is known a-priori as a nonce of 0 is used 
 - `0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9` is the address of the ERC20 contract which represents OBX and is known a-priori as a nonce of 1 is used
 - `0x51D43a3Ca257584E770B6188232b199E76B022A2` is the address of the ERC20 contract which represents ETH and is known a-priori as a nonce of 2 is used
-                                
+
+
+### Building and running a local faucet
+Deploying and interacting with contracts on Obscuro requires OBX to be allocated to an account via the faucet. The 
+faucet [repo](https://github.com/obscuronet/faucet) should be cloned, and the container built and started to allow 
+requests to be made to it. To build and run use;
+
+```
+git clone git@github.com:obscuronet/faucet.git
+cd faucet
+./container_build.sh 
+./container_run.sh 
+```
+
+The faucet runs a web server within the container, with a port mapping of 8080 set to allow POST requests to be made to 
+it for an allocation to an externally owned addressed e.g. for the account `0x0d2166b7b3A1522186E809e83d925d7b0B6db084`
+the following curl command can be used;
+
+```bash
+curl --location --request POST 'http://127.0.0.1:8080/fund/obx' \
+--header 'Content-Type: application/json' \
+--data-raw '{ "address":"0x0d2166b7b3A1522186E809e83d925d7b0B6db084" }'
+```
+
 
 ### Deploying contracts into a local testnet
-Deploying and interacting with contracts on Obscuro requires OBX to be allocated to an account via the faucet server, 
-and the wallet extension to be running. For more information on requesting OBX from the faucet server see 
-[docs/testnet/faucet.md](docs/testnet/faucet.md). The wallet extension is the Obscuro component that ensures that 
-sensitive information in RPC requests between client applications and Obscuro cannot be seen by third parties. The 
-wallet extension should be run local to the client application and is described in more detail at 
-[docs/wallet-extension/wallet-extension.md](docs/wallet-extension/wallet-extension.md).
+Deploying and interacting with contracts on Obscuro requires the wallet extension to be running. The wallet extension is 
+the Obscuro component that ensures that sensitive information in RPC requests between client applications and Obscuro 
+cannot be seen by third parties. The wallet extension should be run local to the client application and is described in 
+more detail at [docs/wallet-extension/wallet-extension.md](docs/wallet-extension/wallet-extension.md).
 
-To start the wallet extension to run against a local testnet use the below;
+To start the wallet extension to run against a local testnet, in the go-obscuro repo use the below;
 
 ```
 cd ./tools/walletextension/main/
@@ -388,12 +410,12 @@ go build -o wallet_extension
 ./wallet_extension -nodeHost 127.0.0.1 -nodePortHTTP 13000 -nodePortWS 13001
 ```
 
-Once the wallet extension is running, a contract can be deployed and interacted with either manually using Metamask and Remix (see 
-[docs/testnet/deploying-a-smart-contract.md](docs/testnet/deploying-a-smart-contract.md)) or programmatically e.g. using web3.py
-(see [docs/testnet/deploying-a-smart-contract-programmatically.md](docs/testnet/deploying-a-smart-contract-programmatically.md)). 
+Once the wallet extension is running, a contract can be deployed and interacted with either manually using Metamask and 
+Remix (see[docs/testnet/deploying-a-smart-contract.md](docs/testnet/deploying-a-smart-contract.md)) or programmatically 
+e.g. using web3.py(see [docs/testnet/deploying-a-smart-contract-programmatically.md](docs/testnet/deploying-a-smart-contract-programmatically.md)). 
 
-Note that in order to interact with the main cloud hosted testnet, all that needs to be changed is to start the wallet extension using 
-the default parameters, where the `nodeHost` will default to the testnet host URL `testnet.obscu.ro` i.e. 
+Note that in order to interact with the main cloud hosted testnet, all that needs to be changed is to start the wallet 
+extension using the default parameters, where the `nodeHost` will default to the testnet host URL `testnet.obscu.ro` i.e. 
 
 ```
 cd ./tools/walletextension/main/

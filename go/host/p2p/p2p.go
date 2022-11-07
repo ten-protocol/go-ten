@@ -8,7 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/obscuronet/go-obscuro/go/common/host"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -27,7 +29,6 @@ type msgType uint8
 
 const (
 	msgTypeTx msgType = iota
-	msgTypeRollup
 )
 
 // Message associates an encoded message to its type.
@@ -37,12 +38,13 @@ type Message struct {
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config config.HostConfig) host.P2P {
+func NewSocketP2PLayer(config config.HostConfig, logger gethlog.Logger) host.P2P {
 	return &p2pImpl{
 		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},
 		nodeID:        common.ShortAddress(config.ID),
 		p2pTimeout:    config.P2PConnectionTimeout,
+		logger:        logger,
 	}
 }
 
@@ -53,16 +55,17 @@ type p2pImpl struct {
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
 	nodeID            uint64
 	p2pTimeout        time.Duration
+	logger            gethlog.Logger
 }
 
 func (p *p2pImpl) StartListening(callback host.Host) {
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.ourAddress)
 	if err != nil {
-		log.Panic("could not listen for P2P connections on %s. Cause: %s", p.ourAddress, err)
+		p.logger.Crit(fmt.Sprintf("could not listen for P2P connections on %s.", p.ourAddress), log.ErrKey, err)
 	}
 
-	common.LogWithID(p.nodeID, "Started listening on port: %s", p.ourAddress)
+	p.logger.Info(fmt.Sprintf("Started listening on port: %s", p.ourAddress))
 	i := int32(0)
 	p.listenerInterrupt = &i
 	p.listener = listener
@@ -80,17 +83,12 @@ func (p *p2pImpl) StopListening() error {
 }
 
 func (p *p2pImpl) UpdatePeerList(newPeers []string) {
-	log.Info("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers)
+	p.logger.Info(fmt.Sprintf("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers))
 	p.peerAddresses = newPeers
 }
 
 func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
 	msg := Message{Type: msgTypeTx, Contents: tx}
-	return p.broadcast(msg)
-}
-
-func (p *p2pImpl) BroadcastRollup(r common.EncodedRollup) error {
-	msg := Message{Type: msgTypeRollup, Contents: r}
 	return p.broadcast(msg)
 }
 
@@ -100,7 +98,7 @@ func (p *p2pImpl) handleConnections(callback host.Host) {
 		conn, err := p.listener.Accept()
 		if err != nil {
 			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
-				common.WarnWithID(p.nodeID, "host could not form P2P connection: %s", err)
+				p.logger.Warn("host could not form P2P connection", log.ErrKey, err)
 			}
 			return
 		}
@@ -116,14 +114,14 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 
 	encodedMsg, err := io.ReadAll(conn)
 	if err != nil {
-		common.WarnWithID(p.nodeID, "failed to read message from peer: %v", err)
+		p.logger.Warn("failed to read message from peer", log.ErrKey, err)
 		return
 	}
 
 	msg := Message{}
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
-		common.WarnWithID(p.nodeID, "failed to decode message received from peer: %v", err)
+		p.logger.Warn("failed to decode message received from peer: ", log.ErrKey, err)
 		return
 	}
 
@@ -131,14 +129,6 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	case msgTypeTx:
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		callback.ReceiveTx(msg.Contents)
-	case msgTypeRollup:
-		// We check that the rollup decodes correctly.
-		if err = rlp.DecodeBytes(msg.Contents, &common.EncryptedRollup{}); err != nil {
-			common.WarnWithID(p.nodeID, "failed to decode rollup received from peer: %v", err)
-			return
-		}
-
-		callback.ReceiveRollup(msg.Contents)
 	}
 }
 
@@ -168,12 +158,12 @@ func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
 		defer conn.Close()
 	}
 	if err != nil {
-		common.WarnWithID(p.nodeID, "could not connect to peer on address %s: %v", address, err)
+		p.logger.Warn(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
 		return
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
-		common.WarnWithID(p.nodeID, "could not send message to peer on address %s: %v", address, err)
+		p.logger.Warn(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
 	}
 }

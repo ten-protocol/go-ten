@@ -122,3 +122,6 @@ Assuming we solve the claiming problem, the question is how much should a node r
 What amount would make running an L2 node that offers a useful service a reasonably profitable business?
 Is that amount sustainable from the fees collected by the network? Is thre any help required from the foundation?
 
+
+## Known problems 
+- this mechanism creates the incentive for verifiers to DoS attack other verifiers, to get more business for themselves

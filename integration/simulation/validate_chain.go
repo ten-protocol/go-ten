@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
@@ -129,6 +132,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		dups := findRollupDups(rollups)
 		t.Errorf("Node %d: Found Rollup duplicates: %v", nodeAddr, dups)
 	}
+
 	if s.Stats.TotalDepositedAmount.Cmp(totalDeposited) != 0 {
 		t.Errorf("Node %d: Deposit amounts don't match. Found %d , expected %d", nodeAddr, totalDeposited, s.Stats.TotalDepositedAmount)
 	}
@@ -140,18 +144,31 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 
 	// compare the number of reorgs for this node against the height
 	reorgs := s.Stats.NoL1Reorgs[node.Info().L2ID]
-	eff := float64(reorgs) / float64(height)
-	if eff > s.Params.L1EfficiencyThreshold {
+	reorgEfficiency := float64(reorgs) / float64(height)
+	if reorgEfficiency > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d: The number of reorgs is too high: %d. ", nodeAddr, reorgs)
 	}
+
+	// Check that all the rollups are produced by aggregators.
+	for _, rollup := range rollups {
+		aggregatorID, err := strconv.ParseInt(rollup.Header.Agg.Hex()[2:], 16, 64)
+		if err != nil {
+			t.Errorf("Node %d: Could not parse node's integer ID. Cause: %s", nodeAddr, err)
+			continue
+		}
+		if network.GetNodeType(int(aggregatorID)) != common.Aggregator {
+			t.Errorf("Node %d: Found rollup produced by non-aggregator %d", nodeAddr, aggregatorID)
+		}
+	}
+
 	return height
 }
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
 // between the start block and the end block.
-func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation) ([]gethcommon.Hash, []common.L2RootHash, *big.Int, int) {
+func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation) ([]gethcommon.Hash, []*common.ExtRollupWithHash, *big.Int, int) {
 	deposits := make([]gethcommon.Hash, 0)
-	rollups := make([]common.L2RootHash, 0)
+	rollups := make([]*common.ExtRollupWithHash, 0)
 	totalDeposited := big.NewInt(0)
 
 	blockchain := node.BlocksBetween(startBlock, endBlock)
@@ -172,9 +189,9 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 			case *ethadapter.L1RollupTx:
 				r, err := common.DecodeRollup(l1tx.Rollup)
 				if err != nil {
-					log.Panic("could not decode rollup. Cause: %s", err)
+					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
-				rollups = append(rollups, r.Hash())
+				rollups = append(rollups, r)
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
@@ -190,7 +207,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	defer wg.Done()
 	var nodeID gethcommon.Address
 	nodeClient := rpcHandles.ObscuroClients[nodeIdx]
-	err := nodeClient.Call(&nodeID, rpc.RPCGetID)
+	err := nodeClient.Call(&nodeID, rpc.GetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}
@@ -351,7 +368,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		}
 
 		if receipt.Status == types.ReceiptStatusFailed {
-			log.Info("Transaction %s failed.", tx.Hash().Hex())
+			testlog.Logger().Info("Transaction failed.", log.TxKey, tx.Hash().Hex())
 		}
 	}
 }

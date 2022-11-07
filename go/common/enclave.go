@@ -1,6 +1,8 @@
 package common
 
 import (
+	"fmt"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -31,7 +33,7 @@ type Enclave interface {
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash gethcommon.Hash) (BlockSubmissionResponse, error)
+	ProduceGenesis(blkHash gethcommon.Hash) (*BlockSubmissionResponse, error)
 
 	// Start - start speculative execution
 	Start(block types.Block) error
@@ -42,10 +44,7 @@ type Enclave interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitBlock(block types.Block, isLatest bool) (BlockSubmissionResponse, error)
-
-	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(rollup ExtRollup) error
+	SubmitBlock(block types.Block, isLatest bool) (*BlockSubmissionResponse, error)
 
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
@@ -56,9 +55,6 @@ type Enclave interface {
 
 	// GetTransactionCount returns the nonce of the wallet with the given address (encrypted with the acc viewing key)
 	GetTransactionCount(encryptedParams EncryptedParamsGetTxCount) (EncryptedResponseGetTxCount, error)
-
-	// RoundWinner - calculates and returns the winner for a round, and whether this node is the winner
-	RoundWinner(parent L2RootHash) (ExtRollup, bool, error)
 
 	// Stop gracefully stops the enclave
 	Stop() error
@@ -111,9 +107,7 @@ type Enclave interface {
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
-	BlockHeader           *types.Header // the header of the consumed block. Todo - only the hash required
-	IngestedBlock         bool          // Whether the Block was ingested or discarded
-	BlockNotIngestedCause string        // The reason the block was not ingested. This message has to not disclose anything useful from the enclave.
+	BlockHeader *types.Header // the header of the consumed block. Todo - only the hash required
 
 	ProducedRollup ExtRollup // The new Rollup when ingesting the block produces a new Rollup
 	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
@@ -122,6 +116,8 @@ type BlockSubmissionResponse struct {
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
 
 	SubscribedLogs map[rpc.ID][]byte // The logs produced by the block and all its ancestors for each subscription ID.
+
+	RejectError *BlockRejectError // this is set if block was rejected, contains information about what block to submit next
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block
@@ -129,4 +125,23 @@ type ProducedSecretResponse struct {
 	Secret      []byte
 	RequesterID gethcommon.Address
 	HostAddress string
+}
+
+// BlockRejectError is used as a standard format for error response from enclave for block submission errors
+// The L1 Head hash tells the host what the enclave knows as the canonical chain head, so it can feed it the appropriate block.
+type BlockRejectError struct {
+	L1Head  gethcommon.Hash
+	Wrapped error
+}
+
+func (r BlockRejectError) Error() string {
+	head := "N/A"
+	if r.L1Head != (gethcommon.Hash{}) {
+		head = r.L1Head.String()
+	}
+	return fmt.Sprintf("%s l1Head=%s", r.Wrapped.Error(), head)
+}
+
+func (r BlockRejectError) Unwrap() error {
+	return r.Wrapped
 }

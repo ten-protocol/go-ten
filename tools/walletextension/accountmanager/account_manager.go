@@ -8,13 +8,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-
-	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -38,12 +40,14 @@ type AccountManager struct {
 	unauthedClient rpc.Client
 	// TODO - Create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
 	accountClients map[gethcommon.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
+	logger         gethlog.Logger
 }
 
-func NewAccountManager(unauthedClient rpc.Client) AccountManager {
+func NewAccountManager(unauthedClient rpc.Client, logger gethlog.Logger) AccountManager {
 	return AccountManager{
 		unauthedClient: unauthedClient,
 		accountClients: make(map[gethcommon.Address]*rpc.EncRPCClient),
+		logger:         logger,
 	}
 }
 
@@ -56,19 +60,19 @@ func (m *AccountManager) AddClient(address gethcommon.Address, client *rpc.EncRP
 // the request with all clients until it succeeds
 func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, userConn userconn.UserConn) error {
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
-	suggestedClient := suggestAccountClient(rpcReq, m.accountClients)
+	suggestedClient := m.suggestAccountClient(rpcReq, m.accountClients)
 
 	switch {
 	case suggestedClient != nil: // use the suggested client if there is one
 		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
 		// 		The call data guessing won't often be wrong but there could be edge-cases there
-		return performRequest(suggestedClient, rpcReq, rpcResp, userConn)
+		return m.performRequest(suggestedClient, rpcReq, rpcResp, userConn)
 
 	case len(m.accountClients) > 0: // try registered clients until there's a successful execution
-		log.Info("appropriate client not found, attempting request with up to %d clients", len(m.accountClients))
+		m.logger.Info(fmt.Sprintf("appropriate client not found, attempting request with up to %d clients", len(m.accountClients)))
 		var err error
 		for _, client := range m.accountClients {
-			err = performRequest(client, rpcReq, rpcResp, userConn)
+			err = m.performRequest(client, rpcReq, rpcResp, userConn)
 			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
 				// request didn't fail, we don't need to continue trying the other clients
 				return nil
@@ -86,7 +90,7 @@ func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, 
 }
 
 // suggestAccountClient works through various methods to try and guess which available client to use for a request, returns nil if none found
-func suggestAccountClient(req *RPCRequest, accClients map[gethcommon.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
+func (m *AccountManager) suggestAccountClient(req *RPCRequest, accClients map[gethcommon.Address]*rpc.EncRPCClient) *rpc.EncRPCClient {
 	if len(accClients) == 1 {
 		for _, client := range accClients {
 			// return the first (and only) client
@@ -100,7 +104,7 @@ func suggestAccountClient(req *RPCRequest, accClients map[gethcommon.Address]*rp
 		return nil
 	}
 
-	if req.Method == rpc.RPCCall {
+	if req.Method == rpc.Call {
 		// check if request params had a "from" address and if we had a client for that address
 		fromClient, found := checkForFromField(paramsMap, accClients)
 		if found {
@@ -207,19 +211,19 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 	return nil, fmt.Errorf("no known account found in data bytes")
 }
 
-func performRequest(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
-	if req.Method == rpc.RPCSubscribe {
-		return executeSubscribe(client, req, resp, userConn)
+func (m *AccountManager) performRequest(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
+	if req.Method == rpc.Subscribe {
+		return m.executeSubscribe(client, req, resp, userConn)
 	}
 	return executeCall(client, req, resp)
 }
 
-func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
+func (m *AccountManager) executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
 	if len(req.Params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
 	ch := make(chan common.IDAndLog)
-	subscription, err := client.Subscribe(context.Background(), resp, rpc.RPCSubscribeNamespace, ch, req.Params...)
+	subscription, err := client.Subscribe(context.Background(), resp, rpc.SubscribeNamespace, ch, req.Params...)
 	if err != nil {
 		return fmt.Errorf("could not call %s with params %v. Cause: %w", req.Method, req.Params, err)
 	}
@@ -230,20 +234,20 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, resp *interface
 			select {
 			case idAndLog := <-ch:
 				if userConn.IsClosed() {
-					log.Info("received log but websocket was closed on subscription %s", idAndLog.SubID)
+					m.logger.Info("received log but websocket was closed on subscription", log.SubIDKey, idAndLog.SubID)
 					return
 				}
 
 				jsonResponse, err := prepareLogResponse(idAndLog)
 				if err != nil {
-					log.Error("could not marshal log response to JSON on subscription %s. Cause: %s", idAndLog.SubID, err)
+					m.logger.Error("could not marshal log response to JSON on subscription.", log.SubIDKey, idAndLog.SubID, log.ErrKey, err)
 					continue
 				}
 
-				log.Info("Forwarding log from Obscuro node on subscription %s: %s", idAndLog.SubID, jsonResponse)
+				m.logger.Trace(fmt.Sprintf("Forwarding log from Obscuro node: %s", jsonResponse), log.SubIDKey, idAndLog.SubID)
 				err = userConn.WriteResponse(jsonResponse)
 				if err != nil {
-					log.Error("could not write the JSON log to the websocket on subscription %s. Cause: %s", idAndLog.SubID, err)
+					m.logger.Error("could not write the JSON log to the websocket on subscription %", log.SubIDKey, idAndLog.SubID, log.ErrKey, err)
 					continue
 				}
 
@@ -270,7 +274,7 @@ func executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, resp *interface
 }
 
 func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
-	if req.Method == rpc.RPCCall || req.Method == rpc.RPCEstimateGas {
+	if req.Method == rpc.Call || req.Method == rpc.EstimateGas {
 		// Never modify the original request, as it might be reused.
 		req = req.Clone()
 
@@ -284,7 +288,7 @@ func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) e
 		}
 	}
 
-	if req.Method == rpc.RPCGetLogs {
+	if req.Method == rpc.GetLogs {
 		// Never modify the original request, as it might be reused.
 		req = req.Clone()
 
@@ -304,18 +308,18 @@ func setFromFieldIfMissing(args []interface{}, account gethcommon.Address) ([]in
 		return nil, fmt.Errorf("no params found to unmarshal")
 	}
 
-	callMsg, err := gethenconding.ExtractEthCallMapString(args[0])
+	callMsg, err := gethencoding.ExtractEthCallMapString(args[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to marshal callMsg - %w", err)
 	}
 
 	// We only modify `eth_call` requests where the `from` field is not set.
-	if callMsg[gethenconding.CallFieldFrom] != gethcommon.HexToAddress("0x0").Hex() {
+	if callMsg[gethencoding.CallFieldFrom] != gethcommon.HexToAddress("0x0").Hex() {
 		return args, nil
 	}
 
 	// override the existing args
-	callMsg[gethenconding.CallFieldFrom] = account.Hex()
+	callMsg[gethencoding.CallFieldFrom] = account.Hex()
 
 	// do not modify other existing arguments
 	request := []interface{}{callMsg}

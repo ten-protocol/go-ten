@@ -37,8 +37,6 @@ type EnclaveProtoClient interface {
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitBlock(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
-	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(ctx context.Context, in *SubmitRollupRequest, opts ...grpc.CallOption) (*SubmitRollupResponse, error)
 	// SubmitTx - user transactions
 	SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error)
 	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
@@ -46,8 +44,6 @@ type EnclaveProtoClient interface {
 	ExecuteOffChainTransaction(ctx context.Context, in *OffChainRequest, opts ...grpc.CallOption) (*OffChainResponse, error)
 	// GetTransactionCount - returns the nonce of the wallet with the given address.
 	GetTransactionCount(ctx context.Context, in *GetTransactionCountRequest, opts ...grpc.CallOption) (*GetTransactionCountResponse, error)
-	// RoundWinner - calculates and returns the winner for a round
-	RoundWinner(ctx context.Context, in *RoundWinnerRequest, opts ...grpc.CallOption) (*RoundWinnerResponse, error)
 	// Stop gracefully stops the enclave
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
 	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
@@ -142,15 +138,6 @@ func (c *enclaveProtoClient) SubmitBlock(ctx context.Context, in *SubmitBlockReq
 	return out, nil
 }
 
-func (c *enclaveProtoClient) SubmitRollup(ctx context.Context, in *SubmitRollupRequest, opts ...grpc.CallOption) (*SubmitRollupResponse, error) {
-	out := new(SubmitRollupResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/SubmitRollup", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *enclaveProtoClient) SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error) {
 	out := new(SubmitTxResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/SubmitTx", in, out, opts...)
@@ -172,15 +159,6 @@ func (c *enclaveProtoClient) ExecuteOffChainTransaction(ctx context.Context, in 
 func (c *enclaveProtoClient) GetTransactionCount(ctx context.Context, in *GetTransactionCountRequest, opts ...grpc.CallOption) (*GetTransactionCountResponse, error) {
 	out := new(GetTransactionCountResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetTransactionCount", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *enclaveProtoClient) RoundWinner(ctx context.Context, in *RoundWinnerRequest, opts ...grpc.CallOption) (*RoundWinnerResponse, error) {
-	out := new(RoundWinnerResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/RoundWinner", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -309,8 +287,6 @@ type EnclaveProtoServer interface {
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitBlock(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error)
-	// SubmitRollup - receive gossiped rollups
-	SubmitRollup(context.Context, *SubmitRollupRequest) (*SubmitRollupResponse, error)
 	// SubmitTx - user transactions
 	SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error)
 	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
@@ -318,8 +294,6 @@ type EnclaveProtoServer interface {
 	ExecuteOffChainTransaction(context.Context, *OffChainRequest) (*OffChainResponse, error)
 	// GetTransactionCount - returns the nonce of the wallet with the given address.
 	GetTransactionCount(context.Context, *GetTransactionCountRequest) (*GetTransactionCountResponse, error)
-	// RoundWinner - calculates and returns the winner for a round
-	RoundWinner(context.Context, *RoundWinnerRequest) (*RoundWinnerResponse, error)
 	// Stop gracefully stops the enclave
 	Stop(context.Context, *StopRequest) (*StopResponse, error)
 	// GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
@@ -369,9 +343,6 @@ func (UnimplementedEnclaveProtoServer) Start(context.Context, *StartRequest) (*S
 func (UnimplementedEnclaveProtoServer) SubmitBlock(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitBlock not implemented")
 }
-func (UnimplementedEnclaveProtoServer) SubmitRollup(context.Context, *SubmitRollupRequest) (*SubmitRollupResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SubmitRollup not implemented")
-}
 func (UnimplementedEnclaveProtoServer) SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitTx not implemented")
 }
@@ -380,9 +351,6 @@ func (UnimplementedEnclaveProtoServer) ExecuteOffChainTransaction(context.Contex
 }
 func (UnimplementedEnclaveProtoServer) GetTransactionCount(context.Context, *GetTransactionCountRequest) (*GetTransactionCountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTransactionCount not implemented")
-}
-func (UnimplementedEnclaveProtoServer) RoundWinner(context.Context, *RoundWinnerRequest) (*RoundWinnerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RoundWinner not implemented")
 }
 func (UnimplementedEnclaveProtoServer) Stop(context.Context, *StopRequest) (*StopResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
@@ -556,24 +524,6 @@ func _EnclaveProto_SubmitBlock_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveProto_SubmitRollup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SubmitRollupRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).SubmitRollup(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/SubmitRollup",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).SubmitRollup(ctx, req.(*SubmitRollupRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _EnclaveProto_SubmitTx_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SubmitTxRequest)
 	if err := dec(in); err != nil {
@@ -624,24 +574,6 @@ func _EnclaveProto_GetTransactionCount_Handler(srv interface{}, ctx context.Cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).GetTransactionCount(ctx, req.(*GetTransactionCountRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EnclaveProto_RoundWinner_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RoundWinnerRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).RoundWinner(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/RoundWinner",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).RoundWinner(ctx, req.(*RoundWinnerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -880,10 +812,6 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_SubmitBlock_Handler,
 		},
 		{
-			MethodName: "SubmitRollup",
-			Handler:    _EnclaveProto_SubmitRollup_Handler,
-		},
-		{
 			MethodName: "SubmitTx",
 			Handler:    _EnclaveProto_SubmitTx_Handler,
 		},
@@ -894,10 +822,6 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTransactionCount",
 			Handler:    _EnclaveProto_GetTransactionCount_Handler,
-		},
-		{
-			MethodName: "RoundWinner",
-			Handler:    _EnclaveProto_RoundWinner_Handler,
 		},
 		{
 			MethodName: "Stop",

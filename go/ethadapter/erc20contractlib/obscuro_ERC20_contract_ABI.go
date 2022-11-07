@@ -1,9 +1,11 @@
 package erc20contractlib
 
 import (
+	"fmt"
 	"math/big"
 	"strings"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -28,13 +30,13 @@ const (
 	ToField           = "to"
 )
 
-func DecodeTransferTx(t *types.Transaction) (bool, *gethcommon.Address, *big.Int) {
+func DecodeTransferTx(t *types.Transaction, logger gethlog.Logger) (bool, *gethcommon.Address, *big.Int) {
 	if len(t.Data()) < methodBytesLen {
 		return false, nil, nil
 	}
 	method, err := obscuroERC20ContractABIJSON.MethodById(t.Data()[:methodBytesLen])
 	if err != nil {
-		log.Trace("Could not decode tx %s, Err: %s", t.Hash().Hex(), err)
+		logger.Trace(fmt.Sprintf("Could not decode tx %s", t.Hash().Hex()), log.ErrKey, err)
 		return false, nil, nil
 	}
 

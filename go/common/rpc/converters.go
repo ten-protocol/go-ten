@@ -29,7 +29,7 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 	}
 }
 
-func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
+func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
 	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
 
 	subscribedLogBytes, err := json.Marshal(response.SubscribedLogs)
@@ -39,13 +39,21 @@ func ToBlockSubmissionResponseMsg(response common.BlockSubmissionResponse) (gene
 
 	return generated.BlockSubmissionResponseMsg{
 		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
-		IngestedBlock:           response.IngestedBlock,
-		BlockNotIngestedCause:   response.BlockNotIngestedCause,
 		ProducedRollup:          &producedRollupMsg,
 		IngestedNewRollup:       response.FoundNewHead,
 		RollupHead:              ToRollupHeaderMsg(response.RollupHead),
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
+	}, nil
+}
+
+func ToBlockSubmissionRejectionMsg(rejectError *common.BlockRejectError) (generated.BlockSubmissionResponseMsg, error) {
+	errMsg := &generated.BlockSubmissionErrorMsg{
+		Cause:  rejectError.Wrapped.Error(),
+		L1Head: rejectError.L1Head.Bytes(),
+	}
+	return generated.BlockSubmissionResponseMsg{
+		Error: errMsg,
 	}, nil
 }
 
@@ -78,16 +86,14 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 	return respList
 }
 
-func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (common.BlockSubmissionResponse, error) {
+func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (*common.BlockSubmissionResponse, error) {
 	var subscribedLogs map[rpc.ID][]byte
 	if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not unmarshal subscribed logs from JSON. Cause: %w", err)
+		return nil, fmt.Errorf("could not unmarshal subscribed logs from JSON. Cause: %w", err)
 	}
 
-	return common.BlockSubmissionResponse{
+	return &common.BlockSubmissionResponse{
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
-		IngestedBlock:           msg.IngestedBlock,
-		BlockNotIngestedCause:   msg.BlockNotIngestedCause,
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
 		FoundNewHead:            msg.IngestedNewRollup,
 		RollupHead:              FromRollupHeaderMsg(msg.RollupHead),
@@ -132,7 +138,6 @@ func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
 		ParentHash:  header.ParentHash.Bytes(),
 		Node:        header.Agg.Bytes(),
 		Nonce:       []byte{},
-		RollupNonce: header.RollupNonce,
 		Proof:       header.L1Proof.Bytes(),
 		Root:        header.Root.Bytes(),
 		TxHash:      header.TxHash.Bytes(),
@@ -195,7 +200,6 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *common.Header {
 		ParentHash:  gethcommon.BytesToHash(header.ParentHash),
 		Agg:         gethcommon.BytesToAddress(header.Node),
 		Nonce:       types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),
-		RollupNonce: header.RollupNonce,
 		L1Proof:     gethcommon.BytesToHash(header.Proof),
 		Root:        gethcommon.BytesToHash(header.Root),
 		TxHash:      gethcommon.BytesToHash(header.TxHash),

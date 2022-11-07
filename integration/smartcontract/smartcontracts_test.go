@@ -5,6 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -29,6 +33,16 @@ type netInfo struct {
 	gethNetwork *gethnetwork.GethNetwork
 }
 
+var testLogs = "../.build/noderunner/"
+
+func init() { //nolint:gochecknoinits
+	testlog.Setup(&testlog.Cfg{
+		LogDir:      testLogs,
+		TestType:    "noderunner",
+		TestSubtype: "test",
+	})
+}
+
 // runGethNetwork runs a geth network with one prefunded wallet
 func runGethNetwork(t *testing.T) *netInfo {
 	// make sure the geth network binaries exist
@@ -41,17 +55,10 @@ func runGethNetwork(t *testing.T) *netInfo {
 	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
 
 	// define + run the network
-	gethNetwork := gethnetwork.NewGethNetwork(
-		integration.StartPortSmartContractTests,
-		integration.StartPortSmartContractTests+100,
-		path,
-		3,
-		1,
-		[]string{workerWallet.Address().String()},
-	)
+	gethNetwork := gethnetwork.NewGethNetwork(integration.StartPortSmartContractTests, integration.StartPortSmartContractTests+100, path, 3, 1, []string{workerWallet.Address().String()}, "", int(log.LvlInfo))
 
 	// create a client that is connected to node 0 of the network
-	client, err := ethadapter.NewEthClient("127.0.0.1", gethNetwork.WebSocketPorts[0], 30*time.Second, gethcommon.HexToAddress("0x0"))
+	client, err := ethadapter.NewEthClient("127.0.0.1", gethNetwork.WebSocketPorts[0], 30*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
 		return nil
 	}
@@ -94,7 +101,7 @@ func TestManagementContract(t *testing.T) {
 
 			// run the test using the new contract, but same wallet
 			test(t,
-				newDebugMgmtContractLib(*contractAddr, client.EthClient(), mgmtcontractlib.NewMgmtContractLib(contractAddr)),
+				newDebugMgmtContractLib(*contractAddr, client.EthClient(), mgmtcontractlib.NewMgmtContractLib(contractAddr, testlog.Logger())),
 				w,
 				client,
 			)
@@ -589,7 +596,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	}
 
 	// inserts a fork ( two rollups at same height / same parent )
-	splitPoint := make([]common.EncryptedRollup, 2)
+	splitPoint := make([]common.ExtRollupWithHash, 2)
 	for i := 0; i < 2; i++ {
 		r := datagenerator.RandomRollup()
 		r.Header.Agg = aggAID
@@ -609,7 +616,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	}
 
 	// create the fork
-	forks := make([]common.EncryptedRollup, 2)
+	forks := make([]common.ExtRollupWithHash, 2)
 	for i, parentRollup := range splitPoint {
 		r := datagenerator.RandomRollup()
 		r.Header.Agg = aggAID

@@ -13,12 +13,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/obscuronet/go-obscuro/go/host/node"
 	"github.com/obscuronet/go-obscuro/integration"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -56,7 +60,10 @@ func createWalExtCfg() *walletextension.Config {
 }
 
 func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
-	walExt := walletextension.NewWalletExtension(*walExtCfg)
+	// todo - log somewhere else?
+	logger := log.New(log.WalletExtCmp, int(gethlog.LvlInfo), log.SysOut)
+
+	walExt := walletextension.NewWalletExtension(*walExtCfg, logger)
 	t.Cleanup(walExt.Shutdown)
 	go walExt.Serve(common.Localhost, walExtPort, walExtPortWS)
 
@@ -78,14 +85,14 @@ func createDummyHost(t *testing.T) {
 	rpcServerNode, err := gethnode.New(&cfg)
 	rpcServerNode.RegisterAPIs([]gethrpc.API{
 		{
-			Namespace: node.APINamespaceObscuro,
-			Version:   node.APIVersion1,
+			Namespace: host.APINamespaceObscuro,
+			Version:   host.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},
 		{
-			Namespace: node.APINamespaceEth,
-			Version:   node.APIVersion1,
+			Namespace: host.APINamespaceEth,
+			Version:   host.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},

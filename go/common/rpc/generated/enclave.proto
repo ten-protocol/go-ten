@@ -32,9 +32,6 @@ service EnclaveProto {
   // submitting a block before receiving ancestors of it, will result in it being ignored
   rpc SubmitBlock(SubmitBlockRequest) returns (SubmitBlockResponse) {}
 
-  // SubmitRollup - receive gossiped rollups
-  rpc SubmitRollup(SubmitRollupRequest) returns (SubmitRollupResponse) {}
-
   // SubmitTx - user transactions
   rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
 
@@ -44,9 +41,6 @@ service EnclaveProto {
 
   // GetTransactionCount - returns the nonce of the wallet with the given address.
   rpc GetTransactionCount(GetTransactionCountRequest) returns (GetTransactionCountResponse) {}
-
-  // RoundWinner - calculates and returns the winner for a round
-  rpc RoundWinner(RoundWinnerRequest) returns (RoundWinnerResponse) {}
 
   // Stop gracefully stops the enclave
   rpc Stop(StopRequest) returns (StopResponse) {}
@@ -125,11 +119,6 @@ message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
 }
 
-message SubmitRollupRequest {
-  ExtRollupMsg extRollup = 1;
-}
-message SubmitRollupResponse {}
-
 message SubmitTxRequest {
   bytes encryptedTx = 1;
 }
@@ -151,14 +140,6 @@ message GetTransactionCountRequest {
 message GetTransactionCountResponse {
   bytes result = 1;
   string error = 2;
-}
-
-message RoundWinnerRequest {
-  bytes parent = 1;
-}
-message RoundWinnerResponse {
-  bool winner = 1;
-  ExtRollupMsg extRollup = 2;
 }
 
 message StopRequest {}
@@ -244,14 +225,16 @@ message AttestationReportMsg {
 
 message BlockSubmissionResponseMsg {
   BlockHeaderMsg blockHeader = 1;
-  bool ingestedBlock = 2;
-  string blockNotIngestedCause = 3;
-
-  ExtRollupMsg producedRollup = 4;
-  bool ingestedNewRollup = 5;
-  HeaderMsg rollupHead = 6;
-  repeated SecretResponseMsg producedSecretResponses = 7;
-  bytes subscribedLogs = 8;
+  ExtRollupMsg producedRollup = 2;
+  bool ingestedNewRollup = 3;
+  HeaderMsg rollupHead = 4;
+  repeated SecretResponseMsg producedSecretResponses = 5;
+  bytes subscribedLogs = 6;
+  BlockSubmissionErrorMsg error = 7; // todo: avoid errors in Response objects, perhaps using gRPC Status responses
+}
+message BlockSubmissionErrorMsg {
+  string cause = 1; // error cause description
+  bytes l1Head = 2; // hash for the L1 head block in enclave's view of the canonical chain
 }
 
 message ExtRollupMsg {

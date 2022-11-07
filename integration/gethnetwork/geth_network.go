@@ -17,6 +17,8 @@ import (
 	"sync"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
@@ -27,7 +29,7 @@ const (
 
 	genesisFileName = "genesis.json"
 	ipcFileName     = "geth.ipc"
-	logFile         = "node_logs.txt"
+	logFileName     = "node_logs.txt"
 	passwordFile    = "password.txt"
 	password        = "password"
 
@@ -86,7 +88,7 @@ const (
 	  },
 	  "alloc": {
 		"0x323AefbFC16159655514846a9e5433C457de9389": {
-		  "balance": "1000000000000000000000"
+		  "balance": "1000000000000000000000000"
 		},
 %s
 	  },
@@ -100,7 +102,7 @@ const (
 	  "timestamp": "0x00"
   }`
 	addrBlockTemplate = `		"%s": {
-		  "balance": "1000000000000000000000"
+		  "balance": "1000000000000000000000000"
 		}`
 	genesisJSONAddrKey = "address"
 )
@@ -114,19 +116,20 @@ type GethNetwork struct {
 	dataDirs         []string
 	addresses        []string      // The public keys of the nodes' accounts.
 	nodesProcs       []*os.Process // The running Geth node processes.
-	logFile          *os.File
+	logFile          io.Writer
 	passwordFilePath string // The path to the file storing the password to unlock node accounts.
 	WebSocketPorts   []uint // Ports exposed by the geth nodes for
 	commStartPort    int
 	wsStartPort      int
 	blockTimeSecs    int
 	id               int64 // A random ID used to identify the network in logging.
+	logger           gethlog.Logger
 }
 
 // NewGethNetwork returns an Ethereum network with numNodes nodes using the provided Geth binary and allows for prefunding addresses.
 // The network uses the Clique consensus algorithm, producing a block every blockTimeSecs.
 // A portStart is required for running multiple networks in the same host ( specially useful for unit tests )
-func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string) *GethNetwork {
+func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string, numNodes int, blockTimeSecs int, preFundedAddrs []string, logPathParam string, logLevel int) *GethNetwork {
 	err := ensurePortsAreAvailable(portStart, websocketPortStart, numNodes)
 	if err != nil {
 		panic(err)
@@ -152,9 +155,22 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	if err != nil {
 		panic(err)
 	}
-	logFile, err := os.Create(path.Join(buildDir, logFile))
-	if err != nil {
-		panic(err)
+
+	logPath := log.SysOut
+	logFile := os.Stdout
+	// In case there is no `logPathParam` passed in, logging defaults to a standard file in the current folder
+	if logPathParam == "" {
+		logPath = path.Join(buildDir, logFileName)
+		logFile, err = os.Create(logPath)
+		if err != nil {
+			panic(err)
+		}
+	} else if logPathParam != log.SysOut {
+		logPath = logPathParam
+		logFile, err = os.Create(logPath)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// We create a password file to unlock the node accounts.
@@ -172,6 +188,8 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		panic(err)
 	}
 
+	logger := log.New(log.TestGethNetwCmp, logLevel, logPath, log.NetworkIDKey, networkID.Int64())
+
 	network := GethNetwork{
 		gethBinaryPath:   gethBinaryPath,
 		dataDirs:         dataDirs,
@@ -184,6 +202,7 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 		wsStartPort:      websocketPortStart,
 		blockTimeSecs:    blockTimeSecs,
 		id:               networkID.Int64(),
+		logger:           logger,
 	}
 
 	// We create an account for each node.
@@ -199,9 +218,12 @@ func NewGethNetwork(portStart int, websocketPortStart int, gethBinaryPath string
 	wg.Wait()
 
 	// We generate the genesis config file based on the accounts above and the prefunded addresses.
-	allocs := make([]string, numNodes+len(preFundedAddrs))
-	for i, addr := range append(network.addresses, preFundedAddrs...) {
-		allocs[i] = fmt.Sprintf(addrBlockTemplate, addr)
+	allocs := make([]string, 0)
+	for _, addr := range network.addresses {
+		allocs = append(allocs, fmt.Sprintf(addrBlockTemplate, addr))
+	}
+	for _, addr := range preFundedAddrs {
+		allocs = append(allocs, fmt.Sprintf(addrBlockTemplate, addr))
 	}
 	network.GenesisJSON = []byte(
 		fmt.Sprintf(genesisJSONTemplate, blockTimeSecs, strings.Join(allocs, ",\r\n"), strings.Join(network.addresses, "")),
@@ -307,13 +329,13 @@ func (network *GethNetwork) StopNodes() {
 				defer wg.Done()
 				err := process.Kill()
 				if err != nil {
-					log.Error("geth node could not be killed: %s", err)
+					network.logger.Error("geth node could not be killed", log.ErrKey, err)
 				}
 				_, err = process.Wait()
 				if err != nil {
-					log.Error("geth node was killed successfully but did not exit: %s", err)
+					network.logger.Error("geth node was killed successfully but did not exit", log.ErrKey, err)
 				} else {
-					fmt.Printf("Geth node %d on network %d stopped.\n", nodeNumber, network.id)
+					network.logger.Info(fmt.Sprintf("Geth node %d on network %d stopped.", nodeNumber, network.id))
 				}
 			}(process, idx)
 		}
@@ -404,7 +426,7 @@ func (network *GethNetwork) startMiner(dataDirPath string, idx int) error {
 
 	network.nodesProcs[idx] = cmd.Process
 	network.WebSocketPorts[idx] = uint(webSocketPort)
-	fmt.Printf("Geth node %d on network %d started on ports %d (WebSocket) and %d (HTTP).\n", idx, network.id, webSocketPort, httpPort)
+	network.logger.Info(fmt.Sprintf("Geth node %d on network %d started on ports %d (WebSocket) and %d (HTTP).\n", idx, network.id, webSocketPort, httpPort))
 	return nil
 }
 
@@ -414,7 +436,7 @@ func (network *GethNetwork) logNodeID(idx int) io.Writer {
 	go func() {
 		sc := bufio.NewScanner(r)
 		for sc.Scan() {
-			_, _ = network.logFile.WriteString(fmt.Sprintf("EthNode-%d: %s\n", idx, sc.Text()))
+			_, _ = network.logFile.Write([]byte(fmt.Sprintf("EthNode-%d: %s\n", idx, sc.Text())))
 		}
 	}()
 	return w
@@ -439,7 +461,7 @@ func (network *GethNetwork) waitForIPC(dataDir string) {
 		}
 
 		if counter > 20 {
-			log.Trace("Waiting for .ipc file of node at %s", dataDir)
+			network.logger.Trace(fmt.Sprintf("Waiting for .ipc file of node at %s", dataDir))
 			totalCounter += counter
 			counter = 0
 		}
@@ -471,9 +493,6 @@ func ensurePortsAreAvailable(startPort int, websocketStartPort int, numberNodes 
 
 func isPortAvailable(port int) bool {
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		log.Error("Listen port %d. Err: %s. ", port, err)
-	}
 	if ln != nil {
 		_ = ln.Close()
 	}

@@ -3,8 +3,13 @@ package enclave
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
+
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
@@ -24,36 +29,31 @@ import (
 // Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
 type server struct {
 	generated.UnimplementedEnclaveProtoServer
-	enclave     common.Enclave
-	rpcServer   *grpc.Server
-	nodeShortID uint64
+	enclave   common.Enclave
+	rpcServer *grpc.Server
+	logger    gethlog.Logger
 }
 
 // StartServer starts a server on the given port on a separate thread. It creates an enclave.Enclave for the provided nodeID,
 // and uses it to respond to incoming RPC messages from the host.
-func StartServer(
-	enclaveConfig config.EnclaveConfig,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	erc20ContractLib erc20contractlib.ERC20ContractLib,
-	collector StatsCollector,
-) (func(), error) {
+func StartServer(enclaveConfig config.EnclaveConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, erc20ContractLib erc20contractlib.ERC20ContractLib, logger gethlog.Logger) (func(), error) {
 	lis, err := net.Listen("tcp", enclaveConfig.Address)
 	if err != nil {
 		return nil, fmt.Errorf("enclave RPC server could not listen on port: %w", err)
 	}
 
 	enclaveServer := server{
-		enclave:     NewEnclave(enclaveConfig, mgmtContractLib, erc20ContractLib, collector),
-		rpcServer:   grpc.NewServer(),
-		nodeShortID: common.ShortAddress(enclaveConfig.HostID),
+		enclave:   NewEnclave(enclaveConfig, mgmtContractLib, erc20ContractLib, logger),
+		rpcServer: grpc.NewServer(),
+		logger:    logger,
 	}
 	generated.RegisterEnclaveProtoServer(enclaveServer.rpcServer, &enclaveServer)
 
 	go func(lis net.Listener) {
-		common.LogWithID(enclaveServer.nodeShortID, "Enclave server listening on address %s.", enclaveConfig.Address)
+		logger.Info(fmt.Sprintf("Enclave server listening on address %s.", enclaveConfig.Address))
 		err = enclaveServer.rpcServer.Serve(lis)
 		if err != nil {
-			common.LogWithID(enclaveServer.nodeShortID, "enclave RPC server could not serve: %s", err)
+			logger.Info("enclave RPC server could not serve", log.ErrKey, err)
 		}
 	}(lis)
 
@@ -126,6 +126,17 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 	bl := s.decodeBlock(request.EncodedBlock)
 	blockSubmissionResponse, err := s.enclave.SubmitBlock(bl, request.IsLatest)
 	if err != nil {
+		var rejErr common.BlockRejectError
+		isReject := errors.As(err, &rejErr)
+		if isReject {
+			// todo: we should avoid errors in response messages and use the gRPC error objects for this stuff (standardized across all enclave responses)
+			msg, err := rpc.ToBlockSubmissionRejectionMsg(&rejErr)
+			if err == nil {
+				// send back reject err response
+				return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
+			}
+			s.logger.Warn("failed to process the BlockRejectError, falling back to original error")
+		}
 		return nil, err
 	}
 
@@ -134,15 +145,6 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 		return nil, err
 	}
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
-}
-
-func (s *server) SubmitRollup(_ context.Context, request *generated.SubmitRollupRequest) (*generated.SubmitRollupResponse, error) {
-	extRollup := rpc.FromExtRollupMsg(request.ExtRollup)
-	err := s.enclave.SubmitRollup(extRollup)
-	if err != nil {
-		return nil, err
-	}
-	return &generated.SubmitRollupResponse{}, nil
 }
 
 func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
@@ -171,15 +173,6 @@ func (s *server) GetTransactionCount(_ context.Context, request *generated.GetTr
 		return nil, err
 	}
 	return &generated.GetTransactionCountResponse{Result: result}, nil
-}
-
-func (s *server) RoundWinner(_ context.Context, request *generated.RoundWinnerRequest) (*generated.RoundWinnerResponse, error) {
-	extRollup, winner, err := s.enclave.RoundWinner(gethcommon.BytesToHash(request.Parent))
-	if err != nil {
-		return nil, err
-	}
-	extRollupMsg := rpc.ToExtRollupMsg(&extRollup)
-	return &generated.RoundWinnerResponse{Winner: winner, ExtRollup: &extRollupMsg}, nil
 }
 
 func (s *server) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
@@ -271,7 +264,7 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)
 	if err != nil {
-		common.LogWithID(s.nodeShortID, "failed to decode block sent to enclave: %v", err)
+		s.logger.Info("failed to decode block sent to enclave", log.ErrKey, err)
 	}
 	return block
 }

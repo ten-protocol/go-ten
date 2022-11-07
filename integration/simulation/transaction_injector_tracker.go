@@ -61,7 +61,7 @@ func (m *txInjectorTracker) GetL2Transactions() ([]*common.L2Tx, []*common.L2Tx)
 func (m *txInjectorTracker) GetL2WithdrawalRequests() []common.Withdrawal {
 	withdrawals := make([]common.Withdrawal, 0)
 	for _, req := range m.WithdrawalL2Transactions {
-		found, address, amount := erc20contractlib.DecodeTransferTx(req)
+		found, address, amount := erc20contractlib.DecodeTransferTx(req, nil)
 		if !found {
 			panic("Should not happen")
 		}

@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
 
 #
-# This script downloads and builds the obscuro node
+# This script downloads and builds the Obscuro node.
 #
-# Note: Be aware that a network MUST always have AT LEAST ONE Genesis node -> Flag is_genesis=true
-#       Otherwise you might see your node getting stuck in waiting for a secret
+# Note: Be aware that a network MUST always have EXACTLY ONE genesis node (i.e. with flag `is_genesis=true`);
+# otherwise, your node wil spin forever waiting for the network secret. In addition, a network MUST always have AT
+# LEAST ONE aggregator (i.e. with flag `node_type=aggregator`); otherwise no rollups will be produced. In addition, the
+# genesis node MUST be one of the aggregators.
 #
 
 help_and_exit() {
     echo ""
     echo "Usage: "
-    echo "   ex: (run locally)"
-    echo "      -  $(basename "${0}") --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true"
+    echo "   ex: (run locally to internal l1 on local SGX NON capable hardware)"
+    echo "      -  $(basename "${0}") --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true --node_type=aggregator"
     echo ""
-    echo "   ex: (run connect external)"
-    echo "      -  $(basename "${0}") --sgx_enabled=true --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2"
+    echo "   ex: (run connected to an external l1 on local SGX capable hardware)"
+    echo "      -  $(basename "${0}") --sgx_enabled=true --host_id=0x0000000000000000000000000000000000000001 --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --node_type=aggregator"
     echo ""
     echo "  host_id            *Required* Set the node ID"
     echo ""
@@ -36,7 +38,9 @@ help_and_exit() {
     echo ""
     echo "  is_genesis         *Optional* Set the node as genesis node. Defaults to false"
     echo ""
-    echo "  log_level          *Optional* Sets the log level. Defaults to warn."
+    echo "  node_type          *Optional* Set the node's type. Defaults to validator"
+    echo ""
+    echo "  log_level          *Optional* Sets the log level. Defaults to 2 (warn)."
     echo ""
     echo "  p2p_public_address *Optional* Set host p2p public address. Defaults to 127.0.0.1:10000"
     echo ""
@@ -60,13 +64,14 @@ testnet_path="${start_path}"
 # Define defaults
 l1_port=9000
 is_genesis=false
+node_type=validator
 profiler_enabled=false
 p2p_public_address="127.0.0.1:10000"
 debug_enclave=false
 dev_testnet=false
 pk_address=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
-log_level="warn"
+log_level=4
 
 
 # Fetch options
@@ -86,6 +91,7 @@ do
             --pkstring)                 pk_string=${value} ;;
             --sgx_enabled)              sgx_enabled=${value} ;;
             --is_genesis)               is_genesis=${value} ;;
+            --node_type)                node_type=${value} ;;
             --log_level)                log_level=${value} ;;
             --profiler_enabled)         profiler_enabled=${value} ;;
             --p2p_public_address)       p2p_public_address=${value} ;;
@@ -104,7 +110,7 @@ fi
 
 
 # set the data in the env file
-echo "PKSTRING=${pk_string}" > "${testnet_path}/.env"
+echo "PKSTRING=${pk_string}" >> "${testnet_path}/.env"
 echo "PKADDR=${pk_address}" >> "${testnet_path}/.env"
 echo "HOSTID=${host_id}"  >> "${testnet_path}/.env"
 echo "MGMTCONTRACTADDR=${mgmt_contract_addr}"  >> "${testnet_path}/.env"
@@ -113,6 +119,7 @@ echo "POCERC20ADDR=${poc_erc20_addr}"  >> "${testnet_path}/.env"
 echo "L1HOST=${l1_host}" >> "${testnet_path}/.env"
 echo "L1PORT=${l1_port}" >> "${testnet_path}/.env"
 echo "ISGENESIS=${is_genesis}" >> "${testnet_path}/.env"
+echo "NODETYPE=${node_type}" >> "${testnet_path}/.env"
 echo "LOGLEVEL=${log_level}" >> "${testnet_path}/.env"
 echo "PROFILERENABLED=${profiler_enabled}" >> "${testnet_path}/.env"
 echo "P2PPUBLICADDRESS=${p2p_public_address}" >> "${testnet_path}/.env"
@@ -142,3 +149,6 @@ fi
 echo "Starting enclave with DISABLED SGX and host..."
 docker compose -f docker-compose.non-sgx.yml up enclave host -d
 
+echo "Waiting 20s for the node to be up..."
+sleep 20
+echo "Node should be up and running"

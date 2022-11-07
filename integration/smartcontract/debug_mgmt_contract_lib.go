@@ -36,7 +36,7 @@ func newDebugMgmtContractLib(address gethcommon.Address, client *ethereumclient.
 }
 
 // AwaitedIssueRollup speeds ups the issuance of rollup, await of tx to be minted and makes sure the values are correctly stored
-func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.EncryptedRollup, client ethadapter.EthClient, w *debugWallet) error {
+func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollupWithHash, client ethadapter.EthClient, w *debugWallet) error {
 	encodedRollup, err := common.EncodeRollup(&rollup)
 	if err != nil {
 		return err

@@ -19,8 +19,6 @@ type Host interface {
 	Start()
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
 	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
-	// ReceiveRollup processes a rollup received from a peer host.
-	ReceiveRollup(r common.EncodedRollup)
 	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
 	// Subscribe feeds logs matching the encrypted log subscription to the matchedLogs channel.
@@ -48,7 +46,6 @@ type P2P interface {
 	StartListening(callback Host)
 	StopListening() error
 	UpdatePeerList([]string)
-	BroadcastRollup(r common.EncodedRollup) error
 	BroadcastTx(tx common.EncryptedTx) error
 }
 

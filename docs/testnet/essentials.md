@@ -1,21 +1,19 @@
-# Essential Testnet Information
-An easy-to-read list of essential parameters and configuration settings for Obscuro Testnet.
+# Essential Information
+Essential information, parameters and configuration settings for the Evan's Cat testnet.
+
+## Limitations on Evan's Cat
+These are the key limitations to be aware of when developing for the Evan's Cat testnet:
+
+1. New nodes cannot be added. For now the number of Obscuro nodes is fixed.
+1. Data revelation is not implemented yet.
+1. Security is not fully implemented. Some keys are still hardcoded.
+1. The decentralised bridge is limited to two hardcoded ERC20 tokens.
+1. The Layer 1 is currently a hosted network. In the next iteration we'll connect Obscuro to Goerli.
+1. The "Wallet Extension" is not fully polished yet. You can expect a better UX as Obscuro develops
 
 ## Connection to an Obscuro Node
 - **RPC http address:** `testnet.obscu.ro:13000`
 - **RPC websocket address:** `testnet.obscu.ro:13001`
-
-## Custom Network for MetaMask
-- **Network Name:** `Obscuro Testnet`
-- **New RPC URL:** `http://127.0.0.1:3000/`
-- **Chain ID:** `777`
-- **Currency Symbol:** `OBX`
-
-## ObscuroScan
-- **URL:** [http://testnet.obscuroscan.io/](http://testnet.obscuroscan.io/)
-
-## Token Faucet
-The token faucet is available on [Discord](https://discord.gg/5qyj3qraaH). Full guidance on using the faucet is available [here](../testnet/faucet.md).
 
 ## Rollup Encryption/Decryption Key
 The symmetric key used to encrypt and decrypt transaction blobs in rollups on the Obscuro Testnet:
@@ -33,7 +31,7 @@ We have a couple of testnet ERC20 tokens (HOC & POC) that are automatically depl
 testnet is restarted. The bridging mechanism has been setup for these tokens so they can be deposited from and withdrawn
 to their respective ERC20 contracts on the L1.
 
-Please contact us in the discord if you'd like some tokens to test with these contracts (faucet coming soon).
+Please contact us on [Discord](https://discord.gg/qA3FBYyZ) if you'd like some tokens to test with these contracts.
 
 Hocus (HOC):
 

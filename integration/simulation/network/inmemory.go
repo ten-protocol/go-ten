@@ -3,9 +3,9 @@ package network
 import (
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/go/common/host"
 
-	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 
@@ -51,9 +51,11 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgNetworkLatency)
+
 		agg := createInMemObscuroNode(
 			int64(i),
 			isGenesis,
+			GetNodeType(i),
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
 			params.AvgGossipPeriod,
@@ -113,7 +115,7 @@ func (n *basicNetworkOfInMemoryNodes) TearDown() {
 	for _, client := range n.obscuroClients {
 		temp := client
 		go func() {
-			_ = temp.Call(nil, rpc.RPCStopHost)
+			_ = temp.Call(nil, rpc.StopHost)
 			temp.Stop()
 		}()
 	}

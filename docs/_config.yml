@@ -24,7 +24,12 @@ plugins:
   - jekyll-include-cache
   - jekyll-titles-from-headings
   - jekyll-relative-links
-  
+  - jekyll-archives
+
+breadcrumbs: false
+breadcrumb_home_label: "Home"
+breadcrumb_seperator: ">"
+
 titles_from_headings:
   strip_title: true
   

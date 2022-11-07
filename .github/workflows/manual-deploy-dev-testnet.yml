@@ -53,7 +53,7 @@ jobs:
           name: dev-testnet-gethnetwork
           location: 'uksouth'
           restart-policy: 'Never'
-          command-line: /home/go-obscuro/integration/gethnetwork/main/main --blockTimeSecs 15 --numNodes=2 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_2 }}
+          command-line: /home/go-obscuro/integration/gethnetwork/main/main --blockTimeSecs=15 --numNodes=2 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
           # Ports start at 9000 for Websockets and 8000 for Start port and 8025 for Http Port
           # Each node has Port + id
           ports: '8025 8026 9000 9001'
@@ -141,10 +141,15 @@ jobs:
             host_id: 0
           - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
             host_id: 1
-          # Ensure there is a genesis node
+          # Ensure there is a single genesis node
           - is_genesis: true
             host_id: 0
           - is_genesis: false
+            host_id: 1
+          # Ensure there is a single aggregator
+          - node_type: aggregator
+            host_id: 0
+          - node_type: validator
             host_id: 1
 
     steps:
@@ -201,13 +206,14 @@ jobs:
             && cd /home/obscuro/go-obscuro/testnet/ \
             && ./start-obscuro-node.sh \
                --is_genesis=${{ matrix.is_genesis }} \
+               --node_type=${{ matrix.node_type }} \
                --sgx_enabled=true \
                --host_id=${{ matrix.host_addr }} \
                --l1host=${{ github.event.inputs.L1HOST }} \
                --mgmtcontractaddr=${{needs.build-l2.outputs.mgmtContractAddr}} \
                --hocerc20addr=${{needs.build-l2.outputs.hocErc20Addr}} \
                --pocerc20addr=${{needs.build-l2.outputs.pocErc20Addr}} \
-               --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
+               --pkaddress=${{ secrets[matrix.node_pk_addr] }} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --dev_testnet=true \
                --p2p_public_address=dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'

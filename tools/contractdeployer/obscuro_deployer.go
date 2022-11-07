@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -15,14 +17,14 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
-func prepareObscuroDeployer(cfg *Config, wal wallet.Wallet) (contractDeployerClient, error) {
-	client, err := connectClient(getURL(cfg), wal)
+func prepareObscuroDeployer(cfg *Config, wal wallet.Wallet, logger gethlog.Logger) (contractDeployerClient, error) {
+	client, err := connectClient(getURL(cfg), wal, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup obscuro client - %w", err)
 	}
 
 	// todo: this step doesn't belong in the contract_deployer tool, script should fail for underfunded deployer account
-	err = fundDeployerWithFaucet(cfg, client)
+	err = fundDeployerWithFaucet(cfg, client, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fund deployer acc from faucet - %w", err)
 	}
@@ -30,15 +32,15 @@ func prepareObscuroDeployer(cfg *Config, wal wallet.Wallet) (contractDeployerCli
 	return &obscuroDeployer{client: client}, nil
 }
 
-func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient) error {
+func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient, logger gethlog.Logger) error {
 	// Create the L2 faucet wallet and client.
 	faucetPrivKey, err := crypto.HexToECDSA(rollupchain.FaucetPrivateKeyHex)
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}
-	faucetWallet := wallet.NewInMemoryWalletFromPK(cfg.ChainID, faucetPrivKey)
+	faucetWallet := wallet.NewInMemoryWalletFromPK(cfg.ChainID, faucetPrivKey, logger)
 
-	faucetClient, err := connectClient(getURL(cfg), faucetWallet)
+	faucetClient, err := connectClient(getURL(cfg), faucetWallet, logger)
 	if err != nil {
 		return err
 	}
@@ -86,14 +88,14 @@ func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient) error 
 	return nil
 }
 
-func connectClient(url string, wal wallet.Wallet) (*obsclient.AuthObsClient, error) {
+func connectClient(url string, wal wallet.Wallet, logger gethlog.Logger) (*obsclient.AuthObsClient, error) {
 	var client *obsclient.AuthObsClient
 	var err error
 
 	startConnectingTime := time.Now()
 	// since the nodes we are connecting to may have only just started, we retry connection until it is successful
 	for client == nil && time.Since(startConnectingTime) < timeoutWait {
-		client, err = obsclient.DialWithAuth(url, wal)
+		client, err = obsclient.DialWithAuth(url, wal, logger)
 		if err == nil {
 			break // success
 		}

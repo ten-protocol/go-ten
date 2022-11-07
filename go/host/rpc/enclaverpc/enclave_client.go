@@ -8,6 +8,9 @@ import (
 	"fmt"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -32,16 +35,14 @@ type Client struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
 	config      config.HostConfig
-	nodeShortID uint64
+	logger      gethlog.Logger
 }
 
-func NewClient(config config.HostConfig) *Client {
-	nodeShortID := common.ShortAddress(config.ID)
-
+func NewClient(config config.HostConfig, logger gethlog.Logger) *Client {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
 	if err != nil {
-		common.PanicWithID(nodeShortID, "Failed to connect to enclave RPC service. Cause: %s", err)
+		logger.Crit("Failed to connect to enclave RPC service.", log.ErrKey, err)
 	}
 
 	// We wait for the RPC connection to be ready.
@@ -58,14 +59,14 @@ func NewClient(config config.HostConfig) *Client {
 	}
 
 	if currentState != connectivity.Ready {
-		common.PanicWithID(nodeShortID, "RPC connection failed to establish. Current state is %s", currentState)
+		logger.Crit(fmt.Sprintf("RPC connection failed to establish. Current state is %s", currentState))
 	}
 
 	return &Client{
-		generated.NewEnclaveProtoClient(connection),
-		connection,
-		config,
-		nodeShortID,
+		protoClient: generated.NewEnclaveProtoClient(connection),
+		connection:  connection,
+		config:      config,
+		logger:      logger,
 	}
 }
 
@@ -127,18 +128,18 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	return nil
 }
 
-func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmissionResponse, error) {
+func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.ProduceGenesis(timeoutCtx, &generated.ProduceGenesisRequest{BlockHash: blkHash.Bytes()})
 	if err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce genesis block. Cause: %w", err)
+		return nil, fmt.Errorf("could not produce genesis block. Cause: %w", err)
 	}
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce block submission response. Cause: %w", err)
+		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 	}
 	return blockSubmissionResponse, nil
 }
@@ -160,37 +161,31 @@ func (c *Client) Start(block types.Block) error {
 	return nil
 }
 
-func (c *Client) SubmitBlock(block types.Block, isLatest bool) (common.BlockSubmissionResponse, error) {
+func (c *Client) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	var buffer bytes.Buffer
 	if err := block.EncodeRLP(&buffer); err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not encode block. Cause: %w", err)
+		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), IsLatest: isLatest})
 	if err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not submit block. Cause: %w", err)
+		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		return common.BlockSubmissionResponse{}, fmt.Errorf("could not produce block submission response. Cause: %w", err)
+		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
+	}
+	if blockSubmissionResponse.RejectError != nil {
+		return nil, common.BlockRejectError{
+			L1Head:  blockSubmissionResponse.RejectError.L1Head,
+			Wrapped: blockSubmissionResponse.RejectError.Wrapped,
+		}
 	}
 	return blockSubmissionResponse, nil
-}
-
-func (c *Client) SubmitRollup(rollup common.ExtRollup) error {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	extRollupMsg := rpc.ToExtRollupMsg(&rollup)
-	_, err := c.protoClient.SubmitRollup(timeoutCtx, &generated.SubmitRollupRequest{ExtRollup: &extRollupMsg})
-	if err != nil {
-		return fmt.Errorf("could not submit rollup. Cause: %w", err)
-	}
-	return nil
 }
 
 func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -238,21 +233,6 @@ func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTx
 		return nil, errors.New(response.Error)
 	}
 	return response.Result, nil
-}
-
-func (c *Client) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.RoundWinner(timeoutCtx, &generated.RoundWinnerRequest{Parent: parent.Bytes()})
-	if err != nil {
-		return common.ExtRollup{}, false, fmt.Errorf("could not determine round winner. Cause: %w", err)
-	}
-
-	if response.Winner {
-		return rpc.FromExtRollupMsg(response.ExtRollup), true, nil
-	}
-	return common.ExtRollup{}, false, nil
 }
 
 func (c *Client) Stop() error {

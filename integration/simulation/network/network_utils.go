@@ -5,7 +5,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/host/node"
+	commonhost "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/host"
+
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
 
@@ -29,7 +34,6 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/host"
 	"github.com/obscuronet/go-obscuro/go/host/p2p"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 )
@@ -57,6 +61,7 @@ func createMockEthNode(id int64, nrNodes int, avgBlockDuration time.Duration, av
 func createInMemObscuroNode(
 	id int64,
 	isGenesis bool,
+	nodeType common.NodeType,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	stableTokenContractLib erc20contractlib.ERC20ContractLib,
 	avgGossipPeriod time.Duration,
@@ -67,16 +72,19 @@ func createInMemObscuroNode(
 	ethClient ethadapter.EthClient,
 	wallets *params.SimWallets,
 	mockP2P *simp2p.MockP2P,
-) host.MockHost {
+) commonhost.MockHost {
 	hostConfig := config.HostConfig{
 		ID:                  gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,
+		NodeType:            nodeType,
 		GossipRoundDuration: avgGossipPeriod,
 		HasClientRPCHTTP:    false,
+		P2PPublicAddress:    "dummy_address", // Required because the node sanity-checks that this field is not empty at start-up.
 	}
 
 	enclaveConfig := config.EnclaveConfig{
 		HostID:                 hostConfig.ID,
+		NodeType:               nodeType,
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,
 		WillAttest:             false,
@@ -86,18 +94,12 @@ func createInMemObscuroNode(
 		ERC20ContractAddresses: wallets.AllEthAddresses(),
 		MinGasPrice:            big.NewInt(1),
 	}
-	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, stats)
+	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
+	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, enclaveLogger)
 
 	// create an in memory obscuro node
-	inMemNode := node.NewHost(
-		hostConfig,
-		stats,
-		mockP2P,
-		ethClient,
-		enclaveClient,
-		ethWallet,
-		mgmtContractLib,
-	)
+	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
+	inMemNode := host.NewHost(hostConfig, stats, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
 	mockP2P.CurrentNode = inMemNode
 	return inMemNode
 }
@@ -105,6 +107,7 @@ func createInMemObscuroNode(
 func createSocketObscuroNode(
 	id int64,
 	isGenesis bool,
+	nodeType common.NodeType,
 	avgGossipPeriod time.Duration,
 	stats *stats.Stats,
 	p2pAddr string,
@@ -115,10 +118,11 @@ func createSocketObscuroNode(
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	ethClient ethadapter.EthClient,
-) host.Host {
+) commonhost.Host {
 	hostConfig := config.HostConfig{
 		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:              isGenesis,
+		NodeType:               nodeType,
 		GossipRoundDuration:    avgGossipPeriod,
 		HasClientRPCHTTP:       true,
 		ClientRPCPortHTTP:      clientRPCPortHTTP,
@@ -129,25 +133,21 @@ func createSocketObscuroNode(
 		EnclaveRPCTimeout:      ClientRPCTimeout,
 		EnclaveRPCAddress:      enclaveAddr,
 		P2PBindAddress:         p2pAddr,
+		P2PPublicAddress:       p2pAddr,
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,
 	}
 
 	// create an enclave client
-	enclaveClient := enclaverpc.NewClient(hostConfig)
+	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, id))
+
+	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 
 	// create a socket P2P layer
-	nodeP2p := p2p.NewSocketP2PLayer(hostConfig)
+	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
+	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, p2pLogger)
 
-	return node.NewHost(
-		hostConfig,
-		stats,
-		nodeP2p,
-		ethClient,
-		enclaveClient,
-		ethWallet,
-		mgmtContractLib,
-	)
+	return host.NewHost(hostConfig, stats, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {
@@ -161,5 +161,6 @@ func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum
 			span := math.Max(2, float64(nrNodes)) // We handle the special cases of zero or one nodes.
 			return testcommon.RndBtwTime(avgBlockDuration/time.Duration(span), avgBlockDuration*time.Duration(span))
 		},
+		LogFile: testlog.LogFile(),
 	}
 }

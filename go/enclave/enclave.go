@@ -11,21 +11,19 @@ import (
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	"github.com/obscuronet/go-obscuro/go/common/gethenconding"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/params"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
@@ -38,22 +36,14 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
-
-// StatsCollector Todo - replace with a proper framework
-type StatsCollector interface {
-	// L2Recalc registers when a node has to discard the speculative work built on top of the winner of the gossip round.
-	L2Recalc(id gethcommon.Address)
-	RollupWithMoreRecentProof()
-}
 
 type enclaveImpl struct {
 	config               config.EnclaveConfig
-	nodeShortID          uint64
 	storage              db.Storage
 	blockResolver        db.BlockResolver
 	mempool              mempool.Manager
-	statsCollector       StatsCollector
 	l1Blockchain         *gethcore.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
 	bridge               *bridge.Bridge
@@ -61,9 +51,8 @@ type enclaveImpl struct {
 
 	chain *rollupchain.RollupChain
 
-	txCh          chan *common.L2Tx
-	roundWinnerCh chan *core.Rollup
-	exitCh        chan bool
+	txCh   chan *common.L2Tx
+	exitCh chan bool
 
 	// Todo - disabled temporarily until TN1 is released
 	// speculativeWorkInCh  chan bool
@@ -78,40 +67,34 @@ type enclaveImpl struct {
 
 	transactionBlobCrypto crypto.TransactionBlobCrypto
 	profiler              *profiler.Profiler
+	logger                gethlog.Logger
 }
 
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(
-	config config.EnclaveConfig,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	erc20ContractLib erc20contractlib.ERC20ContractLib,
-	collector StatsCollector,
-) common.Enclave {
+func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, erc20ContractLib erc20contractlib.ERC20ContractLib, logger gethlog.Logger) common.Enclave {
 	if len(config.ERC20ContractAddresses) < 2 {
-		log.Panic("failed to initialise enclave. At least two ERC20 contract addresses are required - the HOC " +
+		logger.Crit("failed to initialise enclave. At least two ERC20 contract addresses are required - the HOC " +
 			"ERC20 address and the POC ERC20 address")
 	}
 
 	// todo - add the delay: N hashes
 
-	nodeShortID := common.ShortAddress(config.HostID)
-
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
-		prof = profiler.NewProfiler(profiler.DefaultEnclavePort)
+		prof = profiler.NewProfiler(profiler.DefaultEnclavePort, logger)
 		err := prof.Start()
 		if err != nil {
-			log.Panic("unable to start the profiler: %s", err)
+			logger.Crit("unable to start the profiler", log.ErrKey, err)
 		}
 	}
 
 	// Initialise the database
-	backingDB, err := db.CreateDBFromConfig(nodeShortID, config)
+	backingDB, err := db.CreateDBFromConfig(config, logger)
 	if err != nil {
-		log.Panic("Failed to connect to backing database - %s", err)
+		logger.Crit("Failed to connect to backing database", log.ErrKey, err)
 	}
 	chainConfig := params.ChainConfig{
 		ChainID:             big.NewInt(config.ObscuroChainID),
@@ -128,18 +111,18 @@ func NewEnclave(
 		BerlinBlock:         gethcommon.Big0,
 		LondonBlock:         gethcommon.Big0,
 	}
-	storage := db.NewStorage(backingDB, nodeShortID, &chainConfig)
+	storage := db.NewStorage(backingDB, &chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// Todo - check the minimum difficulty parameter
 	var l1Blockchain *gethcore.BlockChain
 	if config.ValidateL1Blocks {
 		if config.GenesisJSON == nil {
-			log.Panic("enclave is configured to validate blocks, but genesis JSON is nil")
+			logger.Crit("enclave is configured to validate blocks, but genesis JSON is nil")
 		}
-		l1Blockchain = rollupchain.NewL1Blockchain(config.GenesisJSON)
+		l1Blockchain = rollupchain.NewL1Blockchain(config.GenesisJSON, logger)
 	} else {
-		common.LogWithID(common.ShortAddress(config.HostID), "validateBlocks is set to false. L1 blocks will not be validated.")
+		logger.Info("validateBlocks is set to false. L1 blocks will not be validated.")
 	}
 
 	// Todo- make sure the enclave cannot be started in production with WillAttest=false
@@ -147,58 +130,55 @@ func NewEnclave(
 	if config.WillAttest {
 		attestationProvider = &EgoAttestationProvider{}
 	} else {
-		common.LogWithID(nodeShortID, "WARNING - Attestation is not enabled, enclave will not create a verified attestation report.")
+		logger.Info("WARNING - Attestation is not enabled, enclave will not create a verified attestation report.")
 		attestationProvider = &DummyAttestationProvider{}
 	}
 
 	// todo - this has to be read from the database when the node restarts.
 	// first time the node starts we derive the obscuro key from the master seed received after the shared secret exchange
-	common.LogWithID(nodeShortID, "Generating the Obscuro key")
+	logger.Info("Generating the Obscuro key")
 
 	// todo - save this to the db
 	enclaveKey, err := gethcrypto.GenerateKey()
 	if err != nil {
-		log.Panic("Failed to generate enclave key. Cause: %s", err)
+		logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
 	}
 	serializedEnclavePubKey := gethcrypto.CompressPubkey(&enclaveKey.PublicKey)
-	common.LogWithID(nodeShortID, "Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey))
+	logger.Info(fmt.Sprintf("Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey)))
 
-	obscuroKey := crypto.GetObscuroKey()
+	obscuroKey := crypto.GetObscuroKey(logger)
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
 
-	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl()
+	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl(logger)
 
 	obscuroBridge := bridge.New(
 		config.ERC20ContractAddresses[0],
 		config.ERC20ContractAddresses[1],
 		mgmtContractLib,
 		erc20ContractLib,
-		nodeShortID,
 		transactionBlobCrypto,
 		config.ObscuroChainID,
 		config.L1ChainID,
+		logger,
 	)
 	memp := mempool.New(config.ObscuroChainID)
 
-	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage)
-	chain := rollupchain.New(nodeShortID, config.HostID, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig)
+	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
+	chain := rollupchain.New(config.HostID, config.NodeType, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig, logger)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
-	log.Info("Enclave service created with following config:\n%s", string(jsonConfig))
+	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
 	return &enclaveImpl{
 		config:                config,
-		nodeShortID:           nodeShortID,
 		storage:               storage,
 		blockResolver:         storage,
 		mempool:               memp,
-		statsCollector:        collector,
 		l1Blockchain:          l1Blockchain,
 		rpcEncryptionManager:  rpcEncryptionManager,
 		bridge:                obscuroBridge,
 		subscriptionManager:   subscriptionManager,
 		chain:                 chain,
 		txCh:                  make(chan *common.L2Tx),
-		roundWinnerCh:         make(chan *core.Rollup),
 		exitCh:                make(chan bool),
 		mgmtContractLib:       mgmtContractLib,
 		erc20ContractLib:      erc20ContractLib,
@@ -207,6 +187,7 @@ func NewEnclave(
 		enclavePubKey:         serializedEnclavePubKey,
 		transactionBlobCrypto: transactionBlobCrypto,
 		profiler:              prof,
+		logger:                logger,
 	}
 }
 
@@ -233,23 +214,29 @@ func (e *enclaveImpl) Start(block types.Block) error {
 	return nil
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (common.BlockSubmissionResponse, error) {
+func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubmissionResponse, error) {
 	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
-	return common.BlockSubmissionResponse{
+	return &common.BlockSubmissionResponse{
 		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
 		BlockHeader:    b.Header(),
-		IngestedBlock:  true,
 	}, nil
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (common.BlockSubmissionResponse, error) {
-	bsr := e.chain.SubmitBlock(block, isLatest)
+func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+	bsr, err := e.chain.SubmitBlock(block, isLatest)
+	if err != nil {
+		e.logger.Trace("SubmitBlock failed",
+			"blk", block.Number(), "blkHash", block.Hash(), "err", err)
+		return nil, err
+	}
+	e.logger.Trace("SubmitBlock successful",
+		"blk", block.Number(), "blkHash", block.Hash())
 
 	if bsr.RollupHead != nil {
 		hr, f := e.storage.FetchRollup(bsr.RollupHead.Hash())
 		if !f {
-			log.Panic("This should not happen because this rollup was just processed.")
+			e.logger.Crit("This should not happen because this rollup was just processed.")
 		}
 		e.mempool.RemoveMempoolTxs(hr, e.storage)
 	}
@@ -257,20 +244,6 @@ func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (common.Bloc
 	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	return bsr, nil
-}
-
-func (e *enclaveImpl) SubmitRollup(rollup common.ExtRollup) error {
-	r := core.ToEnclaveRollup(rollup.ToRollup(), e.transactionBlobCrypto)
-
-	// only store if the parent exists
-	_, found := e.storage.FetchRollup(r.Header.ParentHash)
-	if found {
-		e.storage.StoreRollup(r)
-	} else {
-		common.LogWithID(e.nodeShortID, "Received rollup with no parent: r_%d", common.ShortHash(r.Hash()))
-	}
-
-	return nil
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -281,13 +254,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 
 	decryptedTx, err := rpc.ExtractTx(encodedTx)
 	if err != nil {
-		log.Info(fmt.Sprintf("could not decrypt transaction. Cause: %s", err))
+		e.logger.Info("could not decrypt transaction. ", log.ErrKey, err)
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
 
 	err = e.checkGas(decryptedTx)
 	if err != nil {
-		log.Info(err.Error())
+		e.logger.Info("", log.ErrKey, err.Error())
 		return nil, err
 	}
 
@@ -314,14 +287,10 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	return encryptedResult, nil
 }
 
-func (e *enclaveImpl) RoundWinner(parent common.L2RootHash) (common.ExtRollup, bool, error) {
-	return e.chain.RoundWinner(parent)
-}
-
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
 	resp, err := e.chain.ExecuteOffChainTransaction(encryptedParams)
 	if err != nil {
-		common.LogWithID(e.nodeShortID, "Could not execute off chain call. Cause: %s", err)
+		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
 	}
 	return resp, err
 }
@@ -466,12 +435,12 @@ func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup
 
 func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
 	if e.enclavePubKey == nil {
-		log.Error("public key not initialized, we can't produce the attestation report")
+		e.logger.Error("public key not initialized, we can't produce the attestation report")
 		return nil, fmt.Errorf("public key not initialized, we can't produce the attestation report")
 	}
 	report, err := e.attestationProvider.GetReport(e.enclavePubKey, e.config.HostID, e.config.HostAddress)
 	if err != nil {
-		log.Error("could not produce remote report")
+		e.logger.Error("could not produce remote report")
 		return nil, fmt.Errorf("could not produce remote report")
 	}
 	return report, nil
@@ -479,11 +448,11 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
-	secret := crypto.GenerateEntropy()
+	secret := crypto.GenerateEntropy(e.logger)
 	e.storage.StoreSecret(secret)
-	encSec, err := crypto.EncryptSecret(e.enclavePubKey, secret, e.nodeShortID)
+	encSec, err := crypto.EncryptSecret(e.enclavePubKey, secret, e.logger)
 	if err != nil {
-		log.Error("failed to encrypt secret. Cause: %s", err)
+		e.logger.Error("failed to encrypt secret.", log.ErrKey, err)
 		return nil, fmt.Errorf("failed to encrypt secret. Cause: %w", err)
 	}
 	return encSec, nil
@@ -496,7 +465,7 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
 		return err
 	}
 	e.storage.StoreSecret(*secret)
-	common.TraceWithID(e.nodeShortID, "Secret decrypted and stored. Secret: %v", secret)
+	e.logger.Trace(fmt.Sprintf("Secret decrypted and stored. Secret: %v", secret))
 	return nil
 }
 
@@ -511,13 +480,13 @@ func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationR
 	if err = VerifyIdentity(data, att); err != nil {
 		return nil, err
 	}
-	common.LogWithID(e.nodeShortID, "Successfully verified attestation and identity. Owner: %s", att.Owner)
+	e.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.Owner))
 
 	secret := e.storage.FetchSecret()
 	if secret == nil {
 		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
 	}
-	return crypto.EncryptSecret(att.PubKey, *secret, e.nodeShortID)
+	return crypto.EncryptSecret(att.PubKey, *secret, e.logger)
 }
 
 func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
@@ -526,7 +495,7 @@ func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature [
 
 // storeAttestation stores the attested keys of other nodes so we can decrypt their rollups
 func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
-	common.LogWithID(e.nodeShortID, "Store attestation. Owner: %s", att.Owner)
+	e.logger.Info(fmt.Sprintf("Store attestation. Owner: %s", att.Owner))
 	// Store the attestation
 	key, err := gethcrypto.DecompressPubkey(att.PubKey)
 	if err != nil {
@@ -586,7 +555,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, fmt.Errorf("required at least 1 params, but received %d", len(paramList))
 	}
 
-	callMsg, err := gethenconding.ExtractEthCall(paramList[0])
+	callMsg, err := gethencoding.ExtractEthCall(paramList[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
@@ -651,11 +620,11 @@ func (e *enclaveImpl) processNetworkSecretMsgs(block types.Block) []*common.Prod
 
 		// this transaction is for a node that has joined the network and needs to be sent the network secret
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
-			common.LogWithID(e.nodeShortID, "Process shared secret request. Block: %d. Tx: %d",
-				block.NumberU64(), common.ShortHash(tx.Hash()))
+			e.logger.Info(fmt.Sprintf("Process shared secret request. Block: %d. TxKey: %d",
+				block.NumberU64(), common.ShortHash(tx.Hash())))
 			resp, err := e.processSecretRequest(scrtReqTx)
 			if err != nil {
-				common.ErrorWithID(e.nodeShortID, "Failed to process shared secret request. Cause: %s", err)
+				e.logger.Error("Failed to process shared secret request.", log.ErrKey, err)
 				continue
 			}
 			responses = append(responses, resp)
@@ -668,12 +637,12 @@ func (e *enclaveImpl) processNetworkSecretMsgs(block types.Block) []*common.Prod
 			// there must be a way to make sure that this transaction can only be sent once.
 			att, err := common.DecodeAttestation(initSecretTx.Attestation)
 			if err != nil {
-				common.ErrorWithID(e.nodeShortID, "Could not decode attestation report. Cause: %s", err)
+				e.logger.Error("Could not decode attestation report", log.ErrKey, err)
 			}
 
 			err = e.storeAttestation(att)
 			if err != nil {
-				common.ErrorWithID(e.nodeShortID, "Could not store the attestation report. Cause: %s", err)
+				e.logger.Error("Could not store the attestation report.", log.ErrKey, err)
 			}
 		}
 	}
@@ -697,6 +666,7 @@ func (e *enclaveImpl) processSecretRequest(req *ethadapter.L1RequestSecretTx) (*
 		return nil, fmt.Errorf("could not store attestation, no response will be published. Cause: %w", err)
 	}
 
+	e.logger.Trace("Processed secret request.", "owner", att.Owner)
 	return &common.ProducedSecretResponse{
 		Secret:      secret,
 		RequesterID: att.Owner,

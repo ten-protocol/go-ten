@@ -1,4 +1,4 @@
-package gethenconding
+package gethencoding
 
 import (
 	"fmt"
@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	// CallFieldTo and CallFieldFrom and CallFieldData are the relevant fields in a Call request's params.
-	CallFieldTo    = "to"
+	// The relevant fields in an eth_call request's params.
+	callFieldTo    = "to"
 	CallFieldFrom  = "from"
-	CallFieldData  = "data"
-	CallFieldValue = "value"
+	callFieldData  = "data"
+	callFieldValue = "value"
 )
 
 // ExtractEthCallMapString extracts the eth_call ethereum.CallMsg from an interface{}
@@ -45,14 +45,14 @@ func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) 
 			continue
 		}
 		switch strings.ToLower(field) {
-		case CallFieldTo:
-			callMsg[CallFieldTo] = valString
+		case callFieldTo:
+			callMsg[callFieldTo] = valString
 		case CallFieldFrom:
 			callMsg[CallFieldFrom] = valString
-		case CallFieldData:
-			callMsg[CallFieldData] = valString
-		case CallFieldValue:
-			callMsg[CallFieldValue] = valString
+		case callFieldData:
+			callMsg[callFieldData] = valString
+		case callFieldValue:
+			callMsg[callFieldValue] = valString
 		default:
 			callMsg[field] = valString
 		}
@@ -82,16 +82,16 @@ func ExtractEthCall(paramBytes interface{}) (*ethereum.CallMsg, error) {
 			continue
 		}
 		switch strings.ToLower(field) {
-		case CallFieldTo:
+		case callFieldTo:
 			to = gethcommon.HexToAddress(valString)
 		case CallFieldFrom:
 			from = gethcommon.HexToAddress(valString)
-		case CallFieldData:
+		case callFieldData:
 			data, err = hexutil.Decode(valString)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode data in CallMsg - %w", err)
 			}
-		case CallFieldValue:
+		case callFieldValue:
 			value, err = hexutil.DecodeBig(valString)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)

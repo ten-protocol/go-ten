@@ -4,25 +4,28 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/common/host"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/common"
-
-	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // FilterAPI exposes a subset of Geth's PublicFilterAPI operations.
 type FilterAPI struct {
-	host host.Host
+	host   host.Host
+	logger gethlog.Logger
 }
 
-func NewFilterAPI(host host.Host) *FilterAPI {
+func NewFilterAPI(host host.Host, logger gethlog.Logger) *FilterAPI {
 	return &FilterAPI{
-		host: host,
+		host:   host,
+		logger: logger,
 	}
 }
 
@@ -59,7 +62,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 				}
 				err = notifier.Notify(subscription.ID, idAndEncLog)
 				if err != nil {
-					log.Error("could not send encrypted log to client on subscription %s", subscription.ID)
+					api.logger.Error("could not send encrypted log to client on subscription ", log.SubIDKey, subscription.ID)
 				}
 
 			case <-subscription.Err(): // client sent an unsubscribe request

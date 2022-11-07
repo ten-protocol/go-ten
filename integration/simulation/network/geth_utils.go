@@ -6,10 +6,12 @@ import (
 	"math/big"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
@@ -41,17 +43,10 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	}
 
 	// kickoff the network with the prefunded wallet addresses
-	gethNetwork := gethnetwork.NewGethNetwork(
-		StartPort,
-		StartPort+DefaultWsPortOffset,
-		path,
-		nrNodes,
-		blockDurationSeconds,
-		walletAddresses,
-	)
+	gethNetwork := gethnetwork.NewGethNetwork(StartPort, StartPort+DefaultWsPortOffset, path, nrNodes, blockDurationSeconds, walletAddresses, "", int(gethlog.LvlDebug))
 
 	// connect to the first host to deploy
-	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1RPCTimeout, common.HexToAddress("0x0"))
+	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
 		panic(err)
 	}
@@ -123,18 +118,18 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 			if receipt.Status != types.ReceiptStatusSuccessful {
 				return nil, errors.New("unable to deploy contract")
 			}
-			log.Info("Contract successfully deployed to %s", receipt.ContractAddress)
+			testlog.Logger().Info(fmt.Sprintf("Contract successfully deployed to %s", receipt.ContractAddress))
 			return &receipt.ContractAddress, nil
 		}
 
-		log.Info("Contract deploy tx has not been mined into a block after %s...", time.Since(start))
+		testlog.Logger().Info(fmt.Sprintf("Contract deploy tx has not been mined into a block after %s...", time.Since(start)))
 	}
 
 	return nil, fmt.Errorf("failed to mine contract deploy tx into a block after %s. Aborting", time.Since(start))
 }
 
 func createEthClientConnection(id int64, port uint) ethadapter.EthClient {
-	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1RPCTimeout, common.BigToAddress(big.NewInt(id)))
+	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1RPCTimeout, common.BigToAddress(big.NewInt(id)), testlog.Logger())
 	if err != nil {
 		panic(err)
 	}

@@ -46,7 +46,7 @@ The guessing game is a very basic contract that showcases some of Obscuro's capa
 
 Before we get into how the game works, let's see it in action and play. See the instructions [here](https://docs.obscu.ro/testnet/example-dapps.html)
 
-Now that we've played the game let's try deploying the Guessing game to the Obscuro testnet. You can clone the repo from [here](https://github.com/obscuronet/number-guessing-game). 
+Now that we've played the game let's try deploying the Guessing game to the Obscuro testnet. You can clone the sample-applications repo (which contains the game) from [here](https://github.com/obscuronet/sample-applications). 
 
 #### How the Guessing game works
 There are two main functions of interest. First, the *attempt* function allows a player to guess the number and check if they've correctly guessed the secret number. If they have, the prize pot is paid out to them.
@@ -56,16 +56,10 @@ The other is the *setNewTarget* function. This checks the game is in a state rea
 ![setNewTarget function](../../assets/images/setnewtarget.png)
 
 ### Extend the Guessing game with Warmer/Colder functionality - 50 points
-Currently, after each guess, you have no idea how far you are from the winner number. The game will be more fun if players know with each play whether they're closer (warmer) or further (colder) from their last guess.
-
-The challenge here is to extend the game to include this functionality. You'll need to think about how you store previous guesses for each player.
+This functionality has now been completed.
 
 ### Extend the Guessing game with a proper win notification - 75 points
-You'll have noticed immediately that on winning the game, there is no notification! The only thing that happens is the game transfers to you all the tokens in the pot. 
-
-The challenge here is to extend the game with events (or anything else) to inform the winning player that they've won and how much they've won.
-
-You'll need to write a UI for this.
+This functionality has now been completed.
 
 ### Deploy a DEX - 100 points
 A key promise of Obscuro is that existing Dapps built for EVM-based chains will also work on Obscuro. So the challenge here is to deploy an existing evm-based DEX of your choice to Obscuro.

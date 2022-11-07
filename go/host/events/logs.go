@@ -1,6 +1,7 @@
 package events
 
 import (
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
@@ -8,11 +9,13 @@ import (
 // LogEventManager manages the routing of logs back to their subscribers.
 type LogEventManager struct {
 	subscriptions map[rpc.ID]*subscription // The channels that logs are sent to, one per subscription
+	logger        gethlog.Logger
 }
 
-func NewLogEventManager() LogEventManager {
+func NewLogEventManager(logger gethlog.Logger) LogEventManager {
 	return LogEventManager{
 		subscriptions: map[rpc.ID]*subscription{},
+		logger:        logger,
 	}
 }
 
@@ -31,7 +34,7 @@ func (l *LogEventManager) RemoveSubscription(id rpc.ID) {
 }
 
 // SendLogsToSubscribers distributes logs to subscribed clients.
-func (l *LogEventManager) SendLogsToSubscribers(result common.BlockSubmissionResponse) {
+func (l *LogEventManager) SendLogsToSubscribers(result *common.BlockSubmissionResponse) {
 	for subscriptionID, encryptedLogs := range result.SubscribedLogs {
 		logSub, found := l.subscriptions[subscriptionID]
 		if !found {

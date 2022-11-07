@@ -9,8 +9,9 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
-	"os"
 	"time"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
@@ -52,7 +53,7 @@ const (
 	successMsg = "success"
 )
 
-var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.RPCSubscribe)
+var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
 
 //go:embed static
 var staticFiles embed.FS
@@ -65,30 +66,30 @@ type WalletExtension struct {
 	serverHTTPShutdown func(ctx context.Context) error
 	serverWSShutdown   func(ctx context.Context) error
 	persistence        *persistence.Persistence
+	logger             gethlog.Logger
 }
 
-func NewWalletExtension(config Config) *WalletExtension {
-	setUpLogs(config.LogPath)
-
+func NewWalletExtension(config Config, logger gethlog.Logger) *WalletExtension {
 	unauthedClient, err := rpc.NewNetworkClient(wsProtocol + config.NodeRPCWebsocketAddress)
 	if err != nil {
-		log.Panic("unable to create temporary client for request - %s", err)
+		logger.Crit("unable to create temporary client for request ", log.ErrKey, err)
 	}
 
 	walletExtension := &WalletExtension{
 		hostAddr:       wsProtocol + config.NodeRPCWebsocketAddress,
 		unsignedVKs:    make(map[gethcommon.Address]*rpc.ViewingKey),
-		accountManager: accountmanager.NewAccountManager(unauthedClient),
-		persistence:    persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride),
+		accountManager: accountmanager.NewAccountManager(unauthedClient, logger),
+		persistence:    persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride, logger),
+		logger:         logger,
 	}
 
 	// We reload the existing viewing keys from persistence.
 	for accountAddr, viewingKey := range walletExtension.persistence.LoadViewingKeys() {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
 		// TODO - Create the clients lazily, to reduce connections to the host.
-		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey)
+		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey, logger)
 		if err != nil {
-			log.Error("failed to create encrypted RPC client for persisted account %s. Cause: %s", accountAddr, err)
+			logger.Error(fmt.Sprintf("failed to create encrypted RPC client for persisted account %s", accountAddr), log.ErrKey, err)
 			continue
 		}
 		walletExtension.accountManager.AddClient(accountAddr, client)
@@ -119,14 +120,14 @@ func (we *WalletExtension) Shutdown() {
 	if we.serverHTTPShutdown != nil {
 		err := we.serverHTTPShutdown(context.Background())
 		if err != nil {
-			log.Warn("could not shut down wallet extension: %s\n", err)
+			we.logger.Warn("could not shut down wallet extension", log.ErrKey, err)
 		}
 	}
 
 	if we.serverWSShutdown != nil {
 		err := we.serverWSShutdown(context.Background())
 		if err != nil {
-			log.Warn("could not shut down wallet extension: %s\n", err)
+			we.logger.Warn("could not shut down wallet extension", log.ErrKey, err)
 		}
 	}
 }
@@ -166,18 +167,6 @@ func (we *WalletExtension) createWSServer(host string, wsPort int) *http.Server 
 	return server
 }
 
-// Sets up the log file.
-func setUpLogs(logPath string) {
-	if logPath == "" {
-		return
-	}
-	logFile, err := os.Create(logPath)
-	if err != nil {
-		panic(fmt.Sprintf("could not create log file. Cause: %s", err))
-	}
-	log.OutputToFile(logFile)
-}
-
 // Used to check whether the server is ready.
 func (we *WalletExtension) handleReady(resp http.ResponseWriter, req *http.Request) {
 	if we.enableCORS(resp, req) {
@@ -214,13 +203,13 @@ func (we *WalletExtension) handleRequestHTTP(resp http.ResponseWriter, req *http
 	if we.enableCORS(resp, req) {
 		return
 	}
-	userConn := userconn.NewUserConnHTTP(resp, req)
+	userConn := userconn.NewUserConnHTTP(resp, req, we.logger)
 	fun(userConn)
 }
 
 // Creates a websocket connection to handle the request.
 func (we *WalletExtension) handleRequestWS(resp http.ResponseWriter, req *http.Request, fun func(conn userconn.UserConn)) {
-	userConn, err := userconn.NewUserConnWS(resp, req)
+	userConn, err := userconn.NewUserConnWS(resp, req, we.logger)
 	if err != nil {
 		return
 	}
@@ -237,13 +226,13 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 		return
 	}
 
-	rpcReq, err := parseRequest(body)
+	rpcReq, err := we.parseRequest(body)
 	if err != nil {
 		userConn.HandleError(err.Error())
 		return
 	}
 
-	if rpcReq.Method == rpc.RPCSubscribe && !userConn.SupportsSubscriptions() {
+	if rpcReq.Method == rpc.Subscribe && !userConn.SupportsSubscriptions() {
 		userConn.HandleError(ErrSubscribeFailHTTP)
 		return
 	}
@@ -275,7 +264,7 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 		userConn.HandleError(fmt.Sprintf("failed to remarshal RPC response to return to caller: %s", err))
 		return
 	}
-	log.Info("Forwarding %s response from Obscuro node: %s", rpcReq.Method, rpcRespToSend)
+	we.logger.Info(fmt.Sprintf("Forwarding %s response from Obscuro node: %s", rpcReq.Method, rpcRespToSend))
 
 	err = userConn.WriteResponse(rpcRespToSend)
 	if err != nil {
@@ -323,7 +312,7 @@ func (we *WalletExtension) enableCORS(resp http.ResponseWriter, req *http.Reques
 	return false
 }
 
-func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
+func (we *WalletExtension) parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 	// We unmarshal the JSON request
 	var reqJSONMap map[string]json.RawMessage
 	err := json.Unmarshal(body, &reqJSONMap)
@@ -338,7 +327,7 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal method string from JSON-RPC request body: %w", err)
 	}
-	log.Info("Received %s request from wallet: %s", method, body)
+	we.logger.Info(fmt.Sprintf("Received %s request from wallet: %s", method, body))
 
 	// we extract the params into a JSON list
 	var params []interface{}
@@ -426,7 +415,7 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 	vk.SignedKey = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
 	// TODO - Create the clients lazily, to reduce connections to the host.
-	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk)
+	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk, we.logger)
 	if err != nil {
 		userConn.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
 		return

@@ -94,10 +94,15 @@ jobs:
             host_id: 0
           - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
             host_id: 1
-          # Ensure there is a genesis node
+          # Ensure there is a single genesis node
           - is_genesis: true
             host_id: 0
           - is_genesis: false
+            host_id: 1
+          # Ensure there is a single aggregator
+          - node_type: aggregator
+            host_id: 0
+          - node_type: validator
             host_id: 1
 
     steps:
@@ -154,13 +159,14 @@ jobs:
             && cd /home/obscuro/go-obscuro/testnet/ \
             && ./start-obscuro-node.sh \
                --is_genesis=${{ matrix.is_genesis }} \
+               --node_type=${{ matrix.node_type }} \
                --sgx_enabled=true \
                --host_id=${{ matrix.host_addr }} \
                --l1host=${{ github.event.inputs.L1HOST }} \
                --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} \
                --hocerc20addr=${{needs.build.outputs.hocErc20Addr}} \
                --pocerc20addr=${{needs.build.outputs.pocErc20Addr}} \
-               --pkaddr=${{ secrets[matrix.node_pk_addr] }} \
+               --pkaddress=${{ secrets[matrix.node_pk_addr] }} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --p2p_public_address=obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
 
