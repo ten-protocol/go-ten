@@ -1,7 +1,7 @@
 ---
 ---
-# Example Dapps on Testnet
-Obscuro Testnet includes an example dapp to help you better understand how dapps capitalise on Obscuro's unique privacy features.
+# Example dApps on Testnet
+Obscuro Testnet includes an example dApp to help you better understand how dApps capitalise on Obscuro's unique privacy features.
 
 ## Number Guessing Game
 [A number guessing game](http://obscuronet.github.io/sample-applications/number-guessing-game) is a simple way of showcasing the principles of privacy in Obscuro. The goal of the game is to guess a secret number. Each time an attempt is made an entrance fee of 1 unit of the token is paid (with 1x10^18 units making a single token). If a player correctly guesses the number the contract will pay out all of the accumulated entrance fees to them and reset itself with a new random number.
