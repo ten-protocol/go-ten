@@ -64,10 +64,11 @@ func ExecuteHTTPReq(client *http.Client, req *http.Request) ([]byte, error) {
 	return body, nil
 }
 
-// Enables CORS to allow Obscuroscan API to serve other web apps. Returns true if the request was a pre-flight, e.g. OPTIONS, to stop further processing.
+// Enables CORS to allow Obscuroscan and WalletExtension APIs to serve other web apps.
 func EnableCORS(resp http.ResponseWriter, req *http.Request) bool {
 	resp.Header().Set(CorsAllowOrigin, OriginAll)
 	if (*req).Method == ReqOptions {
+		// Returns true if the request was a pre-flight, e.g. OPTIONS, to stop further processing.
 		resp.Header().Set(CorsAllowMethods, ReqOptions)
 		resp.Header().Set(CorsAllowHeaders, CorsHeaders)
 		return true
