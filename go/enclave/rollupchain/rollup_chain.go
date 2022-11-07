@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"sort"
 	"strings"
 	"sync"
@@ -65,6 +66,11 @@ type RollupChain struct {
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
 	logger               gethlog.Logger
+
+	// Gas usage values
+	// TODO use the ethconfig.Config instead
+	GlobalGasCap uint64
+	BaseFee      *big.Int
 }
 
 func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
@@ -84,6 +90,8 @@ func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage
 		chainConfig:           chainConfig,
 		blockProcessingMutex:  sync.Mutex{},
 		logger:                logger,
+		GlobalGasCap:          5_000_000_000,
+		BaseFee:               gethcommon.Big0,
 	}
 }
 
@@ -576,7 +584,8 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
 
-	callMsg, err := apiArgs.ToMessage(0, gethcommon.Big0)
+	// TODO review this during gas implementation
+	callMsg, err := apiArgs.ToMessage(rc.GlobalGasCap, rc.BaseFee)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
 	}

@@ -22,7 +22,7 @@ const (
 	callFieldMaxPriorityFeePerGas = "maxpriorityfeepergas"
 )
 
-// ExtractEthCallMapString extracts the eth_call ethereum.CallMsg from an interface{}
+// ExtractEthCallMapString extracts the eth_call gethapi.TransactionArgs from an interface{}
 // it ensures that :
 // - All types are string
 // - All keys are lowercase
@@ -70,7 +70,7 @@ func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) 
 	return callMsg, nil
 }
 
-// ExtractEthCall extracts the eth_call ethereum.CallMsg from an interface{}
+// ExtractEthCall extracts the eth_call gethapi.TransactionArgs from an interface{}
 func ExtractEthCall(paramBytes interface{}) (*gethapi.TransactionArgs, error) {
 	// geth lowercases the field name and uses the last seen value
 	var valString string

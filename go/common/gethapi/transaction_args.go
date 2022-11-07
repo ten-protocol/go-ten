@@ -1,5 +1,7 @@
 package gethapi
 
+// This file is a direct copy of geth @ go-ethereum/internal/ethapi/transaction_args.go
+//
 import (
 	"errors"
 	"math/big"
