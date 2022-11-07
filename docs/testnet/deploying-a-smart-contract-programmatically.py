@@ -113,23 +113,12 @@ def run():
 
     # wait for the transaction receipt and check the status
     logging.info('Waiting for transaction receipt')
-    start = time.time()
-    tx_receipt = None
-    while True:
-        if (time.time() - start) > 60:
-            logging.error('Timed out waiting for transaction receipt ... aborting')
-            return
-
-        try:
-            tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-            if tx_receipt.status == 0:
-                logging.error('Transaction receipt has failed status ... aborting')
-                return
-            else:
-                logging.info('Received transaction receipt')
-                break
-        except Exception as e:
-            time.sleep(1)
+    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    if tx_receipt.status == 0:
+        logging.error('Transaction receipt has failed status ... aborting')
+        return
+    else:
+        logging.info('Received transaction receipt')
 
     # construct the contract using the contract address
     logging.info('Contract address is %s' % tx_receipt.contractAddress)
@@ -138,7 +127,6 @@ def run():
     # guess the number
     logging.info('Starting guessing game')
     guess(contract)
-
 
 if __name__ == '__main__':
     logging.getLogRecordFactory()
