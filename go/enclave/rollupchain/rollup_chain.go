@@ -593,7 +593,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 
 	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
 	s := rc.storage.CreateStateDB(hs.HeadRollup)
-	result, err := evm.ExecuteOffChainCall(callMsg.From(), callMsg.To(), callMsg.Data(), s, r.Header, rc.storage, rc.chainConfig, rc.logger)
+	result, err := evm.ExecuteOffChainCall(&callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
 	// todo - clarify this error handling
 	if err != nil {
 		return nil, err

@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/obscuronet/go-obscuro/go/common/gethapi"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
