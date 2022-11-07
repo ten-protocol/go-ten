@@ -633,27 +633,25 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	blockNumber := gethrpc.BlockNumber(0)
 	err = blockNumber.UnmarshalJSON([]byte(paramList[1]))
 	if err != nil {
-		return nil, fmt.Errorf("could not parse requested rollup number")
+		return nil, fmt.Errorf("could not parse requested rollup number - %w", err)
 	}
 
-	// We retrieve the rollup of interest.
-	rollup, err := rc.getRollup(blockNumber)
+	// get account balance at certain block/height
+	balance, err := rc.GetBalanceAtBlock(accountAddress, blockNumber)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to fetch balance for account - %w", err)
 	}
 
-	// We get the balance at that rollup.
-	blockchainState := rc.storage.CreateStateDB(rollup.Hash())
-	if blockchainState == nil || err != nil {
-		return nil, err
+	// check if account is a contract
+	isAddrContract, err := rc.IsAccountContractAtBlock(accountAddress, blockNumber)
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch balance for account - %w", err)
 	}
-	balance := (*hexutil.Big)(blockchainState.GetBalance(accountAddress))
 
 	// We encrypt the result.
 	address := accountAddress
 	// If the accountAddress is a contract, encrypt with the address of the contract owner
-	code := blockchainState.GetCode(accountAddress)
-	if len(code) != 0 {
+	if isAddrContract {
 		txHash, err := rc.storage.GetContractCreationTx(accountAddress)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
@@ -675,7 +673,48 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
 	}
-	return encryptedBalance, blockchainState.Error()
+	return encryptedBalance, nil
+}
+
+// GetChainStateAtBlock is a helper function that returns the state of the chain at height
+// TODO make this cacheable
+func (rc *RollupChain) GetChainStateAtBlock(blockNumber gethrpc.BlockNumber) (*state.StateDB, error) {
+	// We retrieve the rollup of interest.
+	rollup, err := rc.getRollup(blockNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	// We get that of the chain at that height
+	blockchainState := rc.storage.CreateStateDB(rollup.Hash())
+	if err != nil {
+		return nil, err
+	}
+	if blockchainState == nil {
+		return nil, fmt.Errorf("unable to fetch chain state for rollup %s", rollup.Hash().Hex())
+	}
+
+	return blockchainState, err
+}
+
+// GetBalanceAtBlock returns the balance of an account at a certain height
+func (rc *RollupChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber gethrpc.BlockNumber) (*hexutil.Big, error) {
+	chainState, err := rc.GetChainStateAtBlock(blockNumber)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
+	}
+
+	return (*hexutil.Big)(chainState.GetBalance(accountAddr)), nil
+}
+
+// IsAccountContractAtBlock returns the whether the account is a contract or not at a certain height
+func (rc *RollupChain) IsAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber gethrpc.BlockNumber) (bool, error) {
+	chainState, err := rc.GetChainStateAtBlock(blockNumber)
+	if err != nil {
+		return false, fmt.Errorf("unable to get blockchain state - %w", err)
+	}
+
+	return len(chainState.GetCode(accountAddr)) > 0, nil
 }
 
 func (rc *RollupChain) signRollup(r *obscurocore.Rollup) {
