@@ -1,6 +1,7 @@
 package obscuroscan
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/httputil"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
@@ -47,17 +49,17 @@ func generateEncryptedTxBlob(txs []*common.L2Tx) []byte {
 
 func TestObscuroscan_getRollupByNumOrTxHash(t *testing.T) {
 	ob := NewObscuroscan("http://testnet.obscuroscan.io")
-	req, _ := http.NewRequest(http.MethodGet, "/", nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	req.Method = http.MethodOptions
 	resp := httptest.NewRecorder()
 	ob.getRollupByNumOrTxHash(resp, req)
-	if resp.Header().Get(corsAllowOrigin) != originAll {
+	if resp.Header().Get(httputil.CorsAllowOrigin) != httputil.OriginAll {
 		t.Fatal("CORS Allow Origin not set.")
 	}
-	if resp.Header().Get(corsAllowMethods) != reqOptions {
+	if resp.Header().Get(httputil.CorsAllowMethods) != httputil.ReqOptions {
 		t.Fatal("CORS Allow Methods not set.")
 	}
-	if resp.Header().Get(corsAllowHeaders) != corsHeaders {
+	if resp.Header().Get(httputil.CorsAllowHeaders) != httputil.CorsHeaders {
 		t.Fatal("CORS Allow Headers not set.")
 	}
 }

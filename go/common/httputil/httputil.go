@@ -8,6 +8,16 @@ import (
 	"net/http"
 )
 
+const (
+	// CORS-related constants.
+	CorsAllowOrigin  = "Access-Control-Allow-Origin"
+	OriginAll        = "*"
+	CorsAllowMethods = "Access-Control-Allow-Methods"
+	ReqOptions       = "OPTIONS"
+	CorsAllowHeaders = "Access-Control-Allow-Headers"
+	CorsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
+)
+
 // CreateTLSHTTPClient provides a basic http client prepared with a trusted CA cert
 func CreateTLSHTTPClient(caCertPEM string) (*http.Client, error) {
 	caCertPool := x509.NewCertPool()
@@ -52,4 +62,15 @@ func ExecuteHTTPReq(client *http.Client, req *http.Request) ([]byte, error) {
 		return []byte{}, nil //nolint:nilerr
 	}
 	return body, nil
+}
+
+// Enables CORS to allow Obscuroscan API to serve other web apps. Returns true if the request was a pre-flight, e.g. OPTIONS, to stop further processing.
+func EnableCORS(resp http.ResponseWriter, req *http.Request) bool {
+	resp.Header().Set(CorsAllowOrigin, OriginAll)
+	if (*req).Method == ReqOptions {
+		resp.Header().Set(CorsAllowMethods, ReqOptions)
+		resp.Header().Set(CorsAllowHeaders, CorsHeaders)
+		return true
+	}
+	return false
 }
