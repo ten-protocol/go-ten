@@ -42,7 +42,6 @@ extension to facilitate requesting a viewing key, and to sign and return it to t
     data = {"address": account.address}
     response = requests.post('http://%s:%d/generateviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
     signed_msg = w3.eth.account.sign_message(encode_defunct(text='vk' + response.text), private_key=private_key)
-
     data = {"signature": signed_msg.signature.hex(), "address": account.address}
     response = requests.post('http://%s:%d/submitviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
 ```
@@ -81,28 +80,14 @@ Using the account the transaction can be signed and submitted to the Obscuro Tes
 ```
 
 ## Wait for the transaction receipt 
-Once submitted the transaction receipt can be obtained in order to get the deployed contract address. An explicit loop 
-and timeout needs to be performed in the user implementation until the semantics of the call becomes fully blocking in 
-a later release. 
+Once submitted the transaction receipt can be obtained in order to get the deployed contract address. 
 ```python
-    start = time.time()
-    tx_receipt = None
-    while True:
-        if (time.time() - start) > 30:
-            logging.error('Timed out waiting for transaction receipt ... aborting')
-            return
-
-        try:
-            tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
-            if tx_receipt.status == 0:
-                logging.error('Transaction receipt has failed status ... aborting')
-                return
-            else:
-                logging.info('Received transaction receipt')
-                break
-        except Exception as e:
-            logging.info('Waiting for transaction receipt')
-            time.sleep(1)
+    tx_receipt = w3.eth.wait_for_transaction_receipt(tx_hash)
+    if tx_receipt.status == 0:
+        logging.error('Transaction receipt has failed status ... aborting')
+        return
+    else:
+        logging.info('Received transaction receipt')
 ```
 
 ## Create the contract using the abi and contract address
@@ -111,4 +96,3 @@ Once the transaction receipt is received function calls can be made against the 
     contract = w3.eth.contract(address=tx_receipt.contractAddress, abi=abi)
     contract.functions.guess(guess).call()
 ```
-
