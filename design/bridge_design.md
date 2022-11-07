@@ -63,6 +63,41 @@ The Rollup headers right now are assumed to include withdrawal instructions. The
 
 The `MessageBus` will be deployed as a [`Proxy`](https://docs.openzeppelin.com/contracts/4.x/api/proxy)
 
+**The interface of the MessageBus will look like this:**
+```solidity
+interface IMessageBus {
+    function publishMessage(
+        uint32 nonce,
+        bytes memory topic,
+        bytes memory payload, 
+        uint8 consistencyLevel
+    ) external payable returns (uint64 sequence);
+
+    function verifyMessageReceived(
+        address      sender,
+        uint64       sequence,
+        uint32       nonce,
+        bytes memory topic,
+        bytes memory payload
+    ) external returns (bool);
+
+    function submitOutOfNetworkMessage(
+        address      sender,
+        uint64       sequence,
+        uint32       nonce,
+        bytes memory topic,
+        bytes memory payload
+    ) external;
+
+    function queryMessages(
+        address      sender,
+        bytes memory topic,
+        uint256      fromIndex,
+        uint256      toIndex
+    ) external returns (bytes [] memory);
+}
+```
+
 The messaging API will be provided by the new `MessageBus` system contract. This contract's interface will be available for L1 and L2. This contract needs to be [`Ownable`](https://docs.openzeppelin.com/contracts/2.x/access-control) or [`RBAC`](https://docs.openzeppelin.com/contracts/2.x/access-control#role-based-access-control) based as some of the functions should only be callable from an administrative trusted address.
 This trusted address can either be the `Enclave` or the `ManagementContract`. As a system contract, the `MessageBus` should be created during the network bootstrap process.
 
