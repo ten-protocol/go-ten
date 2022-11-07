@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/gethutil"
+
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -43,7 +45,7 @@ const (
 
 var (
 	errBlockAlreadyProcessed = errors.New("block already processed")
-	errBlockParentNotFound   = errors.New("block parent not found")
+	errBlockAncestorNotFound = errors.New("block ancestor not found")
 )
 
 // RollupChain represents the canonical chain, and manages the state.
@@ -109,14 +111,52 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block
-func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block) error {
+// note: this method shouldn't be called for blocks we've seen before
+func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*blockIngestionType, error) {
 	if rc.l1Blockchain != nil {
 		_, err := rc.l1Blockchain.InsertChain(types.Blocks{block})
 		if err != nil {
-			return fmt.Errorf("block was invalid: %w", err)
+			return nil, fmt.Errorf("block was invalid: %w", err)
 		}
 	}
-	return nil
+	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
+	prevL1Head := rc.storage.FetchHeadBlock()
+
+	// we do a basic sanity check, comparing the received block to the head block on the chain
+	if prevL1Head == nil {
+		// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
+		return &blockIngestionType{latest: isLatest, fork: false, preGenesis: true}, nil
+	} else if block.ParentHash() != prevL1Head.Hash() {
+		lcaBlock, err := gethutil.LCA(block, prevL1Head, rc.storage)
+		if err != nil {
+			return nil, errBlockAncestorNotFound
+		}
+		rc.logger.Trace("parent not found",
+			"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
+			"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
+			"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
+		)
+		if lcaBlock.NumberU64() >= prevL1Head.NumberU64() {
+			// This is an unexpected error scenario (a bug) because if:
+			// lca == prevL1Head:
+			//   if prev L1 head is (e.g) a grandfather of ingested block, and block's parent has been seen (else LCA would error),
+			//   then why is ingested block's parent not the prev l1 head
+			// lca > prevL1Head:
+			//   this would imply ingested block is earlier on the same branch as l1 head, but ingested block should not have been seen before
+			rc.logger.Error("unexpected blockchain state, incoming block is not child of L1 head and not an earlier fork of L1 head",
+				"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
+				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
+				"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
+			)
+			return nil, errors.New("unexpected blockchain state")
+		}
+
+		// ingested block is on a different branch to the previously ingested block - we may have to rewind L2 state
+		return &blockIngestionType{latest: isLatest, fork: true, preGenesis: false}, nil
+	}
+
+	// this is the typical, happy-path case. The ingested block's parent was the previously ingested block.
+	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
 func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) *common.BlockSubmissionResponse {
@@ -148,10 +188,6 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		RollupHead:     head,
 		SubscribedLogs: logs,
 	}
-}
-
-func (rc *RollupChain) isGenesisBlock(block *types.Block) bool {
-	return rc.l1Blockchain != nil && bytes.Equal(block.Hash().Bytes(), rc.l1Blockchain.Genesis().Hash().Bytes())
 }
 
 //  STATE
@@ -219,7 +255,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 	// calculate and return the new block state
 	// todo change this to an hardcoded hash on testnet/mainnet
 	if genesisRollup == nil && len(rollups) == 1 {
-		rc.logger.Info("Found genesis rollup")
+		rc.logger.Info("Found genesis rollup", "l1Height", b.NumberU64(), "l1Hash", b.Hash())
 
 		genesis := rollups[0]
 		rc.storage.StoreGenesisRollup(genesis)
@@ -421,16 +457,16 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
 	}
 
-	if err := rc.insertBlockIntoL1Chain(&block); !rc.isGenesisBlock(&block) && err != nil {
+	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
+	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
+	rc.logger.Info("block inserted successfully",
+		"height", block.NumberU64(),
+		"hash", block.Hash(),
+		"ingestionType", ingestionType)
 
-	_, f := rc.storage.FetchBlock(block.Header().ParentHash)
-	if !f && block.NumberU64() > common.L1GenesisHeight {
-		return nil, rc.rejectBlockErr(errBlockParentNotFound)
-	}
-
-	// Only store the block if the parent is available.
+	// Only store the block if the L1 chain insertion succeeded
 	stored := rc.storage.StoreBlock(&block)
 	if !stored {
 		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
@@ -461,7 +497,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 		return rc.newBlockSubmissionResponse(blockState, common.ExtRollup{}, encryptedLogs), nil
 	}
 
-	// As an aggregator on the latest L1 block, we produce a rollup.
+	// As an aggregator on the head L1 block, we produce a rollup.
 	r := rc.produceRollup(&block, blockState)
 	rc.signRollup(r)
 	rc.checkRollup(r) // Sanity check the produced rollup
@@ -728,9 +764,10 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 }
 
 func (rc *RollupChain) rejectBlockErr(err error) *common.BlockRejectError {
+	l1Head := rc.storage.FetchHeadBlock()
 	var hash gethcommon.Hash
-	if rc.l1Blockchain != nil && rc.l1Blockchain.CurrentHeader() != nil {
-		hash = rc.l1Blockchain.CurrentHeader().Hash()
+	if l1Head != nil {
+		hash = l1Head.Hash()
 	}
 	return &common.BlockRejectError{
 		L1Head:  hash,
