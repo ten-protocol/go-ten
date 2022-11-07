@@ -2,8 +2,9 @@ package gethencoding
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 	"strings"
+
+	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
@@ -136,7 +137,6 @@ func ExtractEthCall(paramBytes interface{}) (*gethapi.TransactionArgs, error) {
 			}
 			maxPriorityFeePerGas = (*hexutil.Big)(maxPriorityFeePerGasVal)
 		}
-
 	}
 
 	// convert the params[0] into an ethereum.CallMsg

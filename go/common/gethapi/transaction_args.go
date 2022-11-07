@@ -220,7 +220,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (t
 		gasFeeCap *big.Int
 		gasTipCap *big.Int
 	)
-	if baseFee == nil {
+	if baseFee == nil { //nolint:nestif
 		// If there's no basefee, then it must be a non-1559 execution
 		gasPrice = new(big.Int)
 		if args.GasPrice != nil {
