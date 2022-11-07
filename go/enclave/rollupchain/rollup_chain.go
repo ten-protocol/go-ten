@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 
@@ -120,37 +120,42 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 		}
 	}
 	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	l1Latest := rc.storage.FetchHeadBlock()
+	prevL1Head := rc.storage.FetchHeadBlock()
 
-	// we do a basic sanity check, comparing the received block to the latest known block on the chain
-	if l1Latest == nil {
+	// we do a basic sanity check, comparing the received block to the head block on the chain
+	if prevL1Head == nil {
 		// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
 		return &blockIngestionType{latest: isLatest, fork: false, preGenesis: true}, nil
-	} else if block.ParentHash() != l1Latest.Hash() {
-		lcaBlock, err := ethereummock.LCA(block, l1Latest, rc.storage)
+	} else if block.ParentHash() != prevL1Head.Hash() {
+		lcaBlock, err := gethutil.LCA(block, prevL1Head, rc.storage)
 		if err != nil {
 			return nil, errBlockAncestorNotFound
 		}
 		rc.logger.Trace("parent not found",
 			"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
-			"l1HeadHeight", l1Latest.NumberU64(), "l1HeadHash", l1Latest.Hash(),
+			"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
 			"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
 		)
-		if lcaBlock.NumberU64() < l1Latest.NumberU64() {
-			return &blockIngestionType{latest: isLatest, fork: true, preGenesis: false}, nil
+		if lcaBlock.NumberU64() >= prevL1Head.NumberU64() {
+			// This is an unexpected error scenario (a bug) because if:
+			// lca == prevL1Head:
+			//   if prev L1 head is (e.g) a grandfather of ingested block, and block's parent has been seen (else LCA would error),
+			//   then why is ingested block's parent not the prev l1 head
+			// lca > prevL1Head:
+			//   this would imply ingested block is earlier on the same branch as l1 head, but ingested block should not have been seen before
+			rc.logger.Error("unexpected blockchain state, incoming block is not child of L1 head and not an earlier fork of L1 head",
+				"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
+				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
+				"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
+			)
+			return nil, errors.New("unexpected blockchain state")
 		}
-		// I don't think we need to consider:
-		// lca == l1Latest (if L1 latest is (e.g) a grandfather of ingested block, then why is ingested block's parent not l1 latest)
-		// lca > l1Latest (this would imply ingested block is earlier on the same branch as l1 latest, but ingested block should not have been seen before)
-		//
-		// therefore we're in an unexpected state (should only happen if this logic is wrong or a bug has been introduced)
-		rc.logger.Error("unexpected blockchain state, incoming block is not child of L1 head and not an earlier fork of L1 head",
-			"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
-			"l1HeadHeight", l1Latest.NumberU64(), "l1HeadHash", l1Latest.Hash(),
-			"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
-		)
-		return nil, errors.New("unexpected blockchain state")
+
+		// ingested block is on a different branch to the previously ingested block - we may have to rewind L2 state
+		return &blockIngestionType{latest: isLatest, fork: true, preGenesis: false}, nil
 	}
+
+	// this is the typical, happy-path case. The ingested block's parent was the previously ingested block.
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
@@ -492,7 +497,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 		return rc.newBlockSubmissionResponse(blockState, common.ExtRollup{}, encryptedLogs), nil
 	}
 
-	// As an aggregator on the latest L1 block, we produce a rollup.
+	// As an aggregator on the head L1 block, we produce a rollup.
 	r := rc.produceRollup(&block, blockState)
 	rc.signRollup(r)
 	rc.checkRollup(r) // Sanity check the produced rollup
@@ -759,10 +764,10 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 }
 
 func (rc *RollupChain) rejectBlockErr(err error) *common.BlockRejectError {
-	l1Latest := rc.storage.FetchHeadBlock()
+	l1Head := rc.storage.FetchHeadBlock()
 	var hash gethcommon.Hash
-	if l1Latest != nil {
-		hash = l1Latest.Hash()
+	if l1Head != nil {
+		hash = l1Head.Hash()
 	}
 	return &common.BlockRejectError{
 		L1Head:  hash,

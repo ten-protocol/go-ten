@@ -160,6 +160,8 @@ type blockIngestionType struct {
 	// (resulting in rewinding of one or more blocks that we had previously considered canonical)
 	fork bool
 
-	// preGenesis is true if there is no stored L1 block height
+	// preGenesis is true if there is no stored L1 head block.
+	// (L1 head is only stored when there is an L2 state to associate it with. Soon we will start consuming from the
+	// genesis block and then, we should only see one block ingested in a 'preGenesis' state)
 	preGenesis bool
 }

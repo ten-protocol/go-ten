@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/gethutil"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -211,7 +213,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	// Check for Reorgs
 	if !m.Resolver.IsAncestor(b, head) {
 		m.stats.L1Reorg(m.l2ID)
-		fork, err := LCA(head, b, m.Resolver)
+		fork, err := gethutil.LCA(head, b, m.Resolver)
 		if err != nil {
 			panic(err)
 		}
