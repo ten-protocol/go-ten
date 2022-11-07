@@ -1,3 +1,5 @@
+---
+---
 # Deploying a Smart Contract to Obscuro Testnet Programmatically
 The steps below demonstrate how to programmatically create a new contract on to Obscuro Testnet and interact with it via 
 call functions. The example uses [Python](https://www.python.org/) and [web3.py](https://web3py.readthedocs.io/en/stable/) 
@@ -40,7 +42,6 @@ extension to facilitate requesting a viewing key, and to sign and return it to t
     data = {"address": account.address}
     response = requests.post('http://%s:%d/generateviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
     signed_msg = w3.eth.account.sign_message(encode_defunct(text='vk' + response.text), private_key=private_key)
-
     data = {"signature": signed_msg.signature.hex(), "address": account.address}
     response = requests.post('http://%s:%d/submitviewingkey/' % (WHOST, WPORT), data=json.dumps(data), headers=headers)
 ```
@@ -95,4 +96,3 @@ Once the transaction receipt is received function calls can be made against the 
     contract = w3.eth.contract(address=tx_receipt.contractAddress, abi=abi)
     contract.functions.guess(guess).call()
 ```
-

@@ -1,11 +1,13 @@
+---
+---
 # Obscuro Testnet Change Log
 
-## Novemeber 2022-11-08 (v0.6)
+## November 2022-11-08 (v0.6)
   * The Number Guessing Game has been removed from static and auto deployment scripts, and is now hosted 
     [in a sample applications repository](https://github.com/obscuronet/sample-applications). Given the move for 
     Testnet to be long-running (or at least restartable without contract disappearance), the Guessing Game must be 
     persisted across software updates, and redeployed manually if needed in the same way other applications are.
-  * Calls to wait for a transaction receipt are now blocking, whereas previous they would return an error meaning the 
+  * Calls to wait for a transaction receipt are now blocking, whereas previously they would return an error meaning the 
     client side code needed to perform a specific wait and poll loop. The example on how to programmatically deploy
     a contract has been updated accordingly. 
 

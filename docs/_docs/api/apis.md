@@ -1,3 +1,5 @@
+---
+---
 # Obscuro JSON-RPC API
 
 Obscuro supports a subset of Ethereum's [JSON-RPC API](https://ethereum.org/en/developers/docs/apis/json-rpc/). This 

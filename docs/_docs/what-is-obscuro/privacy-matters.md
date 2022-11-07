@@ -1,3 +1,5 @@
+---
+---
 # Privacy 
 _The full Litepaper is available to view [here](https://obscu.ro/litepaper)._
 

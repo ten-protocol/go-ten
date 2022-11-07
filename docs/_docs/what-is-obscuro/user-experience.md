@@ -1,3 +1,5 @@
+---
+---
 # User Experience 
 
 The design of Obscuro ensures that existing Ethereum apps can move over to Obscuro for virtually no cost. Any developer familiar with Ethereum can build privacy-preserving apps on Obscuro that benefit from the adoption, legitimacy, security, developer tooling and liquidity of the entire Ethereum ecosystem.
