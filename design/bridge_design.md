@@ -50,13 +50,14 @@ These contracts will be owned by the ManagementContract and the enclave on their
    * The Rollup protocol will ensure the L1 blocks being consumed by the enclave and the resulting synthetic transactions are always bound to the blocks generating them.
    * Obscuro has fast finality over the transaction ordering rather than the results. When a deposit gets reorganized the results on Obscuro L2 should reorganize too if depending on it. 
 
-
-
 ## Modifications
 
 The Rollup headers right now are assumed to include withdrawal instructions. These instructions will change to generalized messages. Those messages might be withdrawal instructions or anything else.
 
 
+## Definitions
+
+* `System contract` - A contract that is deployed by the Obscuro protocol when the Layer 2 network is created. System contracts serve the purpose of providing system API access on-chain. 
 
 ## MessageBus Design - Obscuro cross-chain data transmission 
 
@@ -116,7 +117,7 @@ Internally, the function will hash the message and compare it with the result of
 
 ### Submit Out Of Network Messages
 
-This is the administrative smart contract function that will be called by the `ManagementContract` on L1 and the `enclave` on L2. It's purpose is to store the messages that were submitted from the other linked chain. It should be access controlled and called according to the `consistencyLevel` and Obscuro platform rules.
+This is the smart contract function which is used to store messages sent from the other linked layer. The function will be called by the `ManagementContract` on L1 and the `enclave` on L2. It should be access controlled and called according to the `consistencyLevel` and Obscuro platform rules.
 
 ```solidity 
 function submitOutOfNetworkMessage(
@@ -164,6 +165,14 @@ When a transaction on the `L2` results in `LogMessagePublished`, the event will 
 
 > **_NOTE:_** **The messages must not be accessible unless** the challenge period has passed! On top of that the block where the message is submitted to L1 must have confirmations equal to `consistencyLevel` before the message is released. Those are simply counted on-chain as "confirmations" is meaningless for Obscuro L2.  
 
+### Alternative approaches
+
+1. Obscuro only ever pushes the hash of the message. The user has the responsibility of providing the full message which will only be accepted if it matches one of the hashes, if neccessary.
+  * This simplifies gas cost calculations, but the problem described in the `Fees` section remains.
+  * Contracts can hash their messages before passing them to the `MessageBus` and achieve nearly the same outcome if they want to. 
+2. Obscuro only pushes to L2. Messages on L1 are provided signed by the enclave through an RPC and the MessageBus contract verifies that they have been signed by a correct enclave-owned key. 
+  * This disabled the option to read messages and ordering becomes problematic.
+  * The API is different between layers, which might end up being a bad UX.
 ### Fees
 
 When publishing a message on the Obscuro L2, storing the message will have a direct cost to the `Sequencer` who is publishing the Rollup in the form of gas. In order to channel this cost to the user who is publishing the message we would need some configurable properties.
@@ -266,8 +275,11 @@ There will be the following topics initially:
 
 ---
 
-**Diagram of the bridge process that happens on Obscuro's Layer 2**
-![Sequence Diagram not available](./resources/ObscuroL2_MessageBus_Diagram.svg)
+**Diagram of the bridge process that happens on Obscuro's Layer 2 when a deposit is created**
+![Sequence Diagram not available](./resources/ObscuroL2_MessageBus_deposit_Diagram.svg)
+
+**Diagram of the process to withdraw the assets from the bridge contract on Obscuro's Layer 2**
+![Sequence Diagram not available](./resources/ObscuroL2_Bridge_withdraw_Diagram.svg)
 
 The API to transfer assets from the perspective of the user is the same on both layers. The process is as follows:
 
