@@ -7,13 +7,13 @@
     [in a sample applications repository](https://github.com/obscuronet/sample-applications). Given the move for 
     Testnet to be long-running (or at least restartable without contract disappearance), the Guessing Game must be 
     persisted across software updates, and redeployed manually if needed in the same way other applications are.
-  * Calls to wait for a transaction receipt are now blocking, whereas previously they would return an error meaning the 
-    client side code needed to perform a specific wait and poll loop. The example on how to programmatically deploy
-    a contract has been updated accordingly. 
   * The list of sensitive RPC API methods, where the request and response is encrypted in transit, now covers 
     `eth_call`, `eth_estimateGas`, `eth_getBalance`, `eth_getLogs`, `eth_getTransactionByHash`, `eth_getTransactionCount`, 
     `eth_getTransactionReceipt` and `eth_sendRawTransaction`. See the Obscuro
     [documentation](https://docs.obscu.ro/api/sensitive-apis/) for more details. 
+  * Calls to wait for a transaction receipt are now blocking, whereas previously they would return an error meaning the
+    client side code needed to perform a specific wait and poll loop. The example on how to programmatically deploy
+    a contract has been updated accordingly.
   * The ability to start a faucet server against a local testnet deployment is now supported via a docker 
     container. For more information see the Obscuro 
     [readme](https://github.com/obscuronet/go-obscuro#building-and-running-a-local-faucet).
