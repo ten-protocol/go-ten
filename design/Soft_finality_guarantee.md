@@ -3,15 +3,15 @@
 The decentralised POBI protocol links the rollups to the L1 block used as proof, which means that any L1 reorg
 results in an implicit L2 reorg. The finality of a L2 rollup is fully linked to the finality of an L1 block.
 
-During bootstrapping we want a central sequencer to guarantee finality in around ~1second, and for the bride to be decentralised 
-and resistant to reorgs.(
+During bootstrapping we want a central sequencer to guarantee finality in around ~1second, and for the bridge to be decentralised 
+and resistant to reorgs.
 
 Note: See bridge and finality designs for more details
 
 
 ## Problem
 
-The sequencer can only guarantee the ordering of transactions which it receives from the Obscuro users.
+The central sequencer can only guarantee a consistent ordering of the transactions it receives from the Obscuro users.
 It can't offer guarantees over the finality of cross-chain transactions. E.g.: deposits to the bridge.
 
 Given that deposits affect the balances of accounts, which can be used in Obscuro transactions, there is a dependence 
