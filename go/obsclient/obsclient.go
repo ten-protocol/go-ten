@@ -3,6 +3,13 @@ package obsclient
 import (
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
+	"github.com/ethereum/go-ethereum"
+	"github.com/obscuronet/go-obscuro/go/common"
+
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 )
@@ -42,9 +49,43 @@ func (oc *ObsClient) ChainID() (*big.Int, error) {
 	return (*big.Int)(&result), err
 }
 
-// BlockNumber returns the most recent block number
-func (oc *ObsClient) BlockNumber() (uint64, error) {
+// RollupNumber returns the height of the head rollup
+func (oc *ObsClient) RollupNumber() (uint64, error) {
 	var result hexutil.Uint64
 	err := oc.rpcClient.Call(&result, rpc.BlockNumber)
 	return uint64(result), err
+}
+
+// BlockNumber returns the height of the head L1 block
+func (oc *ObsClient) BlockNumber() (uint64, error) {
+	var headBlockHeader *types.Header
+	err := oc.rpcClient.Call(&headBlockHeader, rpc.GetHeadBlockHeader)
+	if err != nil {
+		return 0, err
+	}
+	// This mimics the behaviour of eth_blockNumber, where a nil head gives a zero block number.
+	if headBlockHeader == nil {
+		return 0, nil
+	}
+	return headBlockHeader.Number.Uint64(), nil
+}
+
+// RollupHeaderByNumber returns the header of the rollup with the given number
+func (oc *ObsClient) RollupHeaderByNumber(number *big.Int) (*common.Header, error) {
+	var rollupHeader *common.Header
+	err := oc.rpcClient.Call(&rollupHeader, rpc.GetBlockByNumber, toBlockNumArg(number), false)
+	if err == nil && rollupHeader == nil {
+		err = ethereum.NotFound
+	}
+	return rollupHeader, err
+}
+
+// RollupHeaderByHash returns the block header with the given hash.
+func (oc *ObsClient) RollupHeaderByHash(hash gethcommon.Hash) (*common.Header, error) {
+	var rollupHeader *common.Header
+	err := oc.rpcClient.Call(&rollupHeader, rpc.GetBlockByHash, hash, false)
+	if err == nil && rollupHeader == nil {
+		err = ethereum.NotFound
+	}
+	return rollupHeader, err
 }

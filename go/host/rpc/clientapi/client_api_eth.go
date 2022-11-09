@@ -63,13 +63,13 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 }
 
 // GetBlockByHash returns the rollup with the given hash as a block. No transactions are included.
-// TODO - #718 - Switch to retrieiving batch header.
+// TODO - #718 - Switch to retrieving batch header.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
 	rollupHeaderWithHashes := api.host.DB().GetRollupHeader(hash)
 	if rollupHeaderWithHashes == nil {
 		return nil, nil //nolint:nilnil
 	}
-	return headerWithHashesToBlock(rollupHeaderWithHashes), nil
+	return headerWithHashesToMap(rollupHeaderWithHashes), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -177,11 +177,12 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 	}, nil
 }
 
-// Maps an external rollup to a block.
-func headerWithHashesToBlock(headerWithHashes *common.HeaderWithTxHashes) map[string]interface{} {
+// Maps an external rollup to a key/value map.
+// TODO - Include all the fields of the rollup header that do not exist in the Geth block headers as well (not just withdrawals).
+func headerWithHashesToMap(headerWithHashes *common.HeaderWithTxHashes) map[string]interface{} {
 	header := headerWithHashes.Header
 	return map[string]interface{}{
-		"number":           (*hexutil.Big)(header.Number),
+		"number":           header.Number.Uint64(),
 		"hash":             header.Hash(),
 		"parentHash":       header.ParentHash,
 		"nonce":            header.Nonce,
@@ -200,6 +201,8 @@ func headerWithHashesToBlock(headerWithHashes *common.HeaderWithTxHashes) map[st
 		"timestamp":     header.Time,
 		"mixHash":       header.MixDigest,
 		"baseFeePerGas": header.BaseFee,
+
+		"withdrawals": header.Withdrawals,
 	}
 }
 

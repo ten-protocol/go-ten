@@ -181,7 +181,7 @@ func (db *DB) writeBlockHeader(w ethdb.KeyValueWriter, header *types.Header) {
 	}
 }
 
-// ReadBlockHeader retrieves the rollup header corresponding to the hash.
+// ReadBlockHeader retrieves the block header corresponding to the hash.
 func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) *types.Header {
 	f, err := r.Has(blockHeaderKey(hash))
 	if err != nil {

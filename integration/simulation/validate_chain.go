@@ -219,13 +219,16 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
-	l1Height := getHeadBlockHeight(nodeClient)
-	if int64(maxEthereumHeight)-l1Height > maxBlockDelay {
-		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeAddr, maxEthereumHeight-uint64(l1Height))
+	l1Height, err := obsClient.BlockNumber()
+	if err != nil {
+		t.Errorf("Node %d: Could not retrieve L1 height. Cause: %s", nodeAddr, err)
+	}
+	if int(maxEthereumHeight)-int(l1Height) > maxBlockDelay {
+		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeAddr, maxEthereumHeight-l1Height)
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	h := getHeadRollupHeader(nodeClient)
+	h := getHeadRollupHeader(obsClient)
 	if h == nil {
 		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeAddr)
 		return
@@ -236,12 +239,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height from the rollup header is consistent with the height returned by eth_blockNumber.
-	l2HeightFromBlockNumber, err := obsClient.BlockNumber()
+	l2HeightFromRollupNumber, err := obsClient.RollupNumber()
 	if err != nil {
 		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeAddr, err)
 	}
-	if l2HeightFromBlockNumber != l2Height.Uint64() {
-		t.Errorf("Node %d: Node's head rollup had a height %d, but eth_blockNumber height was %d", nodeAddr, l2Height, l2HeightFromBlockNumber)
+	if l2HeightFromRollupNumber != l2Height.Uint64() {
+		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeAddr, l2Height, rpc.BlockNumber, l2HeightFromRollupNumber)
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[nodeID]
@@ -255,7 +258,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 
 	// check that the pobi protocol doesn't waste too many blocks.
 	// todo- find the block where the genesis was published)
-	efficiency := float64(uint64(l1Height)-l2Height.Uint64()) / float64(l1Height)
+	efficiency := float64(l1Height-l2Height.Uint64()) / float64(l1Height)
 	if efficiency > s.Params.L2ToL1EfficiencyThreshold {
 		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeAddr, efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}
@@ -384,25 +387,33 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 }
 
 func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn *big.Int, numberOfWithdrawalRequests int) {
-	totalSuccessfullyWithdrawn = big.NewInt(0)
-	head := getHeadRollupHeader(nodeClient)
+	obsClient := obsclient.NewObsClient(nodeClient)
 
-	if head == nil {
+	totalSuccessfullyWithdrawn = big.NewInt(0)
+	header := getHeadRollupHeader(obsClient)
+	if header == nil {
 		panic(fmt.Sprintf("Node %d: The current head should not be nil", nodeAddr))
 	}
 
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for r := head; ; r = getRollupHeader(nodeClient, r.ParentHash) {
-		if r != nil && r.Number.Uint64() == common.L1GenesisHeight {
-			return
-		}
-		if r == nil {
+	var err error
+	for {
+		if header == nil {
 			t.Errorf(fmt.Sprintf("Node %d: Reached a missing rollup", nodeAddr))
 			return
 		}
-		for _, w := range r.Withdrawals {
+		if header.Number.Uint64() == common.L1GenesisHeight {
+			return
+		}
+
+		for _, w := range header.Withdrawals {
 			totalSuccessfullyWithdrawn.Add(totalSuccessfullyWithdrawn, w.Amount)
 			numberOfWithdrawalRequests++
+		}
+
+		header, err = obsClient.RollupHeaderByHash(header.ParentHash)
+		if err != nil {
+			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header by hash", nodeAddr))
 		}
 	}
 }
