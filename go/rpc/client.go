@@ -12,6 +12,7 @@ const (
 	Call                  = "eth_call"
 	ChainID               = "eth_chainId"
 	GetBalance            = "eth_getBalance"
+	GetBlockByHash        = "eth_getBlockByHash"
 	GetBlockByNumber      = "eth_getBlockByNumber"
 	GetCode               = "eth_getCode"
 	GetTransactionByHash  = "eth_getTransactionByHash"
@@ -21,7 +22,7 @@ const (
 	EstimateGas           = "eth_estimateGas"
 	GetLogs               = "eth_getLogs"
 	AddViewingKey         = "obscuro_addViewingKey"
-	GetBlockHeaderByHash  = "obscuroscan_getBlockHeaderByHash"
+	GetBlockHeaderByHash  = "obscuroscan_getBlockHeaderByHash" // todo - joel - remove this
 	GetHeadRollupHeader   = "obscuroscan_getHeadRollupHeader"
 	GetRollup             = "obscuroscan_getRollup"
 	GetRollupForTx        = "obscuroscan_getRollupForTx"

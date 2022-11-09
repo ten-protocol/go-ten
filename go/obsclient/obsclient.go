@@ -3,6 +3,8 @@ package obsclient
 import (
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/obscuronet/go-obscuro/go/common"
 
@@ -72,6 +74,16 @@ func (oc *ObsClient) BlockNumber() (uint64, error) {
 func (oc *ObsClient) RollupHeaderByNumber(number *big.Int) (*common.Header, error) {
 	var rollupHeader *common.Header
 	err := oc.rpcClient.Call(&rollupHeader, rpc.GetBlockByNumber, toBlockNumArg(number), false)
+	if err == nil && rollupHeader == nil {
+		err = ethereum.NotFound
+	}
+	return rollupHeader, err
+}
+
+// RollupHeaderByHash returns the block header with the given hash.
+func (oc *ObsClient) RollupHeaderByHash(hash gethcommon.Hash) (*common.Header, error) {
+	var rollupHeader *common.Header
+	err := oc.rpcClient.Call(&rollupHeader, rpc.GetBlockByHash, hash, false)
 	if err == nil && rollupHeader == nil {
 		err = ethereum.NotFound
 	}

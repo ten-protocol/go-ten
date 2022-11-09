@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/rpc"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
@@ -16,7 +18,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
 const (
@@ -58,21 +59,6 @@ func getHeadRollupHeader(client *obsclient.ObsClient) *common.Header {
 	return headRollupHeader
 }
 
-// TODO - Move these getter methods to `obsclient.ObsClient`.
-
-// Uses the client to retrieve the rollup header with the matching hash.
-func getRollupHeader(client rpc.Client, hash gethcommon.Hash) *common.Header {
-	method := rpc.GetRollupHeader
-
-	var result *common.Header
-	err := client.Call(&result, method, hash.Hex())
-	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
-	}
-
-	return result
-}
-
 // Uses the client to retrieve the balance of the wallet with the given address.
 func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethcommon.Address, l2ContractAddress *gethcommon.Address) *big.Int {
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
@@ -91,6 +77,20 @@ func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethc
 	// remove the "0x" prefix (we already confirmed it is present), convert the remaining hex value (base 16) to a balance number
 	b.SetString(string(response)[2:], 16)
 	return b
+}
+
+// Uses the client to retrieve the rollup header with the matching hash.
+// todo - joel - delete this method
+func getRollupHeader(client rpc.Client, hash gethcommon.Hash) *common.Header {
+	method := rpc.GetRollupHeader
+
+	var result *common.Header
+	err := client.Call(&result, method, hash.Hex())
+	if err != nil {
+		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
+	}
+
+	return result
 }
 
 // FindHashDups - returns a map of all hashes that appear multiple times, and how many times

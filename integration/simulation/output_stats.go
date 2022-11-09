@@ -59,8 +59,19 @@ func (o *OutputStats) countBlockChain() {
 	obscuroClient := obsclient.NewObsClient(l2Client)
 
 	// iterate the Node Headers and get the rollups
-	for header := getHeadRollupHeader(obscuroClient); header != nil && !bytes.Equal(header.Hash().Bytes(), common.GenesisHash.Bytes()); header = getRollupHeader(l2Client, header.ParentHash) {
+	header := getHeadRollupHeader(obscuroClient)
+	var err error
+	for {
+		if header != nil && !bytes.Equal(header.Hash().Bytes(), common.GenesisHash.Bytes()) {
+			break
+		}
+
 		o.l2RollupCountInHeaders++
+
+		header, err = obscuroClient.RollupHeaderByHash(header.ParentHash)
+		if err != nil {
+			testlog.Logger().Crit("could not retrieve rollup by hash.", log.ErrKey, err)
+		}
 	}
 
 	// iterate the L1 Blocks and get the rollups

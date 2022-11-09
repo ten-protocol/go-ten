@@ -129,6 +129,9 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.GetBlockByNumber:
 		return c.getBlockByNumber(result, args)
 
+	case rpc.GetBlockByHash:
+		return c.getBlockByHash(result, args)
+
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
@@ -296,6 +299,31 @@ func (c *inMemObscuroClient) getBlockByNumber(result interface{}, args []interfa
 	err = json.Unmarshal(headerJSON, &header)
 	if err != nil {
 		return fmt.Errorf("could not marshal %s response to rollup header. Cause: %w", rpc.GetBlockByNumber, err)
+	}
+
+	*result.(**common.Header) = &header
+	return nil
+}
+
+func (c *inMemObscuroClient) getBlockByHash(result interface{}, args []interface{}) error {
+	blockHash, ok := args[0].(gethcommon.Hash)
+	if !ok {
+		return fmt.Errorf("arg to %s is of type %T, expected common.Hash", rpc.GetBlockByNumber, args[0])
+	}
+
+	headerMap, err := c.ethAPI.GetBlockByHash(nil, blockHash, false)
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBlockByHash, err)
+	}
+
+	headerJSON, err := json.Marshal(headerMap)
+	if err != nil {
+		return fmt.Errorf("could not marshal %s response to JSON. Cause: %w", rpc.GetBlockByHash, err)
+	}
+	var header common.Header
+	err = json.Unmarshal(headerJSON, &header)
+	if err != nil {
+		return fmt.Errorf("could not marshal %s response to rollup header. Cause: %w", rpc.GetBlockByHash, err)
 	}
 
 	*result.(**common.Header) = &header
