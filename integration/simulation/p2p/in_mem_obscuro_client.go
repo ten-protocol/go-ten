@@ -4,6 +4,7 @@ package p2p
 import (
 	"context"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
