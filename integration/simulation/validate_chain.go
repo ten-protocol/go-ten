@@ -207,17 +207,19 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	defer wg.Done()
 	var nodeID gethcommon.Address
 	nodeClient := rpcHandles.ObscuroClients[nodeIdx]
+	obsClient := obsclient.NewObsClient(nodeClient)
+
 	err := nodeClient.Call(&nodeID, rpc.GetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}
 	nodeAddr := common.ShortAddress(nodeID)
-	l1Height := getHeadBlockHeight(nodeClient)
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
+	l1Height := getHeadBlockHeight(nodeClient)
 	if int64(maxEthereumHeight)-l1Height > maxBlockDelay {
 		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeAddr, maxEthereumHeight-uint64(l1Height))
 	}
@@ -234,7 +236,10 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height from the rollup header is consistent with the height returned by eth_blockNumber.
-	l2HeightFromBlockNumber := getBlockNumber(nodeClient)
+	l2HeightFromBlockNumber, err := obsClient.BlockNumber()
+	if err != nil {
+		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeAddr, err)
+	}
 	if l2HeightFromBlockNumber != l2Height.Uint64() {
 		t.Errorf("Node %d: Node's head rollup had a height %d, but eth_blockNumber height was %d", nodeAddr, l2Height, l2HeightFromBlockNumber)
 	}

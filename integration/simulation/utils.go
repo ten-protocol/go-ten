@@ -6,8 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
@@ -46,6 +44,8 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 	}
 	return
 }
+
+// TODO - Move these getter methods to `obsclient.ObsClient`.
 
 // Uses the client to retrieve the height of the current block head.
 func getHeadBlockHeight(client rpc.Client) int64 {
@@ -88,23 +88,6 @@ func getRollupHeader(client rpc.Client, hash gethcommon.Hash) *common.Header {
 	}
 
 	return result
-}
-
-// Uses the client to retrieve the current block number.
-func getBlockNumber(client rpc.Client) uint64 {
-	method := rpc.BlockNumber
-
-	var result hexutil.Uint64
-	err := client.Call(&result, method)
-	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
-	}
-
-	blockNumber, err := hexutil.DecodeUint64(result.String())
-	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failure to decode response to %s RPC call. Cause: %w", method, err))
-	}
-	return blockNumber
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.

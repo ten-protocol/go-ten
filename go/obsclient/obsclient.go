@@ -1,10 +1,13 @@
 package obsclient
 
 import (
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
-// ObsClient requires an RPC Client and provides access to general Obscuro functionality that doesn't require viewing keys.
+// ObsClient provides access to general Obscuro functionality that doesn't require viewing keys.
 //
 // The methods in this client are analogous to the methods in geth's EthClient and should behave the same unless noted otherwise.
 type ObsClient struct {
@@ -25,4 +28,23 @@ func NewObsClient(c rpc.Client) *ObsClient {
 
 func (oc *ObsClient) Close() {
 	oc.rpcClient.Stop()
+}
+
+// Blockchain Access
+
+// ChainID retrieves the current chain ID for transaction replay protection.
+func (oc *ObsClient) ChainID() (*big.Int, error) {
+	var result hexutil.Big
+	err := oc.rpcClient.Call(&result, rpc.ChainID)
+	if err != nil {
+		return nil, err
+	}
+	return (*big.Int)(&result), err
+}
+
+// BlockNumber returns the most recent block number
+func (oc *ObsClient) BlockNumber() (uint64, error) {
+	var result hexutil.Uint64
+	err := oc.rpcClient.Call(&result, rpc.BlockNumber)
+	return uint64(result), err
 }
