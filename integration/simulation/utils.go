@@ -138,6 +138,6 @@ func findRollupDups(list []*common.ExtRollupWithHash) map[common.L2RootHash]int 
 	return dups
 }
 
-func SleepRndBtw(min time.Duration, max time.Duration) {
+func sleepRndBtw(min time.Duration, max time.Duration) {
 	time.Sleep(testcommon.RndBtwTime(min, max))
 }
