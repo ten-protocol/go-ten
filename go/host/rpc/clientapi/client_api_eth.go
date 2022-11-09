@@ -32,6 +32,7 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 }
 
 // BlockNumber returns the height of the current head rollup.
+// # TODO - #718 - Switch to returning height based on current batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 	head := api.host.DB().GetHeadRollupHeader()
 	if head == nil {
@@ -61,6 +62,7 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 }
 
 // GetBlockByHash returns the rollup with the given hash as a block. No transactions are included.
+// TODO - #718 - Switch to retrieiving batch header.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
 	rollupHeaderWithHashes := api.host.DB().GetRollupHeader(hash)
 	if rollupHeaderWithHashes == nil {
@@ -208,8 +210,8 @@ type FeeHistoryResult struct {
 	GasUsedRatio []float64        `json:"gasUsedRatio"`
 }
 
+// TODO - #718 - Switch to converting block number to batch hash.
 func (api *EthereumAPI) blockNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
-	// Predefined constants to support Geth's API
 	switch blockNumber {
 	case rpc.LatestBlockNumber:
 		hash := api.host.DB().GetHeadRollupHeader().Header.Hash()

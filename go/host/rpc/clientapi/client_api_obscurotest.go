@@ -31,6 +31,7 @@ func (api *TestAPI) GetHeadBlockHeader() *types.Header {
 }
 
 // GetRollupHeader returns the header of the rollup with the given hash.
+// TODO - #718 - Return the header of the batch instead.
 func (api *TestAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
 	headerWithHashes := api.host.DB().GetRollupHeader(hash)
 	if headerWithHashes == nil {
