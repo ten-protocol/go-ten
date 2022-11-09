@@ -236,12 +236,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height from the rollup header is consistent with the height returned by eth_blockNumber.
-	l2HeightFromBlockNumber, err := obsClient.BlockNumber()
+	l2HeightFromRollupNumber, err := obsClient.RollupNumber()
 	if err != nil {
 		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeAddr, err)
 	}
-	if l2HeightFromBlockNumber != l2Height.Uint64() {
-		t.Errorf("Node %d: Node's head rollup had a height %d, but eth_blockNumber height was %d", nodeAddr, l2Height, l2HeightFromBlockNumber)
+	if l2HeightFromRollupNumber != l2Height.Uint64() {
+		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeAddr, l2Height, rpc.BlockNumber, l2HeightFromRollupNumber)
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[nodeID]

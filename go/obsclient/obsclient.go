@@ -42,8 +42,8 @@ func (oc *ObsClient) ChainID() (*big.Int, error) {
 	return (*big.Int)(&result), err
 }
 
-// BlockNumber returns the most recent block number
-func (oc *ObsClient) BlockNumber() (uint64, error) {
+// RollupNumber returns the height of the head rollup
+func (oc *ObsClient) RollupNumber() (uint64, error) {
 	var result hexutil.Uint64
 	err := oc.rpcClient.Call(&result, rpc.BlockNumber)
 	return uint64(result), err
