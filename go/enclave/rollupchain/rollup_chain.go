@@ -469,7 +469,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
-	rc.logger.Info("block inserted successfully",
+	rc.logger.Trace("block inserted successfully",
 		"height", block.NumberU64(),
 		"hash", block.Hash(),
 		"ingestionType", ingestionType)
