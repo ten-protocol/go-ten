@@ -387,25 +387,33 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 }
 
 func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn *big.Int, numberOfWithdrawalRequests int) {
-	totalSuccessfullyWithdrawn = big.NewInt(0)
-	head := getHeadRollupHeader(obsclient.NewObsClient(nodeClient))
+	obsClient := obsclient.NewObsClient(nodeClient)
 
-	if head == nil {
+	totalSuccessfullyWithdrawn = big.NewInt(0)
+	header := getHeadRollupHeader(obsClient)
+	if header == nil {
 		panic(fmt.Sprintf("Node %d: The current head should not be nil", nodeAddr))
 	}
 
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	for r := head; ; r = getRollupHeader(nodeClient, r.ParentHash) {
-		if r != nil && r.Number.Uint64() == common.L1GenesisHeight {
-			return
-		}
-		if r == nil {
+	var err error
+	for {
+		if header == nil {
 			t.Errorf(fmt.Sprintf("Node %d: Reached a missing rollup", nodeAddr))
 			return
 		}
-		for _, w := range r.Withdrawals {
+		if header.Number.Uint64() == common.L1GenesisHeight {
+			return
+		}
+
+		for _, w := range header.Withdrawals {
 			totalSuccessfullyWithdrawn.Add(totalSuccessfullyWithdrawn, w.Amount)
 			numberOfWithdrawalRequests++
+		}
+
+		header, err = obsClient.RollupHeaderByHash(header.ParentHash)
+		if err != nil {
+			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header by hash", nodeAddr))
 		}
 	}
 }
