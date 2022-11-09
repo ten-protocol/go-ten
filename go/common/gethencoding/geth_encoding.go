@@ -2,24 +2,27 @@ package gethencoding
 
 import (
 	"fmt"
-	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
 	// The relevant fields in an eth_call request's params.
-	callFieldTo    = "to"
-	CallFieldFrom  = "from"
-	callFieldData  = "data"
-	callFieldValue = "value"
+	callFieldTo                   = "to"
+	CallFieldFrom                 = "from"
+	callFieldData                 = "data"
+	callFieldValue                = "value"
+	callFieldGas                  = "gas"
+	callFieldGasPrice             = "gasprice"
+	callFieldMaxFeePerGas         = "maxfeepergas"
+	callFieldMaxPriorityFeePerGas = "maxpriorityfeepergas"
 )
 
-// ExtractEthCallMapString extracts the eth_call ethereum.CallMsg from an interface{}
+// ExtractEthCallMapString extracts the eth_call gethapi.TransactionArgs from an interface{}
 // it ensures that :
 // - All types are string
 // - All keys are lowercase
@@ -53,6 +56,12 @@ func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) 
 			callMsg[callFieldData] = valString
 		case callFieldValue:
 			callMsg[callFieldValue] = valString
+		case callFieldGas:
+			callMsg[callFieldGas] = valString
+		case callFieldMaxFeePerGas:
+			callMsg[callFieldMaxFeePerGas] = valString
+		case callFieldMaxPriorityFeePerGas:
+			callMsg[callFieldMaxPriorityFeePerGas] = valString
 		default:
 			callMsg[field] = valString
 		}
@@ -61,15 +70,16 @@ func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) 
 	return callMsg, nil
 }
 
-// ExtractEthCall extracts the eth_call ethereum.CallMsg from an interface{}
-func ExtractEthCall(paramBytes interface{}) (*ethereum.CallMsg, error) {
+// ExtractEthCall extracts the eth_call gethapi.TransactionArgs from an interface{}
+func ExtractEthCall(paramBytes interface{}) (*gethapi.TransactionArgs, error) {
 	// geth lowercases the field name and uses the last seen value
 	var valString string
 	var to, from gethcommon.Address
-	var data []byte
-	var value *big.Int
+	var data *hexutil.Bytes
+	var value, gasPrice, maxFeePerGas, maxPriorityFeePerGas *hexutil.Big
 	var ok bool
-	var err error
+	var gas *hexutil.Uint64
+
 	for field, val := range paramBytes.(map[string]interface{}) {
 		if val == nil {
 			continue
@@ -87,29 +97,58 @@ func ExtractEthCall(paramBytes interface{}) (*ethereum.CallMsg, error) {
 		case CallFieldFrom:
 			from = gethcommon.HexToAddress(valString)
 		case callFieldData:
-			data, err = hexutil.Decode(valString)
+			dataVal, err := hexutil.Decode(valString)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode data in CallMsg - %w", err)
 			}
+			data = (*hexutil.Bytes)(&dataVal)
 		case callFieldValue:
-			value, err = hexutil.DecodeBig(valString)
+			valueVal, err := hexutil.DecodeBig(valString)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
 			}
+			value = (*hexutil.Big)(valueVal)
+		case callFieldGas:
+			gasVal, err := hexutil.DecodeUint64(valString)
+			if err != nil {
+				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
+			}
+			gas = (*hexutil.Uint64)(&gasVal)
+
+		case callFieldGasPrice:
+			valueVal, err := hexutil.DecodeBig(valString)
+			if err != nil {
+				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
+			}
+			value = (*hexutil.Big)(valueVal)
+
+		case callFieldMaxFeePerGas:
+			maxFeePerGasVal, err := hexutil.DecodeBig(valString)
+			if err != nil {
+				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
+			}
+			maxFeePerGas = (*hexutil.Big)(maxFeePerGasVal)
+
+		case callFieldMaxPriorityFeePerGas:
+			maxPriorityFeePerGasVal, err := hexutil.DecodeBig(valString)
+			if err != nil {
+				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
+			}
+			maxPriorityFeePerGas = (*hexutil.Big)(maxPriorityFeePerGasVal)
 		}
 	}
 
 	// convert the params[0] into an ethereum.CallMsg
-	callMsg := &ethereum.CallMsg{
-		From:       from,
-		To:         &to,
-		Gas:        0,
-		GasPrice:   nil,
-		GasFeeCap:  nil,
-		GasTipCap:  nil,
-		Value:      value,
-		Data:       data,
-		AccessList: nil,
+	callMsg := &gethapi.TransactionArgs{
+		From:                 &from,
+		To:                   &to,
+		Gas:                  gas,
+		GasPrice:             gasPrice,
+		MaxFeePerGas:         maxFeePerGas,
+		MaxPriorityFeePerGas: maxPriorityFeePerGas,
+		Value:                value,
+		Data:                 data,
+		AccessList:           nil,
 	}
 
 	return callMsg, nil

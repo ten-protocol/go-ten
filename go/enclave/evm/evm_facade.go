@@ -83,14 +83,11 @@ func logReceipt(r *types.Receipt, logger gethlog.Logger) {
 	}
 }
 
-// ExecuteOffChainCall - executes the "data" command against the "to" smart contract
-func ExecuteOffChainCall(from gethcommon.Address, to *gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, logger gethlog.Logger) (*gethcore.ExecutionResult, error) {
+// ExecuteOffChainCall - executes the eth_call call
+func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, logger gethlog.Logger) (*gethcore.ExecutionResult, error) {
 	chain, vmCfg, gp := initParams(storage, true)
 
 	blockContext := gethcore.NewEVMBlockContext(convertToEthHeader(header, secret(storage)), chain, &header.Agg)
-	// todo use ToMessage
-	// 100_000_000_000 is just a huge number gasLimit for making sure the local tx doesn't fail with lack of gas
-	msg := types.NewMessage(from, to, 0, gethcommon.Big0, 100_000_000_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
 
 	// sets TxKey.origin
 	txContext := gethcore.NewEVMTxContext(msg)

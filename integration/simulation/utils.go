@@ -47,7 +47,7 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 
 // Uses the client to retrieve the height of the current block head.
 func getCurrentBlockHeadHeight(client rpc.Client) int64 {
-	method := rpc.GetCurrentBlockHead
+	method := rpc.GetHeadBlockHeader
 
 	var blockHead *types.Header
 	err := client.Call(&blockHead, method)

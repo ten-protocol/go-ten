@@ -41,7 +41,7 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
 		ProducedRollup:          &producedRollupMsg,
 		IngestedNewRollup:       response.FoundNewHead,
-		RollupHead:              ToRollupHeaderMsg(response.RollupHead),
+		RollupHead:              ToRollupHeaderMsg(response.IngestedRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
 	}, nil
@@ -96,7 +96,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
 		FoundNewHead:            msg.IngestedNewRollup,
-		RollupHead:              FromRollupHeaderMsg(msg.RollupHead),
+		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
 	}, nil
@@ -138,7 +138,6 @@ func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
 		ParentHash:  header.ParentHash.Bytes(),
 		Node:        header.Agg.Bytes(),
 		Nonce:       []byte{},
-		RollupNonce: header.RollupNonce,
 		Proof:       header.L1Proof.Bytes(),
 		Root:        header.Root.Bytes(),
 		TxHash:      header.TxHash.Bytes(),
@@ -201,7 +200,6 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *common.Header {
 		ParentHash:  gethcommon.BytesToHash(header.ParentHash),
 		Agg:         gethcommon.BytesToAddress(header.Node),
 		Nonce:       types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),
-		RollupNonce: header.RollupNonce,
 		L1Proof:     gethcommon.BytesToHash(header.Proof),
 		Root:        gethcommon.BytesToHash(header.Root),
 		TxHash:      gethcommon.BytesToHash(header.TxHash),

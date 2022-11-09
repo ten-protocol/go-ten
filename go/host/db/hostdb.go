@@ -52,8 +52,8 @@ func NewLevelDBBackedDB(logger gethlog.Logger) *DB {
 	}
 }
 
-// GetCurrentBlockHead returns the current block header (head) of the Node
-func (db *DB) GetCurrentBlockHead() *types.Header {
+// GetHeadBlockHeader returns the block header of the current head block
+func (db *DB) GetHeadBlockHeader() *types.Header {
 	head := db.readHeadBlock(db.kvStore)
 	if head == nil {
 		return nil
@@ -61,7 +61,7 @@ func (db *DB) GetCurrentBlockHead() *types.Header {
 	return db.readBlockHeader(db.kvStore, *head)
 }
 
-// GetBlockHeader returns the block header given the Hash
+// GetBlockHeader returns the block header given the hash
 func (db *DB) GetBlockHeader(hash gethcommon.Hash) *types.Header {
 	return db.readBlockHeader(db.kvStore, hash)
 }
@@ -72,8 +72,8 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 	db.writeBlockHeader(b, header)
 
 	// update the head if the new height is greater than the existing one
-	currentBlockHead := db.GetCurrentBlockHead()
-	if currentBlockHead == nil || currentBlockHead.Number.Int64() <= header.Number.Int64() {
+	headBlockHeader := db.GetHeadBlockHeader()
+	if headBlockHeader == nil || headBlockHeader.Number.Int64() <= header.Number.Int64() {
 		db.writeHeadBlock(b, header.Hash())
 	}
 
@@ -96,13 +96,13 @@ func (db *DB) GetRollupHeader(hash gethcommon.Hash) *common.HeaderWithTxHashes {
 	return db.readRollupHeader(db.kvStore, hash)
 }
 
-// AddRollupHeader adds a RollupHeader to the known headers
+// AddRollupHeader adds a rollup's header to the known headers
 func (db *DB) AddRollupHeader(headerWithHashes *common.HeaderWithTxHashes) {
 	b := db.kvStore.NewBatch()
 	db.writeRollupHeader(b, headerWithHashes)
 	db.writeRollupHash(b, headerWithHashes.Header)
 	for _, txHash := range headerWithHashes.TxHashes {
-		db.writeRollupNumber(b, txHash, headerWithHashes.Header.Number)
+		db.writeRollupNumber(b, headerWithHashes.Header, txHash)
 	}
 	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
 	currentTotal := db.readTotalTransactions(db.kvStore)
@@ -285,7 +285,7 @@ func (db *DB) writeHeadRollup(w ethdb.KeyValueWriter, val gethcommon.Hash) {
 	}
 }
 
-// Stores the hash of a rollup into the database, keyed by the rollup's number
+// Stores a rollup's hash in the database, keyed by the rollup's number.
 func (db *DB) writeRollupHash(w ethdb.KeyValueWriter, header *common.Header) {
 	key := rollupHashKey(header.Number)
 	if err := w.Put(key, header.Hash().Bytes()); err != nil {
@@ -293,12 +293,12 @@ func (db *DB) writeRollupHash(w ethdb.KeyValueWriter, header *common.Header) {
 	}
 }
 
-// Stores the hash of a rollup into the database, keyed by the hashes of the transactions in the rollup
-func (db *DB) writeRollupNumber(w ethdb.KeyValueWriter, txHash gethcommon.Hash, rollupNumber *big.Int) {
+// Stores a rollup's number in the database, keyed by the hash of a transaction in that rollup.
+func (db *DB) writeRollupNumber(w ethdb.KeyValueWriter, header *common.Header, txHash gethcommon.Hash) {
 	key := rollupNumberKey(txHash)
 	// TODO - Investigate this off-by-one issue. The tx hashes that are in the `BlockSubmissionResponse` for rollup #1
 	//  are actually the transactions for rollup #2.
-	number := big.NewInt(0).Add(rollupNumber, big.NewInt(1))
+	number := big.NewInt(0).Add(header.Number, big.NewInt(1))
 	if err := w.Put(key, number.Bytes()); err != nil {
 		db.logger.Crit("could not put rollup number in DB.", log.ErrKey, err)
 	}
