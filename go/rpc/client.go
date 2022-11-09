@@ -28,7 +28,7 @@ const (
 	GetTotalTxs             = "obscuroscan_getTotalTransactions"
 	Attestation             = "obscuroscan_attestation"
 	GetID                   = "test_getID"
-	GetCurrentBlockHead     = "test_getCurrentBlockHead"
+	GetHeadBlockHeader      = "test_getHeadBlockHeader"
 	GetRollupHeader         = "test_getRollupHeader"
 	StopHost                = "test_stopHost"
 	Subscribe               = "eth_subscribe"

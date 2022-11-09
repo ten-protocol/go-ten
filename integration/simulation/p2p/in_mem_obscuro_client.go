@@ -80,8 +80,8 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.SendRawTransaction:
 		return c.sendRawTransaction(args)
 
-	case rpc.GetCurrentBlockHead:
-		*result.(**types.Header) = c.testAPI.GetCurrentBlockHead()
+	case rpc.GetHeadBlockHeader:
+		*result.(**types.Header) = c.testAPI.GetHeadBlockHeader()
 		return nil
 
 	case rpc.GetCurrentRollupHead:

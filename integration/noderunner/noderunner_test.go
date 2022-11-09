@@ -115,7 +115,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		var result types.Header
-		err = obscuroClient.Call(&result, rpc.GetCurrentBlockHead)
+		err = obscuroClient.Call(&result, rpc.GetHeadBlockHeader)
 		if err == nil && result.Number.Uint64() > 0 {
 			return
 		}
