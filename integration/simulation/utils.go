@@ -44,20 +44,21 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 	return
 }
 
-// TODO - Move these getter methods to `obsclient.ObsClient`.
-
 // Uses the client to retrieve the current rollup head.
-func getHeadRollupHeader(client rpc.Client) *common.Header {
-	method := rpc.GetHeadRollupHeader
-
-	var result *common.Header
-	err := client.Call(&result, method)
+func getHeadRollupHeader(client *obsclient.ObsClient) *common.Header {
+	headRollupHeight, err := client.RollupNumber()
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
+		panic(fmt.Errorf("simulation failed due to failed attempt to retrieve head rollup height. Cause: %s", err))
 	}
 
-	return result
+	headRollupHeader, err := client.RollupHeaderByNumber(big.NewInt(int64(headRollupHeight)))
+	if err != nil {
+		panic(fmt.Errorf("simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %s", headRollupHeight, err))
+	}
+	return headRollupHeader
 }
+
+// TODO - Move these getter methods to `obsclient.ObsClient`.
 
 // Uses the client to retrieve the rollup header with the matching hash.
 func getRollupHeader(client rpc.Client, hash gethcommon.Hash) *common.Header {

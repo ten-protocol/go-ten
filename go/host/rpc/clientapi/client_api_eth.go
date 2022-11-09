@@ -181,7 +181,7 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 func headerWithHashesToBlock(headerWithHashes *common.HeaderWithTxHashes) map[string]interface{} {
 	header := headerWithHashes.Header
 	return map[string]interface{}{
-		"number":           (*hexutil.Big)(header.Number),
+		"number":           header.Number.Uint64(),
 		"hash":             header.Hash(),
 		"parentHash":       header.ParentHash,
 		"nonce":            header.Nonce,

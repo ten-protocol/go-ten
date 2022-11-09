@@ -49,15 +49,17 @@ func (o *OutputStats) populateHeights() {
 		panic(fmt.Errorf("simulation failed because could not read L1 height. Cause: %w", err))
 	}
 	o.l1Height = int(l1Height)
-	o.l2Height = int(getHeadRollupHeader(l2Client).Number.Uint64())
+
+	o.l2Height = int(getHeadRollupHeader(obscuroClient).Number.Uint64())
 }
 
 func (o *OutputStats) countBlockChain() {
 	l1Node := o.simulation.RPCHandles.EthClients[0]
 	l2Client := o.simulation.RPCHandles.ObscuroClients[0]
+	obscuroClient := obsclient.NewObsClient(l2Client)
 
 	// iterate the Node Headers and get the rollups
-	for header := getHeadRollupHeader(l2Client); header != nil && !bytes.Equal(header.Hash().Bytes(), common.GenesisHash.Bytes()); header = getRollupHeader(l2Client, header.ParentHash) {
+	for header := getHeadRollupHeader(obscuroClient); header != nil && !bytes.Equal(header.Hash().Bytes(), common.GenesisHash.Bytes()); header = getRollupHeader(l2Client, header.ParentHash) {
 		o.l2RollupCountInHeaders++
 	}
 

@@ -46,22 +46,6 @@ func (api *ObscuroScanAPI) GetRollup(hash gethcommon.Hash) (*common.ExtRollup, e
 	return api.host.EnclaveClient().GetRollup(hash)
 }
 
-// GetRollupHeaderByNumber returns the header for the rollup with the given number.
-// TODO - #718 - Switch to retrieving batch header.
-func (api *ObscuroScanAPI) GetRollupHeaderByNumber(number *big.Int) (*common.Header, error) {
-	rollupHash := api.host.DB().GetRollupHash(number)
-	if rollupHash == nil {
-		return nil, fmt.Errorf("no rollup with number %d is stored", number.Int64())
-	}
-
-	rollupHeader := api.host.DB().GetRollupHeader(*rollupHash)
-	if rollupHeader == nil {
-		return nil, fmt.Errorf("storage indicates that rollup %d has hash %s, but no such rollup is stored", number.Int64(), rollupHash)
-	}
-
-	return rollupHeader.Header, nil
-}
-
 // GetRollupForTx returns the rollup containing a given transaction hash. Required for ObscuroScan.
 func (api *ObscuroScanAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRollup, error) {
 	rollupNumber := api.host.DB().GetRollupNumber(txHash)
