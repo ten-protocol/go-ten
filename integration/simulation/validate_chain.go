@@ -212,7 +212,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}
 	nodeAddr := common.ShortAddress(nodeID)
-	l1Height := getCurrentBlockHeadHeight(nodeClient)
+	l1Height := getHeadBlockHeight(nodeClient)
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks

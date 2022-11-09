@@ -40,7 +40,7 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 
 func (o *OutputStats) populateHeights() {
 	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
-	o.l1Height = int(getCurrentBlockHeadHeight(obscuroClient))
+	o.l1Height = int(getHeadBlockHeight(obscuroClient))
 	o.l2Height = int(getHeadRollupHeader(obscuroClient).Number.Uint64())
 }
 
