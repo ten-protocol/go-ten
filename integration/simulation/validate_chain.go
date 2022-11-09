@@ -224,7 +224,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Node %d: Could not retrieve L1 height. Cause: %s", nodeAddr, err)
 	}
 	if int(maxEthereumHeight)-int(l1Height) > maxBlockDelay {
-		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeAddr, maxEthereumHeight-uint64(l1Height))
+		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeAddr, maxEthereumHeight-l1Height)
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
@@ -258,7 +258,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 
 	// check that the pobi protocol doesn't waste too many blocks.
 	// todo- find the block where the genesis was published)
-	efficiency := float64(uint64(l1Height)-l2Height.Uint64()) / float64(l1Height)
+	efficiency := float64(l1Height-l2Height.Uint64()) / float64(l1Height)
 	if efficiency > s.Params.L2ToL1EfficiencyThreshold {
 		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeAddr, efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}

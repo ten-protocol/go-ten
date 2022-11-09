@@ -47,12 +47,12 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 func getHeadRollupHeader(client *obsclient.ObsClient) *common.Header {
 	headRollupHeight, err := client.RollupNumber()
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed attempt to retrieve head rollup height. Cause: %s", err))
+		panic(fmt.Errorf("simulation failed due to failed attempt to retrieve head rollup height. Cause: %w", err))
 	}
 
 	headRollupHeader, err := client.RollupHeaderByNumber(big.NewInt(int64(headRollupHeight)))
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %s", headRollupHeight, err))
+		panic(fmt.Errorf("simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %w", headRollupHeight, err))
 	}
 	return headRollupHeader
 }

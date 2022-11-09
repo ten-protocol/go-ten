@@ -283,10 +283,10 @@ func (c *inMemObscuroClient) getBlockByNumber(result interface{}, args []interfa
 
 	blockNumber, err := hexutil.DecodeUint64(blockNumberHex)
 	if err != nil {
-		return fmt.Errorf("arg to %s could not be decoded from hex. Cause: %s", rpc.GetBlockByNumber, err)
+		return fmt.Errorf("arg to %s could not be decoded from hex. Cause: %w", rpc.GetBlockByNumber, err)
 	}
 
-	headerMap, err := c.ethAPI.GetBlockByNumber(nil, gethrpc.BlockNumber(blockNumber), false)
+	headerMap, err := c.ethAPI.GetBlockByNumber(nil, gethrpc.BlockNumber(blockNumber), false) //nolint:staticcheck
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBlockByNumber, err)
 	}
@@ -311,7 +311,7 @@ func (c *inMemObscuroClient) getBlockByHash(result interface{}, args []interface
 		return fmt.Errorf("arg to %s is of type %T, expected common.Hash", rpc.GetBlockByNumber, args[0])
 	}
 
-	headerMap, err := c.ethAPI.GetBlockByHash(nil, blockHash, false)
+	headerMap, err := c.ethAPI.GetBlockByHash(nil, blockHash, false) //nolint:staticcheck
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBlockByHash, err)
 	}
