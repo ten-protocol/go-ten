@@ -437,7 +437,7 @@ type blockAndParent struct {
 	p common.EncodedBlock
 }
 
-func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
+func (h *host) processBlock(block common.EncodedBlock, isLatestBlock bool) error {
 	var result *common.BlockSubmissionResponse
 
 	// For the genesis block the parent is nil
@@ -453,7 +453,7 @@ func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
 
 	// submit each block to the enclave for ingestion plus validation
 	// todo: isLatest should only be true when we're not behind
-	result, err = h.enclaveClient.SubmitBlock(*decoded, latest)
+	result, err = h.enclaveClient.SubmitBlock(*decoded, isLatestBlock)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
 	}
@@ -473,13 +473,16 @@ func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
 		}
 	}
 
-	if latest {
+	if isLatestBlock {
 		if result.ProducedRollup.Header == nil {
 			return nil
 		}
+		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
+		// TODO - #718 - Unlink batch production from L1 cadence.
 		h.distributeBatch(result.ProducedRollup)
 	}
+
 	return nil
 }
 
