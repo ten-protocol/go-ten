@@ -38,6 +38,7 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 	if head == nil {
 		return 0
 	}
+
 	number := head.Header.Number.Uint64()
 	return hexutil.Uint64(number)
 }

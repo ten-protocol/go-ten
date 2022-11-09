@@ -1,9 +1,6 @@
 package obsclient
 
 import (
-	"math/big"
-
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
@@ -28,16 +25,4 @@ func NewObsClient(c rpc.Client) *ObsClient {
 
 func (oc *ObsClient) Close() {
 	oc.rpcClient.Stop()
-}
-
-// Blockchain Access
-
-// ChainID retrieves the current chain ID for transaction replay protection.
-func (oc *ObsClient) ChainID() (*big.Int, error) {
-	var result hexutil.Big
-	err := oc.rpcClient.Call(&result, rpc.ChainID)
-	if err != nil {
-		return nil, err
-	}
-	return (*big.Int)(&result), err
 }
