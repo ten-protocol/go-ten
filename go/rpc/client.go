@@ -20,7 +20,7 @@ const (
 	GetLogs                 = "eth_getLogs"
 	AddViewingKey           = "obscuro_addViewingKey"
 	GetBlockHeaderByHash    = "obscuroscan_getBlockHeaderByHash"
-	GetCurrentRollupHead    = "obscuroscan_getCurrentRollupHead"
+	GetHeadRollupHeader     = "obscuroscan_getHeadRollupHeader"
 	GetRollup               = "obscuroscan_getRollup"
 	GetRollupHeaderByNumber = "obscuroscan_getRollupHeaderByNumber"
 	GetRollupForTx          = "obscuroscan_getRollupForTx"

@@ -78,12 +78,12 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 	}
 
 	if err := b.Write(); err != nil {
-		db.logger.Crit("Could not write rollup .", log.ErrKey, err)
+		db.logger.Crit("Could not write rollup.", log.ErrKey, err)
 	}
 }
 
-// GetCurrentRollupHead returns the current rollup header (head) of the Node
-func (db *DB) GetCurrentRollupHead() *common.HeaderWithTxHashes {
+// GetHeadRollupHeader returns the header of the current rollup (head) of the Node
+func (db *DB) GetHeadRollupHeader() *common.HeaderWithTxHashes {
 	head := db.readHeadRollup(db.kvStore)
 	if head == nil {
 		return nil
@@ -104,20 +104,21 @@ func (db *DB) AddRollupHeader(headerWithHashes *common.HeaderWithTxHashes) {
 	for _, txHash := range headerWithHashes.TxHashes {
 		db.writeRollupNumber(b, headerWithHashes.Header, txHash)
 	}
+
 	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
 	currentTotal := db.readTotalTransactions(db.kvStore)
 	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(headerWithHashes.TxHashes))))
 	db.writeTotalTransactions(b, newTotal)
 
 	// update the head if the new height is greater than the existing one
-	currentRollupHeaderWithHashes := db.GetCurrentRollupHead()
+	currentRollupHeaderWithHashes := db.GetHeadRollupHeader()
 	if currentRollupHeaderWithHashes == nil ||
 		currentRollupHeaderWithHashes.Header.Number.Int64() <= headerWithHashes.Header.Number.Int64() {
 		db.writeHeadRollup(b, headerWithHashes.Header.Hash())
 	}
 
 	if err := b.Write(); err != nil {
-		db.logger.Crit("Could not write rollup .", log.ErrKey, err)
+		db.logger.Crit("Could not write rollup.", log.ErrKey, err)
 	}
 }
 

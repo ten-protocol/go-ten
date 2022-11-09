@@ -77,7 +77,7 @@ type host struct {
 	forkRPCCh  chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
 	txP2PCh    chan common.EncryptedTx    // The channel that new transactions from peers are sent to
 
-	hostDB *db.DB // Stores the host's publicly-available data
+	db *db.DB // Stores the host's publicly-available data
 
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	ethWallet       wallet.Wallet                   // Wallet used to issue ethereum transactions
@@ -113,7 +113,7 @@ func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p host
 
 		// Initialize the host DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
-		hostDB: db.NewInMemoryDB(),
+		db: db.NewInMemoryDB(),
 
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
 		ethWallet:       ethWallet,       // the host's ethereum wallet
@@ -273,7 +273,7 @@ func (h *host) Config() *config.HostConfig {
 }
 
 func (h *host) DB() *db.DB {
-	return h.hostDB
+	return h.db
 }
 
 func (h *host) EnclaveClient() common.Enclave {
@@ -281,16 +281,10 @@ func (h *host) EnclaveClient() common.Enclave {
 }
 
 func (h *host) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
-	if atomic.LoadInt32(h.stopHostInterrupt) == 1 {
-		return
-	}
 	h.blockRPCCh <- blockAndParent{b, p}
 }
 
 func (h *host) MockedNewFork(b []common.EncodedBlock) {
-	if atomic.LoadInt32(h.stopHostInterrupt) == 1 {
-		return
-	}
 	h.forkRPCCh <- b
 }
 
@@ -312,9 +306,6 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 
 // ReceiveTx receives a new transaction
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
-	if atomic.LoadInt32(h.stopHostInterrupt) == 1 {
-		return
-	}
 	h.txP2PCh <- tx
 }
 
@@ -437,7 +428,7 @@ type blockAndParent struct {
 	p common.EncodedBlock
 }
 
-func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
+func (h *host) processBlock(block common.EncodedBlock, isLatestBlock bool) error {
 	var result *common.BlockSubmissionResponse
 
 	// For the genesis block the parent is nil
@@ -453,7 +444,7 @@ func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
 
 	// submit each block to the enclave for ingestion plus validation
 	// todo: isLatest should only be true when we're not behind
-	result, err = h.enclaveClient.SubmitBlock(*decoded, latest)
+	result, err = h.enclaveClient.SubmitBlock(*decoded, isLatestBlock)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
 	}
@@ -461,9 +452,9 @@ func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
 	h.storeBlockProcessingResult(result)
 	h.logEventManager.SendLogsToSubscribers(result)
 
-	// We check that we only produced a rollup if we're an aggregator.
-	if result.ProducedRollup.Header != nil && h.config.NodeType != common.Aggregator {
-		h.logger.Crit("node produced a rollup but was not an aggregator")
+	// We check that we only produced a rollup if we're the sequencer.
+	if result.ProducedRollup.Header != nil && !h.isSequencer {
+		h.logger.Crit("node produced a rollup but was not the sequencer")
 	}
 
 	for _, secretResponse := range result.ProducedSecretResponses {
@@ -473,12 +464,16 @@ func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
 		}
 	}
 
-	if latest {
+	if isLatestBlock {
 		if result.ProducedRollup.Header == nil {
 			return nil
 		}
+		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
+		// TODO - #718 - Unlink batch production from L1 cadence.
+		h.distributeBatch(result.ProducedRollup)
 	}
+
 	return nil
 }
 
@@ -500,11 +495,8 @@ func (h *host) processBlockTransactions(b *types.Block) {
 	}
 }
 
+// Publishes a rollup to the L1.
 func (h *host) publishRollup(producedRollup common.ExtRollup) {
-	if atomic.LoadInt32(h.stopHostInterrupt) == 1 {
-		return
-	}
-
 	encodedRollup, err := common.EncodeRollup(producedRollup.ToExtRollupWithHash())
 	if err != nil {
 		h.logger.Crit("could not encode rollup.", log.ErrKey, err)
@@ -520,16 +512,22 @@ func (h *host) publishRollup(producedRollup common.ExtRollup) {
 	}
 }
 
+// Creates a batch based on the rollup and distributes it to all other nodes.
+func (h *host) distributeBatch(producedRollup common.ExtRollup) {
+	// TODO - #718 - Store batch
+	// TODO - #718 - Distribute batch
+}
+
 func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) {
 	// only update the host rollup headers if the enclave has found a new rollup head
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
 		headerWithHashes := common.HeaderWithTxHashes{Header: result.IngestedRollupHeader, TxHashes: result.ProducedRollup.TxHashes}
-		h.hostDB.AddRollupHeader(&headerWithHashes)
+		h.db.AddRollupHeader(&headerWithHashes)
 	}
 
 	// adding a header will update the head if it has a higher height
-	h.hostDB.AddBlockHeader(result.BlockHeader)
+	h.db.AddBlockHeader(result.BlockHeader)
 }
 
 // Called only by the first enclave to bootstrap the network

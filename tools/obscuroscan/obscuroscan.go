@@ -470,7 +470,7 @@ func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Reques
 // Returns the number of the latest rollup.
 func (o *Obscuroscan) getLatestRollupNumber() (int64, error) {
 	var rollupHeader *common.Header
-	err := o.client.Call(&rollupHeader, rpc.GetCurrentRollupHead)
+	err := o.client.Call(&rollupHeader, rpc.GetHeadRollupHeader)
 	if err != nil {
 		return 0, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
 	}

@@ -32,8 +32,9 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 }
 
 // BlockNumber returns the height of the current head rollup.
+// # TODO - #718 - Switch to returning height based on current batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	head := api.host.DB().GetCurrentRollupHead()
+	head := api.host.DB().GetHeadRollupHeader()
 	if head == nil {
 		return 0
 	}
@@ -53,7 +54,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	rollupHash, err := api.blockNumberToHash(number)
+	rollupHash, err := api.blockNumberToRollupHash(number)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch block number: %w", err)
 	}
@@ -61,6 +62,7 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 }
 
 // GetBlockByHash returns the rollup with the given hash as a block. No transactions are included.
+// TODO - #718 - Switch to retrieiving batch header.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
 	rollupHeaderWithHashes := api.host.DB().GetRollupHeader(hash)
 	if rollupHeaderWithHashes == nil {
@@ -122,7 +124,7 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// requested a number
 	if rollupNumber, ok := blockNrOrHash.Number(); ok {
-		rollupHash, err := api.blockNumberToHash(rollupNumber)
+		rollupHash, err := api.blockNumberToRollupHash(rollupNumber)
 		if err != nil {
 			return nil, fmt.Errorf("unable to fetch block number: %w", err)
 		}
@@ -208,11 +210,11 @@ type FeeHistoryResult struct {
 	GasUsedRatio []float64        `json:"gasUsedRatio"`
 }
 
-func (api *EthereumAPI) blockNumberToHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
-	// Predefined constants to support Geth's API
+// TODO - #718 - Switch to converting block number to batch hash.
+func (api *EthereumAPI) blockNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	switch blockNumber {
 	case rpc.LatestBlockNumber:
-		hash := api.host.DB().GetCurrentRollupHead().Header.Hash()
+		hash := api.host.DB().GetHeadRollupHeader().Header.Hash()
 		return &hash, nil
 	case rpc.EarliestBlockNumber:
 		hash := api.host.DB().GetRollupHeader(gethcommon.BigToHash(big.NewInt(0))).Header.Hash()
