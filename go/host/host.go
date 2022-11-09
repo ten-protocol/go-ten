@@ -281,16 +281,10 @@ func (h *host) EnclaveClient() common.Enclave {
 }
 
 func (h *host) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
-	if atomic.LoadInt32(h.stopHostInterrupt) == 1 {
-		return
-	}
 	h.blockRPCCh <- blockAndParent{b, p}
 }
 
 func (h *host) MockedNewFork(b []common.EncodedBlock) {
-	if atomic.LoadInt32(h.stopHostInterrupt) == 1 {
-		return
-	}
 	h.forkRPCCh <- b
 }
 
@@ -312,9 +306,6 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 
 // ReceiveTx receives a new transaction
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
-	if atomic.LoadInt32(h.stopHostInterrupt) == 1 {
-		return
-	}
 	h.txP2PCh <- tx
 }
 
@@ -506,10 +497,6 @@ func (h *host) processBlockTransactions(b *types.Block) {
 
 // Publishes a rollup to the L1.
 func (h *host) publishRollup(producedRollup common.ExtRollup) {
-	if atomic.LoadInt32(h.stopHostInterrupt) == 1 {
-		return
-	}
-
 	encodedRollup, err := common.EncodeRollup(producedRollup.ToExtRollupWithHash())
 	if err != nil {
 		h.logger.Crit("could not encode rollup.", log.ErrKey, err)
