@@ -53,7 +53,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	rollupHash, err := api.blockNumberToHash(number)
+	rollupHash, err := api.blockNumberToRollupHash(number)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch block number: %w", err)
 	}
@@ -122,7 +122,7 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// requested a number
 	if rollupNumber, ok := blockNrOrHash.Number(); ok {
-		rollupHash, err := api.blockNumberToHash(rollupNumber)
+		rollupHash, err := api.blockNumberToRollupHash(rollupNumber)
 		if err != nil {
 			return nil, fmt.Errorf("unable to fetch block number: %w", err)
 		}
@@ -208,7 +208,7 @@ type FeeHistoryResult struct {
 	GasUsedRatio []float64        `json:"gasUsedRatio"`
 }
 
-func (api *EthereumAPI) blockNumberToHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
+func (api *EthereumAPI) blockNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Predefined constants to support Geth's API
 	switch blockNumber {
 	case rpc.LatestBlockNumber:

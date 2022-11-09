@@ -31,8 +31,8 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 	return blockHeader, nil
 }
 
-// GetCurrentRollupHead returns the current head rollup's header.
-func (api *ObscuroScanAPI) GetCurrentRollupHead() *common.Header {
+// GetHeadRollupHeader returns the current head rollup's header.
+func (api *ObscuroScanAPI) GetHeadRollupHeader() *common.Header {
 	headerWithHashes := api.host.DB().GetHeadRollupHeader()
 	if headerWithHashes == nil {
 		return nil

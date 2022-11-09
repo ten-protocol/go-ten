@@ -84,8 +84,8 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		*result.(**types.Header) = c.testAPI.GetHeadBlockHeader()
 		return nil
 
-	case rpc.GetCurrentRollupHead:
-		*result.(**common.Header) = c.obscuroScanAPI.GetCurrentRollupHead()
+	case rpc.GetHeadRollupHeader:
+		*result.(**common.Header) = c.obscuroScanAPI.GetHeadRollupHeader()
 		return nil
 
 	case rpc.GetRollupHeader:

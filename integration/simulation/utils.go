@@ -64,7 +64,7 @@ func getCurrentBlockHeadHeight(client rpc.Client) int64 {
 
 // Uses the client to retrieve the current rollup head.
 func getCurrentRollupHead(client rpc.Client) *common.Header {
-	method := rpc.GetCurrentRollupHead
+	method := rpc.GetHeadRollupHeader
 
 	var result *common.Header
 	err := client.Call(&result, method)
