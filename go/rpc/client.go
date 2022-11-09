@@ -22,7 +22,7 @@ const (
 	EstimateGas           = "eth_estimateGas"
 	GetLogs               = "eth_getLogs"
 	AddViewingKey         = "obscuro_addViewingKey"
-	GetBlockHeaderByHash  = "obscuroscan_getBlockHeaderByHash" // todo - joel - remove this
+	GetBlockHeaderByHash  = "obscuroscan_getBlockHeaderByHash"
 	GetHeadRollupHeader   = "obscuroscan_getHeadRollupHeader"
 	GetRollup             = "obscuroscan_getRollup"
 	GetRollupForTx        = "obscuroscan_getRollupForTx"
