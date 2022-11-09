@@ -9,7 +9,7 @@ and resistant to reorgs.
 Note: See bridge and finality designs for more details
 
 
-## Problem
+## Problem and Requirements
 
 The central sequencer can only guarantee a consistent ordering of the transactions it receives from the Obscuro users.
 It can't offer guarantees over the finality of cross-chain transactions. E.g., deposits to the bridge.
@@ -18,21 +18,23 @@ Given that deposits affect the balances of accounts, which can be used in Obscur
 between the ordering of the L1 messages and the result of executing L2 transactions.
 
 In the "fast finality" design, the "soft finality" of an L2 transaction is defined as the moment when the sequencer produces
-a Light Batch(LB) containing that transaction.
+a Light Batch(LB) containing that transaction, and that LB is distributed to the network to respond to user requests.
 
-There is a tension between the guarantees of "soft-finality" and the re-org resistance of the bridge.
+We can see, that there is a tension between the guarantees of "soft-finality" and the re-org resistance of the bridge.
 
-What does it mean that a transaction is soft-finalised:
+In this document we'll add some nuance to the soft-finality guarantee.
 
-- Executing this transaction can never result in a different outcome.
-- Or that the execution result might be different under certain factors unlikely to happen unless there is a re-org attack.
+The ideal outcome is that executing a transaction can never result in a different outcome, independent on the L1.
+
+A more realistic outcome is to relax the guarantee such that the tx execution result might be different only under certain
+factors unlikely to happen unless there is a re-org attack.
 
 
-## Requirements
+## Outcomes of the design
 
-- In the context of fast finality and bridge designs, we need to define "Soft finality".
-- In what conditions can the sequencer generate competing light batches without being challenged?
-- Define the structure of a Light batch.
+- In the context of fast finality and bridge designs, define the "Soft finality" guarantee.
+- Define the challenge conditions for the sequencer generating competing light batches.
+- Based on the above define the structure of a Light batch.
 
 ## Assumption
 
@@ -51,29 +53,33 @@ understand where they sit on the tradeoff spectrum.
 The straightforward solution is to wait a while before processing deposits so that these transactions are "final" on the L1.
 Eventually, the cost of mounting a re-org attack on the L1 becomes prohibitively high, ensuring security.
 
-There are two main disadvantages:
+There are two main disadvantages.
 
-Users must wait before bridge messages are processed, which is a bad UX and disables certain applications.
- The solution is only as secure as the delay.
+The first is that users must wait before bridge messages are processed, which is not a great UX and it disables certain applications. 
+The second is that the solution is only as secure as the delay.
 
 The subtlety of this approach is that it can transform Obscuro into a side-chain even though we roll up to Ethereum.
 
 This depends on the definition of an L2, which is a moving target. If the consensus is that an L2 needs a re-org resistant
-bridge, then this option will not be favourable
+bridge, then this option will break it.
 
-On the tradeoff spectrum, this solution lies towards the: "The result of executing this transaction can never result in a different outcome" end,
+On the tradeoff spectrum, this solution lies towards the ideal: "The result of executing this transaction can never result in a different outcome" end,
 which is good, but it has some severe disadvantages.
+
+The Sequencer is never allowed to produce a competing sibling Light Batch. 
 
 
 ### Option 2 - Link light batches to blocks
 
-Like POBI, each LB is generated from a single block and links to it. (Actually, multiple LBs will be linked to a single block)
+Like POBI, each LB is generated from a single L1 block and links to it. (Actually, multiple LBs will be linked to a single block)
 
-The sequencer monitors the L1, and the moment a reorg is happening, the sequencer will produce new LBs linked to the blocks from 
+The sequencer monitors the L1, and the moment a reorg is happening, it will produce new LBs linked to the blocks from 
 the new branch, which will then be distributed.
 
-The difference is that LBs are not published to the L1, so they are accepted by a "source of truth" authority the moment 
-they are no longer linked to a block found on the canonical chain. After that, they are given to the other L2 nodes.
+The difference from POBI is that LBs are not published to a management contract in the L1, so they are no longer rejected 
+by a "source of truth" authority the moment they are no longer linked to a block found on the canonical chain. 
+
+They are only distributed from the sequencer to the other L2 nodes.
 
 This can lead to chaotic results and hard-to-enforce behaviour. The sequencer could use the re-org reason to generate competing LBs,
 and attempt some MEV.
