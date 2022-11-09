@@ -207,31 +207,41 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	defer wg.Done()
 	var nodeID gethcommon.Address
 	nodeClient := rpcHandles.ObscuroClients[nodeIdx]
+	obsClient := obsclient.NewObsClient(nodeClient)
+
 	err := nodeClient.Call(&nodeID, rpc.GetID)
 	if err != nil {
 		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
 	}
 	nodeAddr := common.ShortAddress(nodeID)
-	l1Height := getCurrentBlockHeadHeight(nodeClient)
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
+	l1Height := getHeadBlockHeight(nodeClient)
 	if int64(maxEthereumHeight)-l1Height > maxBlockDelay {
 		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeAddr, maxEthereumHeight-uint64(l1Height))
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	h := getCurrentRollupHead(nodeClient)
-
+	h := getHeadRollupHeader(nodeClient)
 	if h == nil {
 		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeAddr)
 		return
 	}
 	l2Height := h.Number
 	if l2Height.Uint64() < minObscuroHeight {
-		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", l2Height, nodeAddr, minObscuroHeight)
+		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", nodeAddr, l2Height, minObscuroHeight)
+	}
+
+	// check that the height from the rollup header is consistent with the height returned by eth_blockNumber.
+	l2HeightFromBlockNumber, err := obsClient.BlockNumber()
+	if err != nil {
+		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeAddr, err)
+	}
+	if l2HeightFromBlockNumber != l2Height.Uint64() {
+		t.Errorf("Node %d: Node's head rollup had a height %d, but eth_blockNumber height was %d", nodeAddr, l2Height, l2HeightFromBlockNumber)
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[nodeID]
@@ -375,7 +385,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 
 func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn *big.Int, numberOfWithdrawalRequests int) {
 	totalSuccessfullyWithdrawn = big.NewInt(0)
-	head := getCurrentRollupHead(nodeClient)
+	head := getHeadRollupHeader(nodeClient)
 
 	if head == nil {
 		panic(fmt.Sprintf("Node %d: The current head should not be nil", nodeAddr))

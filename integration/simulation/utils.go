@@ -45,25 +45,27 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 	return
 }
 
+// TODO - Move these getter methods to `obsclient.ObsClient`.
+
 // Uses the client to retrieve the height of the current block head.
-func getCurrentBlockHeadHeight(client rpc.Client) int64 {
+func getHeadBlockHeight(client rpc.Client) int64 {
 	method := rpc.GetHeadBlockHeader
 
-	var blockHead *types.Header
-	err := client.Call(&blockHead, method)
+	var headBlockHeader *types.Header
+	err := client.Call(&headBlockHeader, method)
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
 	}
 
-	if blockHead == nil || blockHead.Number == nil {
+	if headBlockHeader == nil || headBlockHeader.Number == nil {
 		panic(fmt.Errorf("simulation failed - no current block head found in RPC response from host"))
 	}
 
-	return blockHead.Number.Int64()
+	return headBlockHeader.Number.Int64()
 }
 
 // Uses the client to retrieve the current rollup head.
-func getCurrentRollupHead(client rpc.Client) *common.Header {
+func getHeadRollupHeader(client rpc.Client) *common.Header {
 	method := rpc.GetHeadRollupHeader
 
 	var result *common.Header

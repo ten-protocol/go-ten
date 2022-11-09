@@ -7,7 +7,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
-// ObsClient requires an RPC Client and provides access to general Obscuro functionality that doesn't require viewing keys.
+// ObsClient provides access to general Obscuro functionality that doesn't require viewing keys.
 //
 // The methods in this client are analogous to the methods in geth's EthClient and should behave the same unless noted otherwise.
 type ObsClient struct {
@@ -40,4 +40,11 @@ func (oc *ObsClient) ChainID() (*big.Int, error) {
 		return nil, err
 	}
 	return (*big.Int)(&result), err
+}
+
+// BlockNumber returns the most recent block number
+func (oc *ObsClient) BlockNumber() (uint64, error) {
+	var result hexutil.Uint64
+	err := oc.rpcClient.Call(&result, rpc.BlockNumber)
+	return uint64(result), err
 }

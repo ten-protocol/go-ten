@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -105,6 +107,10 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 	case rpc.GetTransactionReceipt:
 		return c.getTransactionReceipt(result, args)
+
+	case rpc.BlockNumber:
+		*result.(*hexutil.Uint64) = c.ethAPI.BlockNumber()
+		return nil
 
 	case rpc.StopHost:
 		c.testAPI.StopHost()

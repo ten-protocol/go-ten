@@ -84,11 +84,11 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 
 // GetHeadRollupHeader returns the header of the current rollup (head) of the Node
 func (db *DB) GetHeadRollupHeader() *common.HeaderWithTxHashes {
-	head := db.readHeadRollup(db.kvStore)
-	if head == nil {
+	headRollupHash := db.readHeadRollup(db.kvStore)
+	if headRollupHash == nil {
 		return nil
 	}
-	return db.readRollupHeader(db.kvStore, *head)
+	return db.readRollupHeader(db.kvStore, *headRollupHash)
 }
 
 // GetRollupHeader returns the rollup header given the Hash
