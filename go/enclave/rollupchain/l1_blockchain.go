@@ -150,3 +150,18 @@ func createShouldPreserve() func(header *types.Header) bool {
 		return false
 	}
 }
+
+type blockIngestionType struct {
+	// latest is true if this block was the canonical head of the L1 chain at the time it was submitted to enclave
+	// (if false then we are behind and catching up, expect to be fed another block immediately afterwards)
+	latest bool
+
+	// fork is true if the ingested block is on a different branch to previously known head
+	// (resulting in rewinding of one or more blocks that we had previously considered canonical)
+	fork bool
+
+	// preGenesis is true if there is no stored L1 head block.
+	// (L1 head is only stored when there is an L2 state to associate it with. Soon we will start consuming from the
+	// genesis block and then, we should only see one block ingested in a 'preGenesis' state)
+	preGenesis bool
+}

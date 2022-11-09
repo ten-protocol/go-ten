@@ -1,100 +1,60 @@
-pages:
+main:
+  - title: "Whitepaper"
+    url: https://whitepaper.obscu.ro
+  - title: "Tokenomics"
+    url: https://github.com/obscuronet/foundation/blob/main/token-utility-whitepaper.md
+  - title: "Community Contributions"
+    url: https://docs.obscu.ro/community/contributions
+  - title: "Get Help"
+    url: https://discord.gg/yQfmKeNzNd
+
+
+sidebar-list:
   - title: What is Obscuro?
     children:
       - title: Privacy
-        url: what-is-obscuro/privacy-matters.html
+        url: what-is-obscuro/privacy-matters
       - title: Technology
-        url: what-is-obscuro/technology.html
+        url: what-is-obscuro/technology
       - title: User Experience
-        url: what-is-obscuro/user-experience.html
-      - title: Tokens
-        url: what-is-obscuro/tokens.html
-      - title: Community
-        url: what-is-obscuro/community.html
-      #- title: Roadmap
-      #  url: what-is-obscuro/roadmap.html
-  - title: Community
-    children:
-      - title: Contributing to Obscuro
-        url: community/contributions.html
-      - title: Developer Journey
-        url: community/journey.html
-  - title: Obscuro Testnet
-    children:
-      - title: Introduction
-        url: testnet/Introduction.html
-      - title: Example Dapps on Testnet
-        url: testnet/example-dapps.html
-      - title: Essential Information
-        url: testnet/essentials.html
-      - title: Known Limitations
-        url: testnet/limitations.html
-      - title: Deploying a Smart Contract
-        url: testnet/deploying-a-smart-contract.html
-      - title: Programmatic Deployment
-        url: testnet/deploying-a-smart-contract-programmatically.html
-      - title: ObscuroScan
-        url: testnet/obscuroscan.html
-      - title: Token Faucet
-        url: testnet/faucet.html
-      - title: Change Log
-        url: testnet/changelog.html
-      #- title: Troubleshooting
-      #  url: testnet/troubleshooting.html
-      #- title: Create a New Node
-      #  url: testnet/create-a-new-node.html
-      #- title: Uninstall
-      #  url: testnet/uninstall.html
-  - title: Wallet Extension
+        url: what-is-obscuro/user-experience
+  - title: Getting Started
     children:
       - title: Wallet Extension
-        url: wallet-extension/wallet-extension.html
+        url: wallet-extension/wallet-extension
       - title: Configure MetaMask
-        url: wallet-extension/configure-metamask.html
+        url: wallet-extension/configure-metamask
+      - title: Tutorial
+        url: testnet/tutorial
+
+  - title: Testnet
+    children:
+      - title: Introduction
+        url: testnet/Introduction
+      - title: Essential Information
+        url: testnet/essentials
+      - title: Deploying a Smart Contract
+        url: testnet/deploying-a-smart-contract
+      - title: Programmatic Deployment
+        url: testnet/deploying-a-smart-contract-programmatically
+      - title: Change Log
+        url: testnet/changelog
+
+  - title: Example dApps
+    children:
+      - title: Guessing Game
+        url: testnet/example-dapps
+
+  - title: Tools
+    children:
+      - title: ObscuroScan
+        url: testnet/obscuroscan
+      - title: Token Faucet
+        url: testnet/faucet
+    
   - title: API
     children:
       - title: APIs
-        url: api/apis.html
+        url: api/apis
       - title: Sensitive APIs
-        url: api/sensitive-apis.html
-  - title: Whitepaper
-    children:
-      - title: Abstract
-        url: whitepaper/abstract.html
-      #- title: Abstract
-      #  url: /obscuro-whitepaper/abstract.html
-      #- title: Motivation
-      #  url: /obscuro-whitepaper/motivation.html
-      #- title: Challenges
-      #  url: /obscuro-whitepaper/challenges.html
-      #- title: Technical Background
-      #  url: /obscuro-whitepaper/technical-background.html
-      #- title: High Level Design
-      #  url: /obscuro-whitepaper/high-level-design.html
-      #- title: Consensus
-      #  url: /obscuro-whitepaper/consensus.html
-      #- title: Detailed Design
-      #  url: /obscuro-whitepaper/detailed-design.html
-      #- title: Fees and Rewards
-      #  url: /obscuro-whitepaper/fees-rewards.html
-      #- title: Obscuro-Ethereum Interaction
-      #  url: /obscuro-whitepaper/obscuro-ethereum-interaction.html
-      #- title: Threat Model
-      #  url: /obscuro-whitepaper/threat-model.html
-      #- title: Tokenomics
-      #  url: /obscuro-whitepaper/tokenomics.html
-      #- title: Governance
-      #  url: /obscuro-whitepaper/governance.html
-      #- title: Appendix
-      #  url: /obscuro-whitepaper/appendix.html
-      #- title: All-in-one
-      #  url: /obscuro-whitepaper/amalgamated.html
-  - title: Tokenomics
-    children:
-      - title: Overview
-        url: tokenomics/overview.html
-  - title: About
-    children:
-      - title: Obscuro Home
-        url: https://obscu.ro
-
+        url: api/sensitive-apis
