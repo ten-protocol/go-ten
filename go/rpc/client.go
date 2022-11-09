@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	BlockNumber             = "eth_blockNumber"
 	Call                    = "eth_call"
 	ChainID                 = "eth_chainId"
 	GetBalance              = "eth_getBalance"

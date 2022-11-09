@@ -3,6 +3,7 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"math/big"
 	"time"
 
@@ -63,7 +64,7 @@ func getCurrentBlockHeadHeight(client rpc.Client) int64 {
 }
 
 // Uses the client to retrieve the current rollup head.
-func getCurrentRollupHead(client rpc.Client) *common.Header {
+func getHeadRollupHeader(client rpc.Client) *common.Header {
 	method := rpc.GetHeadRollupHeader
 
 	var result *common.Header
@@ -86,6 +87,23 @@ func getRollupHeader(client rpc.Client, hash gethcommon.Hash) *common.Header {
 	}
 
 	return result
+}
+
+// Uses the client to retrieve the current block number.
+func getBlockNumber(client rpc.Client) uint64 {
+	method := rpc.BlockNumber
+
+	var result *hexutil.Uint64
+	err := client.Call(&result, method)
+	if err != nil {
+		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
+	}
+
+	blockNumber, err := hexutil.DecodeUint64(result.String())
+	if err != nil {
+		panic(fmt.Errorf("simulation failed due to failure to decode response to %s RPC call. Cause: %w", method, err))
+	}
+	return blockNumber
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.

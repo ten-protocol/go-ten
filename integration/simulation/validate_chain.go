@@ -223,15 +223,20 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	h := getCurrentRollupHead(nodeClient)
-
+	h := getHeadRollupHeader(nodeClient)
 	if h == nil {
 		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeAddr)
 		return
 	}
 	l2Height := h.Number
 	if l2Height.Uint64() < minObscuroHeight {
-		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", l2Height, nodeAddr, minObscuroHeight)
+		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", nodeAddr, l2Height, minObscuroHeight)
+	}
+
+	// check that the height from the rollup header is consistent with the height returned by eth_blockNumber.
+	l2HeightFromBlockNumber := getBlockNumber(nodeClient)
+	if l2HeightFromBlockNumber != l2Height.Uint64() {
+		t.Errorf("Node %d: Node's head rollup had a height %d, but eth_blockNumber height was %d", nodeAddr, l2Height, l2HeightFromBlockNumber)
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[nodeID]
@@ -375,7 +380,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 
 func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn *big.Int, numberOfWithdrawalRequests int) {
 	totalSuccessfullyWithdrawn = big.NewInt(0)
-	head := getCurrentRollupHead(nodeClient)
+	head := getHeadRollupHeader(nodeClient)
 
 	if head == nil {
 		panic(fmt.Sprintf("Node %d: The current head should not be nil", nodeAddr))
