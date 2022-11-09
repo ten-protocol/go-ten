@@ -33,7 +33,7 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 
 // GetCurrentRollupHead returns the current head rollup's header.
 func (api *ObscuroScanAPI) GetCurrentRollupHead() *common.Header {
-	headerWithHashes := api.host.DB().GetCurrentRollupHead()
+	headerWithHashes := api.host.DB().GetHeadRollupHeader()
 	if headerWithHashes == nil {
 		return nil
 	}
@@ -83,7 +83,7 @@ func (api *ObscuroScanAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRo
 // GetLatestTransactions returns the hashes of the latest `num` transactions, or as many as possible if less than `num` transactions exist.
 // TODO - Consider introducing paging or similar to prevent a huge number of transactions blowing the node's memory limit.
 func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
-	currentRollupHeaderWithHashes := api.host.DB().GetCurrentRollupHead()
+	currentRollupHeaderWithHashes := api.host.DB().GetHeadRollupHeader()
 	if currentRollupHeaderWithHashes == nil {
 		return nil, nil
 	}

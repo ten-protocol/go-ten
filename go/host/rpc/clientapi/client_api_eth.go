@@ -33,7 +33,7 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 
 // BlockNumber returns the height of the current head rollup.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	head := api.host.DB().GetCurrentRollupHead()
+	head := api.host.DB().GetHeadRollupHeader()
 	if head == nil {
 		return 0
 	}
@@ -212,7 +212,7 @@ func (api *EthereumAPI) blockNumberToHash(blockNumber rpc.BlockNumber) (*gethcom
 	// Predefined constants to support Geth's API
 	switch blockNumber {
 	case rpc.LatestBlockNumber:
-		hash := api.host.DB().GetCurrentRollupHead().Header.Hash()
+		hash := api.host.DB().GetHeadRollupHeader().Header.Hash()
 		return &hash, nil
 	case rpc.EarliestBlockNumber:
 		hash := api.host.DB().GetRollupHeader(gethcommon.BigToHash(big.NewInt(0))).Header.Hash()
