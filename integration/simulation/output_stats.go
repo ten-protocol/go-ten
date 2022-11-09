@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
@@ -39,9 +41,15 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 }
 
 func (o *OutputStats) populateHeights() {
-	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
-	o.l1Height = int(getHeadBlockHeight(obscuroClient))
-	o.l2Height = int(getHeadRollupHeader(obscuroClient).Number.Uint64())
+	l2Client := o.simulation.RPCHandles.ObscuroClients[0]
+	obscuroClient := obsclient.NewObsClient(l2Client)
+
+	l1Height, err := obscuroClient.BlockNumber()
+	if err != nil {
+		panic(fmt.Errorf("simulation failed because could not read L1 height. Cause: %w", err))
+	}
+	o.l1Height = int(l1Height)
+	o.l2Height = int(getHeadRollupHeader(l2Client).Number.Uint64())
 }
 
 func (o *OutputStats) countBlockChain() {

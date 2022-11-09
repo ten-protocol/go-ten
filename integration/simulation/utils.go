@@ -14,7 +14,6 @@ import (
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -46,23 +45,6 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 }
 
 // TODO - Move these getter methods to `obsclient.ObsClient`.
-
-// Uses the client to retrieve the height of the current block head.
-func getHeadBlockHeight(client rpc.Client) int64 {
-	method := rpc.GetHeadBlockHeader
-
-	var headBlockHeader *types.Header
-	err := client.Call(&headBlockHeader, method)
-	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
-	}
-
-	if headBlockHeader == nil || headBlockHeader.Number == nil {
-		panic(fmt.Errorf("simulation failed - no current block head found in RPC response from host"))
-	}
-
-	return headBlockHeader.Number.Int64()
-}
 
 // Uses the client to retrieve the current rollup head.
 func getHeadRollupHeader(client rpc.Client) *common.Header {

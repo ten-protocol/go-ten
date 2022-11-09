@@ -3,6 +3,8 @@ package obsclient
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 )
@@ -47,4 +49,18 @@ func (oc *ObsClient) RollupNumber() (uint64, error) {
 	var result hexutil.Uint64
 	err := oc.rpcClient.Call(&result, rpc.BlockNumber)
 	return uint64(result), err
+}
+
+// BlockNumber returns the height of the head block
+func (oc *ObsClient) BlockNumber() (uint64, error) {
+	var headBlockHeader *types.Header
+	err := oc.rpcClient.Call(&headBlockHeader, rpc.GetHeadBlockHeader)
+	if err != nil {
+		return 0, err
+	}
+	// This mimics the behaviour of eth_blockNumber, where a nil head gives a zero block number.
+	if headBlockHeader == nil {
+		return 0, nil
+	}
+	return headBlockHeader.Number.Uint64(), nil
 }
