@@ -564,6 +564,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
 
+	// TODO hook the correct blockNumber from the API call (paramList[1])
 	gasEstimate, err := e.DoEstimateGas(callMsg, gethrpc.BlockNumber(0), e.chain.GlobalGasCap)
 	if err != nil {
 		return nil, fmt.Errorf("unable to estimate transaction - %w", err)
@@ -608,6 +609,8 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 	return encryptedLogs, nil
 }
 
+// DoEstimateGas returns the estimation of minimum gas required to execute transaction
+// This is a copy of https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/api.go#L1055
 func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var (

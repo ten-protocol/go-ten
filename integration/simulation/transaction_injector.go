@@ -174,20 +174,20 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		}
 
 		callMsg := &ethereum.CallMsg{
-			From: fromWallet.Address(),
-			To:   signedTx.To(),
-			//Gas:      signedTx.Gas(),
-			//GasPrice: signedTx.GasPrice(),
-			//GasFeeCap:  signedTx.GasFeeCap(),
-			//GasTipCap:  signedTx.GasTipCap(),
-			//Value:      signedTx.Value(),
-			Data: signedTx.Data(),
-			//AccessList: signedTx.AccessList(),
+			From:       fromWallet.Address(),
+			To:         signedTx.To(),
+			Gas:        signedTx.Gas(),
+			GasPrice:   signedTx.GasPrice(),
+			GasFeeCap:  signedTx.GasFeeCap(),
+			GasTipCap:  signedTx.GasTipCap(),
+			Value:      signedTx.Value(),
+			Data:       signedTx.Data(),
+			AccessList: signedTx.AccessList(),
 		}
 
 		gasEstimate, err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).EstimateGas(ti.ctx, callMsg)
 		if err != nil {
-			//time.Sleep(10 * time.Minute)
+			// time.Sleep(10 * time.Minute)
 			fmt.Println(err)
 		} else {
 			fmt.Printf("no Error on %s\n", signedTx.Hash())
