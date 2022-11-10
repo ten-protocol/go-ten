@@ -142,10 +142,6 @@ func getHash(i int) gethcommon.Hash {
 
 func (r *ethClientMock) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 	block, f := r.blks[id]
-	fmt.Printf("lookup block by hash=%s\n", id)
-	for h := range r.blks {
-		fmt.Printf("k=%s\n", h)
-	}
 	if !f {
 		return nil, fmt.Errorf("block not found")
 	}
@@ -154,10 +150,6 @@ func (r *ethClientMock) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 
 func (r *ethClientMock) BlockByNumber(num *big.Int) (*types.Block, error) {
 	block, f := r.blksByNum[int(num.Int64())]
-	fmt.Printf("lookup block by num=%d\n", num)
-	for h, v := range r.blksByNum {
-		fmt.Printf("k=%d, v=%s\n", h, v.Hash())
-	}
 	if !f {
 		return nil, fmt.Errorf("block not found")
 	}

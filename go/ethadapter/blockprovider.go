@@ -136,11 +136,12 @@ func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 		return blk, nil
 	}
 
-	// most common path should be: new head block arrives and needs to be sent
 	head, err := e.liveBlocks.AwaitNewBlock(context.TODO(), e.latestSent.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("no new block found from stream - %w", err)
 	}
+
+	// most common path should be: new head block that arrived is the next block, and needs to be sent
 	if head.ParentHash == e.latestSent.Hash() {
 		blk, err := e.ethClient.BlockByHash(head.Hash())
 		if err != nil {
@@ -149,16 +150,7 @@ func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 		return blk, nil
 	}
 
-	// but if we're in catch-up mode it's probably the canon block above the latest sent
-	blkAfterLatestSent, err := e.ethClient.BlockByNumber(increment(e.latestSent.Number))
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch block after latest - %w", err)
-	}
-	if blkAfterLatestSent.ParentHash() == e.latestSent.Hash() {
-		return blkAfterLatestSent, nil
-	}
-
-	// and if there's been a fork we need to figure out where we forked
+	// and if not then, we find the latest canonical block we sent and try one after that
 	latestCanon, err := e.latestCanonAncestor(e.latestSent.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not find ancestor on canonical chain for hash=%s - %w", e.latestSent.Hash(), err)
