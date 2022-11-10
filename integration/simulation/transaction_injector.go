@@ -8,33 +8,25 @@ import (
 	"sync/atomic"
 	"time"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-
-	"golang.org/x/sync/errgroup"
-
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common"
-
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/integration"
-
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"golang.org/x/sync/errgroup"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 	simstats "github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
@@ -302,12 +294,12 @@ func (ti *TransactionInjector) rndEthWallet() wallet.Wallet {
 
 func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, common.ValueInWei(big.NewInt(int64(amount))))
-	return ti.newTx(data, NextNonce(ti.ctx, ti.rpcHandles, from))
+	return ti.newTx(data, from.GetNonceAndIncrement())
 }
 
 func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
-	return ti.newTx(transferERC20data, NextNonce(ti.ctx, ti.rpcHandles, from))
+	return ti.newTx(transferERC20data, from.GetNonceAndIncrement())
 }
 
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
@@ -329,32 +321,6 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 		GasPrice: gethcommon.Big1,
 		Data:     data,
 		To:       ti.wallets.Tokens[bridge.HOC].L2ContractAddress,
-	}
-}
-
-func NextNonce(ctx context.Context, clients *network.RPCHandles, w wallet.Wallet) uint64 {
-	counter := 0
-
-	// only returns the nonce when the previous transaction was recorded
-	for {
-		remoteNonce, err := clients.ObscuroWalletRndClient(w).NonceAt(ctx, nil)
-		if err != nil {
-			panic(err)
-		}
-		localNonce := w.GetNonce()
-		if remoteNonce == localNonce {
-			return w.GetNonceAndIncrement()
-		}
-		if remoteNonce > localNonce {
-			panic("remote nonce exceeds local nonce")
-		}
-
-		counter++
-		if counter > nonceTimeoutMillis {
-			panic(fmt.Sprintf("transaction injector could not retrieve nonce after thirty seconds for address %s. "+
-				"Local nonce was %d, remote nonce was %d", w.Address().Hex(), localNonce, remoteNonce))
-		}
-		time.Sleep(time.Millisecond)
 	}
 }
 
