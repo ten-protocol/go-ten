@@ -18,19 +18,9 @@ import (
 )
 
 func TestBlockProviderHappyPath_LiveStream(t *testing.T) {
-	mockEthClient := mockEthClient()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut, log.NodeIDKey, "test")
-
-	blockProvider := EthBlockProvider{
-		ethClient:     mockEthClient,
-		ctx:           ctx,
-		runningStatus: new(int32),
-		streamCh:      make(chan *types.Block),
-		logger:        logger,
-	}
+	mockEthClient := mockEthClient(0)
+	blockProvider, ctxCancel := setupBlockProvider(mockEthClient)
+	defer ctxCancel()
 
 	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(0))
 	if err != nil {
@@ -55,20 +45,11 @@ func TestBlockProviderHappyPath_LiveStream(t *testing.T) {
 }
 
 func TestBlockProviderHappyPath_HistoricThenStream(t *testing.T) {
-	mockEthClient := mockEthClient()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	mockEthClient := mockEthClient(2)
+	blockProvider, ctxCancel := setupBlockProvider(mockEthClient)
+	defer ctxCancel()
 
-	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut, log.NodeIDKey, "test")
-	blockProvider := EthBlockProvider{
-		ethClient:     mockEthClient,
-		ctx:           ctx,
-		runningStatus: new(int32),
-		streamCh:      make(chan *types.Block),
-		logger:        logger,
-	}
-
-	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(2))
+	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(0))
 	if err != nil {
 		t.Error(err)
 	}
@@ -90,32 +71,61 @@ func TestBlockProviderHappyPath_HistoricThenStream(t *testing.T) {
 	}
 }
 
-func mockEthClient() EthClient {
-	return &ethClientMock{
-		ctx:       context.TODO(),
-		blks:      map[gethcommon.Hash]*types.Block{},
-		blksByNum: map[int]*types.Block{},
+func setupBlockProvider(mockEthClient EthClient) (EthBlockProvider, context.CancelFunc) {
+	ctx, cancelCtx := context.WithCancel(context.Background())
+
+	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut, log.NodeIDKey, "test")
+	blockProvider := EthBlockProvider{
+		ethClient:     mockEthClient,
+		ctx:           ctx,
+		runningStatus: new(int32),
+		streamCh:      make(chan *types.Block),
+		logger:        logger,
 	}
+	return blockProvider, cancelCtx
+}
+
+func mockEthClient(liveStreamingStart int) EthClient {
+	mockClient := &ethClientMock{
+		ctx:                context.TODO(),
+		blks:               map[gethcommon.Hash]*types.Block{},
+		blksByNum:          map[int]*types.Block{},
+		liveStreamingStart: liveStreamingStart,
+	}
+
+	for i := 0; i < liveStreamingStart; i++ {
+		blkHead := &types.Header{
+			ParentHash: getHash(i - 1),
+			Root:       getHash(i),
+			TxHash:     getHash(i),
+			Number:     big.NewInt(int64(i)),
+		}
+		block := types.NewBlock(blkHead, nil, nil, nil, nil)
+		mockClient.blks[block.Hash()] = block
+		mockClient.blksByNum[i] = block
+	}
+
+	return mockClient
 }
 
 type ethClientMock struct {
 	mock.Mock
-	ctx       context.Context
-	blks      map[gethcommon.Hash]*types.Block
-	blksByNum map[int]*types.Block
+	ctx                context.Context
+	blks               map[gethcommon.Hash]*types.Block
+	blksByNum          map[int]*types.Block
+	liveStreamingStart int // BlockListener() will stream from this height
 }
 
 func (r *ethClientMock) BlockListener() (chan *types.Header, ethereum.Subscription) {
 	headChan := make(chan *types.Header)
 	sub := &ethSubscriptionMock{}
 	go func() {
-		blkNum := 0
+		blkNum := r.liveStreamingStart
 		for {
 			select {
 			case <-r.ctx.Done():
 				return
 			case <-time.After(800 * time.Millisecond):
-				blkNum++
 				blkHead := &types.Header{
 					ParentHash: getHash(blkNum - 1),
 					Root:       getHash(blkNum),
@@ -126,6 +136,7 @@ func (r *ethClientMock) BlockListener() (chan *types.Header, ethereum.Subscripti
 				r.blks[block.Hash()] = block
 				r.blksByNum[blkNum] = block
 				headChan <- blkHead
+				blkNum++
 			}
 		}
 	}()
