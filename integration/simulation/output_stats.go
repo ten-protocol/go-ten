@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
@@ -41,8 +39,7 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 }
 
 func (o *OutputStats) populateHeights() {
-	l2Client := o.simulation.RPCHandles.ObscuroClients[0]
-	obscuroClient := obsclient.NewObsClient(l2Client)
+	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
 
 	l1Height, err := obscuroClient.BlockNumber()
 	if err != nil {
@@ -55,8 +52,7 @@ func (o *OutputStats) populateHeights() {
 
 func (o *OutputStats) countBlockChain() {
 	l1Node := o.simulation.RPCHandles.EthClients[0]
-	l2Client := o.simulation.RPCHandles.ObscuroClients[0]
-	obscuroClient := obsclient.NewObsClient(l2Client)
+	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
 
 	// iterate the Node Headers and get the rollups
 	header := getHeadRollupHeader(obscuroClient)

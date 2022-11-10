@@ -4,6 +4,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
@@ -12,7 +13,7 @@ import (
 )
 
 type networkInMemGeth struct {
-	obscuroClients []rpc.Client
+	l2Clients []rpc.Client // todo - joel - make this and similar pointers
 
 	// geth
 	gethNetwork *gethnetwork.GethNetwork
@@ -40,20 +41,24 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
 
 	// Start the obscuro nodes and return the handles
-	n.obscuroClients = startInMemoryObscuroNodes(params, stats, n.gethNetwork.GenesisJSON, n.gethClients)
+	n.l2Clients = startInMemoryObscuroNodes(params, stats, n.gethNetwork.GenesisJSON, n.gethClients)
 
-	walletClients := createAuthClientsPerWallet(n.obscuroClients, params.Wallets)
+	obscuroClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
+	for idx, l2Client := range n.l2Clients {
+		obscuroClients[idx] = obsclient.NewObsClient(l2Client)
+	}
+	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
 	return &RPCHandles{
 		EthClients:     n.gethClients,
-		ObscuroClients: n.obscuroClients,
+		ObscuroClients: obscuroClients,
 		AuthObsClients: walletClients,
 	}, nil
 }
 
 func (n *networkInMemGeth) TearDown() {
 	// Stop the obscuro nodes first
-	StopObscuroNodes(n.obscuroClients)
+	StopObscuroNodes(n.l2Clients)
 
 	// Stop geth last
 	StopGethNetwork(n.gethClients, n.gethNetwork)

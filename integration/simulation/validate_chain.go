@@ -74,7 +74,7 @@ func checkEthereumBlockchainValidity(t *testing.T, s *Simulation) uint64 {
 
 	heights := make([]uint64, len(s.RPCHandles.EthClients))
 	for i, node := range s.RPCHandles.EthClients {
-		heights[i] = checkBlockchainOfEthereumNode(t, node, minHeight, s)
+		heights[i] = checkBlockchainOfEthereumNode(t, node, minHeight, s, i)
 	}
 
 	min, max := minMax(heights)
@@ -112,8 +112,8 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 }
 
-func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation) uint64 {
-	nodeAddr := common.ShortAddress(node.Info().L2ID)
+func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation, nodeIdx int) uint64 {
+	nodeAddr := nodeIdx // todo - joel - get rid of this
 	head := node.FetchHeadBlock()
 	height := head.NumberU64()
 
@@ -121,7 +121,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeAddr, height, minHeight)
 	}
 
-	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(common.GenesisBlock, head, node, s)
+	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(common.GenesisBlock, head, node, s, nodeAddr)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
 	if len(findHashDups(deposits)) > 0 {
@@ -166,7 +166,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
 // between the start block and the end block.
-func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation) ([]gethcommon.Hash, []*common.ExtRollupWithHash, *big.Int, int) {
+func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation, nodeIdx int) ([]gethcommon.Hash, []*common.ExtRollupWithHash, *big.Int, int) {
 	deposits := make([]gethcommon.Hash, 0)
 	rollups := make([]*common.ExtRollupWithHash, 0)
 	totalDeposited := big.NewInt(0)
@@ -195,7 +195,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
 					// todo - once logic is added to the l1 - this can be made into a check
-					s.Stats.NewRollup(node.Info().L2ID)
+					s.Stats.NewRollup(nodeIdx)
 				}
 			}
 		}
@@ -205,21 +205,14 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 
 func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {
 	defer wg.Done()
-	var nodeID gethcommon.Address
-	nodeClient := rpcHandles.ObscuroClients[nodeIdx]
-	obsClient := obsclient.NewObsClient(nodeClient)
-
-	err := nodeClient.Call(&nodeID, rpc.GetID)
-	if err != nil {
-		t.Errorf("Could not retrieve Obscuro node's address when checking blockchain.")
-	}
-	nodeAddr := common.ShortAddress(nodeID)
+	obscuroClient := rpcHandles.ObscuroClients[nodeIdx]
+	nodeAddr := nodeIdx // todo - joel - remove?
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
-	l1Height, err := obsClient.BlockNumber()
+	l1Height, err := obscuroClient.BlockNumber()
 	if err != nil {
 		t.Errorf("Node %d: Could not retrieve L1 height. Cause: %s", nodeAddr, err)
 	}
@@ -228,7 +221,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	h := getHeadRollupHeader(obsClient)
+	h := getHeadRollupHeader(obscuroClient)
 	if h == nil {
 		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeAddr)
 		return
@@ -239,7 +232,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height from the rollup header is consistent with the height returned by eth_blockNumber.
-	l2HeightFromRollupNumber, err := obsClient.RollupNumber()
+	l2HeightFromRollupNumber, err := obscuroClient.RollupNumber()
 	if err != nil {
 		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeAddr, err)
 	}
@@ -247,7 +240,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeAddr, l2Height, rpc.BlockNumber, l2HeightFromRollupNumber)
 	}
 
-	totalL2Blocks := s.Stats.NoL2Blocks[nodeID]
+	totalL2Blocks := s.Stats.NoL2Blocks[nodeIdx]
 	// in case the blockchain has advanced above what was collected, there is no longer a point to this check
 	if l2Height.Uint64() <= totalL2Blocks {
 		efficiencyL2 := float64(totalL2Blocks-l2Height.Uint64()) / float64(totalL2Blocks)
@@ -275,7 +268,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 
 	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
 
-	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, nodeClient, nodeAddr)
+	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, obscuroClient, nodeIdx)
 
 	// sanity check number of withdrawal transaction
 	if numberOfWithdrawalRequests > len(s.TxInjector.TxTracker.GetL2WithdrawalRequests()) {
@@ -386,11 +379,10 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 	}
 }
 
-func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (totalSuccessfullyWithdrawn *big.Int, numberOfWithdrawalRequests int) {
-	obsClient := obsclient.NewObsClient(nodeClient)
-
+// todo - joel - rename nodeAddr
+func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeAddr int) (totalSuccessfullyWithdrawn *big.Int, numberOfWithdrawalRequests int) {
 	totalSuccessfullyWithdrawn = big.NewInt(0)
-	header := getHeadRollupHeader(obsClient)
+	header := getHeadRollupHeader(obscuroClient)
 	if header == nil {
 		panic(fmt.Sprintf("Node %d: The current head should not be nil", nodeAddr))
 	}
@@ -411,7 +403,7 @@ func extractWithdrawals(t *testing.T, nodeClient rpc.Client, nodeAddr uint64) (t
 			numberOfWithdrawalRequests++
 		}
 
-		header, err = obsClient.RollupHeaderByHash(header.ParentHash)
+		header, err = obscuroClient.RollupHeaderByHash(header.ParentHash)
 		if err != nil {
 			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header by hash", nodeAddr))
 		}

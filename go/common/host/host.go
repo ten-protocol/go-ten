@@ -53,6 +53,6 @@ type StatsCollector interface {
 	// L2Recalc - called when a node has to discard the speculative work built on top of the winner of the gossip round.
 	L2Recalc(id gethcommon.Address)
 	NewBlock(block *types.Block)
-	NewRollup(node gethcommon.Address)
+	NewRollup(nodeIdx int)
 	RollupWithMoreRecentProof()
 }

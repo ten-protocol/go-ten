@@ -22,7 +22,7 @@ type Stats struct {
 
 	NoL1Reorgs  map[gethcommon.Address]int
 	NoL2Recalcs map[gethcommon.Address]int
-	NoL2Blocks  map[gethcommon.Address]uint64
+	NoL2Blocks  map[int]uint64
 	// todo - actual avg block Duration
 
 	TotalDepositedAmount           *big.Int
@@ -37,7 +37,7 @@ func NewStats(nrMiners int) *Stats {
 		NrMiners:                       nrMiners,
 		NoL1Reorgs:                     map[gethcommon.Address]int{},
 		NoL2Recalcs:                    map[gethcommon.Address]int{},
-		NoL2Blocks:                     map[gethcommon.Address]uint64{},
+		NoL2Blocks:                     map[int]uint64{},
 		TotalDepositedAmount:           big.NewInt(0),
 		TotalWithdrawalRequestedAmount: big.NewInt(0),
 		statsMu:                        &sync.RWMutex{},
@@ -66,9 +66,9 @@ func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewRollup(node gethcommon.Address) {
+func (s *Stats) NewRollup(nodeIdx int) {
 	s.statsMu.Lock()
-	s.NoL2Blocks[node]++
+	s.NoL2Blocks[nodeIdx]++
 	s.statsMu.Unlock()
 }
 
