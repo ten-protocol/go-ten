@@ -25,14 +25,12 @@ func TestBlockProviderHappyPath_LiveStream(t *testing.T) {
 	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut, log.NodeIDKey, "test")
 
 	blockProvider := EthBlockProvider{
-		ethClient: mockEthClient,
-		ctx:       ctx,
-		streamCh:  make(chan *types.Block),
-		logger:    logger,
+		ethClient:     mockEthClient,
+		ctx:           ctx,
+		runningStatus: new(int32),
+		streamCh:      make(chan *types.Block),
+		logger:        logger,
 	}
-
-	blockProvider.start()
-	// time.Sleep(20 * time.Millisecond)
 
 	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(0))
 	if err != nil {
@@ -63,14 +61,12 @@ func TestBlockProviderHappyPath_HistoricThenStream(t *testing.T) {
 
 	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut, log.NodeIDKey, "test")
 	blockProvider := EthBlockProvider{
-		ethClient: mockEthClient,
-		ctx:       ctx,
-		streamCh:  make(chan *types.Block),
-		logger:    logger,
+		ethClient:     mockEthClient,
+		ctx:           ctx,
+		runningStatus: new(int32),
+		streamCh:      make(chan *types.Block),
+		logger:        logger,
 	}
-
-	blockProvider.start()
-	time.Sleep(20 * time.Millisecond)
 
 	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(2))
 	if err != nil {

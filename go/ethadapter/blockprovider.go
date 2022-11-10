@@ -170,7 +170,7 @@ func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 	return blk, nil
 }
 
-// checkStopped checks the stopCh for a signal to stop. This seems dumb, what's the correct way to do this?
+// checkStopped checks the status for stopped code
 func (e *EthBlockProvider) stopped() bool {
 	return atomic.LoadInt32(e.runningStatus) == statusCodeStopped
 }
