@@ -611,6 +611,8 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 
 // DoEstimateGas returns the estimation of minimum gas required to execute transaction
 // This is a copy of https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/api.go#L1055
+// there's a high complexity to the method due to geth business rules (which is mimic'd here)
+// once the work of obscuro gas mechanics is established this method should be simplified
 func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var (
@@ -685,22 +687,10 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethr
 	}
 	cap = hi
 
-	// Create a helper to check if a gas allowance results in an executable transaction
-	executable := func(gas uint64) (bool, *gethcore.ExecutionResult, error) {
-		args.Gas = (*hexutil.Uint64)(&gas)
-		result, err := e.chain.ExecuteOffChainTransactionAtBlock(args, gethrpc.BlockNumber(0))
-		if err != nil {
-			if errors.Is(err, gethcore.ErrIntrinsicGas) {
-				return true, nil, nil // Special case, raise gas limit
-			}
-			return true, nil, err // Bail out
-		}
-		return result.Failed(), result, nil
-	}
-	// Execute the binary search and hone in on an executable gas limit
+	// Execute the binary search and hone in on an isGasEnough gas limit
 	for lo+1 < hi {
 		mid := (hi + lo) / 2
-		failed, _, err := executable(mid)
+		failed, _, err := e.isGasEnough(args, mid)
 		// If the error is not nil(consensus error), it means the provided message
 		// call or transaction will never be accepted no matter how much gas it is
 		// assigned. Return the error directly, don't struggle any more.
@@ -715,7 +705,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethr
 	}
 	// Reject the transaction as invalid if it still fails at the highest allowance
 	if hi == cap { //nolint:nestif
-		failed, result, err := executable(hi)
+		failed, result, err := e.isGasEnough(args, hi)
 		if err != nil {
 			return 0, err
 		}
@@ -731,6 +721,20 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethr
 		}
 	}
 	return hexutil.Uint64(hi), nil
+}
+
+// Create a helper to check if a gas allowance results in an executable transaction
+// isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
+func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64) (bool, *gethcore.ExecutionResult, error) {
+	args.Gas = (*hexutil.Uint64)(&gas)
+	result, err := e.chain.ExecuteOffChainTransactionAtBlock(args, gethrpc.BlockNumber(0))
+	if err != nil {
+		if errors.Is(err, gethcore.ErrIntrinsicGas) {
+			return true, nil, nil // Special case, raise gas limit
+		}
+		return true, nil, err // Bail out
+	}
+	return result.Failed(), result, nil
 }
 
 func newRevertError(result *gethcore.ExecutionResult) *revertError {

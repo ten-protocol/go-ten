@@ -754,12 +754,12 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 
 	hs := rc.storage.FetchHeadState()
 	if hs == nil {
-		panic("Not initialised")
+		return nil, fmt.Errorf("unable to fetch head state")
 	}
 	// todo - get the parent
 	r, f := rc.storage.FetchRollup(hs.HeadRollup)
 	if !f {
-		panic("not found")
+		return nil, fmt.Errorf("unable to fetch head state rollup")
 	}
 
 	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
