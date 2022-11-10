@@ -1,6 +1,8 @@
 package host
 
 import (
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -55,4 +57,13 @@ type StatsCollector interface {
 	NewBlock(block *types.Block)
 	NewRollup(node gethcommon.Address)
 	RollupWithMoreRecentProof()
+}
+
+// BlockProvider interface allows host to monitor and await L1 blocks for feeding to enclave
+type BlockProvider interface {
+	StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, error)
+	StartStreamingFromHash(latestHash gethcommon.Hash) (<-chan *types.Block, error)
+	Err() <-chan error
+	Stop()
+	IsLive(hash gethcommon.Hash) bool
 }

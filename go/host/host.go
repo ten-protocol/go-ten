@@ -66,6 +66,8 @@ type host struct {
 	enclaveClient common.Enclave       // For communication with the enclave
 	rpcServer     clientrpc.Server     // For communication with Obscuro client applications
 
+	blockProvider hostcommon.BlockProvider
+
 	stats hostcommon.StatsCollector
 
 	// control the host lifecycle
@@ -87,6 +89,8 @@ type host struct {
 }
 
 func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p hostcommon.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) hostcommon.MockHost {
+	blockProvider := ethadapter.NewEthBlockProvider(ethClient, logger)
+	blockProvider.Start()
 	host := &host{
 		// config
 		config:      config,
@@ -97,6 +101,7 @@ func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p host
 		p2p:           p2p,
 		ethClient:     ethClient,
 		enclaveClient: enclaveClient,
+		blockProvider: blockProvider,
 
 		// statistics and metrics
 		stats: stats,
@@ -485,6 +490,7 @@ func (h *host) processBlockTransactions(b *types.Block) {
 			continue
 		}
 
+		// node received a secret response, we should add them to our p2p connection pool
 		if scrtRespTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
 			err := h.processSharedSecretResponse(scrtRespTx)
 			if err != nil {
@@ -617,13 +623,15 @@ func (h *host) requestSecret() error {
 	l1tx := &ethadapter.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
+	// record the L1 head height before we submit the secret request so we know which block to watch from
+	l1Height := h.ethClient.FetchHeadBlock().Number()
 	requestSecretTx := h.mgmtContractLib.CreateRequestSecret(l1tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(requestSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return err
 	}
 
-	err = h.awaitSecret()
+	err = h.awaitSecret(l1Height)
 	if err != nil {
 		h.logger.Crit("could not receive the secret", log.ErrKey, err)
 	}
@@ -896,45 +904,30 @@ func (h *host) bootstrapHost() types.Block {
 	return *currentBlock
 }
 
-func (h *host) awaitSecret() error {
-	// start listening for l1 blocks that contain the response to the request
-	listener, subs := h.ethClient.BlockListener()
+func (h *host) awaitSecret(fromHeight *big.Int) error {
+	blkStream, err := h.blockProvider.StartStreamingFromHeight(fromHeight)
+	if err != nil {
+		return err
+	}
 
 	for {
 		select {
-		case err := <-subs.Err():
-			h.logger.Error("Restarting L1 block monitoring while awaiting for secret. Errored with: %s", log.ErrKey, err)
-			// todo this is a very simple way of reconnecting the host, it might need catching up logic
-			listener, subs = h.ethClient.BlockListener()
+		case err := <-h.blockProvider.Err():
+			h.logger.Crit("blockProvider error", log.ErrKey, err)
 
-		// todo: find a way to get rid of this case and only listen for blocks on the expected channels
-		case header := <-listener:
-			block, err := h.ethClient.BlockByHash(header.Hash())
-			if err != nil {
-				return fmt.Errorf("failed to retrieve block. Cause: %w", err)
-			}
-			if h.checkBlockForSecretResponse(block) {
-				// todo this should be deferred when the errors are upstreamed instead of panic'd
-				subs.Unsubscribe()
+		case blk := <-blkStream:
+			h.logger.Trace("checking block for secret resp", "height", blk.Number())
+			if h.checkBlockForSecretResponse(blk) {
+				h.blockProvider.Stop()
 				return nil
 			}
 
-		case bAndParent := <-h.blockRPCCh:
-			block, err := bAndParent.b.DecodeBlock()
-			if err != nil {
-				return fmt.Errorf("failed to decode block received via RPC. Cause: %w", err)
-			}
-			if h.checkBlockForSecretResponse(block) {
-				subs.Unsubscribe()
-				return nil
-			}
-
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second * 20):
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select)
-			h.logger.Info("Still waiting for secret from the L1...")
+			h.logger.Warn("Waiting for secret from the L1. No blocks received for 20secs...")
 
 		case <-h.exitHostCh:
-			subs.Unsubscribe()
+			h.blockProvider.Stop()
 			return nil
 		}
 	}
