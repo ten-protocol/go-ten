@@ -60,8 +60,7 @@ func init() { //nolint:gochecknoinits
 
 func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 	createObscuroNetwork(t)
-	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
-	time.Sleep(2 * time.Second)
+
 	contractAddr, err := contractdeployer.Deploy(config, testlog.Logger())
 	if err != nil {
 		panic(err)
@@ -148,6 +147,9 @@ func createObscuroNetwork(t *testing.T) {
 	if err != nil {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
 	}
+
+	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
+	time.Sleep(2 * time.Second)
 }
 
 // Returns a viewing-key client with a registered viewing key.
