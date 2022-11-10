@@ -113,51 +113,50 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 }
 
 func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation, nodeIdx int) uint64 {
-	nodeAddr := nodeIdx // todo - joel - get rid of this
 	head := node.FetchHeadBlock()
 	height := head.NumberU64()
 
 	if height < minHeight {
-		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeAddr, height, minHeight)
+		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeIdx, height, minHeight)
 	}
 
-	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(common.GenesisBlock, head, node, s, nodeAddr)
+	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(common.GenesisBlock, head, node, s, nodeIdx)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
 	if len(findHashDups(deposits)) > 0 {
 		dups := findHashDups(deposits)
-		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeAddr, dups)
+		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeIdx, dups)
 	}
 	if len(findRollupDups(rollups)) > 0 {
 		dups := findRollupDups(rollups)
-		t.Errorf("Node %d: Found Rollup duplicates: %v", nodeAddr, dups)
+		t.Errorf("Node %d: Found Rollup duplicates: %v", nodeIdx, dups)
 	}
 
 	if s.Stats.TotalDepositedAmount.Cmp(totalDeposited) != 0 {
-		t.Errorf("Node %d: Deposit amounts don't match. Found %d , expected %d", nodeAddr, totalDeposited, s.Stats.TotalDepositedAmount)
+		t.Errorf("Node %d: Deposit amounts don't match. Found %d , expected %d", nodeIdx, totalDeposited, s.Stats.TotalDepositedAmount)
 	}
 
 	efficiency := float64(s.Stats.TotalL1Blocks-height) / float64(s.Stats.TotalL1Blocks)
 	if efficiency > s.Params.L1EfficiencyThreshold {
-		t.Errorf("Node %d: Efficiency in L1 is %f. Expected:%f. Number: %d.", nodeAddr, efficiency, s.Params.L1EfficiencyThreshold, height)
+		t.Errorf("Node %d: Efficiency in L1 is %f. Expected:%f. Number: %d.", nodeIdx, efficiency, s.Params.L1EfficiencyThreshold, height)
 	}
 
 	// compare the number of reorgs for this node against the height
 	reorgs := s.Stats.NoL1Reorgs[node.Info().L2ID]
 	reorgEfficiency := float64(reorgs) / float64(height)
 	if reorgEfficiency > s.Params.L1EfficiencyThreshold {
-		t.Errorf("Node %d: The number of reorgs is too high: %d. ", nodeAddr, reorgs)
+		t.Errorf("Node %d: The number of reorgs is too high: %d. ", nodeIdx, reorgs)
 	}
 
 	// Check that all the rollups are produced by aggregators.
 	for _, rollup := range rollups {
 		aggregatorID, err := strconv.ParseInt(rollup.Header.Agg.Hex()[2:], 16, 64)
 		if err != nil {
-			t.Errorf("Node %d: Could not parse node's integer ID. Cause: %s", nodeAddr, err)
+			t.Errorf("Node %d: Could not parse node's integer ID. Cause: %s", nodeIdx, err)
 			continue
 		}
 		if network.GetNodeType(int(aggregatorID)) != common.Aggregator {
-			t.Errorf("Node %d: Found rollup produced by non-aggregator %d", nodeAddr, aggregatorID)
+			t.Errorf("Node %d: Found rollup produced by non-aggregator %d", nodeIdx, aggregatorID)
 		}
 	}
 
@@ -206,7 +205,6 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {
 	defer wg.Done()
 	obscuroClient := rpcHandles.ObscuroClients[nodeIdx]
-	nodeAddr := nodeIdx // todo - joel - remove?
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
@@ -214,30 +212,30 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	// new blocks might have been added in the meantime).
 	l1Height, err := obscuroClient.BlockNumber()
 	if err != nil {
-		t.Errorf("Node %d: Could not retrieve L1 height. Cause: %s", nodeAddr, err)
+		t.Errorf("Node %d: Could not retrieve L1 height. Cause: %s", nodeIdx, err)
 	}
 	if int(maxEthereumHeight)-int(l1Height) > maxBlockDelay {
-		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeAddr, maxEthereumHeight-l1Height)
+		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeIdx, maxEthereumHeight-l1Height)
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
 	h := getHeadRollupHeader(obscuroClient)
 	if h == nil {
-		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeAddr)
+		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeIdx)
 		return
 	}
 	l2Height := h.Number
 	if l2Height.Uint64() < minObscuroHeight {
-		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", nodeAddr, l2Height, minObscuroHeight)
+		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", nodeIdx, l2Height, minObscuroHeight)
 	}
 
 	// check that the height from the rollup header is consistent with the height returned by eth_blockNumber.
 	l2HeightFromRollupNumber, err := obscuroClient.RollupNumber()
 	if err != nil {
-		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeAddr, err)
+		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeIdx, err)
 	}
 	if l2HeightFromRollupNumber != l2Height.Uint64() {
-		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeAddr, l2Height, rpc.BlockNumber, l2HeightFromRollupNumber)
+		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.BlockNumber, l2HeightFromRollupNumber)
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[nodeIdx]
@@ -245,7 +243,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	if l2Height.Uint64() <= totalL2Blocks {
 		efficiencyL2 := float64(totalL2Blocks-l2Height.Uint64()) / float64(totalL2Blocks)
 		if efficiencyL2 > s.Params.L2EfficiencyThreshold {
-			t.Errorf("Node %d: Efficiency in L2 is %f. Expected:%f", nodeAddr, efficiencyL2, s.Params.L2EfficiencyThreshold)
+			t.Errorf("Node %d: Efficiency in L2 is %f. Expected:%f", nodeIdx, efficiencyL2, s.Params.L2EfficiencyThreshold)
 		}
 	}
 
@@ -253,17 +251,17 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	// todo- find the block where the genesis was published)
 	efficiency := float64(l1Height-l2Height.Uint64()) / float64(l1Height)
 	if efficiency > s.Params.L2ToL1EfficiencyThreshold {
-		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeAddr, efficiency, s.Params.L2ToL1EfficiencyThreshold)
+		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeIdx, efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}
 
 	notFoundTransfers, notFoundWithdrawals := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
-			nodeAddr, notFoundTransfers, len(s.TxInjector.TxTracker.TransferL2Transactions))
+			nodeIdx, notFoundTransfers, len(s.TxInjector.TxTracker.TransferL2Transactions))
 	}
 	if notFoundWithdrawals > 0 {
 		t.Errorf("Node %d: %d out of %d Withdrawal Txs not found in the enclave",
-			nodeAddr, notFoundWithdrawals, len(s.TxInjector.TxTracker.WithdrawalL2Transactions))
+			nodeIdx, notFoundWithdrawals, len(s.TxInjector.TxTracker.WithdrawalL2Transactions))
 	}
 
 	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
@@ -272,7 +270,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 
 	// sanity check number of withdrawal transaction
 	if numberOfWithdrawalRequests > len(s.TxInjector.TxTracker.GetL2WithdrawalRequests()) {
-		t.Errorf("Node %d: found more transactions in the blockchain than the generated by the tx manager", nodeAddr)
+		t.Errorf("Node %d: found more transactions in the blockchain than the generated by the tx manager", nodeIdx)
 	}
 
 	injectorDepositedAmt := big.NewInt(0)
@@ -286,14 +284,14 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	// best condition : all Txs (stats) were issue and consumed in the blockchain
 	// can't happen : sum of headers withdraws greater than issued Txs (stats)
 	if totalSuccessfullyWithdrawn.Cmp(s.Stats.TotalWithdrawalRequestedAmount) > 0 {
-		t.Errorf("Node %d: The amount withdrawn %d exceeds the actual amount requested %d", nodeAddr, totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
+		t.Errorf("Node %d: The amount withdrawn %d exceeds the actual amount requested %d", nodeIdx, totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
 	}
 
 	// sanity check that the injected withdrawals were mostly executed
 
 	halfRequestedWithdrawalAmt := big.NewInt(0).Div(s.Stats.TotalWithdrawalRequestedAmount, big.NewInt(2))
 	if totalSuccessfullyWithdrawn.Cmp(halfRequestedWithdrawalAmt) < 0 {
-		t.Errorf("Node %d: The amount withdrawn %d is far smaller than the amount requested %d", nodeAddr, totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
+		t.Errorf("Node %d: The amount withdrawn %d is far smaller than the amount requested %d", nodeIdx, totalSuccessfullyWithdrawn, s.Stats.TotalWithdrawalRequestedAmount)
 	}
 
 	// check that the sum of all balances matches the total amount of money that must be in the system
@@ -306,7 +304,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	if total.Cmp(totalAmountInSystem) != 0 {
-		t.Errorf("Node %d: The amount of money in accounts does not match the amount deposited. Found %d , expected %d", nodeAddr, total, totalAmountInSystem)
+		t.Errorf("Node %d: The amount of money in accounts does not match the amount deposited. Found %d , expected %d", nodeIdx, total, totalAmountInSystem)
 	}
 	// TODO Check that processing transactions in the order specified in the list results in the same balances
 	// (execute deposits and transactions and compare to the state in the rollup)
@@ -379,19 +377,18 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 	}
 }
 
-// todo - joel - rename nodeAddr
-func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeAddr int) (totalSuccessfullyWithdrawn *big.Int, numberOfWithdrawalRequests int) {
+func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int, numberOfWithdrawalRequests int) {
 	totalSuccessfullyWithdrawn = big.NewInt(0)
 	header := getHeadRollupHeader(obscuroClient)
 	if header == nil {
-		panic(fmt.Sprintf("Node %d: The current head should not be nil", nodeAddr))
+		panic(fmt.Sprintf("Node %d: The current head should not be nil", nodeIdx))
 	}
 
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
 	var err error
 	for {
 		if header == nil {
-			t.Errorf(fmt.Sprintf("Node %d: Reached a missing rollup", nodeAddr))
+			t.Errorf(fmt.Sprintf("Node %d: Reached a missing rollup", nodeIdx))
 			return
 		}
 		if header.Number.Uint64() == common.L1GenesisHeight {
@@ -405,7 +402,7 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeAd
 
 		header, err = obscuroClient.RollupHeaderByHash(header.ParentHash)
 		if err != nil {
-			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header by hash", nodeAddr))
+			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header by hash", nodeIdx))
 		}
 	}
 }

@@ -13,7 +13,7 @@ import (
 )
 
 type networkInMemGeth struct {
-	l2Clients []rpc.Client // todo - joel - make this and similar pointers
+	l2Clients []rpc.Client
 
 	// geth
 	gethNetwork *gethnetwork.GethNetwork
