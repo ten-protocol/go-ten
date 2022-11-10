@@ -31,9 +31,10 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 	return blockHeader, nil
 }
 
-// GetCurrentRollupHead returns the current head rollup's header.
-func (api *ObscuroScanAPI) GetCurrentRollupHead() *common.Header {
-	headerWithHashes := api.host.DB().GetCurrentRollupHead()
+// GetHeadRollupHeader returns the current head rollup's header.
+// TODO - #718 - Switch to reading batch header.
+func (api *ObscuroScanAPI) GetHeadRollupHeader() *common.Header {
+	headerWithHashes := api.host.DB().GetHeadRollupHeader()
 	if headerWithHashes == nil {
 		return nil
 	}
@@ -43,21 +44,6 @@ func (api *ObscuroScanAPI) GetCurrentRollupHead() *common.Header {
 // GetRollup returns the rollup with the given hash.
 func (api *ObscuroScanAPI) GetRollup(hash gethcommon.Hash) (*common.ExtRollup, error) {
 	return api.host.EnclaveClient().GetRollup(hash)
-}
-
-// GetRollupHeaderByNumber returns the header for the rollup with the given number.
-func (api *ObscuroScanAPI) GetRollupHeaderByNumber(number *big.Int) (*common.Header, error) {
-	rollupHash := api.host.DB().GetRollupHash(number)
-	if rollupHash == nil {
-		return nil, fmt.Errorf("no rollup with number %d is stored", number.Int64())
-	}
-
-	rollupHeader := api.host.DB().GetRollupHeader(*rollupHash)
-	if rollupHeader == nil {
-		return nil, fmt.Errorf("storage indicates that rollup %d has hash %s, but no such rollup is stored", number.Int64(), rollupHash)
-	}
-
-	return rollupHeader.Header, nil
 }
 
 // GetRollupForTx returns the rollup containing a given transaction hash. Required for ObscuroScan.
@@ -82,8 +68,9 @@ func (api *ObscuroScanAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRo
 
 // GetLatestTransactions returns the hashes of the latest `num` transactions, or as many as possible if less than `num` transactions exist.
 // TODO - Consider introducing paging or similar to prevent a huge number of transactions blowing the node's memory limit.
+// TODO - #718 - Switch to retrieving transactions from latest batch.
 func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
-	currentRollupHeaderWithHashes := api.host.DB().GetCurrentRollupHead()
+	currentRollupHeaderWithHashes := api.host.DB().GetHeadRollupHeader()
 	if currentRollupHeaderWithHashes == nil {
 		return nil, nil
 	}

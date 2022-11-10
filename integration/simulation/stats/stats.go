@@ -22,7 +22,7 @@ type Stats struct {
 
 	NoL1Reorgs  map[gethcommon.Address]int
 	NoL2Recalcs map[gethcommon.Address]int
-	NoL2Blocks  map[gethcommon.Address]uint64
+	NoL2Blocks  map[int]uint64
 	// todo - actual avg block Duration
 
 	TotalDepositedAmount           *big.Int
@@ -37,7 +37,7 @@ func NewStats(nrMiners int) *Stats {
 		NrMiners:                       nrMiners,
 		NoL1Reorgs:                     map[gethcommon.Address]int{},
 		NoL2Recalcs:                    map[gethcommon.Address]int{},
-		NoL2Blocks:                     map[gethcommon.Address]uint64{},
+		NoL2Blocks:                     map[int]uint64{},
 		TotalDepositedAmount:           big.NewInt(0),
 		TotalWithdrawalRequestedAmount: big.NewInt(0),
 		statsMu:                        &sync.RWMutex{},
@@ -47,12 +47,6 @@ func NewStats(nrMiners int) *Stats {
 func (s *Stats) L1Reorg(id gethcommon.Address) {
 	s.statsMu.Lock()
 	s.NoL1Reorgs[id]++
-	s.statsMu.Unlock()
-}
-
-func (s *Stats) L2Recalc(id gethcommon.Address) {
-	s.statsMu.Lock()
-	s.NoL2Recalcs[id]++
 	s.statsMu.Unlock()
 }
 
@@ -66,9 +60,9 @@ func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) NewRollup(node gethcommon.Address) {
+func (s *Stats) NewRollup(nodeIdx int) {
 	s.statsMu.Lock()
-	s.NoL2Blocks[node]++
+	s.NoL2Blocks[nodeIdx]++
 	s.statsMu.Unlock()
 }
 
@@ -87,11 +81,5 @@ func (s *Stats) Transfer() {
 func (s *Stats) Withdrawal(v *big.Int) {
 	s.statsMu.Lock()
 	s.TotalWithdrawalRequestedAmount = s.TotalWithdrawalRequestedAmount.Add(s.TotalWithdrawalRequestedAmount, v)
-	s.statsMu.Unlock()
-}
-
-func (s *Stats) RollupWithMoreRecentProof() {
-	s.statsMu.Lock()
-	s.RollupWithMoreRecentProofCount++
 	s.statsMu.Unlock()
 }

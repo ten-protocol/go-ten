@@ -32,11 +32,13 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 }
 
 // BlockNumber returns the height of the current head rollup.
+// # TODO - #718 - Switch to returning height based on current batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	head := api.host.DB().GetCurrentRollupHead()
+	head := api.host.DB().GetHeadRollupHeader()
 	if head == nil {
 		return 0
 	}
+
 	number := head.Header.Number.Uint64()
 	return hexutil.Uint64(number)
 }
@@ -53,7 +55,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	rollupHash, err := api.blockNumberToHash(number)
+	rollupHash, err := api.blockNumberToRollupHash(number)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch block number: %w", err)
 	}
@@ -61,12 +63,13 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 }
 
 // GetBlockByHash returns the rollup with the given hash as a block. No transactions are included.
+// TODO - #718 - Switch to retrieving batch header.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
 	rollupHeaderWithHashes := api.host.DB().GetRollupHeader(hash)
 	if rollupHeaderWithHashes == nil {
 		return nil, nil //nolint:nilnil
 	}
-	return headerWithHashesToBlock(rollupHeaderWithHashes), nil
+	return headerWithHashesToMap(rollupHeaderWithHashes), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -122,7 +125,7 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// requested a number
 	if rollupNumber, ok := blockNrOrHash.Number(); ok {
-		rollupHash, err := api.blockNumberToHash(rollupNumber)
+		rollupHash, err := api.blockNumberToRollupHash(rollupNumber)
 		if err != nil {
 			return nil, fmt.Errorf("unable to fetch block number: %w", err)
 		}
@@ -174,11 +177,12 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 	}, nil
 }
 
-// Maps an external rollup to a block.
-func headerWithHashesToBlock(headerWithHashes *common.HeaderWithTxHashes) map[string]interface{} {
+// Maps an external rollup to a key/value map.
+// TODO - Include all the fields of the rollup header that do not exist in the Geth block headers as well (not just withdrawals).
+func headerWithHashesToMap(headerWithHashes *common.HeaderWithTxHashes) map[string]interface{} {
 	header := headerWithHashes.Header
 	return map[string]interface{}{
-		"number":           (*hexutil.Big)(header.Number),
+		"number":           header.Number.Uint64(),
 		"hash":             header.Hash(),
 		"parentHash":       header.ParentHash,
 		"nonce":            header.Nonce,
@@ -197,6 +201,8 @@ func headerWithHashesToBlock(headerWithHashes *common.HeaderWithTxHashes) map[st
 		"timestamp":     header.Time,
 		"mixHash":       header.MixDigest,
 		"baseFeePerGas": header.BaseFee,
+
+		"withdrawals": header.Withdrawals,
 	}
 }
 
@@ -208,11 +214,11 @@ type FeeHistoryResult struct {
 	GasUsedRatio []float64        `json:"gasUsedRatio"`
 }
 
-func (api *EthereumAPI) blockNumberToHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
-	// Predefined constants to support Geth's API
+// TODO - #718 - Switch to converting block number to batch hash.
+func (api *EthereumAPI) blockNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	switch blockNumber {
 	case rpc.LatestBlockNumber:
-		hash := api.host.DB().GetCurrentRollupHead().Header.Hash()
+		hash := api.host.DB().GetHeadRollupHeader().Header.Hash()
 		return &hash, nil
 	case rpc.EarliestBlockNumber:
 		hash := api.host.DB().GetRollupHeader(gethcommon.BigToHash(big.NewInt(0))).Header.Hash()

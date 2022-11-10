@@ -190,11 +190,11 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		head = headRollup.Header
 	}
 	return &common.BlockSubmissionResponse{
-		BlockHeader:    headBlock.Header(),
-		ProducedRollup: rollup,
-		FoundNewHead:   bs.FoundNewRollup,
-		RollupHead:     head,
-		SubscribedLogs: logs,
+		BlockHeader:          headBlock.Header(),
+		ProducedRollup:       rollup,
+		FoundNewHead:         bs.FoundNewRollup,
+		IngestedRollupHeader: head,
+		SubscribedLogs:       logs,
 	}
 }
 
@@ -469,7 +469,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
-	rc.logger.Info("block inserted successfully",
+	rc.logger.Trace("block inserted successfully",
 		"height", block.NumberU64(),
 		"hash", block.Hash(),
 		"ingestionType", ingestionType)

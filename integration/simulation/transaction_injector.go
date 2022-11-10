@@ -189,7 +189,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		// todo - retrieve receipt
 
 		go ti.TxTracker.trackTransferL2Tx(signedTx)
-		SleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
+		sleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
 	}
 }
 
@@ -222,7 +222,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
 		go ti.TxTracker.trackL1Tx(txData)
-		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
+		sleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
 }
 
@@ -250,7 +250,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 
 		ti.stats.Withdrawal(common.ValueInWei(big.NewInt(int64(v))))
 		go ti.TxTracker.trackWithdrawalL2Tx(signedTx)
-		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
+		sleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
 }
 
