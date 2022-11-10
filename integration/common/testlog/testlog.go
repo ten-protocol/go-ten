@@ -11,8 +11,10 @@ import (
 )
 
 // must be set during setup
-var logFile = ""
-var testlog gethlog.Logger
+var (
+	logFile = ""
+	testlog gethlog.Logger
+)
 
 func Logger() gethlog.Logger {
 	return testlog

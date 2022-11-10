@@ -3,6 +3,8 @@ package network
 import (
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
@@ -23,8 +25,8 @@ import (
 )
 
 type basicNetworkOfInMemoryNodes struct {
-	ethNodes       []*ethereummock.Node
-	obscuroClients []rpc.Client
+	ethNodes  []*ethereummock.Node
+	l2Clients []rpc.Client
 }
 
 func NewBasicNetworkOfInMemoryNodes() Network {
@@ -36,7 +38,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
-	n.obscuroClients = make([]rpc.Client, params.NumberOfNodes)
+	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
@@ -59,7 +61,6 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
 			params.AvgGossipPeriod,
-			stats,
 			false,
 			nil,
 			params.Wallets.NodeWallets[i],
@@ -74,7 +75,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 		n.ethNodes[i] = miner
 		obscuroNodes[i] = agg
-		n.obscuroClients[i] = obscuroClient
+		n.l2Clients[i] = obscuroClient
 		l1Clients[i] = miner
 	}
 
@@ -102,17 +103,21 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	walletClients := createAuthClientsPerWallet(n.obscuroClients, params.Wallets)
+	obscuroClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
+	for idx, l2Client := range n.l2Clients {
+		obscuroClients[idx] = obsclient.NewObsClient(l2Client)
+	}
+	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
 	return &RPCHandles{
 		EthClients:     l1Clients,
-		ObscuroClients: n.obscuroClients,
+		ObscuroClients: obscuroClients,
 		AuthObsClients: walletClients,
 	}, nil
 }
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
-	for _, client := range n.obscuroClients {
+	for _, client := range n.l2Clients {
 		temp := client
 		go func() {
 			_ = temp.Call(nil, rpc.StopHost)

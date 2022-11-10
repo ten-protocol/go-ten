@@ -51,14 +51,6 @@ type P2P interface {
 	BroadcastTx(tx common.EncryptedTx) error
 }
 
-type StatsCollector interface {
-	// L2Recalc - called when a node has to discard the speculative work built on top of the winner of the gossip round.
-	L2Recalc(id gethcommon.Address)
-	NewBlock(block *types.Block)
-	NewRollup(node gethcommon.Address)
-	RollupWithMoreRecentProof()
-}
-
 // BlockProvider interface allows host to monitor and await L1 blocks for feeding to enclave
 type BlockProvider interface {
 	StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, error)

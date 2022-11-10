@@ -29,7 +29,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 const (
@@ -37,7 +36,7 @@ const (
 	networkTCP        = "tcp"
 )
 
-func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
+func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
@@ -52,7 +51,6 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
 			params.AvgGossipPeriod,
-			stats,
 			true,
 			genesisJSON,
 			params.Wallets.NodeWallets[i],
@@ -82,7 +80,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, stats *stats.Stats, gen
 	return obscuroClients
 }
 
-func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpc.Client, []string) {
+func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpc.Client, []string) {
 	// handle to the obscuro clients
 	nodeRPCAddresses := make([]string, params.NumberOfNodes)
 	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
@@ -101,7 +99,6 @@ func startStandaloneObscuroNodes(params *params.SimParams, stats *stats.Stats, g
 			isGenesis,
 			GetNodeType(i),
 			params.AvgGossipPeriod,
-			stats,
 			fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i),
 			enclaveAddresses[i],
 			Localhost,
