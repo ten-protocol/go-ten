@@ -7,27 +7,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	"github.com/ethereum/go-ethereum/eth/filters"
-
 	"github.com/ethereum/go-ethereum"
-
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-
-	"github.com/obscuronet/go-obscuro/go/common"
-
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-
-	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 const (
@@ -209,5 +203,31 @@ func (s *Simulation) prefundL1Accounts() {
 
 		s.Stats.Deposit(initialBalance)
 		go s.TxInjector.TxTracker.trackL1Tx(txData)
+	}
+}
+
+func NextNonce(ctx context.Context, clients *network.RPCHandles, w wallet.Wallet) uint64 {
+	counter := 0
+
+	// only returns the nonce when the previous transaction was recorded
+	for {
+		remoteNonce, err := clients.ObscuroWalletRndClient(w).NonceAt(ctx, nil)
+		if err != nil {
+			panic(err)
+		}
+		localNonce := w.GetNonce()
+		if remoteNonce == localNonce {
+			return w.GetNonceAndIncrement()
+		}
+		if remoteNonce > localNonce {
+			panic("remote nonce exceeds local nonce")
+		}
+
+		counter++
+		if counter > nonceTimeoutMillis {
+			panic(fmt.Sprintf("transaction injector could not retrieve nonce after thirty seconds for address %s. "+
+				"Local nonce was %d, remote nonce was %d", w.Address().Hex(), localNonce, remoteNonce))
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
