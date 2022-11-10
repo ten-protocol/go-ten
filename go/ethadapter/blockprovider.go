@@ -95,7 +95,13 @@ func (e *EthBlockProvider) Stop() {
 }
 
 func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
-	return false // return h == e.sentChainHead.
+	if e.liveBlocks.latest == nil {
+		// live block streaming not working, we're probably running the in-mem simulation where that's not implemented.
+		// So check manually:
+		block := e.ethClient.FetchHeadBlock()
+		return h == block.Hash()
+	}
+	return h == e.liveBlocks.latest.Hash()
 }
 
 // streamBlocks should be run in a separate go routine. It will stream catch-up blocks from requested height until it
