@@ -28,7 +28,7 @@ import (
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, fromTxIndex int, logger gethlog.Logger) map[common.TxHash]interface{} {
-	chain, vmCfg, gp := initParams(storage, false)
+	chain, vmCfg, gp := initParams(storage, true)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
@@ -95,8 +95,9 @@ func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.He
 
 	result, err := gethcore.ApplyMessage(vmenv, msg, gp)
 	if err != nil {
-		// this error is ignored by geth. logging just in case
+		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		logger.Error("ErrKey applying msg:", log.ErrKey, err)
+		return result, fmt.Errorf("unable to ApplyMessage - %w", err)
 	}
 
 	// Read the error stored in the database.
