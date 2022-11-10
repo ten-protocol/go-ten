@@ -199,7 +199,7 @@ func (l *LiveBlocksMonitor) StartProcessing() {
 			}
 
 		case err := <-blkSubs.Err():
-			l.logger.Error("L1 block monitoring error: %s", err)
+			l.logger.Error("L1 block monitoring error", log.ErrKey, err)
 			l.logger.Info("Restarting L1 block Monitoring...")
 			// this disconnect could result in a gap in the LiveBlocksMonitor queue, but the block provider is responsible
 			// for sending a coherent ordering of blocks and will look up blocks if parent not sent
