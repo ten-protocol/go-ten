@@ -66,8 +66,6 @@ type host struct {
 	enclaveClient common.Enclave       // For communication with the enclave
 	rpcServer     clientrpc.Server     // For communication with Obscuro client applications
 
-	stats hostcommon.StatsCollector
-
 	// control the host lifecycle
 	exitHostCh            chan bool
 	stopHostInterrupt     *int32
@@ -86,7 +84,7 @@ type host struct {
 	logger gethlog.Logger
 }
 
-func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p hostcommon.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) hostcommon.MockHost {
+func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) hostcommon.MockHost {
 	host := &host{
 		// config
 		config:      config,
@@ -97,9 +95,6 @@ func NewHost(config config.HostConfig, stats hostcommon.StatsCollector, p2p host
 		p2p:           p2p,
 		ethClient:     ethClient,
 		enclaveClient: enclaveClient,
-
-		// statistics and metrics
-		stats: stats,
 
 		// lifecycle channels
 		exitHostCh:            make(chan bool),

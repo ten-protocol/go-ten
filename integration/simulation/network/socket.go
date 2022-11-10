@@ -58,7 +58,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 	}
 
-	l2Clients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
+	l2Clients, hostRPCAddresses := startStandaloneObscuroNodes(params, n.gethClients, n.enclaveAddresses)
 	n.l2Clients = l2Clients
 	n.hostRPCAddresses = hostRPCAddresses
 

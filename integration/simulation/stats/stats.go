@@ -50,12 +50,6 @@ func (s *Stats) L1Reorg(id gethcommon.Address) {
 	s.statsMu.Unlock()
 }
 
-func (s *Stats) L2Recalc(id gethcommon.Address) {
-	s.statsMu.Lock()
-	s.NoL2Recalcs[id]++
-	s.statsMu.Unlock()
-}
-
 func (s *Stats) NewBlock(b *types.Block) {
 	s.statsMu.Lock()
 	// s.l1Height = nodecommon.MaxInt(s.l1Height, b.Number)
@@ -87,11 +81,5 @@ func (s *Stats) Transfer() {
 func (s *Stats) Withdrawal(v *big.Int) {
 	s.statsMu.Lock()
 	s.TotalWithdrawalRequestedAmount = s.TotalWithdrawalRequestedAmount.Add(s.TotalWithdrawalRequestedAmount, v)
-	s.statsMu.Unlock()
-}
-
-func (s *Stats) RollupWithMoreRecentProof() {
-	s.statsMu.Lock()
-	s.RollupWithMoreRecentProofCount++
 	s.statsMu.Unlock()
 }

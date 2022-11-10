@@ -41,7 +41,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
 
 	// Start the obscuro nodes and return the handles
-	n.l2Clients = startInMemoryObscuroNodes(params, stats, n.gethNetwork.GenesisJSON, n.gethClients)
+	n.l2Clients = startInMemoryObscuroNodes(params, n.gethNetwork.GenesisJSON, n.gethClients)
 
 	obscuroClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
 	for idx, l2Client := range n.l2Clients {

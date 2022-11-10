@@ -1,8 +1,6 @@
 package host
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -47,12 +45,4 @@ type P2P interface {
 	StopListening() error
 	UpdatePeerList([]string)
 	BroadcastTx(tx common.EncryptedTx) error
-}
-
-type StatsCollector interface {
-	// L2Recalc - called when a node has to discard the speculative work built on top of the winner of the gossip round.
-	L2Recalc(id gethcommon.Address)
-	NewBlock(block *types.Block)
-	NewRollup(nodeIdx int)
-	RollupWithMoreRecentProof()
 }
