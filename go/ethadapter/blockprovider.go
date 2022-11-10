@@ -124,7 +124,7 @@ func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 	if e.latestSent == nil {
 		blk, err := e.ethClient.BlockByNumber(e.streamFrom)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch block at requested height=%s - %w", e.streamFrom, err)
+			return nil, fmt.Errorf("no block at requested height=%s - %w", e.streamFrom, err)
 		}
 
 		return blk, nil
@@ -138,15 +138,15 @@ func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 	if head.ParentHash == e.latestSent.Hash() {
 		blk, err := e.ethClient.BlockByHash(head.Hash())
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve head block by hash - %w", err)
+			return nil, fmt.Errorf("could not fetch block with hash=%s - %w", head.Hash(), err)
 		}
 		return blk, nil
 	}
 
 	// but if we're in catch-up mode it's probably the canon block above the latest sent
-	blkAfterLatestSent, err := e.ethClient.BlockByNumber(e.latestSent.Number)
+	blkAfterLatestSent, err := e.ethClient.BlockByNumber(increment(e.latestSent.Number))
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve the block after the latest sent - %w", err)
+		return nil, fmt.Errorf("unable to fetch block after latest - %w", err)
 	}
 	if blkAfterLatestSent.ParentHash() == e.latestSent.Hash() {
 		return blkAfterLatestSent, nil
@@ -155,12 +155,12 @@ func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 	// and if there's been a fork we need to figure out where we forked
 	latestCanon, err := e.latestCanonAncestor(e.latestSent.Hash())
 	if err != nil {
-		return nil, fmt.Errorf("failed to find ancestor on canonical chain for hash=%s - %w", e.latestSent.Hash(), err)
+		return nil, fmt.Errorf("could not find ancestor on canonical chain for hash=%s - %w", e.latestSent.Hash(), err)
 	}
 	// and send the cannon block after the fork
 	blk, err := e.ethClient.BlockByNumber(increment(latestCanon.Number()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to find block after canon fork branch, height=%s - %w", increment(latestCanon.Number()), err)
+		return nil, fmt.Errorf("could not find block after canon fork branch, height=%s - %w", increment(latestCanon.Number()), err)
 	}
 	return blk, nil
 }

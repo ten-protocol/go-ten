@@ -55,7 +55,7 @@ type P2P interface {
 type BlockProvider interface {
 	StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, error)
 	StartStreamingFromHash(latestHash gethcommon.Hash) (<-chan *types.Block, error)
-	Err() <-chan error
+	Err() <-chan error // if an error is received on this channel then the streaming channel is no longer usable
 	Stop()
-	IsLive(hash gethcommon.Hash) bool
+	IsLive(hash gethcommon.Hash) bool // returns true if hash is of the latest known L1 head block
 }
