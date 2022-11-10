@@ -30,6 +30,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/integration"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
@@ -166,11 +167,32 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
-		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500))
+		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 3))
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
+
+		callMsg := &ethereum.CallMsg{
+			From: fromWallet.Address(),
+			To:   signedTx.To(),
+			//Gas:      signedTx.Gas(),
+			//GasPrice: signedTx.GasPrice(),
+			//GasFeeCap:  signedTx.GasFeeCap(),
+			//GasTipCap:  signedTx.GasTipCap(),
+			//Value:      signedTx.Value(),
+			Data: signedTx.Data(),
+			//AccessList: signedTx.AccessList(),
+		}
+
+		gasEstimate, err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).EstimateGas(ti.ctx, callMsg)
+		if err != nil {
+			//time.Sleep(10 * time.Minute)
+			fmt.Println(err)
+		} else {
+			fmt.Printf("no Error on %s\n", signedTx.Hash())
+		}
+		fmt.Println(gasEstimate)
 		ti.logger.Info(fmt.Sprintf(
 			"Transfer transaction injected into L2. Hash: %d. From address: %d. To address: %d",
 			common.ShortHash(signedTx.Hash()),

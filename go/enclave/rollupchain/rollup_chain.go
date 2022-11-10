@@ -12,9 +12,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/common/gethutil"
-
+	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
+	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -620,32 +620,10 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
 
-	// TODO review this during gas implementation
-	callMsg, err := apiArgs.ToMessage(rc.GlobalGasCap, rc.BaseFee)
+	// TODO Hook up the blockNumber
+	result, err := rc.ExecuteOffChainTransactionAtBlock(apiArgs, gethrpc.BlockNumber(0))
 	if err != nil {
-		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
-	}
-
-	hs := rc.storage.FetchHeadState()
-	if hs == nil {
-		panic("Not initialised")
-	}
-	// todo - get the parent
-	r, f := rc.storage.FetchRollup(hs.HeadRollup)
-	if !f {
-		panic("not found")
-	}
-
-	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
-	s := rc.storage.CreateStateDB(hs.HeadRollup)
-	result, err := evm.ExecuteOffChainCall(&callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
-	// todo - clarify this error handling
-	if err != nil {
-		return nil, err
-	}
-	if result.Failed() {
-		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
-		return nil, result.Err
+		return nil, fmt.Errorf("failed when executing eth_call transaction - %w", err)
 	}
 
 	rc.logger.Trace(fmt.Sprintf("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData)))
@@ -654,7 +632,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if len(result.ReturnData) != 0 {
 		encodedResult = hexutil.Encode(result.ReturnData)
 	}
-	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(callMsg.From(), []byte(encodedResult))
+	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(*apiArgs.From, []byte(encodedResult))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
 	}
@@ -765,6 +743,41 @@ func (rc *RollupChain) IsAccountContractAtBlock(accountAddr gethcommon.Address, 
 	}
 
 	return len(chainState.GetCode(accountAddr)) > 0, nil
+}
+
+func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber gethrpc.BlockNumber) (*core.ExecutionResult, error) {
+	// TODO review this during gas mechanics implementation
+	callMsg, err := apiArgs.ToMessage(rc.GlobalGasCap, rc.BaseFee)
+	if err != nil {
+		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
+	}
+
+	hs := rc.storage.FetchHeadState()
+	if hs == nil {
+		panic("Not initialised")
+	}
+	// todo - get the parent
+	r, f := rc.storage.FetchRollup(hs.HeadRollup)
+	if !f {
+		panic("not found")
+	}
+
+	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
+	s := rc.storage.CreateStateDB(hs.HeadRollup)
+	result, err := evm.ExecuteOffChainCall(&callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
+	if err != nil {
+		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
+		return result, err
+	}
+
+	// the execution outcome was unsuccessful, but it was able to execute the call
+	if result.Failed() {
+		// do not return an error
+		// the result object should be evaluated upstream
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
+	}
+
+	return result, nil
 }
 
 func (rc *RollupChain) signRollup(r *obscurocore.Rollup) {

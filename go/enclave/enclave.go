@@ -8,6 +8,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/obscuronet/go-obscuro/go/common/gethapi"
+
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -560,9 +564,13 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
 
+	gasEstimate, err := e.DoEstimateGas(callMsg, gethrpc.BlockNumber(0), e.chain.GlobalGasCap)
+	if err != nil {
+		return nil, fmt.Errorf("unable to estimate transaction - %w", err)
+	}
+
 	// encrypt the gas cost with the callMsg.From viewing key
-	// TODO hook up the evm gas estimation
-	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(*callMsg.From, []byte(hexutil.EncodeUint64(5_000_000_000)))
+	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(*callMsg.From, []byte(hexutil.EncodeUint64(uint64(gasEstimate))))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_estimateGas request. Cause: %w", err)
 	}
@@ -598,6 +606,158 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 		return nil, fmt.Errorf("enclave could not respond securely to GetLogs request. Cause: %w", err)
 	}
 	return encryptedLogs, nil
+}
+
+func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
+	// Binary search the gas requirement, as it may be higher than the amount used
+	var (
+		lo  = params.TxGas - 1
+		hi  uint64
+		cap uint64 //nolint:predeclared
+	)
+	// Use zero address if sender unspecified.
+	if args.From == nil {
+		args.From = new(gethcommon.Address)
+	}
+	// Determine the highest gas limit can be used during the estimation.
+	if args.Gas != nil && uint64(*args.Gas) >= params.TxGas {
+		hi = uint64(*args.Gas)
+	} else {
+		// TODO review this with the gas mechanics/tokenomics work
+		/*
+			//Retrieve the block to act as the gas ceiling
+			block, err := b.BlockByNumberOrHash(ctx, blockNrOrHash)
+			if err != nil {
+				return 0, err
+			}
+			if block == nil {
+				return 0, errors.New("block not found")
+			}
+			hi = block.GasLimit()
+		*/
+		hi = e.chain.GlobalGasCap
+	}
+	// Normalize the max fee per gas the call is willing to spend.
+	var feeCap *big.Int
+	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
+		return 0, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+	} else if args.GasPrice != nil {
+		feeCap = args.GasPrice.ToInt()
+	} else if args.MaxFeePerGas != nil {
+		feeCap = args.MaxFeePerGas.ToInt()
+	} else {
+		feeCap = gethcommon.Big0
+	}
+	// Recap the highest gas limit with account's available balance.
+	if feeCap.BitLen() != 0 { //nolint:nestif
+		balance, err := e.chain.GetBalanceAtBlock(*args.From, blockNr)
+		if err != nil {
+			return 0, fmt.Errorf("unable to fetch account balance - %w", err)
+		}
+
+		available := new(big.Int).Set(balance.ToInt())
+		if args.Value != nil {
+			if args.Value.ToInt().Cmp(available) >= 0 {
+				return 0, errors.New("insufficient funds for transfer")
+			}
+			available.Sub(available, args.Value.ToInt())
+		}
+		allowance := new(big.Int).Div(available, feeCap)
+
+		// If the allowance is larger than maximum uint64, skip checking
+		if allowance.IsUint64() && hi > allowance.Uint64() {
+			transfer := args.Value
+			if transfer == nil {
+				transfer = new(hexutil.Big)
+			}
+			e.logger.Warn("Gas estimation capped by limited funds", "original", hi, "balance", balance,
+				"sent", transfer.ToInt(), "maxFeePerGas", feeCap, "fundable", allowance)
+			hi = allowance.Uint64()
+		}
+	}
+	// Recap the highest gas allowance with specified gascap.
+	if gasCap != 0 && hi > gasCap {
+		e.logger.Warn("Caller gas above allowance, capping", "requested", hi, "cap", gasCap)
+		hi = gasCap
+	}
+	cap = hi
+
+	// Create a helper to check if a gas allowance results in an executable transaction
+	executable := func(gas uint64) (bool, *gethcore.ExecutionResult, error) {
+		args.Gas = (*hexutil.Uint64)(&gas)
+		result, err := e.chain.ExecuteOffChainTransactionAtBlock(args, gethrpc.BlockNumber(0))
+		if err != nil {
+			if errors.Is(err, gethcore.ErrIntrinsicGas) {
+				return true, nil, nil // Special case, raise gas limit
+			}
+			return true, nil, err // Bail out
+		}
+		return result.Failed(), result, nil
+	}
+	// Execute the binary search and hone in on an executable gas limit
+	for lo+1 < hi {
+		mid := (hi + lo) / 2
+		failed, _, err := executable(mid)
+		// If the error is not nil(consensus error), it means the provided message
+		// call or transaction will never be accepted no matter how much gas it is
+		// assigned. Return the error directly, don't struggle any more.
+		if err != nil {
+			return 0, err
+		}
+		if failed {
+			lo = mid
+		} else {
+			hi = mid
+		}
+	}
+	// Reject the transaction as invalid if it still fails at the highest allowance
+	if hi == cap { //nolint:nestif
+		failed, result, err := executable(hi)
+		if err != nil {
+			return 0, err
+		}
+		if failed {
+			if result != nil && result.Err != vm.ErrOutOfGas { //nolint: errorlint
+				if len(result.Revert()) > 0 {
+					return 0, newRevertError(result)
+				}
+				return 0, result.Err
+			}
+			// Otherwise, the specified gas cap is too low
+			return 0, fmt.Errorf("gas required exceeds allowance (%d)", cap)
+		}
+	}
+	return hexutil.Uint64(hi), nil
+}
+
+func newRevertError(result *gethcore.ExecutionResult) *revertError {
+	reason, errUnpack := abi.UnpackRevert(result.Revert())
+	err := errors.New("execution reverted")
+	if errUnpack == nil {
+		err = fmt.Errorf("execution reverted: %v", reason)
+	}
+	return &revertError{
+		error:  err,
+		reason: hexutil.Encode(result.Revert()),
+	}
+}
+
+// revertError is an API error that encompasses an EVM revertal with JSON error
+// code and a binary data blob.
+type revertError struct {
+	error
+	reason string // revert reason hex encoded
+}
+
+// ErrorCode returns the JSON error code for a revertal.
+// See: https://github.com/ethereum/wiki/wiki/JSON-RPC-Error-Codes-Improvement-Proposal
+func (e *revertError) ErrorCode() int {
+	return 3
+}
+
+// ErrorData returns the hex encoded revert reason.
+func (e *revertError) ErrorData() interface{} {
+	return e.reason
 }
 
 func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
