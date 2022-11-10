@@ -36,6 +36,7 @@ type EthBlockProvider struct {
 	ctx       context.Context
 
 	liveBlocks *LiveBlocksMonitor // process that streams live blocks to track head and notify waiting callers
+	liveCancel context.CancelFunc // cancel for the live monitor process
 
 	streamCh      chan *types.Block
 	errCh         chan error
@@ -47,13 +48,16 @@ type EthBlockProvider struct {
 	logger gethlog.Logger
 }
 
-func (e *EthBlockProvider) Start() {
+func (e *EthBlockProvider) start() {
 	e.runningStatus = new(int32)
+	liveCtx, liveCancel := context.WithCancel(e.ctx)
+	e.liveCancel = liveCancel
 	e.liveBlocks = &LiveBlocksMonitor{
-		ctx:       e.ctx,
+		ctx:       liveCtx,
 		ethClient: e.ethClient,
 		logger:    e.logger,
 	}
+	go e.streamBlocks()
 	go e.liveBlocks.Start() // process to handle incoming stream of L1 blocks
 }
 
@@ -84,13 +88,16 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (<-chan *ty
 	}
 	e.streamCh = make(chan *types.Block)
 	if e.stopped() {
-		// if the provider is stopped (or not yet started) then we kick off the streaming processed
-		go e.streamBlocks()
+		// if the provider is stopped (or not yet started) then we kick off the streaming processes
+		e.start()
 	}
 	return e.streamCh, nil
 }
 
 func (e *EthBlockProvider) Stop() {
+	if e.liveCancel != nil {
+		e.liveCancel()
+	}
 	atomic.StoreInt32(e.runningStatus, statusCodeStopped)
 }
 
@@ -181,10 +188,6 @@ type LiveBlocksMonitor struct {
 }
 
 func (l *LiveBlocksMonitor) Start() {
-	l.StartProcessing()
-}
-
-func (l *LiveBlocksMonitor) StartProcessing() {
 	blkHeadChan, blkSubs := l.ethClient.BlockListener()
 	for {
 		select {

@@ -31,7 +31,7 @@ func TestBlockProviderHappyPath_LiveStream(t *testing.T) {
 		logger:    logger,
 	}
 
-	blockProvider.Start()
+	blockProvider.start()
 	// time.Sleep(20 * time.Millisecond)
 
 	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(0))
@@ -69,7 +69,7 @@ func TestBlockProviderHappyPath_HistoricThenStream(t *testing.T) {
 		logger:    logger,
 	}
 
-	blockProvider.Start()
+	blockProvider.start()
 	time.Sleep(20 * time.Millisecond)
 
 	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(2))

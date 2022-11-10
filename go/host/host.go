@@ -87,9 +87,6 @@ type host struct {
 }
 
 func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) hostcommon.MockHost {
-	blockProvider := ethadapter.NewEthBlockProvider(ethClient, logger)
-	blockProvider.Start()
-
 	host := &host{
 		// config
 		config:      config,
@@ -100,7 +97,7 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		p2p:           p2p,
 		ethClient:     ethClient,
 		enclaveClient: enclaveClient,
-		blockProvider: blockProvider,
+		blockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
 
 		// lifecycle channels
 		exitHostCh:            make(chan bool),
@@ -345,6 +342,9 @@ func (h *host) Stop() {
 		// call, so there is a deadlock. The RPC server is waiting for all connections to close, but a single
 		// connection remains open, waiting for the RPC server to close.
 		go h.rpcServer.Stop()
+	}
+	if h.blockProvider != nil {
+		go h.blockProvider.Stop()
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
