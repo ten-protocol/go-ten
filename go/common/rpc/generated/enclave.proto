@@ -244,6 +244,14 @@ message ExtRollupMsg {
   bytes txs = 3;
 }
 
+message CrossChainMsg {
+  bytes Sender = 1;
+  uint64 Sequence = 2;
+  uint32 Nonce = 3;
+  bytes Topic = 4;
+  bytes Payload = 5;
+}
+
 message HeaderMsg {
   bytes ParentHash = 1;
   bytes Node = 2;
@@ -267,6 +275,9 @@ message HeaderMsg {
   bytes MixDigest = 20;
   uint64 BaseFee = 21;
   uint64 RollupNonce = 22;
+  bytes LatestInboundCrossChainHeight = 23;
+  bytes LatestInboundCrossChainHash = 24;
+  repeated CrossChainMsg CrossChainMessages = 25; 
 }
 
 message SecretResponseMsg {

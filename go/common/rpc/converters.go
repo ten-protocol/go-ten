@@ -9,6 +9,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 )
@@ -115,6 +116,38 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 	return generated.ExtRollupMsg{Header: nil}
 }
 
+func ToCrossChainMsgs(messages []MessageBus.StructsCrossChainMessage) []*generated.CrossChainMsg {
+	generatedMessages := make([]*generated.CrossChainMsg, 0)
+
+	for _, message := range messages {
+		generatedMessages = append(generatedMessages, &generated.CrossChainMsg{
+			Sender:   message.Sender.Bytes(),
+			Sequence: message.Sequence,
+			Nonce:    message.Nonce,
+			Topic:    message.Topic,
+			Payload:  message.Payload,
+		})
+	}
+
+	return generatedMessages
+}
+
+func FromCrossChainMsgs(messages []*generated.CrossChainMsg) []MessageBus.StructsCrossChainMessage {
+	outMessages := make([]MessageBus.StructsCrossChainMessage, 0)
+
+	for _, message := range messages {
+		outMessages = append(outMessages, MessageBus.StructsCrossChainMessage{
+			Sender:   gethcommon.BytesToAddress(message.Sender),
+			Sequence: message.Sequence,
+			Nonce:    message.Nonce,
+			Topic:    message.Topic,
+			Payload:  message.Payload,
+		})
+	}
+
+	return outMessages
+}
+
 func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
 	if header == nil {
 		return nil
@@ -135,27 +168,33 @@ func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
 		baseFee = header.BaseFee.Uint64()
 	}
 	headerMsg = generated.HeaderMsg{
-		ParentHash:  header.ParentHash.Bytes(),
-		Node:        header.Agg.Bytes(),
-		Nonce:       []byte{},
-		Proof:       header.L1Proof.Bytes(),
-		Root:        header.Root.Bytes(),
-		TxHash:      header.TxHash.Bytes(),
-		Number:      header.Number.Uint64(),
-		Bloom:       header.Bloom.Bytes(),
-		ReceiptHash: header.ReceiptHash.Bytes(),
-		Extra:       header.Extra,
-		R:           header.R.Bytes(),
-		S:           header.S.Bytes(),
-		Withdrawals: withdrawalMsgs,
-		UncleHash:   header.UncleHash.Bytes(),
-		Coinbase:    header.Coinbase.Bytes(),
-		Difficulty:  diff,
-		GasLimit:    header.GasLimit,
-		GasUsed:     header.GasUsed,
-		Time:        header.Time,
-		MixDigest:   header.MixDigest.Bytes(),
-		BaseFee:     baseFee,
+		ParentHash:                  header.ParentHash.Bytes(),
+		Node:                        header.Agg.Bytes(),
+		Nonce:                       []byte{},
+		Proof:                       header.L1Proof.Bytes(),
+		Root:                        header.Root.Bytes(),
+		TxHash:                      header.TxHash.Bytes(),
+		Number:                      header.Number.Uint64(),
+		Bloom:                       header.Bloom.Bytes(),
+		ReceiptHash:                 header.ReceiptHash.Bytes(),
+		Extra:                       header.Extra,
+		R:                           header.R.Bytes(),
+		S:                           header.S.Bytes(),
+		Withdrawals:                 withdrawalMsgs,
+		UncleHash:                   header.UncleHash.Bytes(),
+		Coinbase:                    header.Coinbase.Bytes(),
+		Difficulty:                  diff,
+		GasLimit:                    header.GasLimit,
+		GasUsed:                     header.GasUsed,
+		Time:                        header.Time,
+		MixDigest:                   header.MixDigest.Bytes(),
+		BaseFee:                     baseFee,
+		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
+		LatestInboundCrossChainHash: header.LatestInboudCrossChainHash.Bytes(),
+	}
+
+	if header.LatestInboundCrossChainHeight != nil {
+		headerMsg.LatestInboundCrossChainHeight = header.LatestInboundCrossChainHeight.Bytes()
 	}
 
 	return &headerMsg
@@ -197,27 +236,30 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *common.Header {
 	r := &big.Int{}
 	s := &big.Int{}
 	return &common.Header{
-		ParentHash:  gethcommon.BytesToHash(header.ParentHash),
-		Agg:         gethcommon.BytesToAddress(header.Node),
-		Nonce:       types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),
-		L1Proof:     gethcommon.BytesToHash(header.Proof),
-		Root:        gethcommon.BytesToHash(header.Root),
-		TxHash:      gethcommon.BytesToHash(header.TxHash),
-		Number:      big.NewInt(int64(header.Number)),
-		Bloom:       types.BytesToBloom(header.Bloom),
-		ReceiptHash: gethcommon.BytesToHash(header.ReceiptHash),
-		Extra:       header.Extra,
-		R:           r.SetBytes(header.R),
-		S:           s.SetBytes(header.S),
-		Withdrawals: withdrawals,
-		UncleHash:   gethcommon.BytesToHash(header.UncleHash),
-		Coinbase:    gethcommon.BytesToAddress(header.Coinbase),
-		Difficulty:  big.NewInt(int64(header.Difficulty)),
-		GasLimit:    header.GasLimit,
-		GasUsed:     header.GasUsed,
-		Time:        header.Time,
-		MixDigest:   gethcommon.BytesToHash(header.MixDigest),
-		BaseFee:     big.NewInt(int64(header.BaseFee)),
+		ParentHash:                    gethcommon.BytesToHash(header.ParentHash),
+		Agg:                           gethcommon.BytesToAddress(header.Node),
+		Nonce:                         types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),
+		L1Proof:                       gethcommon.BytesToHash(header.Proof),
+		Root:                          gethcommon.BytesToHash(header.Root),
+		TxHash:                        gethcommon.BytesToHash(header.TxHash),
+		Number:                        big.NewInt(int64(header.Number)),
+		Bloom:                         types.BytesToBloom(header.Bloom),
+		ReceiptHash:                   gethcommon.BytesToHash(header.ReceiptHash),
+		Extra:                         header.Extra,
+		R:                             r.SetBytes(header.R),
+		S:                             s.SetBytes(header.S),
+		Withdrawals:                   withdrawals,
+		UncleHash:                     gethcommon.BytesToHash(header.UncleHash),
+		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
+		Difficulty:                    big.NewInt(int64(header.Difficulty)),
+		GasLimit:                      header.GasLimit,
+		GasUsed:                       header.GasUsed,
+		Time:                          header.Time,
+		MixDigest:                     gethcommon.BytesToHash(header.MixDigest),
+		BaseFee:                       big.NewInt(int64(header.BaseFee)),
+		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
+		LatestInboudCrossChainHash:    gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
+		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),
 	}
 }
 

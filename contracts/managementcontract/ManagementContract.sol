@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
-import "libs/openzeppelin/cryptography/ECDSA.sol";
+import "/libs/openzeppelin/cryptography/ECDSA.sol";
 
 pragma solidity >=0.7.0 <0.9.0;
+
+//import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
+import "./Structs.sol";
 
 contract ManagementContract {
 
@@ -11,7 +15,7 @@ contract ManagementContract {
     string[] private hostAddresses; // The addresses of all the Obscuro hosts on the network.
 
     // tree holds a tree of rollups
-    Tree private tree;
+    Structs.Tree private tree;
 
     // networkSecretNotInitialized marks if the network secret has been initialized
     bool private networkSecretInitialized ;
@@ -19,51 +23,17 @@ contract ManagementContract {
     // isWithdrawalAvailable marks if the contract allows withdrawals or not
     bool private isWithdrawalAvailable;
 
-    // MetaRollup is a rollup meta data
-    struct MetaRollup{
-        bytes32 ParentHash;
-        bytes32 Hash;
-        address AggregatorID;
-        bytes32 L1Block;
-        uint256 Number;
-    }
-
-    // TreeElement is an element of the Tree structure
-    struct TreeElement{
-        uint256 ElementID;
-        uint256 ParentID;
-        MetaRollup rollup;
-    }
-
-    // NonExisting - 0 (Constant)
-    // Tail - 1 (Constant)
-    // Head - X (Variable)
-    // Does not use rollup hashes as a storing ID as they can be compromised
-    struct Tree {
-        // rollups stores the Elements using incremental IDs
-        mapping(uint256 => TreeElement) rollups;
-        // map a rollup hash to a storage ID
-        mapping(bytes32 => uint256) rollupsHashes;
-        // map the children of a node
-        mapping(uint256 => uint256[]) rollupChildren;
-
-        uint256 _TAIL; // tail is always 1
-        uint256 _HEAD;
-        uint256 _nextID; // TODO use openzeppelin counters
-        bool initialized;
-    }
-
     //
     //  -- Start of Tree element list Library
     //
 
     // InitializeTree starts the list and sets the initial values
-    function InitializeTree(MetaRollup memory r) public {
+    function InitializeTree(Structs.MetaRollup memory r) public {
         require(!tree.initialized, "cannot be initialized again");
         tree.initialized = true;
 
         // TreeElement starts a 1 and has no parent ( ParentID: 0 )
-        tree.rollups[1] = TreeElement(1, 0, r);
+        tree.rollups[1] = Structs.TreeElement(1, 0, r);
         tree._HEAD = 1;
         tree._nextID = 2;
         tree.rollupsHashes[r.Hash] = 1;
@@ -72,34 +42,38 @@ contract ManagementContract {
         isWithdrawalAvailable = true;
     }
 
-    function GetRollupByID(uint256 rollupID) view public returns(bool, TreeElement memory) {
-        TreeElement memory rol = tree.rollups[rollupID];
+    function GetRollupByID(uint256 rollupID) view public returns(bool, Structs.TreeElement memory) {
+        Structs.TreeElement memory rol = tree.rollups[rollupID];
         return (rol.ElementID != 0 , rol);
     }
 
-    function GetRollupByHash(bytes32 rollupHash) view public returns (bool, TreeElement memory) {
+    function GetRollupByHash(bytes32 rollupHash) view public returns (bool, Structs.TreeElement memory) {
         return GetRollupByID(tree.rollupsHashes[rollupHash]);
     }
 
-    function GetHeadRollup() internal view returns ( TreeElement memory ) {
+    function GetHeadRollup() internal view returns ( Structs.TreeElement memory ) {
         return tree.rollups[tree._HEAD];
     }
 
-    function GetParentRollup(TreeElement memory element) view public returns( bool, TreeElement memory) {
+    function GetParentRollup(Structs.TreeElement memory element) view public returns( bool, Structs.TreeElement memory) {
         return GetRollupByID(element.ParentID);
     }
 
-    function AppendRollup(uint256 _parentID, MetaRollup memory _r) public {
+    function AppendRollup(uint256 _parentID, Structs.MetaRollup calldata _r) public {
         // guarantee the storage ids are not compromised
         uint rollupID = tree._nextID;
         tree._nextID++;
 
         // cannot append to non-existing parent rollups
-        (bool found, TreeElement memory parent) = GetRollupByID(_parentID);
+        (bool found, Structs.TreeElement memory parent) = GetRollupByID(_parentID);
         require(found, "parent not found");
 
         // store the rollup in an element
-        tree.rollups[rollupID] = TreeElement(rollupID, _parentID, _r);
+        tree.rollups[rollupID] = Structs.TreeElement({ 
+            ElementID: rollupID, 
+            ParentID: _parentID,
+            rollup: _r
+        });
 
         // mark the element as a child of parent
         tree.rollupChildren[_parentID].push(rollupID);
@@ -124,18 +98,18 @@ contract ManagementContract {
     //                  -> 4'-> 5'
     //
     function HasSecondCousinFork() view public returns (bool) {
-        TreeElement memory currentElement = GetHeadRollup();
+        Structs.TreeElement memory currentElement = GetHeadRollup();
 
         // traverse up to the grandpa ( 2 levels up )
-        (bool foundParent, TreeElement memory parentElement) = GetParentRollup(currentElement);
+        (bool foundParent, Structs.TreeElement memory parentElement) = GetParentRollup(currentElement);
         require(foundParent, "no parent");
-        (bool foundGrandpa, TreeElement memory grandpaElement) = GetParentRollup(parentElement);
+        (bool foundGrandpa, Structs.TreeElement memory grandpaElement) = GetParentRollup(parentElement);
         require(foundGrandpa, "no grand parent");
 
         // follow each of the grandpa children until it's two levels deep
         uint256[] memory childrenIDs = tree.rollupChildren[grandpaElement.ElementID];
         for (uint256 i = 0; i < childrenIDs.length ; i++) {
-            (bool foundChild, TreeElement memory child) = GetRollupByID(childrenIDs[i]);
+            (bool foundChild, Structs.TreeElement memory child) = GetRollupByID(childrenIDs[i]);
 
             // no more children
             if (!foundChild) {
@@ -160,14 +134,16 @@ contract ManagementContract {
     //  -- End of Tree element list Library
     //
 
-    function AddRollup(bytes32 _parentHash, bytes32 _hash, address _aggregatorID, bytes32 _l1Block, uint256 _number, string calldata _rollupData) public {
+    function AddRollup(Structs.MetaRollup calldata r, string calldata _rollupData, Structs.HeaderCrossChainData calldata crossChainData) public {
         // TODO How to ensure the sender without hashing the calldata ?
         // bytes32 derp = keccak256(abi.encodePacked(ParentHash, AggregatorID, L1Block, Number, rollupData));
 
-        // revert if the AggregatorID is not attested
-        require(attested[_aggregatorID], "aggregator not attested");
+        //Cheapest to fail, thus always check first.
+        require(crossChainData.blockHash == blockhash(crossChainData.blockNumber), "Rollup includes cross chain messages coming from a different fork!");
 
-        MetaRollup memory r = MetaRollup(_parentHash, _hash, _aggregatorID, _l1Block, _number);
+
+        // revert if the AggregatorID is not attested
+        require(attested[r.AggregatorID], "aggregator not attested");
 
         // if this is the first element initialize the tree structure
         // TODO this should be moved to the network initialization
@@ -176,7 +152,7 @@ contract ManagementContract {
             return;
         }
 
-        (bool found, TreeElement memory parent) = GetRollupByHash(_parentHash);
+        (bool found, Structs.TreeElement memory parent) = GetRollupByHash(r.ParentHash);
         require(found, "unable to find parent hash");
 
         // don't check for forks at the start

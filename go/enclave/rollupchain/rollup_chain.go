@@ -601,10 +601,10 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
 	r.Header.CrossChainMessages = rc.crossChainManager.ExtractMessagesFromReceipts(txReceipts)
 
-	//crossChainBind := rc.storage.Proof(r)
+	crossChainBind := rc.storage.Proof(r)
 
-	//r.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
-	//r.Header.LatestInboundCrossChainHeight = *crossChainBind.Number()
+	r.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
+	r.Header.LatestInboundCrossChainHeight = crossChainBind.Number()
 
 	receipts := allReceipts(txReceipts, depositReceipts)
 	if len(receipts) == 0 {

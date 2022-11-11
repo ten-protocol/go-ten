@@ -35,7 +35,7 @@ type Header struct {
 	Withdrawals                   []Withdrawal
 	CrossChainMessages            []MessageBus.StructsCrossChainMessage
 	LatestInboudCrossChainHash    common.Hash
-	LatestInboundCrossChainHeight big.Int
+	LatestInboundCrossChainHeight *big.Int
 
 	// Specification fields - not used for now but are expected to be available
 	UncleHash  common.Hash    `json:"sha3Uncles"`
