@@ -39,7 +39,7 @@ which also needs to be highly auditable by security researchers.
     * The code base already contains comments that explain where the type is coming from, so making it standard to do so seems reasonable
     * It is a non intrusive change, the geth code will accept our type aliases just fine either way.
 
-## The suggest convention
+## The suggested convention
 
 Inside of the code base:
 
