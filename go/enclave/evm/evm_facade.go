@@ -103,16 +103,17 @@ func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.He
 		return nil, newErrorWithReasonAndCode(dbErr)
 	}
 
+	// If the result contains a revert reason, try to unpack and return it.
+	if result != nil && len(result.Revert()) > 0 {
+		return nil, newRevertError(result)
+	}
+
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		logger.Error("ErrKey applying msg:", log.ErrKey, err)
 		return result, err
 	}
-
-	// If the result contains a revert reason, try to unpack and return it.
-	if len(result.Revert()) > 0 {
-		return nil, newRevertError(result)
-	}
+	
 	return result, nil
 }
 
