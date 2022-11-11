@@ -6,8 +6,11 @@ pragma solidity >=0.7.0 <0.9.0;
 //import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./Structs.sol";
+import * as MessageBus from "../messagebuscontract/MessageBus.sol";
 
 contract ManagementContract {
+
+    event LogManagementContractCreated(address messageBusAddress);
 
     mapping(address => string) private attestationRequests;
     mapping(address => bool) private attested;
@@ -23,9 +26,12 @@ contract ManagementContract {
     // isWithdrawalAvailable marks if the contract allows withdrawals or not
     bool private isWithdrawalAvailable;
 
-    //
-    //  -- Start of Tree element list Library
-    //
+    //The messageBus where messages can be sent to Obscuro
+    MessageBus.IMessageBus public messageBus;
+    constructor() {
+        messageBus = new MessageBus.MessageBus();
+        emit LogManagementContractCreated(address(messageBus));
+    }
 
     // InitializeTree starts the list and sets the initial values
     function InitializeTree(Structs.MetaRollup memory r) public {
@@ -59,7 +65,7 @@ contract ManagementContract {
         return GetRollupByID(element.ParentID);
     }
 
-    function AppendRollup(uint256 _parentID, Structs.MetaRollup calldata _r) public {
+    function AppendRollup(uint256 _parentID, Structs.MetaRollup calldata _r) internal {
         // guarantee the storage ids are not compromised
         uint rollupID = tree._nextID;
         tree._nextID++;
@@ -133,6 +139,12 @@ contract ManagementContract {
     //
     //  -- End of Tree element list Library
     //
+    function pushCrossChainMessages(Structs.HeaderCrossChainData calldata crossChainData) internal {
+        uint256 messagesLength = crossChainData.messages.length;
+        for (uint256 i = 0; i < messagesLength; ++i) {
+            messageBus.submitOutOfNetworkMessage(crossChainData.messages[i], block.timestamp); //instantly finalize
+        }
+    }
 
     function AddRollup(Structs.MetaRollup calldata r, string calldata _rollupData, Structs.HeaderCrossChainData calldata crossChainData) public {
         // TODO How to ensure the sender without hashing the calldata ?
@@ -166,6 +178,7 @@ contract ManagementContract {
         }
 
         AppendRollup(parent.ElementID, r);
+        pushCrossChainMessages(crossChainData);
     }
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once

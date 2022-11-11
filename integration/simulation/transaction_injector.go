@@ -341,7 +341,7 @@ func NextNonce(ctx context.Context, clients *network.RPCHandles, w wallet.Wallet
 		if err != nil {
 			panic(err)
 		}
-		localNonce := w.GetNonce()
+		localNonce := w.GetNonce() //synthetic genesis tx, whats the proper fix?
 		if remoteNonce == localNonce {
 			return w.GetNonceAndIncrement()
 		}

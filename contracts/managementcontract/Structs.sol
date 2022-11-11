@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.7.0 <0.9.0;
 
-import * as MessageBus from "../messagebuscontract/Structs.sol";
+import * as MessageBusStructs from "../messagebuscontract/Structs.sol";
 
 interface Structs {
      // MetaRollup is a rollup meta data
@@ -41,6 +41,6 @@ interface Structs {
     struct HeaderCrossChainData {
         uint256 blockNumber;
         bytes32 blockHash;
-        MessageBus.Structs.CrossChainMessage[] messages;
+        MessageBusStructs.Structs.CrossChainMessage[] messages;
     }
 }

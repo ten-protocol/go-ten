@@ -116,6 +116,12 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		common.GenerateNonce(),
 		rc.faucet.GetGenesisRoot(rc.storage),
 	)
+
+	//Probably not the best place to put this, but ...
+	if err := rc.mempool.AddMempoolTx(rc.crossChainManager.GenerateMessageBusDeployTx()); err != nil {
+		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
+	}
+
 	rc.signRollup(rolGenesis)
 
 	return rolGenesis, b
@@ -315,6 +321,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		}
 		rec, foundReceipt := result.(*types.Receipt)
 		if foundReceipt {
+			rc.logger.Info(fmt.Sprintf("Executed transaction %s ", tx.Hash().Hex()))
 			executedTransactions = append(executedTransactions, tx)
 			txReceipts = append(txReceipts, rec)
 		} else {

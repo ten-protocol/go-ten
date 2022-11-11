@@ -2,6 +2,7 @@ package crosschain
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -19,19 +20,21 @@ import (
 )
 
 const (
-	ownerKeyHex = "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
+	ownerKeyHex = "6e384a07a01263518a18a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 )
 
 type Manager struct {
 	txOpts       *bind.TransactOpts
 	contractABI  abi.ABI
-	l1MessageBus *gethcommon.Address
-	l2MessageBus *gethcommon.Address
+	l1MessageBus gethcommon.Address
+	l2MessageBus gethcommon.Address
 	storage      db.Storage
 	logger       gethlog.Logger
 }
 
 type CrossChainManager interface {
+	GenerateMessageBusDeployTx() *types.Transaction
+	//	SetL2MessageBusAddress(addr *gethcommon.Address)
 	ProcessSyntheticTransactions(block *types.Block, receipts []*types.Receipt) error
 	GetSyntheticTransactions(block *types.Block, receipts []*types.Receipt) types.Transactions
 	GetSyntheticTransactionsBetween(fromBlock *types.Block, toBlock *types.Block) types.Transactions
@@ -50,6 +53,7 @@ func New(
 	if err != nil {
 		panic(err) //panic?
 	}
+
 	key, _ := crypto.HexToECDSA(ownerKeyHex)
 	txOpts, err := bind.NewKeyedTransactorWithChainID(key, chainId)
 	if err != nil {
@@ -58,13 +62,35 @@ func New(
 	}
 
 	return &Manager{
-		l1MessageBus: l1BusAddress,
-		l2MessageBus: l2BusAddress,
+		l1MessageBus: *l1BusAddress,
+		l2MessageBus: *l2BusAddress,
 		contractABI:  contractABI,
 		txOpts:       txOpts,
 		storage:      storage,
 		logger:       logger,
 	}
+}
+
+func (m *Manager) GenerateMessageBusDeployTx() *types.Transaction {
+	tx := types.NewTx(&types.LegacyTx{
+		Nonce:    0, //this should be fixed probably :/
+		Value:    gethcommon.Big0,
+		Gas:      5_000_000,       //requires above 1m gas to deploy wtf.
+		GasPrice: gethcommon.Big0, //Synthetic transactions are on the house. Or the house.
+		Data:     gethcommon.FromHex(MessageBus.MessageBusMetaData.Bin),
+		To:       nil, //Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.
+	})
+
+	stx, err := m.txOpts.Signer(m.txOpts.From, tx)
+	if err != nil {
+		panic(err)
+	}
+
+	m.l2MessageBus = crypto.CreateAddress(m.txOpts.From, 0)
+
+	m.logger.Info(fmt.Sprintf("Generated synthetic deployment transaction for the MessageBus contract - TX HASH: %s", stx.Hash().Hex()))
+
+	return stx
 }
 
 func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts []*types.Receipt) error {
@@ -136,10 +162,10 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types
 		tx := types.NewTx(&types.LegacyTx{
 			Nonce:    m.txOpts.Nonce.Uint64() + uint64(idx), //this should be fixed probably :/
 			Value:    gethcommon.Big0,
-			Gas:      1_000_000,
+			Gas:      5_000_000,
 			GasPrice: gethcommon.Big0, //Synthetic transactions are on the house. Or the house.
 			Data:     data,
-			To:       m.l2MessageBus,
+			To:       &m.l2MessageBus,
 		})
 
 		stx, err := m.txOpts.Signer(m.txOpts.From, tx)

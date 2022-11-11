@@ -160,6 +160,10 @@ func (s *Simulation) deployObscuroERC20s() {
 		go func(token bridge.ERC20) {
 			defer wg.Done()
 			owner := s.Params.Wallets.Tokens[token].L2Owner
+			/*	if token == "HOC" { //todo:: remove when not using HOC owner key for synthetic transactions
+				owner.SetNonce(1)
+			}*/
+
 			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token))
 
 			deployContractTx := types.DynamicFeeTx{
