@@ -300,7 +300,7 @@ It will also have the following properties required for the OpenZeppelin whiteli
 
 There will be the following topics initially: 
 * `Transfers` - messages here will be for users transferring value across chains.
-* `Administrative` - messages here will be for administrative changes; Voted upgrades, and whitelist changes.
+* `Administration` - messages here will be for administrative changes; Voted upgrades, and whitelist changes.
 
 
 ### Transfers
