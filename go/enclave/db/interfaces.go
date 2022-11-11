@@ -95,6 +95,11 @@ type AttestationStorage interface {
 	StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey)
 }
 
+type SyntheticTransactionsStorage interface {
+	StoreSyntheticTransactions(blockHash gethcommon.Hash, transactions types.Transactions) bool
+	ReadSyntheticTransactions(blockHash gethcommon.Hash) types.Transactions
+}
+
 // Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
@@ -103,4 +108,5 @@ type Storage interface {
 	BlockStateStorage
 	TransactionStorage
 	AttestationStorage
+	SyntheticTransactionsStorage
 }

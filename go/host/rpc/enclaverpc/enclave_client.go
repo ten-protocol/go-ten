@@ -9,6 +9,7 @@ import (
 	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
@@ -161,7 +162,7 @@ func (c *Client) Start(block types.Block) error {
 	return nil
 }
 
-func (c *Client) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (c *Client) SubmitBlock(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -170,7 +171,12 @@ func (c *Client) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSub
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
-	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), IsLatest: isLatest})
+	var receiptsBuffer bytes.Buffer
+	if err := rlp.Encode(&receiptsBuffer, receipts); err != nil {
+		return nil, fmt.Errorf("could not encode receipts. Cause: %w", err)
+	}
+
+	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: receiptsBuffer.Bytes(), IsLatest: isLatest})
 	if err != nil {
 		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}

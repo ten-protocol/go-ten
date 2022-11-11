@@ -11,6 +11,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
+	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
@@ -59,6 +60,13 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	if err != nil {
 		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
 	}
+
+	bytecode = []byte(MessageBus.MessageBusMetaData.Bin)
+	l1BusAddress, err := DeployContract(tmpEthClient, wallets.MCOwnerWallet, bytecode)
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy message bus contract. Cause: %s", err))
+	}
+	l1BusAddress.Hash() //todo
 
 	erc20ContractAddr := make([]*common.Address, 0)
 	for _, token := range wallets.Tokens {

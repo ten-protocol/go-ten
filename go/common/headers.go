@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -20,18 +21,21 @@ var hasherPool = sync.Pool{
 // Header is a public / plaintext struct that holds common properties of rollups batches.
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Header struct {
-	ParentHash  L2RootHash
-	Agg         common.Address
-	Nonce       types.BlockNonce // Nonce ensure compatibility with ethereum
-	L1Proof     L1RootHash       // the L1 block where the Parent was published
-	Root        StateRoot
-	TxHash      common.Hash // todo - include the synthetic deposits
-	Number      *big.Int    // the rollup height
-	Bloom       types.Bloom
-	ReceiptHash common.Hash
-	Extra       []byte
-	R, S        *big.Int // signature values
-	Withdrawals []Withdrawal
+	ParentHash                    L2RootHash
+	Agg                           common.Address
+	Nonce                         types.BlockNonce // Nonce ensure compatibility with ethereum
+	L1Proof                       L1RootHash       // the L1 block where the Parent was published
+	Root                          StateRoot
+	TxHash                        common.Hash // todo - include the synthetic deposits
+	Number                        *big.Int    // the rollup height
+	Bloom                         types.Bloom
+	ReceiptHash                   common.Hash
+	Extra                         []byte
+	R, S                          *big.Int // signature values
+	Withdrawals                   []Withdrawal
+	CrossChainMessages            []*MessageBus.StructsCrossChainMessage
+	LatestInboudCrossChainHash    common.Hash
+	LatestInboundCrossChainHeight *big.Int
 
 	// Specification fields - not used for now but are expected to be available
 	UncleHash  common.Hash    `json:"sha3Uncles"`

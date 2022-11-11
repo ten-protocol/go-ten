@@ -351,3 +351,11 @@ func (s *storageImpl) FetchAttestedKey(aggregator gethcommon.Address) *ecdsa.Pub
 func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) {
 	obscurorawdb.WriteAttestationKey(s.db, aggregator, key, s.logger)
 }
+
+func (s *storageImpl) StoreSyntheticTransactions(blockHash gethcommon.Hash, transactions types.Transactions) bool {
+	return obscurorawdb.WriteSyntheticTransactions(s.db, blockHash, transactions, s.logger)
+}
+
+func (s *storageImpl) ReadSyntheticTransactions(blockHash gethcommon.Hash) types.Transactions {
+	return obscurorawdb.ReadSyntheticTransactions(s.db, blockHash, s.logger)
+}

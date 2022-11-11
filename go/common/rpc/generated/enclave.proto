@@ -112,7 +112,8 @@ message StartResponse {}
 
 message SubmitBlockRequest {
   bytes encodedBlock = 1;
-  bool isLatest = 2;
+  bytes encodedReceipts = 2;
+  bool isLatest = 3;
 
 }
 message SubmitBlockResponse {

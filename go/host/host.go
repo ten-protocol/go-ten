@@ -453,7 +453,7 @@ func (h *host) processBlock(block common.EncodedBlock, latest bool) error {
 
 	// submit each block to the enclave for ingestion plus validation
 	// todo: isLatest should only be true when we're not behind
-	result, err = h.enclaveClient.SubmitBlock(*decoded, latest)
+	result, err = h.enclaveClient.SubmitBlock(*decoded, h.extractReceipts(decoded), latest)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
 	}
@@ -719,6 +719,20 @@ func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 	return nil
 }
 
+func (h *host) extractReceipts(block *types.Block) []*types.Receipt {
+	receipts := make([]*types.Receipt, block.Transactions().Len())
+	for _, transaction := range block.Transactions() {
+		receipt, _ := h.ethClient.TransactionReceipt(transaction.Hash())
+		/*if err != nil {
+			h.logger.Crit(fmt.Sprintf("could not fetch receipt for hash %s.", transaction.Hash().String()), log.ErrKey, err)
+		}*/
+
+		receipts = append(receipts, receipt)
+	}
+
+	return receipts
+}
+
 // monitors the L1 client for new blocks and injects them into the aggregator
 func (h *host) monitorBlocks() {
 	var lastKnownBlkHash gethcommon.Hash
@@ -860,7 +874,7 @@ func (h *host) bootstrapHost() types.Block {
 	for {
 		cb := *currentBlock
 		h.processBlockTransactions(&cb)
-		result, err := h.enclaveClient.SubmitBlock(cb, false)
+		result, err := h.enclaveClient.SubmitBlock(cb, h.extractReceipts(&cb), false)
 		if err != nil {
 			var bsErr *common.BlockRejectError
 			isBSE := errors.As(err, bsErr)

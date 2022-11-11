@@ -24,6 +24,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
@@ -163,8 +164,10 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 	)
 	memp := mempool.New(config.ObscuroChainID)
 
+	crossChainManager := crosschain.New(config.MessageBusAddresses[0], config.MessageBusAddresses[1], storage, big.NewInt(config.ObscuroChainID), logger)
+
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
-	chain := rollupchain.New(config.HostID, config.NodeType, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig, logger)
+	chain := rollupchain.New(config.HostID, config.NodeType, storage, l1Blockchain, obscuroBridge, subscriptionManager, crossChainManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig, logger)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
@@ -223,8 +226,8 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubm
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
-	bsr, err := e.chain.SubmitBlock(block, isLatest)
+func (e *enclaveImpl) SubmitBlock(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
+	bsr, err := e.chain.SubmitBlock(block, receipts, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitBlock failed",
 			"blk", block.Number(), "blkHash", block.Hash(), "err", err)

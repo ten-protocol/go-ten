@@ -27,6 +27,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
@@ -64,6 +65,7 @@ type RollupChain struct {
 	mempool               mempool.Manager
 	faucet                Faucet
 	subscriptionManager   *events.SubscriptionManager
+	crossChainManager     crosschain.CrossChainManager
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
@@ -75,7 +77,7 @@ type RollupChain struct {
 	BaseFee      *big.Int
 }
 
-func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
+func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, crossChainManager crosschain.CrossChainManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
 	return &RollupChain{
 		hostID:                hostID,
 		nodeType:              nodeType,
@@ -86,6 +88,7 @@ func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage
 		mempool:               mempool,
 		faucet:                NewFaucet(storage),
 		subscriptionManager:   subscriptionManager,
+		crossChainManager:     crossChainManager,
 		enclavePrivateKey:     privateKey,
 		rpcEncryptionManager:  rpcem,
 		ethereumChainID:       ethereumChainID,
@@ -300,7 +303,7 @@ func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j]
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
-func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
@@ -345,6 +348,26 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		i++
 	}
 
+	syntheticTxs := rc.crossChainManager.GetSyntheticTransactionsBetween(
+		rc.storage.Proof(rc.storage.ParentRollup(rollup)),
+		rc.storage.Proof(rollup))
+
+	syntheticTransactionsResponses := evm.ExecuteTransactions(syntheticTxs, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
+	if len(syntheticTransactionsResponses) != len(syntheticTxs) {
+		rc.logger.Crit("Sanity check. Some synthetic transactions failed.")
+	}
+	i = 0
+	for _, resp := range syntheticTransactionsResponses {
+		rec, ok := resp.(*types.Receipt)
+		if !ok {
+			// TODO - Handle the case of an error (e.g. insufficient funds).
+			rc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
+		}
+		synthReceipts[i] = rec
+		i++
+	}
+
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
 		rc.logger.Crit("could not commit to state DB. ", log.ErrKey, err)
@@ -354,7 +377,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	sort.Sort(sortByTxIndex(depositReceipts))
 
 	// todo - handle the tx execution logs
-	return rootHash, executedTransactions, txReceipts, depositReceipts
+	return rootHash, executedTransactions, txReceipts, depositReceipts, synthReceipts
 }
 
 func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethcommon.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
@@ -419,7 +442,7 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*types.Receipt) {
 	stateDB := rc.storage.CreateStateDB(r.Header.ParentHash)
 	// calculate the state to compare with what is in the Rollup
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
+	rootHash, successfulTxs, txReceipts, depositReceipts, _ := rc.processState(r, r.Transactions, stateDB)
 	if len(successfulTxs) != len(r.Transactions) {
 		panic("Sanity check. All transactions that are included in a rollup must be executed.")
 	}
@@ -456,7 +479,7 @@ func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) 
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) SubmitBlock(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
@@ -486,6 +509,9 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 		// not an error state, we ingested a block but no rollup head found
 		return rc.noBlockStateBlockSubmissionResponse(&block), nil
 	}
+
+	//todo:: process error?
+	rc.crossChainManager.ProcessSyntheticTransactions(&block, receipts)
 
 	logs := []*types.Log{}
 	fetchedLogs, found := rc.storage.FetchLogs(block.Hash())
@@ -565,7 +591,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	newRollupTxs = rc.mempool.CurrentTxs(headRollup, rc.storage)
 	newRollupState = rc.storage.CreateStateDB(r.Header.ParentHash)
 
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, newRollupTxs, newRollupState)
+	rootHash, successfulTxs, txReceipts, depositReceipts, _ := rc.processState(r, newRollupTxs, newRollupState)
 
 	r.Header.Root = rootHash
 	r.Transactions = successfulTxs
@@ -573,6 +599,12 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	// Postprocessing - withdrawals
 	txReceiptsMap := toReceiptMap(txReceipts)
 	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
+	r.Header.CrossChainMessages = rc.crossChainManager.ExtractMessagesFromReceipts(txReceipts)
+
+	crossChainBind := rc.storage.Proof(r)
+
+	r.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
+	r.Header.LatestInboundCrossChainHeight = crossChainBind.Number()
 
 	receipts := allReceipts(txReceipts, depositReceipts)
 	if len(receipts) == 0 {
