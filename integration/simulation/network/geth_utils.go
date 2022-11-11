@@ -8,6 +8,7 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
+	"github.com/obscuronet/go-obscuro/contracts"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
@@ -61,7 +62,11 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
 	}
 
-	bytecode = []byte(MessageBus.MessageBusMetaData.Bin)
+	bytecode, err = contracts.Bytecode(MessageBus.MessageBusMetaData)
+	if err != nil {
+		panic(fmt.Sprintf("failed to deploy message bus contract. Cause: %s", err))
+	}
+
 	l1BusAddress, err := DeployContract(tmpEthClient, wallets.MCOwnerWallet, bytecode)
 	if err != nil {
 		panic(fmt.Sprintf("failed to deploy message bus contract. Cause: %s", err))

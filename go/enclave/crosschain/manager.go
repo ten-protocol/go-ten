@@ -35,8 +35,8 @@ type CrossChainManager interface {
 	ProcessSyntheticTransactions(block *types.Block, receipts []*types.Receipt) error
 	GetSyntheticTransactions(block *types.Block, receipts []*types.Receipt) types.Transactions
 	GetSyntheticTransactionsBetween(fromBlock *types.Block, toBlock *types.Block) types.Transactions
-	ExtractMessagesFromReceipts(receipts []*types.Receipt) []*MessageBus.StructsCrossChainMessage
-	ExtractMessagesFromReceipt(receipt *types.Receipt) []*MessageBus.StructsCrossChainMessage
+	ExtractMessagesFromReceipts(receipts []*types.Receipt) []MessageBus.StructsCrossChainMessage
+	ExtractMessagesFromReceipt(receipt *types.Receipt) []MessageBus.StructsCrossChainMessage
 }
 
 func New(
@@ -45,7 +45,7 @@ func New(
 	storage db.Storage, /*key *ecdsa.PrivateKey,*/
 	chainId *big.Int,
 	logger gethlog.Logger,
-) *Manager {
+) CrossChainManager {
 	contractABI, err := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
 	if err != nil {
 		panic(err) //panic?
@@ -76,7 +76,7 @@ func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts []*t
 }
 
 func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBlock *types.Block) types.Transactions {
-	transactions := make(types.Transactions, 1)
+	transactions := make(types.Transactions, 0)
 
 	//todo:: replace this with an iterator
 	from := common.GenesisBlock.Hash()
@@ -96,8 +96,10 @@ func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBloc
 			break
 		}
 
-		syntheticTransactions := m.storage.ReadSyntheticTransactions(b.Hash())
-		transactions = append(transactions, syntheticTransactions...) //Ordering here might work in POBI, but might be weird for fast finality
+		if m.storage.HasSyntheticTransactions(b.Hash()) {
+			syntheticTransactions := m.storage.ReadSyntheticTransactions(b.Hash())
+			transactions = append(transactions, syntheticTransactions...) //Ordering here might work in POBI, but might be weird for fast finality
+		}
 
 		if b.NumberU64() < height {
 			m.logger.Crit("block height is less than genesis height")
@@ -113,7 +115,11 @@ func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBloc
 }
 
 func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types.Receipt) types.Transactions {
-	transactions := make(types.Transactions, 1)
+	transactions := make(types.Transactions, 0)
+
+	if len(receipts) == 0 {
+		return transactions
+	}
 
 	if !VerifyReceiptHash(block, receipts) {
 		return transactions
@@ -122,7 +128,7 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types
 	messages := m.ExtractMessagesFromReceipts(receipts)
 
 	for idx, message := range messages {
-		data, err := m.contractABI.Pack("submitOutOfNetworkMessage", *message, big.NewInt(0))
+		data, err := m.contractABI.Pack("submitOutOfNetworkMessage", message, big.NewInt(0))
 		if err != nil {
 			panic(err)
 		}
@@ -146,36 +152,35 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types
 	return transactions
 }
 
-func (m *Manager) ExtractMessagesFromReceipts(receipts []*types.Receipt) []*MessageBus.StructsCrossChainMessage {
-	messages := make([]*MessageBus.StructsCrossChainMessage, 10)
+func (m *Manager) ExtractMessagesFromReceipts(receipts []*types.Receipt) []MessageBus.StructsCrossChainMessage {
+	messages := make([]MessageBus.StructsCrossChainMessage, 0)
 
 	for _, receipt := range receipts {
-		messages = append(messages, m.ExtractMessagesFromReceipt(receipt)...)
+		extractedCrossChainMessages := m.ExtractMessagesFromReceipt(receipt)
+		messages = append(messages, extractedCrossChainMessages...)
 	}
 
 	return messages
 }
 
-func (m *Manager) ExtractMessagesFromReceipt(receipt *types.Receipt) []*MessageBus.StructsCrossChainMessage {
+func (m *Manager) ExtractMessagesFromReceipt(receipt *types.Receipt) []MessageBus.StructsCrossChainMessage {
 	if receiptMightContainPublishedMessage(receipt) {
 		events := m.extractPublishedMessages(receipt)
 		return convertToMessages(events)
 	}
 
-	return make([]*MessageBus.StructsCrossChainMessage, 0)
+	return make([]MessageBus.StructsCrossChainMessage, 0)
 }
 
-func (m *Manager) extractPublishedMessages(receipt *types.Receipt) []*MessageBus.MessageBusLogMessagePublished {
-	events := make([]*MessageBus.MessageBusLogMessagePublished, len(receipt.Logs))
+func (m *Manager) extractPublishedMessages(receipt *types.Receipt) []MessageBus.MessageBusLogMessagePublished {
+	events := make([]MessageBus.MessageBusLogMessagePublished, 0)
 
 	for _, log := range receipt.Logs {
 		//event, err := m.l2MessageBus.ParseLogMessagePublished(*log)
 		event := m.extractPublishedMessage(log)
 		if event != nil {
-			continue
+			events = append(events, *event)
 		}
-
-		events = append(events, event)
 	}
 
 	return events
@@ -210,18 +215,18 @@ func receiptMightContainPublishedMessage(receipt *types.Receipt) bool {
 	return true
 }
 
-func convertToMessages(events []*MessageBus.MessageBusLogMessagePublished) []*MessageBus.StructsCrossChainMessage {
-	messages := make([]*MessageBus.StructsCrossChainMessage, len(events))
+func convertToMessages(events []MessageBus.MessageBusLogMessagePublished) []MessageBus.StructsCrossChainMessage {
+	messages := make([]MessageBus.StructsCrossChainMessage, 0)
 
 	for _, event := range events {
 		msg := createCrossChainMessage(event)
-		messages = append(messages, &msg)
+		messages = append(messages, msg)
 	}
 
 	return messages
 }
 
-func createCrossChainMessage(event *MessageBus.MessageBusLogMessagePublished) MessageBus.StructsCrossChainMessage {
+func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) MessageBus.StructsCrossChainMessage {
 	return MessageBus.StructsCrossChainMessage{
 		Sender:   event.Sender,
 		Sequence: event.Sequence,

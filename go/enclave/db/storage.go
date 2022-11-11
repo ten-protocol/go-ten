@@ -359,3 +359,7 @@ func (s *storageImpl) StoreSyntheticTransactions(blockHash gethcommon.Hash, tran
 func (s *storageImpl) ReadSyntheticTransactions(blockHash gethcommon.Hash) types.Transactions {
 	return obscurorawdb.ReadSyntheticTransactions(s.db, blockHash, s.logger)
 }
+
+func (s *storageImpl) HasSyntheticTransactions(blockHash gethcommon.Hash) bool {
+	return obscurorawdb.HasSyntheticTransactions(s.db, blockHash)
+}

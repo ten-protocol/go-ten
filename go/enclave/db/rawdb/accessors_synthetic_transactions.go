@@ -23,6 +23,15 @@ func WriteSyntheticTransactions(db ethdb.KeyValueWriter, blockHash gethcommon.Ha
 	return true
 }
 
+// HasReceipts verifies the existence of all the transaction receipts belonging
+// to a block.
+func HasSyntheticTransactions(db ethdb.KeyValueReader, blockHash gethcommon.Hash) bool {
+	if has, err := db.Has(syntheticTransactionsKey(blockHash)); !has || err != nil {
+		return false
+	}
+	return true
+}
+
 func ReadSyntheticTransactions(db ethdb.KeyValueReader, blockHash gethcommon.Hash, logger gethlog.Logger) types.Transactions {
 	data, err := db.Get(syntheticTransactionsKey(blockHash))
 	if err != nil {
@@ -30,7 +39,7 @@ func ReadSyntheticTransactions(db ethdb.KeyValueReader, blockHash gethcommon.Has
 	}
 
 	var transactions types.Transactions
-	err = rlp.DecodeBytes(data, transactions)
+	err = rlp.DecodeBytes(data, &transactions)
 	if err != nil {
 		logger.Crit("Could not parse synthetic transactions from db.", log.ErrKey, err)
 	}

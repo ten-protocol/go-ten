@@ -179,6 +179,9 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
 
+		l1BusAddress := gethcommon.BigToAddress(gethcommon.Big0)
+		l2BusAddress := gethcommon.BigToAddress(gethcommon.Big1)
+
 		enclaveConfig := config.EnclaveConfig{
 			HostID:                 gethcommon.BigToAddress(big.NewInt(int64(i))),
 			HostAddress:            hostAddr,
@@ -192,6 +195,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 			UseInMemoryDB:          false,
 			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
 			MinGasPrice:            big.NewInt(1),
+			MessageBusAddresses:    []*gethcommon.Address{&l1BusAddress, &l2BusAddress},
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
 		_, err := rpc2.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)

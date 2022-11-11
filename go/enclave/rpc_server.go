@@ -271,7 +271,7 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 }
 
 func (s *server) decodeReceipts(encodedReceipts []byte) types.Receipts {
-	receipts := make(types.Receipts, 1)
+	receipts := make(types.Receipts, 0)
 	err := rlp.DecodeBytes(encodedReceipts, receipts)
 	if err != nil {
 		s.logger.Info("failed to decode receipts sent to enclave", log.ErrKey, err)

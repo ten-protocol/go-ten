@@ -377,7 +377,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	sort.Sort(sortByTxIndex(depositReceipts))
 
 	// todo - handle the tx execution logs
-	return rootHash, executedTransactions, txReceipts, depositReceipts, synthReceipts
+	return rootHash, executedTransactions, txReceipts, depositReceipts, depositReceipts
 }
 
 func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethcommon.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
@@ -601,10 +601,10 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
 	r.Header.CrossChainMessages = rc.crossChainManager.ExtractMessagesFromReceipts(txReceipts)
 
-	crossChainBind := rc.storage.Proof(r)
+	//crossChainBind := rc.storage.Proof(r)
 
-	r.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
-	r.Header.LatestInboundCrossChainHeight = crossChainBind.Number()
+	//r.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
+	//r.Header.LatestInboundCrossChainHeight = *crossChainBind.Number()
 
 	receipts := allReceipts(txReceipts, depositReceipts)
 	if len(receipts) == 0 {

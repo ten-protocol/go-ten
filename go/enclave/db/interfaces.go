@@ -98,6 +98,7 @@ type AttestationStorage interface {
 type SyntheticTransactionsStorage interface {
 	StoreSyntheticTransactions(blockHash gethcommon.Hash, transactions types.Transactions) bool
 	ReadSyntheticTransactions(blockHash gethcommon.Hash) types.Transactions
+	HasSyntheticTransactions(blockHash gethcommon.Hash) bool
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore
