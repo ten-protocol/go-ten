@@ -623,7 +623,13 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	// TODO Hook up the blockNumber
 	result, err := rc.ExecuteOffChainTransactionAtBlock(apiArgs, gethrpc.BlockNumber(0))
 	if err != nil {
-		return nil, fmt.Errorf("failed when executing eth_call transaction - %w", err)
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, err.Error())
+		return nil, err
+	}
+	// the execution might have succeeded but the evm contract logic might have failed
+	if result.Failed() {
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, result.Err)
+		return nil, result.Err
 	}
 
 	rc.logger.Trace(fmt.Sprintf("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData)))
