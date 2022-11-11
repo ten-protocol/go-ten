@@ -97,10 +97,10 @@ func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.He
 	// 1 - vmError / stateDB err check
 	// 2 - evm.Cancelled() TODO
 	// 3 - error check the ApplyMessage
+
 	// Read the error stored in the database.
-	err = s.Error()
-	if err != nil {
-		return nil, newErrorWithReasonAndCode(err)
+	if dbErr := s.Error(); dbErr != nil {
+		return nil, newErrorWithReasonAndCode(dbErr)
 	}
 
 	if err != nil {
