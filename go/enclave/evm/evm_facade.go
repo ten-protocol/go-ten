@@ -113,7 +113,7 @@ func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.He
 		logger.Error("ErrKey applying msg:", log.ErrKey, err)
 		return result, err
 	}
-	
+
 	return result, nil
 }
 
