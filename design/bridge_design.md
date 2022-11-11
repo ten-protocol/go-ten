@@ -29,8 +29,8 @@ These contracts will be owned by the ManagementContract and the enclave on their
 
 
 2. **Bridge Requirements**
-  * The reference bridge contracts should be completely ordinary and separate from the management contract; The API should expose all the messaging bits required in order to build the bridge independently from Obscuro
-  * We want the bridge to have an asset whitelist controlled by the Obscuro DAO or simply configured by the management contract.
+  * The reference bridge contracts should be completely ordinary and separate from the management contract; The API should expose all the messaging pieces of information required in order to build the bridge independently from Obscuro
+  * The bridge will have an asset whitelist controlled and configured by the management contract. Later this will be managed by the Obscuro DAO.
   * Assets and their wrapped L2 counterparts should be mapped and exposed for querying.
   * Bridge functionality should be able to use the [pull payment](https://docs.openzeppelin.com/contracts/2.x/api/payment#PullPayment) design. 
    > If any current dApps want to extend or port their functionality on Obscuro then it should be possible for them to do it without collaborating with anyone else 
