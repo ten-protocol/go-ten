@@ -204,6 +204,7 @@ message EstimateGasRequest {
 
 message EstimateGasResponse {
   bytes encryptedResponse = 1;
+  bytes error = 2;
 }
 
 message GetLogsRequest {
