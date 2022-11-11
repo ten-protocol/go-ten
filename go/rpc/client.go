@@ -8,12 +8,12 @@ import (
 )
 
 const (
-	BlockNumber           = "eth_blockNumber"
+	RollupNumber          = "eth_blockNumber"
 	Call                  = "eth_call"
 	ChainID               = "eth_chainId"
 	GetBalance            = "eth_getBalance"
-	GetBlockByHash        = "eth_getBlockByHash"
-	GetBlockByNumber      = "eth_getBlockByNumber"
+	GetRollupByHash       = "eth_getBlockByHash"
+	GetRollupByNumber     = "eth_getBlockByNumber"
 	GetCode               = "eth_getCode"
 	GetTransactionByHash  = "eth_getTransactionByHash"
 	GetTransactionCount   = "eth_getTransactionCount"
@@ -29,7 +29,7 @@ const (
 	GetLatestTxs          = "obscuroscan_getLatestTransactions"
 	GetTotalTxs           = "obscuroscan_getTotalTransactions"
 	Attestation           = "obscuroscan_attestation"
-	GetHeadBlockHeader    = "test_getHeadBlockHeader"
+	BlockNumber2          = "test_blockNumber" // todo - joel - rename
 	StopHost              = "test_stopHost"
 	Subscribe             = "eth_subscribe"
 	SubscribeNamespace    = "eth"

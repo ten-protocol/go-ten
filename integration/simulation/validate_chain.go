@@ -235,7 +235,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeIdx, err)
 	}
 	if l2HeightFromRollupNumber != l2Height.Uint64() {
-		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.BlockNumber, l2HeightFromRollupNumber)
+		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.RollupNumber, l2HeightFromRollupNumber)
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[nodeIdx]
