@@ -81,7 +81,7 @@ type attestationReportExternal struct {
 	TCBStatus       string
 }
 
-func NewObscuroscan(address string) *Obscuroscan {
+func NewObscuroscan(address string, logger gethlog.Logger) *Obscuroscan {
 	client, err := rpc.NewNetworkClient(address)
 	if err != nil {
 		panic(err)
@@ -93,6 +93,7 @@ func NewObscuroscan(address string) *Obscuroscan {
 	return &Obscuroscan{
 		client:      client,
 		contractABI: contractABI,
+		logger:      logger,
 	}
 }
 
