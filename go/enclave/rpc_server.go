@@ -277,13 +277,13 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 func serializeEVMError(err error) ([]byte, error) {
 	var errReturn interface{}
 
-	// it's a generic error, can't extract more info
-	errReturn = evm.SerialisableError{Err: err.Error()}
-
-	// it's already a serialized error, handle any error wrapping that might have occurred
+	// check if it's a serialized error and handle any error wrapping that might have occurred
 	var e evm.SerialisableError
 	if ok := errors.As(err, &e); ok {
 		errReturn = e
+	} else {
+		// it's a generic error, serialise it
+		errReturn = evm.SerialisableError{Err: err.Error()}
 	}
 
 	// serialise the error object returned by the evm into a json
