@@ -7,23 +7,20 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/obscuronet/go-obscuro/go/config"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
+	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"google.golang.org/grpc"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 // Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
