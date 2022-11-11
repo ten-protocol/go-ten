@@ -1,9 +1,7 @@
 package clientapi
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 )
 
@@ -20,24 +18,9 @@ func NewTestAPI(host host.Host) *TestAPI {
 	}
 }
 
-// GetID returns the ID of the host.
-func (api *TestAPI) GetID() gethcommon.Address {
-	return api.host.Config().ID
-}
-
 // GetHeadBlockHeader returns the current head block's header.
 func (api *TestAPI) GetHeadBlockHeader() *types.Header {
 	return api.host.DB().GetHeadBlockHeader()
-}
-
-// GetRollupHeader returns the header of the rollup with the given hash.
-// TODO - #718 - Return the header of the batch instead.
-func (api *TestAPI) GetRollupHeader(hash gethcommon.Hash) *common.Header {
-	headerWithHashes := api.host.DB().GetRollupHeader(hash)
-	if headerWithHashes == nil {
-		return nil
-	}
-	return headerWithHashes.Header
 }
 
 // StopHost gracefully stops the host.
