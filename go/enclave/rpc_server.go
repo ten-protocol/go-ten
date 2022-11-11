@@ -157,7 +157,7 @@ func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generate
 		errResponse, processErr := serializeEVMError(err)
 		if processErr != nil {
 			// unable to serialize the error
-			return nil, fmt.Errorf("unable to handle complex error - %w", processErr)
+			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
 		}
 		return &generated.OffChainResponse{Error: errResponse}, nil
 	}
@@ -248,7 +248,7 @@ func (s *server) EstimateGas(_ context.Context, req *generated.EstimateGasReques
 		errResponse, processErr := serializeEVMError(err)
 		if processErr != nil {
 			// unable to serialize the error
-			return nil, fmt.Errorf("unable to handle complex error - %w", processErr)
+			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
 		}
 		return &generated.EstimateGasResponse{Error: errResponse}, nil
 	}
@@ -272,12 +272,10 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	return block
 }
 
-// serializeEVMError deserializes EVM errors into the RPC response
+// serializeEVMError serialises EVM errors into the RPC response
 // always returns a SerialisableError byte slice
 func serializeEVMError(err error) ([]byte, error) {
-	var errSerializedBytes []byte
 	var errReturn interface{}
-	var marshallErr error
 
 	// it's a generic error, can't extract more info
 	errReturn = evm.SerialisableError{Err: err.Error()}
@@ -289,7 +287,7 @@ func serializeEVMError(err error) ([]byte, error) {
 	}
 
 	// serialise the error object returned by the evm into a json
-	errSerializedBytes, marshallErr = json.Marshal(errReturn)
+	errSerializedBytes, marshallErr := json.Marshal(errReturn)
 	if marshallErr != nil {
 		return nil, marshallErr
 	}
