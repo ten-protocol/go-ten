@@ -14,12 +14,16 @@ const (
 
 	addressName  = "address"
 	addressUsage = "The address to serve Obscuroscan on"
+
+	logPathName  = "logPath"
+	logPathUsage = "The path to use for Obscuroscan's log file"
 )
 
 type obscuroscanConfig struct {
 	nodeID        string
 	rpcServerAddr string
 	address       string
+	logPath       string
 }
 
 func defaultObscuroClientConfig() obscuroscanConfig {
@@ -27,6 +31,7 @@ func defaultObscuroClientConfig() obscuroscanConfig {
 		nodeID:        "",
 		rpcServerAddr: "http://testnet.obscu.ro:13000",
 		address:       "127.0.0.1:3000",
+		logPath:       "obscuroscan_logs.txt",
 	}
 }
 
@@ -36,6 +41,7 @@ func parseCLIArgs() obscuroscanConfig {
 	nodeID := flag.String(nodeIDName, defaultConfig.nodeID, nodeIDUsage)
 	rpcServerAddr := flag.String(rpcServerAddrName, defaultConfig.rpcServerAddr, rpcServerAddrUsage)
 	address := flag.String(addressName, defaultConfig.address, addressUsage)
+	logPath := flag.String(logPathName, defaultConfig.logPath, logPathUsage)
 
 	flag.Parse()
 
@@ -43,5 +49,6 @@ func parseCLIArgs() obscuroscanConfig {
 		nodeID:        *nodeID,
 		rpcServerAddr: *rpcServerAddr,
 		address:       *address,
+		logPath:       *logPath,
 	}
 }
