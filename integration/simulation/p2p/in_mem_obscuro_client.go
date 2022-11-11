@@ -77,7 +77,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.SendRawTransaction:
 		return c.sendRawTransaction(args)
 
-	case rpc.BlockNumber2:
+	case rpc.BlockNumber:
 		*result.(*hexutil.Uint64) = c.testAPI.BlockNumber()
 		return nil
 

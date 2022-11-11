@@ -57,7 +57,7 @@ func (oc *ObsClient) RollupNumber() (uint64, error) {
 // BlockNumber returns the height of the head L1 block
 func (oc *ObsClient) BlockNumber() (uint64, error) {
 	var result hexutil.Uint64
-	err := oc.rpcClient.Call(&result, rpc.BlockNumber2)
+	err := oc.rpcClient.Call(&result, rpc.BlockNumber)
 	return uint64(result), err
 }
 
