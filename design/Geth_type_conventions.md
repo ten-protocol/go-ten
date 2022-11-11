@@ -1,7 +1,10 @@
 # Code Conventions Proposal - Geth Type Renames
 
-This proposal seeks to establish a standard on how the enclave codebase should use the standard `geth` types like `types.Transaction`, `types.Block` and the likes.
-Currently the code base sparsely uses renamed types like the ones defined in `common/types.go`. The suggestion of this proposal is that such type renames should be the standard
+This proposal seeks to establish a standard on how the codebase should use the standard `geth` types like `types.Transaction`, `types.Block` and the likes.
+Currently the code base sparsely uses alias types like the ones defined in `common/types.go`. 
+
+An example of such aliasing from the current code base is `type L2Tx types.Transaction`.
+The suggestion of this proposal is that such type aliases should be the standard
 and not the exception. 
 
 ## Example and thought process behind the suggestion
@@ -25,7 +28,7 @@ which also needs to be highly auditable by security researchers.
 ## Reasons
 
 1. For newcomers to the codebase
-    * Renamed types like `common.L1.Log`, `common.L1.Receipt`, `common.L2.Receipt` reduce the contextual information required before grasping how concrete functions operate and on what.
+    * Aliased types like `common.L1.Log`, `common.L1.Receipt`, `common.L2.Receipt` reduce the contextual information required before grasping how concrete functions operate and on what.
     * Makes it easier to safely contribute. Code reviews of PRs matching those conventions should also be easier. 
     * Code becomes more auditable
 2. General
@@ -34,13 +37,13 @@ which also needs to be highly auditable by security researchers.
     * It will reduce the chance of accidental mistakes. Using the geth types interchangably and operating on them increases the chances that someone will slip in some type coming from the wrong layer into a processor expecting the opposite. This might cause very serious exploits. 
     * Overall future proofing. As the team grows it would be far easier to collaborate with a self explanatory code base.
     * The code base already contains comments that explain where the type is coming from, so making it standard to do so seems reasonable
-    * It is a non intrusive change, the geth code will accept our type renames just fine either way.
+    * It is a non intrusive change, the geth code will accept our type aliases just fine either way.
 
 ## The suggest convention
 
-Inside of the enclave code base:
+Inside of the code base:
 
- * **Do** use common type renames that make it explicit where should this type be coming from. 
+ * **Do** use common type aliases that make it explicit where should this type be coming from. 
  * **Do not** use any of the geth types in functions that mutate the enclave/rollup or whatever state.
  * **Exception** using the geth types in common utility functions that perform some abstract operation like `func ShortHash(hash common.Hash) uint64` is **okay**. 
 
