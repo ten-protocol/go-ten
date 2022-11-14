@@ -263,6 +263,14 @@ func (s *server) GetLogs(_ context.Context, req *generated.GetLogsRequest) (*gen
 	return &generated.GetLogsResponse{EncryptedResponse: encryptedLogs}, nil
 }
 
+func (s *server) HealthCheck(_ context.Context, _ *generated.EmptyArgs) (*generated.HealthCheckResponse, error) {
+	healthy, err := s.enclave.HealthCheck()
+	if err != nil {
+		return nil, err
+	}
+	return &generated.HealthCheckResponse{Status: healthy}, nil
+}
+
 func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

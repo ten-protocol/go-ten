@@ -368,3 +368,14 @@ func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.
 	}
 	return resp.EncryptedResponse, nil
 }
+
+func (c *Client) HealthCheck() (bool, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.HealthCheck(timeoutCtx, &generated.EmptyArgs{})
+	if err != nil {
+		return false, err
+	}
+	return resp.Status, nil
+}

@@ -103,4 +103,7 @@ type Storage interface {
 	BlockStateStorage
 	TransactionStorage
 	AttestationStorage
+
+	// HealthCheck returns whether the storage is deemed healthy or not
+	HealthCheck() (bool, error)
 }

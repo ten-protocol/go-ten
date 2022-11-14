@@ -348,6 +348,20 @@ func (h *host) Stop() {
 	h.logger.Info("Host shut down successfully.")
 }
 
+// HealthCheck returns whether the host, enclave and DB are healthy
+func (h *host) HealthCheck() (bool, error) {
+	// check the enclave health, which in turn checks the DB health
+	enclaveHealthy, err := h.enclaveClient.HealthCheck()
+	if err != nil {
+		// simplest iteration, log the error and just return that it's not healthy
+		h.logger.Error("unable to HealthCheck enclave", "err", err)
+		return false, nil
+	}
+	// TODO host healthcheck operations
+	hostHealthy := true
+	return enclaveHealthy && hostHealthy, nil
+}
+
 // Waits for enclave to be available, printing a wait message every two seconds.
 func (h *host) waitForEnclave() {
 	counter := 0
