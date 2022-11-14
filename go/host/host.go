@@ -67,7 +67,7 @@ type host struct {
 	enclaveClient common.Enclave       // For communication with the enclave
 	rpcServer     clientrpc.Server     // For communication with Obscuro client applications
 
-	blockProvider hostcommon.BlockProvider
+	blockProvider hostcommon.ReconnectingBlockProvider
 
 	// control the host lifecycle
 	exitHostCh            chan bool

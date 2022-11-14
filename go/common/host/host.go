@@ -51,10 +51,18 @@ type P2P interface {
 	BroadcastTx(tx common.EncryptedTx) error
 }
 
-// BlockProvider interface allows host to monitor and await L1 blocks for feeding to enclave
-// (BlockProvider implementation should handle reconnections etc. itself, if it is failing to reconnect to its source
-//	then there may be long delays between blocks)
-type BlockProvider interface {
+// ReconnectingBlockProvider interface allows host to monitor and await L1 blocks for feeding to enclave
+// ReconnectingBlockProvider handles:
+//
+//   - reconnecting to the source, it will recover if it can and continue streaming from where it left off
+//
+//   - forks: block provider only sends blocks that are *currently* canonical. If there was a fork then it will replay
+//     from the block after the fork. For example:
+//
+//     12a --> 13a --> 14a -->
+//     \-> 13b --> 14b --> 15b
+//     If block provider had just published 14a and then discovered the 'b' fork is canonical, it would next publish 13b, 14b, 15b.
+type ReconnectingBlockProvider interface {
 	StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, error)
 	StartStreamingFromHash(latestHash gethcommon.Hash) (<-chan *types.Block, error)
 	Stop()

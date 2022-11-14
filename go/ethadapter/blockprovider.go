@@ -159,7 +159,7 @@ func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not find ancestor on canonical chain for hash=%s - %w", e.latestSent.Hash(), err)
 	}
-	// and send the cannon block after the fork
+	// and send the cannon block after the last sent (this may be a fork, or it may just be the next on the same branch)
 	blk, err := e.ethClient.BlockByNumber(increment(latestCanon.Number()))
 	if err != nil {
 		return nil, fmt.Errorf("could not find block after canon fork branch, height=%s - %w", increment(latestCanon.Number()), err)
@@ -172,8 +172,23 @@ func (e *EthBlockProvider) stopped() bool {
 	return atomic.LoadInt32(e.runningStatus) == int32(statusCodeStopped)
 }
 
-// LiveBlocksMonitor manages a process that queues up the latest X blocks (where X=queueCap) in a FIFO queue, streamed from
-// an L1 client. If it has X and receives another one it will drop the oldest.
+func (e *EthBlockProvider) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block, error) {
+	blk, err := e.ethClient.BlockByHash(blkHash)
+	if err != nil {
+		return nil, err
+	}
+	canonAtSameHeight, err := e.ethClient.BlockByNumber(blk.Number())
+	if err != nil {
+		return nil, err
+	}
+	if blk.Hash() != canonAtSameHeight.Hash() {
+		return e.latestCanonAncestor(blk.ParentHash())
+	}
+	return blk, nil
+}
+
+// LiveBlocksMonitor is responsible for monitoring a stream of blocks from the L1 (and reconnecting etc. as needed).
+// It's always running in a separate process so the BlockProvider can turn to it for
 type LiveBlocksMonitor struct {
 	ctx       context.Context
 	logger    gethlog.Logger
@@ -250,21 +265,6 @@ func (l *LiveBlocksMonitor) AwaitNewBlock(ctx context.Context, afterBlkHash geth
 func (l *LiveBlocksMonitor) registerAwait() <-chan *types.Header {
 	l.awaitChan = make(chan *types.Header)
 	return l.awaitChan
-}
-
-func (e *EthBlockProvider) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block, error) {
-	blk, err := e.ethClient.BlockByHash(blkHash)
-	if err != nil {
-		return nil, err
-	}
-	canonAtSameHeight, err := e.ethClient.BlockByNumber(blk.Number())
-	if err != nil {
-		return nil, err
-	}
-	if blk.Hash() != canonAtSameHeight.Hash() {
-		return e.latestCanonAncestor(blk.ParentHash())
-	}
-	return blk, nil
 }
 
 func increment(i *big.Int) *big.Int {
