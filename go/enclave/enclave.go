@@ -723,6 +723,15 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethr
 	return hexutil.Uint64(hi), nil
 }
 
+// HealthCheck returns whether the enclave is deemed healthy
+func (e *enclaveImpl) HealthCheck() (bool, error) {
+	if e.storage.FetchHeadState() == nil {
+		// simple db healthcheck
+		return false, nil
+	}
+	return true, nil
+}
+
 // Create a helper to check if a gas allowance results in an executable transaction
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
 func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64) (bool, *gethcore.ExecutionResult, error) {
