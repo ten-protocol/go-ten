@@ -81,7 +81,7 @@ type attestationReportExternal struct {
 	TCBStatus       string
 }
 
-func NewObscuroscan(address string) *Obscuroscan {
+func NewObscuroscan(address string, logger gethlog.Logger) *Obscuroscan {
 	client, err := rpc.NewNetworkClient(address)
 	if err != nil {
 		panic(err)
@@ -93,6 +93,7 @@ func NewObscuroscan(address string) *Obscuroscan {
 	return &Obscuroscan{
 		client:      client,
 		contractABI: contractABI,
+		logger:      logger,
 	}
 }
 
@@ -483,7 +484,7 @@ func (o *Obscuroscan) getLatestRollupNumber() (int64, error) {
 func (o *Obscuroscan) getRollupByNumber(rollupNumber int) (*common.ExtRollup, error) {
 	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
 	var rollupHeader *common.Header
-	err := o.client.Call(&rollupHeader, rpc.GetBlockByNumber, rollupNumber)
+	err := o.client.Call(&rollupHeader, rpc.GetRollupByNumber, rollupNumber)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", rollupNumber, err)
 	}

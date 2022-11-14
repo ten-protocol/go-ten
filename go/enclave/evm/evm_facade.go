@@ -5,14 +5,8 @@ import (
 	"fmt"
 	"math"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -22,13 +16,18 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethcore "github.com/ethereum/go-ethereum/core"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, fromTxIndex int, logger gethlog.Logger) map[common.TxHash]interface{} {
-	chain, vmCfg, gp := initParams(storage, false)
+	chain, vmCfg, gp := initParams(storage, true)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
@@ -94,21 +93,27 @@ func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.He
 	vmenv := vm.NewEVM(blockContext, txContext, s, chainConfig, vmCfg)
 
 	result, err := gethcore.ApplyMessage(vmenv, msg, gp)
-	if err != nil {
-		// this error is ignored by geth. logging just in case
-		logger.Error("ErrKey applying msg:", log.ErrKey, err)
-	}
+	// Follow the same error check structure as in geth
+	// 1 - vmError / stateDB err check
+	// 2 - evm.Cancelled() TODO
+	// 3 - error check the ApplyMessage
 
 	// Read the error stored in the database.
-	err = s.Error()
-	if err != nil {
-		return nil, newErrorWithReasonAndCode(err)
+	if dbErr := s.Error(); dbErr != nil {
+		return nil, newErrorWithReasonAndCode(dbErr)
 	}
 
 	// If the result contains a revert reason, try to unpack and return it.
-	if len(result.Revert()) > 0 {
+	if result != nil && len(result.Revert()) > 0 {
 		return nil, newRevertError(result)
 	}
+
+	if err != nil {
+		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
+		logger.Error("ErrKey applying msg:", log.ErrKey, err)
+		return result, err
+	}
+
 	return result, nil
 }
 

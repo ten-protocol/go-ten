@@ -74,7 +74,7 @@ func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) 
 func ExtractEthCall(paramBytes interface{}) (*gethapi.TransactionArgs, error) {
 	// geth lowercases the field name and uses the last seen value
 	var valString string
-	var to, from gethcommon.Address
+	var to, from *gethcommon.Address
 	var data *hexutil.Bytes
 	var value, gasPrice, maxFeePerGas, maxPriorityFeePerGas *hexutil.Big
 	var ok bool
@@ -93,9 +93,11 @@ func ExtractEthCall(paramBytes interface{}) (*gethapi.TransactionArgs, error) {
 		}
 		switch strings.ToLower(field) {
 		case callFieldTo:
-			to = gethcommon.HexToAddress(valString)
+			toVal := gethcommon.HexToAddress(valString)
+			to = &toVal
 		case CallFieldFrom:
-			from = gethcommon.HexToAddress(valString)
+			fromVal := gethcommon.HexToAddress(valString)
+			from = &fromVal
 		case callFieldData:
 			dataVal, err := hexutil.Decode(valString)
 			if err != nil {
@@ -140,8 +142,8 @@ func ExtractEthCall(paramBytes interface{}) (*gethapi.TransactionArgs, error) {
 
 	// convert the params[0] into an ethereum.CallMsg
 	callMsg := &gethapi.TransactionArgs{
-		From:                 &from,
-		To:                   &to,
+		From:                 from,
+		To:                   to,
 		Gas:                  gas,
 		GasPrice:             gasPrice,
 		MaxFeePerGas:         maxFeePerGas,

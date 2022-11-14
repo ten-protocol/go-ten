@@ -7,23 +7,21 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/obscuronet/go-obscuro/go/config"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"google.golang.org/grpc"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 // Receives RPC calls to the enclave process and relays them to the enclave.Enclave.
@@ -154,15 +152,14 @@ func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest)
 
 func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
 	result, err := s.enclave.ExecuteOffChainTransaction(request.EncryptedParams)
-	var errorJSON []byte
-	var merr error
 	if err != nil {
-		// serialise the error object returned by the evm into a json
-		errorJSON, merr = json.Marshal(err)
-		if merr != nil {
-			return nil, merr
+		// handle complex errors from the EVM
+		errResponse, processErr := serializeEVMError(err)
+		if processErr != nil {
+			// unable to serialize the error
+			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
 		}
-		return &generated.OffChainResponse{Error: errorJSON}, nil
+		return &generated.OffChainResponse{Error: errResponse}, nil
 	}
 	return &generated.OffChainResponse{Result: result}, nil
 }
@@ -247,7 +244,13 @@ func (s *server) Unsubscribe(_ context.Context, req *generated.UnsubscribeReques
 func (s *server) EstimateGas(_ context.Context, req *generated.EstimateGasRequest) (*generated.EstimateGasResponse, error) {
 	encryptedBalance, err := s.enclave.EstimateGas(req.EncryptedParams)
 	if err != nil {
-		return nil, err
+		// handle complex errors from the EVM
+		errResponse, processErr := serializeEVMError(err)
+		if processErr != nil {
+			// unable to serialize the error
+			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
+		}
+		return &generated.EstimateGasResponse{Error: errResponse}, nil
 	}
 	return &generated.EstimateGasResponse{EncryptedResponse: encryptedBalance}, nil
 }
@@ -267,4 +270,26 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 		s.logger.Info("failed to decode block sent to enclave", log.ErrKey, err)
 	}
 	return block
+}
+
+// serializeEVMError serialises EVM errors into the RPC response
+// always returns a SerialisableError byte slice
+func serializeEVMError(err error) ([]byte, error) {
+	var errReturn interface{}
+
+	// check if it's a serialized error and handle any error wrapping that might have occurred
+	var e evm.SerialisableError
+	if ok := errors.As(err, &e); ok {
+		errReturn = e
+	} else {
+		// it's a generic error, serialise it
+		errReturn = evm.SerialisableError{Err: err.Error()}
+	}
+
+	// serialise the error object returned by the evm into a json
+	errSerializedBytes, marshallErr := json.Marshal(errReturn)
+	if marshallErr != nil {
+		return nil, marshallErr
+	}
+	return errSerializedBytes, nil
 }
