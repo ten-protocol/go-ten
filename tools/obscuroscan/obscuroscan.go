@@ -20,6 +20,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -182,21 +184,21 @@ func (o *Obscuroscan) getNumTransactions(resp http.ResponseWriter, _ *http.Reque
 func (o *Obscuroscan) getRollupTime(resp http.ResponseWriter, _ *http.Request) {
 	numLatestRollup, err := o.getLatestRollupNumber()
 	if err != nil {
-		o.logger.Error("Could not fetch average rollup time.", log.ErrKey, err)
-		logAndSendErr(resp, "Could not fetch average rollup time.")
+		o.logger.Error("Could not fetch latest rollup number.", log.ErrKey, err)
+		logAndSendErr(resp, "whCould not fetch average rollup time.")
 		return
 	}
 
 	firstRollup, err := o.getRollupByNumber(0)
-	if err != nil {
-		o.logger.Error("Could not fetch average rollup time.", log.ErrKey, err)
+	if err != nil || firstRollup.Header == nil {
+		o.logger.Error("Could not fetch first rollup.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch average rollup time.")
 		return
 	}
 
 	latestRollup, err := o.getRollupByNumber(int(numLatestRollup))
-	if err != nil {
-		o.logger.Error("Could not fetch average rollup time.", log.ErrKey, err)
+	if err != nil || latestRollup.Header == nil {
+		o.logger.Error("Could not fetch latest rollup.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch average rollup time.")
 		return
 	}
@@ -483,8 +485,9 @@ func (o *Obscuroscan) getLatestRollupNumber() (int64, error) {
 // Parses numberStr as a number and returns the rollup with that number.
 func (o *Obscuroscan) getRollupByNumber(rollupNumber int) (*common.ExtRollup, error) {
 	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
+	rollupNumberHex := hexutil.EncodeUint64(uint64(rollupNumber))
 	var rollupHeader *common.Header
-	err := o.client.Call(&rollupHeader, rpc.GetRollupByNumber, rollupNumber)
+	err := o.client.Call(&rollupHeader, rpc.GetRollupByNumber, rollupNumberHex, true)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", rollupNumber, err)
 	}

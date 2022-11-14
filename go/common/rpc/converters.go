@@ -103,16 +103,16 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 }
 
 func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
+	if rollup == nil || rollup.Header == nil {
+		return generated.ExtRollupMsg{}
+	}
+
 	txHashBytes := make([][]byte, len(rollup.TxHashes))
 	for idx, txHash := range rollup.TxHashes {
 		txHashBytes[idx] = txHash.Bytes()
 	}
 
-	if rollup.Header != nil {
-		return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), TxHashes: txHashBytes, Txs: rollup.EncryptedTxBlob}
-	}
-
-	return generated.ExtRollupMsg{Header: nil}
+	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), TxHashes: txHashBytes, Txs: rollup.EncryptedTxBlob}
 }
 
 func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {

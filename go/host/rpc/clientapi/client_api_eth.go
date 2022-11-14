@@ -55,7 +55,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the rollup with the given height as a block. No transactions are included.
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	rollupHash, err := api.blockNumberToRollupHash(number)
+	rollupHash, err := api.rollupNumberToRollupHash(number)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch block number: %w", err)
 	}
@@ -125,7 +125,7 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// requested a number
 	if rollupNumber, ok := blockNrOrHash.Number(); ok {
-		rollupHash, err := api.blockNumberToRollupHash(rollupNumber)
+		rollupHash, err := api.rollupNumberToRollupHash(rollupNumber)
 		if err != nil {
 			return nil, fmt.Errorf("unable to fetch block number: %w", err)
 		}
@@ -215,14 +215,13 @@ type FeeHistoryResult struct {
 }
 
 // TODO - #718 - Switch to converting block number to batch hash.
-func (api *EthereumAPI) blockNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
+func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	switch blockNumber {
 	case rpc.LatestBlockNumber:
 		hash := api.host.DB().GetHeadRollupHeader().Header.Hash()
 		return &hash, nil
 	case rpc.EarliestBlockNumber:
-		hash := api.host.DB().GetRollupHeader(gethcommon.BigToHash(big.NewInt(0))).Header.Hash()
-		return &hash, nil
+		return api.host.DB().GetRollupHash(big.NewInt(0)), nil
 	case rpc.PendingBlockNumber:
 		// todo Dependent on the current pending rollup - leaving it for a different iteration as it will need more thought
 		return nil, nil //nolint
