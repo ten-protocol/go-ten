@@ -35,9 +35,6 @@ func TestBlockProviderHappyPath_LiveStream(t *testing.T) {
 				blkCount++
 			}
 
-		case err := <-blockProvider.Err():
-			t.Errorf("unexpected error: %s", err)
-
 		case <-time.After(3 * time.Second): // shouldn't have >1sec delay between blocks in this test
 			t.Errorf("expected 3 blocks from stream but got %d", blkCount)
 		}
@@ -61,9 +58,6 @@ func TestBlockProviderHappyPath_HistoricThenStream(t *testing.T) {
 			if blk != nil {
 				blkCount++
 			}
-
-		case err := <-blockProvider.Err():
-			t.Errorf("unexpected error: %s", err)
 
 		case <-time.After(3 * time.Second): // shouldn't have >1sec delay between blocks in this test
 			t.Errorf("expected 3 blocks from stream but got %d", blkCount)

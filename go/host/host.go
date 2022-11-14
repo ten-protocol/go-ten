@@ -53,6 +53,7 @@ const (
 
 	maxWaitForL1Receipt       = 100 * time.Second
 	retryIntervalForL1Receipt = 10 * time.Second
+	blockStreamWarningTimeout = 30 * time.Second
 )
 
 // Implementation of host.Host.
@@ -908,9 +909,6 @@ func (h *host) awaitSecret(fromHeight *big.Int) error {
 
 	for {
 		select {
-		case err := <-h.blockProvider.Err():
-			h.logger.Crit("blockProvider error", log.ErrKey, err)
-
 		case blk := <-blkStream:
 			h.logger.Trace("checking block for secret resp", "height", blk.Number())
 			if h.checkBlockForSecretResponse(blk) {
@@ -918,9 +916,9 @@ func (h *host) awaitSecret(fromHeight *big.Int) error {
 				return nil
 			}
 
-		case <-time.After(time.Second * 20):
+		case <-time.After(blockStreamWarningTimeout):
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select)
-			h.logger.Warn("Waiting for secret from the L1. No blocks received for 20secs...")
+			h.logger.Warn(fmt.Sprintf(" Waiting for secret from the L1. No blocks received for over %s", blockStreamWarningTimeout))
 
 		case <-h.exitHostCh:
 			h.blockProvider.Stop()

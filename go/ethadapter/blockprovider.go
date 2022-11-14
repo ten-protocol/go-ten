@@ -14,18 +14,20 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
-var (
-	one               = big.NewInt(1)
-	statusCodeStopped = int32(0)
-	statusCodeRunning = int32(1)
+type blockProviderStatus int32
+
+const (
+	statusCodeStopped blockProviderStatus = iota
+	statusCodeRunning
 )
+
+var one = big.NewInt(1)
 
 func NewEthBlockProvider(ethClient EthClient, logger gethlog.Logger) *EthBlockProvider {
 	return &EthBlockProvider{
 		ethClient:     ethClient,
 		ctx:           context.TODO(),
 		streamCh:      make(chan *types.Block),
-		errCh:         make(chan error),
 		runningStatus: new(int32),
 		logger:        logger,
 	}
@@ -39,7 +41,6 @@ type EthBlockProvider struct {
 	liveCancel context.CancelFunc // cancel for the live monitor process
 
 	streamCh      chan *types.Block
-	errCh         chan error
 	runningStatus *int32 // 0 = stopped, 1 = running
 
 	latestSent *types.Header // most recently sent block (reset if streamFrom is reset)
@@ -59,10 +60,6 @@ func (e *EthBlockProvider) start() {
 	}
 	go e.streamBlocks()
 	go e.liveBlocks.Start() // process to handle incoming stream of L1 blocks
-}
-
-func (e *EthBlockProvider) Err() <-chan error {
-	return e.errCh
 }
 
 // StartStreamingFromHash will look up the hash block, find the appropriate height (LCA if there have been forks) and
@@ -98,7 +95,7 @@ func (e *EthBlockProvider) Stop() {
 	if e.liveCancel != nil {
 		e.liveCancel()
 	}
-	atomic.StoreInt32(e.runningStatus, statusCodeStopped)
+	atomic.StoreInt32(e.runningStatus, int32(statusCodeStopped))
 }
 
 func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
@@ -117,7 +114,7 @@ func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
 // - publishing a block, it blocks on the outbound channel until the block is consumed
 // - awaiting a live block, when consumer is completely up-to-date it waits for a live block to arrive
 func (e *EthBlockProvider) streamBlocks() {
-	atomic.StoreInt32(e.runningStatus, statusCodeRunning)
+	atomic.StoreInt32(e.runningStatus, int32(statusCodeRunning))
 	for !e.stopped() {
 		// this will block if we're up-to-date with live blocks
 		block, err := e.nextBlockToStream()
@@ -172,7 +169,7 @@ func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 
 // checkStopped checks the status for stopped code
 func (e *EthBlockProvider) stopped() bool {
-	return atomic.LoadInt32(e.runningStatus) == statusCodeStopped
+	return atomic.LoadInt32(e.runningStatus) == int32(statusCodeStopped)
 }
 
 // LiveBlocksMonitor manages a process that queues up the latest X blocks (where X=queueCap) in a FIFO queue, streamed from

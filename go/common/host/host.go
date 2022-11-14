@@ -52,10 +52,11 @@ type P2P interface {
 }
 
 // BlockProvider interface allows host to monitor and await L1 blocks for feeding to enclave
+// (BlockProvider implementation should handle reconnections etc. itself, if it is failing to reconnect to its source
+//	then there may be long delays between blocks)
 type BlockProvider interface {
 	StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, error)
 	StartStreamingFromHash(latestHash gethcommon.Hash) (<-chan *types.Block, error)
-	Err() <-chan error // if an error is received on this channel then the streaming channel is no longer usable
 	Stop()
 	IsLive(hash gethcommon.Hash) bool // returns true if hash is of the latest known L1 head block
 }
