@@ -6,7 +6,7 @@ interface Structs {
         address sender;
         uint64  sequence;
         uint32  nonce;
-        bytes   topic;
+        uint32  topic;
         bytes   payload;
     }
 }

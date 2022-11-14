@@ -33,6 +33,10 @@ func NewMgmtContractLibMock() mgmtcontractlib.MgmtContractLib {
 	return &mockContractLib{}
 }
 
+func (m *mockContractLib) GetContractAddr() *gethcommon.Address {
+	return &rollupTxAddr
+}
+
 func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	return decodeTx(tx)
 }

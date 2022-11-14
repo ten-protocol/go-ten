@@ -7,10 +7,10 @@ import "./Structs.sol";
 interface IMessageBus {
     function publishMessage(
         uint32 nonce,
-        bytes memory topic,
-        bytes memory payload, 
+        uint32 topic,
+        bytes calldata payload, 
         uint8 consistencyLevel
-    ) external payable returns (uint64 sequence);
+    ) external returns (uint64 sequence);
 
     function verifyMessageFinalized(Structs.CrossChainMessage calldata crossChainMessage) external view returns (bool);
     

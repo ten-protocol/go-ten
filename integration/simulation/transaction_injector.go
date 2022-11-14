@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
@@ -211,14 +212,42 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			panic(err)
 		}
 		ti.logger.Info(fmt.Sprintf(
-			"Deposit transaction injected into L1. Hash: %d. From address: %d",
-			common.ShortHash(signedTx.Hash()),
+			"Deposit transaction injected into L1. Hash: %s. From address: %d",
+			signedTx.Hash(),
 			common.ShortAddress(ethWallet.Address()),
 		))
 		err = ti.rpcHandles.RndEthClient().SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
 		}
+
+		txClone := *signedTx
+		go func() {
+			time.Sleep(3 * time.Second)
+			receipt, err := ti.rpcHandles.RndEthClient().TransactionReceipt(txClone.Hash())
+			if err != nil {
+				panic(err)
+			}
+
+			res, err := ti.rpcHandles.RndEthClient().CallContract(ethereum.CallMsg{
+				From:       addr,
+				To:         txClone.To(),
+				Gas:        txClone.Gas(),
+				GasPrice:   big.NewInt(20000000000),
+				GasTipCap:  big.NewInt(0),
+				Value:      txClone.Value(),
+				Data:       txClone.Data(),
+				AccessList: txClone.AccessList(),
+			})
+			if err != nil {
+				ti.logger.Info(fmt.Sprintf("Deposit %s ERROR - %+v", txClone.Hash(), err))
+			} else {
+				fmt.Printf("Signed Tx - %s bn - %d\n", signedTx.Hash().Hex(), receipt.BlockNumber.Uint64())
+				ti.logger.Info(fmt.Sprintf("Deposit %s bn Deposit res - %+v", txClone.Hash(), res))
+			}
+		}()
+
+		time.Sleep(2 * time.Second)
 
 		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
 		go ti.TxTracker.trackL1Tx(txData)

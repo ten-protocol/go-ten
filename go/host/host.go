@@ -5,13 +5,18 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
+	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/host/events"
@@ -719,15 +724,51 @@ func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 	return nil
 }
 
-func (h *host) extractReceipts(block *types.Block) []*types.Receipt {
-	receipts := make([]*types.Receipt, block.Transactions().Len())
+func (h *host) extractReceipts(block *types.Block) []*types.ReceiptForStorage {
+	receipts := make([]*types.ReceiptForStorage, 0)
+
+	mgt, _ := ManagementContract.NewManagementContract(*h.mgmtContractLib.GetContractAddr(), h.ethClient.EthClient())
+
+	busAddr, err := mgt.MessageBus(&bind.CallOpts{})
+	if err != nil {
+		h.logger.Crit("WHat")
+	}
+
+	busCtr, _ := MessageBus.NewMessageBus(busAddr, h.ethClient.EthClient())
+
+	contractAbi, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+
 	for _, transaction := range block.Transactions() {
 		receipt, _ := h.ethClient.TransactionReceipt(transaction.Hash())
-		/*if err != nil {
-			h.logger.Crit(fmt.Sprintf("could not fetch receipt for hash %s.", transaction.Hash().String()), log.ErrKey, err)
-		}*/
 
-		receipts = append(receipts, receipt)
+		shouldBreak := true
+		for _, log := range receipt.Logs {
+
+			h.logger.Info(fmt.Sprintf("[Host][CrossChain] Event topic - %+v", log))
+
+			if contractAbi.Events["LogMessagePublished"].ID == log.Topics[0] {
+				shouldBreak = false
+			}
+
+			if log.Address.Hex() == busAddr.Hex() {
+				shouldBreak = false
+			}
+
+			if msg, err := busCtr.ParseLogMessagePublished(*log); err == nil {
+				h.logger.Info(fmt.Sprintf("[Host][CrossChain] Event Message - %+v", msg))
+				shouldBreak = false
+			}
+		}
+
+		if shouldBreak {
+			break
+		}
+
+		h.logger.Info(fmt.Sprintf("[CrossChain] Adding receipt for %s with %d", receipt.TxHash.Hex(), len(receipt.Logs)))
+
+		storageReceipt := types.ReceiptForStorage(*receipt)
+
+		receipts = append(receipts, &storageReceipt)
 	}
 
 	return receipts

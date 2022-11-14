@@ -28,17 +28,17 @@ func L2Bytecode(tokenName string, tokenSymbol string, initialSupply string) []by
 	return append(bytecode, input...)
 }
 
-func L1BytecodeWithDefaultSupply(tokenName string) []byte {
-	return L1Bytecode(tokenName, tokenName, "1000000000000000000000000000000000000000")
+func L1BytecodeWithDefaultSupply(tokenName string, busAddress common.Address, managementAddress common.Address) []byte {
+	return L1Bytecode(tokenName, tokenName, "1000000000000000000000000000000000000000", busAddress, managementAddress)
 }
 
-func L1Bytecode(tokenName string, tokenSymbol string, initialSupply string) []byte {
+func L1Bytecode(tokenName string, tokenSymbol string, initialSupply string, busAddress common.Address, managementAddress common.Address) []byte {
 	parsed, err := EthERC20.EthERC20MetaData.GetAbi()
 	if err != nil {
 		panic(err)
 	}
 	supply, _ := big.NewInt(0).SetString(initialSupply, 10)
-	input, err := parsed.Pack("", tokenName, tokenSymbol, supply)
+	input, err := parsed.Pack("", tokenName, tokenSymbol, supply, busAddress, managementAddress)
 	if err != nil {
 		panic(err)
 	}

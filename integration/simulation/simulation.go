@@ -194,15 +194,17 @@ func (s *Simulation) deployObscuroERC20s() {
 // Sends an amount from the faucet to each L1 account, to pay for transactions.
 func (s *Simulation) prefundL1Accounts() {
 	for _, w := range s.Params.Wallets.SimEthWallets {
-		addr := w.Address()
+		receiver := w.Address()
+		tokenOwner := s.Params.Wallets.Tokens[bridge.HOC].L1Owner
+		ownerAddr := tokenOwner.Address()
 		txData := &ethadapter.L1DepositTx{
 			Amount:        initialBalance,
-			To:            s.Params.MgmtContractAddr,
+			To:            &receiver,
 			TokenContract: s.Params.Wallets.Tokens[bridge.HOC].L1ContractAddress,
-			Sender:        &addr,
+			Sender:        &ownerAddr,
 		}
-		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
-		signedTx, err := w.SignTransaction(tx)
+		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData, tokenOwner.GetNonceAndIncrement())
+		signedTx, err := tokenOwner.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
@@ -210,6 +212,32 @@ func (s *Simulation) prefundL1Accounts() {
 		if err != nil {
 			panic(err)
 		}
+
+		txClone := signedTx
+		go func() {
+			time.Sleep(3 * time.Second)
+			receipt, err := s.RPCHandles.RndEthClient().TransactionReceipt(txClone.Hash())
+			if err != nil {
+				panic(err)
+			}
+
+			res, err := s.RPCHandles.RndEthClient().CallContract(ethereum.CallMsg{
+				From:       ownerAddr,
+				To:         txClone.To(),
+				Gas:        txClone.Gas(),
+				GasPrice:   big.NewInt(20000000000),
+				GasTipCap:  big.NewInt(0),
+				Value:      txClone.Value(),
+				Data:       txClone.Data(),
+				AccessList: txClone.AccessList(),
+			})
+			if err != nil {
+				fmt.Printf(fmt.Sprintf("Deposit %s ERROR - %+v", txClone.Hash(), err))
+			} else {
+				fmt.Printf("Signed Tx - %s bn - %d\n", signedTx.Hash().Hex(), receipt.BlockNumber.Uint64())
+				fmt.Printf(fmt.Sprintf("Deposit %s bn Deposit res - %+v", txClone.Hash(), res))
+			}
+		}()
 
 		s.Stats.Deposit(initialBalance)
 		go s.TxInjector.TxTracker.trackL1Tx(txData)

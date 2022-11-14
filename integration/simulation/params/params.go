@@ -40,6 +40,8 @@ type SimParams struct {
 	// EthErc20Address - the address of the "ETH" ERC20
 	EthErc20Address *common.Address
 
+	MessageBusAddr *common.Address
+
 	// Contains all the wallets required by the simulation
 	Wallets *SimWallets
 

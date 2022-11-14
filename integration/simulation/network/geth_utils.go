@@ -6,13 +6,13 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/contracts"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
-	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
@@ -31,7 +31,7 @@ const (
 	// TODO - Also prefund the L1 HOC and POC addresses used for the end-to-end tests when run locally.
 )
 
-func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, blockDurationSeconds int) (*common.Address, *common.Address, *common.Address, []ethadapter.EthClient, *gethnetwork.GethNetwork) {
+func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, blockDurationSeconds int) (*common.Address, *common.Address, *common.Address, *common.Address, []ethadapter.EthClient, *gethnetwork.GethNetwork) {
 	// make sure the geth network binaries exist
 	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -62,20 +62,12 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
 	}
 
-	bytecode, err = contracts.Bytecode(MessageBus.MessageBusMetaData)
-	if err != nil {
-		panic(fmt.Sprintf("failed to deploy message bus contract. Cause: %s", err))
-	}
-
-	l1BusAddress, err := DeployContract(tmpEthClient, wallets.MCOwnerWallet, bytecode)
-	if err != nil {
-		panic(fmt.Sprintf("failed to deploy message bus contract. Cause: %s", err))
-	}
-	l1BusAddress.Hash() //todo
+	managementContract, _ := ManagementContract.NewManagementContract(*mgmtContractAddr, tmpEthClient.EthClient())
+	l1BusAddress, _ := managementContract.MessageBus(&bind.CallOpts{})
 
 	erc20ContractAddr := make([]*common.Address, 0)
 	for _, token := range wallets.Tokens {
-		address, err := DeployContract(tmpEthClient, token.L1Owner, erc20contract.L1BytecodeWithDefaultSupply(string(token.Name)))
+		address, err := DeployContract(tmpEthClient, token.L1Owner, erc20contract.L1BytecodeWithDefaultSupply(string(token.Name), l1BusAddress, *mgmtContractAddr))
 		if err != nil {
 			panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
 		}
@@ -88,7 +80,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		ethClients[i] = createEthClientConnection(int64(i), gethNetwork.WebSocketPorts[i])
 	}
 
-	return mgmtContractAddr, erc20ContractAddr[0], erc20ContractAddr[1], ethClients, gethNetwork
+	return mgmtContractAddr, erc20ContractAddr[0], erc20ContractAddr[1], &l1BusAddress, ethClients, gethNetwork
 }
 
 func StopGethNetwork(clients []ethadapter.EthClient, netw *gethnetwork.GethNetwork) {
@@ -131,7 +123,7 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 			if receipt.Status != types.ReceiptStatusSuccessful {
 				return nil, errors.New("unable to deploy contract")
 			}
-			testlog.Logger().Info(fmt.Sprintf("Contract successfully deployed to %s", receipt.ContractAddress))
+			testlog.Logger().Info(fmt.Sprintf("Contract successfully deployed to %s in tx %s", receipt.ContractAddress, receipt.TxHash.Hex()))
 			return &receipt.ContractAddress, nil
 		}
 

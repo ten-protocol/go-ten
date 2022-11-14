@@ -270,11 +270,13 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	return block
 }
 
-func (s *server) decodeReceipts(encodedReceipts []byte) types.Receipts {
-	receipts := make(types.Receipts, 0)
-	err := rlp.DecodeBytes(encodedReceipts, receipts)
+func (s *server) decodeReceipts(encodedReceipts []byte) []*types.ReceiptForStorage {
+	receipts := make([]*types.ReceiptForStorage, 0)
+
+	err := rlp.DecodeBytes(encodedReceipts, &receipts)
 	if err != nil {
-		s.logger.Info("failed to decode receipts sent to enclave", log.ErrKey, err)
+		s.logger.Crit("failed to decode receipts sent to enclave", log.ErrKey, err)
 	}
+
 	return receipts
 }

@@ -117,6 +117,7 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		rc.faucet.GetGenesisRoot(rc.storage),
 	)
 
+	//todo::
 	//Probably not the best place to put this, but ...
 	if err := rc.mempool.AddMempoolTx(rc.crossChainManager.GenerateMessageBusDeployTx()); err != nil {
 		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
@@ -321,7 +322,6 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		}
 		rec, foundReceipt := result.(*types.Receipt)
 		if foundReceipt {
-			rc.logger.Info(fmt.Sprintf("Executed transaction %s ", tx.Hash().Hex()))
 			executedTransactions = append(executedTransactions, tx)
 			txReceipts = append(txReceipts, rec)
 		} else {
@@ -358,6 +358,8 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	syntheticTxs := rc.crossChainManager.GetSyntheticTransactionsBetween(
 		rc.storage.Proof(rc.storage.ParentRollup(rollup)),
 		rc.storage.Proof(rollup))
+
+	rc.logger.Info(fmt.Sprintf("[CrossChain] Deposits extracted - %d; Synthetic Transactions extracted - %d", len(depositTxs), len(syntheticTxs)))
 
 	syntheticTransactionsResponses := evm.ExecuteTransactions(syntheticTxs, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
@@ -486,7 +488,7 @@ func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) 
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) SubmitBlock(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) SubmitBlock(block types.Block, receipts []*types.ReceiptForStorage, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
@@ -510,15 +512,15 @@ func (rc *RollupChain) SubmitBlock(block types.Block, receipts types.Receipts, i
 		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
 	}
 
+	//todo:: process error?
+	rc.crossChainManager.ProcessSyntheticTransactions(&block, receipts)
+
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
 	blockState := rc.updateState(&block)
 	if blockState == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return rc.noBlockStateBlockSubmissionResponse(&block), nil
 	}
-
-	//todo:: process error?
-	rc.crossChainManager.ProcessSyntheticTransactions(&block, receipts)
 
 	logs := []*types.Log{}
 	fetchedLogs, found := rc.storage.FetchLogs(block.Hash())
@@ -606,7 +608,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	// Postprocessing - withdrawals
 	txReceiptsMap := toReceiptMap(txReceipts)
 	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
-	r.Header.CrossChainMessages = rc.crossChainManager.ExtractMessagesFromReceipts(txReceipts)
+	//r.Header.CrossChainMessages = rc.crossChainManager.ExtractMessagesFromReceipts(txReceipts)
 
 	crossChainBind := rc.storage.Proof(r)
 

@@ -3,9 +3,11 @@ package networkmanager
 import (
 	"os"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -17,19 +19,6 @@ import (
 
 // DeployContract deploys a management contract or ERC20 contract to the L1 network, and prints its address.
 func DeployContract(config Config, logger gethlog.Logger) {
-	var contractBytes []byte
-	switch config.Command { //nolint:exhaustive
-	case DeployMgmtContract:
-		bytecode, err := managementcontract.Bytecode()
-		if err != nil {
-			panic(err)
-		}
-		contractBytes = bytecode
-	case DeployERC20Contract:
-		contractBytes = erc20contract.L1BytecodeWithDefaultSupply(config.erc20Token)
-	default:
-		panic("unrecognised command type")
-	}
 
 	hostConfig := obscuroconfig.HostConfig{
 		PrivateKeyString: config.privateKeys[0], // We deploy the contract using the first private key.
@@ -39,6 +28,23 @@ func DeployContract(config Config, logger gethlog.Logger) {
 	l1Client, err := ethadapter.NewEthClient(config.l1NodeHost, config.l1NodeWebsocketPort, config.l1RPCTimeout, common.HexToAddress("0x0"), logger)
 	if err != nil {
 		panic(err)
+	}
+
+	managementContract, _ := ManagementContract.NewManagementContract(config.mgmtContractAddress, l1Client.EthClient())
+	l1BusAddress, _ := managementContract.MessageBus(&bind.CallOpts{})
+
+	var contractBytes []byte
+	switch config.Command { //nolint:exhaustive
+	case DeployMgmtContract:
+		bytecode, err := managementcontract.Bytecode()
+		if err != nil {
+			panic(err)
+		}
+		contractBytes = bytecode
+	case DeployERC20Contract:
+		contractBytes = erc20contract.L1BytecodeWithDefaultSupply(config.erc20Token, l1BusAddress, config.mgmtContractAddress)
+	default:
+		panic("unrecognised command type")
 	}
 
 	l1Wallet := wallet.NewInMemoryWalletFromConfig(hostConfig, logger)

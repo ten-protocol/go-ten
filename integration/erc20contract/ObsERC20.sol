@@ -2,17 +2,56 @@
 pragma solidity ^0.8.4;
 
 import "libs/openzeppelin/contracts/token/ERC20/ERC20.sol";
+//import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+interface Structs {
+    struct CrossChainMessage {
+        address sender;
+        uint64  sequence;
+        uint32  nonce;
+        bytes   topic;
+        bytes   payload;
+    }
+}
+
+interface IMessageBus {
+
+    function publishMessage(
+        uint32 nonce,
+        bytes memory topic,
+        bytes memory payload, 
+        uint8 consistencyLevel
+    ) external returns (uint64 sequence);
+
+    function verifyMessageFinalized(Structs.CrossChainMessage calldata crossChainMessage) external view returns (bool);
+    
+    function getMessageTimeOfFinality(Structs.CrossChainMessage calldata crossChainMessage) external view returns (uint256);
+
+    function submitOutOfNetworkMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) external;
+
+   /* function queryMessages(
+        address      sender,
+        bytes memory topic,
+        uint256      fromIndex,
+        uint256      toIndex
+    ) external returns (bytes [] memory); */
+}
 // This is an implementation of a canonical ERC20 as used in the Obscuro network
 // where access to data has to be restricted.
 contract ObsERC20 is ERC20 {
 
+    address bridge = 0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa;
+
+    IMessageBus bus;
+
     constructor(
         string memory name,
         string memory symbol,
-        uint256 initialSupply
+        uint256 initialSupply,
+        address busAddress
     )  ERC20(name, symbol) {
         _mint(msg.sender, initialSupply);
+        bus = IMessageBus(busAddress);
     }
 
     function balanceOf(address account) public view virtual override returns (uint256) {
@@ -48,5 +87,15 @@ contract ObsERC20 is ERC20 {
         }
 
         revert("Not allowed to read the allowance");
+    }
+
+    function _afterTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {
+        if (to == bridge) {
+            bus.publishMessage(uint32(block.number), "Withdraws", abi.encode(from,amount), 0);
+        }
     }
 }

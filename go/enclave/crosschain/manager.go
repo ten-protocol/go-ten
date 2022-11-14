@@ -35,11 +35,11 @@ type Manager struct {
 type CrossChainManager interface {
 	GenerateMessageBusDeployTx() *types.Transaction
 	//	SetL2MessageBusAddress(addr *gethcommon.Address)
-	ProcessSyntheticTransactions(block *types.Block, receipts []*types.Receipt) error
-	GetSyntheticTransactions(block *types.Block, receipts []*types.Receipt) types.Transactions
+	ProcessSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) error
+	GetSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) types.Transactions
 	GetSyntheticTransactionsBetween(fromBlock *types.Block, toBlock *types.Block) types.Transactions
-	ExtractMessagesFromReceipts(receipts []*types.Receipt) []MessageBus.StructsCrossChainMessage
-	ExtractMessagesFromReceipt(receipt *types.Receipt) []MessageBus.StructsCrossChainMessage
+	ExtractMessagesFromReceipts(receipts []*types.ReceiptForStorage) []MessageBus.StructsCrossChainMessage
+	ExtractMessagesFromReceipt(receipt *types.ReceiptForStorage) []MessageBus.StructsCrossChainMessage
 }
 
 func New(
@@ -60,6 +60,8 @@ func New(
 		//log error todo::
 		return nil
 	}
+
+	txOpts.Nonce = big.NewInt(1)
 
 	return &Manager{
 		l1MessageBus: *l1BusAddress,
@@ -86,14 +88,17 @@ func (m *Manager) GenerateMessageBusDeployTx() *types.Transaction {
 		panic(err)
 	}
 
-	m.l2MessageBus = crypto.CreateAddress(m.txOpts.From, 0)
+	m.l2MessageBus = crypto.CreateAddress(m.txOpts.From, 0) //we can just predict the address without waiting for the receipt.
 
-	m.logger.Info(fmt.Sprintf("Generated synthetic deployment transaction for the MessageBus contract - TX HASH: %s", stx.Hash().Hex()))
+	m.logger.Info(fmt.Sprintf("[CrossChain] Generated synthetic deployment transaction for the MessageBus contract - TX HASH: %s", stx.Hash().Hex()))
 
 	return stx
 }
 
-func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts []*types.Receipt) error {
+func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) error {
+	if len(receipts) > 0 {
+		m.logger.Info(fmt.Sprintf("[CrossChain] Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)))
+	}
 
 	transactions := m.GetSyntheticTransactions(block, receipts)
 	m.storage.StoreSyntheticTransactions(block.Hash(), transactions)
@@ -140,16 +145,17 @@ func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBloc
 	return transactions
 }
 
-func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types.Receipt) types.Transactions {
+func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) types.Transactions {
 	transactions := make(types.Transactions, 0)
 
 	if len(receipts) == 0 {
 		return transactions
 	}
 
-	if !VerifyReceiptHash(block, receipts) {
+	/*if !VerifyReceiptHash(block, receipts) {
+		m.logger.Crit("Receipts mismatch!")
 		return transactions
-	}
+	}*/
 
 	messages := m.ExtractMessagesFromReceipts(receipts)
 
@@ -172,13 +178,18 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types
 		if err != nil {
 			panic(err)
 		}
+		m.logger.Info(fmt.Sprintf("[CrossChain] Creating synthetic tx for cross chain message to L2. From: %s Topic: %s Payload %s",
+			message.Sender.Hex(),
+			string(message.Topic),
+			string(message.Payload)))
+
 		transactions = append(transactions, stx)
 	}
 
 	return transactions
 }
 
-func (m *Manager) ExtractMessagesFromReceipts(receipts []*types.Receipt) []MessageBus.StructsCrossChainMessage {
+func (m *Manager) ExtractMessagesFromReceipts(receipts []*types.ReceiptForStorage) []MessageBus.StructsCrossChainMessage {
 	messages := make([]MessageBus.StructsCrossChainMessage, 0)
 
 	for _, receipt := range receipts {
@@ -189,7 +200,7 @@ func (m *Manager) ExtractMessagesFromReceipts(receipts []*types.Receipt) []Messa
 	return messages
 }
 
-func (m *Manager) ExtractMessagesFromReceipt(receipt *types.Receipt) []MessageBus.StructsCrossChainMessage {
+func (m *Manager) ExtractMessagesFromReceipt(receipt *types.ReceiptForStorage) []MessageBus.StructsCrossChainMessage {
 	if receiptMightContainPublishedMessage(receipt) {
 		events := m.extractPublishedMessages(receipt)
 		return convertToMessages(events)
@@ -198,8 +209,10 @@ func (m *Manager) ExtractMessagesFromReceipt(receipt *types.Receipt) []MessageBu
 	return make([]MessageBus.StructsCrossChainMessage, 0)
 }
 
-func (m *Manager) extractPublishedMessages(receipt *types.Receipt) []MessageBus.MessageBusLogMessagePublished {
+func (m *Manager) extractPublishedMessages(receipt *types.ReceiptForStorage) []MessageBus.MessageBusLogMessagePublished {
 	events := make([]MessageBus.MessageBusLogMessagePublished, 0)
+
+	m.logger.Info(fmt.Sprintf("[CrossChain] Extracting %d logs from receipt for %s", len(receipt.Logs), receipt.TxHash.Hex()))
 
 	for _, log := range receipt.Logs {
 		//event, err := m.l2MessageBus.ParseLogMessagePublished(*log)
@@ -222,12 +235,14 @@ func (m *Manager) extractPublishedMessage(log *types.Log) *MessageBus.MessageBus
 	//Unpack only from our system contracts.
 	//Otherwise someone can just post a clone contract that matches event sig and token goes puf.
 	//todo:: perhaps dont convert to hex everytime
-	if log.Address.Hex() != m.l1MessageBus.Hex() || log.Address.Hex() != m.l2MessageBus.Hex() {
+	if (log.Address.Hex() != m.l1MessageBus.Hex()) && (log.Address.Hex() != m.l2MessageBus.Hex()) {
 		return nil
 	}
 
+	m.logger.Info(fmt.Sprintf("[CrossChain] Event from message bus %s found!", log.Address.Hex()))
+
 	var event MessageBus.MessageBusLogMessagePublished
-	m.contractABI.UnpackIntoInterface(event, "LogMessagePublished", log.Data)
+	m.contractABI.UnpackIntoInterface(&event, "LogMessagePublished", log.Data)
 	return &event
 }
 
@@ -236,7 +251,7 @@ func VerifyReceiptHash(block *types.Block, receipts types.Receipts) bool {
 	return block.ReceiptHash().Hex() == hash.Hex()
 }
 
-func receiptMightContainPublishedMessage(receipt *types.Receipt) bool {
+func receiptMightContainPublishedMessage(receipt *types.ReceiptForStorage) bool {
 	//todo:: check bloom filter of receipt after figuring out how :|
 	return true
 }

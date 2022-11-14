@@ -170,7 +170,9 @@ func getContractCode(cfg *Config) ([]byte, error) {
 		tokenName := cfg.ConstructorParams[0]
 		tokenSymbol := cfg.ConstructorParams[1]
 		supply := cfg.ConstructorParams[2]
-		return erc20contract.L1Bytecode(tokenName, tokenSymbol, supply), nil
+		busAddr := common.HexToAddress(cfg.ConstructorParams[3])
+		mgmtAddr := common.HexToAddress(cfg.ConstructorParams[4])
+		return erc20contract.L1Bytecode(tokenName, tokenSymbol, supply, busAddr, mgmtAddr), nil
 
 	default:
 		return nil, fmt.Errorf("unrecognised contract %s - no bytecode configured for that contract name", cfg.ContractName)

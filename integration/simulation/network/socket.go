@@ -38,7 +38,7 @@ func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 
 func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
-	params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
+	params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address, params.MessageBusAddr, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
 		params.StartPort,
 		params.NumberOfNodes,
@@ -48,6 +48,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr, testlog.Logger())
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
 
+	fmt.Println(params.MessageBusAddr.Hex())
 	// Start the enclaves
 	startRemoteEnclaveServers(params)
 

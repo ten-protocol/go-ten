@@ -8,23 +8,24 @@ contract MessageBus is IMessageBus {
 
     function messageFee() virtual internal returns (uint256) { return 0; }
 
-    event LogMessagePublished(address indexed sender, uint64 sequence, uint32 nonce, bytes topic, bytes payload, uint8 consistencyLevel);
+    event LogMessagePublished(address sender, uint64 sequence, uint32 nonce, uint32 topic, bytes payload, uint8 consistencyLevel);
 
     mapping (bytes32 => uint256) messageFinalityTimestamps;
-    mapping ( address => mapping ( bytes => Structs.CrossChainMessage[] ) ) messages; 
+    mapping ( address => mapping ( uint32 => Structs.CrossChainMessage[] ) ) messages; 
 
 
     function publishMessage(
         uint32 nonce,
-        bytes memory topic,
-        bytes memory payload, 
+        uint32 topic,
+        bytes calldata payload, 
         uint8 consistencyLevel
-    ) external payable override returns (uint64 sequence) {
-        require(msg.value >= messageFee());
+    ) override external returns (uint64 sequence) {
+        //require(msg.value >= messageFee());
         
-        sequence = 1;
-
+        sequence = 0;
         emit LogMessagePublished(msg.sender, sequence, nonce, topic, payload, consistencyLevel);
+        sequence = 1;
+        return sequence;
     }
 
     function verifyMessageFinalized(Structs.CrossChainMessage calldata crossChainMessage) external view override returns (bool) 
