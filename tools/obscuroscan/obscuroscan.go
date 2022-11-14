@@ -20,7 +20,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -68,6 +68,7 @@ var staticFiles embed.FS
 type Obscuroscan struct {
 	server      *http.Server
 	client      rpc.Client
+	obsClient   *obsclient.ObsClient
 	contractABI abi.ABI
 	logger      gethlog.Logger
 }
@@ -88,12 +89,16 @@ func NewObscuroscan(address string, logger gethlog.Logger) *Obscuroscan {
 	if err != nil {
 		panic(err)
 	}
+	obsClient := obsclient.NewObsClient(client)
+
 	contractABI, err := abi.JSON(strings.NewReader(mgmtcontractlib.MgmtContractABI))
 	if err != nil {
 		panic("could not parse management contract ABI to decrypt rollups")
 	}
+
 	return &Obscuroscan{
 		client:      client,
+		obsClient:   obsClient,
 		contractABI: contractABI,
 		logger:      logger,
 	}
@@ -146,7 +151,7 @@ func (o *Obscuroscan) Shutdown() {
 
 // Retrieves the number of published rollups.
 func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
-	numOfRollups, err := o.getLatestRollupNumber()
+	numOfRollups, err := o.obsClient.RollupNumber()
 	if err != nil {
 		o.logger.Error("Could not fetch number of rollups.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch number of rollups.")
@@ -182,21 +187,21 @@ func (o *Obscuroscan) getNumTransactions(resp http.ResponseWriter, _ *http.Reque
 
 // Retrieves the average rollup time, as (time last rollup - time first rollup)/number of rollups
 func (o *Obscuroscan) getRollupTime(resp http.ResponseWriter, _ *http.Request) {
-	numLatestRollup, err := o.getLatestRollupNumber()
+	numLatestRollup, err := o.obsClient.RollupNumber()
 	if err != nil {
 		o.logger.Error("Could not fetch latest rollup number.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch average rollup time.")
 		return
 	}
 
-	firstRollupHeader, err := o.getRollupHeaderByNumber(0)
+	firstRollupHeader, err := o.obsClient.RollupHeaderByNumber(big.NewInt(0))
 	if err != nil || firstRollupHeader == nil {
 		o.logger.Error("Could not fetch first rollup.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch average rollup time.")
 		return
 	}
 
-	latestRollupHeader, err := o.getRollupHeaderByNumber(numLatestRollup)
+	latestRollupHeader, err := o.obsClient.RollupHeaderByNumber(big.NewInt(int64(numLatestRollup)))
 	if err != nil || latestRollupHeader == nil {
 		o.logger.Error("Could not fetch latest rollup.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch average rollup time.")
@@ -214,7 +219,7 @@ func (o *Obscuroscan) getRollupTime(resp http.ResponseWriter, _ *http.Request) {
 
 // Retrieves the last five rollup numbers.
 func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request) {
-	latestRollupNum, err := o.getLatestRollupNumber()
+	latestRollupNum, err := o.obsClient.RollupNumber()
 	if err != nil {
 		o.logger.Error("Could not fetch latest rollups.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch latest rollups.")
@@ -336,9 +341,9 @@ func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http
 		txHash := gethcommon.HexToHash(buffer.String())
 
 		err = o.client.Call(&rollup, rpc.GetRollupForTx, txHash)
-		if err != nil {
+		if err != nil || rollup.Header == nil {
 			o.logger.Error("could not retrieve rollup.", log.ErrKey, err)
-			logAndSendErr(resp, "Could not fetch rollup.")
+			logAndSendErr(resp, fmt.Sprintf("Could not fetch rollup for transaction %s.", txHash))
 			return
 		}
 	} else {
@@ -346,13 +351,13 @@ func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http
 		rollupNumber, err := strconv.Atoi(buffer.String())
 		if err != nil {
 			o.logger.Error(fmt.Sprintf("could not parse \"%s\" as an integer", buffer.String()))
-			logAndSendErr(resp, "Could not fetch rollup.")
+			logAndSendErr(resp, fmt.Sprintf("Could not parse number %s.", buffer.String()))
 			return
 		}
 		rollup, err = o.getRollupByNumber(int64(rollupNumber))
 		if err != nil {
 			o.logger.Error("Could not fetch rollup.", log.ErrKey, err)
-			logAndSendErr(resp, "Could not fetch rollup.")
+			logAndSendErr(resp, fmt.Sprintf("Could not fetch rollup for number %d.", rollupNumber))
 			return
 		}
 	}
@@ -360,13 +365,13 @@ func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http
 	jsonRollup, err := json.Marshal(rollup)
 	if err != nil {
 		o.logger.Error("could not return rollup to client.", log.ErrKey, err)
-		logAndSendErr(resp, "Could not fetch rollup.")
+		logAndSendErr(resp, "Could not marshal rollup to JSON.")
 		return
 	}
 	_, err = resp.Write(jsonRollup)
 	if err != nil {
 		o.logger.Error("could not return rollup to client.", log.ErrKey, err)
-		logAndSendErr(resp, "Could not fetch rollup.")
+		logAndSendErr(resp, "Could not return rollup to client.")
 		return
 	}
 }
@@ -470,48 +475,24 @@ func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Reques
 	}
 }
 
-// Returns the number of the latest rollup.
-func (o *Obscuroscan) getLatestRollupNumber() (int64, error) {
-	var rollupHeader *common.Header
-	err := o.client.Call(&rollupHeader, rpc.GetHeadRollupHeader)
-	if err != nil {
-		return 0, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
-	}
-
-	latestRollupNum := rollupHeader.Number.Int64()
-	return latestRollupNum, nil
-}
-
-// Returns the rollup header with the given number.
-func (o *Obscuroscan) getRollupHeaderByNumber(rollupNumber int64) (*common.Header, error) {
-	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
-	rollupNumberHex := hexutil.EncodeUint64(uint64(rollupNumber))
-	var rollupHeader *common.Header
-	err := o.client.Call(&rollupHeader, rpc.GetRollupByNumber, rollupNumberHex, true)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", rollupNumber, err)
-	}
-	return rollupHeader, nil
-}
-
 // Returns the rollup with the given number.
 func (o *Obscuroscan) getRollupByNumber(rollupNumber int64) (*common.ExtRollup, error) {
 	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
-	rollupHeader, err := o.getRollupHeaderByNumber(rollupNumber)
+	rollupHeader, err := o.obsClient.RollupHeaderByNumber(big.NewInt(rollupNumber))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", rollupNumber, err)
 	}
 
-	rollupHash := rollupHeader.Hash()
-	if rollupHash == (gethcommon.Hash{}) {
-		return nil, fmt.Errorf("rollup was retrieved but hash was nil")
-	}
-
 	var rollup *common.ExtRollup
-	err = o.client.Call(&rollup, rpc.GetRollup, rollupHash)
+	err = o.client.Call(&rollup, rpc.GetRollup, rollupHeader.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup. Cause: %w", err)
 	}
+
+	if rollup.Header == nil {
+		return nil, fmt.Errorf("retrieved rollup had a nil header")
+	}
+
 	return rollup, nil
 }
 
