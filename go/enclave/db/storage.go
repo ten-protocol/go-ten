@@ -200,6 +200,7 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 }
 
 func (s *storageImpl) HealthCheck() (bool, error) {
+	// TODO refactor this when the storage method signatures are changed and errors are surfaced
 	headRollup := s.FetchHeadRollup()
 	return headRollup != nil, nil
 }
