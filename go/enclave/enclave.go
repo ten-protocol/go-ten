@@ -725,11 +725,16 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethr
 
 // HealthCheck returns whether the enclave is deemed healthy
 func (e *enclaveImpl) HealthCheck() (bool, error) {
-	if e.storage.FetchHeadState() == nil {
-		// simple db healthcheck
+	// check the storage health
+	storageHealthy, err := e.storage.HealthCheck()
+	if err != nil {
+		// simplest iteration, log the error and just return that it's not healthy
+		e.logger.Error("unable to HealthCheck enclave storage", "err", err)
 		return false, nil
 	}
-	return true, nil
+	// TODO enclave healthcheck operations
+	enclaveHealthy := true
+	return storageHealthy && enclaveHealthy, nil
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

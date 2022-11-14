@@ -199,6 +199,11 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 	return s.IsBlockAncestor(p, maybeAncestor)
 }
 
+func (s *storageImpl) HealthCheck() (bool, error) {
+	headRollup := s.FetchHeadRollup()
+	return headRollup != nil, nil
+}
+
 func (s *storageImpl) assertSecretAvailable() {
 	// TODO uncomment this
 	//if s.FetchSecret() == nil {

@@ -57,6 +57,7 @@ func (s *Simulation) Start() {
 	s.prefundObscuroAccounts() // Prefund every L2 wallet
 	s.deployObscuroERC20s()    // Deploy the Obscuro HOC and POC ERC20 contracts
 	s.prefundL1Accounts()      // Prefund every L1 wallet
+	s.checkHealthStatus()      // Checks the nodes health status
 
 	timer := time.Now()
 	fmt.Printf("Starting injection\n")
@@ -203,6 +204,14 @@ func (s *Simulation) prefundL1Accounts() {
 
 		s.Stats.Deposit(initialBalance)
 		go s.TxInjector.TxTracker.trackL1Tx(txData)
+	}
+}
+
+func (s *Simulation) checkHealthStatus() {
+	for _, client := range s.RPCHandles.ObscuroClients {
+		if healthy, err := client.Health(); !healthy || err != nil {
+			panic("Client is not healthy")
+		}
 	}
 }
 
