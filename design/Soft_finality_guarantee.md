@@ -78,29 +78,25 @@ the new branch, which will then be distributed.
 
 The difference from POBI is that LBs are not published to a management contract in the L1, so they are no longer rejected 
 by a "source of truth" authority the moment they are no longer linked to a block found on the canonical chain. 
-
 They are only distributed from the sequencer to the other L2 nodes.
+This can lead to chaotic results and hard-to-enforce behaviour. Basically, the sequencer could use the re-org reason to generate competing LBs,
+and attempt some MEV, without being punished.
 
-This can lead to chaotic results and hard-to-enforce behaviour. The sequencer could use the re-org reason to generate competing LBs,
-and attempt some MEV.
-
-Under this option, the result of executing a transaction will entirely depend on what happens on the L1.
-
-This could be better because the re-org on the L1 might have no logical relationship whatsoever with the L2 transaction.
+From a UX pov, the soft finality guarantee is not great. If there is an L1 re-org, then the result of a transaction that
+has received a response already could change.
 
 
 ### Option 3 - Link light batches to blocks, but guarantee the L2 ordering
 
-This option attempts to improve on the previous one by reducing the impact of L1 reorgs.
+This option attempts to improve on the previous one by reducing the impact of L1 reorgs, which have no logical relationship whatsoever with the L2 transactions.
 
-The critical insight is that the sequencer *can* offer guarantees over the L2 transactions' order.
-
-Instead of being challenged over the result of executing transactions, the sequencer can be challenged over the root hash 
-of the L2 transactions alone.
+The critical insight is that the sequencer *can* offer guarantees over the L2 transactions' order, and can be punished if
+it breaks them.
+Basically, instead of being challenged over the result of executing transactions, the sequencer can be challenged over the root hash 
+of the list of L2 transactions alone.
 
 A sequencer will be able to generate sibling LBs in case an L1 fork is happening, but only as long as the order of the L2 
-transactions are preserved.
-
+transactions is preserved.
 
 ```go
 type LightBatchHeader struct{
@@ -113,17 +109,20 @@ type LightBatchHeader struct{
 }
 ```
 
-There can be sibling LBs (with the same `Number` and `ParentLB`) with the same `L2TxsHash` but different `L1BlockHash`. 
+There can be sibling LBs (same `Number` and `ParentLB`) with the same `L2TxsHash` but different `L1BlockHash`. 
 
-This option offers a stronger finality guarantee. A transaction can never be replaced with a competing one, but it might result
-in a different outcome in the case, a deposit transaction was processed or not before it.
+This option offers a much stronger finality guarantee. An L2 transaction can never be replaced with a competing one, 
+but it might result in a different outcome only in the case a deposit L1 transaction was processed or not before it.
 
 The sibling LBs will result in the same execution result for the vast majority of transactions. 
+
+If a user is not actively trying to double spend a deposit on the L1, then the odds that an L1 re-org have an impact
+on the result of executing their transaction are minimal. 
 
 
 ### Option 4 - Guarantee the L2 ordering, but link batches to deposit messages
 
-To improve the guarantee even further, we can reduce the reasons for creating sibling LBs to only the situation where
+Another possible improvement is to reduce the reasons for creating sibling LBs to only the situation where
 there is an actual change in the ordering of L1 messages (deposits).
 
 The insight is that instead of linking the batch to an L1 block, we can link a batch to a list of L1 messages.
@@ -142,17 +141,16 @@ type LightBatchHeader struct{
 }
 ```
 
-The drawback of this solution is some complexity. As the validators process blocks and batches, they might reach different L1MsgsHash, which needs handling.
+The drawback of this solution is some logical complexity. As the validators process blocks and batches, they might reach different L1MsgsHash, which needs handling.
 
-A transaction can never be replaced with a competing one, but it might result in a different outcome if there is a deliberate
-double-spend attack on the L1 for a deposit transaction. The other accounts should be fine.
-
+Same as in Option 3, an L2 transaction can never be replaced with a competing one, but it might result in a different outcome only if there is a deliberate
+double-spend attack on the L1 by the same account.  
 
 ## Conclusion
 
-The last option has the best tradeoffs.
+The last two options provide the best UX.
 The sequencer guarantees that it will consistently execute L2 transactions in the same order and batches, even if there are reorgs on the L1.
-If there is an L1 re-org, but there are no L2 messages, or the L2 messages are included in the same order, then the finality guarantee is full.
+If there is an L1 re-org, but there are no L2 deposits, or if the L2 deposits are included in the same order, then the finality guarantee is complete.
 
 The only case where finality can change is when there is a deliberate double-spend attack on the L1, and this will only affect
 the user who is directly involved in that attack.
