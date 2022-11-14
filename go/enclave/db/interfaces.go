@@ -50,7 +50,7 @@ type RollupResolver interface {
 	// FetchGenesisRollup returns the rollup genesis
 	FetchGenesisRollup() *core.Rollup
 	// FetchHeadRollup returns the current head rollup
-	FetchHeadRollup() *core.Rollup
+	FetchHeadRollup() (*core.Rollup, error)
 }
 
 type BlockStateStorage interface {
