@@ -23,7 +23,7 @@ type Header struct {
 	ParentHash  L2RootHash
 	Agg         common.Address
 	Nonce       types.BlockNonce // Nonce ensure compatibility with ethereum
-	L1Proof     L1RootHash       // the L1 block where the Parent was published
+	L1Proof     L1RootHash       // the L1 block used by the enclave to generate the current rollup
 	Root        StateRoot
 	TxHash      common.Hash // todo - include the synthetic deposits
 	Number      *big.Int    // the rollup height
