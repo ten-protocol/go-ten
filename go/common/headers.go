@@ -22,21 +22,21 @@ var hasherPool = sync.Pool{
 type Header struct {
 	// The fields present in Geth's `types/Header` struct.
 	ParentHash  L2RootHash
-	UncleHash   common.Hash    `json:"sha3Uncles"`
-	Coinbase    common.Address `json:"miner"`
+	UncleHash   common.Hash
+	Coinbase    common.Address
 	Root        StateRoot
 	TxHash      common.Hash // todo - include the synthetic deposits
 	ReceiptHash common.Hash
 	Bloom       types.Bloom
-	Difficulty  *big.Int `json:"difficulty"`
-	Number      *big.Int // the rollup height
-	GasLimit    uint64   `json:"gasLimit"`
-	GasUsed     uint64   `json:"gasUsed"`
-	Time        uint64   `json:"timestamp"`
+	Difficulty  *big.Int
+	Number      *big.Int
+	GasLimit    uint64
+	GasUsed     uint64
+	Time        uint64
 	Extra       []byte
-	MixDigest   common.Hash `json:"mixHash"`
+	MixDigest   common.Hash
 	Nonce       types.BlockNonce
-	BaseFee     *big.Int `json:"baseFeePerGas"`
+	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
 	Agg         common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?

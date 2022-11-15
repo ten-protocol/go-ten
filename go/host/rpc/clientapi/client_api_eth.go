@@ -182,29 +182,29 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 func headerWithHashesToMap(headerWithHashes *common.HeaderWithTxHashes) map[string]interface{} {
 	header := headerWithHashes.Header
 	return map[string]interface{}{
-		"number":           header.Number.Uint64(),
-		"hash":             header.CalcHash(),
 		"parentHash":       header.ParentHash,
-		"nonce":            header.Nonce,
-		"logsBloom":        header.Bloom,
+		"sha3Uncles":       header.UncleHash,
+		"miner":            header.Coinbase,
 		"stateRoot":        header.Root,
-		"receiptsRoot":     header.ReceiptHash,
-		"miner":            header.Agg,
-		"coinbase":         header.Agg,
-		"l1Proof":          header.L1Proof,
-		"extraData":        hexutil.Bytes(header.Extra),
 		"transactionsRoot": header.TxHash,
-		"transactions":     headerWithHashes.TxHashes,
+		"receiptsRoot":     header.ReceiptHash,
+		"logsBloom":        header.Bloom,
+		"difficulty":       header.Difficulty,
+		"number":           header.Number.Uint64(),
+		"gasLimit":         header.GasLimit,
+		"gasUsed":          header.GasUsed,
+		"timestamp":        header.Time,
+		"extraData":        hexutil.Bytes(header.Extra),
+		"mixHash":          header.MixDigest,
+		"nonce":            header.Nonce,
+		"baseFeePerGas":    header.BaseFee,
 
-		"sha3Uncles":    header.UncleHash,
-		"difficulty":    header.Difficulty,
-		"gasLimit":      header.GasLimit,
-		"gasUsed":       header.GasUsed,
-		"timestamp":     header.Time,
-		"mixHash":       header.MixDigest,
-		"baseFeePerGas": header.BaseFee,
-
+		"agg":         header.Agg,
+		"l1Proof":     header.L1Proof,
 		"withdrawals": header.Withdrawals,
+
+		"hash":         header.CalcHash(),
+		"transactions": headerWithHashes.TxHashes,
 	}
 }
 
