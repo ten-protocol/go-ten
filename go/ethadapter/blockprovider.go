@@ -17,8 +17,8 @@ import (
 type blockProviderStatus int32
 
 const (
-	statusCodeStopped blockProviderStatus = iota
-	statusCodeRunning
+	stopped blockProviderStatus = iota
+	running
 )
 
 const (
@@ -67,16 +67,16 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (<-chan *ty
 		height = one
 	}
 	e.streamCh = make(chan *types.Block)
-	if e.getStatus() == statusCodeStopped {
+	if e.getStatus() == stopped {
 		// if the provider is stopped (or not yet started) then we kick off the streaming processes
-		e.setStatus(statusCodeRunning)
+		e.setStatus(running)
 		go e.streamBlocks(height)
 	}
 	return e.streamCh, nil
 }
 
 func (e *EthBlockProvider) Stop() {
-	e.setStatus(statusCodeStopped)
+	e.setStatus(stopped)
 }
 
 func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
@@ -90,7 +90,7 @@ func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
 // - publishing a block, it blocks on the outbound channel until the block is consumed
 // - awaiting a live block, when consumer is completely up-to-date it waits for a live block to arrive
 func (e *EthBlockProvider) streamBlocks(fromHeight *big.Int) {
-	for e.getStatus() != statusCodeStopped {
+	for e.getStatus() != stopped {
 		// this will block if we're up-to-date with live blocks
 		block, err := e.fetchNextCanonicalBlock(fromHeight)
 		if err != nil {
