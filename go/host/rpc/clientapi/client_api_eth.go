@@ -57,10 +57,9 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
 	rollupHash, found := api.rollupNumberToRollupHash(number)
 	if !found {
-		return nil, fmt.Errorf("unable to fetch block with height %d", number)
+		return nil, fmt.Errorf("could not find rollup with height %d", number)
 	}
-	rollup, err := api.GetBlockByHash(ctx, *rollupHash, true)
-	return rollup, err
+	return api.GetBlockByHash(ctx, *rollupHash, true)
 }
 
 // GetBlockByHash returns the header of the rollup with the given hash.
@@ -70,7 +69,7 @@ func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, 
 	if !found {
 		return nil, nil //nolint:nilnil
 	}
-	return headerWithHashesToMap(rollupHeaderWithHashes), nil
+	return headerToMap(rollupHeaderWithHashes.Header), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -180,29 +179,29 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 
 // Maps an external rollup to a key/value map.
 // TODO - Include all the fields of the rollup header that do not exist in the Geth block headers as well (not just withdrawals).
-func headerWithHashesToMap(headerWithHashes *common.HeaderWithTxHashes) map[string]interface{} {
-	header := headerWithHashes.Header
+func headerToMap(header *common.Header) map[string]interface{} {
 	return map[string]interface{}{
-		"number":           header.Number.Uint64(),
-		"hash":             header.Hash(),
+		// The fields present in Geth's `types/Header` struct.
 		"parentHash":       header.ParentHash,
-		"nonce":            header.Nonce,
-		"logsBloom":        header.Bloom,
+		"sha3Uncles":       header.UncleHash,
+		"miner":            header.Coinbase,
 		"stateRoot":        header.Root,
-		"receiptsRoot":     header.ReceiptHash,
-		"miner":            header.Agg,
-		"extraData":        hexutil.Bytes(header.Extra),
 		"transactionsRoot": header.TxHash,
-		"transactions":     headerWithHashes.TxHashes,
+		"receiptsRoot":     header.ReceiptHash,
+		"logsBloom":        header.Bloom,
+		"difficulty":       header.Difficulty,
+		"number":           header.Number,
+		"gasLimit":         header.GasLimit,
+		"gasUsed":          header.GasUsed,
+		"timestamp":        header.Time,
+		"extraData":        header.Extra,
+		"mixHash":          header.MixDigest,
+		"nonce":            header.Nonce,
+		"baseFeePerGas":    header.BaseFee,
 
-		"sha3Uncles":    header.UncleHash,
-		"difficulty":    header.Difficulty,
-		"gasLimit":      header.GasLimit,
-		"gasUsed":       header.GasUsed,
-		"timestamp":     header.Time,
-		"mixHash":       header.MixDigest,
-		"baseFeePerGas": header.BaseFee,
-
+		// The custom Obscuro fields.
+		"agg":         header.Agg,
+		"l1Proof":     header.L1Proof,
 		"withdrawals": header.Withdrawals,
 	}
 }

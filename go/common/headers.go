@@ -20,29 +20,29 @@ var hasherPool = sync.Pool{
 // Header is a public / plaintext struct that holds common properties of rollups batches.
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Header struct {
+	// The fields present in Geth's `types/Header` struct.
 	ParentHash  L2RootHash
-	Agg         common.Address
-	Nonce       types.BlockNonce // Nonce ensure compatibility with ethereum
-	L1Proof     L1RootHash       // the L1 block used by the enclave to generate the current rollup
-	Root        StateRoot
-	TxHash      common.Hash // todo - include the synthetic deposits
-	Number      *big.Int    // the rollup height
-	Bloom       types.Bloom
-	ReceiptHash common.Hash
-	Extra       []byte
-	R, S        *big.Int // signature values
-	Withdrawals []Withdrawal
+	UncleHash   common.Hash    `json:"sha3Uncles"`
+	Coinbase    common.Address `json:"miner"`
+	Root        StateRoot      `json:"stateRoot"`
+	TxHash      common.Hash    `json:"transactionsRoot"` // todo - include the synthetic deposits
+	ReceiptHash common.Hash    `json:"receiptsRoot"`
+	Bloom       types.Bloom    `json:"logsBloom"`
+	Difficulty  *big.Int
+	Number      *big.Int
+	GasLimit    uint64
+	GasUsed     uint64
+	Time        uint64      `json:"timestamp"`
+	Extra       []byte      `json:"extraData"`
+	MixDigest   common.Hash `json:"mixHash"`
+	Nonce       types.BlockNonce
+	BaseFee     *big.Int
 
-	// Specification fields - not used for now but are expected to be available
-	UncleHash  common.Hash    `json:"sha3Uncles"`
-	Coinbase   common.Address `json:"miner"      `
-	Difficulty *big.Int       `json:"difficulty" `
-	GasLimit   uint64         `json:"gasLimit"  `
-	GasUsed    uint64         `json:"gasUsed"    `
-	Time       uint64         `json:"timestamp"   `
-	MixDigest  common.Hash    `json:"mixHash"`
-	// BaseFee was added by EIP-1559 and is ignored in legacy headers.
-	BaseFee *big.Int `json:"baseFeePerGas"`
+	// The custom Obscuro fields.
+	Agg         common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
+	L1Proof     L1RootHash     // the L1 block used by the enclave to generate the current rollup
+	R, S        *big.Int       // signature values
+	Withdrawals []Withdrawal
 }
 
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header.
