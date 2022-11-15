@@ -196,6 +196,7 @@ jobs:
                -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
                -e DD_LOGS_ENABLED=true \
                -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
+               -e DD_LOGS_CONFIG_AUTO_MULTI_LINE_DETECTION=true \
                -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
                -e DD_SITE="datadoghq.eu"  \
                -v /var/run/docker.sock:/var/run/docker.sock:ro \
