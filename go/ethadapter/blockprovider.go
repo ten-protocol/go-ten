@@ -37,9 +37,6 @@ type EthBlockProvider struct {
 	ethClient EthClient
 	ctx       context.Context
 
-	liveBlocks *LiveBlocksMonitor // process that streams live blocks to track head and notify waiting callers
-	liveCancel context.CancelFunc // cancel for the live monitor process
-
 	streamCh      chan *types.Block
 	runningStatus *int32 // 0 = stopped, 1 = running
 
@@ -51,15 +48,7 @@ type EthBlockProvider struct {
 
 func (e *EthBlockProvider) start() {
 	e.runningStatus = new(int32)
-	liveCtx, liveCancel := context.WithCancel(e.ctx)
-	e.liveCancel = liveCancel
-	e.liveBlocks = &LiveBlocksMonitor{
-		ctx:       liveCtx,
-		ethClient: e.ethClient,
-		logger:    e.logger,
-	}
 	go e.streamBlocks()
-	go e.liveBlocks.Start() // process to handle incoming stream of L1 blocks
 }
 
 // StartStreamingFromHash will look up the hash block, find the appropriate height (LCA if there have been forks) and
@@ -92,20 +81,12 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (<-chan *ty
 }
 
 func (e *EthBlockProvider) Stop() {
-	if e.liveCancel != nil {
-		e.liveCancel()
-	}
 	atomic.StoreInt32(e.runningStatus, int32(statusCodeStopped))
 }
 
 func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
-	if e.liveBlocks.latest == nil {
-		// live block streaming not working, we're probably running the in-mem simulation where that's not implemented.
-		// So check manually:
-		block := e.ethClient.FetchHeadBlock()
-		return h == block.Hash()
-	}
-	return h == e.liveBlocks.latest.Hash()
+	l1Head := e.ethClient.FetchHeadBlock()
+	return h == l1Head.Hash()
 }
 
 // streamBlocks should be run in a separate go routine. It will stream catch-up blocks from requested height until it
@@ -133,14 +114,12 @@ func (e *EthBlockProvider) streamBlocks() {
 func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 	if e.latestSent == nil {
 		blk, err := e.ethClient.BlockByNumber(e.streamFrom)
-		if err != nil {
-			return nil, fmt.Errorf("no block at requested height=%s - %w", e.streamFrom, err)
+		if err == nil {
+			return blk, nil
 		}
-
-		return blk, nil
 	}
 
-	head, err := e.liveBlocks.AwaitNewBlock(context.TODO(), e.latestSent.Hash())
+	head, err := e.AwaitNewBlock()
 	if err != nil {
 		return nil, fmt.Errorf("no new block found from stream - %w", err)
 	}
@@ -187,84 +166,56 @@ func (e *EthBlockProvider) latestCanonAncestor(blkHash gethcommon.Hash) (*types.
 	return blk, nil
 }
 
-// LiveBlocksMonitor is responsible for monitoring a stream of blocks from the L1 (and reconnecting etc. as needed).
-// It's always running in a separate process so the BlockProvider can turn to it for
-type LiveBlocksMonitor struct {
-	ctx       context.Context
-	logger    gethlog.Logger
-	ethClient EthClient
-
-	latest *types.Header
-
-	awaitChan chan *types.Header // recreated when user starts awaiting, receives true when new head
-}
-
-func (l *LiveBlocksMonitor) Start() {
-	blkHeadChan, blkSubs := l.ethClient.BlockListener()
-	for {
-		select {
-		case <-l.ctx.Done():
-			return
-
-		case blkHead := <-blkHeadChan:
-			l.logger.Trace("received new L1 head", "height", blkHead.Number, "hash", blkHead.Hash())
-			l.latest = blkHead
-			if l.awaitChan != nil {
-				l.awaitChan <- blkHead // notify
-			}
-
-		case err := <-blkSubs.Err():
-			l.logger.Error("L1 block monitoring error", log.ErrKey, err)
-			l.logger.Info("Restarting L1 block Monitoring...")
-			// this disconnect could result in a gap in the LiveBlocksMonitor queue, but the block provider is responsible
-			// for sending a coherent ordering of blocks and will look up blocks if parent not sent
-			blkHeadChan, blkSubs = l.ethClient.BlockListener()
-		}
-	}
-}
-
 // AwaitNewBlock takes a hash, it will block until it can return a head block with a different hash or error
 // (note: this can currently only be used by one caller at a time - not an issue for current usage)
-func (l *LiveBlocksMonitor) AwaitNewBlock(ctx context.Context, afterBlkHash gethcommon.Hash) (*types.Header, error) {
-	awaitChan := l.registerAwait()
-	streamTimeout := 1 * time.Minute
-	if l.latest == nil {
-		// note: the in-mem client does not support streaming from ethClient.BlockListener() currently, this allows it to still function
-		l.logger.Debug("latest is nil, blockprovider will timeout after 1sec without a block as client streaming may not be working")
-		streamTimeout = 1 * time.Second
-	} else {
-		l.logger.Trace("latest=%s, afterBl=%s\n", l.latest.Hash(), afterBlkHash)
+func (e *EthBlockProvider) AwaitNewBlock() (*types.Header, error) {
+	// first we check if we're up-to-date
+	l1Head := e.ethClient.FetchHeadBlock()
+	if l1Head == nil {
+		return nil, errors.New("l1 head block not found")
 	}
-	if l.latest != nil && l.latest.Hash() != afterBlkHash {
-		// return immediately if caller is not at latest head
-		return l.latest, nil
+	if e.latestSent == nil || e.latestSent.Hash() != l1Head.Hash() {
+		// we're behind, return the head (no need to wait for the next head, there's catching up to do)
+		return l1Head.Header(), nil
 	}
 
-	// otherwise wait for a block to show up
+	// then we start streaming
+	liveStream, streamSub := e.ethClient.BlockListener()
+
+	// check again to make sure we didn't miss one
+	l1Head = e.ethClient.FetchHeadBlock()
+	if e.latestSent.Hash() != l1Head.Hash() {
+		// we're behind now, return the head
+		streamSub.Unsubscribe()
+		return l1Head.Header(), nil
+	}
+
+	// and now we wait...
 	for {
 		select {
-		case blkHead := <-awaitChan:
+		case blkHead := <-liveStream:
+			e.logger.Trace("received new L1 head", "height", blkHead.Number, "hash", blkHead.Hash())
+			streamSub.Unsubscribe()
 			return blkHead, nil
-		case <-ctx.Done():
-			return nil, errors.New("context expired before block found")
-		case <-time.After(streamTimeout):
-			if l.latest == nil {
-				// not seen any streamed blocks, see if we can get head from client
-				// note: in-mem sim client doesn't support block streaming, it will always use this path
-				block := l.ethClient.FetchHeadBlock()
-				if block.Hash() != afterBlkHash {
-					return block.Header(), nil
-				}
-				continue // not seen any streamed block and head isn't new, wait for the next timeout.
+
+		case <-e.ctx.Done():
+			return nil, fmt.Errorf("context closed before block was received")
+
+		case err := <-streamSub.Err():
+			e.logger.Error("L1 block monitoring error", log.ErrKey, err)
+
+			e.logger.Info("Restarting L1 block Monitoring...")
+			liveStream, streamSub = e.ethClient.BlockListener()
+
+			// check head to make sure we didn't miss one
+			l1Head = e.ethClient.FetchHeadBlock()
+			if e.latestSent.Hash() != l1Head.Hash() {
+				// we're behind now, return the head
+				streamSub.Unsubscribe()
+				return l1Head.Header(), nil
 			}
-			return nil, fmt.Errorf("no live block received after timeout=%s", streamTimeout)
 		}
 	}
-}
-
-func (l *LiveBlocksMonitor) registerAwait() <-chan *types.Header {
-	l.awaitChan = make(chan *types.Header)
-	return l.awaitChan
 }
 
 func increment(i *big.Int) *big.Int {

@@ -18,11 +18,11 @@ import (
 )
 
 func TestBlockProviderHappyPath_LiveStream(t *testing.T) {
-	mockEthClient := mockEthClient(0)
+	mockEthClient := mockEthClient(3)
 	blockProvider, ctxCancel := setupBlockProvider(mockEthClient)
 	defer ctxCancel()
 
-	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(0))
+	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(3))
 	if err != nil {
 		t.Error(err)
 	}
@@ -42,11 +42,11 @@ func TestBlockProviderHappyPath_LiveStream(t *testing.T) {
 }
 
 func TestBlockProviderHappyPath_HistoricThenStream(t *testing.T) {
-	mockEthClient := mockEthClient(2)
+	mockEthClient := mockEthClient(3)
 	blockProvider, ctxCancel := setupBlockProvider(mockEthClient)
 	defer ctxCancel()
 
-	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(0))
+	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(1))
 	if err != nil {
 		t.Error(err)
 	}
@@ -81,22 +81,16 @@ func setupBlockProvider(mockEthClient EthClient) (EthBlockProvider, context.Canc
 
 func mockEthClient(liveStreamingStart int) EthClient {
 	mockClient := &ethClientMock{
-		ctx:                context.TODO(),
-		blks:               map[gethcommon.Hash]*types.Block{},
-		blksByNum:          map[int]*types.Block{},
-		liveStreamingStart: liveStreamingStart,
+		ctx:               context.TODO(),
+		blks:              map[gethcommon.Hash]*types.Block{},
+		blksByNum:         map[int]*types.Block{},
+		liveStreamingNext: liveStreamingStart,
+		lastBlockCreation: time.Now(),
 	}
 
+	// create the blocks before the streaming portion
 	for i := 0; i < liveStreamingStart; i++ {
-		blkHead := &types.Header{
-			ParentHash: getHash(i - 1),
-			Root:       getHash(i),
-			TxHash:     getHash(i),
-			Number:     big.NewInt(int64(i)),
-		}
-		block := types.NewBlock(blkHead, nil, nil, nil, nil)
-		mockClient.blks[block.Hash()] = block
-		mockClient.blksByNum[i] = block
+		mockClient.createHeader(i)
 	}
 
 	return mockClient
@@ -104,33 +98,45 @@ func mockEthClient(liveStreamingStart int) EthClient {
 
 type ethClientMock struct {
 	mock.Mock
-	ctx                context.Context
-	blks               map[gethcommon.Hash]*types.Block
-	blksByNum          map[int]*types.Block
-	liveStreamingStart int // BlockListener() will stream from this height
+	ctx               context.Context
+	blks              map[gethcommon.Hash]*types.Block
+	blksByNum         map[int]*types.Block
+	liveStreamingNext int // BlockListener() will stream from this height
+	lastBlockCreation time.Time
 }
 
-func (r *ethClientMock) BlockListener() (chan *types.Header, ethereum.Subscription) {
+func (e *ethClientMock) createHeader(i int) *types.Block {
+	blkHead := &types.Header{
+		ParentHash: getHash(i - 1),
+		Root:       getHash(i),
+		TxHash:     getHash(i),
+		Number:     big.NewInt(int64(i)),
+	}
+	block := types.NewBlock(blkHead, nil, nil, nil, nil)
+	e.blks[block.Hash()] = block
+	e.blksByNum[i] = block
+	e.lastBlockCreation = time.Now()
+	return block
+}
+
+func (e *ethClientMock) BlockListener() (chan *types.Header, ethereum.Subscription) {
 	headChan := make(chan *types.Header)
-	sub := &ethSubscriptionMock{}
+	subCtx, cancel := context.WithCancel(e.ctx)
+	sub := &ethSubscriptionMock{cancel: cancel}
 	go func() {
-		blkNum := r.liveStreamingStart
 		for {
 			select {
-			case <-r.ctx.Done():
+			case <-subCtx.Done():
 				return
 			case <-time.After(800 * time.Millisecond):
-				blkHead := &types.Header{
-					ParentHash: getHash(blkNum - 1),
-					Root:       getHash(blkNum),
-					TxHash:     getHash(blkNum),
-					Number:     big.NewInt(int64(blkNum)),
+				if time.Since(e.lastBlockCreation) < 500*time.Millisecond {
+					// not been long enough since last stream, do it next time
+					continue
 				}
-				block := types.NewBlock(blkHead, nil, nil, nil, nil)
-				r.blks[block.Hash()] = block
-				r.blksByNum[blkNum] = block
-				headChan <- blkHead
-				blkNum++
+				blk := e.createHeader(e.liveStreamingNext)
+				e.liveStreamingNext++
+				header := blk.Header()
+				headChan <- header
 			}
 		}
 	}()
@@ -141,84 +147,88 @@ func getHash(i int) gethcommon.Hash {
 	return gethcommon.HexToHash(fmt.Sprintf("%d", i))
 }
 
-func (r *ethClientMock) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
-	block, f := r.blks[id]
+func (e *ethClientMock) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
+	block, f := e.blks[id]
 	if !f {
 		return nil, fmt.Errorf("block not found")
 	}
 	return block, nil
 }
 
-func (r *ethClientMock) BlockByNumber(num *big.Int) (*types.Block, error) {
-	block, f := r.blksByNum[int(num.Int64())]
+func (e *ethClientMock) BlockByNumber(num *big.Int) (*types.Block, error) {
+	block, f := e.blksByNum[int(num.Int64())]
 	if !f {
 		return nil, fmt.Errorf("block not found")
 	}
 	return block, nil
 }
 
-func (r *ethClientMock) SendTransaction(signedTx *types.Transaction) error {
+func (e *ethClientMock) SendTransaction(signedTx *types.Transaction) error {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *ethClientMock) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {
+func (e *ethClientMock) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *ethClientMock) Nonce(address gethcommon.Address) (uint64, error) {
+func (e *ethClientMock) Nonce(address gethcommon.Address) (uint64, error) {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *ethClientMock) BalanceAt(account gethcommon.Address, blockNumber *big.Int) (*big.Int, error) {
+func (e *ethClientMock) BalanceAt(account gethcommon.Address, blockNumber *big.Int) (*big.Int, error) {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *ethClientMock) Info() Info {
+func (e *ethClientMock) Info() Info {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *ethClientMock) FetchHeadBlock() *types.Block {
+func (e *ethClientMock) FetchHeadBlock() *types.Block {
+	if time.Since(e.lastBlockCreation) > 500*time.Millisecond {
+		e.createHeader(e.liveStreamingNext)
+		e.liveStreamingNext++
+	}
+	return e.blksByNum[e.liveStreamingNext-1]
+}
+
+func (e *ethClientMock) BlocksBetween(block *types.Block, head *types.Block) []*types.Block {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *ethClientMock) BlocksBetween(block *types.Block, head *types.Block) []*types.Block {
+func (e *ethClientMock) IsBlockAncestor(block *types.Block, proof common.L1RootHash) bool {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *ethClientMock) IsBlockAncestor(block *types.Block, proof common.L1RootHash) bool {
+func (e *ethClientMock) CallContract(msg ethereum.CallMsg) ([]byte, error) {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *ethClientMock) CallContract(msg ethereum.CallMsg) ([]byte, error) {
+func (e *ethClientMock) Stop() {
 	// TODO implement me
 	panic("implement me")
 }
 
-func (r *ethClientMock) Stop() {
-	// TODO implement me
-	panic("implement me")
-}
-
-func (r *ethClientMock) EthClient() *ethclient.Client {
+func (e *ethClientMock) EthClient() *ethclient.Client {
 	// TODO implement me
 	panic("implement me")
 }
 
 type ethSubscriptionMock struct {
 	mock.Mock
+	cancel context.CancelFunc
 }
 
 func (e *ethSubscriptionMock) Unsubscribe() {
-	// TODO implement me
-	panic("implement me")
+	cancel := e.cancel
+	cancel()
 }
 
 func (e *ethSubscriptionMock) Err() <-chan error {
