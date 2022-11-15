@@ -478,11 +478,11 @@ func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationR
 	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
 	data, err := e.attestationProvider.VerifyReport(att)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to verify report - %w", err)
 	}
 	// Then we verify the public key provided has come from the same enclave as that attestation report
 	if err = VerifyIdentity(data, att); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to verify identity - %w", err)
 	}
 	e.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.Owner))
 
@@ -836,6 +836,7 @@ func (e *enclaveImpl) processSecretRequest(req *ethadapter.L1RequestSecretTx) (*
 		return nil, fmt.Errorf("failed to decode attestation - %w", err)
 	}
 
+	e.logger.Info("received attestation", "attestation", att)
 	secret, err := e.verifyAttestationAndEncryptSecret(att)
 	if err != nil {
 		return nil, fmt.Errorf("secret request failed, no response will be published - %w", err)
