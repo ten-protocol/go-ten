@@ -181,6 +181,10 @@ jobs:
           inlineScript: |
             az vm open-port -g Testnet -n "Dev-ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
 
+      - name: 'Wait for Obscuro sequencer to start'
+        shell: bash
+        run: if [ 1==${{ matrix.host_id }} ]; then sleep 60; fi
+
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
