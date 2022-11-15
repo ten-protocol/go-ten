@@ -34,8 +34,8 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 // BlockNumber returns the height of the current head rollup.
 // # TODO - #718 - Switch to returning height based on current batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	head := api.host.DB().GetHeadRollupHeader()
-	if head == nil {
+	head, found := api.host.DB().GetHeadRollupHeader()
+	if !found {
 		return 0
 	}
 
@@ -66,8 +66,8 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 // GetBlockByHash returns the header of the rollup with the given hash.
 // TODO - #718 - Switch to retrieving batch header.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
-	rollupHeaderWithHashes := api.host.DB().GetRollupHeader(hash)
-	if rollupHeaderWithHashes == nil {
+	rollupHeaderWithHashes, found := api.host.DB().GetRollupHeader(hash)
+	if !found {
 		return nil, nil //nolint:nilnil
 	}
 	return headerWithHashesToMap(rollupHeaderWithHashes), nil
@@ -219,7 +219,11 @@ type FeeHistoryResult struct {
 func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
 	if blockNumber == rpc.LatestBlockNumber {
-		hash := api.host.DB().GetHeadRollupHeader().Header.Hash()
+		header, found := api.host.DB().GetHeadRollupHeader()
+		if !found {
+			return nil, nil //nolint:nilnil
+		}
+		hash := header.Header.Hash()
 		return &hash, nil
 	}
 
@@ -229,8 +233,8 @@ func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*
 	}
 
 	blockNumberBig := big.NewInt(blockNumber.Int64())
-	rollupHash := api.host.DB().GetRollupHash(blockNumberBig)
-	if rollupHash == nil {
+	rollupHash, found := api.host.DB().GetRollupHash(blockNumberBig)
+	if !found {
 		return nil, fmt.Errorf("unable to fetch rollup at height: %d", blockNumber.Int64())
 	}
 	return rollupHash, nil
