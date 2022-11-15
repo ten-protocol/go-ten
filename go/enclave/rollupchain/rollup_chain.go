@@ -128,7 +128,10 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 		}
 	}
 	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	prevL1Head := rc.storage.FetchHeadBlock()
+	prevL1Head, found := rc.storage.FetchHeadBlock()
+	if !found {
+		return nil, fmt.Errorf("no head block stored")
+	}
 
 	// we do a basic sanity check, comparing the received block to the head block on the chain
 	if prevL1Head == nil {
@@ -209,10 +212,10 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
-	genesisRollup := rc.storage.FetchGenesisRollup()
+	genesisRollup, found := rc.storage.FetchGenesisRollup()
 
 	// processing blocks before genesis, so there is nothing to do
-	if genesisRollup == nil && len(rollups) == 0 {
+	if !found && len(rollups) == 0 {
 		return nil
 	}
 
@@ -322,8 +325,12 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
+	parent, found := rc.storage.ParentRollup(rollup)
+	if !found {
+		rc.logger.Crit("Sanity check. Rollup has no parent.")
+	}
 	depositTxs := rc.bridge.ExtractDeposits(
-		rc.storage.Proof(rc.storage.ParentRollup(rollup)),
+		rc.storage.Proof(parent),
 		rc.storage.Proof(rollup),
 		rc.storage,
 		stateDB,
@@ -814,7 +821,11 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 	var rollup *obscurocore.Rollup
 	switch height {
 	case gethrpc.EarliestBlockNumber:
-		rollup = rc.storage.FetchGenesisRollup()
+		genesisRollup, found := rc.storage.FetchGenesisRollup()
+		if !found {
+			return nil, fmt.Errorf("genesis rollup was not found")
+		}
+		rollup = genesisRollup
 	case gethrpc.PendingBlockNumber:
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
@@ -836,9 +847,9 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 }
 
 func (rc *RollupChain) rejectBlockErr(err error) *common.BlockRejectError {
-	l1Head := rc.storage.FetchHeadBlock()
+	l1Head, found := rc.storage.FetchHeadBlock()
 	var hash gethcommon.Hash
-	if l1Head != nil {
+	if found {
 		hash = l1Head.Hash()
 	}
 	return &common.BlockRejectError{

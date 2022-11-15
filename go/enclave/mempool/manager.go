@@ -76,13 +76,14 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *obscurocore.Rollup, resolver 
 func historicTxs(r *obscurocore.Rollup, resolver db.RollupResolver) map[gethcommon.Hash]gethcommon.Hash {
 	i := common.HeightCommittedBlocks
 	c := r
+	found := true
 	// todo - create method to return the canonical rollup from height N
 	for {
-		if i == 0 || c.Header.Number.Uint64() == common.L2GenesisHeight {
+		if !found || i == 0 || c.Header.Number.Uint64() == common.L2GenesisHeight {
 			return obscurocore.ToMap(c.Transactions)
 		}
 		i--
-		c = resolver.ParentRollup(c)
+		c, found = resolver.ParentRollup(c)
 	}
 }
 
@@ -110,11 +111,14 @@ func allIncludedTransactions(r *obscurocore.Rollup, s db.RollupResolver, stopAtH
 		return obscurocore.MakeMap(r.Transactions)
 	}
 	newMap := make(map[gethcommon.Hash]*common.L2Tx)
-	for k, v := range allIncludedTransactions(s.ParentRollup(r), s, stopAtHeight) {
-		newMap[k] = v
-	}
-	for _, tx := range r.Transactions {
-		newMap[tx.Hash()] = tx
+	parent, found := s.ParentRollup(r)
+	if found {
+		for k, v := range allIncludedTransactions(parent, s, stopAtHeight) {
+			newMap[k] = v
+		}
+		for _, tx := range r.Transactions {
+			newMap[tx.Hash()] = tx
+		}
 	}
 	return newMap
 }

@@ -113,7 +113,10 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 }
 
 func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation, nodeIdx int) uint64 {
-	head := node.FetchHeadBlock()
+	head, found := node.FetchHeadBlock()
+	if !found {
+		t.Errorf("Node %d: Could not find head block", nodeIdx)
+	}
 	height := head.NumberU64()
 
 	if height < minHeight {

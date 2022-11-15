@@ -98,7 +98,10 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 
 // GetFilteredLogs returns the logs across the entire canonical chain that match the provided account and filter.
 func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
-	headBlock := s.storage.FetchHeadBlock()
+	headBlock, found := s.storage.FetchHeadBlock()
+	if !found {
+		return nil, nil
+	}
 
 	// We collect all the block hashes in the canonical chain.
 	// TODO: Only collect blocks within the filter's range.
