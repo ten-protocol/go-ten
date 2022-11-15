@@ -29,6 +29,9 @@ type Host interface {
 	Unsubscribe(id rpc.ID)
 	// Stop gracefully stops the host execution.
 	Stop()
+
+	// HealthCheck returns the health status of the host + enclave + db
+	HealthCheck() (bool, error)
 }
 
 // MockHost extends Host with additional methods that are only used for integration testing.

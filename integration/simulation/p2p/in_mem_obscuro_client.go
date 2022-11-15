@@ -113,6 +113,9 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.GetRollupByHash:
 		return c.getRollupByHash(result, args)
 
+	case rpc.Health:
+		return c.health(result)
+
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
@@ -293,6 +296,12 @@ func (c *inMemObscuroClient) addViewingKey(args []interface{}) error {
 		return fmt.Errorf("second arg to %s is of type %T, expected type []byte", rpc.AddViewingKey, args[1])
 	}
 	return c.obscuroAPI.AddViewingKey(vk, sig)
+}
+
+func (c *inMemObscuroClient) health(result interface{}) error {
+	healty := true
+	*result.(**bool) = &healty
+	return nil
 }
 
 // getEncryptedBytes expects args to have a single element and it to be of type bytes (client doesn't know anything about what's getting passed through on sensitive methods)

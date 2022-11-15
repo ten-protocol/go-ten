@@ -197,7 +197,8 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, error) {
-	if e.storage.FetchSecret() == nil {
+	_, found := e.storage.FetchSecret()
+	if !found {
 		return common.AwaitingSecret, nil
 	}
 	return common.Running, nil // The enclave is local so it is always ready
@@ -486,8 +487,8 @@ func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationR
 	}
 	e.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.Owner))
 
-	secret := e.storage.FetchSecret()
-	if secret == nil {
+	secret, found := e.storage.FetchSecret()
+	if !found {
 		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
 	}
 	return crypto.EncryptSecret(att.PubKey, *secret, e.logger)
@@ -721,6 +722,20 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethr
 		}
 	}
 	return hexutil.Uint64(hi), nil
+}
+
+// HealthCheck returns whether the enclave is deemed healthy
+func (e *enclaveImpl) HealthCheck() (bool, error) {
+	// check the storage health
+	storageHealthy, err := e.storage.HealthCheck()
+	if err != nil {
+		// simplest iteration, log the error and just return that it's not healthy
+		e.logger.Error("unable to HealthCheck enclave storage", "err", err)
+		return false, nil
+	}
+	// TODO enclave healthcheck operations
+	enclaveHealthy := true
+	return storageHealthy && enclaveHealthy, nil
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

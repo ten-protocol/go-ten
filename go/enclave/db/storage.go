@@ -50,22 +50,21 @@ func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
 	s.StoreRollup(rol)
 }
 
-func (s *storageImpl) FetchGenesisRollup() *core.Rollup {
-	hash := obscurorawdb.ReadGenesisHash(s.db)
-	if hash == nil {
-		return nil
+func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, bool) {
+	hash, found := obscurorawdb.ReadGenesisHash(s.db)
+	if !found {
+		return nil, false
 	}
-	r, _ := s.FetchRollup(*hash)
-	return r
+	return s.FetchRollup(*hash)
 }
 
-func (s *storageImpl) FetchHeadRollup() *core.Rollup {
-	hash := obscurorawdb.ReadHeadRollupHash(s.db)
-	if hash == (gethcommon.Hash{}) {
-		return nil
+func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
+	hash, err := obscurorawdb.ReadHeadRollupHash(s.db)
+	if err != nil {
+		return nil, err
 	}
-	r, _ := s.FetchRollup(hash)
-	return r
+	r, _ := s.FetchRollup(*hash)
+	return r, nil
 }
 
 func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
@@ -89,7 +88,7 @@ func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
 
 func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, bool) {
 	if height == 0 {
-		return s.FetchGenesisRollup(), true
+		return s.FetchGenesisRollup()
 	}
 
 	hash := obscurorawdb.ReadCanonicalHash(s.db, height)
@@ -123,28 +122,22 @@ func (s *storageImpl) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {
 	return nil, false
 }
 
-func (s *storageImpl) FetchHeadBlock() *types.Block {
+func (s *storageImpl) FetchHeadBlock() (*types.Block, bool) {
 	s.assertSecretAvailable()
-	b, _ := s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
-	return b
+	return s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
 }
 
 func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) {
 	obscurorawdb.WriteSharedSecret(s.db, secret, s.logger)
 }
 
-func (s *storageImpl) FetchSecret() *crypto.SharedEnclaveSecret {
+func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, bool) {
 	return obscurorawdb.ReadSharedSecret(s.db)
 }
 
-func (s *storageImpl) ParentRollup(r *core.Rollup) *core.Rollup {
+func (s *storageImpl) ParentRollup(r *core.Rollup) (*core.Rollup, bool) {
 	s.assertSecretAvailable()
-	parent, found := s.FetchRollup(r.Header.ParentHash)
-	if !found {
-		s.logger.Info(fmt.Sprintf("Could not find rollup: r_%d", common.ShortHash(r.Hash())))
-		return nil
-	}
-	return parent
+	return s.FetchRollup(r.Header.ParentHash)
 }
 
 func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, bool) {
@@ -197,6 +190,15 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 	}
 
 	return s.IsBlockAncestor(p, maybeAncestor)
+}
+
+func (s *storageImpl) HealthCheck() (bool, error) {
+	headRollup, err := s.FetchHeadRollup()
+	if err != nil {
+		s.logger.Error("unable to HealthCheck storage", "err", err)
+		return false, err
+	}
+	return headRollup != nil, nil
 }
 
 func (s *storageImpl) assertSecretAvailable() {

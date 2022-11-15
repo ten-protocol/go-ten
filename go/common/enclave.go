@@ -103,6 +103,9 @@ type Enclave interface {
 
 	// GetLogs returns all the logs matching the filter.
 	GetLogs(encryptedParams EncryptedParamsGetLogs) (EncryptedResponseGetLogs, error)
+
+	// HealthCheck returns whether the enclave is in a healthy state
+	HealthCheck() (bool, error)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
