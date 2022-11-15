@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 )
 
 const (
@@ -41,6 +42,10 @@ func (m *sqlEthDatabase) Get(key []byte) ([]byte, error) {
 
 	err := m.db.QueryRow(getQry, key).Scan(&res)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
 		return nil, err
 	}
 	return res, nil

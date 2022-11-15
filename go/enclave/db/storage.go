@@ -59,13 +59,13 @@ func (s *storageImpl) FetchGenesisRollup() *core.Rollup {
 	return r
 }
 
-func (s *storageImpl) FetchHeadRollup() *core.Rollup {
-	hash := obscurorawdb.ReadHeadRollupHash(s.db)
-	if hash == (gethcommon.Hash{}) {
-		return nil
+func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
+	hash, err := obscurorawdb.ReadHeadRollupHash(s.db)
+	if err != nil {
+		return nil, err
 	}
-	r, _ := s.FetchRollup(hash)
-	return r
+	r, _ := s.FetchRollup(*hash)
+	return r, nil
 }
 
 func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
@@ -200,8 +200,11 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 }
 
 func (s *storageImpl) HealthCheck() (bool, error) {
-	// TODO refactor this when the storage method signatures are changed and errors are surfaced
-	headRollup := s.FetchHeadRollup()
+	headRollup, err := s.FetchHeadRollup()
+	if err != nil {
+		s.logger.Error("unable to HealthCheck storage", "err", err)
+		return false, err
+	}
 	return headRollup != nil, nil
 }
 

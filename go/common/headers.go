@@ -40,7 +40,7 @@ type Header struct {
 
 	// The custom Obscuro fields.
 	Agg         common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
-	L1Proof     L1RootHash     // the L1 block where the parent was published
+	L1Proof     L1RootHash     // the L1 block used by the enclave to generate the current rollup
 	R, S        *big.Int       // signature values
 	Withdrawals []Withdrawal
 

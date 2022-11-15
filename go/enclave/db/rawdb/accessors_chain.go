@@ -243,12 +243,13 @@ func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64, logger gethlog.
 }
 
 // ReadHeadRollupHash retrieves the hash of the current canonical head block.
-func ReadHeadRollupHash(db ethdb.KeyValueReader) gethcommon.Hash {
-	data, _ := db.Get(headRollupKey)
-	if len(data) == 0 {
-		return gethcommon.Hash{}
+func ReadHeadRollupHash(db ethdb.KeyValueReader) (*gethcommon.Hash, error) {
+	data, err := db.Get(headRollupKey)
+	if err != nil {
+		return nil, err
 	}
-	return gethcommon.BytesToHash(data)
+	hash := gethcommon.BytesToHash(data)
+	return &hash, nil
 }
 
 // WriteHeadRollupHash stores the head block's hash.
