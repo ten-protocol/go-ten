@@ -218,11 +218,12 @@ type FeeHistoryResult struct {
 // TODO - #718 - Switch to converting block number to batch hash.
 func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
-	switch blockNumber { //nolint:exhaustive
-	case rpc.LatestBlockNumber:
+	if blockNumber == rpc.LatestBlockNumber {
 		hash := api.host.DB().GetHeadRollupHeader().Header.Hash()
 		return &hash, nil
-	case rpc.PendingBlockNumber:
+	}
+
+	if blockNumber == rpc.PendingBlockNumber {
 		// todo Dependent on the current pending rollup - leaving it for a different iteration as it will need more thought
 		return nil, nil //nolint
 	}
