@@ -136,7 +136,7 @@ jobs:
 
       - name: 'Wait for Obscuro sequencer to start'
         shell: bash
-        run: if [ 0!=${{ matrix.host_id }} ]; then sleep 60; fi
+        run: if [ 0! = ${{ matrix.host_id }} ]; then sleep 60; fi
 
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
