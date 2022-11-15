@@ -69,8 +69,7 @@ func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, 
 	if !found {
 		return nil, nil //nolint:nilnil
 	}
-	headerMap := headerToMap(rollupHeaderWithHashes.Header)
-	return headerMap, nil
+	return headerToMap(rollupHeaderWithHashes.Header), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.

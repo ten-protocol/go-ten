@@ -60,7 +60,7 @@ type HeaderWithTxHashes struct {
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
-RLP encoding excluding the signature.
+// RLP encoding excluding the signature.
 func (h *Header) Hash() L2RootHash {
 	cp := *h
 	cp.R = nil
