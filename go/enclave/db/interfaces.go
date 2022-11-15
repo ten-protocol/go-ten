@@ -18,7 +18,7 @@ type BlockResolver interface {
 	FetchBlock(hash common.L1RootHash) (*types.Block, bool)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block) bool
-	// ParentBlock returns the L1 Block's parent and true, or (nil, false)  if no parent Block is stored
+	// ParentBlock returns the L1 Block's parent and true, or (nil, false) if no parent Block is stored
 	ParentBlock(block *types.Block) (*types.Block, bool)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	IsAncestor(block *types.Block, maybeAncestor *types.Block) bool
@@ -26,8 +26,8 @@ type BlockResolver interface {
 	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
 	// Todo - this is super confusing, analyze the usage
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
-	// FetchHeadBlock - returns the head of the current chain
-	FetchHeadBlock() *types.Block
+	// FetchHeadBlock - returns the head of the current chain, or (nil, false) if no head is found
+	FetchHeadBlock() (*types.Block, bool)
 	// ProofHeight - return the height of the L1 proof, or GenesisHeight - if the block is not known
 	ProofHeight(rollup *core.Rollup) int64
 	// Proof - returns the block used as proof for the rollup
@@ -35,28 +35,28 @@ type BlockResolver interface {
 }
 
 type RollupResolver interface {
-	// FetchRollup returns the rollup with the given hash and true, or (nil, false) if no such rollup is stored
+	// FetchRollup returns the rollup with the given hash and true, or (nil, false) if no such rollup is stored.
 	FetchRollup(hash common.L2RootHash) (*core.Rollup, bool)
-	// FetchRollupByHeight returns the rollup with the given height and true, or (nil, false) if no such rollup is stored
+	// FetchRollupByHeight returns the rollup with the given height and true, or (nil, false) if no such rollup is stored.
 	FetchRollupByHeight(height uint64) (*core.Rollup, bool)
 	// FetchRollups returns all the proposed rollups with the given height
 	FetchRollups(height uint64) []*core.Rollup
 	// StoreRollup persists the rollup
 	StoreRollup(rollup *core.Rollup)
-	// ParentRollup returns the rollup's parent rollup
-	ParentRollup(rollup *core.Rollup) *core.Rollup
+	// ParentRollup returns the rollup's parent rollup, or (nil, false) if no such rollup was found.
+	ParentRollup(rollup *core.Rollup) (*core.Rollup, bool)
 	// StoreGenesisRollup stores the rollup genesis
 	StoreGenesisRollup(rol *core.Rollup)
-	// FetchGenesisRollup returns the rollup genesis
-	FetchGenesisRollup() *core.Rollup
+	// FetchGenesisRollup returns the rollup genesis, or (nil, false) if no such rollup was found.
+	FetchGenesisRollup() (*core.Rollup, bool)
 	// FetchHeadRollup returns the current head rollup
-	FetchHeadRollup() *core.Rollup
+	FetchHeadRollup() (*core.Rollup, error)
 }
 
 type BlockStateStorage interface {
-	// FetchBlockState returns the block's state, and a boolean indicating if the block was found.
+	// FetchBlockState returns the block's state, or (nil, false) if no such block was found.
 	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, bool)
-	// FetchLogs returns the block's logs, and a boolean indicating if the block was found.
+	// FetchLogs returns the block's logs, or (nil, false) if no such block was found.
 	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, bool)
 	// FetchHeadState returns the head block state. Returns nil if nothing recorded yet
 	FetchHeadState() *core.BlockState
@@ -69,8 +69,8 @@ type BlockStateStorage interface {
 }
 
 type SharedSecretStorage interface {
-	// FetchSecret returns the enclave's secret, returns nil if not found
-	FetchSecret() *crypto.SharedEnclaveSecret
+	// FetchSecret returns the enclave's secret, returns (nil, false) if not found
+	FetchSecret() (*crypto.SharedEnclaveSecret, bool)
 	// StoreSecret stores a secret in the enclave
 	StoreSecret(secret crypto.SharedEnclaveSecret)
 }

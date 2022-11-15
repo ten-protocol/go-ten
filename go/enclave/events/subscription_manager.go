@@ -76,7 +76,11 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	subscription.Filter.BlockHash = nil
 	subscription.Filter.ToBlock = nil
 	// We set this to the current rollup height, so that historical logs aren't returned.
-	subscription.Filter.FromBlock = big.NewInt(0).Add(s.storage.FetchHeadRollup().Number(), big.NewInt(1))
+	rollup, err := s.storage.FetchHeadRollup()
+	if err != nil {
+		return fmt.Errorf("unable to fetch head rollup - %w", err)
+	}
+	subscription.Filter.FromBlock = big.NewInt(0).Add(rollup.Number(), big.NewInt(1))
 
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
@@ -94,7 +98,10 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 
 // GetFilteredLogs returns the logs across the entire canonical chain that match the provided account and filter.
 func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
-	headBlock := s.storage.FetchHeadBlock()
+	headBlock, found := s.storage.FetchHeadBlock()
+	if !found {
+		return nil, nil
+	}
 
 	// We collect all the block hashes in the canonical chain.
 	// TODO: Only collect blocks within the filter's range.

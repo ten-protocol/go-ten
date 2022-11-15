@@ -24,7 +24,6 @@ const (
 	AddViewingKey         = "obscuro_addViewingKey"
 	Health                = "obscuro_health"
 	GetBlockHeaderByHash  = "obscuroscan_getBlockHeaderByHash"
-	GetHeadRollupHeader   = "obscuroscan_getHeadRollupHeader"
 	GetRollup             = "obscuroscan_getRollup"
 	GetRollupForTx        = "obscuroscan_getRollupForTx"
 	GetLatestTxs          = "obscuroscan_getLatestTransactions"

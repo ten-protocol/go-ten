@@ -52,17 +52,17 @@ func NewLevelDBBackedDB(logger gethlog.Logger) *DB {
 	}
 }
 
-// GetHeadBlockHeader returns the block header of the current head block
-func (db *DB) GetHeadBlockHeader() *types.Header {
+// GetHeadBlockHeader returns the block header of the current head block, or (nil, false) if no such header is found.
+func (db *DB) GetHeadBlockHeader() (*types.Header, bool) {
 	head := db.readHeadBlock(db.kvStore)
 	if head == nil {
-		return nil
+		return nil, false
 	}
 	return db.readBlockHeader(db.kvStore, *head)
 }
 
-// GetBlockHeader returns the block header given the hash
-func (db *DB) GetBlockHeader(hash gethcommon.Hash) *types.Header {
+// GetBlockHeader returns the block header given the hash, or (nil, false) if no such header is found.
+func (db *DB) GetBlockHeader(hash gethcommon.Hash) (*types.Header, bool) {
 	return db.readBlockHeader(db.kvStore, hash)
 }
 
@@ -72,8 +72,8 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 	db.writeBlockHeader(b, header)
 
 	// update the head if the new height is greater than the existing one
-	headBlockHeader := db.GetHeadBlockHeader()
-	if headBlockHeader == nil || headBlockHeader.Number.Int64() <= header.Number.Int64() {
+	headBlockHeader, found := db.GetHeadBlockHeader()
+	if !found || headBlockHeader.Number.Int64() <= header.Number.Int64() {
 		db.writeHeadBlock(b, header.Hash())
 	}
 
@@ -82,17 +82,17 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 	}
 }
 
-// GetHeadRollupHeader returns the header of the current rollup (head) of the Node
-func (db *DB) GetHeadRollupHeader() *common.HeaderWithTxHashes {
+// GetHeadRollupHeader returns the header of the current rollup (head) of the Node, or (nil, false) if no such header is found.
+func (db *DB) GetHeadRollupHeader() (*common.HeaderWithTxHashes, bool) {
 	headRollupHash := db.readHeadRollup(db.kvStore)
 	if headRollupHash == nil {
-		return nil
+		return nil, false
 	}
 	return db.readRollupHeader(db.kvStore, *headRollupHash)
 }
 
-// GetRollupHeader returns the rollup header given the Hash
-func (db *DB) GetRollupHeader(hash gethcommon.Hash) *common.HeaderWithTxHashes {
+// GetRollupHeader returns the rollup header given the Hash, or (nil, false) if no such header is found.
+func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*common.HeaderWithTxHashes, bool) {
 	return db.readRollupHeader(db.kvStore, hash)
 }
 
@@ -111,9 +111,8 @@ func (db *DB) AddRollupHeader(headerWithHashes *common.HeaderWithTxHashes) {
 	db.writeTotalTransactions(b, newTotal)
 
 	// update the head if the new height is greater than the existing one
-	currentRollupHeaderWithHashes := db.GetHeadRollupHeader()
-	if currentRollupHeaderWithHashes == nil ||
-		currentRollupHeaderWithHashes.Header.Number.Int64() <= headerWithHashes.Header.Number.Int64() {
+	currentRollupHeaderWithHashes, found := db.GetHeadRollupHeader()
+	if !found || currentRollupHeaderWithHashes.Header.Number.Int64() <= headerWithHashes.Header.Number.Int64() {
 		db.writeHeadRollup(b, headerWithHashes.Header.Hash())
 	}
 
@@ -122,13 +121,13 @@ func (db *DB) AddRollupHeader(headerWithHashes *common.HeaderWithTxHashes) {
 	}
 }
 
-// GetRollupHash returns the hash of a rollup given its number
-func (db *DB) GetRollupHash(number *big.Int) *gethcommon.Hash {
+// GetRollupHash returns the hash of a rollup given its number, or (nil, false) if no such rollup is found.
+func (db *DB) GetRollupHash(number *big.Int) (*gethcommon.Hash, bool) {
 	return db.readRollupHash(db.kvStore, number)
 }
 
-// GetRollupNumber returns the number of the rollup containing the given transaction hash
-func (db *DB) GetRollupNumber(txHash gethcommon.Hash) *big.Int {
+// GetRollupNumber returns the number of the rollup containing the given transaction hash, or (nil, false) if no such rollup is found.
+func (db *DB) GetRollupNumber(txHash gethcommon.Hash) (*big.Int, bool) {
 	return db.readRollupNumber(db.kvStore, txHash)
 }
 
@@ -181,27 +180,27 @@ func (db *DB) writeBlockHeader(w ethdb.KeyValueWriter, header *types.Header) {
 	}
 }
 
-// ReadBlockHeader retrieves the block header corresponding to the hash.
-func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) *types.Header {
+// ReadBlockHeader retrieves the block header corresponding to the hash, or (nil, false) if no such header is found.
+func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*types.Header, bool) {
 	f, err := r.Has(blockHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve block header.", log.ErrKey, err)
 	}
 	if !f {
-		return nil
+		return nil, false
 	}
 	data, err := r.Get(blockHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve block header.", log.ErrKey, err)
 	}
 	if len(data) == 0 {
-		return nil
+		return nil, false
 	}
 	header := new(types.Header)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		db.logger.Crit("could not decode block header.", log.ErrKey, err)
 	}
-	return header
+	return header, true
 }
 
 // WriteRollupHeader stores a rollup header into the database
@@ -217,27 +216,27 @@ func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, headerWithHashes *common
 	}
 }
 
-// ReadRollupHeader retrieves the rollup header corresponding to the hash.
-func (db *DB) readRollupHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) *common.HeaderWithTxHashes {
+// ReadRollupHeader retrieves the rollup header corresponding to the hash, or (nil, false) if no such header is found.
+func (db *DB) readRollupHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*common.HeaderWithTxHashes, bool) {
 	f, err := r.Has(rollupHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup header.", log.ErrKey, err)
 	}
 	if !f {
-		return nil
+		return nil, false
 	}
 	data, err := r.Get(rollupHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup header.", log.ErrKey, err)
 	}
 	if len(data) == 0 {
-		return nil
+		return nil, false
 	}
 	header := new(common.HeaderWithTxHashes)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		db.logger.Crit("could not decode rollup header.", log.ErrKey, err)
 	}
-	return header
+	return header, true
 }
 
 func (db *DB) readHeadBlock(r ethdb.KeyValueReader) *gethcommon.Hash {
@@ -312,43 +311,43 @@ func (db *DB) writeTotalTransactions(w ethdb.KeyValueWriter, newTotal *big.Int) 
 	}
 }
 
-// Retrieves the hash for the rollup with the given number.
-func (db *DB) readRollupHash(r ethdb.KeyValueReader, number *big.Int) *gethcommon.Hash {
+// Retrieves the hash for the rollup with the given number, or (nil, false) if no such rollup is found.
+func (db *DB) readRollupHash(r ethdb.KeyValueReader, number *big.Int) (*gethcommon.Hash, bool) {
 	f, err := r.Has(rollupHashKey(number))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup hash.", log.ErrKey, err)
 	}
 	if !f {
-		return nil
+		return nil, false
 	}
 	data, err := r.Get(rollupHashKey(number))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup hash.", log.ErrKey, err)
 	}
 	if len(data) == 0 {
-		return nil
+		return nil, false
 	}
 	hash := gethcommon.BytesToHash(data)
-	return &hash
+	return &hash, true
 }
 
-// Retrieves the number of the rollup containing the transaction with the given hash.
-func (db *DB) readRollupNumber(r ethdb.KeyValueReader, txHash gethcommon.Hash) *big.Int {
+// Retrieves the number of the rollup containing the transaction with the given hash, or (nil, false) if no such rollup is found.
+func (db *DB) readRollupNumber(r ethdb.KeyValueReader, txHash gethcommon.Hash) (*big.Int, bool) {
 	f, err := r.Has(rollupNumberKey(txHash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup number.", log.ErrKey, err)
 	}
 	if !f {
-		return nil
+		return nil, false
 	}
 	data, err := r.Get(rollupNumberKey(txHash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup number.", log.ErrKey, err)
 	}
 	if len(data) == 0 {
-		return nil
+		return nil, false
 	}
-	return big.NewInt(0).SetBytes(data)
+	return big.NewInt(0).SetBytes(data), true
 }
 
 // Retrieves the total number of rolled-up transactions.
