@@ -129,12 +129,9 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	}
 	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
 	prevL1Head, found := rc.storage.FetchHeadBlock()
-	if !found {
-		return nil, fmt.Errorf("no head block stored")
-	}
 
 	// we do a basic sanity check, comparing the received block to the head block on the chain
-	if prevL1Head == nil {
+	if !found {
 		// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
 		return &blockIngestionType{latest: isLatest, fork: false, preGenesis: true}, nil
 	} else if block.ParentHash() != prevL1Head.Hash() {
