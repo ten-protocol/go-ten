@@ -188,12 +188,12 @@ func (e *ethClientMock) Info() Info {
 	panic("implement me")
 }
 
-func (e *ethClientMock) FetchHeadBlock() *types.Block {
+func (e *ethClientMock) FetchHeadBlock() (*types.Block, bool) {
 	if time.Since(e.lastBlockCreation) > 500*time.Millisecond {
 		e.createHeader(e.liveStreamingNext)
 		e.liveStreamingNext++
 	}
-	return e.blksByNum[e.liveStreamingNext-1]
+	return e.blksByNum[e.liveStreamingNext-1], true
 }
 
 func (e *ethClientMock) BlocksBetween(block *types.Block, head *types.Block) []*types.Block {

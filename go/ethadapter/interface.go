@@ -1,6 +1,7 @@
 package ethadapter
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -10,6 +11,11 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
+)
+
+var (
+	// ErrSubscriptionNotSupported return from BlockListener subscription if client doesn't support streaming (in-mem simulation)
+	ErrSubscriptionNotSupported = errors.New("block subscription not supported")
 )
 
 // EthClient defines the interface for RPC communications with the ethereum nodes

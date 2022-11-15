@@ -21,6 +21,10 @@ const (
 	statusCodeRunning
 )
 
+const (
+	waitingForBlockTimeout = 30 * time.Second
+)
+
 var one = big.NewInt(1)
 
 func NewEthBlockProvider(ethClient EthClient, logger gethlog.Logger) *EthBlockProvider {
@@ -85,8 +89,8 @@ func (e *EthBlockProvider) Stop() {
 }
 
 func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
-	l1Head := e.ethClient.FetchHeadBlock()
-	return h == l1Head.Hash()
+	l1Head, f := e.ethClient.FetchHeadBlock()
+	return f && h == l1Head.Hash()
 }
 
 // streamBlocks should be run in a separate go routine. It will stream catch-up blocks from requested height until it
@@ -170,8 +174,8 @@ func (e *EthBlockProvider) latestCanonAncestor(blkHash gethcommon.Hash) (*types.
 // (note: this can currently only be used by one caller at a time - not an issue for current usage)
 func (e *EthBlockProvider) AwaitNewBlock() (*types.Header, error) {
 	// first we check if we're up-to-date
-	l1Head := e.ethClient.FetchHeadBlock()
-	if l1Head == nil {
+	l1Head, f := e.ethClient.FetchHeadBlock()
+	if !f {
 		return nil, errors.New("l1 head block not found")
 	}
 	if e.latestSent == nil || e.latestSent.Hash() != l1Head.Hash() {
@@ -183,8 +187,8 @@ func (e *EthBlockProvider) AwaitNewBlock() (*types.Header, error) {
 	liveStream, streamSub := e.ethClient.BlockListener()
 
 	// check again to make sure we didn't miss one
-	l1Head = e.ethClient.FetchHeadBlock()
-	if e.latestSent.Hash() != l1Head.Hash() {
+	l1Head, f = e.ethClient.FetchHeadBlock()
+	if f && e.latestSent.Hash() != l1Head.Hash() {
 		// we're behind now, return the head
 		streamSub.Unsubscribe()
 		return l1Head.Header(), nil
@@ -202,18 +206,23 @@ func (e *EthBlockProvider) AwaitNewBlock() (*types.Header, error) {
 			return nil, fmt.Errorf("context closed before block was received")
 
 		case err := <-streamSub.Err():
+			if errors.Is(err, ErrSubscriptionNotSupported) {
+				return nil, err
+			}
 			e.logger.Error("L1 block monitoring error", log.ErrKey, err)
 
 			e.logger.Info("Restarting L1 block Monitoring...")
 			liveStream, streamSub = e.ethClient.BlockListener()
 
 			// check head to make sure we didn't miss one
-			l1Head = e.ethClient.FetchHeadBlock()
-			if e.latestSent.Hash() != l1Head.Hash() {
+			l1Head, f = e.ethClient.FetchHeadBlock()
+			if f && e.latestSent.Hash() != l1Head.Hash() {
 				// we're behind now, return the head
 				streamSub.Unsubscribe()
 				return l1Head.Header(), nil
 			}
+		case <-time.After(waitingForBlockTimeout):
+			return nil, fmt.Errorf("no block received from L1 client stream for over %s", waitingForBlockTimeout)
 		}
 	}
 }

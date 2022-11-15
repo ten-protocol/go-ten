@@ -386,6 +386,7 @@ func (h *host) waitForEnclave() {
 
 // starts the host main processing loop
 func (h *host) startProcessing() {
+	h.logger.Info("§§§ Start processing...")
 	// Only open the p2p connection when the host is fully initialised
 	h.p2p.StartListening(h)
 
@@ -635,17 +636,21 @@ func (h *host) requestSecret() error {
 		Attestation: encodedAttestation,
 	}
 	// record the L1 head height before we submit the secret request so we know which block to watch from
-	l1Height := h.ethClient.FetchHeadBlock().Number()
+	l1Head, f := h.ethClient.FetchHeadBlock()
+	if !f {
+		panic("no head found for L1")
+	}
 	requestSecretTx := h.mgmtContractLib.CreateRequestSecret(l1tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(requestSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return err
 	}
 
-	err = h.awaitSecret(l1Height)
+	err = h.awaitSecret(l1Head.Number())
 	if err != nil {
 		h.logger.Crit("could not receive the secret", log.ErrKey, err)
 	}
+	h.logger.Info("§§§ Secret received")
 	return nil
 }
 
@@ -746,6 +751,10 @@ func (h *host) monitorBlocks() {
 	for atomic.LoadInt32(h.stopHostInterrupt) == 0 {
 		select {
 		case err := <-subs.Err():
+			if errors.Is(err, ethadapter.ErrSubscriptionNotSupported) {
+				// there will never be a block from this monitor process, we can abandon it
+				return
+			}
 			h.logger.Error("L1 block monitoring error", log.ErrKey, err)
 			h.logger.Info("Restarting L1 block Monitoring...")
 			// it's fine to immediately restart the listener, any incoming blocks will be on hold in the queue
