@@ -11,6 +11,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
+const txLimit = 100
+
 // ObscuroScanAPI implements ObscuroScan-specific JSON RPC operations.
 type ObscuroScanAPI struct {
 	host host.Host
@@ -66,36 +68,41 @@ func (api *ObscuroScanAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRo
 	return rollup, nil
 }
 
-// GetLatestTransactions returns the hashes of the latest `num` transactions, or as many as possible if less than `num` transactions exist.
-// TODO - Consider introducing paging or similar to prevent a huge number of transactions blowing the node's memory limit.
+// GetLatestTransactions returns the hashes of the latest `num` transactions, or as many as possible if less than `num`
+// transactions exist.
 // TODO - #718 - Switch to retrieving transactions from latest batch.
 func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
+	// We prevent someone from requesting an excessive amount of transactions.
+	if num > txLimit {
+		return nil, fmt.Errorf("cannot request more than 100 latest transactions")
+	}
+
 	currentRollupHeaderWithHashes, found := api.host.DB().GetHeadRollupHeader()
 	if !found {
 		return nil, nil
 	}
-	nextRollupHash := currentRollupHeaderWithHashes.Header.Hash()
+	currentRollupHash := currentRollupHeaderWithHashes.Header.Hash()
 
-	// We walk the chain until we've collected sufficient transactions.
+	// We walk the chain until we've collected the requested number of transactions.
 	var txHashes []gethcommon.Hash
 	for {
-		rollupHeaderWithHashes, found := api.host.DB().GetRollupHeader(nextRollupHash)
+		rollupHeaderWithHashes, found := api.host.DB().GetRollupHeader(currentRollupHash)
 		if !found {
-			return nil, fmt.Errorf("could not retrieve rollup for hash %s", nextRollupHash)
+			return nil, fmt.Errorf("could not retrieve rollup for hash %s", currentRollupHash)
 		}
 
 		for _, txHash := range rollupHeaderWithHashes.TxHashes {
 			txHashes = append(txHashes, txHash)
 			if len(txHashes) >= num {
-				return txHashes, nil
+				break
 			}
 		}
 
-		// If we have reached the top of the chain (i.e. the current rollup's number is one), we stop walking.
-		if rollupHeaderWithHashes.Header.Number.Cmp(big.NewInt(0)) == 0 {
+		// If we've reached the top of the chain, we stop walking.
+		if rollupHeaderWithHashes.Header.Number.Uint64() == common.L2GenesisHeight {
 			break
 		}
-		nextRollupHash = rollupHeaderWithHashes.Header.ParentHash
+		currentRollupHash = rollupHeaderWithHashes.Header.ParentHash
 	}
 
 	return txHashes, nil
