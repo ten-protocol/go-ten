@@ -45,7 +45,10 @@ func InjectTransactions(cfg Config, args []string, logger gethlog.Logger) {
 	}
 
 	// We store the block at which we start injecting transactions.
-	startBlock := l1Client.FetchHeadBlock()
+	startBlock, found := l1Client.FetchHeadBlock()
+	if !found {
+		panic("could not retrieve head block")
+	}
 
 	simStats := stats.NewStats(0)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.mgmtContractAddress, logger)
@@ -174,7 +177,11 @@ func parseNumOfTxs(args []string) int {
 }
 
 func checkDepositsSuccessful(txInjector *simulation.TransactionInjector, l1Client ethadapter.EthClient, stats *stats.Stats, erc20ContractLib erc20contractlib.ERC20ContractLib, mgmtContractLib mgmtcontractlib.MgmtContractLib, startBlock *types.Block) {
-	currentBlock := l1Client.FetchHeadBlock()
+	currentBlock, found := l1Client.FetchHeadBlock()
+	if !found {
+		panic("could not retrieve head block")
+	}
+
 	dummySim := simulation.Simulation{
 		Stats: stats,
 		Params: &params.SimParams{

@@ -197,7 +197,8 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, error) {
-	if e.storage.FetchSecret() == nil {
+	_, found := e.storage.FetchSecret()
+	if !found {
 		return common.AwaitingSecret, nil
 	}
 	return common.Running, nil // The enclave is local so it is always ready
@@ -486,8 +487,8 @@ func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationR
 	}
 	e.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.Owner))
 
-	secret := e.storage.FetchSecret()
-	if secret == nil {
+	secret, found := e.storage.FetchSecret()
+	if !found {
 		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
 	}
 	return crypto.EncryptSecret(att.PubKey, *secret, e.logger)

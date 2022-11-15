@@ -134,7 +134,8 @@ func initParams(storage db.Storage, noBaseFee bool) (*ObscuroChainContext, vm.Co
 // Todo - this is currently just returning the shared secret
 // it should not use it directly, but derive some entropy from it
 func secret(storage db.Storage) []byte {
-	secret := storage.FetchSecret()
+	// TODO - Handle secret not being found.
+	secret, _ := storage.FetchSecret()
 	return secret[:]
 }
 

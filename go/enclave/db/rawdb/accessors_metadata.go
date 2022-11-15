@@ -9,18 +9,18 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 )
 
-func ReadSharedSecret(db ethdb.KeyValueReader) *crypto.SharedEnclaveSecret {
+func ReadSharedSecret(db ethdb.KeyValueReader) (*crypto.SharedEnclaveSecret, bool) {
 	var ss crypto.SharedEnclaveSecret
 
 	enc, _ := db.Get(sharedSecret)
 	if len(enc) == 0 {
-		return nil
+		return nil, false
 	}
 	if err := rlp.DecodeBytes(enc, &ss); err != nil {
-		return nil
+		return nil, false
 	}
 
-	return &ss
+	return &ss, true
 }
 
 func WriteSharedSecret(db ethdb.KeyValueWriter, ss crypto.SharedEnclaveSecret, logger gethlog.Logger) {
@@ -33,18 +33,18 @@ func WriteSharedSecret(db ethdb.KeyValueWriter, ss crypto.SharedEnclaveSecret, l
 	}
 }
 
-func ReadGenesisHash(db ethdb.KeyValueReader) *common.Hash {
+func ReadGenesisHash(db ethdb.KeyValueReader) (*common.Hash, bool) {
 	var hash common.Hash
 
 	enc, _ := db.Get(genesisRollupHash)
 	if len(enc) == 0 {
-		return nil
+		return nil, false
 	}
 	if err := rlp.DecodeBytes(enc, &hash); err != nil {
-		return nil
+		return nil, false
 	}
 
-	return &hash
+	return &hash, true
 }
 
 func WriteGenesisHash(db ethdb.KeyValueWriter, hash common.Hash, logger gethlog.Logger) {
