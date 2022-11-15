@@ -285,7 +285,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 
 	// Re-processing the block that contains the rollup. This can happen as blocks can be fed to the enclave multiple times.
 	// In this case we don't update the state and move on.
-	if genesisRollup != nil && len(rollups) == 1 && bytes.Equal(rollups[0].Header.CalcHash().Bytes(), genesisRollup.Hash().Bytes()) {
+	if genesisRollup != nil && len(rollups) == 1 && bytes.Equal(rollups[0].Header.Hash().Bytes(), genesisRollup.Hash().Bytes()) {
 		return nil, true
 	}
 	return nil, false

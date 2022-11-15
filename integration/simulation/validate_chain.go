@@ -222,12 +222,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	h := getHeadRollupHeader(obscuroClient)
-	if h == nil {
+	headRollupHeader := getHeadRollupHeader(obscuroClient)
+	if headRollupHeader == nil {
 		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeIdx)
 		return
 	}
-	l2Height := h.Number
+	l2Height := headRollupHeader.Number
 	if l2Height.Uint64() < minObscuroHeight {
 		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", nodeIdx, l2Height, minObscuroHeight)
 	}
@@ -313,6 +313,15 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	// (execute deposits and transactions and compare to the state in the rollup)
 
 	heights[nodeIdx] = l2Height.Uint64()
+
+	// check that the headers are serialised and deserialised correctly, by recomputing a header's hash
+	parentHeader, err := obscuroClient.RollupHeaderByHash(headRollupHeader.ParentHash)
+	if err != nil {
+		t.Errorf("could not retrieve parent of head rollup")
+	}
+	if parentHeader.Hash() != headRollupHeader.ParentHash {
+		t.Errorf("mismatch in hash of retrieved header")
+	}
 }
 
 // FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.

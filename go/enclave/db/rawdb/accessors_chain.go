@@ -51,7 +51,7 @@ func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup, logger gethlog.Lo
 // to-number mapping.
 func WriteHeader(db ethdb.KeyValueWriter, header *common.Header, logger gethlog.Logger) {
 	var (
-		hash   = header.CalcHash()
+		hash   = header.Hash()
 		number = header.Number.Uint64()
 	)
 	// Write the hash -> number mapping

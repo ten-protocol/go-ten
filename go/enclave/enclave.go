@@ -239,7 +239,7 @@ func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (*common.Blo
 		"blk", block.Number(), "blkHash", block.Hash())
 
 	if bsr.IngestedRollupHeader != nil {
-		hr, f := e.storage.FetchRollup(bsr.IngestedRollupHeader.CalcHash())
+		hr, f := e.storage.FetchRollup(bsr.IngestedRollupHeader.Hash())
 		if !f {
 			e.logger.Crit("This should not happen because this rollup was just processed.")
 		}

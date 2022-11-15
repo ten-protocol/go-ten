@@ -548,7 +548,7 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	}
 	h.logger.Info(
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
-			common.ShortHash(genesisResponse.ProducedRollup.Header.CalcHash()),
+			common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 		))
 	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToExtRollupWithHash())
 	if err != nil {

@@ -35,7 +35,7 @@ func (r *ExtRollupWithHash) Hash() L2RootHash {
 	if hash := r.hash.Load(); hash != nil {
 		return hash.(L2RootHash)
 	}
-	v := r.Header.CalcHash()
+	v := r.Header.Hash()
 	r.hash.Store(v)
 
 	return v

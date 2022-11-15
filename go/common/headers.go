@@ -43,10 +43,6 @@ type Header struct {
 	L1Proof     L1RootHash     // the L1 block used by the enclave to generate the current rollup
 	R, S        *big.Int       // signature values
 	Withdrawals []Withdrawal
-
-	// A precalculated hash to use instead of `CalcHash` on the client side.
-	// TODO - See if we can forgo this and calculate the hash on the client side
-	Hash common.Hash
 }
 
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header.
@@ -63,13 +59,12 @@ type HeaderWithTxHashes struct {
 	TxHashes []TxHash
 }
 
-// CalcHash returns the block hash of the header, which is simply the keccak256 hash of its
+// Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding excluding the signature and its hash (to avoid a circular calculation).
-func (h *Header) CalcHash() L2RootHash {
+func (h *Header) Hash() L2RootHash {
 	cp := *h
 	cp.R = nil
 	cp.S = nil
-	cp.Hash = common.Hash{}
 	hash, err := rlpHash(cp)
 	if err != nil {
 		panic("err hashing a rollup header")

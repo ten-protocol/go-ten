@@ -69,7 +69,8 @@ func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, 
 	if !found {
 		return nil, nil //nolint:nilnil
 	}
-	return headerToMap(rollupHeaderWithHashes.Header), nil
+	headerMap := headerToMap(rollupHeaderWithHashes.Header)
+	return headerMap, nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -190,11 +191,11 @@ func headerToMap(header *common.Header) map[string]interface{} {
 		"receiptsRoot":     header.ReceiptHash,
 		"logsBloom":        header.Bloom,
 		"difficulty":       header.Difficulty,
-		"number":           header.Number.Uint64(),
+		"number":           header.Number,
 		"gasLimit":         header.GasLimit,
 		"gasUsed":          header.GasUsed,
 		"timestamp":        header.Time,
-		"extraData":        hexutil.Bytes(header.Extra),
+		"extraData":        header.Extra,
 		"mixHash":          header.MixDigest,
 		"nonce":            header.Nonce,
 		"baseFeePerGas":    header.BaseFee,
@@ -203,8 +204,6 @@ func headerToMap(header *common.Header) map[string]interface{} {
 		"agg":         header.Agg,
 		"l1Proof":     header.L1Proof,
 		"withdrawals": header.Withdrawals,
-
-		"hash": header.CalcHash(),
 	}
 }
 
@@ -224,7 +223,7 @@ func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*
 		if !found {
 			return nil, false
 		}
-		hash := header.Header.CalcHash()
+		hash := header.Header.Hash()
 		return &hash, true
 	}
 
