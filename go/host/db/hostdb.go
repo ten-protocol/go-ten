@@ -114,7 +114,7 @@ func (db *DB) AddRollupHeader(headerWithHashes *common.HeaderWithTxHashes) {
 	currentRollupHeaderWithHashes := db.GetHeadRollupHeader()
 	if currentRollupHeaderWithHashes == nil ||
 		currentRollupHeaderWithHashes.Header.Number.Int64() <= headerWithHashes.Header.Number.Int64() {
-		db.writeHeadRollup(b, headerWithHashes.Header.Hash())
+		db.writeHeadRollup(b, headerWithHashes.Header.CalcHash())
 	}
 
 	if err := b.Write(); err != nil {
@@ -211,7 +211,7 @@ func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, headerWithHashes *common
 	if err != nil {
 		db.logger.Crit("could not encode rollup header.", log.ErrKey, err)
 	}
-	key := rollupHeaderKey(headerWithHashes.Header.Hash())
+	key := rollupHeaderKey(headerWithHashes.Header.CalcHash())
 	if err := w.Put(key, data); err != nil {
 		db.logger.Crit("could not put header in DB.", log.ErrKey, err)
 	}
@@ -289,7 +289,7 @@ func (db *DB) writeHeadRollup(w ethdb.KeyValueWriter, val gethcommon.Hash) {
 // Stores a rollup's hash in the database, keyed by the rollup's number.
 func (db *DB) writeRollupHash(w ethdb.KeyValueWriter, header *common.Header) {
 	key := rollupHashKey(header.Number)
-	if err := w.Put(key, header.Hash().Bytes()); err != nil {
+	if err := w.Put(key, header.CalcHash().Bytes()); err != nil {
 		db.logger.Crit("could not put header in DB.", log.ErrKey, err)
 	}
 }

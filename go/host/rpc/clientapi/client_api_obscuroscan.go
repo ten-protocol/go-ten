@@ -74,7 +74,7 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 	if currentRollupHeaderWithHashes == nil {
 		return nil, nil
 	}
-	nextRollupHash := currentRollupHeaderWithHashes.Header.Hash()
+	nextRollupHash := currentRollupHeaderWithHashes.Header.CalcHash()
 
 	// We walk the chain until we've collected sufficient transactions.
 	var txHashes []gethcommon.Hash

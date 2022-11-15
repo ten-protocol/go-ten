@@ -23,7 +23,7 @@ type Header struct {
 	ParentHash  L2RootHash
 	Agg         common.Address
 	Nonce       types.BlockNonce // Nonce ensure compatibility with ethereum
-	L1Proof     L1RootHash       // the L1 block where the Parent was published
+	L1Proof     L1RootHash       // the L1 block where the parent was published
 	Root        StateRoot
 	TxHash      common.Hash // todo - include the synthetic deposits
 	Number      *big.Int    // the rollup height
@@ -32,6 +32,7 @@ type Header struct {
 	Extra       []byte
 	R, S        *big.Int // signature values
 	Withdrawals []Withdrawal
+	Hash        common.Hash
 
 	// Specification fields - not used for now but are expected to be available
 	UncleHash  common.Hash    `json:"sha3Uncles"`
@@ -41,8 +42,7 @@ type Header struct {
 	GasUsed    uint64         `json:"gasUsed"    `
 	Time       uint64         `json:"timestamp"   `
 	MixDigest  common.Hash    `json:"mixHash"`
-	// BaseFee was added by EIP-1559 and is ignored in legacy headers.
-	BaseFee *big.Int `json:"baseFeePerGas"`
+	BaseFee    *big.Int       `json:"baseFeePerGas"` // BaseFee was added by EIP-1559 and is ignored in legacy headers.
 }
 
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header.
@@ -59,12 +59,13 @@ type HeaderWithTxHashes struct {
 	TxHashes []TxHash
 }
 
-// Hash returns the block hash of the header, which is simply the keccak256 hash of its
+// CalcHash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding excluding the signature.
-func (h *Header) Hash() L2RootHash {
+func (h *Header) CalcHash() L2RootHash {
 	cp := *h
 	cp.R = nil
 	cp.S = nil
+	cp.Hash = common.Hash{}
 	hash, err := rlpHash(cp)
 	if err != nil {
 		panic("err hashing a rollup header")

@@ -582,7 +582,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 		// issue rollup - make sure it comes from the attested aggregator
 		r := datagenerator.RandomRollup()
 		r.Header.Agg = aggAID
-		r.Header.ParentHash = parentRollup.Header.Hash()
+		r.Header.ParentHash = parentRollup.Header.CalcHash()
 
 		// each rollup is child of the previous rollup
 		parentRollup = r
@@ -602,7 +602,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 		r.Header.Agg = aggAID
 
 		// same parent
-		r.Header.ParentHash = parentRollup.Header.Hash()
+		r.Header.ParentHash = parentRollup.Header.CalcHash()
 
 		// store these on the side as fork branches
 		splitPoint[i] = r
@@ -620,7 +620,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	for i, parentRollup := range splitPoint {
 		r := datagenerator.RandomRollup()
 		r.Header.Agg = aggAID
-		r.Header.ParentHash = parentRollup.Header.Hash()
+		r.Header.ParentHash = parentRollup.Header.CalcHash()
 
 		forks[i] = r
 
@@ -646,7 +646,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 
 	r := datagenerator.RandomRollup()
 	r.Header.Agg = aggAID
-	r.Header.ParentHash = parentRollup.Header.Hash()
+	r.Header.ParentHash = parentRollup.Header.CalcHash()
 
 	t.Logf("LAST Issued Rollup: %s parent: %s", r.Hash(), r.Header.ParentHash)
 

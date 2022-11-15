@@ -57,10 +57,9 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
 	rollupHash, err := api.rollupNumberToRollupHash(number)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch block number: %w", err)
+		return nil, fmt.Errorf("unable to fetch hash of rollup %d. Cause: %w", number, err)
 	}
-	rollup, err := api.GetBlockByHash(ctx, *rollupHash, true)
-	return rollup, err
+	return api.GetBlockByHash(ctx, *rollupHash, true)
 }
 
 // GetBlockByHash returns the header of the rollup with the given hash.
@@ -184,13 +183,15 @@ func headerWithHashesToMap(headerWithHashes *common.HeaderWithTxHashes) map[stri
 	header := headerWithHashes.Header
 	return map[string]interface{}{
 		"number":           header.Number.Uint64(),
-		"hash":             header.Hash(),
+		"hash":             header.CalcHash(),
 		"parentHash":       header.ParentHash,
 		"nonce":            header.Nonce,
 		"logsBloom":        header.Bloom,
 		"stateRoot":        header.Root,
 		"receiptsRoot":     header.ReceiptHash,
 		"miner":            header.Agg,
+		"coinbase":         header.Agg,
+		"l1Proof":          header.L1Proof,
 		"extraData":        hexutil.Bytes(header.Extra),
 		"transactionsRoot": header.TxHash,
 		"transactions":     headerWithHashes.TxHashes,
@@ -219,7 +220,7 @@ type FeeHistoryResult struct {
 func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
 	if blockNumber == rpc.LatestBlockNumber {
-		hash := api.host.DB().GetHeadRollupHeader().Header.Hash()
+		hash := api.host.DB().GetHeadRollupHeader().Header.CalcHash()
 		return &hash, nil
 	}
 

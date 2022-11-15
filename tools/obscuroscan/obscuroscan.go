@@ -484,7 +484,7 @@ func (o *Obscuroscan) getRollupByNumber(rollupNumber int64) (*common.ExtRollup, 
 	}
 
 	var rollup *common.ExtRollup
-	err = o.client.Call(&rollup, rpc.GetRollup, rollupHeader.Hash())
+	err = o.client.Call(&rollup, rpc.GetRollup, rollupHeader.Hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup. Cause: %w", err)
 	}

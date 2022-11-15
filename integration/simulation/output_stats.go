@@ -58,7 +58,7 @@ func (o *OutputStats) countBlockChain() {
 	header := getHeadRollupHeader(obscuroClient)
 	var err error
 	for {
-		if header != nil && !bytes.Equal(header.Hash().Bytes(), common.GenesisHash.Bytes()) {
+		if header != nil && !bytes.Equal(header.CalcHash().Bytes(), common.GenesisHash.Bytes()) {
 			break
 		}
 
