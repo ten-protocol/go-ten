@@ -54,7 +54,10 @@ type P2P interface {
 	BroadcastTx(tx common.EncryptedTx) error
 }
 
-// ReconnectingBlockProvider interface allows host to monitor and await L1 blocks for feeding to enclave
+// ReconnectingBlockProvider interface allows host to monitor and await L1 blocks.
+//
+// The stream channels provide the blocks the way the enclave expects to be fed (consecutive canonical blocks)
+//
 // ReconnectingBlockProvider handles:
 //
 //   - reconnecting to the source, it will recover if it can and continue streaming from where it left off

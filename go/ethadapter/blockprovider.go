@@ -37,22 +37,21 @@ func NewEthBlockProvider(ethClient EthClient, logger gethlog.Logger) *EthBlockPr
 	}
 }
 
+// EthBlockProvider streams blocks from the ethereum L1 client in the order expected by the enclave (consecutive, canonical blocks)
 type EthBlockProvider struct {
 	ethClient EthClient
 	ctx       context.Context
+	logger    gethlog.Logger
+	streamCh  chan *types.Block
 
-	streamCh      chan *types.Block
-	runningStatus *int32 // 0 = stopped, 1 = running
-
-	latestSent *types.Header // most recently sent block (reset if streamFrom is reset)
-	streamFrom *big.Int      // height most-recently requested to stream from
-
-	logger gethlog.Logger
+	// the state of the block provider
+	currentHead   *types.Header // most recently sent block (reset to nil when a `StartStreaming...` method is called)
+	runningStatus *int32        // 0 = stopped, 1 = running
 }
 
-func (e *EthBlockProvider) start() {
+func (e *EthBlockProvider) start(fromHeight *big.Int) {
 	e.runningStatus = new(int32)
-	go e.streamBlocks()
+	go e.streamBlocks(fromHeight)
 }
 
 // StartStreamingFromHash will look up the hash block, find the appropriate height (LCA if there have been forks) and
@@ -72,14 +71,13 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (<-chan *ty
 	if height.Cmp(one) < 0 {
 		height = one
 	}
-	e.streamFrom = height
 	if e.streamCh != nil {
 		close(e.streamCh)
 	}
 	e.streamCh = make(chan *types.Block)
 	if e.stopped() {
 		// if the provider is stopped (or not yet started) then we kick off the streaming processes
-		e.start()
+		e.start(height)
 	}
 	return e.streamCh, nil
 }
@@ -93,16 +91,16 @@ func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
 	return f && h == l1Head.Hash()
 }
 
-// streamBlocks should be run in a separate go routine. It will stream catch-up blocks from requested height until it
+// streamBlocks is the main loop. It should be run in a separate go routine. It will stream catch-up blocks from requested height until it
 // reaches the latest live block, then it will block until next live block arrives
 // It blocks when:
 // - publishing a block, it blocks on the outbound channel until the block is consumed
 // - awaiting a live block, when consumer is completely up-to-date it waits for a live block to arrive
-func (e *EthBlockProvider) streamBlocks() {
+func (e *EthBlockProvider) streamBlocks(fromHeight *big.Int) {
 	atomic.StoreInt32(e.runningStatus, int32(statusCodeRunning))
 	for !e.stopped() {
 		// this will block if we're up-to-date with live blocks
-		block, err := e.nextBlockToStream()
+		block, err := e.nextBlockToStream(fromHeight)
 		if err != nil {
 			e.logger.Error("unexpected error while preparing block to stream, will retry in 1 sec", log.ErrKey, err)
 			time.Sleep(time.Second)
@@ -111,13 +109,13 @@ func (e *EthBlockProvider) streamBlocks() {
 		e.logger.Trace("blockProvider streaming block", "height", block.Number(), "hash", block.Hash())
 		e.streamCh <- block // we block here until consumer takes it
 		// update stream state
-		e.latestSent = block.Header()
+		e.currentHead = block.Header()
 	}
 }
 
-func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
-	if e.latestSent == nil {
-		blk, err := e.ethClient.BlockByNumber(e.streamFrom)
+func (e *EthBlockProvider) nextBlockToStream(fromHeight *big.Int) (*types.Block, error) {
+	if e.currentHead == nil {
+		blk, err := e.ethClient.BlockByNumber(fromHeight)
 		if err == nil {
 			return blk, nil
 		}
@@ -129,7 +127,7 @@ func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 	}
 
 	// most common path should be: new head block that arrived is the next block, and needs to be sent
-	if head.ParentHash == e.latestSent.Hash() {
+	if head.ParentHash == e.currentHead.Hash() {
 		blk, err := e.ethClient.BlockByHash(head.Hash())
 		if err != nil {
 			return nil, fmt.Errorf("could not fetch block with hash=%s - %w", head.Hash(), err)
@@ -138,9 +136,9 @@ func (e *EthBlockProvider) nextBlockToStream() (*types.Block, error) {
 	}
 
 	// and if not then, we find the latest canonical block we sent and try one after that
-	latestCanon, err := e.latestCanonAncestor(e.latestSent.Hash())
+	latestCanon, err := e.latestCanonAncestor(e.currentHead.Hash())
 	if err != nil {
-		return nil, fmt.Errorf("could not find ancestor on canonical chain for hash=%s - %w", e.latestSent.Hash(), err)
+		return nil, fmt.Errorf("could not find ancestor on canonical chain for hash=%s - %w", e.currentHead.Hash(), err)
 	}
 	// and send the cannon block after the last sent (this may be a fork, or it may just be the next on the same branch)
 	blk, err := e.ethClient.BlockByNumber(increment(latestCanon.Number()))
@@ -178,7 +176,7 @@ func (e *EthBlockProvider) AwaitNewBlock() (*types.Header, error) {
 	if !f {
 		return nil, errors.New("l1 head block not found")
 	}
-	if e.latestSent == nil || e.latestSent.Hash() != l1Head.Hash() {
+	if e.currentHead == nil || e.currentHead.Hash() != l1Head.Hash() {
 		// we're behind, return the head (no need to wait for the next head, there's catching up to do)
 		return l1Head.Header(), nil
 	}
@@ -188,7 +186,7 @@ func (e *EthBlockProvider) AwaitNewBlock() (*types.Header, error) {
 
 	// check again to make sure we didn't miss one
 	l1Head, f = e.ethClient.FetchHeadBlock()
-	if f && e.latestSent.Hash() != l1Head.Hash() {
+	if f && e.currentHead.Hash() != l1Head.Hash() {
 		// we're behind now, return the head
 		streamSub.Unsubscribe()
 		return l1Head.Header(), nil
@@ -216,7 +214,7 @@ func (e *EthBlockProvider) AwaitNewBlock() (*types.Header, error) {
 
 			// check head to make sure we didn't miss one
 			l1Head, f = e.ethClient.FetchHeadBlock()
-			if f && e.latestSent.Hash() != l1Head.Hash() {
+			if f && e.currentHead.Hash() != l1Head.Hash() {
 				// we're behind now, return the head
 				streamSub.Unsubscribe()
 				return l1Head.Header(), nil
