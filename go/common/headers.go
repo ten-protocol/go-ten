@@ -22,19 +22,19 @@ var hasherPool = sync.Pool{
 type Header struct {
 	// The fields present in Geth's `types/Header` struct.
 	ParentHash  L2RootHash
-	UncleHash   common.Hash
-	Coinbase    common.Address
-	Root        StateRoot
-	TxHash      common.Hash // todo - include the synthetic deposits
-	ReceiptHash common.Hash
-	Bloom       types.Bloom
+	UncleHash   common.Hash    `json:"sha3Uncles"`
+	Coinbase    common.Address `json:"miner"`
+	Root        StateRoot      `json:"stateRoot"`
+	TxHash      common.Hash    `json:"transactionsRoot"` // todo - include the synthetic deposits
+	ReceiptHash common.Hash    `json:"receiptsRoot"`
+	Bloom       types.Bloom    `json:"logsBloom"`
 	Difficulty  *big.Int
 	Number      *big.Int
 	GasLimit    uint64
 	GasUsed     uint64
-	Time        uint64
-	Extra       []byte
-	MixDigest   common.Hash
+	Time        uint64      `json:"timestamp"`
+	Extra       []byte      `json:"extraData"`
+	MixDigest   common.Hash `json:"mixHash"`
 	Nonce       types.BlockNonce
 	BaseFee     *big.Int
 
