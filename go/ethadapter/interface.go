@@ -13,10 +13,8 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-var (
-	// ErrSubscriptionNotSupported return from BlockListener subscription if client doesn't support streaming (in-mem simulation)
-	ErrSubscriptionNotSupported = errors.New("block subscription not supported")
-)
+// ErrSubscriptionNotSupported return from BlockListener subscription if client doesn't support streaming (in-mem simulation)
+var ErrSubscriptionNotSupported = errors.New("block subscription not supported")
 
 // EthClient defines the interface for RPC communications with the ethereum nodes
 // TODO Some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
