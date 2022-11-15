@@ -48,7 +48,7 @@ func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, b
 	return block, f
 }
 
-func (n *blockResolverInMem) FetchHeadBlock() *types.Block {
+func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, bool) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	var max *types.Block
@@ -58,7 +58,10 @@ func (n *blockResolverInMem) FetchHeadBlock() *types.Block {
 			max = bh
 		}
 	}
-	return max
+	if max == nil {
+		return nil, false
+	}
+	return max, true
 }
 
 func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, bool) {

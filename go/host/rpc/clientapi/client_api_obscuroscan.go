@@ -24,8 +24,8 @@ func NewObscuroScanAPI(host host.Host) *ObscuroScanAPI {
 
 // GetBlockHeaderByHash returns the header for the block with the given number.
 func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*types.Header, error) {
-	blockHeader := api.host.DB().GetBlockHeader(blockHash)
-	if blockHeader == nil {
+	blockHeader, found := api.host.DB().GetBlockHeader(blockHash)
+	if !found {
 		return nil, fmt.Errorf("no block with hash %s is stored", blockHash)
 	}
 	return blockHeader, nil
@@ -34,8 +34,8 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 // GetHeadRollupHeader returns the current head rollup's header.
 // TODO - #718 - Switch to reading batch header.
 func (api *ObscuroScanAPI) GetHeadRollupHeader() *common.Header {
-	headerWithHashes := api.host.DB().GetHeadRollupHeader()
-	if headerWithHashes == nil {
+	headerWithHashes, found := api.host.DB().GetHeadRollupHeader()
+	if !found {
 		return nil
 	}
 	return headerWithHashes.Header
@@ -48,13 +48,13 @@ func (api *ObscuroScanAPI) GetRollup(hash gethcommon.Hash) (*common.ExtRollup, e
 
 // GetRollupForTx returns the rollup containing a given transaction hash. Required for ObscuroScan.
 func (api *ObscuroScanAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRollup, error) {
-	rollupNumber := api.host.DB().GetRollupNumber(txHash)
-	if rollupNumber == nil {
+	rollupNumber, found := api.host.DB().GetRollupNumber(txHash)
+	if !found {
 		return nil, fmt.Errorf("no rollup containing a transaction with hash %s is stored", txHash)
 	}
 
-	rollupHash := api.host.DB().GetRollupHash(rollupNumber)
-	if rollupHash == nil {
+	rollupHash, found := api.host.DB().GetRollupHash(rollupNumber)
+	if !found {
 		return nil, fmt.Errorf("no rollup with number %d is stored", rollupNumber.Int64())
 	}
 
@@ -70,8 +70,8 @@ func (api *ObscuroScanAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRo
 // TODO - Consider introducing paging or similar to prevent a huge number of transactions blowing the node's memory limit.
 // TODO - #718 - Switch to retrieving transactions from latest batch.
 func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, error) {
-	currentRollupHeaderWithHashes := api.host.DB().GetHeadRollupHeader()
-	if currentRollupHeaderWithHashes == nil {
+	currentRollupHeaderWithHashes, found := api.host.DB().GetHeadRollupHeader()
+	if !found {
 		return nil, nil
 	}
 	nextRollupHash := currentRollupHeaderWithHashes.Header.CalcHash()
@@ -79,8 +79,8 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 	// We walk the chain until we've collected sufficient transactions.
 	var txHashes []gethcommon.Hash
 	for {
-		rollupHeaderWithHashes := api.host.DB().GetRollupHeader(nextRollupHash)
-		if rollupHeaderWithHashes == nil {
+		rollupHeaderWithHashes, found := api.host.DB().GetRollupHeader(nextRollupHash)
+		if !found {
 			return nil, fmt.Errorf("could not retrieve rollup for hash %s", nextRollupHash)
 		}
 

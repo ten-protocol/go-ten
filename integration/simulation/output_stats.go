@@ -71,7 +71,7 @@ func (o *OutputStats) countBlockChain() {
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for headBlock := l1Node.FetchHeadBlock(); headBlock != nil && !bytes.Equal(headBlock.Hash().Bytes(), common.GenesisHash.Bytes()); headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
+	for headBlock, _ := l1Node.FetchHeadBlock(); headBlock != nil && !bytes.Equal(headBlock.Hash().Bytes(), common.GenesisHash.Bytes()); headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
 		for _, tx := range headBlock.Transactions() {
 			t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
 			if t == nil {

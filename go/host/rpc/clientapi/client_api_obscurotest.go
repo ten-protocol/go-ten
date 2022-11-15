@@ -21,8 +21,8 @@ func NewTestAPI(host host.Host) *TestAPI {
 // BlockNumber returns the height of the current head block.
 // # TODO - #718 - Switch to returning height based on current batch.
 func (api *TestAPI) BlockNumber() hexutil.Uint64 {
-	head := api.host.DB().GetHeadBlockHeader()
-	if head == nil {
+	head, found := api.host.DB().GetHeadBlockHeader()
+	if !found {
 		return 0
 	}
 
