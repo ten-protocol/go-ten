@@ -200,7 +200,6 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 }
 
 func (s *storageImpl) HealthCheck() (bool, error) {
-	// TODO refactor this when the storage method signatures are changed and errors are surfaced
 	headRollup, err := s.FetchHeadRollup()
 	if err != nil {
 		s.logger.Error("unable to HealthCheck storage", "err", err)
