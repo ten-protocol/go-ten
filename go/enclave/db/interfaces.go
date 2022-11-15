@@ -26,7 +26,7 @@ type BlockResolver interface {
 	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
 	// Todo - this is super confusing, analyze the usage
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
-	// FetchHeadBlock - returns the head of the current chain
+	// FetchHeadBlock - returns the head of the current chain, or (nil, false) if no head is found
 	FetchHeadBlock() (*types.Block, bool)
 	// ProofHeight - return the height of the L1 proof, or GenesisHeight - if the block is not known
 	ProofHeight(rollup *core.Rollup) int64
