@@ -69,7 +69,7 @@ func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, 
 	if rollupHeaderWithHashes == nil {
 		return nil, nil //nolint:nilnil
 	}
-	return headerWithHashesToMap(rollupHeaderWithHashes), nil
+	return headerToMap(rollupHeaderWithHashes.Header), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -179,9 +179,9 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 
 // Maps an external rollup to a key/value map.
 // TODO - Include all the fields of the rollup header that do not exist in the Geth block headers as well (not just withdrawals).
-func headerWithHashesToMap(headerWithHashes *common.HeaderWithTxHashes) map[string]interface{} {
-	header := headerWithHashes.Header
+func headerToMap(header *common.Header) map[string]interface{} {
 	return map[string]interface{}{
+		// The fields present in Geth's `types/Header` struct.
 		"parentHash":       header.ParentHash,
 		"sha3Uncles":       header.UncleHash,
 		"miner":            header.Coinbase,
@@ -199,12 +199,12 @@ func headerWithHashesToMap(headerWithHashes *common.HeaderWithTxHashes) map[stri
 		"nonce":            header.Nonce,
 		"baseFeePerGas":    header.BaseFee,
 
+		// The custom Obscuro fields.
 		"agg":         header.Agg,
 		"l1Proof":     header.L1Proof,
 		"withdrawals": header.Withdrawals,
 
-		"hash":         header.CalcHash(),
-		"transactions": headerWithHashes.TxHashes,
+		"hash": header.CalcHash(),
 	}
 }
 
