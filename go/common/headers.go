@@ -20,29 +20,33 @@ var hasherPool = sync.Pool{
 // Header is a public / plaintext struct that holds common properties of rollups batches.
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Header struct {
+	// The fields present in Geth's `types/Header` struct.
 	ParentHash  L2RootHash
-	Agg         common.Address
-	Nonce       types.BlockNonce // Nonce ensure compatibility with ethereum
-	L1Proof     L1RootHash       // the L1 block where the parent was published
+	UncleHash   common.Hash    `json:"sha3Uncles"`
+	Coinbase    common.Address `json:"miner"`
 	Root        StateRoot
 	TxHash      common.Hash // todo - include the synthetic deposits
-	Number      *big.Int    // the rollup height
-	Bloom       types.Bloom
 	ReceiptHash common.Hash
+	Bloom       types.Bloom
+	Difficulty  *big.Int `json:"difficulty"`
+	Number      *big.Int // the rollup height
+	GasLimit    uint64   `json:"gasLimit"`
+	GasUsed     uint64   `json:"gasUsed"`
+	Time        uint64   `json:"timestamp"`
 	Extra       []byte
-	R, S        *big.Int // signature values
-	Withdrawals []Withdrawal
-	Hash        common.Hash
+	MixDigest   common.Hash `json:"mixHash"`
+	Nonce       types.BlockNonce
+	BaseFee     *big.Int `json:"baseFeePerGas"`
 
-	// Specification fields - not used for now but are expected to be available
-	UncleHash  common.Hash    `json:"sha3Uncles"`
-	Coinbase   common.Address `json:"miner"      `
-	Difficulty *big.Int       `json:"difficulty" `
-	GasLimit   uint64         `json:"gasLimit"  `
-	GasUsed    uint64         `json:"gasUsed"    `
-	Time       uint64         `json:"timestamp"   `
-	MixDigest  common.Hash    `json:"mixHash"`
-	BaseFee    *big.Int       `json:"baseFeePerGas"` // BaseFee was added by EIP-1559 and is ignored in legacy headers.
+	// The custom Obscuro fields.
+	Agg         common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
+	L1Proof     L1RootHash     // the L1 block where the parent was published
+	R, S        *big.Int       // signature values
+	Withdrawals []Withdrawal
+
+	// A precalculated hash to use instead of `CalcHash` on the client side.
+	// TODO - See if we can forgo this and calculate the hash on the client side
+	Hash common.Hash
 }
 
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header.
