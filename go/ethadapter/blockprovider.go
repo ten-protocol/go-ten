@@ -71,9 +71,6 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (<-chan *ty
 	if height.Cmp(one) < 0 {
 		height = one
 	}
-	if e.streamCh != nil {
-		close(e.streamCh)
-	}
 	e.streamCh = make(chan *types.Block)
 	if e.stopped() {
 		// if the provider is stopped (or not yet started) then we kick off the streaming processes
@@ -121,7 +118,7 @@ func (e *EthBlockProvider) nextBlockToStream(fromHeight *big.Int) (*types.Block,
 		}
 	}
 
-	head, err := e.AwaitNewBlock()
+	head, err := e.awaitNewBlock()
 	if err != nil {
 		return nil, fmt.Errorf("no new block found from stream - %w", err)
 	}
@@ -148,7 +145,7 @@ func (e *EthBlockProvider) nextBlockToStream(fromHeight *big.Int) (*types.Block,
 	return blk, nil
 }
 
-// checkStopped checks the status for stopped code
+// stopped checks the status for stopped code
 func (e *EthBlockProvider) stopped() bool {
 	return atomic.LoadInt32(e.runningStatus) == int32(statusCodeStopped)
 }
@@ -168,9 +165,9 @@ func (e *EthBlockProvider) latestCanonAncestor(blkHash gethcommon.Hash) (*types.
 	return blk, nil
 }
 
-// AwaitNewBlock takes a hash, it will block until it can return a head block with a different hash or error
+// awaitNewBlock takes a hash, it will block until it can return a head block with a different hash or error
 // (note: this can currently only be used by one caller at a time - not an issue for current usage)
-func (e *EthBlockProvider) AwaitNewBlock() (*types.Header, error) {
+func (e *EthBlockProvider) awaitNewBlock() (*types.Header, error) {
 	// first we check if we're up-to-date
 	l1Head, f := e.ethClient.FetchHeadBlock()
 	if !f {
