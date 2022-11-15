@@ -200,6 +200,7 @@ func (e *EthBlockProvider) awaitNewBlock() (*types.Header, error) {
 func (e *EthBlockProvider) getStatus() blockProviderStatus {
 	return blockProviderStatus(atomic.LoadInt32(e.runningStatus))
 }
+
 func (e *EthBlockProvider) setStatus(status blockProviderStatus) {
 	atomic.StoreInt32(e.runningStatus, int32(status))
 }
