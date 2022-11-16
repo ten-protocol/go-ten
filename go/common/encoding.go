@@ -26,12 +26,12 @@ func (eb EncodedBlock) DecodeBlock() (*types.Block, error) {
 	return &b, nil
 }
 
-func EncodeRollup(r *ExtRollupWithHash) (EncodedRollup, error) {
+func EncodeRollup(r *ExtRollup) (EncodedRollup, error) {
 	return rlp.EncodeToBytes(r)
 }
 
-func DecodeRollup(encoded EncodedRollup) (*ExtRollupWithHash, error) {
-	r := new(ExtRollupWithHash)
+func DecodeRollup(encoded EncodedRollup) (*ExtRollup, error) {
+	r := new(ExtRollup)
 	err := rlp.DecodeBytes(encoded, r)
 	return r, err
 }
