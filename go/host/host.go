@@ -385,8 +385,8 @@ func (h *host) waitForEnclave() {
 }
 
 // starts the host main processing loop
-func (h *host) startProcessing() {
-	h.logger.Info("§§§ Start processing...")
+// todo: matt to fix this complexity `nolint` in next PR with block provider
+func (h *host) startProcessing() { //nolint:gocognit
 	// Only open the p2p connection when the host is fully initialised
 	h.p2p.StartListening(h)
 
