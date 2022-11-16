@@ -45,7 +45,7 @@ type EthBlockProvider struct {
 	streamCh  chan *types.Block
 
 	// the state of the block provider
-	currentHead   *types.Header // most recently sent block (reset to nil when a `StartStreaming...` method is called)
+	latestSent    *types.Header // most recently sent block (reset to nil when a `StartStreaming...` method is called)
 	runningStatus *int32        // 0 = stopped, 1 = running
 }
 
@@ -101,16 +101,26 @@ func (e *EthBlockProvider) streamBlocks(fromHeight *big.Int) {
 		e.logger.Trace("blockProvider streaming block", "height", block.Number(), "hash", block.Hash())
 		e.streamCh <- block // we block here until consumer takes it
 		// update stream state
-		e.currentHead = block.Header()
+		e.latestSent = block.Header()
 	}
 }
 
+// fetchNextCanonicalBlock finds the next block to send downstream to the consumer.
+// It looks at:
+//  - the latest block that was sent to the consumer (`e.latestSent`)
+//  - the current head of the L1 according to the Eth client (`l1Block`)
+//
+// If the consumer is up-to-date: this method will wait until a new block arrives from the L1
+// If the consumer is behind or there has been a fork: it returns the next canonical block that the consumer needs to see (no waiting)
 func (e *EthBlockProvider) fetchNextCanonicalBlock(fromHeight *big.Int) (*types.Block, error) {
-	if e.currentHead == nil {
+	// check for the initial case, when consumer has first requested a stream
+	if e.latestSent == nil {
+		// we try to return the canonical block at the height requested
 		blk, err := e.ethClient.BlockByNumber(fromHeight)
-		if err == nil {
-			return blk, nil
+		if err != nil {
+			return nil, fmt.Errorf("could not fetch block at requested height=%d - %w", fromHeight, err)
 		}
+		return blk, nil
 	}
 
 	l1Block, f := e.ethClient.FetchHeadBlock()
@@ -120,7 +130,7 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(fromHeight *big.Int) (*types.
 	l1Head := l1Block.Header()
 
 	// check if the block provider is already up-to-date with the latest L1 block (if it is, then wait for a new block)
-	if e.currentHead != nil && l1Head.Hash() == e.currentHead.Hash() {
+	if l1Head.Hash() == e.latestSent.Hash() {
 		var err error
 		// block provider's current head is up-to-date, we will wait for the next L1 block to arrive
 		l1Head, err = e.awaitNewBlock()
@@ -130,7 +140,7 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(fromHeight *big.Int) (*types.
 	}
 
 	// most common path should be: new head block that arrived is the next block, and needs to be sent
-	if l1Head.ParentHash == e.currentHead.Hash() {
+	if l1Head.ParentHash == e.latestSent.Hash() {
 		blk, err := e.ethClient.BlockByHash(l1Head.Hash())
 		if err != nil {
 			return nil, fmt.Errorf("could not fetch block with hash=%s - %w", l1Head.Hash(), err)
@@ -139,9 +149,9 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(fromHeight *big.Int) (*types.
 	}
 
 	// and if not then, we walk back up the tree from the current head, to find the most recent **canonical** block we sent
-	latestCanon, err := e.latestCanonAncestor(e.currentHead.Hash())
+	latestCanon, err := e.latestCanonAncestor(e.latestSent.Hash())
 	if err != nil {
-		return nil, fmt.Errorf("could not find ancestor on canonical chain for hash=%s - %w", e.currentHead.Hash(), err)
+		return nil, fmt.Errorf("could not find ancestor on canonical chain for hash=%s - %w", e.latestSent.Hash(), err)
 	}
 	// and send the canonical block at the height after that
 	// (which may be a fork, or it may just be the next on the same branch if we are catching-up)
