@@ -32,8 +32,9 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 }
 
 // BlockNumber returns the height of the current head batch.
+// # TODO - #718 - Switch to returning height based on current batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	header, found := api.host.DB().GetHeadBatchHeader()
+	header, found := api.host.DB().GetHeadRollupHeader()
 	if !found {
 		return 0
 	}
