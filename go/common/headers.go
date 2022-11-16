@@ -53,12 +53,6 @@ type Withdrawal struct {
 	Contract  common.Address // the contract
 }
 
-// HeaderWithTxHashes pairs a header with the hashes of the transactions in that rollup.
-type HeaderWithTxHashes struct {
-	Header   *Header
-	TxHashes []TxHash
-}
-
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding excluding the signature.
 func (h *Header) Hash() L2RootHash {

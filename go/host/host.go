@@ -53,6 +53,7 @@ const (
 
 	maxWaitForL1Receipt       = 100 * time.Second
 	retryIntervalForL1Receipt = 10 * time.Second
+	blockStreamWarningTimeout = 30 * time.Second
 )
 
 // Implementation of host.Host.
@@ -65,6 +66,8 @@ type host struct {
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	enclaveClient common.Enclave       // For communication with the enclave
 	rpcServer     clientrpc.Server     // For communication with Obscuro client applications
+
+	blockProvider hostcommon.ReconnectingBlockProvider
 
 	// control the host lifecycle
 	exitHostCh            chan bool
@@ -95,6 +98,7 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		p2p:           p2p,
 		ethClient:     ethClient,
 		enclaveClient: enclaveClient,
+		blockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
 
 		// lifecycle channels
 		exitHostCh:            make(chan bool),
@@ -340,6 +344,9 @@ func (h *host) Stop() {
 		// connection remains open, waiting for the RPC server to close.
 		go h.rpcServer.Stop()
 	}
+	if h.blockProvider != nil {
+		go h.blockProvider.Stop()
+	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
@@ -379,6 +386,7 @@ func (h *host) waitForEnclave() {
 
 // starts the host main processing loop
 func (h *host) startProcessing() {
+	h.logger.Info("§§§ Start processing...")
 	// Only open the p2p connection when the host is fully initialised
 	h.p2p.StartListening(h)
 
@@ -494,6 +502,7 @@ func (h *host) processBlockTransactions(b *types.Block) {
 			continue
 		}
 
+		// node received a secret response, we should add them to our p2p connection pool
 		if scrtRespTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
 			err := h.processSharedSecretResponse(scrtRespTx)
 			if err != nil {
@@ -531,8 +540,8 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 	// only update the host rollup headers if the enclave has found a new rollup head
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
-		headerWithHashes := common.HeaderWithTxHashes{Header: result.IngestedRollupHeader, TxHashes: result.ProducedRollup.TxHashes}
-		h.db.AddRollupHeader(&headerWithHashes)
+		// TODO - Fix bug here where tx hashes are being stored against the wrong rollup.
+		h.db.AddRollupHeader(result.IngestedRollupHeader, result.ProducedRollup.TxHashes)
 	}
 
 	// adding a header will update the head if it has a higher height
@@ -626,16 +635,22 @@ func (h *host) requestSecret() error {
 	l1tx := &ethadapter.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
+	// record the L1 head height before we submit the secret request so we know which block to watch from
+	l1Head, f := h.ethClient.FetchHeadBlock()
+	if !f {
+		panic("no head found for L1")
+	}
 	requestSecretTx := h.mgmtContractLib.CreateRequestSecret(l1tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(requestSecretTx, l1TxTriesSecret)
 	if err != nil {
 		return err
 	}
 
-	err = h.awaitSecret()
+	err = h.awaitSecret(l1Head.Number())
 	if err != nil {
 		h.logger.Crit("could not receive the secret", log.ErrKey, err)
 	}
+	h.logger.Info("§§§ Secret received")
 	return nil
 }
 
@@ -736,6 +751,10 @@ func (h *host) monitorBlocks() {
 	for atomic.LoadInt32(h.stopHostInterrupt) == 0 {
 		select {
 		case err := <-subs.Err():
+			if errors.Is(err, ethadapter.ErrSubscriptionNotSupported) {
+				// there will never be a block from this monitor process, we can abandon it
+				return
+			}
 			h.logger.Error("L1 block monitoring error", log.ErrKey, err)
 			h.logger.Info("Restarting L1 block Monitoring...")
 			// it's fine to immediately restart the listener, any incoming blocks will be on hold in the queue
@@ -905,45 +924,27 @@ func (h *host) bootstrapHost() types.Block {
 	return *currentBlock
 }
 
-func (h *host) awaitSecret() error {
-	// start listening for l1 blocks that contain the response to the request
-	listener, subs := h.ethClient.BlockListener()
+func (h *host) awaitSecret(fromHeight *big.Int) error {
+	blkStream, err := h.blockProvider.StartStreamingFromHeight(fromHeight)
+	if err != nil {
+		return err
+	}
 
 	for {
 		select {
-		case err := <-subs.Err():
-			h.logger.Error("Restarting L1 block monitoring while awaiting for secret. Errored with: %s", log.ErrKey, err)
-			// todo this is a very simple way of reconnecting the host, it might need catching up logic
-			listener, subs = h.ethClient.BlockListener()
-
-		// todo: find a way to get rid of this case and only listen for blocks on the expected channels
-		case header := <-listener:
-			block, err := h.ethClient.BlockByHash(header.Hash())
-			if err != nil {
-				return fmt.Errorf("failed to retrieve block. Cause: %w", err)
-			}
-			if h.checkBlockForSecretResponse(block) {
-				// todo this should be deferred when the errors are upstreamed instead of panic'd
-				subs.Unsubscribe()
+		case blk := <-blkStream:
+			h.logger.Trace("checking block for secret resp", "height", blk.Number())
+			if h.checkBlockForSecretResponse(blk) {
+				h.blockProvider.Stop()
 				return nil
 			}
 
-		case bAndParent := <-h.blockRPCCh:
-			block, err := bAndParent.b.DecodeBlock()
-			if err != nil {
-				return fmt.Errorf("failed to decode block received via RPC. Cause: %w", err)
-			}
-			if h.checkBlockForSecretResponse(block) {
-				subs.Unsubscribe()
-				return nil
-			}
-
-		case <-time.After(time.Second * 10):
+		case <-time.After(blockStreamWarningTimeout):
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select)
-			h.logger.Info("Still waiting for secret from the L1...")
+			h.logger.Warn(fmt.Sprintf(" Waiting for secret from the L1. No blocks received for over %s", blockStreamWarningTimeout))
 
 		case <-h.exitHostCh:
-			subs.Unsubscribe()
+			h.blockProvider.Stop()
 			return nil
 		}
 	}

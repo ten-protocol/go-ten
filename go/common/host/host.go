@@ -1,6 +1,10 @@
 package host
 
 import (
+	"math/big"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -48,4 +52,25 @@ type P2P interface {
 	StopListening() error
 	UpdatePeerList([]string)
 	BroadcastTx(tx common.EncryptedTx) error
+}
+
+// ReconnectingBlockProvider interface allows host to monitor and await L1 blocks.
+//
+// The stream channels provide the blocks the way the enclave expects to be fed (consecutive canonical blocks)
+//
+// ReconnectingBlockProvider handles:
+//
+//   - reconnecting to the source, it will recover if it can and continue streaming from where it left off
+//
+//   - forks: block provider only sends blocks that are *currently* canonical. If there was a fork then it will replay
+//     from the block after the fork. For example:
+//
+//     12a --> 13a --> 14a -->
+//     \-> 13b --> 14b --> 15b
+//     If block provider had just published 14a and then discovered the 'b' fork is canonical, it would next publish 13b, 14b, 15b.
+type ReconnectingBlockProvider interface {
+	StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, error)
+	StartStreamingFromHash(latestHash gethcommon.Hash) (<-chan *types.Block, error)
+	Stop()
+	IsLive(hash gethcommon.Hash) bool // returns true if hash is of the latest known L1 head block
 }

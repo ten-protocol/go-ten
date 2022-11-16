@@ -36,11 +36,11 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 // GetHeadRollupHeader returns the current head rollup's header.
 // TODO - #718 - Switch to reading batch header.
 func (api *ObscuroScanAPI) GetHeadRollupHeader() *common.Header {
-	headerWithHashes, found := api.host.DB().GetHeadRollupHeader()
+	header, found := api.host.DB().GetHeadRollupHeader()
 	if !found {
 		return nil
 	}
-	return headerWithHashes.Header
+	return header
 }
 
 // GetRollup returns the rollup with the given hash.
@@ -77,21 +77,26 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 		return nil, fmt.Errorf("cannot request more than 100 latest transactions")
 	}
 
-	currentRollupHeaderWithHashes, found := api.host.DB().GetHeadRollupHeader()
+	headRollupHeader, found := api.host.DB().GetHeadRollupHeader()
 	if !found {
 		return nil, nil
 	}
-	currentRollupHash := currentRollupHeaderWithHashes.Header.Hash()
+	currentRollupHash := headRollupHeader.Hash()
 
 	// We walk the chain until we've collected the requested number of transactions.
 	var txHashes []gethcommon.Hash
 	for {
-		rollupHeaderWithHashes, found := api.host.DB().GetRollupHeader(currentRollupHash)
+		rollupHeader, found := api.host.DB().GetRollupHeader(currentRollupHash)
 		if !found {
 			return nil, fmt.Errorf("could not retrieve rollup for hash %s", currentRollupHash)
 		}
 
-		for _, txHash := range rollupHeaderWithHashes.TxHashes {
+		rollupTxHashes, found := api.host.DB().GetRollupTxs(rollupHeader.Hash())
+		if !found {
+			return nil, fmt.Errorf("could not retrieve transaction hashes for rollup hash %s", currentRollupHash)
+		}
+
+		for _, txHash := range rollupTxHashes {
 			txHashes = append(txHashes, txHash)
 			if len(txHashes) >= num {
 				break
@@ -99,10 +104,10 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 		}
 
 		// If we've reached the top of the chain, we stop walking.
-		if rollupHeaderWithHashes.Header.Number.Uint64() == common.L2GenesisHeight {
+		if rollupHeader.Number.Uint64() == common.L2GenesisHeight {
 			break
 		}
-		currentRollupHash = rollupHeaderWithHashes.Header.ParentHash
+		currentRollupHash = rollupHeader.ParentHash
 	}
 
 	return txHashes, nil

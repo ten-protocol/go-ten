@@ -437,7 +437,10 @@ func NewMiner(
 type mockSubscription struct{}
 
 func (sub *mockSubscription) Err() <-chan error {
-	return make(chan error)
+	c := make(chan error, 2) // size 2, so that we don't block
+	// drop an error in to this channel to remind callers that this client does not stream.
+	c <- ethadapter.ErrSubscriptionNotSupported
+	return c
 }
 
 func (sub *mockSubscription) Unsubscribe() {
