@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -87,11 +88,16 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 }
 
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (*common.BlockSubmissionResponse, error) {
+	if msg.Error != nil {
+		return nil, &common.BlockRejectError{
+			L1Head:  gethcommon.BytesToHash(msg.Error.L1Head),
+			Wrapped: errors.New(msg.Error.Cause),
+		}
+	}
 	var subscribedLogs map[rpc.ID][]byte
 	if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
-		return nil, fmt.Errorf("could not unmarshal subscribed logs from JSON. Cause: %w", err)
+		return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
 	}
-
 	return &common.BlockSubmissionResponse{
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),

@@ -124,11 +124,11 @@ func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRe
 	bl := s.decodeBlock(request.EncodedBlock)
 	blockSubmissionResponse, err := s.enclave.SubmitBlock(bl, request.IsLatest)
 	if err != nil {
-		var rejErr common.BlockRejectError
+		var rejErr *common.BlockRejectError
 		isReject := errors.As(err, &rejErr)
 		if isReject {
 			// todo: we should avoid errors in response messages and use the gRPC error objects for this stuff (standardized across all enclave responses)
-			msg, err := rpc.ToBlockSubmissionRejectionMsg(&rejErr)
+			msg, err := rpc.ToBlockSubmissionRejectionMsg(rejErr)
 			if err == nil {
 				// send back reject err response
 				return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil

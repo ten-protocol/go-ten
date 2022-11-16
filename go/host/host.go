@@ -404,11 +404,22 @@ func (h *host) startProcessing() {
 			roundInterrupt = triggerInterrupt(roundInterrupt)
 			err := h.processBlock(b.p, false)
 			if err != nil {
-				h.logger.Info("Could not process parent block. ", log.ErrKey, err)
+				var rejErr *common.BlockRejectError
+				if errors.As(err, &rejErr) {
+					// this is a common error (the parent has usually already been processed and is being sent just in case)
+					h.logger.Debug("Rejected parent block.", log.ErrKey, rejErr, "enclaveHead", rejErr.L1Head)
+				} else {
+					h.logger.Info("Could not process parent block. ", log.ErrKey, err)
+				}
 			}
 			err = h.processBlock(b.b, true)
 			if err != nil {
-				h.logger.Warn("Could not process latest block. ", log.ErrKey, err)
+				var rejErr *common.BlockRejectError
+				if errors.As(err, &rejErr) {
+					h.logger.Info("Rejected latest block.", log.ErrKey, rejErr, "enclaveHead", rejErr.L1Head)
+				} else {
+					h.logger.Warn("Could not process latest block.", log.ErrKey, err)
+				}
 			}
 
 		case f := <-h.forkRPCCh:
@@ -889,7 +900,7 @@ func (h *host) bootstrapHost() types.Block {
 		result, err := h.enclaveClient.SubmitBlock(cb, false)
 		if err != nil {
 			var bsErr *common.BlockRejectError
-			isBSE := errors.As(err, bsErr)
+			isBSE := errors.As(err, &bsErr)
 			if !isBSE {
 				// unexpected error
 				h.logger.Crit("Internal error", log.ErrKey, err)

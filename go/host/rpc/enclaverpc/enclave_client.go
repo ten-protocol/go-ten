@@ -177,13 +177,7 @@ func (c *Client) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSub
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
-	}
-	if blockSubmissionResponse.RejectError != nil {
-		return nil, common.BlockRejectError{
-			L1Head:  blockSubmissionResponse.RejectError.L1Head,
-			Wrapped: blockSubmissionResponse.RejectError.Wrapped,
-		}
+		return nil, err
 	}
 	return blockSubmissionResponse, nil
 }
