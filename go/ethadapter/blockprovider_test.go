@@ -148,6 +148,10 @@ func getHash(i int) gethcommon.Hash {
 }
 
 func (e *ethClientMock) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
+	if time.Since(e.lastBlockCreation) > 500*time.Millisecond {
+		e.createHeader(e.liveStreamingNext)
+		e.liveStreamingNext++
+	}
 	block, f := e.blks[id]
 	if !f {
 		return nil, fmt.Errorf("block not found")
@@ -156,6 +160,10 @@ func (e *ethClientMock) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 }
 
 func (e *ethClientMock) BlockByNumber(num *big.Int) (*types.Block, error) {
+	if time.Since(e.lastBlockCreation) > 500*time.Millisecond {
+		e.createHeader(e.liveStreamingNext)
+		e.liveStreamingNext++
+	}
 	block, f := e.blksByNum[int(num.Int64())]
 	if !f {
 		return nil, fmt.Errorf("block not found")
