@@ -506,7 +506,7 @@ func (h *host) processBlockTransactions(b *types.Block) {
 
 // Publishes a rollup to the L1.
 func (h *host) publishRollup(producedRollup common.ExtRollup) {
-	encodedRollup, err := common.EncodeRollup(producedRollup.ToExtRollupWithHash())
+	encodedRollup, err := common.EncodeRollup(producedRollup.ToExtRollup())
 	if err != nil {
 		h.logger.Crit("could not encode rollup.", log.ErrKey, err)
 	}
@@ -550,7 +550,7 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
 			common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 		))
-	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToExtRollupWithHash())
+	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToExtRollup())
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}

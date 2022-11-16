@@ -53,7 +53,7 @@ func (r *Rollup) ToExtRollup(transactionBlobCrypto crypto.TransactionBlobCrypto)
 	}
 }
 
-func ToEnclaveRollup(encryptedRollup *common.ExtRollupWithHash, transactionBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
+func ToEnclaveRollup(encryptedRollup *common.ExtRollup, transactionBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
 	return &Rollup{
 		Header:       encryptedRollup.Header,
 		Transactions: transactionBlobCrypto.Decrypt(encryptedRollup.EncryptedTxBlob),
