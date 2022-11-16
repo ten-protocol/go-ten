@@ -20,6 +20,8 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
+// TODO - #718 - Remove any rollup-based getters that are superseded by the batch-based getters.
+
 // DB allows to access the nodes public nodeDB
 type DB struct {
 	kvStore ethdb.KeyValueStore
@@ -82,7 +84,7 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 	}
 }
 
-// GetHeadRollupHeader returns the header of the current rollup (head) of the Node, or (nil, false) if no such header is found.
+// GetHeadRollupHeader returns the header of the node's current head rollup, or (nil, false) if no such header is found.
 func (db *DB) GetHeadRollupHeader() (*common.HeaderWithTxHashes, bool) {
 	headRollupHash := db.readHeadRollup(db.kvStore)
 	if headRollupHash == nil {
@@ -131,7 +133,13 @@ func (db *DB) GetRollupNumber(txHash gethcommon.Hash) (*big.Int, bool) {
 	return db.readRollupNumber(db.kvStore, txHash)
 }
 
+// GetHeadBatchHeader returns the header of the node's current head batch, or (nil, false) if no such header is found.
+func (db *DB) GetHeadBatchHeader() (*common.HeaderWithTxHashes, bool) {
+	panic("not implemented")
+}
+
 // GetTotalTransactions returns the total number of rolled-up transactions.
+// TODO - #718 - Return number of batched transactions, instead.
 func (db *DB) GetTotalTransactions() *big.Int {
 	return db.readTotalTransactions(db.kvStore)
 }
