@@ -15,6 +15,67 @@ import (
 
 // DB methods relating to rollups.
 
+// GetHeadRollupHeader returns the header of the node's current head rollup, or (nil, false) if no such header is found.
+func (db *DB) GetHeadRollupHeader() (*common.Header, bool) {
+	headRollupHash, found := db.readHeadRollupHash()
+	if !found {
+		return nil, false
+	}
+	return db.readRollupHeader(*headRollupHash)
+}
+
+// GetRollupHeader returns the rollup header given the Hash, or (nil, false) if no such header is found.
+func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*common.Header, bool) {
+	return db.readRollupHeader(hash)
+}
+
+// AddRollupHeader adds a rollup's header to the known headers
+func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) {
+	b := db.kvStore.NewBatch()
+	db.writeRollupHeader(b, header)
+	db.writeRollupTxHashes(b, header.Hash(), txHashes) // Required by ObscuroScan, to display a list of recent transactions.
+	db.writeRollupHash(b, header)
+	for _, txHash := range txHashes {
+		db.writeRollupNumber(b, header, txHash)
+	}
+
+	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
+	currentTotal := db.readTotalTransactions()
+	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(txHashes))))
+	db.writeTotalTransactions(b, newTotal)
+
+	// update the head if the new height is greater than the existing one
+	headRollupHeader, found := db.GetHeadRollupHeader()
+	if !found || headRollupHeader.Number.Int64() <= header.Number.Int64() {
+		db.writeHeadRollupHash(b, header.Hash())
+	}
+
+	if err := b.Write(); err != nil {
+		db.logger.Crit("Could not write rollup.", log.ErrKey, err)
+	}
+}
+
+// GetRollupHash returns the hash of a rollup given its number, or (nil, false) if no such rollup is found.
+func (db *DB) GetRollupHash(number *big.Int) (*gethcommon.Hash, bool) {
+	return db.readRollupHash(number)
+}
+
+// GetRollupNumber returns the number of the rollup containing the given transaction hash, or (nil, false) if no such rollup is found.
+func (db *DB) GetRollupNumber(txHash gethcommon.Hash) (*big.Int, bool) {
+	return db.readRollupNumber(txHash)
+}
+
+// GetRollupTxs returns the transaction hashes of the rollup with the given hash, or (nil, false) if no such rollup is found.
+func (db *DB) GetRollupTxs(rollupHash gethcommon.Hash) ([]gethcommon.Hash, bool) {
+	return db.readRollupTxHashes(rollupHash)
+}
+
+// GetTotalTransactions returns the total number of rolled-up transactions.
+// TODO - #718 - Return number of batched transactions, instead.
+func (db *DB) GetTotalTransactions() *big.Int {
+	return db.readTotalTransactions()
+}
+
 // headerKey = rollupHeaderPrefix  + hash
 func rollupHeaderKey(hash gethcommon.Hash) []byte {
 	return append(rollupHeaderPrefix, hash.Bytes()...)
@@ -35,67 +96,6 @@ func rollupNumberKey(txHash gethcommon.Hash) []byte {
 	return append(rollupNumberPrefix, txHash.Bytes()...)
 }
 
-// GetHeadRollupHeader returns the header of the node's current head rollup, or (nil, false) if no such header is found.
-func (db *DB) GetHeadRollupHeader() (*common.Header, bool) {
-	headRollupHash, found := db.readHeadRollupHash(db.kvStore)
-	if !found {
-		return nil, false
-	}
-	return db.readRollupHeader(db.kvStore, *headRollupHash)
-}
-
-// GetRollupHeader returns the rollup header given the Hash, or (nil, false) if no such header is found.
-func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*common.Header, bool) {
-	return db.readRollupHeader(db.kvStore, hash)
-}
-
-// AddRollupHeader adds a rollup's header to the known headers
-func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) {
-	b := db.kvStore.NewBatch()
-	db.writeRollupHeader(b, header)
-	db.writeRollupTxHashes(b, header.Hash(), txHashes) // Required by ObscuroScan, to display a list of recent transactions.
-	db.writeRollupHash(b, header)
-	for _, txHash := range txHashes {
-		db.writeRollupNumber(b, header, txHash)
-	}
-
-	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
-	currentTotal := db.readTotalTransactions(db.kvStore)
-	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(txHashes))))
-	db.writeTotalTransactions(b, newTotal)
-
-	// update the head if the new height is greater than the existing one
-	headRollupHeader, found := db.GetHeadRollupHeader()
-	if !found || headRollupHeader.Number.Int64() <= header.Number.Int64() {
-		db.writeHeadRollupHash(b, header.Hash())
-	}
-
-	if err := b.Write(); err != nil {
-		db.logger.Crit("Could not write rollup.", log.ErrKey, err)
-	}
-}
-
-// GetRollupHash returns the hash of a rollup given its number, or (nil, false) if no such rollup is found.
-func (db *DB) GetRollupHash(number *big.Int) (*gethcommon.Hash, bool) {
-	return db.readRollupHash(db.kvStore, number)
-}
-
-// GetRollupNumber returns the number of the rollup containing the given transaction hash, or (nil, false) if no such rollup is found.
-func (db *DB) GetRollupNumber(txHash gethcommon.Hash) (*big.Int, bool) {
-	return db.readRollupNumber(db.kvStore, txHash)
-}
-
-// GetRollupTxs returns the transaction hashes of the rollup with the given hash, or (nil, false) if no such rollup is found.
-func (db *DB) GetRollupTxs(rollupHash gethcommon.Hash) ([]gethcommon.Hash, bool) {
-	return db.readRollupTxHashes(db.kvStore, rollupHash)
-}
-
-// GetTotalTransactions returns the total number of rolled-up transactions.
-// TODO - #718 - Return number of batched transactions, instead.
-func (db *DB) GetTotalTransactions() *big.Int {
-	return db.readTotalTransactions(db.kvStore)
-}
-
 // Stores a rollup header into the database
 func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, header *common.Header) {
 	// Write the encoded header
@@ -110,15 +110,15 @@ func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, header *common.Header) {
 }
 
 // Retrieves the rollup header corresponding to the hash, or (nil, false) if no such header is found.
-func (db *DB) readRollupHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*common.Header, bool) {
-	f, err := r.Has(rollupHeaderKey(hash))
+func (db *DB) readRollupHeader(hash gethcommon.Hash) (*common.Header, bool) {
+	f, err := db.kvStore.Has(rollupHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup header.", log.ErrKey, err)
 	}
 	if !f {
 		return nil, false
 	}
-	data, err := r.Get(rollupHeaderKey(hash))
+	data, err := db.kvStore.Get(rollupHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup header.", log.ErrKey, err)
 	}
@@ -145,15 +145,15 @@ func (db *DB) writeRollupTxHashes(w ethdb.KeyValueWriter, rollupHash common.L2Ro
 }
 
 // Returns the transaction hashes in the rollup with the given hash, or (nil, false) if no such header is found.
-func (db *DB) readRollupTxHashes(r ethdb.KeyValueReader, hash gethcommon.Hash) ([]gethcommon.Hash, bool) {
-	f, err := r.Has(rollupTxHashesKey(hash))
+func (db *DB) readRollupTxHashes(hash gethcommon.Hash) ([]gethcommon.Hash, bool) {
+	f, err := db.kvStore.Has(rollupTxHashesKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup tx hashes.", log.ErrKey, err)
 	}
 	if !f {
 		return nil, false
 	}
-	data, err := r.Get(rollupTxHashesKey(hash))
+	data, err := db.kvStore.Get(rollupTxHashesKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup tx hashes.", log.ErrKey, err)
 	}
@@ -168,15 +168,15 @@ func (db *DB) readRollupTxHashes(r ethdb.KeyValueReader, hash gethcommon.Hash) (
 }
 
 // Returns the head rollup's hash, or (nil, false) is no such hash is found.
-func (db *DB) readHeadRollupHash(r ethdb.KeyValueReader) (*gethcommon.Hash, bool) {
-	f, err := r.Has(headRollup)
+func (db *DB) readHeadRollupHash() (*gethcommon.Hash, bool) {
+	f, err := db.kvStore.Has(headRollup)
 	if err != nil {
 		db.logger.Crit("could not retrieve head rollup.", log.ErrKey, err)
 	}
 	if !f {
 		return nil, false
 	}
-	value, err := r.Get(headRollup)
+	value, err := db.kvStore.Get(headRollup)
 	if err != nil {
 		db.logger.Crit("could not retrieve head rollup.", log.ErrKey, err)
 	}
@@ -220,15 +220,15 @@ func (db *DB) writeTotalTransactions(w ethdb.KeyValueWriter, newTotal *big.Int) 
 }
 
 // Retrieves the hash for the rollup with the given number, or (nil, false) if no such rollup is found.
-func (db *DB) readRollupHash(r ethdb.KeyValueReader, number *big.Int) (*gethcommon.Hash, bool) {
-	f, err := r.Has(rollupHashKey(number))
+func (db *DB) readRollupHash(number *big.Int) (*gethcommon.Hash, bool) {
+	f, err := db.kvStore.Has(rollupHashKey(number))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup hash.", log.ErrKey, err)
 	}
 	if !f {
 		return nil, false
 	}
-	data, err := r.Get(rollupHashKey(number))
+	data, err := db.kvStore.Get(rollupHashKey(number))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup hash.", log.ErrKey, err)
 	}
@@ -240,15 +240,15 @@ func (db *DB) readRollupHash(r ethdb.KeyValueReader, number *big.Int) (*gethcomm
 }
 
 // Retrieves the number of the rollup containing the transaction with the given hash, or (nil, false) if no such rollup is found.
-func (db *DB) readRollupNumber(r ethdb.KeyValueReader, txHash gethcommon.Hash) (*big.Int, bool) {
-	f, err := r.Has(rollupNumberKey(txHash))
+func (db *DB) readRollupNumber(txHash gethcommon.Hash) (*big.Int, bool) {
+	f, err := db.kvStore.Has(rollupNumberKey(txHash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup number.", log.ErrKey, err)
 	}
 	if !f {
 		return nil, false
 	}
-	data, err := r.Get(rollupNumberKey(txHash))
+	data, err := db.kvStore.Get(rollupNumberKey(txHash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup number.", log.ErrKey, err)
 	}
@@ -259,15 +259,15 @@ func (db *DB) readRollupNumber(r ethdb.KeyValueReader, txHash gethcommon.Hash) (
 }
 
 // Retrieves the total number of rolled-up transactions.
-func (db *DB) readTotalTransactions(r ethdb.KeyValueReader) *big.Int {
-	f, err := r.Has(totalTransactionsKey)
+func (db *DB) readTotalTransactions() *big.Int {
+	f, err := db.kvStore.Has(totalTransactionsKey)
 	if err != nil {
 		db.logger.Crit("could not retrieve total transactions.", log.ErrKey, err)
 	}
 	if !f {
 		return big.NewInt(0)
 	}
-	data, err := r.Get(totalTransactionsKey)
+	data, err := db.kvStore.Get(totalTransactionsKey)
 	if err != nil {
 		db.logger.Crit("could not retrieve total transactions.", log.ErrKey, err)
 	}
