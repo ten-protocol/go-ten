@@ -91,7 +91,12 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 			return nil, fmt.Errorf("could not retrieve rollup for hash %s", currentRollupHash)
 		}
 
-		for _, txHash := range rollupHeaderWithHashes.TxHashes {
+		rollupTxHashes, found := api.host.DB().GetRollupTxs(rollupHeaderWithHashes.Header.Hash())
+		if !found {
+			return nil, fmt.Errorf("could not retrieve transaction hashes for rollup hash %s", currentRollupHash)
+		}
+
+		for _, txHash := range rollupTxHashes {
 			txHashes = append(txHashes, txHash)
 			if len(txHashes) >= num {
 				break

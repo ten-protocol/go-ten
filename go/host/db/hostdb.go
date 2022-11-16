@@ -108,6 +108,7 @@ func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) {
 	b := db.kvStore.NewBatch()
 	headerWithHashes := &HeaderWithTxHashes{Header: header, TxHashes: txHashes}
 	db.writeRollupHeader(b, headerWithHashes)
+	db.writeRollupTxHashes(b, header.Hash(), txHashes) // Required by ObscuroScan, to display a list of recent transactions.
 	db.writeRollupHash(b, headerWithHashes.Header)
 	for _, txHash := range headerWithHashes.TxHashes {
 		db.writeRollupNumber(b, headerWithHashes.Header, txHash)
@@ -139,6 +140,11 @@ func (db *DB) GetRollupNumber(txHash gethcommon.Hash) (*big.Int, bool) {
 	return db.readRollupNumber(db.kvStore, txHash)
 }
 
+// GetRollupTxs returns the transaction hashes of the rollup with the given hash, or (nil, false) if no such rollup is found.
+func (db *DB) GetRollupTxs(rollupHash gethcommon.Hash) ([]gethcommon.Hash, bool) {
+	return db.readRollupTxHashes(db.kvStore, rollupHash)
+}
+
 // GetTotalTransactions returns the total number of rolled-up transactions.
 func (db *DB) GetTotalTransactions() *big.Int {
 	return db.readTotalTransactions(db.kvStore)
@@ -148,6 +154,7 @@ func (db *DB) GetTotalTransactions() *big.Int {
 var (
 	blockHeaderPrefix    = []byte("b")
 	rollupHeaderPrefix   = []byte("r")
+	rollupTxHashesPrefix = []byte("rt")
 	headBlock            = []byte("hb")
 	headRollup           = []byte("hr")
 	rollupHashPrefix     = []byte("rh")
@@ -158,6 +165,11 @@ var (
 // headerKey = rollupHeaderPrefix  + hash
 func rollupHeaderKey(hash gethcommon.Hash) []byte {
 	return append(rollupHeaderPrefix, hash.Bytes()...)
+}
+
+// headerKey = rollupTxHashesPrefix + rollup hash
+func rollupTxHashesKey(hash gethcommon.Hash) []byte {
+	return append(rollupTxHashesPrefix, hash.Bytes()...)
 }
 
 // headerKey = blockHeaderPrefix  + hash
@@ -245,6 +257,41 @@ func (db *DB) readRollupHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*H
 		db.logger.Crit("could not decode rollup header.", log.ErrKey, err)
 	}
 	return header, true
+}
+
+// Writes the transaction hashes against the rollup containing them.
+func (db *DB) writeRollupTxHashes(w ethdb.KeyValueWriter, rollupHash common.L2RootHash, txHashes []gethcommon.Hash) {
+	data, err := rlp.EncodeToBytes(txHashes)
+	if err != nil {
+		db.logger.Crit("could not encode rollup transaction hashes.", log.ErrKey, err)
+	}
+	key := rollupTxHashesKey(rollupHash)
+	if err := w.Put(key, data); err != nil {
+		db.logger.Crit("could not put rollup transaction hashes in DB.", log.ErrKey, err)
+	}
+}
+
+// Returns the transaction hashes in the rollup with the given hash, or (nil, false) if no such header is found.
+func (db *DB) readRollupTxHashes(r ethdb.KeyValueReader, hash gethcommon.Hash) ([]gethcommon.Hash, bool) {
+	f, err := r.Has(rollupTxHashesKey(hash))
+	if err != nil {
+		db.logger.Crit("could not retrieve rollup tx hashes.", log.ErrKey, err)
+	}
+	if !f {
+		return nil, false
+	}
+	data, err := r.Get(rollupTxHashesKey(hash))
+	if err != nil {
+		db.logger.Crit("could not retrieve rollup tx hashes.", log.ErrKey, err)
+	}
+	if len(data) == 0 {
+		return nil, false
+	}
+	txHashes := []gethcommon.Hash{}
+	if err := rlp.Decode(bytes.NewReader(data), &txHashes); err != nil {
+		db.logger.Crit("could not decode tx hashes.", log.ErrKey, err)
+	}
+	return txHashes, true
 }
 
 func (db *DB) readHeadBlock(r ethdb.KeyValueReader) *gethcommon.Hash {
