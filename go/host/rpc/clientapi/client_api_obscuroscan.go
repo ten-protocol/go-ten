@@ -86,12 +86,12 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 	// We walk the chain until we've collected the requested number of transactions.
 	var txHashes []gethcommon.Hash
 	for {
-		rollupHeaderWithHashes, found := api.host.DB().GetRollupHeader(currentRollupHash)
+		rollupHeader, found := api.host.DB().GetRollupHeader(currentRollupHash)
 		if !found {
 			return nil, fmt.Errorf("could not retrieve rollup for hash %s", currentRollupHash)
 		}
 
-		rollupTxHashes, found := api.host.DB().GetRollupTxs(rollupHeaderWithHashes.Header.Hash())
+		rollupTxHashes, found := api.host.DB().GetRollupTxs(rollupHeader.Hash())
 		if !found {
 			return nil, fmt.Errorf("could not retrieve transaction hashes for rollup hash %s", currentRollupHash)
 		}
@@ -104,10 +104,10 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 		}
 
 		// If we've reached the top of the chain, we stop walking.
-		if rollupHeaderWithHashes.Header.Number.Uint64() == common.L2GenesisHeight {
+		if rollupHeader.Number.Uint64() == common.L2GenesisHeight {
 			break
 		}
-		currentRollupHash = rollupHeaderWithHashes.Header.ParentHash
+		currentRollupHash = rollupHeader.ParentHash
 	}
 
 	return txHashes, nil

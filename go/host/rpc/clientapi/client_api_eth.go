@@ -65,11 +65,11 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 // GetBlockByHash returns the header of the rollup with the given hash.
 // TODO - #718 - Switch to retrieving batch header.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
-	rollupHeaderWithHashes, found := api.host.DB().GetRollupHeader(hash)
+	rollupHeader, found := api.host.DB().GetRollupHeader(hash)
 	if !found {
 		return nil, nil //nolint:nilnil
 	}
-	return headerToMap(rollupHeaderWithHashes.Header), nil
+	return headerToMap(rollupHeader), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.

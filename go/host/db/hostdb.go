@@ -26,12 +26,6 @@ type DB struct {
 	logger  gethlog.Logger
 }
 
-// HeaderWithTxHashes pairs a header with the hashes of the transactions in that rollup.
-type HeaderWithTxHashes struct {
-	Header   *common.Header
-	TxHashes []common.TxHash
-}
-
 // NewInMemoryDB returns a new instance of the Node DB
 func NewInMemoryDB() *DB {
 	return &DB{
@@ -94,35 +88,33 @@ func (db *DB) GetHeadRollupHeader() (*common.Header, bool) {
 	if headRollupHash == nil {
 		return nil, false
 	}
-	headerWithHashes, found := db.readRollupHeader(db.kvStore, *headRollupHash)
-	return headerWithHashes.Header, found
+	return db.readRollupHeader(db.kvStore, *headRollupHash)
 }
 
 // GetRollupHeader returns the rollup header given the Hash, or (nil, false) if no such header is found.
-func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*HeaderWithTxHashes, bool) {
+func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*common.Header, bool) {
 	return db.readRollupHeader(db.kvStore, hash)
 }
 
 // AddRollupHeader adds a rollup's header to the known headers
 func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) {
 	b := db.kvStore.NewBatch()
-	headerWithHashes := &HeaderWithTxHashes{Header: header, TxHashes: txHashes}
-	db.writeRollupHeader(b, headerWithHashes)
+	db.writeRollupHeader(b, header)
 	db.writeRollupTxHashes(b, header.Hash(), txHashes) // Required by ObscuroScan, to display a list of recent transactions.
-	db.writeRollupHash(b, headerWithHashes.Header)
-	for _, txHash := range headerWithHashes.TxHashes {
-		db.writeRollupNumber(b, headerWithHashes.Header, txHash)
+	db.writeRollupHash(b, header)
+	for _, txHash := range txHashes {
+		db.writeRollupNumber(b, header, txHash)
 	}
 
 	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
 	currentTotal := db.readTotalTransactions(db.kvStore)
-	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(headerWithHashes.TxHashes))))
+	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(txHashes))))
 	db.writeTotalTransactions(b, newTotal)
 
 	// update the head if the new height is greater than the existing one
 	headRollupHeader, found := db.GetHeadRollupHeader()
-	if !found || headRollupHeader.Number.Int64() <= headerWithHashes.Header.Number.Int64() {
-		db.writeHeadRollup(b, headerWithHashes.Header.Hash())
+	if !found || headRollupHeader.Number.Int64() <= header.Number.Int64() {
+		db.writeHeadRollup(b, header.Hash())
 	}
 
 	if err := b.Write(); err != nil {
@@ -224,20 +216,20 @@ func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*ty
 }
 
 // WriteRollupHeader stores a rollup header into the database
-func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, headerWithHashes *HeaderWithTxHashes) {
+func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, header *common.Header) {
 	// Write the encoded header
-	data, err := rlp.EncodeToBytes(headerWithHashes)
+	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
 		db.logger.Crit("could not encode rollup header.", log.ErrKey, err)
 	}
-	key := rollupHeaderKey(headerWithHashes.Header.Hash())
+	key := rollupHeaderKey(header.Hash())
 	if err := w.Put(key, data); err != nil {
 		db.logger.Crit("could not put header in DB.", log.ErrKey, err)
 	}
 }
 
 // ReadRollupHeader retrieves the rollup header corresponding to the hash, or (nil, false) if no such header is found.
-func (db *DB) readRollupHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*HeaderWithTxHashes, bool) {
+func (db *DB) readRollupHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*common.Header, bool) {
 	f, err := r.Has(rollupHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup header.", log.ErrKey, err)
@@ -252,7 +244,7 @@ func (db *DB) readRollupHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*H
 	if len(data) == 0 {
 		return nil, false
 	}
-	header := new(HeaderWithTxHashes)
+	header := new(common.Header)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		db.logger.Crit("could not decode rollup header.", log.ErrKey, err)
 	}
