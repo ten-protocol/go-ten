@@ -167,6 +167,7 @@ func (db *DB) readRollupTxHashes(r ethdb.KeyValueReader, hash gethcommon.Hash) (
 	return txHashes, true
 }
 
+// Returns the head rollup's hash, or (nil, false) is no such hash is found.
 func (db *DB) readHeadRollupHash(r ethdb.KeyValueReader) (*gethcommon.Hash, bool) {
 	f, err := r.Has(headRollup)
 	if err != nil {
@@ -183,6 +184,7 @@ func (db *DB) readHeadRollupHash(r ethdb.KeyValueReader) (*gethcommon.Hash, bool
 	return &h, true
 }
 
+// Stores the head rollup's hash in the database.
 func (db *DB) writeHeadRollupHash(w ethdb.KeyValueWriter, val gethcommon.Hash) {
 	err := w.Put(headRollup, val.Bytes())
 	if err != nil {
@@ -209,6 +211,7 @@ func (db *DB) writeRollupNumber(w ethdb.KeyValueWriter, header *common.Header, t
 	}
 }
 
+// Stores the total number of transactions in the database.
 func (db *DB) writeTotalTransactions(w ethdb.KeyValueWriter, newTotal *big.Int) {
 	err := w.Put(totalTransactionsKey, newTotal.Bytes())
 	if err != nil {
