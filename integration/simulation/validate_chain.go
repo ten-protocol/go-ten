@@ -168,9 +168,9 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
 // between the start block and the end block.
-func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation, nodeIdx int) ([]gethcommon.Hash, []*common.ExtRollupWithHash, *big.Int, int) {
+func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation, nodeIdx int) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int) {
 	deposits := make([]gethcommon.Hash, 0)
-	rollups := make([]*common.ExtRollupWithHash, 0)
+	rollups := make([]*common.ExtRollup, 0)
 	totalDeposited := big.NewInt(0)
 
 	blockchain := node.BlocksBetween(startBlock, endBlock)

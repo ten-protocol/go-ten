@@ -101,7 +101,7 @@ func findHashDups(list []gethcommon.Hash) map[gethcommon.Hash]int {
 }
 
 // FindRollupDups - returns a map of all L2 root hashes that appear multiple times, and how many times
-func findRollupDups(list []*common.ExtRollupWithHash) map[common.L2RootHash]int {
+func findRollupDups(list []*common.ExtRollup) map[common.L2RootHash]int {
 	elementCount := make(map[common.L2RootHash]int)
 
 	for _, item := range list {

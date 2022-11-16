@@ -17,7 +17,7 @@ var hasherPool = sync.Pool{
 	New: func() interface{} { return sha3.NewLegacyKeccak256() },
 }
 
-// Header is a public / plaintext struct that holds common properties of rollups batches.
+// Header is a public / plaintext struct that holds common properties of rollups..
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Header struct {
 	// The fields present in Geth's `types/Header` struct.
