@@ -26,6 +26,12 @@ type DB struct {
 	logger  gethlog.Logger
 }
 
+// HeaderWithTxHashes pairs a header with the hashes of the transactions in that rollup.
+type HeaderWithTxHashes struct {
+	Header   *common.Header
+	TxHashes []common.TxHash
+}
+
 // NewInMemoryDB returns a new instance of the Node DB
 func NewInMemoryDB() *DB {
 	return &DB{
@@ -83,7 +89,7 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 }
 
 // GetHeadRollupHeader returns the header of the current rollup (head) of the Node, or (nil, false) if no such header is found.
-func (db *DB) GetHeadRollupHeader() (*common.HeaderWithTxHashes, bool) {
+func (db *DB) GetHeadRollupHeader() (*HeaderWithTxHashes, bool) {
 	headRollupHash := db.readHeadRollup(db.kvStore)
 	if headRollupHash == nil {
 		return nil, false
@@ -92,13 +98,14 @@ func (db *DB) GetHeadRollupHeader() (*common.HeaderWithTxHashes, bool) {
 }
 
 // GetRollupHeader returns the rollup header given the Hash, or (nil, false) if no such header is found.
-func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*common.HeaderWithTxHashes, bool) {
+func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*HeaderWithTxHashes, bool) {
 	return db.readRollupHeader(db.kvStore, hash)
 }
 
 // AddRollupHeader adds a rollup's header to the known headers
-func (db *DB) AddRollupHeader(headerWithHashes *common.HeaderWithTxHashes) {
+func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) {
 	b := db.kvStore.NewBatch()
+	headerWithHashes := &HeaderWithTxHashes{Header: header, TxHashes: txHashes}
 	db.writeRollupHeader(b, headerWithHashes)
 	db.writeRollupHash(b, headerWithHashes.Header)
 	for _, txHash := range headerWithHashes.TxHashes {
@@ -204,7 +211,7 @@ func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*ty
 }
 
 // WriteRollupHeader stores a rollup header into the database
-func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, headerWithHashes *common.HeaderWithTxHashes) {
+func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, headerWithHashes *HeaderWithTxHashes) {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(headerWithHashes)
 	if err != nil {
@@ -217,7 +224,7 @@ func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, headerWithHashes *common
 }
 
 // ReadRollupHeader retrieves the rollup header corresponding to the hash, or (nil, false) if no such header is found.
-func (db *DB) readRollupHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*common.HeaderWithTxHashes, bool) {
+func (db *DB) readRollupHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*HeaderWithTxHashes, bool) {
 	f, err := r.Has(rollupHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve rollup header.", log.ErrKey, err)
@@ -232,7 +239,7 @@ func (db *DB) readRollupHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*c
 	if len(data) == 0 {
 		return nil, false
 	}
-	header := new(common.HeaderWithTxHashes)
+	header := new(HeaderWithTxHashes)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		db.logger.Crit("could not decode rollup header.", log.ErrKey, err)
 	}
