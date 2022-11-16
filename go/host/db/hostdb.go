@@ -13,8 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 )
 
-// TODO - #718 - Remove any rollup-based getters that are superseded by the batch-based getters.
-
 // Schema keys, in alphabetical order.
 var (
 	headBlock            = []byte("hb")

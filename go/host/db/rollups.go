@@ -11,6 +11,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
+// TODO - #718 - Remove any rollup-based getters that are superseded by the batch-based getters.
+
 // DB methods relating to rollups.
 
 // headerKey = rollupHeaderPrefix  + hash
