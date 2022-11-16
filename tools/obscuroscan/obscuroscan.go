@@ -172,7 +172,7 @@ func (o *Obscuroscan) getNumTransactions(resp http.ResponseWriter, _ *http.Reque
 	var numTransactions *big.Int
 	err := o.client.Call(&numTransactions, rpc.GetTotalTxs)
 	if err != nil {
-		o.logger.Error("Could not fetch latest transactions.", log.ErrKey, err)
+		o.logger.Error("Could not fetch total transactions.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch total transactions.")
 		return
 	}

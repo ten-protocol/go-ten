@@ -34,12 +34,12 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 // BlockNumber returns the height of the current head rollup.
 // # TODO - #718 - Switch to returning height based on current batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	head, found := api.host.DB().GetHeadRollupHeader()
+	header, found := api.host.DB().GetHeadRollupHeader()
 	if !found {
 		return 0
 	}
 
-	number := head.Header.Number.Uint64()
+	number := header.Number.Uint64()
 	return hexutil.Uint64(number)
 }
 
@@ -65,11 +65,11 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 // GetBlockByHash returns the header of the rollup with the given hash.
 // TODO - #718 - Switch to retrieving batch header.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
-	rollupHeaderWithHashes, found := api.host.DB().GetRollupHeader(hash)
+	rollupHeader, found := api.host.DB().GetRollupHeader(hash)
 	if !found {
 		return nil, nil //nolint:nilnil
 	}
-	return headerToMap(rollupHeaderWithHashes.Header), nil
+	return headerToMap(rollupHeader), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -222,7 +222,7 @@ func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*
 		if !found {
 			return nil, false
 		}
-		hash := header.Header.Hash()
+		hash := header.Hash()
 		return &hash, true
 	}
 
