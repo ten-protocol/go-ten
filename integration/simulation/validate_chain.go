@@ -242,7 +242,6 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[nodeIdx]
-	println(fmt.Sprintf("jjj Node %d: L2 height: %d", nodeIdx, totalL2Blocks))
 	// in case the blockchain has advanced above what was collected, there is no longer a point to this check
 	if l2Height.Uint64() <= totalL2Blocks {
 		efficiencyL2 := float64(totalL2Blocks-l2Height.Uint64()) / float64(totalL2Blocks)
