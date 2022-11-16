@@ -107,8 +107,8 @@ func (e *EthBlockProvider) streamBlocks(fromHeight *big.Int) {
 
 // fetchNextCanonicalBlock finds the next block to send downstream to the consumer.
 // It looks at:
-//  - the latest block that was sent to the consumer (`e.latestSent`)
-//  - the current head of the L1 according to the Eth client (`l1Block`)
+//   - the latest block that was sent to the consumer (`e.latestSent`)
+//   - the current head of the L1 according to the Eth client (`l1Block`)
 //
 // If the consumer is up-to-date: this method will wait until a new block arrives from the L1
 // If the consumer is behind or there has been a fork: it returns the next canonical block that the consumer needs to see (no waiting)
