@@ -34,12 +34,12 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 // BlockNumber returns the height of the current head rollup.
 // # TODO - #718 - Switch to returning height based on current batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	head, found := api.host.DB().GetHeadRollupHeader()
+	header, found := api.host.DB().GetHeadRollupHeader()
 	if !found {
 		return 0
 	}
 
-	number := head.Header.Number.Uint64()
+	number := header.Number.Uint64()
 	return hexutil.Uint64(number)
 }
 
@@ -222,7 +222,7 @@ func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*
 		if !found {
 			return nil, false
 		}
-		hash := header.Header.Hash()
+		hash := header.Hash()
 		return &hash, true
 	}
 

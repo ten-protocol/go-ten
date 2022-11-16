@@ -89,12 +89,13 @@ func (db *DB) AddBlockHeader(header *types.Header) {
 }
 
 // GetHeadRollupHeader returns the header of the current rollup (head) of the Node, or (nil, false) if no such header is found.
-func (db *DB) GetHeadRollupHeader() (*HeaderWithTxHashes, bool) {
+func (db *DB) GetHeadRollupHeader() (*common.Header, bool) {
 	headRollupHash := db.readHeadRollup(db.kvStore)
 	if headRollupHash == nil {
 		return nil, false
 	}
-	return db.readRollupHeader(db.kvStore, *headRollupHash)
+	headerWithHashes, found := db.readRollupHeader(db.kvStore, *headRollupHash)
+	return headerWithHashes.Header, found
 }
 
 // GetRollupHeader returns the rollup header given the Hash, or (nil, false) if no such header is found.
@@ -118,8 +119,8 @@ func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) {
 	db.writeTotalTransactions(b, newTotal)
 
 	// update the head if the new height is greater than the existing one
-	currentRollupHeaderWithHashes, found := db.GetHeadRollupHeader()
-	if !found || currentRollupHeaderWithHashes.Header.Number.Int64() <= headerWithHashes.Header.Number.Int64() {
+	headRollupHeader, found := db.GetHeadRollupHeader()
+	if !found || headRollupHeader.Number.Int64() <= headerWithHashes.Header.Number.Int64() {
 		db.writeHeadRollup(b, headerWithHashes.Header.Hash())
 	}
 

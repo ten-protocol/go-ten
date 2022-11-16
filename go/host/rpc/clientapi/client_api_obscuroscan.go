@@ -36,11 +36,11 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 // GetHeadRollupHeader returns the current head rollup's header.
 // TODO - #718 - Switch to reading batch header.
 func (api *ObscuroScanAPI) GetHeadRollupHeader() *common.Header {
-	headerWithHashes, found := api.host.DB().GetHeadRollupHeader()
+	header, found := api.host.DB().GetHeadRollupHeader()
 	if !found {
 		return nil
 	}
-	return headerWithHashes.Header
+	return header
 }
 
 // GetRollup returns the rollup with the given hash.
@@ -77,11 +77,11 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 		return nil, fmt.Errorf("cannot request more than 100 latest transactions")
 	}
 
-	currentRollupHeaderWithHashes, found := api.host.DB().GetHeadRollupHeader()
+	headRollupHeader, found := api.host.DB().GetHeadRollupHeader()
 	if !found {
 		return nil, nil
 	}
-	currentRollupHash := currentRollupHeaderWithHashes.Header.Hash()
+	currentRollupHash := headRollupHeader.Hash()
 
 	// We walk the chain until we've collected the requested number of transactions.
 	var txHashes []gethcommon.Hash
