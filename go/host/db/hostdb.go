@@ -133,9 +133,32 @@ func (db *DB) GetRollupNumber(txHash gethcommon.Hash) (*big.Int, bool) {
 	return db.readRollupNumber(db.kvStore, txHash)
 }
 
+// AddBatchHeader adds a batch's header to the known headers
+func (db *DB) AddBatchHeader(headerWithHashes *common.HeaderWithTxHashes) {
+	b := db.kvStore.NewBatch()
+
+	// TODO - #718 - Store the batch header, batch hash, and batch number per transaction hash, if needed.
+
+	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
+	currentTotal := db.readTotalTransactions(db.kvStore)
+	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(headerWithHashes.TxHashes))))
+	db.writeTotalTransactions(b, newTotal)
+
+	// update the head if the new height is greater than the existing one
+	currentBatchHeaderWithHashes, found := db.GetHeadBatchHeader()
+	if !found || currentBatchHeaderWithHashes.Header.Number.Int64() <= headerWithHashes.Header.Number.Int64() {
+		db.writeHeadRollup(b, headerWithHashes.Header.Hash())
+	}
+
+	if err := b.Write(); err != nil {
+		db.logger.Crit("Could not write batch.", log.ErrKey, err)
+	}
+}
+
 // GetHeadBatchHeader returns the header of the node's current head batch, or (nil, false) if no such header is found.
 func (db *DB) GetHeadBatchHeader() (*common.HeaderWithTxHashes, bool) {
-	panic("not implemented")
+	// TODO - #718 - Return the actual batch header.
+	return &common.HeaderWithTxHashes{}, true
 }
 
 // GetTotalTransactions returns the total number of rolled-up transactions.
