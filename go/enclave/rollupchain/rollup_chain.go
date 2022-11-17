@@ -425,7 +425,7 @@ func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*
 	// calculate the state to compare with what is in the Rollup
 	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
 	if len(successfulTxs) != len(r.Transactions) {
-		panic("Sanity check. All transactions that are included in a rollup must be executed.")
+		rc.logger.Crit("Sanity check. All transactions that are included in a rollup must be executed.")
 	}
 
 	isValid := rc.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
@@ -564,7 +564,10 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	// we have to create a new one from the mempool transactions
 	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
 	nonce := common.GenerateNonce()
-	r := obscurocore.EmptyRollup(rc.hostID, headRollup.Header, b.Hash(), nonce)
+	r, err := obscurocore.EmptyRollup(rc.hostID, headRollup.Header, b.Hash(), nonce)
+	if err != nil {
+		rc.logger.Crit("could not create rollup", log.ErrKey, err)
+	}
 
 	newRollupTxs = rc.mempool.CurrentTxs(headRollup, rc.storage)
 	newRollupState = rc.storage.CreateStateDB(r.Header.ParentHash)
@@ -807,7 +810,8 @@ func (rc *RollupChain) verifySig(r *obscurocore.Rollup) bool {
 
 	h := r.Hash()
 	if r.Header.R == nil || r.Header.S == nil {
-		panic("Missing signature on rollup")
+		rc.logger.Error("Missing signature on rollup")
+		return false
 	}
 	pubKey := rc.storage.FetchAttestedKey(r.Header.Agg)
 	return ecdsa.Verify(pubKey, h[:], r.Header.R, r.Header.S)

@@ -190,7 +190,7 @@ func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcom
 
 	token := bridge.GetMapping(contract)
 	if token == nil {
-		panic("This should not happen as we don't generate deposits on unsupported tokens.")
+		bridge.logger.Crit("This should not happen as we don't generate deposits on unsupported tokens.")
 	}
 
 	// The nonce is adjusted with the number of deposits added to the rollup already.
@@ -277,7 +277,7 @@ func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore
 				signer := types.NewLondonSigner(big.NewInt(bridge.ObscuroChainID))
 				from, err := types.Sender(signer, t)
 				if err != nil {
-					panic(err)
+					bridge.logger.Crit("Error retrieving the sender from the signature", log.ErrKey, err)
 				}
 				state.Logs()
 				w = append(w, common.Withdrawal{
