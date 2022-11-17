@@ -477,7 +477,11 @@ func (h *host) processBlock(block common.EncodedBlock, isLatestBlock bool) error
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
 	}
 
-	h.storeBlockProcessingResult(result)
+	err = h.storeBlockProcessingResult(result)
+	if err != nil {
+		h.logger.Crit("submitted block to enclave but could not store the block processing result")
+	}
+
 	h.logEventManager.SendLogsToSubscribers(result)
 
 	// We check that we only produced a rollup if we're the sequencer.
@@ -547,7 +551,7 @@ func (h *host) distributeBatch(producedRollup common.ExtRollup) {
 	// TODO - #718 - Distribute batch
 }
 
-func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) {
+func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) error {
 	// only update the host rollup headers if the enclave has found a new rollup head
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
@@ -556,7 +560,7 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 	}
 
 	// adding a header will update the head if it has a higher height
-	h.db.AddBlockHeader(result.BlockHeader)
+	return h.db.AddBlockHeader(result.BlockHeader)
 }
 
 // Called only by the first enclave to bootstrap the network
@@ -910,7 +914,10 @@ func (h *host) bootstrapHost() types.Block {
 				common.ShortHash(result.BlockHeader.Hash()), bsErr))
 		} else {
 			// submission was successful
-			h.storeBlockProcessingResult(result)
+			err := h.storeBlockProcessingResult(result)
+			if err != nil {
+				h.logger.Crit("Could not store block processing result", log.ErrKey, err)
+			}
 		}
 
 		nextBlk, err = h.ethClient.BlockByNumber(big.NewInt(cb.Number().Int64() + 1))

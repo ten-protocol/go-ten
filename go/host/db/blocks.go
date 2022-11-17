@@ -2,6 +2,9 @@ package db
 
 import (
 	"bytes"
+	"errors"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -12,34 +15,39 @@ import (
 
 // DB methods relating to batches.
 
-// GetHeadBlockHeader returns the block header of the current head block, or (nil, false) if no such header is found.
-func (db *DB) GetHeadBlockHeader() (*types.Header, bool) {
+// GetHeadBlockHeader returns the block header of the current head block.
+func (db *DB) GetHeadBlockHeader() (*types.Header, error) {
 	head := db.readHeadBlock(db.kvStore)
 	if head == nil {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	return db.readBlockHeader(db.kvStore, *head)
 }
 
-// GetBlockHeader returns the block header given the hash, or (nil, false) if no such header is found.
-func (db *DB) GetBlockHeader(hash gethcommon.Hash) (*types.Header, bool) {
+// GetBlockHeader returns the block header given the hash.
+func (db *DB) GetBlockHeader(hash gethcommon.Hash) (*types.Header, error) {
 	return db.readBlockHeader(db.kvStore, hash)
 }
 
 // AddBlockHeader adds a types.Header to the known headers
-func (db *DB) AddBlockHeader(header *types.Header) {
+func (db *DB) AddBlockHeader(header *types.Header) error {
 	b := db.kvStore.NewBatch()
 	db.writeBlockHeader(header)
 
 	// update the head if the new height is greater than the existing one
-	headBlockHeader, found := db.GetHeadBlockHeader()
-	if !found || headBlockHeader.Number.Int64() <= header.Number.Int64() {
+	headBlockHeader, err := db.GetHeadBlockHeader()
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return err
+	}
+	if errors.Is(err, errutil.ErrNotFound) || headBlockHeader.Number.Int64() <= header.Number.Int64() {
 		db.writeHeadBlockHash(header.Hash())
 	}
 
 	if err := b.Write(); err != nil {
 		db.logger.Crit("Could not write rollup.", log.ErrKey, err)
 	}
+
+	return nil
 }
 
 // headerKey = blockHeaderPrefix  + hash
@@ -67,27 +75,27 @@ func (db *DB) writeHeadBlockHash(val gethcommon.Hash) {
 	}
 }
 
-// Retrieves the block header corresponding to the hash, or (nil, false) if no such header is found.
-func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*types.Header, bool) {
+// Retrieves the block header corresponding to the hash.
+func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*types.Header, error) {
 	f, err := r.Has(blockHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve block header.", log.ErrKey, err)
 	}
 	if !f {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	data, err := r.Get(blockHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve block header.", log.ErrKey, err)
 	}
 	if len(data) == 0 {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	header := new(types.Header)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		db.logger.Crit("could not decode block header.", log.ErrKey, err)
 	}
-	return header, true
+	return header, nil
 }
 
 func (db *DB) readHeadBlock(r ethdb.KeyValueReader) *gethcommon.Hash {

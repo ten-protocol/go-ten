@@ -14,7 +14,7 @@ import (
 
 // DB methods relating to batches.
 
-// GetHeadBatchHeader returns the header of the node's current head batch, or (nil, false) if no such header is found.
+// GetHeadBatchHeader returns the header of the node's current head batch.
 func (db *DB) GetHeadBatchHeader() (*common.Header, error) {
 	headBatchHash, err := db.readHeadBatchHash()
 	if err != nil {
@@ -53,7 +53,7 @@ func batchHeaderKey(hash gethcommon.Hash) []byte {
 	return append(batchHeaderPrefix, hash.Bytes()...)
 }
 
-// Retrieves the batch header corresponding to the hash, or (nil, false) if no such header is found.
+// Retrieves the batch header corresponding to the hash.
 func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
 	f, err := db.kvStore.Has(batchHeaderKey(hash))
 	if err != nil {

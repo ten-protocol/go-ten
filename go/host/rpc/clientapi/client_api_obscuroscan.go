@@ -1,8 +1,11 @@
 package clientapi
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
@@ -26,9 +29,12 @@ func NewObscuroScanAPI(host host.Host) *ObscuroScanAPI {
 
 // GetBlockHeaderByHash returns the header for the block with the given number.
 func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*types.Header, error) {
-	blockHeader, found := api.host.DB().GetBlockHeader(blockHash)
-	if !found {
+	blockHeader, err := api.host.DB().GetBlockHeader(blockHash)
+	if errors.Is(err, errutil.ErrNotFound) {
 		return nil, fmt.Errorf("no block with hash %s is stored", blockHash)
+	}
+	if err != nil {
+		return nil, err
 	}
 	return blockHeader, nil
 }
