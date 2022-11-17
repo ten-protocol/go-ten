@@ -65,7 +65,8 @@ The first is that users must wait before bridge messages are processed, which is
 
 The second is that the security of the funds on the bridge depends on the delay. If the delay is x Ethereum blocks, then 
 an attacker must wait for x blocks until the deposit executes on Obscuro, and then perform a revert attack on Ethereum.
-Note that with PoS, if the delay is 64 blocks (2 epochs), then re-org is mostly a theoretical possibility. 
+Note that with PoS, if the delay is 64 blocks (2 epochs), then re-org is mostly a theoretical possibility, because in practice
+it is prohibitively expensive for anyone. 
 
 The subtlety of this approach is that it can transform Obscuro into a side-chain even though we roll up to Ethereum.
 
@@ -98,15 +99,16 @@ has received a response already could change.
 
 ### Option 3 - Link light batches to blocks, but guarantee the L2 ordering
 
-This option attempts to improve on the previous one by reducing the impact of L1 reorgs, which have no logical relationship whatsoever with the L2 transactions.
+This option improves on the previous one by reducing the impact of the L1 reorgs which have no logical relationship 
+whatsoever with the L2 transactions.
 
 The critical insight is that the sequencer *can* offer guarantees over the L2 transactions' order, and can be punished if
-it breaks them.
-Basically, instead of being challenged over the result of executing transactions, the sequencer can be challenged over the root hash 
-of the list of L2 transactions alone.
+it creates batches that contain L2 transactions with a different ordering.
+Controlling this can be achieved if the sequencer publishes a field containing the Merkle root of a list of transactions.
+If two (or more) batches have a different value on that field, the sequencer will be slashed.
 
-A sequencer will be able to generate sibling LBs in case an L1 fork is happening, but only as long as the order of the L2 
-transactions is preserved.
+The rule is that a sequencer will be able to generate sibling LBs in case an L1 fork is happening, but only as long as the 
+order of the L2 transactions is preserved.
 
 ```go
 type LightBatchHeader struct{
@@ -119,13 +121,13 @@ type LightBatchHeader struct{
 }
 ```
 
-There can be sibling LBs (same `Number` and `ParentLB`) with the same `L2TxsHash` but different `L1BlockHash`. 
+Note: There can be sibling LBs (same `Number` and `ParentLB`) with the same `L2TxsHash` but different `L1BlockHash`.
+If the `L2TxsHash` field is different the sequencer is slashed.
 
 This option offers a much stronger finality guarantee. An L2 transaction can never be replaced with a competing one, 
 but it might result in a different outcome only in the case a deposit L1 transaction was processed or not before it.
 
-The sibling LBs will result in the same execution result for the vast majority of transactions. 
-
+In practice, we estimate the sibling LBs will result in the same execution result for the vast majority of L2 transactions. 
 If a user is not actively trying to double spend a deposit on the L1, then the odds that an L1 re-org have an impact
 on the result of executing their transaction are minimal. 
 
@@ -165,7 +167,10 @@ If there is an L1 re-org, but there are no L2 deposits, or if the L2 deposits ar
 The only case where finality can change is when there is a deliberate double-spend attack on the L1, and this will only affect
 the user who is directly involved in that attack.
 
+It is possible in practice to start with option 3 for simplicity, and transition to option 4 as an optimisation. 
+This will require a full upgrade with a transition period.
 
-## TODO - Reason about sealing an LB chain in a rollup and reorgs
+
+TODO - Reason about sealing an LB chain in a rollup and reorgs
 
 
