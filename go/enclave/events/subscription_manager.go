@@ -188,7 +188,7 @@ func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 	encryptedLogsByID := map[gethrpc.ID][]byte{}
 
 	for subID, logs := range logsByID {
-		subscription, found := s.subscriptions[subID]
+		subscription, found := s.getSubscriptionThreadsafe(subID)
 		if !found {
 			continue // The subscription has been removed, so there's no need to return anything.
 		}
@@ -257,6 +257,15 @@ func (s *SubscriptionManager) updateRelevantLogs(logItem *types.Log, userAddrs [
 		}
 		relevantLogsByID[subscriptionID] = append(relevantLogsByID[subscriptionID], logItem)
 	}
+}
+
+// Locks the subscription map and retrieves the subscription with subID, or (nil, false) if so such subscription is found.
+func (s *SubscriptionManager) getSubscriptionThreadsafe(subID gethrpc.ID) (*common.LogSubscription, bool) {
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
+
+	subscription, found := s.subscriptions[subID]
+	return subscription, found
 }
 
 // Indicates whether the log is relevant for the subscription.
