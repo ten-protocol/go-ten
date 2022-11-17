@@ -286,7 +286,7 @@ func serializeEVMError(err error) ([]byte, error) {
 	var errReturn interface{}
 
 	// check if it's a serialized error and handle any error wrapping that might have occurred
-	var e evm.SerialisableError
+	var e *evm.SerialisableError
 	if ok := errors.As(err, &e); ok {
 		errReturn = e
 	} else {
