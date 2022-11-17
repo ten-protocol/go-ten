@@ -2,6 +2,9 @@ package db
 
 import (
 	"bytes"
+	"errors"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -12,16 +15,16 @@ import (
 // DB methods relating to batches.
 
 // GetHeadBatchHeader returns the header of the node's current head batch, or (nil, false) if no such header is found.
-func (db *DB) GetHeadBatchHeader() (*common.Header, bool) {
-	headBatchHash, found := db.readHeadBatchHash()
-	if !found {
-		return nil, false
+func (db *DB) GetHeadBatchHeader() (*common.Header, error) {
+	headBatchHash, err := db.readHeadBatchHash()
+	if err != nil {
+		return nil, err
 	}
 	return db.readBatchHeader(*headBatchHash)
 }
 
 // AddBatchHeader adds a batch's header to the known headers
-func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) {
+func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) error {
 	b := db.kvStore.NewBatch()
 	db.writeBatchHeader(header)
 
@@ -30,14 +33,19 @@ func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) {
 	// TODO - #718 - Update the total transactions, once we no longer do this in `AddRollupHeader`.
 
 	// update the head if the new height is greater than the existing one
-	headBatchHeader, found := db.GetHeadBatchHeader()
-	if !found || headBatchHeader.Number.Int64() <= header.Number.Int64() {
+	headBatchHeader, err := db.GetHeadBatchHeader()
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return err
+	}
+	if errors.Is(err, errutil.ErrNotFound) || headBatchHeader.Number.Int64() <= header.Number.Int64() {
 		db.writeHeadBatchHash(header.Hash())
 	}
 
 	if err := b.Write(); err != nil {
 		db.logger.Crit("Could not write batch.", log.ErrKey, err)
 	}
+
+	return nil
 }
 
 // headerKey = batchHeaderPrefix  + hash
@@ -46,43 +54,43 @@ func batchHeaderKey(hash gethcommon.Hash) []byte {
 }
 
 // Retrieves the batch header corresponding to the hash, or (nil, false) if no such header is found.
-func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.Header, bool) {
+func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
 	f, err := db.kvStore.Has(batchHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve batch header.", log.ErrKey, err)
 	}
 	if !f {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	data, err := db.kvStore.Get(batchHeaderKey(hash))
 	if err != nil {
 		db.logger.Crit("could not retrieve batch header.", log.ErrKey, err)
 	}
 	if len(data) == 0 {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	header := new(common.Header)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		db.logger.Crit("could not decode batch header.", log.ErrKey, err)
 	}
-	return header, true
+	return header, nil
 }
 
 // Retrieves the hash of the head batch.
-func (db *DB) readHeadBatchHash() (*gethcommon.Hash, bool) {
+func (db *DB) readHeadBatchHash() (*gethcommon.Hash, error) {
 	f, err := db.kvStore.Has(headBatch)
 	if err != nil {
 		db.logger.Crit("could not retrieve head batch.", log.ErrKey, err)
 	}
 	if !f {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	value, err := db.kvStore.Get(headBatch)
 	if err != nil {
 		db.logger.Crit("could not retrieve head batch.", log.ErrKey, err)
 	}
 	h := gethcommon.BytesToHash(value)
-	return &h, true
+	return &h, nil
 }
 
 // Stores a batch header into the database.
