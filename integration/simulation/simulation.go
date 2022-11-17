@@ -232,9 +232,9 @@ func (s *Simulation) prefundL1Accounts() {
 				AccessList: txClone.AccessList(),
 			})
 			if err != nil {
-				fmt.Printf(fmt.Sprintf("Deposit %s ERROR - %+v", txClone.Hash(), err))
+				s.TxInjector.logger.Error(fmt.Sprintf("[InitialFunding] Deposit %s ERROR - %+v", txClone.Hash(), err))
 			} else {
-				fmt.Printf(fmt.Sprintf("[InitialFunding] Deposit %s bn", txClone.Hash()))
+				s.TxInjector.logger.Trace(fmt.Sprintf("[InitialFunding] Deposit %s bn", txClone.Hash()))
 			}
 		}()
 

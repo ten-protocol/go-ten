@@ -64,13 +64,17 @@ func New(
 		return nil
 	}
 
-	txOpts.Nonce = big.NewInt(1)
-
 	logger.Info(fmt.Sprintf("[CrossChain] L2 Cross Chain Owner Address: %s", txOpts.From.Hex()))
+
+	//Key is derived, address is predictable, thus address of contract is predictible across all enclaves
+	l2MessageBus := crypto.CreateAddress(txOpts.From, 0)
+
+	//Start from 1 since 0 tx deploys system contract
+	txOpts.Nonce = big.NewInt(1)
 
 	return &Manager{
 		l1MessageBus: *l1BusAddress,
-		l2MessageBus: *l2BusAddress,
+		l2MessageBus: l2MessageBus,
 		contractABI:  contractABI,
 		txOpts:       txOpts,
 		storage:      storage,
@@ -97,8 +101,6 @@ func (m *Manager) GenerateMessageBusDeployTx() *types.Transaction {
 		panic(err)
 	}
 
-	m.l2MessageBus = crypto.CreateAddress(m.txOpts.From, 0) //we can just predict the address without waiting for the receipt.
-
 	m.logger.Info(fmt.Sprintf("[CrossChain] Generated synthetic deployment transaction for the MessageBus contract %s - TX HASH: %s", m.l2MessageBus.Hex(), stx.Hash().Hex()))
 
 	return stx
@@ -106,7 +108,7 @@ func (m *Manager) GenerateMessageBusDeployTx() *types.Transaction {
 
 func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) error {
 	if len(receipts) > 0 {
-		m.logger.Info(fmt.Sprintf("[CrossChain] Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)))
+		m.lazilyLogReceiptChecksum(fmt.Sprintf("[CrossChain] Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)), receipts)
 	}
 
 	transactions := m.GetSyntheticTransactions(block, receipts)
@@ -116,6 +118,22 @@ func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts []*t
 		m.storage.StoreSyntheticTransactions(block.Hash(), transactions)
 	}
 	return nil
+}
+
+func (m *Manager) lazilyLogReceiptChecksum(msg string, receipts []*types.ReceiptForStorage) {
+	m.logger.Trace(msg, "Hash",
+		gethlog.Lazy{Fn: func() string {
+			hasher := sha3.NewLegacyKeccak256().(crypto.KeccakState)
+			hasher.Reset()
+			for _, receipt := range receipts {
+				var buffer bytes.Buffer
+				receipt.EncodeRLP(&buffer)
+				hasher.Write(buffer.Bytes())
+			}
+			var hash gethcommon.Hash
+			hasher.Read(hash[:])
+			return hash.Hex()
+		}})
 }
 
 func (m *Manager) lazilyLogChecksum(msg string, transactions types.Transactions) {
@@ -208,14 +226,15 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types
 
 	messages := m.ExtractMessagesFromReceipts(receipts)
 
-	for idx, message := range messages {
-		data, err := m.contractABI.Pack("submitOutOfNetworkMessage", message, big.NewInt(1))
+	for _, message := range messages {
+		validAfter := big.NewInt(1)
+		data, err := m.contractABI.Pack("submitOutOfNetworkMessage", &message, validAfter)
 		if err != nil {
 			panic(err)
 		}
 
 		tx := types.NewTx(&types.LegacyTx{
-			Nonce:    m.txOpts.Nonce.Uint64() + uint64(idx), //this should be fixed probably :/
+			Nonce:    0, //This gets replaced later on
 			Value:    gethcommon.Big0,
 			Gas:      5_000_000,
 			GasPrice: gethcommon.Big0, //Synthetic transactions are on the house. Or the house.
@@ -287,6 +306,8 @@ func (m *Manager) extractPublishedMessage(log *types.Log) *MessageBus.MessageBus
 
 	var event MessageBus.MessageBusLogMessagePublished
 	m.contractABI.UnpackIntoInterface(&event, "LogMessagePublished", log.Data)
+
+	m.logger.Trace(fmt.Sprintf("[CrossChain] Event extracted - %+v", event))
 	return &event
 }
 
