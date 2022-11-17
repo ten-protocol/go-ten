@@ -41,12 +41,12 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 
 // GetHeadRollupHeader returns the current head rollup's header.
 // TODO - #718 - Switch to reading batch header.
-func (api *ObscuroScanAPI) GetHeadRollupHeader() *common.Header {
-	header, found := api.host.DB().GetHeadRollupHeader()
-	if !found {
-		return nil
+func (api *ObscuroScanAPI) GetHeadRollupHeader() (*common.Header, error) {
+	header, err := api.host.DB().GetHeadRollupHeader()
+	if err != nil {
+		return nil, err
 	}
-	return header
+	return header, nil
 }
 
 // GetRollup returns the rollup with the given hash.
@@ -56,14 +56,14 @@ func (api *ObscuroScanAPI) GetRollup(hash gethcommon.Hash) (*common.ExtRollup, e
 
 // GetRollupForTx returns the rollup containing a given transaction hash. Required for ObscuroScan.
 func (api *ObscuroScanAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRollup, error) {
-	rollupNumber, found := api.host.DB().GetRollupNumber(txHash)
-	if !found {
-		return nil, fmt.Errorf("no rollup containing a transaction with hash %s is stored", txHash)
+	rollupNumber, err := api.host.DB().GetRollupNumber(txHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup containing a transaction with hash %s. Cause: %w", txHash, err)
 	}
 
-	rollupHash, found := api.host.DB().GetRollupHash(rollupNumber)
-	if !found {
-		return nil, fmt.Errorf("no rollup with number %d is stored", rollupNumber.Int64())
+	rollupHash, err := api.host.DB().GetRollupHash(rollupNumber)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", rollupNumber.Int64(), err)
 	}
 
 	rollup, err := api.host.EnclaveClient().GetRollup(*rollupHash)
@@ -83,23 +83,23 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 		return nil, fmt.Errorf("cannot request more than 100 latest transactions")
 	}
 
-	headRollupHeader, found := api.host.DB().GetHeadRollupHeader()
-	if !found {
-		return nil, nil
+	headRollupHeader, err := api.host.DB().GetHeadRollupHeader()
+	if err != nil {
+		return nil, err
 	}
 	currentRollupHash := headRollupHeader.Hash()
 
 	// We walk the chain until we've collected the requested number of transactions.
 	var txHashes []gethcommon.Hash
 	for {
-		rollupHeader, found := api.host.DB().GetRollupHeader(currentRollupHash)
-		if !found {
-			return nil, fmt.Errorf("could not retrieve rollup for hash %s", currentRollupHash)
+		rollupHeader, err := api.host.DB().GetRollupHeader(currentRollupHash)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve rollup for hash %s. Cause: %w", currentRollupHash, err)
 		}
 
-		rollupTxHashes, found := api.host.DB().GetRollupTxs(rollupHeader.Hash())
-		if !found {
-			return nil, fmt.Errorf("could not retrieve transaction hashes for rollup hash %s", currentRollupHash)
+		rollupTxHashes, err := api.host.DB().GetRollupTxs(rollupHeader.Hash())
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve transaction hashes for rollup hash %s. Cause: %w", currentRollupHash, err)
 		}
 
 		for _, txHash := range rollupTxHashes {
@@ -120,9 +120,8 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 }
 
 // GetTotalTransactions returns the number of recorded transactions on the network.
-func (api *ObscuroScanAPI) GetTotalTransactions() *big.Int {
-	totalTransactions := api.host.DB().GetTotalTransactions()
-	return totalTransactions
+func (api *ObscuroScanAPI) GetTotalTransactions() (*big.Int, error) {
+	return api.host.DB().GetTotalTransactions()
 }
 
 // Attestation returns the node's attestation details.
