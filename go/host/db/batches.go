@@ -2,7 +2,6 @@ package db
 
 import (
 	"bytes"
-	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -28,10 +27,7 @@ func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) {
 
 	// TODO - #718 - Store the batch txs, batch hash, and batch number per transaction hash, if needed (see `AddRollupHeader`).
 
-	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
-	currentTotal := db.readTotalTransactions()
-	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(txHashes))))
-	db.writeTotalTransactions(b, newTotal)
+	// TODO - #718 - Update the total transactions, once we no longer do this in `AddRollupHeader`.
 
 	// update the head if the new height is greater than the existing one
 	headBatchHeader, found := db.GetHeadBatchHeader()
