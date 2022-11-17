@@ -7,12 +7,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-const magicNumber = 777
+// An arbitrary number to put in the header, to check that the header is retrieved correctly from the DB.
+const rollupNumber = 777
 
 func TestCanStoreAndRetrieveBlockHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	header := types.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	db.AddBlockHeader(&header)
 
@@ -38,7 +39,7 @@ func TestUnknownBlockHeaderReturnsNotFound(t *testing.T) {
 func TestHigherNumberBlockBecomesBlockHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	headerOne := types.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	db.AddBlockHeader(&headerOne)
 
@@ -60,7 +61,7 @@ func TestHigherNumberBlockBecomesBlockHeader(t *testing.T) {
 func TestLowerNumberBlockDoesNotBecomeBlockHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	headerOne := types.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	db.AddBlockHeader(&headerOne)
 

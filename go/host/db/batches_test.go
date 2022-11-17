@@ -11,7 +11,7 @@ import (
 func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	headerOne := common.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	db.AddBatchHeader(&headerOne, []gethcommon.Hash{})
 
@@ -33,7 +33,7 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) {
 func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	headerOne := common.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	db.AddBatchHeader(&headerOne, []gethcommon.Hash{})
 

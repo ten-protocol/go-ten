@@ -12,7 +12,7 @@ import (
 func TestCanStoreAndRetrieveRollupHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	header := common.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	db.AddRollupHeader(&header, []gethcommon.Hash{})
 
@@ -38,7 +38,7 @@ func TestUnknownRollupHeaderReturnsNotFound(t *testing.T) {
 func TestHigherNumberRollupBecomesRollupHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	headerOne := common.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	db.AddRollupHeader(&headerOne, []gethcommon.Hash{})
 
@@ -60,7 +60,7 @@ func TestHigherNumberRollupBecomesRollupHeader(t *testing.T) {
 func TestLowerNumberRollupDoesNotBecomeRollupHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	headerOne := common.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	db.AddRollupHeader(&headerOne, []gethcommon.Hash{})
 
@@ -91,7 +91,7 @@ func TestHeadRollupHeaderIsNotSetInitially(t *testing.T) {
 func TestCanRetrieveRollupHashByNumber(t *testing.T) {
 	db := NewInMemoryDB()
 	header := common.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	db.AddRollupHeader(&header, []gethcommon.Hash{})
 
@@ -117,7 +117,7 @@ func TestUnknownRollupNumberReturnsNotFound(t *testing.T) {
 func TestCanRetrieveRollupNumberByTxHash(t *testing.T) {
 	db := NewInMemoryDB()
 	header := common.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	txHash := gethcommon.BytesToHash([]byte("magicString"))
 	db.AddRollupHeader(&header, []gethcommon.Hash{txHash})
@@ -145,7 +145,7 @@ func TestUnknownRollupTxHashReturnsNotFound(t *testing.T) {
 func TestCanRetrieveRollupTransactions(t *testing.T) {
 	db := NewInMemoryDB()
 	header := common.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	txHashes := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
 	db.AddRollupHeader(&header, txHashes)
@@ -176,13 +176,13 @@ func TestTransactionsForUnknownRollupReturnsNotFound(t *testing.T) {
 func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	db := NewInMemoryDB()
 	headerOne := common.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	txHashesOne := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
 	db.AddRollupHeader(&headerOne, txHashesOne)
 
 	headerTwo := common.Header{
-		Number: big.NewInt(magicNumber),
+		Number: big.NewInt(rollupNumber),
 	}
 	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
 	db.AddRollupHeader(&headerTwo, txHashesTwo)
