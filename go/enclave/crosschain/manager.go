@@ -7,10 +7,12 @@ import (
 	"strings"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/trie"
@@ -37,9 +39,10 @@ type CrossChainManager interface {
 	//	SetL2MessageBusAddress(addr *gethcommon.Address)
 	ProcessSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) error
 	GetSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) types.Transactions
-	GetSyntheticTransactionsBetween(fromBlock *types.Block, toBlock *types.Block) types.Transactions
+	GetSyntheticTransactionsBetween(fromBlock *types.Block, toBlock *types.Block, rollupState *state.StateDB) types.Transactions
 	ExtractMessagesFromReceipts(receipts []*types.ReceiptForStorage) []MessageBus.StructsCrossChainMessage
 	ExtractMessagesFromReceipt(receipt *types.ReceiptForStorage) []MessageBus.StructsCrossChainMessage
+	GetOwner() *gethcommon.Address
 }
 
 func New(
@@ -63,6 +66,8 @@ func New(
 
 	txOpts.Nonce = big.NewInt(1)
 
+	logger.Info(fmt.Sprintf("[CrossChain] L2 Cross Chain Owner Address: %s", txOpts.From.Hex()))
+
 	return &Manager{
 		l1MessageBus: *l1BusAddress,
 		l2MessageBus: *l2BusAddress,
@@ -71,6 +76,10 @@ func New(
 		storage:      storage,
 		logger:       logger,
 	}
+}
+
+func (m *Manager) GetOwner() *gethcommon.Address {
+	return &m.txOpts.From
 }
 
 func (m *Manager) GenerateMessageBusDeployTx() *types.Transaction {
@@ -90,7 +99,7 @@ func (m *Manager) GenerateMessageBusDeployTx() *types.Transaction {
 
 	m.l2MessageBus = crypto.CreateAddress(m.txOpts.From, 0) //we can just predict the address without waiting for the receipt.
 
-	m.logger.Info(fmt.Sprintf("[CrossChain] Generated synthetic deployment transaction for the MessageBus contract - TX HASH: %s", stx.Hash().Hex()))
+	m.logger.Info(fmt.Sprintf("[CrossChain] Generated synthetic deployment transaction for the MessageBus contract %s - TX HASH: %s", m.l2MessageBus.Hex(), stx.Hash().Hex()))
 
 	return stx
 }
@@ -101,12 +110,31 @@ func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts []*t
 	}
 
 	transactions := m.GetSyntheticTransactions(block, receipts)
-	m.storage.StoreSyntheticTransactions(block.Hash(), transactions)
-
+	if len(transactions) > 0 {
+		m.logger.Info(fmt.Sprintf("[CrossChain] Storing %d transactions for block %s", len(transactions), block.Hash().Hex()))
+		m.lazilyLogChecksum("[CrossChain] Process synthetic transaction checksum", transactions)
+		m.storage.StoreSyntheticTransactions(block.Hash(), transactions)
+	}
 	return nil
 }
 
-func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBlock *types.Block) types.Transactions {
+func (m *Manager) lazilyLogChecksum(msg string, transactions types.Transactions) {
+	m.logger.Trace(msg, "Hash",
+		gethlog.Lazy{Fn: func() string {
+			hasher := sha3.NewLegacyKeccak256().(crypto.KeccakState)
+			hasher.Reset()
+			for _, tx := range transactions {
+				var buffer bytes.Buffer
+				tx.EncodeRLP(&buffer)
+				hasher.Write(buffer.Bytes())
+			}
+			var hash gethcommon.Hash
+			hasher.Read(hash[:])
+			return hash.Hex()
+		}})
+}
+
+func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBlock *types.Block, rollupState *state.StateDB) types.Transactions {
 	transactions := make(types.Transactions, 0)
 
 	//todo:: replace this with an iterator
@@ -116,7 +144,6 @@ func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBloc
 		from = fromBlock.Hash()
 		height = fromBlock.NumberU64()
 		if !m.storage.IsAncestor(toBlock, fromBlock) {
-			//todo:: logger
 			m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 		}
 	}
@@ -127,10 +154,9 @@ func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBloc
 			break
 		}
 
-		if m.storage.HasSyntheticTransactions(b.Hash()) {
-			syntheticTransactions := m.storage.ReadSyntheticTransactions(b.Hash())
-			transactions = append(transactions, syntheticTransactions...) //Ordering here might work in POBI, but might be weird for fast finality
-		}
+		m.logger.Info(fmt.Sprintf("[CrossChain] Looking for transactions at block %s", b.Hash().Hex()))
+		syntheticTransactions := m.storage.ReadSyntheticTransactions(b.Hash())
+		transactions = append(transactions, syntheticTransactions...) //Ordering here might work in POBI, but might be weird for fast finality
 
 		if b.NumberU64() < height {
 			m.logger.Crit("block height is less than genesis height")
@@ -141,8 +167,31 @@ func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBloc
 		}
 		b = p
 	}
+	m.lazilyLogChecksum("[CrossChain] Read synthetic transactions checksum", transactions)
 
-	return transactions
+	//Todo:: iteration order is reversed! This might cause unintended consequences!
+	//Sign transactions and put proper nonces.
+	startingNonce := rollupState.GetNonce(m.txOpts.From)
+
+	signedTransactions := make(types.Transactions, 0)
+	for idx, unsignedTransaction := range transactions {
+		tx := types.NewTx(&types.LegacyTx{
+			Nonce:    startingNonce + uint64(idx), //this should be fixed probably :/
+			Value:    gethcommon.Big0,
+			Gas:      5_000_000,
+			GasPrice: gethcommon.Big0, //Synthetic transactions are on the house. Or the house.
+			Data:     unsignedTransaction.Data(),
+			To:       &m.l2MessageBus,
+		})
+
+		stx, err := m.txOpts.Signer(m.txOpts.From, tx)
+		if err != nil {
+			panic(err)
+		}
+		signedTransactions = append(signedTransactions, stx)
+	}
+
+	return signedTransactions
 }
 
 func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) types.Transactions {
@@ -160,7 +209,7 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types
 	messages := m.ExtractMessagesFromReceipts(receipts)
 
 	for idx, message := range messages {
-		data, err := m.contractABI.Pack("submitOutOfNetworkMessage", message, big.NewInt(0))
+		data, err := m.contractABI.Pack("submitOutOfNetworkMessage", message, big.NewInt(1))
 		if err != nil {
 			panic(err)
 		}
@@ -174,16 +223,11 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types
 			To:       &m.l2MessageBus,
 		})
 
-		stx, err := m.txOpts.Signer(m.txOpts.From, tx)
-		if err != nil {
-			panic(err)
-		}
-		m.logger.Info(fmt.Sprintf("[CrossChain] Creating synthetic tx for cross chain message to L2. From: %s Topic: %s Payload %s",
+		m.logger.Info(fmt.Sprintf("[CrossChain] Creating synthetic tx for cross chain message to L2. From: %s Topic: %s",
 			message.Sender.Hex(),
-			string(message.Topic),
-			string(message.Payload)))
+			fmt.Sprint(message.Topic)))
 
-		transactions = append(transactions, stx)
+		transactions = append(transactions, tx)
 	}
 
 	return transactions

@@ -14,6 +14,7 @@ import (
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -55,6 +56,7 @@ func init() { //nolint:gochecknoinits
 		LogDir:      testLogs,
 		TestType:    "noderunner",
 		TestSubtype: "test",
+		LogLevel:    log.LvlInfo,
 	})
 }
 

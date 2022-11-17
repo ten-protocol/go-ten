@@ -743,9 +743,6 @@ func (h *host) extractReceipts(block *types.Block) []*types.ReceiptForStorage {
 
 		shouldBreak := true
 		for _, log := range receipt.Logs {
-
-			h.logger.Info(fmt.Sprintf("[Host][CrossChain] Event topic - %+v", log))
-
 			if contractAbi.Events["LogMessagePublished"].ID == log.Topics[0] {
 				shouldBreak = false
 			}
@@ -754,8 +751,8 @@ func (h *host) extractReceipts(block *types.Block) []*types.ReceiptForStorage {
 				shouldBreak = false
 			}
 
-			if msg, err := busCtr.ParseLogMessagePublished(*log); err == nil {
-				h.logger.Info(fmt.Sprintf("[Host][CrossChain] Event Message - %+v", msg))
+			if _, err := busCtr.ParseLogMessagePublished(*log); err == nil {
+				//	h.logger.Info(fmt.Sprintf("[Host][CrossChain] Event Message - %+v", msg))
 				shouldBreak = false
 			}
 		}

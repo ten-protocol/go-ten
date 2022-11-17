@@ -216,12 +216,12 @@ func (s *Simulation) prefundL1Accounts() {
 		txClone := signedTx
 		go func() {
 			time.Sleep(3 * time.Second)
-			receipt, err := s.RPCHandles.RndEthClient().TransactionReceipt(txClone.Hash())
+			_, err := s.RPCHandles.RndEthClient().TransactionReceipt(txClone.Hash())
 			if err != nil {
 				panic(err)
 			}
 
-			res, err := s.RPCHandles.RndEthClient().CallContract(ethereum.CallMsg{
+			_, err = s.RPCHandles.RndEthClient().CallContract(ethereum.CallMsg{
 				From:       ownerAddr,
 				To:         txClone.To(),
 				Gas:        txClone.Gas(),
@@ -234,8 +234,7 @@ func (s *Simulation) prefundL1Accounts() {
 			if err != nil {
 				fmt.Printf(fmt.Sprintf("Deposit %s ERROR - %+v", txClone.Hash(), err))
 			} else {
-				fmt.Printf("Signed Tx - %s bn - %d\n", signedTx.Hash().Hex(), receipt.BlockNumber.Uint64())
-				fmt.Printf(fmt.Sprintf("Deposit %s bn Deposit res - %+v", txClone.Hash(), res))
+				fmt.Printf(fmt.Sprintf("[InitialFunding] Deposit %s bn", txClone.Hash()))
 			}
 		}()
 

@@ -15,6 +15,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -29,6 +30,7 @@ func setupSimTestLog(simType string) {
 		LogDir:      testLogs,
 		TestType:    "sim-log",
 		TestSubtype: simType,
+		LogLevel:    log.LvlTrace,
 	})
 }
 

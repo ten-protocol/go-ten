@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
@@ -45,6 +46,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		LogDir:      testLogs,
 		TestType:    "noderunner",
 		TestSubtype: "test",
+		LogLevel:    log.LvlInfo,
 	})
 
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, integration.StartPortNodeRunnerTest)

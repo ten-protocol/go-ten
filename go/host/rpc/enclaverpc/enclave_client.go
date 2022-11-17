@@ -163,7 +163,7 @@ func (c *Client) Start(block types.Block) error {
 }
 
 func (c *Client) SubmitBlock(block types.Block, receipts []*types.ReceiptForStorage, isLatest bool) (*common.BlockSubmissionResponse, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout+(5*time.Minute))
 	defer cancel()
 
 	var buffer bytes.Buffer

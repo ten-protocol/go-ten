@@ -330,11 +330,14 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		}
 	}
 
+	fromBlock := rc.storage.Proof(rc.storage.ParentRollup(rollup))
+	toBlock := rc.storage.Proof(rollup)
+
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
 	depositTxs := rc.bridge.ExtractDeposits(
-		rc.storage.Proof(rc.storage.ParentRollup(rollup)),
-		rc.storage.Proof(rollup),
+		fromBlock,
+		toBlock,
 		rc.storage,
 		stateDB,
 	)
@@ -356,25 +359,47 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	}
 
 	syntheticTxs := rc.crossChainManager.GetSyntheticTransactionsBetween(
-		rc.storage.Proof(rc.storage.ParentRollup(rollup)),
-		rc.storage.Proof(rollup))
+		fromBlock,
+		toBlock,
+		stateDB)
 
-	rc.logger.Info(fmt.Sprintf("[CrossChain] Deposits extracted - %d; Synthetic Transactions extracted - %d", len(depositTxs), len(syntheticTxs)))
-
-	syntheticTransactionsResponses := evm.ExecuteTransactions(syntheticTxs, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
-	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
-	if len(syntheticTransactionsResponses) != len(syntheticTxs) {
-		rc.logger.Crit("Sanity check. Some synthetic transactions failed.")
-	}
-	i = 0
-	for _, resp := range syntheticTransactionsResponses {
-		rec, ok := resp.(*types.Receipt)
-		if !ok {
-			// TODO - Handle the case of an error (e.g. insufficient funds).
-			rc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
+	rc.logger.Info(fmt.Sprintf("[CrossChain] From: %d To: %d Deposits extracted - %d; Synthetic Transactions extracted - %d", common.ShortHash(fromBlock.Hash()), common.ShortHash(toBlock.Hash()), len(depositTxs), len(syntheticTxs)))
+	if len(syntheticTxs) > 0 {
+		syntheticTransactionsResponses := evm.ExecuteTransactions(syntheticTxs, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+		synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
+		if len(syntheticTransactionsResponses) != len(syntheticTxs) {
+			rc.logger.Crit("Sanity check. Some synthetic transactions failed.")
 		}
-		synthReceipts[i] = rec
-		i++
+		i = 0
+		for _, resp := range syntheticTransactionsResponses {
+			rec, ok := resp.(*types.Receipt)
+			if !ok { //Еxtract reason for failing deposit.
+				// TODO - Handle the case of an error (e.g. insufficient funds).
+				rc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
+			}
+
+			if rec.Status == 0 {
+				failingTx := syntheticTxs[i]
+				txCallMessage := types.NewMessage(*rc.crossChainManager.GetOwner(),
+					failingTx.To(),
+					failingTx.Nonce(),
+					failingTx.Value(),
+					failingTx.Gas(),
+					gethcommon.Big0,
+					gethcommon.Big0,
+					gethcommon.Big0,
+					failingTx.Data(),
+					failingTx.AccessList(),
+					false)
+
+				sdb := rc.storage.CreateStateDB(rc.storage.ParentRollup(rollup).Hash())
+				_, err := evm.ExecuteOffChainCall(&txCallMessage, sdb, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
+				rc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err)
+			}
+
+			synthReceipts[i] = rec
+			i++
+		}
 	}
 
 	rootHash, err := stateDB.Commit(true)
@@ -390,11 +415,13 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 }
 
 func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethcommon.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
+
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
-		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts))
+		rollupBlock := rc.storage.Proof(rollup)
+		rc.logger.Error(fmt.Sprintf("[rollupBlock=%d] Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
+			common.ShortHash(rollupBlock.Hash()), common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts))
 		return false
 	}
 

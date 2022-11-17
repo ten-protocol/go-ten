@@ -26,6 +26,7 @@ type Cfg struct {
 	LogDir      string // directory for the log file
 	TestType    string // type of test (comes before timestamp in filename so sorted file list will block these together)
 	TestSubtype string // test subtype (comes after timestamp in filename so sorted file list will show latest of different subtypes together)
+	LogLevel    gethlog.Lvl
 }
 
 // Setup will direct logs to a timestamped log file with a standard naming pattern, useful for simulations etc.
@@ -42,7 +43,7 @@ func Setup(cfg *Cfg) *os.File {
 	}
 	logFile = f.Name()
 	// hardcode geth log level to error only
-	gethlog.Root().SetHandler(gethlog.LvlFilterHandler(gethlog.LvlInfo, gethlog.StreamHandler(f, gethlog.TerminalFormat(false))))
+	gethlog.Root().SetHandler(gethlog.LvlFilterHandler(cfg.LogLevel, gethlog.StreamHandler(f, gethlog.TerminalFormat(false))))
 	testlog = gethlog.Root().New(log.CmpKey, log.TestLogCmp)
 	return f
 }
