@@ -2,6 +2,10 @@
 ---
 # Obscuro Testnet Change Log
 
+## November 2022-11-** (v0.7)
+  * Obscuroscan [deploy script](https://github.com/obscuronet/go-obscuro/blob/main/.github/workflows/manual-deploy-obscuroscan.yml) has been modified to run Obscuroscan as an Azure web app. This allows access via HTTPS (TLS), which 
+    allows app developers to call the Obscuroscan API from other web apps.
+
 ## November 2022-11-08 (v0.6)
   * The Number Guessing Game has been removed from static and auto deployment scripts, and is now hosted 
     [in a sample applications repository](https://github.com/obscuronet/sample-applications). Given the move for 
