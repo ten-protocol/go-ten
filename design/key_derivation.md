@@ -2,12 +2,13 @@
 
 ## Scope
 
-The Obscuro blockchain has a network key that allows read/write to the transaction in the block chain.
-This network key is shared between enclaves upon successful attestation.
+The Obscuro blockchain has a master seed that is at the heart of the chains encryption.
+This master seed is shared between enclaves upon successful attestation.
+Keys are derived from the master seed, that read/write to the transaction in the block chain.
 
 Transactions are encrypted in the rollups that make the Obscuro blockchain.
 Each rollup uses a key to encrypt the Transactions.
-Each key is derived from the initial network Key.
+Each key is derived from the initial master seed.
 
 As per defined in the whitepaper, the key used per rollup will actually be multiple keys (one for each revelation period). However, that was de-scoped in this document.
 
@@ -15,11 +16,11 @@ As per defined in the whitepaper, the key used per rollup will actually be multi
 ## Requirements
 
 * Each rollup has a transaction payload that is encrypted with a unique key
-  * Each unique key is derived from the network key
+  * Each unique key is derived from the master seed
   * Each unique key is not able to disclose other unique keys
-  * Each unique key is not able to disclose the network key
-  * Each unique key is deterministic give the rollup height
-* Each enclave is able to determine the unique key given the enclave secret and rollup height
+  * Each unique key is not able to disclose the master seed
+  * Each unique key is deterministic given the rollup height
+* Each enclave is able to determine the unique key given the enclave master seed and rollup height
 
 ## Design
 
