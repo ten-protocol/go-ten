@@ -54,7 +54,7 @@ func NewInMemObscuroClient(nodeHost host.Host) rpc.Client {
 
 	return &inMemObscuroClient{
 		obscuroAPI:       clientapi.NewObscuroAPI(nodeHost),
-		ethAPI:           clientapi.NewEthereumAPI(nodeHost),
+		ethAPI:           clientapi.NewEthereumAPI(nodeHost, logger),
 		filterAPI:        clientapi.NewFilterAPI(nodeHost, logger),
 		obscuroScanAPI:   clientapi.NewObscuroScanAPI(nodeHost),
 		testAPI:          clientapi.NewTestAPI(nodeHost),

@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"math/big"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
@@ -19,12 +22,14 @@ import (
 // EthereumAPI implements a subset of the Ethereum JSON RPC operations. All the method signatures are copied from the
 // corresponding Geth implementations.
 type EthereumAPI struct {
-	host host.Host
+	host   host.Host
+	logger gethlog.Logger
 }
 
-func NewEthereumAPI(host host.Host) *EthereumAPI {
+func NewEthereumAPI(host host.Host, logger gethlog.Logger) *EthereumAPI {
 	return &EthereumAPI{
-		host: host,
+		host:   host,
+		logger: logger,
 	}
 }
 
@@ -39,6 +44,7 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 	header, err := api.host.DB().GetHeadRollupHeader()
 	if err != nil {
 		// This error may be nefarious, but unfortunately the Eth API doesn't allow us to return an error.
+		api.logger.Error("could not retrieve head rollup header", log.ErrKey, err)
 		return 0
 	}
 

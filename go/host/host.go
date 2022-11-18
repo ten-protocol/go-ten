@@ -132,7 +132,7 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 			{
 				Namespace: APINamespaceEth,
 				Version:   APIVersion1,
-				Service:   clientapi.NewEthereumAPI(host),
+				Service:   clientapi.NewEthereumAPI(host, logger),
 				Public:    true,
 			},
 			{
