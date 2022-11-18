@@ -60,6 +60,7 @@ func batchHeaderKey(hash gethcommon.Hash) []byte {
 
 // Retrieves the batch header corresponding to the hash.
 func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
+	// TODO - #1208 - Analyse this weird Has/Get pattern, here and in other part of the `db` package.
 	f, err := db.kvStore.Has(batchHeaderKey(hash))
 	if err != nil {
 		return nil, err
