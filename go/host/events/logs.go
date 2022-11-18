@@ -12,14 +12,14 @@ import (
 type LogEventManager struct {
 	subscriptions     map[rpc.ID]*subscription // The channels that logs are sent to, one per subscription
 	subscriptionMutex *sync.RWMutex
-
-	logger gethlog.Logger
+	logger            gethlog.Logger
 }
 
 func NewLogEventManager(logger gethlog.Logger) LogEventManager {
 	return LogEventManager{
-		subscriptions: map[rpc.ID]*subscription{},
-		logger:        logger,
+		subscriptions:     map[rpc.ID]*subscription{},
+		subscriptionMutex: &sync.RWMutex{},
+		logger:            logger,
 	}
 }
 
