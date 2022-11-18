@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
@@ -27,7 +28,7 @@ func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) er
 	b := db.kvStore.NewBatch()
 	err := db.writeBatchHeader(header)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
 
 	// TODO - #718 - Store the batch txs, batch hash, and batch number per transaction hash, if needed (see `AddRollupHeader`).
@@ -37,17 +38,17 @@ func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) er
 	// update the head if the new height is greater than the existing one
 	headBatchHeader, err := db.GetHeadBatchHeader()
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return err
+		return fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
 	}
 	if errors.Is(err, errutil.ErrNotFound) || headBatchHeader.Number.Int64() <= header.Number.Int64() {
 		err = db.writeHeadBatchHash(header.Hash())
 		if err != nil {
-			return err
+			return fmt.Errorf("could not write new head batch hash. Cause: %w", err)
 		}
 	}
 
-	if err := b.Write(); err != nil {
-		return err
+	if err = b.Write(); err != nil {
+		return fmt.Errorf("could not write batch to DB. Cause: %w", err)
 	}
 
 	return nil

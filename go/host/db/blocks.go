@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
@@ -33,23 +34,23 @@ func (db *DB) AddBlockHeader(header *types.Header) error {
 	b := db.kvStore.NewBatch()
 	err := db.writeBlockHeader(header)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not write block header. Cause: %w", err)
 	}
 
 	// update the head if the new height is greater than the existing one
 	headBlockHeader, err := db.GetHeadBlockHeader()
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return err
+		return fmt.Errorf("could not retrieve head block header. Cause: %w", err)
 	}
 	if errors.Is(err, errutil.ErrNotFound) || headBlockHeader.Number.Int64() <= header.Number.Int64() {
-		err := db.writeHeadBlockHash(header.Hash())
+		err = db.writeHeadBlockHash(header.Hash())
 		if err != nil {
-			return err
+			return fmt.Errorf("could not write new head block hash. Cause: %w", err)
 		}
 	}
 
-	if err := b.Write(); err != nil {
-		return err
+	if err = b.Write(); err != nil {
+		return fmt.Errorf("could not write batch to DB. Cause: %w", err)
 	}
 
 	return nil

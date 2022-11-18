@@ -1,10 +1,7 @@
 package clientapi
 
 import (
-	"errors"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 )
 
@@ -24,9 +21,6 @@ func NewTestAPI(host host.Host) *TestAPI {
 // BlockNumber returns the height of the current head block.
 func (api *TestAPI) BlockNumber() (hexutil.Uint64, error) {
 	head, err := api.host.DB().GetHeadBlockHeader()
-	if errors.Is(err, errutil.ErrNotFound) {
-		return 0, nil
-	}
 	if err != nil {
 		return 0, err
 	}

@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -35,46 +36,46 @@ func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*common.Header, error) {
 func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) error {
 	b := db.kvStore.NewBatch()
 	if err := db.writeRollupHeader(b, header); err != nil {
-		return err
+		return fmt.Errorf("could not write rollup header. Cause: %w", err)
 	}
 	// Required by ObscuroScan, to display a list of recent transactions.
 	if err := db.writeRollupTxHashes(b, header.Hash(), txHashes); err != nil {
-		return err
+		return fmt.Errorf("could not write rollup transaction hashes. Cause: %w", err)
 	}
 	if err := db.writeRollupHash(b, header); err != nil {
-		return err
+		return fmt.Errorf("could not write rollup hash. Cause: %w", err)
 	}
 	for _, txHash := range txHashes {
 		if err := db.writeRollupNumber(b, header, txHash); err != nil {
-			return err
+			return fmt.Errorf("could not write rollup number. Cause: %w", err)
 		}
 	}
 
 	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
 	currentTotal, err := db.readTotalTransactions()
 	if err != nil {
-		return err
+		return fmt.Errorf("could not retrieve total transactions. Cause: %w", err)
 	}
 	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(txHashes))))
 	err = db.writeTotalTransactions(b, newTotal)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not write total transactions. Cause: %w", err)
 	}
 
 	// update the head if the new height is greater than the existing one
 	headRollupHeader, err := db.GetHeadRollupHeader()
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return err
+		return fmt.Errorf("could not retrieve head rollup header. Cause: %w", err)
 	}
 	if errors.Is(err, errutil.ErrNotFound) || headRollupHeader.Number.Int64() <= header.Number.Int64() {
 		err = db.writeHeadRollupHash(b, header.Hash())
 		if err != nil {
-			return err
+			return fmt.Errorf("could not write new head rollup hash. Cause: %w", err)
 		}
 	}
 
 	if err = b.Write(); err != nil {
-		return err
+		return fmt.Errorf("could not write batch to DB. Cause: %w", err)
 	}
 	return nil
 }
