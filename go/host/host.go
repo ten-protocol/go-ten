@@ -761,7 +761,7 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 			break
 		}*/
 
-		h.logger.Info(fmt.Sprintf("[CrossChain] Adding receipt for block %d, TX: %d  with %d relevant logs",
+		h.logger.Trace(fmt.Sprintf("[CrossChain] Adding receipt for block %d, TX: %d  with %d relevant logs",
 			common.ShortHash(block.Hash()),
 			common.ShortHash(transaction.Hash()),
 			relevantLogs))

@@ -101,7 +101,7 @@ func (m *Manager) GenerateMessageBusDeployTx() *types.Transaction {
 		panic(err)
 	}
 
-	m.logger.Info(fmt.Sprintf("[CrossChain] Generated synthetic deployment transaction for the MessageBus contract %s - TX HASH: %s", m.l2MessageBus.Hex(), stx.Hash().Hex()))
+	m.logger.Trace(fmt.Sprintf("[CrossChain] Generated synthetic deployment transaction for the MessageBus contract %s - TX HASH: %s", m.l2MessageBus.Hex(), stx.Hash().Hex()))
 
 	return stx
 }
@@ -113,7 +113,7 @@ func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts type
 
 	transactions := m.GetSyntheticTransactions(block, receipts)
 	if len(transactions) > 0 {
-		m.logger.Info(fmt.Sprintf("[CrossChain] Storing %d transactions for block %s", len(transactions), block.Hash().Hex()))
+		m.logger.Trace(fmt.Sprintf("[CrossChain] Storing %d transactions for block %s", len(transactions), block.Hash().Hex()))
 		m.lazilyLogChecksum("[CrossChain] Process synthetic transaction checksum", transactions)
 		m.storage.StoreSyntheticTransactions(block.Hash(), transactions)
 	}
@@ -172,7 +172,7 @@ func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBloc
 			break
 		}
 
-		m.logger.Info(fmt.Sprintf("[CrossChain] Looking for transactions at block %s", b.Hash().Hex()))
+		m.logger.Trace(fmt.Sprintf("[CrossChain] Looking for transactions at block %s", b.Hash().Hex()))
 		syntheticTransactions := m.storage.ReadSyntheticTransactions(b.Hash())
 		transactions = append(transactions, syntheticTransactions...) //Ordering here might work in POBI, but might be weird for fast finality
 
@@ -226,7 +226,7 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts types.Re
 
 	messages := m.ExtractMessagesFromReceipts(receipts)
 
-	m.logger.Info(fmt.Sprintf("[CrossChain] Found %d cross chain messages that will be submitted to L2!", len(messages)),
+	m.logger.Trace(fmt.Sprintf("[CrossChain] Found %d cross chain messages that will be submitted to L2!", len(messages)),
 		"Block", block.Hash().Hex())
 
 	for _, message := range messages {
@@ -245,7 +245,7 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts types.Re
 			To:       &m.l2MessageBus,
 		})
 
-		m.logger.Info(fmt.Sprintf("[CrossChain] Creating synthetic tx for cross chain message to L2. From: %s Topic: %s",
+		m.logger.Trace(fmt.Sprintf("[CrossChain] Creating synthetic tx for cross chain message to L2. From: %s Topic: %s",
 			message.Sender.Hex(),
 			fmt.Sprint(message.Topic)), "Block", block.Hash().Hex())
 
@@ -278,7 +278,7 @@ func (m *Manager) ExtractMessagesFromReceipt(receipt *types.Receipt) []MessageBu
 func (m *Manager) extractPublishedMessages(receipt *types.Receipt) []MessageBus.MessageBusLogMessagePublished {
 	events := make([]MessageBus.MessageBusLogMessagePublished, 0)
 
-	m.logger.Info(fmt.Sprintf("[CrossChain] Extracting %d logs from receipt for %s", len(receipt.Logs), receipt.TxHash.Hex()))
+	m.logger.Trace(fmt.Sprintf("[CrossChain] Extracting %d logs from receipt for %s", len(receipt.Logs), receipt.TxHash.Hex()))
 
 	for _, log := range receipt.Logs {
 		//event, err := m.l2MessageBus.ParseLogMessagePublished(*log)
@@ -305,7 +305,7 @@ func (m *Manager) extractPublishedMessage(log *types.Log) *MessageBus.MessageBus
 		return nil
 	}
 
-	m.logger.Info(fmt.Sprintf("[CrossChain] Event from message bus %s found!", log.Address.Hex()))
+	m.logger.Trace(fmt.Sprintf("[CrossChain] Event from message bus %s found!", log.Address.Hex()))
 
 	var event MessageBus.MessageBusLogMessagePublished
 	m.contractABI.UnpackIntoInterface(&event, "LogMessagePublished", log.Data)

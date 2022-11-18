@@ -230,7 +230,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			}
 
 			if rec.Status == 1 {
-				ti.logger.Info(fmt.Sprintf("[CrossChain] Successful Deposit at %s; Logs in receipt - %d", rec.BlockHash.Hex(), len(rec.Logs)))
+				ti.logger.Trace(fmt.Sprintf("[CrossChain] Successful Deposit at %s; Logs in receipt - %d", rec.BlockHash.Hex(), len(rec.Logs)))
 				return
 			}
 
@@ -245,7 +245,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 				AccessList: txClone.AccessList(),
 			})
 			if err != nil {
-				ti.logger.Info(fmt.Sprintf("Deposit %s ERROR - %+v", txClone.Hash(), err))
+				ti.logger.Error(fmt.Sprintf("Deposit %s ERROR - %+v", txClone.Hash(), err))
 			}
 		}()
 
