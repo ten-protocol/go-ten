@@ -37,8 +37,8 @@ func (l *LogEventManager) RemoveSubscription(id rpc.ID) {
 	if found {
 		close(logSubscription.ch)
 
-		l.subscriptionMutex.RLock()
-		defer l.subscriptionMutex.RUnlock()
+		l.subscriptionMutex.Lock()
+		defer l.subscriptionMutex.Unlock()
 		delete(l.subscriptions, id)
 	}
 }
