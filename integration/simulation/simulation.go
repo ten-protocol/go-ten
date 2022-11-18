@@ -164,7 +164,7 @@ func (s *Simulation) deployObscuroERC20s() {
 				owner.SetNonce(1)
 			}*/
 
-			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token))
+			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), gethcommon.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b"))
 
 			deployContractTx := types.DynamicFeeTx{
 				Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),

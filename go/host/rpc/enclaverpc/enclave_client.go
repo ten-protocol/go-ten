@@ -162,7 +162,7 @@ func (c *Client) Start(block types.Block) error {
 	return nil
 }
 
-func (c *Client) SubmitBlock(block types.Block, receipts []*types.ReceiptForStorage, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (c *Client) SubmitBlock(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout+(5*time.Minute))
 	defer cancel()
 
@@ -175,26 +175,6 @@ func (c *Client) SubmitBlock(block types.Block, receipts []*types.ReceiptForStor
 	if err != nil {
 		return nil, fmt.Errorf("could not encode receipts. Cause: %w", err)
 	}
-
-	/*if len(receipts) > 0 {
-		receiptClone := *receipts[0]
-
-		serialized, err := receiptClone.EncodeRLP()
-		if err != nil {
-			return nil, fmt.Errorf("could not encode receipts. Cause: %w", err)
-		}
-
-		var receiptTest *types.ReceiptForStorage
-		err = rlp.DecodeBytes(serialized, &receiptTest)
-		if err != nil {
-			c.logger.Crit("Error")
-		}
-		if len(receipts) > 0 {
-			if receiptClone.TxHash.Hex() != receiptTest.TxHash.Hex() {
-				c.logger.Crit("TxHash mistmach... sanity..")
-			}
-		}
-	}*/
 
 	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serialized, IsLatest: isLatest})
 	if err != nil {

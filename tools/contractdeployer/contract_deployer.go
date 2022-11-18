@@ -164,7 +164,7 @@ func getContractCode(cfg *Config) ([]byte, error) {
 		tokenName := cfg.ConstructorParams[0]
 		tokenSymbol := cfg.ConstructorParams[1]
 		supply := cfg.ConstructorParams[2]
-		return erc20contract.L2Bytecode(tokenName, tokenSymbol, supply), nil
+		return erc20contract.L2Bytecode(tokenName, tokenSymbol, supply, common.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b")), nil
 
 	case layer1Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]

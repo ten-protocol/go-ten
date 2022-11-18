@@ -724,8 +724,8 @@ func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 	return nil
 }
 
-func (h *host) extractReceipts(block *types.Block) []*types.ReceiptForStorage {
-	receipts := make([]*types.ReceiptForStorage, 0)
+func (h *host) extractReceipts(block *types.Block) types.Receipts {
+	receipts := make(types.Receipts, 0)
 
 	mgt, _ := ManagementContract.NewManagementContract(*h.mgmtContractLib.GetContractAddr(), h.ethClient.EthClient())
 
@@ -734,38 +734,35 @@ func (h *host) extractReceipts(block *types.Block) []*types.ReceiptForStorage {
 		h.logger.Crit("WHat")
 	}
 
-	busCtr, _ := MessageBus.NewMessageBus(busAddr, h.ethClient.EthClient())
-
+	//busCtr, _ := MessageBus.NewMessageBus(busAddr, h.ethClient.EthClient())
 	contractAbi, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
 
 	for _, transaction := range block.Transactions() {
-		receipt, _ := h.ethClient.TransactionReceipt(transaction.Hash())
+		receipt, err := h.ethClient.TransactionReceipt(transaction.Hash())
 
-		shouldBreak := true
+		if err != nil {
+			h.logger.Error("[CrossChain] Problem with retrieving the receipt on the host!", "Error", err)
+		}
+
+		relevantLogs := 0
 		for _, log := range receipt.Logs {
 			if contractAbi.Events["LogMessagePublished"].ID == log.Topics[0] {
-				shouldBreak = false
+				relevantLogs++
+				continue
 			}
 
 			if log.Address.Hex() == busAddr.Hex() {
-				shouldBreak = false
-			}
-
-			if _, err := busCtr.ParseLogMessagePublished(*log); err == nil {
-				//	h.logger.Info(fmt.Sprintf("[Host][CrossChain] Event Message - %+v", msg))
-				shouldBreak = false
+				relevantLogs++
+				continue
 			}
 		}
 
-		if shouldBreak {
+		/*if relevantLogs == 0 {
 			break
-		}
+		}*/
 
-		h.logger.Info(fmt.Sprintf("[CrossChain] Adding receipt for %s with %d", receipt.TxHash.Hex(), len(receipt.Logs)))
-
-		storageReceipt := types.ReceiptForStorage(*receipt)
-
-		receipts = append(receipts, &storageReceipt)
+		h.logger.Info(fmt.Sprintf("[CrossChain] Adding receipt for block %s with %d relevant logs", block.Hash().Hex(), relevantLogs))
+		receipts = append(receipts, receipt)
 	}
 
 	return receipts

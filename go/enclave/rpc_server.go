@@ -270,8 +270,8 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	return block
 }
 
-func (s *server) decodeReceipts(encodedReceipts []byte) []*types.ReceiptForStorage {
-	receipts := make([]*types.ReceiptForStorage, 0)
+func (s *server) decodeReceipts(encodedReceipts []byte) types.Receipts {
+	receipts := make(types.Receipts, 0)
 
 	err := rlp.DecodeBytes(encodedReceipts, &receipts)
 	if err != nil {

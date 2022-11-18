@@ -224,9 +224,14 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		txClone := *signedTx
 		go func() {
 			time.Sleep(3 * time.Second)
-			_, err := ti.rpcHandles.RndEthClient().TransactionReceipt(txClone.Hash())
+			rec, err := ti.rpcHandles.RndEthClient().TransactionReceipt(txClone.Hash())
 			if err != nil {
 				panic(err)
+			}
+
+			if rec.Status == 1 {
+				ti.logger.Info(fmt.Sprintf("[CrossChain] Successful Deposit at %s; Logs in receipt - %d", rec.BlockHash.Hex(), len(rec.Logs)))
+				return
 			}
 
 			_, err = ti.rpcHandles.RndEthClient().CallContract(ethereum.CallMsg{
@@ -241,8 +246,6 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			})
 			if err != nil {
 				ti.logger.Info(fmt.Sprintf("Deposit %s ERROR - %+v", txClone.Hash(), err))
-			} else {
-				ti.logger.Info(fmt.Sprintf("[CrossChain] Successful Deposit at %s bn", txClone.Hash()))
 			}
 		}()
 

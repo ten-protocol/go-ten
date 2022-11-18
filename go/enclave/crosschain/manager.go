@@ -37,11 +37,11 @@ type Manager struct {
 type CrossChainManager interface {
 	GenerateMessageBusDeployTx() *types.Transaction
 	//	SetL2MessageBusAddress(addr *gethcommon.Address)
-	ProcessSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) error
-	GetSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) types.Transactions
+	ProcessSyntheticTransactions(block *types.Block, receipts types.Receipts) error
+	GetSyntheticTransactions(block *types.Block, receipts types.Receipts) types.Transactions
 	GetSyntheticTransactionsBetween(fromBlock *types.Block, toBlock *types.Block, rollupState *state.StateDB) types.Transactions
-	ExtractMessagesFromReceipts(receipts []*types.ReceiptForStorage) []MessageBus.StructsCrossChainMessage
-	ExtractMessagesFromReceipt(receipt *types.ReceiptForStorage) []MessageBus.StructsCrossChainMessage
+	ExtractMessagesFromReceipts(receipts types.Receipts) []MessageBus.StructsCrossChainMessage
+	ExtractMessagesFromReceipt(receipt *types.Receipt) []MessageBus.StructsCrossChainMessage
 	GetOwner() *gethcommon.Address
 }
 
@@ -106,7 +106,7 @@ func (m *Manager) GenerateMessageBusDeployTx() *types.Transaction {
 	return stx
 }
 
-func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) error {
+func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts types.Receipts) error {
 	if len(receipts) > 0 {
 		m.lazilyLogReceiptChecksum(fmt.Sprintf("[CrossChain] Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)), receipts)
 	}
@@ -120,7 +120,7 @@ func (m *Manager) ProcessSyntheticTransactions(block *types.Block, receipts []*t
 	return nil
 }
 
-func (m *Manager) lazilyLogReceiptChecksum(msg string, receipts []*types.ReceiptForStorage) {
+func (m *Manager) lazilyLogReceiptChecksum(msg string, receipts types.Receipts) {
 	m.logger.Trace(msg, "Hash",
 		gethlog.Lazy{Fn: func() string {
 			hasher := sha3.NewLegacyKeccak256().(crypto.KeccakState)
@@ -212,7 +212,7 @@ func (m *Manager) GetSyntheticTransactionsBetween(fromBlock *types.Block, toBloc
 	return signedTransactions
 }
 
-func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types.ReceiptForStorage) types.Transactions {
+func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts types.Receipts) types.Transactions {
 	transactions := make(types.Transactions, 0)
 
 	if len(receipts) == 0 {
@@ -225,6 +225,9 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types
 	}*/
 
 	messages := m.ExtractMessagesFromReceipts(receipts)
+
+	m.logger.Info(fmt.Sprintf("[CrossChain] Found %d cross chain messages that will be submitted to L2!", len(messages)),
+		"Block", block.Hash().Hex())
 
 	for _, message := range messages {
 		validAfter := big.NewInt(1)
@@ -244,7 +247,7 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types
 
 		m.logger.Info(fmt.Sprintf("[CrossChain] Creating synthetic tx for cross chain message to L2. From: %s Topic: %s",
 			message.Sender.Hex(),
-			fmt.Sprint(message.Topic)))
+			fmt.Sprint(message.Topic)), "Block", block.Hash().Hex())
 
 		transactions = append(transactions, tx)
 	}
@@ -252,7 +255,7 @@ func (m *Manager) GetSyntheticTransactions(block *types.Block, receipts []*types
 	return transactions
 }
 
-func (m *Manager) ExtractMessagesFromReceipts(receipts []*types.ReceiptForStorage) []MessageBus.StructsCrossChainMessage {
+func (m *Manager) ExtractMessagesFromReceipts(receipts types.Receipts) []MessageBus.StructsCrossChainMessage {
 	messages := make([]MessageBus.StructsCrossChainMessage, 0)
 
 	for _, receipt := range receipts {
@@ -263,7 +266,7 @@ func (m *Manager) ExtractMessagesFromReceipts(receipts []*types.ReceiptForStorag
 	return messages
 }
 
-func (m *Manager) ExtractMessagesFromReceipt(receipt *types.ReceiptForStorage) []MessageBus.StructsCrossChainMessage {
+func (m *Manager) ExtractMessagesFromReceipt(receipt *types.Receipt) []MessageBus.StructsCrossChainMessage {
 	if receiptMightContainPublishedMessage(receipt) {
 		events := m.extractPublishedMessages(receipt)
 		return convertToMessages(events)
@@ -272,7 +275,7 @@ func (m *Manager) ExtractMessagesFromReceipt(receipt *types.ReceiptForStorage) [
 	return make([]MessageBus.StructsCrossChainMessage, 0)
 }
 
-func (m *Manager) extractPublishedMessages(receipt *types.ReceiptForStorage) []MessageBus.MessageBusLogMessagePublished {
+func (m *Manager) extractPublishedMessages(receipt *types.Receipt) []MessageBus.MessageBusLogMessagePublished {
 	events := make([]MessageBus.MessageBusLogMessagePublished, 0)
 
 	m.logger.Info(fmt.Sprintf("[CrossChain] Extracting %d logs from receipt for %s", len(receipt.Logs), receipt.TxHash.Hex()))
@@ -316,7 +319,7 @@ func VerifyReceiptHash(block *types.Block, receipts types.Receipts) bool {
 	return block.ReceiptHash().Hex() == hash.Hex()
 }
 
-func receiptMightContainPublishedMessage(receipt *types.ReceiptForStorage) bool {
+func receiptMightContainPublishedMessage(receipt *types.Receipt) bool {
 	//todo:: check bloom filter of receipt after figuring out how :|
 	return true
 }

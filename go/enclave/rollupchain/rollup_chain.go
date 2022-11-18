@@ -363,7 +363,10 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		toBlock,
 		stateDB)
 
-	rc.logger.Info(fmt.Sprintf("[CrossChain] From: %d To: %d Deposits extracted - %d; Synthetic Transactions extracted - %d", common.ShortHash(fromBlock.Hash()), common.ShortHash(toBlock.Hash()), len(depositTxs), len(syntheticTxs)))
+	if len(depositTxs) > 0 || len(syntheticTxs) > 0 {
+		rc.logger.Info(fmt.Sprintf("[CrossChain] From: %d To: %d Deposits extracted - %d; Synthetic Transactions extracted - %d", common.ShortHash(fromBlock.Hash()), common.ShortHash(toBlock.Hash()), len(depositTxs), len(syntheticTxs)))
+	}
+
 	if len(syntheticTxs) > 0 {
 		syntheticTransactionsResponses := evm.ExecuteTransactions(syntheticTxs, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 		synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
@@ -515,7 +518,7 @@ func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) 
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) SubmitBlock(block types.Block, receipts []*types.ReceiptForStorage, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) SubmitBlock(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
@@ -635,7 +638,9 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	// Postprocessing - withdrawals
 	txReceiptsMap := toReceiptMap(txReceipts)
 	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
-	//r.Header.CrossChainMessages = rc.crossChainManager.ExtractMessagesFromReceipts(txReceipts)
+	//	r.Header.CrossChainMessages = rc.crossChainManager.ExtractMessagesFromReceipts(txReceipts)
+
+	//	rc.logger.Trace(fmt.Sprintf("[CrossChain] Added %d cross chain messages to rollup. Equivalent withdrwawals in header - %d", len(r.Header.CrossChainMessages), len(r.Header.Withdrawals)))
 
 	crossChainBind := rc.storage.Proof(r)
 

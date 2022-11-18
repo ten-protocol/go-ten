@@ -59,16 +59,18 @@ contract EthERC20 is ERC20 {
         address managementContract
     )  ERC20(name, symbol) {
         bus = IMessageBus(l1MessageBus);
-        bus.publishMessage(uint32(block.number), uint32(Topics.MINT), abi.encodePacked(initialSupply), 0);
+        //bus.publishMessage(uint32(block.number), uint32(Topics.MINT), abi.encodePacked(initialSupply), 0);
         _mint(msg.sender, initialSupply);
-        target = l1MessageBus;
+        target = managementContract;
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount)
     internal virtual override {
-
-        AssetTransferMessage memory message = AssetTransferMessage(from, to, amount);
-        uint64 sequence = bus.publishMessage(uint32(block.number), uint32(Topics.TRANSFER), abi.encode(message), 0);
-        require(sequence == 1, "Sanity check fail");
+        //Only deposit messages.
+        if (to == target) { 
+            AssetTransferMessage memory message = AssetTransferMessage(from, to, amount);
+            uint64 sequence = bus.publishMessage(uint32(block.number), uint32(Topics.TRANSFER), abi.encode(message), 0);
+            require(sequence == 1, "Sanity check fail");
+        }
     }
 }

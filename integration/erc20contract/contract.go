@@ -10,17 +10,17 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/erc20contract/generated/ObsERC20"
 )
 
-func L2BytecodeWithDefaultSupply(tokenName string) []byte {
-	return L2Bytecode(tokenName, tokenName, "1000000000000000000000000000000000000000")
+func L2BytecodeWithDefaultSupply(tokenName string, busAddress common.Address) []byte {
+	return L2Bytecode(tokenName, tokenName, "1000000000000000000000000000000000000000", busAddress)
 }
 
-func L2Bytecode(tokenName string, tokenSymbol string, initialSupply string) []byte {
+func L2Bytecode(tokenName string, tokenSymbol string, initialSupply string, busAddress common.Address) []byte {
 	parsed, err := ObsERC20.ObsERC20MetaData.GetAbi()
 	if err != nil {
 		panic(err)
 	}
 	supply, _ := big.NewInt(0).SetString(initialSupply, 10)
-	input, err := parsed.Pack("", tokenName, tokenSymbol, supply)
+	input, err := parsed.Pack("", tokenName, tokenSymbol, supply, busAddress)
 	if err != nil {
 		panic(err)
 	}

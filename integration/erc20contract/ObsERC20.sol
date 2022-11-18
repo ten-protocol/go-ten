@@ -15,13 +15,12 @@ interface Structs {
 }
 
 interface IMessageBus {
-
     function publishMessage(
         uint32 nonce,
-        bytes memory topic,
-        bytes memory payload, 
+        uint32 topic,
+        bytes calldata payload, 
         uint8 consistencyLevel
-    ) external returns (uint64 sequence);
+    ) external payable returns (uint64 sequence);
 
     function verifyMessageFinalized(Structs.CrossChainMessage calldata crossChainMessage) external view returns (bool);
     
@@ -44,6 +43,13 @@ contract ObsERC20 is ERC20 {
 
     IMessageBus bus;
 
+    enum Topics{ MINT, TRANSFER }
+    struct AssetTransferMessage {
+        address sender;
+        address receiver;
+        uint256 amount;
+    }
+
     constructor(
         string memory name,
         string memory symbol,
@@ -52,6 +58,16 @@ contract ObsERC20 is ERC20 {
     )  ERC20(name, symbol) {
         _mint(msg.sender, initialSupply);
         bus = IMessageBus(busAddress);
+    }
+
+    function _beforeTokenTransfer(address from, address to, uint256 amount)
+    internal virtual override {
+        //Only deposit messages.
+        if (to == bridge) { 
+            AssetTransferMessage memory message = AssetTransferMessage(from, to, amount);
+            uint64 sequence = bus.publishMessage(uint32(block.number), uint32(Topics.TRANSFER), abi.encode(message), 0);
+            require(sequence == 1, "Sanity check fail");
+        }
     }
 
     function balanceOf(address account) public view virtual override returns (uint256) {
@@ -87,15 +103,5 @@ contract ObsERC20 is ERC20 {
         }
 
         revert("Not allowed to read the allowance");
-    }
-
-    function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override {
-        if (to == bridge) {
-            bus.publishMessage(uint32(block.number), "Withdraws", abi.encode(from,amount), 0);
-        }
     }
 }
