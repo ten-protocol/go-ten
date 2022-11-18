@@ -59,9 +59,10 @@ contract EthERC20 is ERC20 {
         address managementContract
     )  ERC20(name, symbol) {
         bus = IMessageBus(l1MessageBus);
+        target = managementContract;
+
         //bus.publishMessage(uint32(block.number), uint32(Topics.MINT), abi.encodePacked(initialSupply), 0);
         _mint(msg.sender, initialSupply);
-        target = managementContract;
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount)

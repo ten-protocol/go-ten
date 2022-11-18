@@ -761,7 +761,11 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 			break
 		}*/
 
-		h.logger.Info(fmt.Sprintf("[CrossChain] Adding receipt for block %s with %d relevant logs", block.Hash().Hex(), relevantLogs))
+		h.logger.Info(fmt.Sprintf("[CrossChain] Adding receipt for block %d, TX: %d  with %d relevant logs",
+			common.ShortHash(block.Hash()),
+			common.ShortHash(transaction.Hash()),
+			relevantLogs))
+
 		receipts = append(receipts, receipt)
 	}
 
