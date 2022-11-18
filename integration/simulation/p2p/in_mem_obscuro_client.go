@@ -54,7 +54,7 @@ func NewInMemObscuroClient(nodeHost host.Host) rpc.Client {
 
 	return &inMemObscuroClient{
 		obscuroAPI:       clientapi.NewObscuroAPI(nodeHost),
-		ethAPI:           clientapi.NewEthereumAPI(nodeHost),
+		ethAPI:           clientapi.NewEthereumAPI(nodeHost, logger),
 		filterAPI:        clientapi.NewFilterAPI(nodeHost, logger),
 		obscuroScanAPI:   clientapi.NewObscuroScanAPI(nodeHost),
 		testAPI:          clientapi.NewTestAPI(nodeHost),
@@ -78,8 +78,9 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		return c.sendRawTransaction(args)
 
 	case rpc.BlockNumber:
-		*result.(*hexutil.Uint64) = c.testAPI.BlockNumber()
-		return nil
+		var err error
+		*result.(*hexutil.Uint64), err = c.testAPI.BlockNumber()
+		return err
 
 	case rpc.GetTransactionByHash:
 		return c.getTransactionByHash(result, args)

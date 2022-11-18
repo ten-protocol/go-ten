@@ -6,6 +6,11 @@ import (
 	"fmt"
 	"math/big"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -17,12 +22,14 @@ import (
 // EthereumAPI implements a subset of the Ethereum JSON RPC operations. All the method signatures are copied from the
 // corresponding Geth implementations.
 type EthereumAPI struct {
-	host host.Host
+	host   host.Host
+	logger gethlog.Logger
 }
 
-func NewEthereumAPI(host host.Host) *EthereumAPI {
+func NewEthereumAPI(host host.Host, logger gethlog.Logger) *EthereumAPI {
 	return &EthereumAPI{
-		host: host,
+		host:   host,
+		logger: logger,
 	}
 }
 
@@ -34,8 +41,10 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 // BlockNumber returns the height of the current head rollup.
 // # TODO - #718 - Switch to returning height based on current batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	header, found := api.host.DB().GetHeadRollupHeader()
-	if !found {
+	header, err := api.host.DB().GetHeadRollupHeader()
+	if err != nil {
+		// This error may be nefarious, but unfortunately the Eth API doesn't allow us to return an error.
+		api.logger.Error("could not retrieve head rollup header", log.ErrKey, err)
 		return 0
 	}
 
@@ -55,9 +64,9 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 
 // GetBlockByNumber returns the header of the rollup with the given height.
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	rollupHash, found := api.rollupNumberToRollupHash(number)
-	if !found {
-		return nil, fmt.Errorf("could not find rollup with height %d", number)
+	rollupHash, err := api.rollupNumberToRollupHash(number)
+	if err != nil {
+		return nil, fmt.Errorf("could not find rollup with height %d. Cause: %w", number, err)
 	}
 	return api.GetBlockByHash(ctx, *rollupHash, true)
 }
@@ -65,9 +74,9 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 // GetBlockByHash returns the header of the rollup with the given hash.
 // TODO - #718 - Switch to retrieving batch header.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
-	rollupHeader, found := api.host.DB().GetRollupHeader(hash)
-	if !found {
-		return nil, nil //nolint:nilnil
+	rollupHeader, err := api.host.DB().GetRollupHeader(hash)
+	if err != nil {
+		return nil, err
 	}
 	return headerToMap(rollupHeader), nil
 }
@@ -125,9 +134,9 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// requested a number
 	if rollupNumber, ok := blockNrOrHash.Number(); ok {
-		rollupHash, found := api.rollupNumberToRollupHash(rollupNumber)
-		if !found {
-			return nil, fmt.Errorf("could not retrieve rollup with height %d", rollupNumber)
+		rollupHash, err := api.rollupNumberToRollupHash(rollupNumber)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve rollup with height %d. Cause: %w", rollupNumber, err)
 		}
 
 		return api.host.EnclaveClient().GetCode(address, rollupHash)
@@ -215,26 +224,26 @@ type FeeHistoryResult struct {
 }
 
 // TODO - #718 - Switch to converting block number to batch hash.
-func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, bool) {
+func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
 	if blockNumber == rpc.LatestBlockNumber {
-		header, found := api.host.DB().GetHeadRollupHeader()
-		if !found {
-			return nil, false
+		header, err := api.host.DB().GetHeadRollupHeader()
+		if err != nil {
+			return nil, err
 		}
 		hash := header.Hash()
-		return &hash, true
+		return &hash, nil
 	}
 
 	if blockNumber == rpc.PendingBlockNumber {
 		// todo Dependent on the current pending rollup - leaving it for a different iteration as it will need more thought
-		return nil, false
+		return nil, errutil.ErrNoImpl
 	}
 
 	blockNumberBig := big.NewInt(blockNumber.Int64())
-	rollupHash, found := api.host.DB().GetRollupHash(blockNumberBig)
-	if !found {
-		return nil, false
+	rollupHash, err := api.host.DB().GetRollupHash(blockNumberBig)
+	if err != nil {
+		return nil, err
 	}
-	return rollupHash, true
+	return rollupHash, nil
 }

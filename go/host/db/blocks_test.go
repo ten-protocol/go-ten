@@ -1,8 +1,11 @@
 package db
 
 import (
+	"errors"
 	"math/big"
 	"testing"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -15,11 +18,14 @@ func TestCanStoreAndRetrieveBlockHeader(t *testing.T) {
 	header := types.Header{
 		Number: big.NewInt(rollupNumber),
 	}
-	db.AddBlockHeader(&header)
+	err := db.AddBlockHeader(&header)
+	if err != nil {
+		t.Errorf("could not add block header. Cause: %s", err)
+	}
 
-	blockHeader, found := db.GetBlockHeader(header.Hash())
-	if !found {
-		t.Errorf("stored block header but could not retrieve it")
+	blockHeader, err := db.GetBlockHeader(header.Hash())
+	if err != nil {
+		t.Errorf("stored block header but could not retrieve it. Cause: %s", err)
 	}
 	if blockHeader.Number.Cmp(header.Number) != 0 {
 		t.Errorf("block header was not stored correctly")
@@ -30,8 +36,8 @@ func TestUnknownBlockHeaderReturnsNotFound(t *testing.T) {
 	db := NewInMemoryDB()
 	header := types.Header{}
 
-	_, found := db.GetBlockHeader(header.Hash())
-	if found {
+	_, err := db.GetBlockHeader(header.Hash())
+	if !errors.Is(err, errutil.ErrNotFound) {
 		t.Errorf("did not store block header but was able to retrieve it")
 	}
 }
@@ -41,17 +47,23 @@ func TestHigherNumberBlockBecomesBlockHeader(t *testing.T) {
 	headerOne := types.Header{
 		Number: big.NewInt(rollupNumber),
 	}
-	db.AddBlockHeader(&headerOne)
+	err := db.AddBlockHeader(&headerOne)
+	if err != nil {
+		t.Errorf("could not add block header. Cause: %s", err)
+	}
 
 	headerTwo := types.Header{
 		// We give the second header a higher number, making it the head.
 		Number: big.NewInt(0).Add(headerOne.Number, big.NewInt(1)),
 	}
-	db.AddBlockHeader(&headerTwo)
+	err = db.AddBlockHeader(&headerTwo)
+	if err != nil {
+		t.Errorf("could not add block header. Cause: %s", err)
+	}
 
-	blockHeader, found := db.GetHeadBlockHeader()
-	if !found {
-		t.Errorf("stored block header but could not retrieve it")
+	blockHeader, err := db.GetHeadBlockHeader()
+	if err != nil {
+		t.Errorf("stored block header but could not retrieve it. Cause: %s", err)
 	}
 	if blockHeader.Number.Cmp(headerTwo.Number) != 0 {
 		t.Errorf("head block was not set correctly")
@@ -63,17 +75,23 @@ func TestLowerNumberBlockDoesNotBecomeBlockHeader(t *testing.T) {
 	headerOne := types.Header{
 		Number: big.NewInt(rollupNumber),
 	}
-	db.AddBlockHeader(&headerOne)
+	err := db.AddBlockHeader(&headerOne)
+	if err != nil {
+		t.Errorf("could not add block header. Cause: %s", err)
+	}
 
 	headerTwo := types.Header{
 		// We give the second header a higher number, making it the head.
 		Number: big.NewInt(0).Sub(headerOne.Number, big.NewInt(1)),
 	}
-	db.AddBlockHeader(&headerTwo)
+	err = db.AddBlockHeader(&headerTwo)
+	if err != nil {
+		t.Errorf("could not add block header. Cause: %s", err)
+	}
 
-	blockHeader, found := db.GetHeadBlockHeader()
-	if !found {
-		t.Errorf("stored block header but could not retrieve it")
+	blockHeader, err := db.GetHeadBlockHeader()
+	if err != nil {
+		t.Errorf("stored block header but could not retrieve it. Cause: %s", err)
 	}
 	if blockHeader.Number.Cmp(headerOne.Number) != 0 {
 		t.Errorf("head block was not set correctly")
@@ -83,8 +101,8 @@ func TestLowerNumberBlockDoesNotBecomeBlockHeader(t *testing.T) {
 func TestHeadBlockHeaderIsNotSetInitially(t *testing.T) {
 	db := NewInMemoryDB()
 
-	_, found := db.GetHeadBlockHeader()
-	if found {
-		t.Errorf("head block was set, but no blocks had been written")
+	_, err := db.GetHeadBlockHeader()
+	if !errors.Is(err, errutil.ErrNotFound) {
+		t.Errorf("head block was set, but no blocks had been written. Cause: %s", err)
 	}
 }
