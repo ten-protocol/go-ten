@@ -170,7 +170,7 @@ func (s *SubscriptionManager) getSubscribedLogs(logs []*types.Log, rollupHash co
 	relevantLogsByID := map[gethrpc.ID][]*types.Log{}
 
 	// If there are no subscriptions, we return early, to avoid the overhead of creating the state DB.
-	if len(s.subscriptions) == 0 {
+	if s.getNumberOfSubsThreadsafe() == 0 {
 		return map[gethrpc.ID][]*types.Log{}
 	}
 
@@ -266,6 +266,14 @@ func (s *SubscriptionManager) getSubscriptionThreadsafe(subID gethrpc.ID) (*comm
 
 	subscription, found := s.subscriptions[subID]
 	return subscription, found
+}
+
+// Locks the subscription map and retrieves the number of subscriptions.
+func (s *SubscriptionManager) getNumberOfSubsThreadsafe() int {
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
+
+	return len(s.subscriptions)
 }
 
 // Indicates whether the log is relevant for the subscription.
