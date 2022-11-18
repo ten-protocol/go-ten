@@ -33,10 +33,14 @@ func (l *LogEventManager) AddSubscription(id rpc.ID, matchedLogsCh chan []byte) 
 
 // RemoveSubscription removes a subscription from the set of managed subscriptions.
 func (l *LogEventManager) RemoveSubscription(id rpc.ID) {
-	l.subscriptionMutex.RLock()
-	defer l.subscriptionMutex.RUnlock()
+	logSubscription, found := l.getSubscriptionThreadsafe(id)
+	if found {
+		close(logSubscription.ch)
 
-	delete(l.subscriptions, id)
+		l.subscriptionMutex.RLock()
+		defer l.subscriptionMutex.RUnlock()
+		delete(l.subscriptions, id)
+	}
 }
 
 // SendLogsToSubscribers distributes logs to subscribed clients.
