@@ -137,7 +137,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: Deposit amounts don't match. Found %d , expected %d", nodeAddr, totalDeposited, s.Stats.TotalDepositedAmount)
 	}
 
-	if s.Stats.TotalDepositedAmount.Cmp(big.NewInt(0)) != 0 {
+	if s.Stats.TotalDepositedAmount.Cmp(gethcommon.Big0) == 0 {
 		t.Errorf("Node %d: No deposits", nodeAddr)
 	}
 

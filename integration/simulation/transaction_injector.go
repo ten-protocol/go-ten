@@ -230,7 +230,10 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			}
 
 			if rec.Status == 1 {
-				ti.logger.Trace(fmt.Sprintf("[CrossChain] Successful Deposit at %s; Logs in receipt - %d", rec.BlockHash.Hex(), len(rec.Logs)))
+				ti.logger.Trace(fmt.Sprintf("[CrossChain] Successful Deposit at %s; Amount: %s Logs in receipt - %d",
+					rec.BlockHash.Hex(),
+					txData.Amount.String(),
+					len(rec.Logs)))
 				return
 			}
 
@@ -251,7 +254,8 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 		time.Sleep(2 * time.Second)
 
-		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
+		ti.stats.Deposit(txData.Amount)
+		//		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
 		go ti.TxTracker.trackL1Tx(txData)
 		SleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
