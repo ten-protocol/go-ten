@@ -13,11 +13,11 @@ start_path="$(cd "$(dirname "${0}")" && pwd)"
 testnet_path="${start_path}"
 root_path="${testnet_path}/.."
 
-# run the builds in parallel
+# run the builds in parallel - echo the full command to output
 command() {
-    echo $4 start
+    echo $@ started
      $( "$@" )
-    echo $4 complete
+    echo $@ completed
 }
 
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_gethnetwork:latest -f "${testnet_path}/gethnetwork.Dockerfile" "${root_path}" &

@@ -39,12 +39,16 @@ func InjectTransactions(cfg Config, args []string, logger gethlog.Logger) {
 	}
 	println("Connecting to Obscuro node...")
 	l2Client, err := rpc.NewNetworkClient(cfg.obscuroClientAddress)
+	obscuroClient := obsclient.NewObsClient(l2Client)
 	if err != nil {
 		panic(err)
 	}
 
 	// We store the block at which we start injecting transactions.
-	startBlock := l1Client.FetchHeadBlock()
+	startBlock, found := l1Client.FetchHeadBlock()
+	if !found {
+		panic("could not retrieve head block")
+	}
 
 	simStats := stats.NewStats(0)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.mgmtContractAddress, logger)
@@ -56,7 +60,7 @@ func InjectTransactions(cfg Config, args []string, logger gethlog.Logger) {
 
 	rpcHandles := &network.RPCHandles{
 		EthClients:     []ethadapter.EthClient{l1Client},
-		ObscuroClients: []rpc.Client{l2Client},
+		ObscuroClients: []*obsclient.ObsClient{obscuroClient},
 		AuthObsClients: walletClients,
 	}
 
@@ -173,7 +177,11 @@ func parseNumOfTxs(args []string) int {
 }
 
 func checkDepositsSuccessful(txInjector *simulation.TransactionInjector, l1Client ethadapter.EthClient, stats *stats.Stats, erc20ContractLib erc20contractlib.ERC20ContractLib, mgmtContractLib mgmtcontractlib.MgmtContractLib, startBlock *types.Block) {
-	currentBlock := l1Client.FetchHeadBlock()
+	currentBlock, found := l1Client.FetchHeadBlock()
+	if !found {
+		panic("could not retrieve head block")
+	}
+
 	dummySim := simulation.Simulation{
 		Stats: stats,
 		Params: &params.SimParams{
@@ -181,7 +189,7 @@ func checkDepositsSuccessful(txInjector *simulation.TransactionInjector, l1Clien
 			MgmtContractLib:  mgmtContractLib,
 		},
 	}
-	deposits, _, _, _ := simulation.ExtractDataFromEthereumChain(startBlock, currentBlock, l1Client, &dummySim) //nolint:dogsled
+	deposits, _, _, _ := simulation.ExtractDataFromEthereumChain(startBlock, currentBlock, l1Client, &dummySim, 0) //nolint:dogsled
 
 	if len(deposits) != len(txInjector.TxTracker.L1Transactions) {
 		println(fmt.Sprintf("Injected %d deposits into the L1 but %d were missing.",

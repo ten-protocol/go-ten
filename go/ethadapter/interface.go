@@ -1,6 +1,7 @@
 package ethadapter
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -11,6 +12,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
+
+// ErrSubscriptionNotSupported return from BlockListener subscription if client doesn't support streaming (in-mem simulation)
+var ErrSubscriptionNotSupported = errors.New("block subscription not supported")
 
 // EthClient defines the interface for RPC communications with the ethereum nodes
 // TODO Some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
@@ -23,7 +27,7 @@ type EthClient interface {
 	BalanceAt(account gethcommon.Address, blockNumber *big.Int) (*big.Int, error) // fetches the balance of the account
 
 	Info() Info                                                         // retrieves the node Info
-	FetchHeadBlock() *types.Block                                       // retrieves the block at head height
+	FetchHeadBlock() (*types.Block, bool)                               // retrieves the block at head height
 	BlocksBetween(block *types.Block, head *types.Block) []*types.Block // returns the blocks between two blocks
 	IsBlockAncestor(block *types.Block, proof common.L1RootHash) bool   // returns if the node considers a block the ancestor
 	BlockListener() (chan *types.Header, ethereum.Subscription)         // subscribes to new blocks and returns a listener with the blocks heads and the subscription handler

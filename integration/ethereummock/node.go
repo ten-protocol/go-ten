@@ -108,8 +108,8 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	}
 	// TODO this should be a method in the resolver
 	var f bool
-	blk := m.Resolver.FetchHeadBlock()
-	if blk == nil {
+	blk, found := m.Resolver.FetchHeadBlock()
+	if !found {
 		return nil, ethereum.NotFound
 	}
 	for !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()) {
@@ -133,7 +133,7 @@ func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 	return blk, nil
 }
 
-func (m *Node) FetchHeadBlock() *types.Block {
+func (m *Node) FetchHeadBlock() (*types.Block, bool) {
 	return m.Resolver.FetchHeadBlock()
 }
 
@@ -437,7 +437,10 @@ func NewMiner(
 type mockSubscription struct{}
 
 func (sub *mockSubscription) Err() <-chan error {
-	return make(chan error)
+	c := make(chan error, 2) // size 2, so that we don't block
+	// drop an error in to this channel to remind callers that this client does not stream.
+	c <- ethadapter.ErrSubscriptionNotSupported
+	return c
 }
 
 func (sub *mockSubscription) Unsubscribe() {

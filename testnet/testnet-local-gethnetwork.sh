@@ -65,6 +65,6 @@ docker run --name=gethnetwork -d \
   --websocketStartPort=${wsport} \
   --prefundedAddrs=${pkaddresses}
 
-echo "Waiting 30s for the network to be up..."
-sleep 30
+echo "Waiting 10s for the network to be up..."
+sleep 10
 echo "Network should be up and running"

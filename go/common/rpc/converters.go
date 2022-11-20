@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -42,7 +43,7 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
 		ProducedRollup:          &producedRollupMsg,
 		IngestedNewRollup:       response.FoundNewHead,
-		RollupHead:              ToRollupHeaderMsg(response.RollupHead),
+		RollupHead:              ToRollupHeaderMsg(response.IngestedRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
 	}, nil
@@ -88,32 +89,37 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 }
 
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (*common.BlockSubmissionResponse, error) {
+	if msg.Error != nil {
+		return nil, &common.BlockRejectError{
+			L1Head:  gethcommon.BytesToHash(msg.Error.L1Head),
+			Wrapped: errors.New(msg.Error.Cause),
+		}
+	}
 	var subscribedLogs map[rpc.ID][]byte
 	if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
-		return nil, fmt.Errorf("could not unmarshal subscribed logs from JSON. Cause: %w", err)
+		return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
 	}
-
 	return &common.BlockSubmissionResponse{
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
 		FoundNewHead:            msg.IngestedNewRollup,
-		RollupHead:              FromRollupHeaderMsg(msg.RollupHead),
+		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
 	}, nil
 }
 
 func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
+	if rollup == nil || rollup.Header == nil {
+		return generated.ExtRollupMsg{}
+	}
+
 	txHashBytes := make([][]byte, len(rollup.TxHashes))
 	for idx, txHash := range rollup.TxHashes {
 		txHashBytes[idx] = txHash.Bytes()
 	}
 
-	if rollup.Header != nil {
-		return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), TxHashes: txHashBytes, Txs: rollup.EncryptedTxBlob}
-	}
-
-	return generated.ExtRollupMsg{Header: nil}
+	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), TxHashes: txHashBytes, Txs: rollup.EncryptedTxBlob}
 }
 
 func ToCrossChainMsgs(messages []MessageBus.StructsCrossChainMessage) []*generated.CrossChainMsg {

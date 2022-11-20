@@ -50,7 +50,7 @@ func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethc
 	}, nil
 }
 
-func (e *gethRPCClient) FetchHeadBlock() *types.Block {
+func (e *gethRPCClient) FetchHeadBlock() (*types.Block, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
@@ -58,7 +58,7 @@ func (e *gethRPCClient) FetchHeadBlock() *types.Block {
 	if err != nil {
 		e.logger.Crit("could not fetch head block.", log.ErrKey, err)
 	}
-	return blk
+	return blk, true
 }
 
 func (e *gethRPCClient) Info() Info {

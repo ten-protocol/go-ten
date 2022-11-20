@@ -597,7 +597,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	}
 
 	// inserts a fork ( two rollups at same height / same parent )
-	splitPoint := make([]common.ExtRollupWithHash, 2)
+	splitPoint := make([]common.ExtRollup, 2)
 	for i := 0; i < 2; i++ {
 		r := datagenerator.RandomRollup()
 		r.Header.Agg = aggAID
@@ -617,7 +617,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	}
 
 	// create the fork
-	forks := make([]common.ExtRollupWithHash, 2)
+	forks := make([]common.ExtRollup, 2)
 	for i, parentRollup := range splitPoint {
 		r := datagenerator.RandomRollup()
 		r.Header.Agg = aggAID

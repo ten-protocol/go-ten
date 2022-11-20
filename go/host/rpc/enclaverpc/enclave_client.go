@@ -183,13 +183,7 @@ func (c *Client) SubmitBlock(block types.Block, receipts types.Receipts, isLates
 
 	blockSubmissionResponse, err := rpc.FromBlockSubmissionResponseMsg(response.BlockSubmissionResponse)
 	if err != nil {
-		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
-	}
-	if blockSubmissionResponse.RejectError != nil {
-		return nil, common.BlockRejectError{
-			L1Head:  blockSubmissionResponse.RejectError.L1Head,
-			Wrapped: blockSubmissionResponse.RejectError.Wrapped,
-		}
+		return nil, err
 	}
 	return blockSubmissionResponse, nil
 }
@@ -373,4 +367,15 @@ func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.
 		return nil, err
 	}
 	return resp.EncryptedResponse, nil
+}
+
+func (c *Client) HealthCheck() (bool, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.HealthCheck(timeoutCtx, &generated.EmptyArgs{})
+	if err != nil {
+		return false, err
+	}
+	return resp.Status, nil
 }

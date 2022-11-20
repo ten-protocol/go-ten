@@ -134,6 +134,10 @@ jobs:
           inlineScript: |
             az vm open-port -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
 
+      - name: 'Wait for Obscuro sequencer to start'
+        shell: bash
+        run: if [ 0! = ${{ matrix.host_id }} ]; then sleep 60; fi
+
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
@@ -149,6 +153,7 @@ jobs:
                -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
                -e DD_LOGS_ENABLED=true \
                -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
+               -e DD_LOGS_CONFIG_AUTO_MULTI_LINE_DETECTION=true \
                -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
                -e DD_SITE="datadoghq.eu"  \
                -v /var/run/docker.sock:/var/run/docker.sock:ro \
@@ -191,8 +196,8 @@ jobs:
           inlineScript: |
             az network nic ip-config address-pool add \
               --address-pool Backend-Pool-Obscuro-Testnet \
-              --ip-config-name ipconfigObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name ObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --ip-config-name ipconfigObscuroNodeTestnet-1-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name ObscuroNodeTestnet-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
               --lb-name testnet-loadbalancer
 

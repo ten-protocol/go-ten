@@ -12,9 +12,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/common/gethutil"
-
+	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
+	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -138,10 +138,10 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 		}
 	}
 	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	prevL1Head := rc.storage.FetchHeadBlock()
+	prevL1Head, found := rc.storage.FetchHeadBlock()
 
 	// we do a basic sanity check, comparing the received block to the head block on the chain
-	if prevL1Head == nil {
+	if !found {
 		// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
 		return &blockIngestionType{latest: isLatest, fork: false, preGenesis: true}, nil
 	} else if block.ParentHash() != prevL1Head.Hash() {
@@ -200,11 +200,11 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		head = headRollup.Header
 	}
 	return &common.BlockSubmissionResponse{
-		BlockHeader:    headBlock.Header(),
-		ProducedRollup: rollup,
-		FoundNewHead:   bs.FoundNewRollup,
-		RollupHead:     head,
-		SubscribedLogs: logs,
+		BlockHeader:          headBlock.Header(),
+		ProducedRollup:       rollup,
+		FoundNewHead:         bs.FoundNewRollup,
+		IngestedRollupHeader: head,
+		SubscribedLogs:       logs,
 	}
 }
 
@@ -219,10 +219,10 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
-	genesisRollup := rc.storage.FetchGenesisRollup()
+	genesisRollup, found := rc.storage.FetchGenesisRollup()
 
 	// processing blocks before genesis, so there is nothing to do
-	if genesisRollup == nil && len(rollups) == 0 {
+	if !found && len(rollups) == 0 {
 		return nil
 	}
 
@@ -330,11 +330,16 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		}
 	}
 
-	fromBlock := rc.storage.Proof(rc.storage.ParentRollup(rollup))
-	toBlock := rc.storage.Proof(rollup)
-
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
+	parent, found := rc.storage.ParentRollup(rollup)
+	if !found {
+		rc.logger.Crit("Sanity check. Rollup has no parent.")
+	}
+
+	fromBlock := rc.storage.Proof(parent)
+	toBlock := rc.storage.Proof(rollup)
+
 	depositTxs := rc.bridge.ExtractDeposits(
 		fromBlock,
 		toBlock,
@@ -395,7 +400,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 					failingTx.AccessList(),
 					false)
 
-				sdb := rc.storage.CreateStateDB(rc.storage.ParentRollup(rollup).Hash())
+				sdb := rc.storage.CreateStateDB(parent.Hash())
 				_, err := evm.ExecuteOffChainCall(&txCallMessage, sdb, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
 				rc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err)
 			}
@@ -531,7 +536,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, receipts types.Receipts, i
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
-	rc.logger.Info("block inserted successfully",
+	rc.logger.Trace("block inserted successfully",
 		"height", block.NumberU64(),
 		"hash", block.Hash(),
 		"ingestionType", ingestionType)
@@ -693,31 +698,15 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
 
-	// TODO review this during gas implementation
-	callMsg, err := apiArgs.ToMessage(rc.GlobalGasCap, rc.BaseFee)
+	// TODO Hook up the blockNumber
+	result, err := rc.ExecuteOffChainTransactionAtBlock(apiArgs, gethrpc.BlockNumber(0))
 	if err != nil {
-		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
-	}
-
-	hs := rc.storage.FetchHeadState()
-	if hs == nil {
-		panic("Not initialised")
-	}
-	// todo - get the parent
-	r, f := rc.storage.FetchRollup(hs.HeadRollup)
-	if !f {
-		panic("not found")
-	}
-
-	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
-	s := rc.storage.CreateStateDB(hs.HeadRollup)
-	result, err := evm.ExecuteOffChainCall(&callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
-	// todo - clarify this error handling
-	if err != nil {
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, err.Error())
 		return nil, err
 	}
+	// the execution might have succeeded but the evm contract logic might have failed
 	if result.Failed() {
-		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, result.Err)
 		return nil, result.Err
 	}
 
@@ -727,7 +716,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 	if len(result.ReturnData) != 0 {
 		encodedResult = hexutil.Encode(result.ReturnData)
 	}
-	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(callMsg.From(), []byte(encodedResult))
+	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(*apiArgs.From, []byte(encodedResult))
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
 	}
@@ -840,6 +829,41 @@ func (rc *RollupChain) IsAccountContractAtBlock(accountAddr gethcommon.Address, 
 	return len(chainState.GetCode(accountAddr)) > 0, nil
 }
 
+func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber gethrpc.BlockNumber) (*core.ExecutionResult, error) {
+	// TODO review this during gas mechanics implementation
+	callMsg, err := apiArgs.ToMessage(rc.GlobalGasCap, rc.BaseFee)
+	if err != nil {
+		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
+	}
+
+	hs := rc.storage.FetchHeadState()
+	if hs == nil {
+		return nil, fmt.Errorf("unable to fetch head state")
+	}
+	// todo - get the parent
+	r, f := rc.storage.FetchRollup(hs.HeadRollup)
+	if !f {
+		return nil, fmt.Errorf("unable to fetch head state rollup")
+	}
+
+	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
+	s := rc.storage.CreateStateDB(hs.HeadRollup)
+	result, err := evm.ExecuteOffChainCall(&callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
+	if err != nil {
+		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
+		return result, err
+	}
+
+	// the execution outcome was unsuccessful, but it was able to execute the call
+	if result.Failed() {
+		// do not return an error
+		// the result object should be evaluated upstream
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
+	}
+
+	return result, nil
+}
+
 func (rc *RollupChain) signRollup(r *obscurocore.Rollup) {
 	var err error
 	h := r.Hash()
@@ -868,7 +892,11 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 	var rollup *obscurocore.Rollup
 	switch height {
 	case gethrpc.EarliestBlockNumber:
-		rollup = rc.storage.FetchGenesisRollup()
+		genesisRollup, found := rc.storage.FetchGenesisRollup()
+		if !found {
+			return nil, fmt.Errorf("genesis rollup was not found")
+		}
+		rollup = genesisRollup
 	case gethrpc.PendingBlockNumber:
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
@@ -890,9 +918,9 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 }
 
 func (rc *RollupChain) rejectBlockErr(err error) *common.BlockRejectError {
-	l1Head := rc.storage.FetchHeadBlock()
+	l1Head, found := rc.storage.FetchHeadBlock()
 	var hash gethcommon.Hash
-	if l1Head != nil {
+	if found {
 		hash = l1Head.Hash()
 	}
 	return &common.BlockRejectError{
