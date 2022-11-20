@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/obsclient"
@@ -23,10 +25,14 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common"
+
+	erc20 "github.com/obscuronet/go-obscuro/integration/erc20contract/generated/EthERC20"
 )
 
 const (
@@ -124,6 +130,8 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(common.GenesisBlock, head, node, s)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
+	totalDepositedLogged := ExtractCrossChainDataFromEthereumChain(common.GenesisBlock, head, node, s)
+
 	if len(findHashDups(deposits)) > 0 {
 		dups := findHashDups(deposits)
 		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeAddr, dups)
@@ -139,6 +147,10 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 
 	if s.Stats.TotalDepositedAmount.Cmp(gethcommon.Big0) == 0 {
 		t.Errorf("Node %d: No deposits", nodeAddr)
+	}
+
+	if totalDepositedLogged.Cmp(totalDeposited) != 0 {
+		t.Errorf("Node %d: Logged deposits do not match extracted deposits from bridge", nodeAddr)
 	}
 
 	efficiency := float64(s.Stats.TotalL1Blocks-height) / float64(s.Stats.TotalL1Blocks)
@@ -166,6 +178,54 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	}
 
 	return height
+}
+
+func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation) *big.Int {
+
+	contractABI, err := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	if err != nil {
+		panic(err) //panic?
+	}
+
+	eventTopic := contractABI.Events["LogMessagePublished"].ID
+	var topics [][]gethcommon.Hash
+	topics = append(topics, []gethcommon.Hash{eventTopic})
+
+	logs, err := node.EthClient().FilterLogs(context.Background(), ethereum.FilterQuery{
+		FromBlock: startBlock.Number(),
+		ToBlock:   endBlock.Number(),
+		Topics:    topics,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	events := make([]*MessageBus.MessageBusLogMessagePublished, 0)
+	totalDeposited := big.NewInt(0)
+	for _, log := range logs {
+		var event MessageBus.MessageBusLogMessagePublished
+		err := contractABI.UnpackIntoInterface(&event, "LogMessagePublished", log.Data)
+		if err != nil { //shouldn't happen since we query by event type so we shouldn't have foreign events
+			panic(err)
+		}
+		events = append(events, &event)
+
+		contractAbi, err := abi.JSON(strings.NewReader(erc20.EthERC20MetaData.ABI))
+		if err != nil {
+			panic(err)
+		}
+
+		transfer := map[string]interface{}{}
+		err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, event.Payload) //can't figure out how to unpack it without cheating, geth is kinda clunky
+		if err != nil {
+			panic(err)
+		}
+
+		amount := transfer["amount"].(*big.Int)
+		totalDeposited = totalDeposited.Add(totalDeposited, amount)
+	}
+
+	return totalDeposited
 }
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
