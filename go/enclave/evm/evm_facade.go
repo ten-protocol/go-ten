@@ -27,12 +27,16 @@ import (
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, fromTxIndex int, logger gethlog.Logger) map[common.TxHash]interface{} {
-	chain, vmCfg, gp := initParams(storage, true)
+	chain, vmCfg, gp := initParams(storage, true, logger)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 
-	ethHeader := convertToEthHeader(header, secret(storage))
+	ethHeader, err := convertToEthHeader(header, secret(storage))
+	if err != nil {
+		logger.Crit("Could not convert to eth header", log.ErrKey, err)
+		return nil
+	}
 
 	for i, t := range txs {
 		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i)
@@ -84,9 +88,12 @@ func logReceipt(r *types.Receipt, logger gethlog.Logger) {
 
 // ExecuteOffChainCall - executes the eth_call call
 func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, logger gethlog.Logger) (*gethcore.ExecutionResult, error) {
-	chain, vmCfg, gp := initParams(storage, true)
-
-	blockContext := gethcore.NewEVMBlockContext(convertToEthHeader(header, secret(storage)), chain, &header.Agg)
+	chain, vmCfg, gp := initParams(storage, true, nil)
+	ethHeader, err := convertToEthHeader(header, secret(storage))
+	if err != nil {
+		return nil, err
+	}
+	blockContext := gethcore.NewEVMBlockContext(ethHeader, chain, &header.Agg)
 
 	// sets TxKey.origin
 	txContext := gethcore.NewEVMTxContext(msg)
@@ -117,8 +124,8 @@ func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.He
 	return result, nil
 }
 
-func initParams(storage db.Storage, noBaseFee bool) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
-	chain := &ObscuroChainContext{storage: storage}
+func initParams(storage db.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
+	chain := &ObscuroChainContext{storage: storage, logger: l}
 
 	// Todo - temporarily enable the evm tracer to check what sort of extra info we receive
 	tracer := logger.NewStructLogger(&logger.Config{Debug: true})
