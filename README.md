@@ -343,6 +343,7 @@ The above will perform all the relevant builds and ensure the images are ready f
 testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave            # the enclave 
 testnetobscuronet.azurecr.io/obscuronet/obscuro_gethnetwork        # the L1 network 
 testnetobscuronet.azurecr.io/obscuronet/obscuro_host               # the host
+testnetobscuronet.azurecr.io/obscuronet/obscuroscan                # the obscuroscan server
 testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer   # deploys the management contract to the host
 ```
 
@@ -357,6 +358,7 @@ only a single Obscuro node is started, it must be set as a genesis node and as a
 ./testnet-deploy-contracts.sh --l1host=gethnetwork --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
 ./start-obscuro-node.sh --sgx_enabled=false --host_id=0x0000000000000000000000000000000000000001 --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true --node_type=aggregator
 ./testnet-deploy-l2-contracts.sh --l2host=testnet-host-1 
+./start-obscuroscan.sh --rpcServerAddress=http://testnet-host-1:13000 
 ```
 
 where;

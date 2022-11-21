@@ -6,11 +6,11 @@
 
 help_and_exit() {
     echo ""
-    echo "Usage: $(basename "${0}")"
+    echo "Usage: $(basename "${0}") --rpcServerAddress=http://testnet-host-1:13000 --receivingPort=80"
     echo ""
-    echo "  rpcServerAddress        *Optional* Set the rpc server address (defaults to http://testnet.obscu.ro:13000)"
+    echo "  rpcServerAddress        *Optional* Set the rpc server address (defaults to http://testnet-host-1:13000)"
     echo ""
-    echo "  address                 *Optional* Set the obscuroscan endpoint address (defaults to 0.0.0.0:80)"
+    echo "  receivingPort           *Optional* Set the ObscuroScan server receiving port (defaults to 80)"
     echo ""
     echo ""
     echo ""
@@ -24,8 +24,8 @@ start_path="$(cd "$(dirname "${0}")" && pwd)"
 testnet_path="${start_path}"
 
 # Define defaults
+receivingPort=80
 rpcServerAddress='http://testnet-host-1:13000'
-address='0.0.0.0:80'
 docker_image="testnetobscuronet.azurecr.io/obscuronet/obscuroscan:latest"
 
 # Fetch options
@@ -36,14 +36,14 @@ do
 
     case "$key" in
             --rpcServerAddress)         rpcServerAddress=${value} ;;
-            --address)                  address=${value} ;;
+            --receivingPort)            receivingPort=${value} ;;
             --help)                     help_and_exit ;;
             *)
     esac
 done
 
 # ensure required fields
-if [[ -z ${rpcServerAddress:-} || -z ${address:-} ]];
+if [[ -z ${rpcServerAddress:-} || -z ${receivingPort:-} ]];
 then
     help_and_exit
 fi
@@ -53,9 +53,9 @@ echo "Starting the obscuroscan server..."
 docker network create --driver bridge node_network || true
 docker run --name=obscuroscan \
     --network=node_network \
-    -p 80:80 \
+    -p $receivingPort:$receivingPort \
     --entrypoint /home/go-obscuro/tools/obscuroscan/main/main \
     "${docker_image}" \
-    --rpcServerAddress=${rpcServerAddress} \
-    --address=${address}
+    --address='0.0.0.0:'$receivingPort \
+    --rpcServerAddress=${rpcServerAddress}
 echo ""
