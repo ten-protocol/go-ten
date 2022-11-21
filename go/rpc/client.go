@@ -29,7 +29,6 @@ const (
 	GetLatestTxs          = "obscuroscan_getLatestTransactions"
 	GetTotalTxs           = "obscuroscan_getTotalTransactions"
 	Attestation           = "obscuroscan_attestation"
-	BlockNumber           = "test_blockNumber"
 	StopHost              = "test_stopHost"
 	Subscribe             = "eth_subscribe"
 	SubscribeNamespace    = "eth"

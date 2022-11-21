@@ -102,6 +102,14 @@ func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
 	return make(chan *types.Header), &mockSubscription{}
 }
 
+func (m *Node) BlockNumber() (uint64, error) {
+	blk, found := m.Resolver.FetchHeadBlock()
+	if !found {
+		return 0, ethereum.NotFound
+	}
+	return blk.NumberU64(), nil
+}
+
 func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	if n.Int64() == 0 {
 		return common.GenesisBlock, nil

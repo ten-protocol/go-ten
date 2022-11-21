@@ -171,6 +171,11 @@ func (e *ethClientMock) BlockByNumber(num *big.Int) (*types.Block, error) {
 	return block, nil
 }
 
+func (e *ethClientMock) BlockNumber() (uint64, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (e *ethClientMock) SendTransaction(signedTx *types.Transaction) error {
 	// TODO implement me
 	panic("implement me")

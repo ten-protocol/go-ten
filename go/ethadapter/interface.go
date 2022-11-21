@@ -19,6 +19,7 @@ var ErrSubscriptionNotSupported = errors.New("block subscription not supported")
 // EthClient defines the interface for RPC communications with the ethereum nodes
 // TODO Some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
 type EthClient interface {
+	BlockNumber() (uint64, error)                                                 // retrieves the number of the head block
 	BlockByHash(id gethcommon.Hash) (*types.Block, error)                         // retrieves a block given a hash
 	BlockByNumber(n *big.Int) (*types.Block, error)                               // retrieves a block given a number - returns head block if n is nil
 	SendTransaction(signedTx *types.Transaction) error                            // issues an ethereum transaction (expects signed tx)

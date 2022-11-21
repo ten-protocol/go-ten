@@ -15,16 +15,15 @@ import (
 
 // Schema keys, in alphabetical order.
 var (
-	headBlock            = []byte("hb")
-	headRollup           = []byte("hr")
-	headBatch            = []byte("hba")
 	blockHeaderPrefix    = []byte("b")
 	batchHeaderPrefix    = []byte("ba")
 	batchHashPrefix      = []byte("bh")
+	headBatch            = []byte("hb")
+	headRollup           = []byte("hr")
 	rollupHeaderPrefix   = []byte("r")
-	rollupTxHashesPrefix = []byte("rt")
 	rollupHashPrefix     = []byte("rh")
 	rollupNumberPrefix   = []byte("rn")
+	rollupTxHashesPrefix = []byte("rt")
 	totalTransactionsKey = []byte("t")
 )
 
