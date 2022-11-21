@@ -52,6 +52,7 @@ type P2P interface {
 	StopListening() error
 	UpdatePeerList([]string)
 	BroadcastTx(tx common.EncryptedTx) error
+	BroadcastBatch(batch *common.ExtBatch) error
 }
 
 // ReconnectingBlockProvider interface allows host to monitor and await L1 blocks.

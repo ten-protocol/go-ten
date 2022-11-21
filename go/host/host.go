@@ -558,7 +558,10 @@ func (h *host) distributeBatch(producedRollup common.ExtRollup) {
 		h.logger.Error("could not store batch", log.ErrKey, err)
 	}
 
-	// TODO - #718 - Distribute batch
+	err = h.p2p.BroadcastBatch(&batch)
+	if err != nil {
+		h.logger.Error("could not broadcast batch", log.ErrKey, err)
+	}
 }
 
 func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) error {

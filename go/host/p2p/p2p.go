@@ -92,6 +92,10 @@ func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
 	return p.broadcast(msg)
 }
 
+func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
+	panic("not implemented")
+}
+
 // Listens for connections and handles them in a separate goroutine.
 func (p *p2pImpl) handleConnections(callback host.Host) {
 	for {

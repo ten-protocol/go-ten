@@ -63,6 +63,10 @@ func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) error {
 	return nil
 }
 
+func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
+	panic("not implemented")
+}
+
 // delay returns an expected delay on the l2
 func (netw *MockP2P) delay() time.Duration {
 	return testcommon.RndBtwTime(netw.avgLatency/10, 2*netw.avgLatency)
