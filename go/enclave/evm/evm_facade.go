@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -127,12 +126,9 @@ func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.He
 func initParams(storage db.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
 	chain := &ObscuroChainContext{storage: storage, logger: l}
 
-	// Todo - temporarily enable the evm tracer to check what sort of extra info we receive
-	tracer := logger.NewStructLogger(&logger.Config{Debug: true})
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 		Debug:     false,
-		Tracer:    tracer,
 	}
 	gp := gethcore.GasPool(math.MaxUint64)
 	return chain, vmCfg, &gp
