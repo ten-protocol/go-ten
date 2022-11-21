@@ -23,6 +23,8 @@ type Host interface {
 	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
 	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
+	// ReceiveBatch processes a batch received from a peer host.
+	ReceiveBatch(batch common.EncodedBatch)
 	// Subscribe feeds logs matching the encrypted log subscription to the matchedLogs channel.
 	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error
 	// Unsubscribe terminates a log subscription between the host and the enclave.
@@ -52,6 +54,7 @@ type P2P interface {
 	StopListening() error
 	UpdatePeerList([]string)
 	BroadcastTx(tx common.EncryptedTx) error
+	BroadcastBatch(batch *common.ExtBatch) error
 }
 
 // ReconnectingBlockProvider interface allows host to monitor and await L1 blocks.
