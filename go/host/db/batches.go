@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/big"
+
+	"github.com/ethereum/go-ethereum/ethdb"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
@@ -23,15 +26,23 @@ func (db *DB) GetHeadBatchHeader() (*common.Header, error) {
 	return db.readBatchHeader(*headBatchHash)
 }
 
+// GetBatchHeader returns the batch header given the hash, or (nil, false) if no such header is found.
+func (db *DB) GetBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
+	return db.readBatchHeader(hash)
+}
+
 // AddBatchHeader adds a batch's header to the known headers
 func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) error {
 	b := db.kvStore.NewBatch()
-	err := db.writeBatchHeader(header)
-	if err != nil {
+
+	if err := db.writeBatchHeader(header); err != nil {
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
+	if err := db.writeBatchHash(b, header); err != nil {
+		return fmt.Errorf("could not write batch hash. Cause: %w", err)
+	}
 
-	// TODO - #718 - Store the batch txs, batch hash, and batch number per transaction hash, if needed (see `AddRollupHeader`).
+	// TODO - #718 - Store the batch txs and batch number per transaction hash, if needed (see `AddRollupHeader`).
 
 	// TODO - #718 - Update the total transactions, once we no longer do this in `AddRollupHeader`.
 
@@ -54,9 +65,19 @@ func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) er
 	return nil
 }
 
+// GetBatchHash returns the hash of a batch given its number, or (nil, false) if no such batch is found.
+func (db *DB) GetBatchHash(number *big.Int) (*gethcommon.Hash, error) {
+	return db.readBatchHash(number)
+}
+
 // headerKey = batchHeaderPrefix  + hash
 func batchHeaderKey(hash gethcommon.Hash) []byte {
 	return append(batchHeaderPrefix, hash.Bytes()...)
+}
+
+// headerKey = batchHashPrefix + number
+func batchHashKey(num *big.Int) []byte {
+	return append(batchHashPrefix, []byte(num.String())...)
 }
 
 // Retrieves the batch header corresponding to the hash.
@@ -121,4 +142,33 @@ func (db *DB) writeHeadBatchHash(val gethcommon.Hash) error {
 		return err
 	}
 	return nil
+}
+
+// Stores a batch's hash in the database, keyed by the batch's number.
+func (db *DB) writeBatchHash(w ethdb.KeyValueWriter, header *common.Header) error {
+	key := batchHashKey(header.Number)
+	if err := w.Put(key, header.Hash().Bytes()); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Retrieves the hash for the batch with the given number, or (nil, false) if no such batch is found.
+func (db *DB) readBatchHash(number *big.Int) (*gethcommon.Hash, error) {
+	f, err := db.kvStore.Has(batchHashKey(number))
+	if err != nil {
+		return nil, err
+	}
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	data, err := db.kvStore.Get(batchHashKey(number))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, errutil.ErrNotFound
+	}
+	hash := gethcommon.BytesToHash(data)
+	return &hash, nil
 }
