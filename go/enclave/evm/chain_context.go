@@ -29,6 +29,7 @@ func (occ *ObscuroChainContext) GetHeader(hash common.Hash, height uint64) *type
 	h, err := convertToEthHeader(rol.Header, secret(occ.storage))
 	if err != nil {
 		occ.logger.Crit("Could not convert to eth header", log.ErrKey, err)
+		return nil
 	}
 	return h
 }

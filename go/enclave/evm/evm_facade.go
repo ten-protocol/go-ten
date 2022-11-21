@@ -35,6 +35,7 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.He
 	ethHeader, err := convertToEthHeader(header, secret(storage))
 	if err != nil {
 		logger.Crit("Could not convert to eth header", log.ErrKey, err)
+		return nil
 	}
 
 	for i, t := range txs {

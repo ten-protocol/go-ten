@@ -404,9 +404,15 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 	}
 	newHeadRollup, found := FindNextRollup(currentHead, rollups, rc.storage)
 	var rollupTxReceipts []*types.Receipt
+	var err error
 	// only change the state if there is a new l2 HeadRollup in the current block
 	if found {
-		rollupTxReceipts, _ = rc.checkRollup(newHeadRollup)
+		rollupTxReceipts, _, err = rc.checkRollup(newHeadRollup)
+		// todo - this error needs to be surfaced to be used for the challenge
+		if err != nil {
+			rc.logger.Crit("Failed to check rollup", log.ErrKey, err)
+			return nil, nil, nil
+		}
 	} else {
 		newHeadRollup = currentHead
 	}
@@ -420,17 +426,17 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
-func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*types.Receipt) {
+func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*types.Receipt, error) { //nolint
 	stateDB := rc.storage.CreateStateDB(r.Header.ParentHash)
 	// calculate the state to compare with what is in the Rollup
 	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
 	if len(successfulTxs) != len(r.Transactions) {
-		rc.logger.Crit("Sanity check. All transactions that are included in a rollup must be executed.")
+		return nil, nil, fmt.Errorf("all transactions that are included in a rollup must be executed")
 	}
 
 	isValid := rc.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
 	if !isValid {
-		rc.logger.Crit("Should only happen once we start including malicious actors. Until then, an invalid rollup means there is a bug.")
+		return nil, nil, fmt.Errorf("invalid rollup")
 	}
 
 	// todo - check that the transactions hash to the header.txHash
@@ -438,10 +444,10 @@ func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*
 	// verify the signature
 	isValid = rc.verifySig(r)
 	if !isValid {
-		rc.logger.Crit("Should only happen once we start including malicious actors. Until then, a rollup with an invalid signature is a bug.")
+		return nil, nil, fmt.Errorf("invalid signature")
 	}
 
-	return txReceipts, depositReceipts
+	return txReceipts, depositReceipts, nil
 }
 
 func toReceiptMap(txReceipts []*types.Receipt) map[gethcommon.Hash]*types.Receipt {
@@ -512,7 +518,12 @@ func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.Bl
 	// As an aggregator on the head L1 block, we produce a rollup.
 	r := rc.produceRollup(&block, blockState)
 	rc.signRollup(r)
-	rc.checkRollup(r) // Sanity check the produced rollup
+	// Sanity check the produced rollup
+	_, _, err = rc.checkRollup(r)
+	if err != nil {
+		return nil, err
+	}
+
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	rc.storage.StoreRollup(r)
 	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash())))
@@ -567,6 +578,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	r, err := obscurocore.EmptyRollup(rc.hostID, headRollup.Header, b.Hash(), nonce)
 	if err != nil {
 		rc.logger.Crit("could not create rollup", log.ErrKey, err)
+		return nil
 	}
 
 	newRollupTxs = rc.mempool.CurrentTxs(headRollup, rc.storage)
