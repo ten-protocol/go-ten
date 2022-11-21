@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/httputil"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -48,7 +49,8 @@ func generateEncryptedTxBlob(txs []*common.L2Tx) []byte {
 }
 
 func TestObscuroscan_getRollupByNumOrTxHash(t *testing.T) {
-	ob := NewObscuroscan("http://testnet.obscuroscan.io")
+	logger := gethlog.Logger.New(gethlog.Root())
+	ob := NewObscuroscan("http://testnet.obscuroscan.io", logger)
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	req.Method = http.MethodOptions
 	resp := httptest.NewRecorder()
