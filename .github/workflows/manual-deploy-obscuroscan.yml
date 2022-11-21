@@ -1,4 +1,4 @@
-name: [M] Deploy Obscuroscan
+name: '[M] Deploy Obscuroscan'
 
 on: push
 
