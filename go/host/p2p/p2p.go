@@ -29,6 +29,7 @@ type msgType uint8
 
 const (
 	msgTypeTx msgType = iota
+	msgTypeBatch
 )
 
 // Message associates an encoded message to its type.
@@ -93,7 +94,13 @@ func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
 }
 
 func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
-	panic("not implemented")
+	encodedBatch, err := rlp.EncodeToBytes(batch)
+	if err != nil {
+		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
+	}
+
+	msg := Message{Type: msgTypeBatch, Contents: encodedBatch}
+	return p.broadcast(msg)
 }
 
 // Listens for connections and handles them in a separate goroutine.
@@ -133,6 +140,8 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	case msgTypeTx:
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		callback.ReceiveTx(msg.Contents)
+	case msgTypeBatch:
+		panic("bad bad bad")
 	}
 }
 

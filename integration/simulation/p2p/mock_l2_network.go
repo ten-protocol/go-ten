@@ -2,8 +2,11 @@ package p2p
 
 import (
 	"bytes"
+	"fmt"
 	"sync/atomic"
 	"time"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
@@ -53,10 +56,11 @@ func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) error {
 		return nil
 	}
 
-	for _, a := range netw.Nodes {
-		if !bytes.Equal(a.Config().ID.Bytes(), netw.CurrentNode.Config().ID.Bytes()) {
-			t := a
-			common.Schedule(netw.delay()/2, func() { t.ReceiveTx(tx) })
+	for _, node := range netw.Nodes {
+		// todo - joel - can this check be cleaned up?
+		if !bytes.Equal(node.Config().ID.Bytes(), netw.CurrentNode.Config().ID.Bytes()) {
+			tempNode := node
+			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveTx(tx) })
 		}
 	}
 
@@ -64,7 +68,24 @@ func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) error {
 }
 
 func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
-	panic("not implemented")
+	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
+		return nil
+	}
+
+	encodedBatch, err := rlp.EncodeToBytes(batch)
+	if err != nil {
+		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
+	}
+
+	for _, node := range netw.Nodes {
+		// todo - joel - can this check be cleaned up?
+		if !bytes.Equal(node.Config().ID.Bytes(), netw.CurrentNode.Config().ID.Bytes()) {
+			tempNode := node
+			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatch(encodedBatch) })
+		}
+	}
+
+	return nil
 }
 
 // delay returns an expected delay on the l2

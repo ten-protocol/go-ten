@@ -38,6 +38,7 @@ type (
 
 	Nonce         = uint64
 	EncodedRollup []byte
+	EncodedBatch  []byte
 )
 
 const (

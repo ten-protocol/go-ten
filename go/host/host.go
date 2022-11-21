@@ -308,6 +308,11 @@ func (h *host) ReceiveTx(tx common.EncryptedTx) {
 	h.txP2PCh <- tx
 }
 
+// ReceiveBatch receives a new batch
+func (h *host) ReceiveBatch(batch common.EncodedBatch) {
+	panic("not implemented")
+}
+
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
 	err := h.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
