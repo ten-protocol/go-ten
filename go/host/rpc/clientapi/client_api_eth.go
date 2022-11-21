@@ -62,7 +62,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 	return gethcommon.Bytes2Hex(encryptedBalance), nil
 }
 
-// GetBlockByNumber returns the header of the rollup with the given height.
+// GetBlockByNumber returns the header of the batch with the given height.
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
 	batchHash, err := api.batchNumberToBatchHash(number)
 	if err != nil {
@@ -73,11 +73,11 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 
 // GetBlockByHash returns the header of the batch with the given hash.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
-	rollupHeader, err := api.host.DB().GetBatchHeader(hash)
+	batchHeader, err := api.host.DB().GetBatchHeader(hash)
 	if err != nil {
 		return nil, err
 	}
-	return headerToMap(rollupHeader), nil
+	return headerToMap(batchHeader), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.

@@ -35,8 +35,7 @@ func (db *DB) GetBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
 func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) error {
 	b := db.kvStore.NewBatch()
 
-	err := db.writeBatchHeader(header)
-	if err != nil {
+	if err := db.writeBatchHeader(header); err != nil {
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
 	if err := db.writeBatchHash(b, header); err != nil {
