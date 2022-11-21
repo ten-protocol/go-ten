@@ -52,6 +52,7 @@ fi
 echo "Starting the obscuroscan server..."
 docker network create --driver bridge node_network || true
 docker run --name=obscuroscan \
+    --detach \
     --network=node_network \
     -p $receivingPort:$receivingPort \
     --entrypoint /home/go-obscuro/tools/obscuroscan/main/main \
