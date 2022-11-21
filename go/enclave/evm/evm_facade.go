@@ -5,14 +5,8 @@ import (
 	"fmt"
 	"math"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -22,18 +16,27 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethcore "github.com/ethereum/go-ethereum/core"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, fromTxIndex int, logger gethlog.Logger) map[common.TxHash]interface{} {
-	chain, vmCfg, gp := initParams(storage, false)
+	chain, vmCfg, gp := initParams(storage, true, logger)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 
-	ethHeader := convertToEthHeader(header, secret(storage))
+	ethHeader, err := convertToEthHeader(header, secret(storage))
+	if err != nil {
+		logger.Crit("Could not convert to eth header", log.ErrKey, err)
+		return nil
+	}
 
 	for i, t := range txs {
 		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i)
@@ -83,40 +86,46 @@ func logReceipt(r *types.Receipt, logger gethlog.Logger) {
 	}
 }
 
-// ExecuteOffChainCall - executes the "data" command against the "to" smart contract
-func ExecuteOffChainCall(from gethcommon.Address, to *gethcommon.Address, data []byte, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, logger gethlog.Logger) (*gethcore.ExecutionResult, error) {
-	chain, vmCfg, gp := initParams(storage, true)
-
-	blockContext := gethcore.NewEVMBlockContext(convertToEthHeader(header, secret(storage)), chain, &header.Agg)
-	// todo use ToMessage
-	// 100_000_000_000 is just a huge number gasLimit for making sure the local tx doesn't fail with lack of gas
-	msg := types.NewMessage(from, to, 0, gethcommon.Big0, 100_000_000_000, gethcommon.Big0, gethcommon.Big0, gethcommon.Big0, data, nil, true)
+// ExecuteOffChainCall - executes the eth_call call
+func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, logger gethlog.Logger) (*gethcore.ExecutionResult, error) {
+	chain, vmCfg, gp := initParams(storage, true, nil)
+	ethHeader, err := convertToEthHeader(header, secret(storage))
+	if err != nil {
+		return nil, err
+	}
+	blockContext := gethcore.NewEVMBlockContext(ethHeader, chain, &header.Agg)
 
 	// sets TxKey.origin
 	txContext := gethcore.NewEVMTxContext(msg)
 	vmenv := vm.NewEVM(blockContext, txContext, s, chainConfig, vmCfg)
 
 	result, err := gethcore.ApplyMessage(vmenv, msg, gp)
-	if err != nil {
-		// this error is ignored by geth. logging just in case
-		logger.Error("ErrKey applying msg:", log.ErrKey, err)
-	}
+	// Follow the same error check structure as in geth
+	// 1 - vmError / stateDB err check
+	// 2 - evm.Cancelled() TODO
+	// 3 - error check the ApplyMessage
 
 	// Read the error stored in the database.
-	err = s.Error()
-	if err != nil {
-		return nil, newErrorWithReasonAndCode(err)
+	if dbErr := s.Error(); dbErr != nil {
+		return nil, newErrorWithReasonAndCode(dbErr)
 	}
 
 	// If the result contains a revert reason, try to unpack and return it.
-	if len(result.Revert()) > 0 {
+	if result != nil && len(result.Revert()) > 0 {
 		return nil, newRevertError(result)
 	}
+
+	if err != nil {
+		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
+		logger.Error("ErrKey applying msg:", log.ErrKey, err)
+		return result, err
+	}
+
 	return result, nil
 }
 
-func initParams(storage db.Storage, noBaseFee bool) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
-	chain := &ObscuroChainContext{storage: storage}
+func initParams(storage db.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
+	chain := &ObscuroChainContext{storage: storage, logger: l}
 
 	// Todo - temporarily enable the evm tracer to check what sort of extra info we receive
 	tracer := logger.NewStructLogger(&logger.Config{Debug: true})
@@ -132,7 +141,8 @@ func initParams(storage db.Storage, noBaseFee bool) (*ObscuroChainContext, vm.Co
 // Todo - this is currently just returning the shared secret
 // it should not use it directly, but derive some entropy from it
 func secret(storage db.Storage) []byte {
-	secret := storage.FetchSecret()
+	// TODO - Handle secret not being found.
+	secret, _ := storage.FetchSecret()
 	return secret[:]
 }
 

@@ -47,7 +47,7 @@ func RunHost(config config.HostConfig) {
 	enclaveClient := enclaverpc.NewClient(config, logger)
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	aggP2P := p2p.NewSocketP2PLayer(config, p2pLogger)
-	agg := host.NewHost(config, nil, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib, logger)
+	agg := host.NewHost(config, aggP2P, l1Client, enclaveClient, ethWallet, mgmtContractLib, logger)
 
 	fmt.Println("Starting Obscuro host...")
 	logger.Info("Starting Obscuro host...")

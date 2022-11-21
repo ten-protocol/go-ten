@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 )
 
 const (
@@ -18,11 +21,12 @@ const (
 
 // sqlEthDatabase implements ethdb.Database
 type sqlEthDatabase struct {
-	db *sql.DB
+	db     *sql.DB
+	logger gethlog.Logger
 }
 
-func CreateSQLEthDatabase(db *sql.DB) (ethdb.Database, error) {
-	return &sqlEthDatabase{db: db}, nil
+func CreateSQLEthDatabase(db *sql.DB, logger gethlog.Logger) (ethdb.Database, error) {
+	return &sqlEthDatabase{db: db, logger: logger}, nil
 }
 
 func (m *sqlEthDatabase) Has(key []byte) (bool, error) {
@@ -41,6 +45,10 @@ func (m *sqlEthDatabase) Get(key []byte) ([]byte, error) {
 
 	err := m.db.QueryRow(getQry, key).Scan(&res)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
 		return nil, err
 	}
 	return res, nil
@@ -91,12 +99,14 @@ func (m *sqlEthDatabase) NewIterator(prefix []byte, start []byte) ethdb.Iterator
 
 func (m *sqlEthDatabase) Stat(property string) (string, error) {
 	// TODO implement me
-	panic("implement me")
+	m.logger.Crit("implement me")
+	return "", nil
 }
 
 func (m *sqlEthDatabase) Compact(start []byte, limit []byte) error {
 	// TODO implement me
-	panic("implement me")
+	m.logger.Crit("implement me")
+	return nil
 }
 
 // no-freeze! Copied from the geth in-memory db implementation these ancient method implementations disable the 'freezer'

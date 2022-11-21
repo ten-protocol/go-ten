@@ -53,14 +53,18 @@ func (r *Rollup) ToExtRollup(transactionBlobCrypto crypto.TransactionBlobCrypto)
 	}
 }
 
-func ToEnclaveRollup(encryptedRollup *common.ExtRollupWithHash, transactionBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
+func ToEnclaveRollup(encryptedRollup *common.ExtRollup, transactionBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
 	return &Rollup{
 		Header:       encryptedRollup.Header,
 		Transactions: transactionBlobCrypto.Decrypt(encryptedRollup.EncryptedTxBlob),
 	}
 }
 
-func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcommon.Hash, nonce common.Nonce) *Rollup {
+func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcommon.Hash, nonce common.Nonce) (*Rollup, error) {
+	rand, err := crypto.GeneratePublicRandomness()
+	if err != nil {
+		return nil, err
+	}
 	h := common.Header{
 		Agg:        agg,
 		ParentHash: parent.Hash(),
@@ -71,12 +75,12 @@ func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcomm
 		// generate true randomness inside the enclave.
 		// note that this randomness will be published in the header of the rollup.
 		// the randomness exposed to smart contract is combining this with the shared secret.
-		MixDigest: gethcommon.BytesToHash(crypto.GeneratePublicRandomness()),
+		MixDigest: gethcommon.BytesToHash(rand),
 	}
 	r := Rollup{
 		Header: &h,
 	}
-	return &r
+	return &r, nil
 }
 
 // NewRollup - produces a new rollup. only used for genesis. todo - review

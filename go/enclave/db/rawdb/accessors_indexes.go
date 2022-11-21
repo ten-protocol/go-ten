@@ -18,7 +18,7 @@ import (
 
 // ReadTxLookupEntry retrieves the positional metadata associated with a transaction
 // hash to allow retrieving the transaction or receipt by hash.
-func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash) *uint64 {
+func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) *uint64 {
 	data, _ := db.Get(txLookupKey(hash))
 	if len(data) == 0 {
 		return nil
@@ -28,7 +28,8 @@ func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash) *uint64 {
 		number := new(big.Int).SetBytes(data).Uint64()
 		return &number
 	}
-	panic("Should not be here")
+	logger.Crit("Should not be here")
+	return nil
 }
 
 // writeTxLookupEntry stores a positional metadata for a transaction,
@@ -74,7 +75,7 @@ func DeleteTxLookupEntries(db ethdb.KeyValueWriter, hashes []common.Hash, logger
 // ReadTransaction retrieves a specific transaction from the database, along with
 // its added positional metadata.
 func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (*types.Transaction, common.Hash, uint64, uint64) {
-	blockNumber := ReadTxLookupEntry(db, hash)
+	blockNumber := ReadTxLookupEntry(db, hash, logger)
 	if blockNumber == nil {
 		return nil, common.Hash{}, 0, 0
 	}
@@ -100,7 +101,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (
 // its added positional metadata.
 func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig, logger gethlog.Logger) (*types.Receipt, common.Hash, uint64, uint64) {
 	// Retrieve the context of the receipt based on the transaction hash
-	blockNumber := ReadTxLookupEntry(db, hash)
+	blockNumber := ReadTxLookupEntry(db, hash, logger)
 	if blockNumber == nil {
 		return nil, common.Hash{}, 0, 0
 	}

@@ -14,10 +14,8 @@ import (
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
 const (
@@ -45,47 +43,18 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 	return
 }
 
-// Uses the client to retrieve the height of the current block head.
-func getCurrentBlockHeadHeight(client rpc.Client) int64 {
-	method := rpc.GetCurrentBlockHead
-
-	var blockHead *types.Header
-	err := client.Call(&blockHead, method)
-	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
-	}
-
-	if blockHead == nil || blockHead.Number == nil {
-		panic(fmt.Errorf("simulation failed - no current block head found in RPC response from host"))
-	}
-
-	return blockHead.Number.Int64()
-}
-
 // Uses the client to retrieve the current rollup head.
-func getCurrentRollupHead(client rpc.Client) *common.Header {
-	method := rpc.GetCurrentRollupHead
-
-	var result *common.Header
-	err := client.Call(&result, method)
+func getHeadRollupHeader(client *obsclient.ObsClient) *common.Header {
+	headRollupHeight, err := client.RollupNumber()
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
+		panic(fmt.Errorf("simulation failed due to failed attempt to retrieve head rollup height. Cause: %w", err))
 	}
 
-	return result
-}
-
-// Uses the client to retrieve the rollup header with the matching hash.
-func getRollupHeader(client rpc.Client, hash gethcommon.Hash) *common.Header {
-	method := rpc.GetRollupHeader
-
-	var result *common.Header
-	err := client.Call(&result, method, hash.Hex())
+	headRollupHeader, err := client.RollupHeaderByNumber(big.NewInt(int64(headRollupHeight)))
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed %s RPC call. Cause: %w", method, err))
+		panic(fmt.Errorf("simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %w", headRollupHeight, err))
 	}
-
-	return result
+	return headRollupHeader
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.
@@ -132,7 +101,7 @@ func findHashDups(list []gethcommon.Hash) map[gethcommon.Hash]int {
 }
 
 // FindRollupDups - returns a map of all L2 root hashes that appear multiple times, and how many times
-func findRollupDups(list []*common.ExtRollupWithHash) map[common.L2RootHash]int {
+func findRollupDups(list []*common.ExtRollup) map[common.L2RootHash]int {
 	elementCount := make(map[common.L2RootHash]int)
 
 	for _, item := range list {
@@ -154,6 +123,6 @@ func findRollupDups(list []*common.ExtRollupWithHash) map[common.L2RootHash]int 
 	return dups
 }
 
-func SleepRndBtw(min time.Duration, max time.Duration) {
+func sleepRndBtw(min time.Duration, max time.Duration) {
 	time.Sleep(testcommon.RndBtwTime(min, max))
 }

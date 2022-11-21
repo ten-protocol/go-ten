@@ -41,7 +41,7 @@ const (
 	POC            ERC20 = "POC"
 	HOCAddr              = "f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
 	pocAddr              = "9802F661d17c65527D7ABB59DAAD5439cb125a67"
-	bridgeAddr           = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	bridgeAddr           = "deB34A740ECa1eC42C8b8204CBEC0bA34FDD27f3"
 	hocOwnerKeyHex       = "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 	pocOwnerKeyHex       = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
 )
@@ -166,6 +166,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			r, err := common.DecodeRollup(rolTx.Rollup)
 			if err != nil {
 				bridge.logger.Crit("could not decode rollup.", log.ErrKey, err)
+				return nil
 			}
 
 			// Ignore rollups created with proofs from different L1 blocks
@@ -190,7 +191,8 @@ func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcom
 
 	token := bridge.GetMapping(contract)
 	if token == nil {
-		panic("This should not happen as we don't generate deposits on unsupported tokens.")
+		bridge.logger.Crit("This should not happen as we don't generate deposits on unsupported tokens.")
+		return nil
 	}
 
 	// The nonce is adjusted with the number of deposits added to the rollup already.
@@ -209,6 +211,7 @@ func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcom
 	newTx, err := types.SignTx(tx, signer, token.Owner.PrivateKey())
 	if err != nil {
 		bridge.logger.Crit("could not sign synthetic deposit tx.", log.ErrKey, err)
+		return nil
 	}
 	return newTx
 }
@@ -228,6 +231,7 @@ func (bridge *Bridge) ExtractDeposits(
 		height = fromBlock.NumberU64()
 		if !blockResolver.IsAncestor(toBlock, fromBlock) {
 			bridge.logger.Crit("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
+			return nil
 		}
 	}
 
@@ -251,10 +255,12 @@ func (bridge *Bridge) ExtractDeposits(
 		}
 		if b.NumberU64() < height {
 			bridge.logger.Crit("block height is less than genesis height")
+			return nil
 		}
 		p, f := blockResolver.ParentBlock(b)
 		if !f {
 			bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
+			return nil
 		}
 		b = p
 	}
@@ -277,7 +283,8 @@ func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore
 				signer := types.NewLondonSigner(big.NewInt(bridge.ObscuroChainID))
 				from, err := types.Sender(signer, t)
 				if err != nil {
-					panic(err)
+					bridge.logger.Crit("Error retrieving the sender from the signature", log.ErrKey, err)
+					return nil
 				}
 				state.Logs()
 				w = append(w, common.Withdrawal{

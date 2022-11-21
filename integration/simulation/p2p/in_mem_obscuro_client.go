@@ -3,7 +3,10 @@ package p2p
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
@@ -18,8 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-
-	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -53,7 +54,7 @@ func NewInMemObscuroClient(nodeHost host.Host) rpc.Client {
 
 	return &inMemObscuroClient{
 		obscuroAPI:       clientapi.NewObscuroAPI(nodeHost),
-		ethAPI:           clientapi.NewEthereumAPI(nodeHost),
+		ethAPI:           clientapi.NewEthereumAPI(nodeHost, logger),
 		filterAPI:        clientapi.NewFilterAPI(nodeHost, logger),
 		obscuroScanAPI:   clientapi.NewObscuroScanAPI(nodeHost),
 		testAPI:          clientapi.NewTestAPI(nodeHost),
@@ -73,26 +74,13 @@ func NewInMemoryEncRPCClient(host host.Host, viewingKey *rpc.ViewingKey, logger 
 // Call bypasses RPC, and invokes methods on the node directly.
 func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
-	case rpc.GetID:
-		*result.(*gethcommon.Address) = c.testAPI.GetID()
-		return nil
-
 	case rpc.SendRawTransaction:
 		return c.sendRawTransaction(args)
 
-	case rpc.GetCurrentBlockHead:
-		*result.(**types.Header) = c.testAPI.GetCurrentBlockHead()
-		return nil
-
-	case rpc.GetCurrentRollupHead:
-		*result.(**common.Header) = c.obscuroScanAPI.GetCurrentRollupHead()
-		return nil
-
-	case rpc.GetRollupHeader:
-		return c.getRollupHeader(result, args)
-
-	case rpc.GetRollup:
-		return c.getRollup(result, args)
+	case rpc.BlockNumber:
+		var err error
+		*result.(*hexutil.Uint64), err = c.testAPI.BlockNumber()
+		return err
 
 	case rpc.GetTransactionByHash:
 		return c.getTransactionByHash(result, args)
@@ -106,6 +94,10 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.GetTransactionReceipt:
 		return c.getTransactionReceipt(result, args)
 
+	case rpc.RollupNumber:
+		*result.(*hexutil.Uint64) = c.ethAPI.BlockNumber()
+		return nil
+
 	case rpc.StopHost:
 		c.testAPI.StopHost()
 		return nil
@@ -113,11 +105,17 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.AddViewingKey:
 		return c.addViewingKey(args)
 
-	case rpc.GetBalance:
-		return c.getBalance(result, args)
-
 	case rpc.GetLogs:
 		return c.getLogs(result, args)
+
+	case rpc.GetRollupByNumber:
+		return c.getRollupByNumber(result, args)
+
+	case rpc.GetRollupByHash:
+		return c.getRollupByHash(result, args)
+
+	case rpc.Health:
+		return c.health(result)
 
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
@@ -190,38 +188,6 @@ func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []in
 	return nil
 }
 
-func (c *inMemObscuroClient) getRollupHeader(result interface{}, args []interface{}) error {
-	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetRollupHeader, len(args))
-	}
-	// we expect a hex string representation of the hash, since that's what gets sent over RPC
-	hashStr, ok := args[0].(string)
-	if !ok {
-		return fmt.Errorf("arg to %s was not of expected type string", rpc.GetRollupHeader)
-	}
-	hash := gethcommon.HexToHash(hashStr)
-
-	*result.(**common.Header) = c.testAPI.GetRollupHeader(hash)
-	return nil
-}
-
-func (c *inMemObscuroClient) getRollup(result interface{}, args []interface{}) error {
-	if len(args) != 1 {
-		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetRollup, len(args))
-	}
-	hash, ok := args[0].(gethcommon.Hash)
-	if !ok {
-		return fmt.Errorf("arg to %s was not of expected type common.Hash", rpc.GetRollup)
-	}
-
-	extRollup, err := c.obscuroScanAPI.GetRollup(hash)
-	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetRollup, err)
-	}
-	*result.(**common.ExtRollup) = extRollup
-	return nil
-}
-
 func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.GetTransactionCount)
 	if err != nil {
@@ -236,19 +202,6 @@ func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []inte
 	return nil
 }
 
-func (c *inMemObscuroClient) getBalance(result interface{}, args []interface{}) error {
-	enc, err := getEncryptedBytes(args, rpc.GetBalance)
-	if err != nil {
-		return err
-	}
-	encryptedResponse, err := c.ethAPI.GetBalance(context.Background(), enc)
-	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBalance, err)
-	}
-	*result.(*interface{}) = encryptedResponse
-	return nil
-}
-
 func (c *inMemObscuroClient) getLogs(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.GetLogs)
 	if err != nil {
@@ -259,6 +212,61 @@ func (c *inMemObscuroClient) getLogs(result interface{}, args []interface{}) err
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetLogs, err)
 	}
 	*result.(*interface{}) = encryptedResponse
+	return nil
+}
+
+func (c *inMemObscuroClient) getRollupByNumber(result interface{}, args []interface{}) error {
+	blockNumberHex, ok := args[0].(string)
+	if !ok {
+		return fmt.Errorf("arg to %s is of type %T, expected int64", rpc.GetRollupByNumber, args[0])
+	}
+
+	blockNumber, err := hexutil.DecodeUint64(blockNumberHex)
+	if err != nil {
+		return fmt.Errorf("arg to %s could not be decoded from hex. Cause: %w", rpc.GetRollupByNumber, err)
+	}
+
+	headerMap, err := c.ethAPI.GetBlockByNumber(nil, gethrpc.BlockNumber(blockNumber), false) //nolint:staticcheck
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetRollupByNumber, err)
+	}
+
+	headerJSON, err := json.Marshal(headerMap)
+	if err != nil {
+		return fmt.Errorf("could not marshal %s response to JSON. Cause: %w", rpc.GetRollupByNumber, err)
+	}
+	var header common.Header
+	err = json.Unmarshal(headerJSON, &header)
+	if err != nil {
+		return fmt.Errorf("could not marshal %s response to rollup header. Cause: %w", rpc.GetRollupByNumber, err)
+	}
+
+	*result.(**common.Header) = &header
+	return nil
+}
+
+func (c *inMemObscuroClient) getRollupByHash(result interface{}, args []interface{}) error {
+	blockHash, ok := args[0].(gethcommon.Hash)
+	if !ok {
+		return fmt.Errorf("arg to %s is of type %T, expected common.Hash", rpc.GetRollupByHash, args[0])
+	}
+
+	headerMap, err := c.ethAPI.GetBlockByHash(nil, blockHash, false) //nolint:staticcheck
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetRollupByHash, err)
+	}
+
+	headerJSON, err := json.Marshal(headerMap)
+	if err != nil {
+		return fmt.Errorf("could not marshal %s response to JSON. Cause: %w", rpc.GetRollupByHash, err)
+	}
+	var header common.Header
+	err = json.Unmarshal(headerJSON, &header)
+	if err != nil {
+		return fmt.Errorf("could not marshal %s response to rollup header. Cause: %w", rpc.GetRollupByHash, err)
+	}
+
+	*result.(**common.Header) = &header
 	return nil
 }
 
@@ -281,14 +289,20 @@ func (c *inMemObscuroClient) addViewingKey(args []interface{}) error {
 
 	vk, ok := args[0].([]byte)
 	if !ok {
-		return fmt.Errorf("expected first arg to %s containing viewing key bytes but it had type %t", rpc.AddViewingKey, args[0])
+		return fmt.Errorf("first arg to %s is of type %T, expected type []byte", rpc.AddViewingKey, args[0])
 	}
 
 	sig, ok := args[1].([]byte)
 	if !ok {
-		return fmt.Errorf("expected second arg to %s containing signature bytes but it had type %t", rpc.AddViewingKey, args[1])
+		return fmt.Errorf("second arg to %s is of type %T, expected type []byte", rpc.AddViewingKey, args[1])
 	}
 	return c.obscuroAPI.AddViewingKey(vk, sig)
+}
+
+func (c *inMemObscuroClient) health(result interface{}) error {
+	healty := true
+	*result.(**bool) = &healty
+	return nil
 }
 
 // getEncryptedBytes expects args to have a single element and it to be of type bytes (client doesn't know anything about what's getting passed through on sensitive methods)
@@ -298,7 +312,7 @@ func getEncryptedBytes(args []interface{}, methodName string) ([]byte, error) {
 	}
 	encBytes, ok := args[0].([]byte)
 	if !ok {
-		return nil, fmt.Errorf("expected single arg to %s containing bytes but it had type %t", methodName, args[0])
+		return nil, fmt.Errorf("first arg to %s is of type %T, expected []byte", methodName, args[0])
 	}
 	return encBytes, nil
 }

@@ -65,7 +65,6 @@ func createInMemObscuroNode(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	stableTokenContractLib erc20contractlib.ERC20ContractLib,
 	avgGossipPeriod time.Duration,
-	stats *stats.Stats,
 	validateBlocks bool,
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
@@ -99,7 +98,7 @@ func createInMemObscuroNode(
 
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
-	inMemNode := host.NewHost(hostConfig, stats, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
+	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
 	mockP2P.CurrentNode = inMemNode
 	return inMemNode
 }
@@ -109,7 +108,6 @@ func createSocketObscuroNode(
 	isGenesis bool,
 	nodeType common.NodeType,
 	avgGossipPeriod time.Duration,
-	stats *stats.Stats,
 	p2pAddr string,
 	enclaveAddr string,
 	clientRPCHost string,
@@ -147,7 +145,7 @@ func createSocketObscuroNode(
 	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, p2pLogger)
 
-	return host.NewHost(hostConfig, stats, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
+	return host.NewHost(hostConfig, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {

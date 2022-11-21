@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
@@ -16,8 +18,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/config"
 
 	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/integration"
 
@@ -109,19 +109,19 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 
 	counter := 0
-	// We retry 20 times to check if the network has produced any blocks, sleeping half a second between each attempt.
+	// We retry 20 times to check if the network has produced any rollups, sleeping half a second between each attempt.
 	for counter < 20 {
 		counter++
 		time.Sleep(500 * time.Millisecond)
 
-		var result types.Header
-		err = obscuroClient.Call(&result, rpc.GetCurrentBlockHead)
-		if err == nil && result.Number.Uint64() > 0 {
+		var result hexutil.Uint64
+		err = obscuroClient.Call(&result, rpc.RollupNumber)
+		if err == nil && result > 0 {
 			return
 		}
 	}
 
-	t.Fatal("Zero blocks have been produced after ten seconds. Something is wrong.")
+	t.Fatalf("Zero rollups have been produced after ten seconds. Something is wrong. Latest error was: %s", err)
 }
 
 func teardown(obscuroClient rpc.Client, rpcServerAddr string) {

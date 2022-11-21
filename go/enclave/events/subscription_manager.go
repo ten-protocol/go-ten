@@ -76,7 +76,11 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	subscription.Filter.BlockHash = nil
 	subscription.Filter.ToBlock = nil
 	// We set this to the current rollup height, so that historical logs aren't returned.
-	subscription.Filter.FromBlock = big.NewInt(0).Add(s.storage.FetchHeadRollup().Number(), big.NewInt(1))
+	rollup, err := s.storage.FetchHeadRollup()
+	if err != nil {
+		return fmt.Errorf("unable to fetch head rollup - %w", err)
+	}
+	subscription.Filter.FromBlock = big.NewInt(0).Add(rollup.Number(), big.NewInt(1))
 
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
@@ -94,7 +98,10 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 
 // GetFilteredLogs returns the logs across the entire canonical chain that match the provided account and filter.
 func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
-	headBlock := s.storage.FetchHeadBlock()
+	headBlock, found := s.storage.FetchHeadBlock()
+	if !found {
+		return nil, nil
+	}
 
 	// We collect all the block hashes in the canonical chain.
 	// TODO: Only collect blocks within the filter's range.
@@ -163,7 +170,7 @@ func (s *SubscriptionManager) getSubscribedLogs(logs []*types.Log, rollupHash co
 	relevantLogsByID := map[gethrpc.ID][]*types.Log{}
 
 	// If there are no subscriptions, we return early, to avoid the overhead of creating the state DB.
-	if len(s.subscriptions) == 0 {
+	if s.getNumberOfSubsThreadsafe() == 0 {
 		return map[gethrpc.ID][]*types.Log{}
 	}
 
@@ -181,7 +188,7 @@ func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 	encryptedLogsByID := map[gethrpc.ID][]byte{}
 
 	for subID, logs := range logsByID {
-		subscription, found := s.subscriptions[subID]
+		subscription, found := s.getSubscriptionThreadsafe(subID)
 		if !found {
 			continue // The subscription has been removed, so there's no need to return anything.
 		}
@@ -250,6 +257,23 @@ func (s *SubscriptionManager) updateRelevantLogs(logItem *types.Log, userAddrs [
 		}
 		relevantLogsByID[subscriptionID] = append(relevantLogsByID[subscriptionID], logItem)
 	}
+}
+
+// Locks the subscription map and retrieves the subscription with subID, or (nil, false) if so such subscription is found.
+func (s *SubscriptionManager) getSubscriptionThreadsafe(subID gethrpc.ID) (*common.LogSubscription, bool) {
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
+
+	subscription, found := s.subscriptions[subID]
+	return subscription, found
+}
+
+// Locks the subscription map and retrieves the number of subscriptions.
+func (s *SubscriptionManager) getNumberOfSubsThreadsafe() int {
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
+
+	return len(s.subscriptions)
 }
 
 // Indicates whether the log is relevant for the subscription.

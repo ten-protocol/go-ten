@@ -130,3 +130,12 @@ func (ac *AuthObsClient) GetLogs(ctx context.Context, filterCriteria common.Filt
 func (ac *AuthObsClient) Address() gethcommon.Address {
 	return ac.account
 }
+
+func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg *ethereum.CallMsg) (uint64, error) {
+	var result string
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.EstimateGas, ToCallArg(*msg))
+	if err != nil {
+		return 0, err
+	}
+	return hexutil.DecodeUint64(result)
+}

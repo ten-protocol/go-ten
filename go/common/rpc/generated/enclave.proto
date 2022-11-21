@@ -73,6 +73,9 @@ service EnclaveProto {
   rpc EstimateGas(EstimateGasRequest) returns (EstimateGasResponse) {}
 
   rpc GetLogs(GetLogsRequest) returns (GetLogsResponse) {}
+
+  // HealthCheck returns the health status of enclave + db
+  rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
 }
 
 message StatusRequest {}
@@ -204,6 +207,7 @@ message EstimateGasRequest {
 
 message EstimateGasResponse {
   bytes encryptedResponse = 1;
+  bytes error = 2;
 }
 
 message GetLogsRequest {
@@ -213,6 +217,13 @@ message GetLogsRequest {
 message GetLogsResponse {
   bytes encryptedResponse = 1;
 }
+
+message HealthCheckResponse {
+  bool status = 1;
+  bytes error = 2;
+}
+
+message EmptyArgs {}
 
 // Nested message types.
 

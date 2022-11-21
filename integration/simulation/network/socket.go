@@ -3,6 +3,8 @@ package network
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
@@ -20,7 +22,7 @@ import (
 
 // creates Obscuro nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
-	obscuroClients   []rpc.Client
+	l2Clients        []rpc.Client
 	hostRPCAddresses []string
 	enclaveAddresses []string
 
@@ -56,22 +58,26 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
 	}
 
-	obscuroClients, hostRPCAddresses := startStandaloneObscuroNodes(params, stats, n.gethClients, n.enclaveAddresses)
-	n.obscuroClients = obscuroClients
+	l2Clients, hostRPCAddresses := startStandaloneObscuroNodes(params, n.gethClients, n.enclaveAddresses)
+	n.l2Clients = l2Clients
 	n.hostRPCAddresses = hostRPCAddresses
 
-	walletClients := createAuthClientsPerWallet(n.obscuroClients, params.Wallets)
+	obscuroClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
+	for idx, l2Client := range n.l2Clients {
+		obscuroClients[idx] = obsclient.NewObsClient(l2Client)
+	}
+	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
 	return &RPCHandles{
 		EthClients:     n.gethClients,
-		ObscuroClients: n.obscuroClients,
+		ObscuroClients: obscuroClients,
 		AuthObsClients: walletClients,
 	}, nil
 }
 
 func (n *networkOfSocketNodes) TearDown() {
 	// Stop the Obscuro nodes first (each host will attempt to shut down its enclave as part of shutdown).
-	StopObscuroNodes(n.obscuroClients)
+	StopObscuroNodes(n.l2Clients)
 	StopGethNetwork(n.gethClients, n.gethNetwork)
 	CheckHostRPCServersStopped(n.hostRPCAddresses)
 }

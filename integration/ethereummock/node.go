@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/gethutil"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -106,8 +108,8 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	}
 	// TODO this should be a method in the resolver
 	var f bool
-	blk := m.Resolver.FetchHeadBlock()
-	if blk == nil {
+	blk, found := m.Resolver.FetchHeadBlock()
+	if !found {
 		return nil, ethereum.NotFound
 	}
 	for !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()) {
@@ -131,7 +133,7 @@ func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 	return blk, nil
 }
 
-func (m *Node) FetchHeadBlock() *types.Block {
+func (m *Node) FetchHeadBlock() (*types.Block, bool) {
 	return m.Resolver.FetchHeadBlock()
 }
 
@@ -211,7 +213,10 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	// Check for Reorgs
 	if !m.Resolver.IsAncestor(b, head) {
 		m.stats.L1Reorg(m.l2ID)
-		fork := LCA(head, b, m.Resolver)
+		fork, err := gethutil.LCA(head, b, m.Resolver)
+		if err != nil {
+			panic(err)
+		}
 		m.logger.Info(
 			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.Hash()), fork.NumberU64()))
 		return m.setFork(m.BlocksBetween(fork, b))
@@ -432,7 +437,10 @@ func NewMiner(
 type mockSubscription struct{}
 
 func (sub *mockSubscription) Err() <-chan error {
-	return make(chan error)
+	c := make(chan error, 2) // size 2, so that we don't block
+	// drop an error in to this channel to remind callers that this client does not stream.
+	c <- ethadapter.ErrSubscriptionNotSupported
+	return c
 }
 
 func (sub *mockSubscription) Unsubscribe() {

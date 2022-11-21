@@ -103,15 +103,18 @@ type Enclave interface {
 
 	// GetLogs returns all the logs matching the filter.
 	GetLogs(encryptedParams EncryptedParamsGetLogs) (EncryptedResponseGetLogs, error)
+
+	// HealthCheck returns whether the enclave is in a healthy state
+	HealthCheck() (bool, error)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
 	BlockHeader *types.Header // the header of the consumed block. Todo - only the hash required
 
-	ProducedRollup ExtRollup // The new Rollup when ingesting the block produces a new Rollup
-	FoundNewHead   bool      // Ingested Block contained a new Rollup - Block, and Rollup heads were updated
-	RollupHead     *Header   // If a new header was found, this field will be populated with the header of the rollup.
+	ProducedRollup       ExtRollup // The new rollup produced as a result of ingesting this block, if any.
+	FoundNewHead         bool      // Whether the block contained a new head rollup for the canonical rollup chain.
+	IngestedRollupHeader *Header   // The header of the rollup contained in the ingested block, if any.
 
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
 
