@@ -119,6 +119,12 @@ func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) Mes
 }
 
 func VerifyReceiptHash(block *common.L1Block, receipts common.L1Receipts) bool {
-	hash := types.DeriveSha(receipts, trie.NewStackTrie(nil))
-	return block.ReceiptHash().Hex() == hash.Hex()
+	if len(receipts) == 0 {
+		return block.ReceiptHash() == types.EmptyRootHash
+	}
+
+	calculatedHash := types.DeriveSha(receipts, &trie.StackTrie{})
+	expectedHash := block.ReceiptHash()
+
+	return calculatedHash == expectedHash
 }

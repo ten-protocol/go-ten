@@ -373,7 +373,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	}
 
 	offChainCallFunc := func(msg types.Message) (*core.ExecutionResult, error) {
-		//sdb := rc.storage.CreateStateDB(parent.Hash())
+		//Should this be deleted somehow?
 		clonedDB := stateDB.Copy()
 		return evm.ExecuteOffChainCall(&msg, clonedDB, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
 	}
@@ -508,6 +508,10 @@ func (rc *RollupChain) SubmitBlock(block types.Block, receipts types.Receipts, i
 		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
 	}
 
+	if !crosschain.VerifyReceiptHash(&block, receipts) {
+		return nil, rc.rejectBlockErr(errors.New("receipts do not match receipt_root in block"))
+	}
+
 	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
@@ -517,13 +521,13 @@ func (rc *RollupChain) SubmitBlock(block types.Block, receipts types.Receipts, i
 		"hash", block.Hash(),
 		"ingestionType", ingestionType)
 
-	// Only store the block if the L1 chain insertion succeeded
+	// Only store the block if the L1 chain insertion succeeded.
 	stored := rc.storage.StoreBlock(&block)
 	if !stored {
 		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
 	}
 
-	//todo:: process error?
+	//This requires block to be stored first ... but can permanently fail a block
 	err = rc.crossChainProcessors.RemoteManager.ProcessCrossChainMessages(&block, receipts)
 	if err != nil {
 		return nil, rc.rejectBlockErr(errors.New("failed to process cross chain messages"))

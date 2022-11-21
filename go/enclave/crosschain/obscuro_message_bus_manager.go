@@ -137,6 +137,7 @@ func (m *obscuroMessageBusManager) SubmitRemoteMessagesLocally(
 			m.logger.Crit("Sanity check. Some synthetic transactions failed.")
 			return errors.New("evm failed to generate responses for every transaction")
 		}
+
 		i := 0
 		for _, resp := range syntheticTransactionsResponses {
 			rec, ok := resp.(*types.Receipt)

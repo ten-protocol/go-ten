@@ -39,15 +39,26 @@ func NewMainNetExtractor(busAddress *common.L1Address, l2BusAddress *common.L2Ad
 }
 
 func (m *mainNetExtractor) ProcessCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error {
-	if len(receipts) == 0 {
+	areReceiptsValid := VerifyReceiptHash(block, receipts)
 
+	if !areReceiptsValid {
+		m.logger.Error("[CrossChain] Invalid receipts submitted", "block", common.ShortHash(block.Hash()))
+		return fmt.Errorf("receipts do not match the receipt root for the block")
+	}
+
+	if len(receipts) == 0 {
 		//Error if block receipts root does not match receipts hash
 		//else nil
 		return nil
 	}
 
 	lazilyLogReceiptChecksum(fmt.Sprintf("[CrossChain] Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)), receipts, m.logger)
-	transactions := m.getSyntheticTransactions(block, receipts)
+	transactions, err := m.getSyntheticTransactions(block, receipts)
+
+	if err != nil {
+		return err
+	}
+
 	if len(transactions) > 0 {
 		m.logger.Trace(fmt.Sprintf("[CrossChain] Storing %d transactions for block %s", len(transactions), block.Hash().Hex()))
 		lazilyLogChecksum("[CrossChain] Process synthetic transaction checksum", transactions, m.logger)
@@ -61,24 +72,19 @@ func (m *mainNetExtractor) GetBusAddress() *common.L1Address {
 	return m.busAddress
 }
 
-func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, receipts common.L1Receipts) common.L2Transactions {
+func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, receipts common.L1Receipts) (common.L2Transactions, error) {
 	transactions := make(common.L2Transactions, 0)
 
 	if len(receipts) == 0 {
-		return transactions
+		return transactions, nil
 	}
-
-	/*if !VerifyReceiptHash(block, receipts) {
-		m.logger.Crit("Receipts mismatch!")
-		return transactions
-	}*/
 
 	eventId := m.contractABI.Events["LogMessagePublished"].ID
 	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &eventId)
 
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
-		return transactions
+		return transactions, err
 	}
 	m.logger.Trace("[CrossChain] extracted logs", "logCount", len(logs))
 
@@ -86,7 +92,7 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
-		return transactions
+		return transactions, err
 	}
 
 	m.logger.Trace(fmt.Sprintf("[CrossChain] Found %d cross chain messages that will be submitted to L2!", len(messages)),
@@ -96,7 +102,7 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 		validAfter := big.NewInt(1)
 		data, err := m.contractABI.Pack("submitOutOfNetworkMessage", &message, validAfter)
 		if err != nil {
-			panic(err)
+			return transactions, fmt.Errorf("Failed packing submitOutOfNetworkMessage %+v", err)
 		}
 
 		tx := types.NewTx(&types.LegacyTx{
@@ -115,5 +121,5 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 		transactions = append(transactions, tx)
 	}
 
-	return transactions
+	return transactions, nil
 }
