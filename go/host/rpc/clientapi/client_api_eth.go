@@ -38,17 +38,17 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 	return (*hexutil.Big)(big.NewInt(api.host.Config().ObscuroChainID)), nil
 }
 
-// BlockNumber returns the height of the current head rollup.
-// TODO - #718 - Switch to returning height based on current batch.
+// BlockNumber returns the height of the current head batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	header, err := api.host.DB().GetHeadRollupHeader()
+	header, err := api.host.DB().GetHeadBatchHeader()
 	if err != nil {
 		// This error may be nefarious, but unfortunately the Eth API doesn't allow us to return an error.
 		api.logger.Error("could not retrieve head rollup header", log.ErrKey, err)
 		return 0
 	}
 
-	number := header.Number.Uint64()
+	// TODO - #718 - Temp fix due to off-by-one error in `writeRollupNumber`.
+	number := header.Number.Uint64() - 1
 	return hexutil.Uint64(number)
 }
 
