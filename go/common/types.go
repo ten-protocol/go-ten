@@ -25,6 +25,7 @@ type (
 	L2Transactions = types.Transactions
 	L2Address      = common.Address
 	L2Receipt      = types.Receipt
+	L2Receipts     = types.Receipts
 
 	CrossChainMessage     = MessageBus.StructsCrossChainMessage
 	CrossChainMessages    = []CrossChainMessage

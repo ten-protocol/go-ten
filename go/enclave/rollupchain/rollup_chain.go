@@ -65,7 +65,7 @@ type RollupChain struct {
 	mempool               mempool.Manager
 	faucet                Faucet
 	subscriptionManager   *events.SubscriptionManager
-	crossChainManager     crosschain.CrossChainManager
+	crossChainProcessors  *crosschain.CrossChainProcessors
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
@@ -77,7 +77,7 @@ type RollupChain struct {
 	BaseFee      *big.Int
 }
 
-func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, crossChainManager crosschain.CrossChainManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
+func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, crossChainProcessors *crosschain.CrossChainProcessors, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
 	return &RollupChain{
 		hostID:                hostID,
 		nodeType:              nodeType,
@@ -88,7 +88,7 @@ func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage
 		mempool:               mempool,
 		faucet:                NewFaucet(storage),
 		subscriptionManager:   subscriptionManager,
-		crossChainManager:     crossChainManager,
+		crossChainProcessors:  crossChainProcessors,
 		enclavePrivateKey:     privateKey,
 		rpcEncryptionManager:  rpcem,
 		ethereumChainID:       ethereumChainID,
@@ -119,7 +119,12 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 
 	//todo::
 	//Probably not the best place to put this, but ...
-	if err := rc.mempool.AddMempoolTx(rc.crossChainManager.GenerateMessageBusDeployTx()); err != nil {
+	deployTx, err := rc.crossChainProcessors.LocalManager.GenerateMessageBusDeployTx()
+	if err != nil {
+		rc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
+	}
+
+	if err := rc.mempool.AddMempoolTx(deployTx); err != nil {
 		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
 	}
 
@@ -363,52 +368,23 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		i++
 	}
 
-	syntheticTxs := rc.crossChainManager.GetSyntheticTransactionsBetween(
+	onChainCallFunc := func(transactions common.L2Transactions) crosschain.OnChainEVMExecutorResponse {
+		return evm.ExecuteTransactions(transactions, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	}
+
+	offChainCallFunc := func(msg types.Message) (*core.ExecutionResult, error) {
+		//sdb := rc.storage.CreateStateDB(parent.Hash())
+		clonedDB := stateDB.Copy()
+		return evm.ExecuteOffChainCall(&msg, clonedDB, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
+	}
+
+	rc.crossChainProcessors.LocalManager.SubmitRemoteMessagesLocally(
 		fromBlock,
 		toBlock,
-		stateDB)
-
-	if len(depositTxs) > 0 || len(syntheticTxs) > 0 {
-		rc.logger.Trace(fmt.Sprintf("[CrossChain] From: %d To: %d Deposits extracted - %d; Synthetic Transactions extracted - %d", common.ShortHash(fromBlock.Hash()), common.ShortHash(toBlock.Hash()), len(depositTxs), len(syntheticTxs)))
-	}
-
-	if len(syntheticTxs) > 0 {
-		syntheticTransactionsResponses := evm.ExecuteTransactions(syntheticTxs, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
-		synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
-		if len(syntheticTransactionsResponses) != len(syntheticTxs) {
-			rc.logger.Crit("Sanity check. Some synthetic transactions failed.")
-		}
-		i = 0
-		for _, resp := range syntheticTransactionsResponses {
-			rec, ok := resp.(*types.Receipt)
-			if !ok { //Еxtract reason for failing deposit.
-				// TODO - Handle the case of an error (e.g. insufficient funds).
-				rc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
-			}
-
-			if rec.Status == 0 {
-				failingTx := syntheticTxs[i]
-				txCallMessage := types.NewMessage(*rc.crossChainManager.GetOwner(),
-					failingTx.To(),
-					failingTx.Nonce(),
-					failingTx.Value(),
-					failingTx.Gas(),
-					gethcommon.Big0,
-					gethcommon.Big0,
-					gethcommon.Big0,
-					failingTx.Data(),
-					failingTx.AccessList(),
-					false)
-
-				sdb := rc.storage.CreateStateDB(parent.Hash())
-				_, err := evm.ExecuteOffChainCall(&txCallMessage, sdb, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
-				rc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err)
-			}
-
-			synthReceipts[i] = rec
-			i++
-		}
-	}
+		stateDB,
+		onChainCallFunc,
+		offChainCallFunc,
+	)
 
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
@@ -548,7 +524,10 @@ func (rc *RollupChain) SubmitBlock(block types.Block, receipts types.Receipts, i
 	}
 
 	//todo:: process error?
-	rc.crossChainManager.ProcessSyntheticTransactions(&block, receipts)
+	err = rc.crossChainProcessors.RemoteManager.ProcessCrossChainMessages(&block, receipts)
+	if err != nil {
+		return nil, rc.rejectBlockErr(errors.New("failed to process cross chain messages"))
+	}
 
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
 	blockState := rc.updateState(&block)
@@ -643,7 +622,12 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	// Postprocessing - withdrawals
 	txReceiptsMap := toReceiptMap(txReceipts)
 	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
-	r.Header.CrossChainMessages = rc.crossChainManager.ExtractMessagesFromReceipts(txReceipts)
+	crossChainMessages, err := rc.crossChainProcessors.LocalManager.ExtractLocalMessages(txReceipts)
+	if err != nil {
+		rc.logger.Crit("[CrossChain] Extracting messages L2->L1 failed", err)
+	}
+
+	r.Header.CrossChainMessages = crossChainMessages
 
 	rc.logger.Trace(fmt.Sprintf("[CrossChain] Added %d cross chain messages to rollup. Equivalent withdrawals in header - %d", len(r.Header.CrossChainMessages), len(r.Header.Withdrawals)))
 
