@@ -63,19 +63,17 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 }
 
 // GetBlockByNumber returns the header of the rollup with the given height.
-// TODO - #718 - Switch to retrieving batch header.
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	rollupHash, err := api.rollupNumberToRollupHash(number)
+	batchHash, err := api.batchNumberToBatchHash(number)
 	if err != nil {
 		return nil, fmt.Errorf("could not find rollup with height %d. Cause: %w", number, err)
 	}
-	return api.GetBlockByHash(ctx, *rollupHash, true)
+	return api.GetBlockByHash(ctx, *batchHash, true)
 }
 
-// GetBlockByHash returns the header of the rollup with the given hash.
-// TODO - #718 - Switch to retrieving batch header.
+// GetBlockByHash returns the header of the batch with the given hash.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
-	rollupHeader, err := api.host.DB().GetRollupHeader(hash)
+	rollupHeader, err := api.host.DB().GetBatchHeader(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +222,33 @@ type FeeHistoryResult struct {
 	GasUsedRatio []float64        `json:"gasUsedRatio"`
 }
 
-// TODO - #718 - Switch to converting block number to batch hash.
+// Given a batch number, returns the hash of the batch with that number.
+func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
+	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
+	if batchNumber == rpc.LatestBlockNumber {
+		batchHeader, err := api.host.DB().GetHeadBatchHeader()
+		if err != nil {
+			return nil, err
+		}
+		batchHash := batchHeader.Hash()
+		return &batchHash, nil
+	}
+
+	if batchNumber == rpc.PendingBlockNumber {
+		// todo Dependent on the current pending batch - leaving it for a different iteration as it will need more thought
+		return nil, errutil.ErrNoImpl
+	}
+
+	batchNumberBig := big.NewInt(batchNumber.Int64())
+	batchHash, err := api.host.DB().GetBatchHash(batchNumberBig)
+	if err != nil {
+		return nil, err
+	}
+	return batchHash, nil
+}
+
+// Given a rollup number, returns the hash of the rollup with that number.
+// TODO - #718 - Remove this once RPC methods are based on batches.
 func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
 	if blockNumber == rpc.LatestBlockNumber {

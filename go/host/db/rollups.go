@@ -27,7 +27,7 @@ func (db *DB) GetHeadRollupHeader() (*common.Header, error) {
 	return db.readRollupHeader(*headRollupHash)
 }
 
-// GetRollupHeader returns the rollup header given the Hash, or (nil, false) if no such header is found.
+// GetRollupHeader returns the rollup header given the hash, or (nil, false) if no such header is found.
 func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*common.Header, error) {
 	return db.readRollupHeader(hash)
 }
@@ -35,6 +35,7 @@ func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*common.Header, error) {
 // AddRollupHeader adds a rollup's header to the known headers
 func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) error {
 	b := db.kvStore.NewBatch()
+
 	if err := db.writeRollupHeader(b, header); err != nil {
 		return fmt.Errorf("could not write rollup header. Cause: %w", err)
 	}
