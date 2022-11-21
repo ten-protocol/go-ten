@@ -55,7 +55,7 @@ func (e *ObscuroNoOpConsensusEngine) FinalizeAndAssemble(chain consensus.ChainHe
 	uncles []*types.Header, receipts []*types.Receipt,
 ) (*types.Block, error) {
 	e.logger.Crit("noop")
-	return nil, nil
+	return nil, nil // nolint:nilnil
 }
 
 func (e *ObscuroNoOpConsensusEngine) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
