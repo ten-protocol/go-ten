@@ -2,16 +2,32 @@ package common
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
 type (
-	StateRoot             = common.Hash
-	L1RootHash            = common.Hash
-	L2RootHash            = common.Hash
-	TxHash                = common.Hash
-	L2Tx                  = types.Transaction
+	StateRoot = common.Hash
+	TxHash    = common.Hash
+
+	//MainNet aliases
+	L1Address     = common.Address
+	L1RootHash    = common.Hash
+	L1Block       = types.Block
+	L1Transaction = types.Transaction
+	L1Receipt     = types.Receipt
+	L1Receipts    = types.Receipts
+
+	//Local Obscuro aliases
+	L2RootHash     = common.Hash
+	L2Tx           = types.Transaction
+	L2Transactions = types.Transactions
+	L2Address      = common.Address
+	L2Receipt      = types.Receipt
+
+	CrossChainMessage     = MessageBus.StructsCrossChainMessage
+	CrossChainMessages    = []CrossChainMessage
 	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup, with the nonce prepended.
 

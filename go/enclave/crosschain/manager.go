@@ -34,9 +34,32 @@ type Manager struct {
 	logger       gethlog.Logger
 }
 
+type MainNetMessageExtractor interface {
+	//(todo: Verifies receipts match block) & extracts the messages logged inside the receipts
+	ProcessCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error
+
+	GetBusAddress() *common.L1Address
+}
+
+type ObscuroCrossChainManager interface {
+	//Address of the identity owning the message bus.
+	GetOwner() *common.L2Address
+
+	//Generate the key pair that will be used to transact with the L2 message bus.
+	DeriveOwner(seed []byte) (*common.L2Address, error) //TODO: Implement with cryptography epic.
+
+	//Will create a message bus deployment transaction OR give an error on why it can't.
+	GenerateMessageBusDeployTx() (*common.L2Tx, error)
+
+	//
+	ExtractLocalMessages(receipts common.L2Receipt) common.CrossChainMessages
+
+	//Executes synthetic transactions
+	SubmitRemoteMessagesBetween(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) error
+}
+
 type CrossChainManager interface {
 	GenerateMessageBusDeployTx() *types.Transaction
-	//	SetL2MessageBusAddress(addr *gethcommon.Address)
 	ProcessSyntheticTransactions(block *types.Block, receipts types.Receipts) error
 	GetSyntheticTransactions(block *types.Block, receipts types.Receipts) types.Transactions
 	GetSyntheticTransactionsBetween(fromBlock *types.Block, toBlock *types.Block, rollupState *state.StateDB) types.Transactions
