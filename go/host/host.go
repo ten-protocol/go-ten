@@ -780,7 +780,7 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 	for _, transaction := range block.Transactions() {
 		receipt, err := h.ethClient.TransactionReceipt(transaction.Hash())
 
-		if err != nil {
+		if err != nil || receipt == nil {
 			h.logger.Error("[CrossChain] Problem with retrieving the receipt on the host!", "Error", err)
 		}
 

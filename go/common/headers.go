@@ -44,9 +44,9 @@ type Header struct {
 	L1Proof                       L1RootHash     // the L1 block used by the enclave to generate the current rollup
 	R, S                          *big.Int       // signature values
 	Withdrawals                   []Withdrawal
-	CrossChainMessages            []MessageBus.StructsCrossChainMessage
-	LatestInboudCrossChainHash    common.Hash
-	LatestInboundCrossChainHeight *big.Int
+	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
+	LatestInboudCrossChainHash    common.Hash                           `json:"inboundCrossChainHash"`
+	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"`
 }
 
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header.

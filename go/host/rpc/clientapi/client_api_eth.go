@@ -209,9 +209,12 @@ func headerToMap(header *common.Header) map[string]interface{} {
 		"baseFeePerGas":    header.BaseFee,
 
 		// The custom Obscuro fields.
-		"agg":         header.Agg,
-		"l1Proof":     header.L1Proof,
-		"withdrawals": header.Withdrawals,
+		"agg":                     header.Agg,
+		"l1Proof":                 header.L1Proof,
+		"withdrawals":             header.Withdrawals,
+		"crossChainMessages":      header.CrossChainMessages,
+		"inboundCrossChainHash":   header.LatestInboudCrossChainHash,
+		"inboundCrossChainHeight": header.LatestInboundCrossChainHeight,
 	}
 }
 
