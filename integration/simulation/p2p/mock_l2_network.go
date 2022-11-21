@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"bytes"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -57,8 +56,7 @@ func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) error {
 	}
 
 	for _, node := range netw.Nodes {
-		// todo - joel - can this check be cleaned up?
-		if !bytes.Equal(node.Config().ID.Bytes(), netw.CurrentNode.Config().ID.Bytes()) {
+		if node.Config().ID.Hex() != netw.CurrentNode.Config().ID.Hex() {
 			tempNode := node
 			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveTx(tx) })
 		}
@@ -78,8 +76,7 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 	}
 
 	for _, node := range netw.Nodes {
-		// todo - joel - can this check be cleaned up?
-		if !bytes.Equal(node.Config().ID.Bytes(), netw.CurrentNode.Config().ID.Bytes()) {
+		if node.Config().ID.Hex() != netw.CurrentNode.Config().ID.Hex() {
 			tempNode := node
 			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatch(encodedBatch) })
 		}

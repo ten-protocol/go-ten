@@ -141,7 +141,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		callback.ReceiveTx(msg.Contents)
 	case msgTypeBatch:
-		panic("bad bad bad")
+		callback.ReceiveBatch(msg.Contents)
 	}
 }
 
