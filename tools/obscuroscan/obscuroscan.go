@@ -20,24 +20,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/edgelesssys/ego/enclave"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
-
 	"github.com/ethereum/go-ethereum/core/types"
-
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
-
+	"github.com/obscuronet/go-obscuro/go/common/httputil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
@@ -325,6 +319,10 @@ func (o *Obscuroscan) getBlock(resp http.ResponseWriter, req *http.Request) {
 
 // Retrieves a rollup given its number or the hash of a transaction it contains.
 func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http.Request) {
+	// Set a response header which allows the client to use a response served from a different domain, i.e. obscuroscan.io.
+	if httputil.EnableCORS(resp, req) {
+		return
+	}
 	body := req.Body
 	defer body.Close()
 	buffer := new(bytes.Buffer)
