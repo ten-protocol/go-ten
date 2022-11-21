@@ -400,7 +400,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsClient, currentHeader *common.Header) *big.Int {
 	totalAmountLogged := big.NewInt(0)
 	for i := minObscuroHeight; i < currentHeader.Number.Uint64(); i++ {
-		header, err := obscuroClient.RollupHeaderByNumber(big.NewInt(int64(minObscuroHeight)))
+		header, err := obscuroClient.RollupHeaderByNumber(big.NewInt(int64(i)))
 		if err != nil {
 			panic(err)
 		}

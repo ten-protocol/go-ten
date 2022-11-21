@@ -279,7 +279,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			time.Sleep(5 * time.Second)
 			receipt, err := ti.rpcHandles.ObscuroWalletRndClient(obsWallet).TransactionReceipt(ti.ctx, signedTx.Hash())
 			if err != nil {
-				ti.logger.Crit("Withdrawal failed!")
+				ti.logger.Error(fmt.Sprintf("Withdrawal %s ERROR - %+v", signedTx.Hash(), err))
 			}
 			if receipt.Status == 1 {
 				return

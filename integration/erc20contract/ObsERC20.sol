@@ -39,7 +39,7 @@ interface IMessageBus {
 // where access to data has to be restricted.
 contract ObsERC20 is ERC20 {
 
-    address bridge = 0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa;
+    address bridge = 0xdeB34A740ECa1eC42C8b8204CBEC0bA34FDD27f3;
 
     IMessageBus bus;
 

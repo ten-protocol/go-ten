@@ -782,6 +782,7 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 
 		if err != nil || receipt == nil {
 			h.logger.Error("[CrossChain] Problem with retrieving the receipt on the host!", "Error", err)
+			continue
 		}
 
 		relevantLogs := 0
@@ -801,10 +802,12 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 			break
 		}*/
 
-		h.logger.Trace(fmt.Sprintf("[CrossChain] Adding receipt for block %d, TX: %d  with %d relevant logs",
-			common.ShortHash(block.Hash()),
-			common.ShortHash(transaction.Hash()),
-			relevantLogs))
+		if relevantLogs > 0 {
+			h.logger.Trace(fmt.Sprintf("[CrossChain] Adding receipt for block %d, TX: %d  with %d relevant logs",
+				common.ShortHash(block.Hash()),
+				common.ShortHash(transaction.Hash()),
+				relevantLogs))
+		}
 
 		receipts = append(receipts, receipt)
 	}
