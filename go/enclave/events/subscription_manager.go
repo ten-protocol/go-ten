@@ -75,10 +75,14 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	// For subscriptions, only the Topics and Addresses fields of the filter are applied.
 	subscription.Filter.BlockHash = nil
 	subscription.Filter.ToBlock = nil
-	// We set this to the current rollup height, so that historical logs aren't returned.
+
+	// We set the FromBlock to the current rollup height, so that historical logs aren't returned.
 	rollup, err := s.storage.FetchHeadRollup()
 	if err != nil {
-		return fmt.Errorf("unable to fetch head rollup - %w", err)
+		return fmt.Errorf("unable to fetch head rollup. Cause: %w", err)
+	}
+	if rollup == nil {
+		return fmt.Errorf("no head rollup is stored")
 	}
 	subscription.Filter.FromBlock = big.NewInt(0).Add(rollup.Number(), big.NewInt(1))
 
