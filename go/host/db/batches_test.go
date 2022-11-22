@@ -204,8 +204,7 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 		Number: big.NewInt(rollupNumber),
 	}
 	txHashesOne := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	// todo - joel - fix this
-	err := db.AddRollupHeader(&headerOne, txHashesOne)
+	err := db.AddBatchHeader(&headerOne, txHashesOne)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -214,8 +213,7 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 		Number: big.NewInt(rollupNumber),
 	}
 	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
-	// todo - joel - fix this
-	err = db.AddRollupHeader(&headerTwo, txHashesTwo)
+	err = db.AddBatchHeader(&headerTwo, txHashesTwo)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
