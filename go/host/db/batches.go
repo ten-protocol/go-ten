@@ -38,7 +38,6 @@ func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) er
 	if err := db.writeBatchHeader(header); err != nil {
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
-	// Required by ObscuroScan, to display a list of recent transactions.
 	if err := db.writeBatchTxHashes(b, header.Hash(), txHashes); err != nil {
 		return fmt.Errorf("could not write batch transaction hashes. Cause: %w", err)
 	}
