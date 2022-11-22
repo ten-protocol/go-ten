@@ -227,9 +227,9 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubm
 	}, nil
 }
 
-// SubmitBlock is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
-	bsr, err := e.chain.SubmitBlock(block, isLatest)
+// SubmitL1Block is used to update the enclave with an additional L1 block.
+func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+	bsr, err := e.chain.SubmitL1Block(block, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitBlock failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, err

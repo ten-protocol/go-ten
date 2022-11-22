@@ -465,8 +465,8 @@ func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) 
 	return receipts
 }
 
-// SubmitBlock is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+// SubmitL1Block is used to update the enclave with an additional L1 block.
+func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
