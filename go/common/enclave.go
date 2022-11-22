@@ -44,7 +44,7 @@ type Enclave interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitBlock(block types.Block, receipts types.Receipts, isLatest bool) (*BlockSubmissionResponse, error)
+	SubmitBlock(block L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, error)
 
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)

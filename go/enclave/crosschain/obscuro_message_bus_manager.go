@@ -84,14 +84,14 @@ func (m *obscuroMessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, e
 }
 
 func (m *obscuroMessageBusManager) ExtractLocalMessages(receipts common.L2Receipts) (common.CrossChainMessages, error) {
-	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &eventId)
+	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventId)
 
 	if err != nil {
 		m.logger.Error("[CrossChain] Error extracting logs from L2 message bus!", "Error", err)
 		return make(common.CrossChainMessages, 0), err
 	}
 
-	messages, err := convertLogsToMessages(logs, eventName, contractABI)
+	messages, err := convertLogsToMessages(logs, CrossChainEventName, ContractABI)
 	if err != nil {
 		m.logger.Error("[CrossChain] Error converting messages from L2 message bus!", "Error", err)
 		return make(common.CrossChainMessages, 0), err

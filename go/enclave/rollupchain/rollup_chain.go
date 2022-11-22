@@ -521,7 +521,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, receipts types.Receipts, i
 		"hash", block.Hash(),
 		"ingestionType", ingestionType)
 
-	// Only store the block if the L1 chain insertion succeeded.
+	// Only store the block if the L1 chain insertion succeeded
 	stored := rc.storage.StoreBlock(&block)
 	if !stored {
 		return nil, rc.rejectBlockErr(errors.New("failed to store block"))

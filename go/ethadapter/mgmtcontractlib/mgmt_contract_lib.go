@@ -54,7 +54,7 @@ type MgmtContractLib interface {
 }
 
 type contractLibImpl struct {
-	Addr        *gethcommon.Address
+	addr        *gethcommon.Address
 	contractABI abi.ABI
 	logger      gethlog.Logger
 }
@@ -66,18 +66,18 @@ func NewMgmtContractLib(addr *gethcommon.Address, logger gethlog.Logger) MgmtCon
 	}
 
 	return &contractLibImpl{
-		Addr:        addr,
+		addr:        addr,
 		contractABI: contractABI,
 		logger:      logger,
 	}
 }
 
 func (c *contractLibImpl) GetContractAddr() *gethcommon.Address {
-	return c.Addr
+	return c.addr
 }
 
 func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
-	if tx.To() == nil || tx.To().Hex() != c.Addr.Hex() || len(tx.Data()) == 0 {
+	if tx.To() == nil || tx.To().Hex() != c.addr.Hex() || len(tx.Data()) == 0 {
 		return nil
 	}
 	method, err := c.contractABI.MethodById(tx.Data()[:methodBytesLen])
@@ -158,7 +158,7 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 		Nonce:    nonce,
 		GasPrice: defaultGasPrice,
 		Gas:      defaultGas,
-		To:       c.Addr,
+		To:       c.addr,
 		Data:     data,
 	}
 }
@@ -173,7 +173,7 @@ func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx, 
 		Nonce:    nonce,
 		GasPrice: defaultGasPrice,
 		Gas:      defaultGas,
-		To:       c.Addr,
+		To:       c.addr,
 		Data:     data,
 	}
 }
@@ -195,7 +195,7 @@ func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, 
 		Nonce:    nonce,
 		GasPrice: defaultGasPrice,
 		Gas:      defaultGas,
-		To:       c.Addr,
+		To:       c.addr,
 		Data:     data,
 	}
 }
@@ -215,7 +215,7 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecr
 		Nonce:    nonce,
 		GasPrice: defaultGasPrice,
 		Gas:      defaultGas,
-		To:       c.Addr,
+		To:       c.addr,
 		Data:     data,
 	}
 }
@@ -225,7 +225,7 @@ func (c *contractLibImpl) GetHostAddresses() (ethereum.CallMsg, error) {
 	if err != nil {
 		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
-	return ethereum.CallMsg{To: c.Addr, Data: data}, nil
+	return ethereum.CallMsg{To: c.addr, Data: data}, nil
 }
 
 func (c *contractLibImpl) DecodeCallResponse(callResponse []byte) ([][]string, error) {

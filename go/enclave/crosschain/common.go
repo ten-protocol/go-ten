@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	contractABI, _ = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	eventName      = "LogMessagePublished"
-	eventId        = contractABI.Events[eventName].ID
+	ContractABI, _      = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	CrossChainEventName = "LogMessagePublished"
+	CrossChainEventId   = ContractABI.Events[CrossChainEventName].ID
 )
 
 func lazilyLogReceiptChecksum(msg string, receipts types.Receipts, logger gethlog.Logger) {

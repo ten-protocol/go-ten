@@ -69,7 +69,7 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 		return transactions, nil
 	}
 
-	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &eventId)
+	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &CrossChainEventId)
 
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
@@ -77,7 +77,7 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 	}
 	m.logger.Trace("[CrossChain] extracted logs", "logCount", len(logs))
 
-	messages, err := convertLogsToMessages(logs, eventName, contractABI)
+	messages, err := convertLogsToMessages(logs, CrossChainEventName, ContractABI)
 
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
@@ -89,7 +89,7 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 
 	for _, message := range messages {
 		validAfter := big.NewInt(1)
-		data, err := contractABI.Pack("submitOutOfNetworkMessage", &message, validAfter)
+		data, err := ContractABI.Pack("submitOutOfNetworkMessage", &message, validAfter)
 		if err != nil {
 			return transactions, fmt.Errorf("Failed packing submitOutOfNetworkMessage %+v", err)
 		}
