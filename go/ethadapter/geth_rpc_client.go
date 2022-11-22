@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	connRetryMaxWait  = 10 * time.Minute // after this duration, we will stop retrying to connect and return the failure
 	connRetryInterval = 500 * time.Millisecond
 )
 
@@ -146,10 +147,10 @@ func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscripti
 	err = retry.Do(func() error {
 		sub, err = e.client.SubscribeNewHead(ctx, ch)
 		if err != nil {
-			e.logger.Warn("could not subscribe for new head blocks, retrying...")
+			e.logger.Warn("could not subscribe for new head blocks")
 		}
 		return err
-	}, retry.NewTimeoutStrategy(e.timeout, connRetryInterval))
+	}, retry.NewTimeoutStrategy(connRetryMaxWait, connRetryInterval))
 	if err != nil {
 		// todo: handle this scenario better after refactor of node.go (health monitor report L1 unavailable, be able to recover without restarting host)
 		// couldn't connect after timeout period, cannot continue
