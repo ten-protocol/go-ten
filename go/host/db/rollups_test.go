@@ -12,35 +12,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
-func TestCanStoreAndRetrieveRollupHeader(t *testing.T) {
-	db := NewInMemoryDB()
-	header := common.Header{
-		Number: big.NewInt(rollupNumber),
-	}
-	err := db.AddRollupHeader(&header, []gethcommon.Hash{})
-	if err != nil {
-		t.Errorf("could not store rollup header. Cause: %s", err)
-	}
-
-	rollupHeader, err := db.GetRollupHeader(header.Hash())
-	if err != nil {
-		t.Errorf("stored rollup header but could not retrieve it. Cause: %s", err)
-	}
-	if rollupHeader.Number.Cmp(header.Number) != 0 {
-		t.Errorf("rollup header was not stored correctly")
-	}
-}
-
-func TestUnknownRollupHeaderReturnsNotFound(t *testing.T) {
-	db := NewInMemoryDB()
-	header := types.Header{}
-
-	_, err := db.GetRollupHeader(header.Hash())
-	if !errors.Is(err, errutil.ErrNotFound) {
-		t.Errorf("did not store rollup header but was able to retrieve it")
-	}
-}
-
 func TestHigherNumberRollupBecomesRollupHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	headerOne := common.Header{

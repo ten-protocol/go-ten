@@ -24,7 +24,6 @@ var (
 	batchNumberPrefix    = []byte("bn")
 	batchTxHashesPrefix  = []byte("bt")
 	rollupHeaderPrefix   = []byte("r")
-	rollupTxHashesPrefix = []byte("rt")
 	rollupHashPrefix     = []byte("rh")
 	rollupNumberPrefix   = []byte("rn")
 	totalTransactionsKey = []byte("t")
