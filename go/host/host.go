@@ -76,10 +76,10 @@ type host struct {
 	stopHostInterrupt     *int32
 	bootstrappingComplete *int32 // Marks when the host is done bootstrapping
 
-	blockRPCCh chan blockAndParent        // The channel that new blocks from the L1 node are sent to
-	forkRPCCh  chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
-	txP2PCh    chan common.EncryptedTx    // The channel that new transactions from peers are sent to
-	batchP2PCh chan common.EncodedBatch   // The channel that new batches from peers are sent to
+	l1BlockRPCCh chan blockAndParent          // The channel that new blocks from the L1 node are sent to
+	forkRPCCh    chan []common.EncodedL1Block // The channel that new forks from the L1 node are sent to
+	txP2PCh      chan common.EncryptedTx      // The channel that new transactions from peers are sent to
+	batchP2PCh   chan common.EncodedBatch     // The channel that new batches from peers are sent to
 
 	db *db.DB // Stores the host's publicly-available data
 
@@ -109,10 +109,10 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		bootstrappingComplete: new(int32),
 
 		// incoming data
-		blockRPCCh: make(chan blockAndParent),
-		forkRPCCh:  make(chan []common.EncodedBlock),
-		txP2PCh:    make(chan common.EncryptedTx),
-		batchP2PCh: make(chan common.EncodedBatch),
+		l1BlockRPCCh: make(chan blockAndParent),
+		forkRPCCh:    make(chan []common.EncodedL1Block),
+		txP2PCh:      make(chan common.EncryptedTx),
+		batchP2PCh:   make(chan common.EncodedBatch),
 
 		// Initialize the host DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -283,11 +283,11 @@ func (h *host) EnclaveClient() common.Enclave {
 	return h.enclaveClient
 }
 
-func (h *host) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
-	h.blockRPCCh <- blockAndParent{b, p}
+func (h *host) MockedNewHead(b common.EncodedL1Block, p common.EncodedL1Block) {
+	h.l1BlockRPCCh <- blockAndParent{b, p}
 }
 
-func (h *host) MockedNewFork(b []common.EncodedBlock) {
+func (h *host) MockedNewFork(b []common.EncodedL1Block) {
 	h.forkRPCCh <- b
 }
 
@@ -409,9 +409,9 @@ func (h *host) startProcessing() { //nolint:gocognit
 	// - Process new Transactions gossiped from L2 Peers
 	for {
 		select {
-		case b := <-h.blockRPCCh:
+		case b := <-h.l1BlockRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			err := h.processBlock(b.p, false)
+			err := h.processL1Block(b.p, false)
 			if err != nil {
 				var rejErr *common.BlockRejectError
 				if errors.As(err, &rejErr) {
@@ -421,7 +421,7 @@ func (h *host) startProcessing() { //nolint:gocognit
 					h.logger.Info("Could not process parent block. ", log.ErrKey, err)
 				}
 			}
-			err = h.processBlock(b.b, true)
+			err = h.processL1Block(b.b, true)
 			if err != nil {
 				var rejErr *common.BlockRejectError
 				if errors.As(err, &rejErr) {
@@ -435,7 +435,7 @@ func (h *host) startProcessing() { //nolint:gocognit
 			roundInterrupt = triggerInterrupt(roundInterrupt)
 			for i, blk := range f {
 				isLatest := i == (len(f) - 1)
-				err := h.processBlock(blk, isLatest)
+				err := h.processL1Block(blk, isLatest)
 				if err != nil && isLatest {
 					h.logger.Warn("Could not process latest fork block received via RPC.", log.ErrKey, err)
 				}
@@ -466,11 +466,11 @@ func triggerInterrupt(interrupt *int32) *int32 {
 }
 
 type blockAndParent struct {
-	b common.EncodedBlock
-	p common.EncodedBlock
+	b common.EncodedL1Block
+	p common.EncodedL1Block
 }
 
-func (h *host) processBlock(block common.EncodedBlock, isLatestBlock bool) error {
+func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) error {
 	var result *common.BlockSubmissionResponse
 
 	// For the genesis block the parent is nil
@@ -482,11 +482,11 @@ func (h *host) processBlock(block common.EncodedBlock, isLatestBlock bool) error
 	if err != nil {
 		return err
 	}
-	h.processBlockTransactions(decoded)
+	h.processL1BlockTransactions(decoded)
 
 	// submit each block to the enclave for ingestion plus validation
 	// todo: isLatest should only be true when we're not behind
-	result, err = h.enclaveClient.SubmitBlock(*decoded, isLatestBlock)
+	result, err = h.enclaveClient.SubmitL1Block(*decoded, isLatestBlock)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
 	}
@@ -524,7 +524,7 @@ func (h *host) processBlock(block common.EncodedBlock, isLatestBlock bool) error
 }
 
 // Looks at each transaction in the block, and kicks off special handling for the transaction if needed.
-func (h *host) processBlockTransactions(b *types.Block) {
+func (h *host) processL1BlockTransactions(b *types.Block) {
 	for _, tx := range b.Transactions() {
 		t := h.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -914,7 +914,7 @@ func (h *host) encodeAndIngest(block *types.Block, blockParent *types.Block) err
 		return fmt.Errorf("could not encode block's parent with hash %s. Cause: %w", block.ParentHash().String(), err)
 	}
 
-	h.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
+	h.l1BlockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
 	return nil
 }
 
@@ -925,18 +925,18 @@ func (h *host) bootstrapHost() types.Block {
 	// build up from the genesis block
 	// todo update to bootstrap from the last block in storage
 	// todo the genesis block should be the block where the contract was deployed
-	currentBlock, err := h.ethClient.BlockByNumber(big.NewInt(0))
+	currentL1Block, err := h.ethClient.BlockByNumber(big.NewInt(0))
 	if err != nil {
 		h.logger.Crit("Internal error", log.ErrKey, err)
 	}
 
-	h.logger.Info(fmt.Sprintf("Started host bootstrap with block %d", currentBlock.NumberU64()))
+	h.logger.Info(fmt.Sprintf("Started host bootstrap with block %d", currentL1Block.NumberU64()))
 
 	startTime, logTime := time.Now(), time.Now()
 	for {
-		cb := *currentBlock
-		h.processBlockTransactions(&cb)
-		result, err := h.enclaveClient.SubmitBlock(cb, false)
+		cb := *currentL1Block
+		h.processL1BlockTransactions(&cb)
+		result, err := h.enclaveClient.SubmitL1Block(cb, false)
 		if err != nil {
 			var bsErr *common.BlockRejectError
 			isBSE := errors.As(err, &bsErr)
@@ -962,7 +962,7 @@ func (h *host) bootstrapHost() types.Block {
 			}
 			h.logger.Crit("Internal error", log.ErrKey, err)
 		}
-		currentBlock = nextBlk
+		currentL1Block = nextBlk
 
 		if time.Since(logTime) > 30*time.Second {
 			h.logger.Info(fmt.Sprintf("Bootstrapping host at block... %d", cb.NumberU64()))
@@ -971,10 +971,10 @@ func (h *host) bootstrapHost() types.Block {
 	}
 	atomic.StoreInt32(h.bootstrappingComplete, 1)
 	h.logger.Info(fmt.Sprintf("Finished bootstrap process with block %d after %s",
-		currentBlock.NumberU64(),
+		currentL1Block.NumberU64(),
 		time.Since(startTime),
 	))
-	return *currentBlock
+	return *currentL1Block
 }
 
 func (h *host) awaitSecret(fromHeight *big.Int) error {

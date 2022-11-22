@@ -28,7 +28,7 @@ import (
 
 type L1Network interface {
 	// BroadcastBlock - send the block and the parent to make sure there are no gaps
-	BroadcastBlock(b common.EncodedBlock, p common.EncodedBlock)
+	BroadcastBlock(b common.EncodedL1Block, p common.EncodedL1Block)
 	BroadcastTx(tx *types.Transaction)
 }
 
@@ -48,8 +48,8 @@ type StatsCollector interface {
 }
 
 type NotifyNewBlock interface {
-	MockedNewHead(b common.EncodedBlock, p common.EncodedBlock)
-	MockedNewFork(b []common.EncodedBlock)
+	MockedNewHead(b common.EncodedL1Block, p common.EncodedL1Block)
+	MockedNewFork(b []common.EncodedL1Block)
 }
 
 type Node struct {
@@ -275,7 +275,7 @@ func (m *Node) setFork(blocks []*types.Block) *types.Block {
 		return head
 	}
 
-	fork := make([]common.EncodedBlock, len(blocks))
+	fork := make([]common.EncodedL1Block, len(blocks))
 	for i, block := range blocks {
 		encodedBlock, err := common.EncodeBlock(block)
 		if err != nil {
@@ -295,7 +295,7 @@ func (m *Node) setFork(blocks []*types.Block) *types.Block {
 
 // P2PReceiveBlock is called by counterparties when there is a block to broadcast
 // All it does is drop the blocks in a channel for processing.
-func (m *Node) P2PReceiveBlock(b common.EncodedBlock, p common.EncodedBlock) {
+func (m *Node) P2PReceiveBlock(b common.EncodedL1Block, p common.EncodedL1Block) {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return
 	}
