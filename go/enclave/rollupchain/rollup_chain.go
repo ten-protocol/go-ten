@@ -724,7 +724,7 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
 		}
-		transaction, _, _, _, err := rc.storage.GetTransaction(txHash)
+		transaction, _, _, _, err := rc.storage.GetTransaction(*txHash)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
 		}

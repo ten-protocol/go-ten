@@ -79,6 +79,7 @@ func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
 	s.assertSecretAvailable()
 	rollup, err := obscurorawdb.ReadRollup(s.db, hash, s.logger)
 	if err != nil {
+		// TODO - Return this error.
 		return nil, false
 	}
 	return rollup, true
@@ -331,8 +332,8 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 	return msg.From(), nil
 }
 
-func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (gethcommon.Hash, error) {
-	return obscurorawdb.ReadContractTransaction(s.db, address, s.logger)
+func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (*gethcommon.Hash, error) {
+	return obscurorawdb.ReadContractTransaction(s.db, address)
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error) {

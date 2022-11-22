@@ -15,6 +15,7 @@ import (
 func ReadSharedSecret(db ethdb.KeyValueReader) (*crypto.SharedEnclaveSecret, error) {
 	var ss crypto.SharedEnclaveSecret
 
+	// TODO - Handle error.
 	enc, _ := db.Get(sharedSecret)
 	if len(enc) == 0 {
 		return nil, errutil.ErrNotFound

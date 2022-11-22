@@ -85,7 +85,7 @@ type TransactionStorage interface {
 	// GetSender returns the sender of the tx by hash
 	GetSender(txHash gethcommon.Hash) (gethcommon.Address, error)
 	// GetContractCreationTx returns the hash of the tx that created a contract
-	GetContractCreationTx(address gethcommon.Address) (gethcommon.Hash, error)
+	GetContractCreationTx(address gethcommon.Address) (*gethcommon.Hash, error)
 }
 
 type AttestationStorage interface {

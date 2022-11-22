@@ -112,12 +112,13 @@ func WriteContractCreationTx(db ethdb.KeyValueWriter, receipts types.Receipts, l
 }
 
 // ReadContractTransaction - returns the tx that created a contract
-func ReadContractTransaction(db ethdb.Reader, address common.Address, logger gethlog.Logger) (common.Hash, error) {
+func ReadContractTransaction(db ethdb.Reader, address common.Address) (*common.Hash, error) {
 	value, err := db.Get(contractReceiptKey(address))
 	if err != nil {
-		return common.Hash{}, err
+		return nil, err
 	}
-	return common.BytesToHash(value), nil
+	hash := common.BytesToHash(value)
+	return &hash, nil
 }
 
 // DeleteReceipts removes all receipt data associated with a block hash.
