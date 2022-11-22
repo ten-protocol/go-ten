@@ -51,7 +51,16 @@ func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) er
 		}
 	}
 
-	// TODO - #718 - Update the total transactions, once we no longer do this in `AddRollupHeader`.
+	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
+	currentTotal, err := db.readTotalTransactions()
+	if err != nil {
+		return fmt.Errorf("could not retrieve total transactions. Cause: %w", err)
+	}
+	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(txHashes))))
+	err = db.writeTotalTransactions(b, newTotal)
+	if err != nil {
+		return fmt.Errorf("could not write total transactions. Cause: %w", err)
+	}
 
 	// update the head if the new height is greater than the existing one
 	headBatchHeader, err := db.GetHeadBatchHeader()
@@ -87,6 +96,11 @@ func (db *DB) GetBatchTxs(rollupHash gethcommon.Hash) ([]gethcommon.Hash, error)
 // batch is found.
 func (db *DB) GetBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
 	return db.readBatchNumber(txHash)
+}
+
+// GetTotalTransactions returns the total number of batched transactions.
+func (db *DB) GetTotalTransactions() (*big.Int, error) {
+	return db.readTotalTransactions()
 }
 
 // headerKey = batchHeaderPrefix  + hash
@@ -267,4 +281,32 @@ func (db *DB) readBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
 		return nil, errutil.ErrNotFound
 	}
 	return big.NewInt(0).SetBytes(data), nil
+}
+
+// Retrieves the total number of rolled-up transactions.
+func (db *DB) readTotalTransactions() (*big.Int, error) {
+	f, err := db.kvStore.Has(totalTransactionsKey)
+	if err != nil {
+		return nil, err
+	}
+	if !f {
+		return big.NewInt(0), nil
+	}
+	data, err := db.kvStore.Get(totalTransactionsKey)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return big.NewInt(0), nil
+	}
+	return big.NewInt(0).SetBytes(data), nil
+}
+
+// Stores the total number of transactions in the database.
+func (db *DB) writeTotalTransactions(w ethdb.KeyValueWriter, newTotal *big.Int) error {
+	err := w.Put(totalTransactionsKey, newTotal.Bytes())
+	if err != nil {
+		return err
+	}
+	return nil
 }

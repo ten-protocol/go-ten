@@ -43,17 +43,6 @@ func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) e
 		}
 	}
 
-	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
-	currentTotal, err := db.readTotalTransactions()
-	if err != nil {
-		return fmt.Errorf("could not retrieve total transactions. Cause: %w", err)
-	}
-	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(txHashes))))
-	err = db.writeTotalTransactions(b, newTotal)
-	if err != nil {
-		return fmt.Errorf("could not write total transactions. Cause: %w", err)
-	}
-
 	// update the head if the new height is greater than the existing one
 	headRollupHeader, err := db.GetHeadRollupHeader()
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -80,12 +69,6 @@ func (db *DB) GetRollupHash(number *big.Int) (*gethcommon.Hash, error) {
 // GetRollupNumber returns the number of the rollup containing the given transaction hash, or (nil, false) if no such rollup is found.
 func (db *DB) GetRollupNumber(txHash gethcommon.Hash) (*big.Int, error) {
 	return db.readRollupNumber(txHash)
-}
-
-// GetTotalTransactions returns the total number of rolled-up transactions.
-// TODO - #718 - Return number of batched transactions, instead.
-func (db *DB) GetTotalTransactions() (*big.Int, error) {
-	return db.readTotalTransactions()
 }
 
 // headerKey = rollupHeaderPrefix  + hash
@@ -187,15 +170,6 @@ func (db *DB) writeRollupNumber(w ethdb.KeyValueWriter, header *common.Header, t
 	return nil
 }
 
-// Stores the total number of transactions in the database.
-func (db *DB) writeTotalTransactions(w ethdb.KeyValueWriter, newTotal *big.Int) error {
-	err := w.Put(totalTransactionsKey, newTotal.Bytes())
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // Retrieves the hash for the rollup with the given number, or (nil, false) if no such rollup is found.
 func (db *DB) readRollupHash(number *big.Int) (*gethcommon.Hash, error) {
 	f, err := db.kvStore.Has(rollupHashKey(number))
@@ -231,25 +205,6 @@ func (db *DB) readRollupNumber(txHash gethcommon.Hash) (*big.Int, error) {
 	}
 	if len(data) == 0 {
 		return nil, errutil.ErrNotFound
-	}
-	return big.NewInt(0).SetBytes(data), nil
-}
-
-// Retrieves the total number of rolled-up transactions.
-func (db *DB) readTotalTransactions() (*big.Int, error) {
-	f, err := db.kvStore.Has(totalTransactionsKey)
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return big.NewInt(0), nil
-	}
-	data, err := db.kvStore.Get(totalTransactionsKey)
-	if err != nil {
-		return nil, err
-	}
-	if len(data) == 0 {
-		return big.NewInt(0), nil
 	}
 	return big.NewInt(0).SetBytes(data), nil
 }
