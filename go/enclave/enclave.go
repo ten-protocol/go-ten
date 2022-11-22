@@ -318,7 +318,10 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if hs != nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
-		s := e.storage.CreateStateDB(hs.HeadRollup)
+		s, err := e.storage.CreateStateDB(hs.HeadRollup)
+		if err != nil {
+			return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+		}
 		nonce = s.GetNonce(address)
 	}
 
@@ -415,7 +418,10 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We filter out irrelevant logs.
-	txReceipt.Logs = e.subscriptionManager.FilterLogs(txReceipt.Logs, txRollupHash, &sender, &filters.FilterCriteria{})
+	txReceipt.Logs, err = e.subscriptionManager.FilterLogs(txReceipt.Logs, txRollupHash, &sender, &filters.FilterCriteria{})
+	if err != nil {
+		return nil, fmt.Errorf("could not filter logs. Cause: %w", err)
+	}
 
 	// We marshal the receipt to JSON.
 	txReceiptBytes, err := txReceipt.MarshalJSON()
@@ -518,7 +524,11 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 }
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
-	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
+	stateDB, err := e.storage.CreateStateDB(*rollupHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+	return stateDB.GetCode(address), nil
 }
 
 func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) error {

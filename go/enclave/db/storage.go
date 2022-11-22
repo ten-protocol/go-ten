@@ -263,17 +263,19 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 	}
 }
 
-func (s *storageImpl) CreateStateDB(hash common.L2RootHash) *state.StateDB {
+func (s *storageImpl) CreateStateDB(hash common.L2RootHash) (*state.StateDB, error) {
 	rollup, f := s.FetchRollup(hash)
 	if !f {
-		s.logger.Crit("could not retrieve rollup for hash %s", hash.String())
+		return nil, errutil.ErrNotFound
 	}
+
 	// todo - snapshots?
 	statedb, err := state.New(rollup.Header.Root, s.stateDB, nil)
 	if err != nil {
-		s.logger.Crit("could not create state DB. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}
-	return statedb
+
+	return statedb, nil
 }
 
 func (s *storageImpl) EmptyStateDB() *state.StateDB {

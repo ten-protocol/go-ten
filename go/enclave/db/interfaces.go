@@ -63,7 +63,7 @@ type BlockStateStorage interface {
 	// StoreNewHead saves the block state alongside its rollup, receipts and logs.
 	StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log)
 	// CreateStateDB creates a database that can be used to execute transactions
-	CreateStateDB(hash common.L2RootHash) *state.StateDB
+	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
 	EmptyStateDB() *state.StateDB
 }
@@ -89,7 +89,7 @@ type TransactionStorage interface {
 }
 
 type AttestationStorage interface {
-	// FetchAttestedKey returns the public key of an attested aggregator, returns nil if not found
+	// FetchAttestedKey returns the public key of an attested aggregator
 	FetchAttestedKey(aggregator gethcommon.Address) (*ecdsa.PublicKey, error)
 	// StoreAttestedKey - store the public key of an attested aggregator
 	StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey)

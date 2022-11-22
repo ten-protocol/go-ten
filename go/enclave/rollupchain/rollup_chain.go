@@ -427,7 +427,11 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 
 // verifies that the headers of the rollup match the results of executing the transactions
 func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*types.Receipt, error) { //nolint
-	stateDB := rc.storage.CreateStateDB(r.Header.ParentHash)
+	stateDB, err := rc.storage.CreateStateDB(r.Header.ParentHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+
 	// calculate the state to compare with what is in the Rollup
 	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
 	if len(successfulTxs) != len(r.Transactions) {
@@ -582,7 +586,11 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	}
 
 	newRollupTxs = rc.mempool.CurrentTxs(headRollup, rc.storage)
-	newRollupState = rc.storage.CreateStateDB(r.Header.ParentHash)
+	newRollupState, err = rc.storage.CreateStateDB(r.Header.ParentHash)
+	if err != nil {
+		rc.logger.Crit("could not create stateDB", log.ErrKey, err)
+		return nil
+	}
 
 	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, newRollupTxs, newRollupState)
 
@@ -739,10 +747,11 @@ func (rc *RollupChain) GetChainStateAtBlock(blockNumber gethrpc.BlockNumber) (*s
 	}
 
 	// We get that of the chain at that height
-	blockchainState := rc.storage.CreateStateDB(rollup.Hash())
+	blockchainState, err := rc.storage.CreateStateDB(rollup.Hash())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
+
 	if blockchainState == nil {
 		return nil, fmt.Errorf("unable to fetch chain state for rollup %s", rollup.Hash().Hex())
 	}
@@ -788,7 +797,11 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 	}
 
 	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
-	s := rc.storage.CreateStateDB(hs.HeadRollup)
+	s, err := rc.storage.CreateStateDB(hs.HeadRollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+
 	result, err := evm.ExecuteOffChainCall(&callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
