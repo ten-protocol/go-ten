@@ -16,6 +16,8 @@ type MainNetMessageExtractor interface {
 	ProcessCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error
 
 	GetBusAddress() *common.L1Address
+
+	Enabled() bool
 }
 
 type ObscuroCrossChainManager interface {

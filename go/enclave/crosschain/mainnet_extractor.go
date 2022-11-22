@@ -28,10 +28,14 @@ func NewMainNetExtractor(busAddress *common.L1Address, l2BusAddress *common.L2Ad
 	}
 }
 
+func (m *mainNetExtractor) Enabled() bool {
+	return m.GetBusAddress().Hash().Big().Cmp(gethcommon.Big0) != 0
+}
+
 func (m *mainNetExtractor) ProcessCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error {
 	areReceiptsValid := VerifyReceiptHash(block, receipts)
 
-	if !areReceiptsValid {
+	if !areReceiptsValid && m.Enabled() {
 		m.logger.Error("[CrossChain] Invalid receipts submitted", "block", common.ShortHash(block.Hash()))
 		return fmt.Errorf("receipts do not match the receipt root for the block")
 	}

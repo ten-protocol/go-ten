@@ -151,7 +151,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: No deposits", nodeIdx)
 	}
 
-	if totalDepositedLogged.Cmp(totalDeposited) != 0 {
+	if totalDepositedLogged != nil && totalDepositedLogged.Cmp(totalDeposited) != 0 {
 		t.Errorf("Node %d: Logged deposits do not match extracted deposits from bridge. Events logged %d; Deposit count %d", nodeIdx, eventCount, len(deposits))
 	}
 
@@ -183,6 +183,11 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 }
 
 func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation) (*big.Int, uint64) {
+
+	client := node.EthClient()
+	if client == nil {
+		return nil, 0
+	}
 
 	contractABI, err := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
 	if err != nil {

@@ -57,6 +57,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			l1Clients[i],
 			params.Wallets,
 			p2pLayers[i],
+			params.MessageBusAddr,
 		)
 	}
 	// make sure the aggregators can talk to each other

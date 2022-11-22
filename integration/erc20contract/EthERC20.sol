@@ -61,13 +61,16 @@ contract EthERC20 is ERC20 {
     )  ERC20(name, symbol) {
         bus = IMessageBus(l1MessageBus);
         target = managementContract;
-
-        //bus.publishMessage(uint32(block.number), uint32(Topics.MINT), abi.encodePacked(initialSupply), 0);
         _mint(msg.sender, initialSupply);
     }
 
     function _beforeTokenTransfer(address from, address to, uint256 amount)
     internal virtual override {
+        //Only if message bus is configured.
+        if (address(bus) == address(0x0)) {
+            return;
+        }
+
         //Only deposit messages.
         if (to == target) { 
             AssetTransferMessage memory message = AssetTransferMessage(from, to, amount);

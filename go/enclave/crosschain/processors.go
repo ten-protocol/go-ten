@@ -25,3 +25,7 @@ func NewCrossChainProcessors(
 	processors.RemoteManager = NewMainNetExtractor(l1BusAddress, processors.LocalManager.GetBusAddress(), storage, logger)
 	return &processors
 }
+
+func (c *CrossChainProcessors) Enabled() bool {
+	return c.RemoteManager.Enabled()
+}

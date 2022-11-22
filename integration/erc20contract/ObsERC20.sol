@@ -64,6 +64,10 @@ contract ObsERC20 is ERC20 {
     function _beforeTokenTransfer(address from, address to, uint256 amount)
     internal virtual override {
         //Only deposit messages.
+        if (address(bus) == address(0x0)) {
+            return;
+        }
+
         if (to == bridge) { 
             AssetTransferMessage memory message = AssetTransferMessage(from, to, amount);
             uint64 sequence = bus.publishMessage(uint32(block.number), uint32(Topics.TRANSFER), abi.encode(message), 0);

@@ -518,7 +518,7 @@ func (rc *RollupChain) SubmitBlock(block types.Block, receipts types.Receipts, i
 		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
 	}
 
-	if !crosschain.VerifyReceiptHash(&block, receipts) {
+	if rc.crossChainProcessors.Enabled() && !crosschain.VerifyReceiptHash(&block, receipts) {
 		return nil, rc.rejectBlockErr(errors.New("receipts do not match receipt_root in block"))
 	}
 

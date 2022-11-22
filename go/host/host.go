@@ -5,20 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
-	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/host/events"
@@ -799,16 +794,6 @@ func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 func (h *host) extractReceipts(block *types.Block) types.Receipts {
 	receipts := make(types.Receipts, 0)
 
-	mgt, _ := ManagementContract.NewManagementContract(*h.mgmtContractLib.GetContractAddr(), h.ethClient.EthClient())
-
-	busAddr, err := mgt.MessageBus(&bind.CallOpts{})
-	if err != nil {
-		h.logger.Crit("WHat")
-	}
-
-	//busCtr, _ := MessageBus.NewMessageBus(busAddr, h.ethClient.EthClient())
-	contractAbi, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-
 	for _, transaction := range block.Transactions() {
 		receipt, err := h.ethClient.TransactionReceipt(transaction.Hash())
 
@@ -817,29 +802,9 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 			continue
 		}
 
-		relevantLogs := 0
-		for _, log := range receipt.Logs {
-			if contractAbi.Events["LogMessagePublished"].ID == log.Topics[0] {
-				relevantLogs++
-				continue
-			}
-
-			if log.Address.Hex() == busAddr.Hex() {
-				relevantLogs++
-				continue
-			}
-		}
-
-		/*if relevantLogs == 0 {
-			break
-		}*/
-
-		if relevantLogs > 0 {
-			h.logger.Trace(fmt.Sprintf("[CrossChain] Adding receipt for block %d, TX: %d  with %d relevant logs",
-				common.ShortHash(block.Hash()),
-				common.ShortHash(transaction.Hash()),
-				relevantLogs))
-		}
+		h.logger.Trace(fmt.Sprintf("[CrossChain] Adding receipt for block %d, TX: %d",
+			common.ShortHash(block.Hash()),
+			common.ShortHash(transaction.Hash())))
 
 		receipts = append(receipts, receipt)
 	}
