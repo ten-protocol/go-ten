@@ -131,7 +131,7 @@ func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) {
 	obscurorawdb.WriteSharedSecret(s.db, secret, s.logger)
 }
 
-func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, bool) {
+func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 	return obscurorawdb.ReadSharedSecret(s.db)
 }
 

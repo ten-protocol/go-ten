@@ -69,8 +69,8 @@ type BlockStateStorage interface {
 }
 
 type SharedSecretStorage interface {
-	// FetchSecret returns the enclave's secret, returns (nil, false) if not found
-	FetchSecret() (*crypto.SharedEnclaveSecret, bool)
+	// FetchSecret returns the enclave's secret.
+	FetchSecret() (*crypto.SharedEnclaveSecret, error)
 	// StoreSecret stores a secret in the enclave
 	StoreSecret(secret crypto.SharedEnclaveSecret)
 }
