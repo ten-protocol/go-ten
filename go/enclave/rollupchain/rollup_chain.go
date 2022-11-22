@@ -253,7 +253,10 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
 	}
-	rc.storage.StoreNewHead(blockState, head, receipts, logs)
+	err := rc.storage.StoreNewHead(blockState, head, receipts, logs)
+	if err != nil {
+		rc.logger.Crit("Could not store new head.", log.ErrKey, err)
+	}
 
 	return blockState
 }
@@ -274,8 +277,12 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
 		}
-		rc.storage.StoreNewHead(&bs, genesis, nil, []*types.Log{})
-		err := rc.faucet.CalculateGenesisState(rc.storage)
+		err := rc.storage.StoreNewHead(&bs, genesis, nil, []*types.Log{})
+		if err != nil {
+			return nil, false
+		}
+
+		err = rc.faucet.CalculateGenesisState(rc.storage)
 		if err != nil {
 			return nil, false
 		}
@@ -786,9 +793,9 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
 	}
 
-	hs := rc.storage.FetchHeadState()
-	if hs == nil {
-		return nil, fmt.Errorf("unable to fetch head state")
+	hs, err := rc.storage.FetchHeadState()
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch head state. Cause: %w", err)
 	}
 	// todo - get the parent
 	r, f := rc.storage.FetchRollup(hs.HeadRollup)
@@ -862,9 +869,12 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
-		rollupHash := rc.storage.FetchHeadState().HeadRollup
+		headState, err := rc.storage.FetchHeadState()
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve head state. Cause: %w", err)
+		}
 		var found bool
-		rollup, found = rc.storage.FetchRollup(rollupHash)
+		rollup, found = rc.storage.FetchRollup(headState.HeadRollup)
 		if !found {
 			return nil, fmt.Errorf("rollup with requested height %d was not found", height)
 		}

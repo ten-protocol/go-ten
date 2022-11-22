@@ -240,7 +240,7 @@ func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, bool) {
 	return nil, false
 }
 
-func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) {
+func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error {
 	batch := s.db.NewBatch()
 
 	if state.FoundNewRollup {
@@ -259,8 +259,9 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 	rawdb.WriteHeadHeaderHash(batch, state.Block)
 
 	if err := batch.Write(); err != nil {
-		s.logger.Crit("could not save new head. ", log.ErrKey, err)
+		return fmt.Errorf("could not save new head. Cause: %w", err)
 	}
+	return nil
 }
 
 func (s *storageImpl) CreateStateDB(hash common.L2RootHash) (*state.StateDB, error) {
@@ -286,13 +287,18 @@ func (s *storageImpl) EmptyStateDB() *state.StateDB {
 	return statedb
 }
 
-func (s *storageImpl) FetchHeadState() *core.BlockState {
+func (s *storageImpl) FetchHeadState() (*core.BlockState, error) {
 	h := rawdb.ReadHeadHeaderHash(s.db)
 	if (bytes.Equal(h.Bytes(), gethcommon.Hash{}.Bytes())) {
-		s.logger.Error("could not read head header hash from storage")
-		return nil
+		return nil, errutil.ErrNotFound
 	}
-	return obscurorawdb.ReadBlockState(s.db, h, s.logger)
+
+	blockState := obscurorawdb.ReadBlockState(s.db, h, s.logger)
+	if blockState == nil {
+		return nil, fmt.Errorf("could not retrieve block state for head")
+	}
+
+	return obscurorawdb.ReadBlockState(s.db, h, s.logger), nil
 }
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.

@@ -58,10 +58,10 @@ type BlockStateStorage interface {
 	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, bool)
 	// FetchLogs returns the block's logs, or (nil, false) if no such block was found.
 	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, bool)
-	// FetchHeadState returns the head block state. Returns nil if nothing recorded yet
-	FetchHeadState() *core.BlockState
+	// FetchHeadState returns the head block state.
+	FetchHeadState() (*core.BlockState, error)
 	// StoreNewHead saves the block state alongside its rollup, receipts and logs.
-	StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log)
+	StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
