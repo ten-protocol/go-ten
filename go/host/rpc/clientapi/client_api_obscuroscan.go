@@ -39,16 +39,6 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 	return blockHeader, nil
 }
 
-// GetHeadRollupHeader returns the current head rollup's header.
-// TODO - #718 - Switch to retrieving head batch header.
-func (api *ObscuroScanAPI) GetHeadRollupHeader() (*common.Header, error) {
-	header, err := api.host.DB().GetHeadRollupHeader()
-	if err != nil {
-		return nil, err
-	}
-	return header, nil
-}
-
 // GetRollup returns the rollup with the given hash. Unlike `EthereumAPI.GetBlockByHash()`, returns the full
 // `ExtRollup`, and not just the header.
 // TODO - #718 - Switch to retrieving batch.
