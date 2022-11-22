@@ -233,12 +233,12 @@ func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState,
 	return bs, nil
 }
 
-func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, bool) {
+func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
 	logs := obscurorawdb.ReadBlockLogs(s.db, hash, s.logger)
-	if logs != nil {
-		return logs, true
+	if logs == nil {
+		return nil, errutil.ErrNotFound
 	}
-	return nil, false
+	return logs, nil
 }
 
 func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error {

@@ -2,9 +2,12 @@ package events
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -129,9 +132,12 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 	// We gather the logs across all the blocks in the canonical chain.
 	logs := []*types.Log{}
 	for _, hash := range blockHashes {
-		blockLogs, found := s.storage.FetchLogs(hash)
-		if !found {
-			break // Blocks before the genesis rollup do not have associated logs (or block state).
+		blockLogs, err := s.storage.FetchLogs(hash)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				break // Blocks before the genesis rollup do not have associated logs (or block state).
+			}
+			return nil, fmt.Errorf("could not fetch logs for block hash. Cause: %w", err)
 		}
 		logs = append(logs, blockLogs...)
 	}

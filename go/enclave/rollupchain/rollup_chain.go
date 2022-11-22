@@ -523,8 +523,8 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 	}
 
 	logs := []*types.Log{}
-	fetchedLogs, found := rc.storage.FetchLogs(block.Hash())
-	if found {
+	fetchedLogs, err := rc.storage.FetchLogs(block.Hash())
+	if err == nil {
 		logs = fetchedLogs
 	} else {
 		rc.logger.Error("Could not retrieve logs for stored block state. Returning no logs")
