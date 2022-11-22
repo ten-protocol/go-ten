@@ -76,7 +76,7 @@ type host struct {
 	stopHostInterrupt     *int32
 	bootstrappingComplete *int32 // Marks when the host is done bootstrapping
 
-	l1BlockRPCCh chan blockAndParent          // The channel that new blocks from the L1 node are sent to
+	l1BlockRPCCh chan l1BlockAndParent        // The channel that new blocks from the L1 node are sent to
 	forkRPCCh    chan []common.EncodedL1Block // The channel that new forks from the L1 node are sent to
 	txP2PCh      chan common.EncryptedTx      // The channel that new transactions from peers are sent to
 	batchP2PCh   chan common.EncodedBatch     // The channel that new batches from peers are sent to
@@ -109,7 +109,7 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		bootstrappingComplete: new(int32),
 
 		// incoming data
-		l1BlockRPCCh: make(chan blockAndParent),
+		l1BlockRPCCh: make(chan l1BlockAndParent),
 		forkRPCCh:    make(chan []common.EncodedL1Block),
 		txP2PCh:      make(chan common.EncryptedTx),
 		batchP2PCh:   make(chan common.EncodedBatch),
@@ -211,16 +211,16 @@ func (h *host) Start() {
 	go h.monitorBlocks()
 
 	// bootstrap the host
-	latestBlock := h.bootstrapHost()
+	latestL1Block := h.bootstrapHost()
 
-	// start the enclave speculative work from last block
-	err = h.enclaveClient.Start(latestBlock)
+	// start the enclave speculative work from last L1 block
+	err = h.enclaveClient.Start(latestL1Block)
 	if err != nil {
 		h.logger.Crit("Could not start the enclave.", log.ErrKey, err.Error())
 	}
 
 	if h.config.IsGenesis {
-		_, err = h.initialiseProtocol(&latestBlock)
+		_, err = h.initialiseProtocol(&latestL1Block)
 		if err != nil {
 			h.logger.Crit("Could not bootstrap.", log.ErrKey, err.Error())
 		}
@@ -284,7 +284,7 @@ func (h *host) EnclaveClient() common.Enclave {
 }
 
 func (h *host) MockedNewHead(b common.EncodedL1Block, p common.EncodedL1Block) {
-	h.l1BlockRPCCh <- blockAndParent{b, p}
+	h.l1BlockRPCCh <- l1BlockAndParent{b, p}
 }
 
 func (h *host) MockedNewFork(b []common.EncodedL1Block) {
@@ -409,9 +409,9 @@ func (h *host) startProcessing() { //nolint:gocognit
 	// - Process new Transactions gossiped from L2 Peers
 	for {
 		select {
-		case b := <-h.l1BlockRPCCh:
+		case blockAndParent := <-h.l1BlockRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			err := h.processL1Block(b.p, false)
+			err := h.processL1Block(blockAndParent.parent, false)
 			if err != nil {
 				var rejErr *common.BlockRejectError
 				if errors.As(err, &rejErr) {
@@ -421,7 +421,7 @@ func (h *host) startProcessing() { //nolint:gocognit
 					h.logger.Info("Could not process parent block. ", log.ErrKey, err)
 				}
 			}
-			err = h.processL1Block(b.b, true)
+			err = h.processL1Block(blockAndParent.block, true)
 			if err != nil {
 				var rejErr *common.BlockRejectError
 				if errors.As(err, &rejErr) {
@@ -465,30 +465,30 @@ func triggerInterrupt(interrupt *int32) *int32 {
 	return &i
 }
 
-type blockAndParent struct {
-	b common.EncodedL1Block
-	p common.EncodedL1Block
+type l1BlockAndParent struct {
+	block  common.EncodedL1Block
+	parent common.EncodedL1Block
 }
 
 func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) error {
-	var result *common.BlockSubmissionResponse
-
 	// For the genesis block the parent is nil
 	if block == nil {
 		return nil
 	}
 
-	decoded, err := block.DecodeBlock()
+	var result *common.BlockSubmissionResponse
+
+	decodedBlock, err := block.DecodeBlock()
 	if err != nil {
 		return err
 	}
-	h.processL1BlockTransactions(decoded)
+	h.processL1BlockTransactions(decodedBlock)
 
 	// submit each block to the enclave for ingestion plus validation
 	// todo: isLatest should only be true when we're not behind
-	result, err = h.enclaveClient.SubmitL1Block(*decoded, isLatestBlock)
+	result, err = h.enclaveClient.SubmitL1Block(*decodedBlock, isLatestBlock)
 	if err != nil {
-		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
+		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decodedBlock.Hash()), err)
 	}
 
 	err = h.storeBlockProcessingResult(result)
@@ -914,7 +914,7 @@ func (h *host) encodeAndIngest(block *types.Block, blockParent *types.Block) err
 		return fmt.Errorf("could not encode block's parent with hash %s. Cause: %w", block.ParentHash().String(), err)
 	}
 
-	h.l1BlockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
+	h.l1BlockRPCCh <- l1BlockAndParent{encodedBlock, encodedBlockParent}
 	return nil
 }
 
