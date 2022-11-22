@@ -12,7 +12,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
 func ReadAttestationKey(db ethdb.KeyValueReader, address gethcommon.Address) (*ecdsa.PublicKey, error) {
@@ -32,8 +31,9 @@ func ReadAttestationKey(db ethdb.KeyValueReader, address gethcommon.Address) (*e
 	return publicKey, nil
 }
 
-func WriteAttestationKey(db ethdb.KeyValueWriter, address gethcommon.Address, key *ecdsa.PublicKey, logger gethlog.Logger) {
+func WriteAttestationKey(db ethdb.KeyValueWriter, address gethcommon.Address, key *ecdsa.PublicKey, logger gethlog.Logger) error {
 	if err := db.Put(attestationPkKey(address), crypto.CompressPubkey(key)); err != nil {
-		logger.Crit("Failed to store the attested key. ", log.ErrKey, err)
+		return fmt.Errorf("could not write attestation key. Cause: %w", err)
 	}
+	return nil
 }

@@ -92,7 +92,7 @@ type AttestationStorage interface {
 	// FetchAttestedKey returns the public key of an attested aggregator
 	FetchAttestedKey(aggregator gethcommon.Address) (*ecdsa.PublicKey, error)
 	// StoreAttestedKey - store the public key of an attested aggregator
-	StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey)
+	StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore

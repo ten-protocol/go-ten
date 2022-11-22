@@ -515,7 +515,10 @@ func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse public key %w", err)
 	}
-	e.storage.StoreAttestedKey(att.Owner, key)
+	err = e.storage.StoreAttestedKey(att.Owner, key)
+	if err != nil {
+		return fmt.Errorf("could not store attested key. Cause: %w", err)
+	}
 	return nil
 }
 

@@ -355,6 +355,6 @@ func (s *storageImpl) FetchAttestedKey(aggregator gethcommon.Address) (*ecdsa.Pu
 	return obscurorawdb.ReadAttestationKey(s.db, aggregator)
 }
 
-func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) {
-	obscurorawdb.WriteAttestationKey(s.db, aggregator, key, s.logger)
+func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error {
+	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key, s.logger)
 }
