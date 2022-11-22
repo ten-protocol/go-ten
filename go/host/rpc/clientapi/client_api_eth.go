@@ -38,17 +38,17 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 	return (*hexutil.Big)(big.NewInt(api.host.Config().ObscuroChainID)), nil
 }
 
-// BlockNumber returns the height of the current head rollup.
-// # TODO - #718 - Switch to returning height based on current batch.
+// BlockNumber returns the height of the current head batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	header, err := api.host.DB().GetHeadRollupHeader()
+	header, err := api.host.DB().GetHeadBatchHeader()
 	if err != nil {
 		// This error may be nefarious, but unfortunately the Eth API doesn't allow us to return an error.
 		api.logger.Error("could not retrieve head rollup header", log.ErrKey, err)
 		return 0
 	}
 
-	number := header.Number.Uint64()
+	// TODO - #718 - Temp fix due to off-by-one error in `writeRollupNumber`.
+	number := header.Number.Uint64() - 1
 	return hexutil.Uint64(number)
 }
 
@@ -62,23 +62,22 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 	return gethcommon.Bytes2Hex(encryptedBalance), nil
 }
 
-// GetBlockByNumber returns the header of the rollup with the given height.
+// GetBlockByNumber returns the header of the batch with the given height.
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
-	rollupHash, err := api.rollupNumberToRollupHash(number)
+	batchHash, err := api.batchNumberToBatchHash(number)
 	if err != nil {
 		return nil, fmt.Errorf("could not find rollup with height %d. Cause: %w", number, err)
 	}
-	return api.GetBlockByHash(ctx, *rollupHash, true)
+	return api.GetBlockByHash(ctx, *batchHash, true)
 }
 
-// GetBlockByHash returns the header of the rollup with the given hash.
-// TODO - #718 - Switch to retrieving batch header.
+// GetBlockByHash returns the header of the batch with the given hash.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
-	rollupHeader, err := api.host.DB().GetRollupHeader(hash)
+	batchHeader, err := api.host.DB().GetBatchHeader(hash)
 	if err != nil {
 		return nil, err
 	}
-	return headerToMap(rollupHeader), nil
+	return headerToMap(batchHeader), nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -226,7 +225,33 @@ type FeeHistoryResult struct {
 	GasUsedRatio []float64        `json:"gasUsedRatio"`
 }
 
-// TODO - #718 - Switch to converting block number to batch hash.
+// Given a batch number, returns the hash of the batch with that number.
+func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
+	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
+	if batchNumber == rpc.LatestBlockNumber {
+		batchHeader, err := api.host.DB().GetHeadBatchHeader()
+		if err != nil {
+			return nil, err
+		}
+		batchHash := batchHeader.Hash()
+		return &batchHash, nil
+	}
+
+	if batchNumber == rpc.PendingBlockNumber {
+		// todo Dependent on the current pending batch - leaving it for a different iteration as it will need more thought
+		return nil, errutil.ErrNoImpl
+	}
+
+	batchNumberBig := big.NewInt(batchNumber.Int64())
+	batchHash, err := api.host.DB().GetBatchHash(batchNumberBig)
+	if err != nil {
+		return nil, err
+	}
+	return batchHash, nil
+}
+
+// Given a rollup number, returns the hash of the rollup with that number.
+// TODO - #718 - Remove this once RPC methods are based on batches.
 func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
 	if blockNumber == rpc.LatestBlockNumber {

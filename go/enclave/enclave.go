@@ -234,12 +234,10 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubm
 func (e *enclaveImpl) SubmitBlock(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	bsr, err := e.chain.SubmitBlock(block, receipts, isLatest)
 	if err != nil {
-		e.logger.Trace("SubmitBlock failed",
-			"blk", block.Number(), "blkHash", block.Hash(), "err", err)
+		e.logger.Trace("SubmitBlock failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, err
 	}
-	e.logger.Trace("SubmitBlock successful",
-		"blk", block.Number(), "blkHash", block.Hash())
+	e.logger.Trace("SubmitBlock successful", "blk", block.Number(), "blkHash", block.Hash())
 
 	if bsr.IngestedRollupHeader != nil {
 		hr, f := e.storage.FetchRollup(bsr.IngestedRollupHeader.Hash())

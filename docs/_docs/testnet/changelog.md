@@ -22,6 +22,9 @@
   * The [Obscuro docs site](https://docs.obscu.ro/) is now searchable. 
   * Testnet is now officially termed `Evan's Cat`.
 
+* ObscuroScan:
+  * ObscuroScan supports a single API at [/rollup/](http://testnet.obscuroscan.io/rollup/) which allows web clients to access a JSON representation of rollups and encrypted transactions. Further details [here](https://docs.obscu.ro/testnet/obscuroscan.html)
+
 ## October 2022-10-21 (v0.5)
 * Event Subscriptions:
   * Event subscriptions for logs are now supported via the eth_subscribe and eth_getLogs approaches. This has been 

@@ -9,8 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
+
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 
 	"github.com/obscuronet/go-obscuro/go/common/retry"
@@ -82,6 +84,7 @@ type host struct {
 	blockRPCCh chan blockAndParent        // The channel that new blocks from the L1 node are sent to
 	forkRPCCh  chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
 	txP2PCh    chan common.EncryptedTx    // The channel that new transactions from peers are sent to
+	batchP2PCh chan common.EncodedBatch   // The channel that new batches from peers are sent to
 
 	db *db.DB // Stores the host's publicly-available data
 
@@ -114,6 +117,7 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		blockRPCCh: make(chan blockAndParent),
 		forkRPCCh:  make(chan []common.EncodedBlock),
 		txP2PCh:    make(chan common.EncryptedTx),
+		batchP2PCh: make(chan common.EncodedBatch),
 
 		// Initialize the host DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -313,6 +317,11 @@ func (h *host) ReceiveTx(tx common.EncryptedTx) {
 	h.txP2PCh <- tx
 }
 
+// ReceiveBatch receives a new batch
+func (h *host) ReceiveBatch(batch common.EncodedBatch) {
+	h.batchP2PCh <- batch
+}
+
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
 	err := h.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
@@ -442,6 +451,11 @@ func (h *host) startProcessing() { //nolint:gocognit
 				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
 			}
 
+		case batch := <-h.batchP2PCh:
+			if err := h.handleBatch(&batch); err != nil {
+				h.logger.Warn("Could not handle batch. ", log.ErrKey, err)
+			}
+
 		case <-h.exitHostCh:
 			return
 		}
@@ -552,8 +566,16 @@ func (h *host) publishRollup(producedRollup common.ExtRollup) {
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
 func (h *host) distributeBatch(producedRollup common.ExtRollup) {
-	// TODO - #718 - Store batch
-	// TODO - #718 - Distribute batch
+	batch := common.ExtBatch{
+		Header:          producedRollup.Header,
+		TxHashes:        producedRollup.TxHashes,
+		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
+	}
+
+	err := h.p2p.BroadcastBatch(&batch)
+	if err != nil {
+		h.logger.Error("could not broadcast batch", log.ErrKey, err)
+	}
 }
 
 func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) error {
@@ -562,6 +584,16 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 		// adding a header will update the head if it has a higher height
 		// TODO - Fix bug here where tx hashes are being stored against the wrong rollup.
 		err := h.db.AddRollupHeader(result.IngestedRollupHeader, result.ProducedRollup.TxHashes)
+		if err != nil {
+			return err
+		}
+
+		batch := common.ExtBatch{
+			Header:          result.IngestedRollupHeader,
+			TxHashes:        result.ProducedRollup.TxHashes,
+			EncryptedTxBlob: result.ProducedRollup.EncryptedTxBlob,
+		}
+		err = h.db.AddBatchHeader(batch.Header, batch.TxHashes)
 		if err != nil {
 			return err
 		}
@@ -1043,6 +1075,24 @@ func (h *host) checkBlockForSecretResponse(block *types.Block) bool {
 	}
 	// response not found
 	return false
+}
+
+// Handles an incoming batch.
+func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
+	batch := common.ExtBatch{}
+	err := rlp.DecodeBytes(*encodedBatch, &batch)
+	if err != nil {
+		return fmt.Errorf("could not decode batch using RLP. Cause: %w", err)
+	}
+
+	// TODO - #718 - Have the enclave process batch, so that it's up to date.
+
+	err = h.db.AddBatchHeader(batch.Header, batch.TxHashes)
+	if err != nil {
+		return fmt.Errorf("could not store batch header. Cause: %w", err)
+	}
+
+	return nil
 }
 
 // Checks the host config is valid.

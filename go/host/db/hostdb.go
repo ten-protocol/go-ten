@@ -20,6 +20,7 @@ var (
 	headBatch            = []byte("hba")
 	blockHeaderPrefix    = []byte("b")
 	batchHeaderPrefix    = []byte("ba")
+	batchHashPrefix      = []byte("bh")
 	rollupHeaderPrefix   = []byte("r")
 	rollupTxHashesPrefix = []byte("rt")
 	rollupHashPrefix     = []byte("rh")
