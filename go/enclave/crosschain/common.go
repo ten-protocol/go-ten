@@ -58,6 +58,10 @@ func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address
 	logs := make([]types.Log, 0)
 
 	for _, receipt := range receipts {
+		if receipt.Status == 0 {
+			continue
+		}
+
 		logsForReceipt, err := filterLogsFromReceipt(receipt, address, topic)
 		if err != nil {
 			return logs, err

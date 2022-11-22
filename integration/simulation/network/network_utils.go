@@ -94,7 +94,7 @@ func createInMemObscuroNode(
 		UseInMemoryDB:          true,
 		ERC20ContractAddresses: wallets.AllEthAddresses(),
 		MinGasPrice:            big.NewInt(1),
-		MessageBusAddresses:    &l1BusAddress,
+		MessageBusAddress:      l1BusAddress,
 	}
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, enclaveLogger)

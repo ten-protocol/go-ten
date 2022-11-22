@@ -189,7 +189,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 			UseInMemoryDB:          false,
 			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
 			MinGasPrice:            big.NewInt(1),
-			MessageBusAddresses:    params.MessageBusAddr,
+			MessageBusAddress:      *params.MessageBusAddr,
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
 		_, err := rpc2.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)

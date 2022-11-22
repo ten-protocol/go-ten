@@ -112,7 +112,13 @@ func TestManagementContract(t *testing.T) {
 
 // nonAttestedNodesCannotCreateRollup issues a rollup from a node that did not receive the secret network key
 func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
-	rollup := datagenerator.RandomRollup()
+	block, ok := client.FetchHeadBlock()
+	if !ok {
+		t.Error("Failed retrieving head block")
+	}
+
+	rollup := datagenerator.RandomRollup(block)
+
 	encodedRollup, err := common.EncodeRollup(&rollup)
 	if err != nil {
 		t.Error(err)
@@ -181,7 +187,13 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 
 // attestedNodesCreateRollup attests a node by issuing a InitializeNetworkSecret, issues a rollups from the same node and verifies the rollup was stored
 func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
-	rollup := datagenerator.RandomRollup()
+
+	block, ok := client.FetchHeadBlock()
+	if !ok {
+		t.Error("Failed retrieving head block")
+	}
+
+	rollup := datagenerator.RandomRollup(block)
 	requesterID := &rollup.Header.Agg
 
 	// the aggregator starts the network
@@ -567,8 +579,13 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 		t.Error("expected agg to be attested")
 	}
 
+	block, ok := client.FetchHeadBlock()
+	if !ok {
+		t.Error("Failed retrieving head block")
+	}
+
 	// Issue a genesis rollup
-	rollup := datagenerator.RandomRollup()
+	rollup := datagenerator.RandomRollup(block)
 	rollup.Header.Agg = aggAID
 
 	err = mgmtContractLib.AwaitedIssueRollup(rollup, client, w)
@@ -581,7 +598,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	parentRollup := rollup
 	for i := 0; i < 3; i++ {
 		// issue rollup - make sure it comes from the attested aggregator
-		r := datagenerator.RandomRollup()
+		r := datagenerator.RandomRollup(block)
 		r.Header.Agg = aggAID
 		r.Header.ParentHash = parentRollup.Header.Hash()
 
@@ -599,7 +616,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	// inserts a fork ( two rollups at same height / same parent )
 	splitPoint := make([]common.ExtRollup, 2)
 	for i := 0; i < 2; i++ {
-		r := datagenerator.RandomRollup()
+		r := datagenerator.RandomRollup(block)
 		r.Header.Agg = aggAID
 
 		// same parent
@@ -619,7 +636,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	// create the fork
 	forks := make([]common.ExtRollup, 2)
 	for i, parentRollup := range splitPoint {
-		r := datagenerator.RandomRollup()
+		r := datagenerator.RandomRollup(block)
 		r.Header.Agg = aggAID
 		r.Header.ParentHash = parentRollup.Header.Hash()
 
@@ -645,7 +662,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	// lock the contract
 	parentRollup = forks[1]
 
-	r := datagenerator.RandomRollup()
+	r := datagenerator.RandomRollup(block)
 	r.Header.Agg = aggAID
 	r.Header.ParentHash = parentRollup.Header.Hash()
 
