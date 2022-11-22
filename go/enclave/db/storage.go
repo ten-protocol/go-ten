@@ -225,12 +225,12 @@ func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 	return v
 }
 
-func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, bool) {
-	bs := obscurorawdb.ReadBlockState(s.db, hash, s.logger)
-	if bs != nil {
-		return bs, true
+func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, error) {
+	bs, err := obscurorawdb.ReadBlockState(s.db, hash)
+	if err != nil {
+		return nil, err
 	}
-	return nil, false
+	return bs, nil
 }
 
 func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, bool) {
@@ -294,12 +294,12 @@ func (s *storageImpl) FetchHeadState() (*core.BlockState, error) {
 		return nil, errutil.ErrNotFound
 	}
 
-	blockState := obscurorawdb.ReadBlockState(s.db, h, s.logger)
-	if blockState == nil {
-		return nil, fmt.Errorf("could not retrieve block state for head")
+	blockState, err := obscurorawdb.ReadBlockState(s.db, h)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve block state for head. Cause: %w", err)
 	}
 
-	return obscurorawdb.ReadBlockState(s.db, h, s.logger), nil
+	return blockState, nil
 }
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.

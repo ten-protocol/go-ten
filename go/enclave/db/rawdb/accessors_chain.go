@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -179,16 +181,16 @@ func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState, logger gethlo
 	}
 }
 
-func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Logger) *core.BlockState {
+func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) (*core.BlockState, error) {
 	data, _ := kv.Get(blockStateKey(hash))
 	if data == nil {
-		return nil
+		return nil, errutil.ErrNotFound
 	}
 	bs := new(core.BlockState)
 	if err := rlp.Decode(bytes.NewReader(data), bs); err != nil {
-		logger.Crit("could not decode block state. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not decode block state. Cause: %w", err)
 	}
-	return bs
+	return bs, nil
 }
 
 func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log, logger gethlog.Logger) {
