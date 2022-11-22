@@ -159,6 +159,13 @@ func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscripti
 	return ch, sub
 }
 
+func (e *gethRPCClient) BlockNumber() (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	return e.client.BlockNumber(ctx)
+}
+
 func (e *gethRPCClient) BlockByNumber(n *big.Int) (*types.Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()

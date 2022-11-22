@@ -77,11 +77,6 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.SendRawTransaction:
 		return c.sendRawTransaction(args)
 
-	case rpc.BlockNumber:
-		var err error
-		*result.(*hexutil.Uint64), err = c.testAPI.BlockNumber()
-		return err
-
 	case rpc.GetTransactionByHash:
 		return c.getTransactionByHash(result, args)
 
