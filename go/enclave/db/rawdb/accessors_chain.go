@@ -21,25 +21,28 @@ import (
 // todo - all the function in this file should return an error, which must be handled by the caller
 // once that is done, the logger parameter should be removed
 
-func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Logger) *core.Rollup {
-	height := ReadHeaderNumber(db, hash)
-	if height == nil {
-		return nil
+func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Logger) (*core.Rollup, error) {
+	height, err := ReadHeaderNumber(db, hash)
+	if err != nil {
+		return nil, err
 	}
 	return &core.Rollup{
 		Header:       ReadHeader(db, hash, *height, logger),
 		Transactions: ReadBody(db, hash, *height, logger),
-	}
+	}, nil
 }
 
 // ReadHeaderNumber returns the header number assigned to a hash.
-func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) *uint64 {
-	data, _ := db.Get(headerNumberKey(hash))
+func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, error) {
+	data, err := db.Get(headerNumberKey(hash))
+	if err != nil {
+		return nil, err
+	}
 	if len(data) != 8 {
-		return nil
+		return nil, fmt.Errorf("header number bytes had wrong length")
 	}
 	number := binary.BigEndian.Uint64(data)
-	return &number
+	return &number, nil
 }
 
 func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup, logger gethlog.Logger) {
@@ -136,13 +139,17 @@ func ReadBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64, l
 	return data
 }
 
-func ReadRollupsForHeight(db ethdb.Database, number uint64, logger gethlog.Logger) []*core.Rollup {
+func ReadRollupsForHeight(db ethdb.Database, number uint64, logger gethlog.Logger) ([]*core.Rollup, error) {
 	hashes := ReadAllHashes(db, number)
 	rollups := make([]*core.Rollup, len(hashes))
 	for i, hash := range hashes {
-		rollups[i] = ReadRollup(db, hash, logger)
+		rollup, err := ReadRollup(db, hash, logger)
+		if err != nil {
+			return nil, err
+		}
+		rollups[i] = rollup
 	}
-	return rollups
+	return rollups, nil
 }
 
 // ReadAllHashes retrieves all the hashes assigned to blocks at a certain heights,
