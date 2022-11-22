@@ -3,7 +3,7 @@
 # Obscuro Testnet Change Log
 
 ## November 2022-11-22 (v0.7)
-  * Fixes for stability related issues with minimum change relevant to external users. 
+  * A variety of stability related issues are fixed within this release. 
   * Inclusion of a health endpoint for system status monitoring. 
   * It is now possible to run an Obscuroscan against a locally deployed testnet. For more information see 
     [building and running a local testnet](https://github.com/obscuronet/go-obscuro/blob/main/README.md#building-and-running-a-local-testnet) 
