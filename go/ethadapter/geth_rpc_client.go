@@ -136,7 +136,7 @@ func (e *gethRPCClient) Nonce(account gethcommon.Address) (uint64, error) {
 }
 
 func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscription) {
-	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// this channel holds blocks that have been received from the geth network but not yet processed by the host,
