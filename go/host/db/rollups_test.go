@@ -166,31 +166,6 @@ func TestUnknownRollupTxHashReturnsNotFound(t *testing.T) {
 	}
 }
 
-func TestCanRetrieveRollupTransactions(t *testing.T) {
-	db := NewInMemoryDB()
-	header := common.Header{
-		Number: big.NewInt(rollupNumber),
-	}
-	txHashes := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	err := db.AddRollupHeader(&header, txHashes)
-	if err != nil {
-		t.Errorf("could not store rollup header. Cause: %s", err)
-	}
-
-	rollupTxs, err := db.GetRollupTxs(header.Hash())
-	if err != nil {
-		t.Errorf("stored rollup header but could not retrieve its transactions. Cause: %s", err)
-	}
-	if len(rollupTxs) != len(txHashes) {
-		t.Errorf("rollup transactions were not stored correctly")
-	}
-	for idx, rollupTx := range rollupTxs {
-		if rollupTx != txHashes[idx] {
-			t.Errorf("rollup transactions were not stored correctly")
-		}
-	}
-}
-
 func TestTransactionsForUnknownRollupReturnsNotFound(t *testing.T) {
 	db := NewInMemoryDB()
 

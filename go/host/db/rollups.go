@@ -91,11 +91,6 @@ func (db *DB) GetRollupNumber(txHash gethcommon.Hash) (*big.Int, error) {
 	return db.readRollupNumber(txHash)
 }
 
-// GetRollupTxs returns the transaction hashes of the rollup with the given hash, or (nil, false) if no such rollup is found.
-func (db *DB) GetRollupTxs(rollupHash gethcommon.Hash) ([]gethcommon.Hash, error) {
-	return db.readRollupTxHashes(rollupHash)
-}
-
 // GetTotalTransactions returns the total number of rolled-up transactions.
 // TODO - #718 - Return number of batched transactions, instead.
 func (db *DB) GetTotalTransactions() (*big.Int, error) {
@@ -170,29 +165,6 @@ func (db *DB) writeRollupTxHashes(w ethdb.KeyValueWriter, rollupHash common.L2Ro
 		return err
 	}
 	return nil
-}
-
-// Returns the transaction hashes in the rollup with the given hash, or (nil, false) if no such header is found.
-func (db *DB) readRollupTxHashes(hash gethcommon.Hash) ([]gethcommon.Hash, error) {
-	f, err := db.kvStore.Has(rollupTxHashesKey(hash))
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
-	data, err := db.kvStore.Get(rollupTxHashesKey(hash))
-	if err != nil {
-		return nil, err
-	}
-	if len(data) == 0 {
-		return nil, errutil.ErrNotFound
-	}
-	txHashes := []gethcommon.Hash{}
-	if err = rlp.Decode(bytes.NewReader(data), &txHashes); err != nil {
-		return nil, err
-	}
-	return txHashes, nil
 }
 
 // Returns the head rollup's hash, or (nil, false) is no such hash is found.

@@ -75,3 +75,28 @@ func TestHeadBatchHeaderIsNotSetInitially(t *testing.T) {
 		t.Errorf("head batch was set, but no batches had been written")
 	}
 }
+
+func TestCanRetrieveRollupTransactions(t *testing.T) {
+	db := NewInMemoryDB()
+	header := common.Header{
+		Number: big.NewInt(rollupNumber),
+	}
+	txHashes := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
+	err := db.AddRollupHeader(&header, txHashes)
+	if err != nil {
+		t.Errorf("could not store batch header. Cause: %s", err)
+	}
+
+	batchTxs, err := db.GetBatchTxs(header.Hash())
+	if err != nil {
+		t.Errorf("stored rollup header but could not retrieve its transactions. Cause: %s", err)
+	}
+	if len(batchTxs) != len(txHashes) {
+		t.Errorf("batch transactions were not stored correctly")
+	}
+	for idx, rollupTx := range batchTxs {
+		if rollupTx != txHashes[idx] {
+			t.Errorf("batch transactions were not stored correctly")
+		}
+	}
+}
