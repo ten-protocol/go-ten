@@ -28,7 +28,7 @@ func TestSerialiseL2Tx(t *testing.T) {
 func TestSerialiseRollup(t *testing.T) {
 	height := atomic.Value{}
 	height.Store(1)
-	rollup := datagenerator.RandomRollup()
+	rollup := datagenerator.RandomRollup(common.GenesisBlock)
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {
 		panic(err)

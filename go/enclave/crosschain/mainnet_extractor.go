@@ -91,7 +91,7 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 		validAfter := big.NewInt(1)
 		data, err := ContractABI.Pack("submitOutOfNetworkMessage", &message, validAfter)
 		if err != nil {
-			return transactions, fmt.Errorf("Failed packing submitOutOfNetworkMessage %+v", err)
+			return transactions, fmt.Errorf("failed packing submitOutOfNetworkMessage %+v", err)
 		}
 
 		tx := types.NewTx(&types.LegacyTx{
