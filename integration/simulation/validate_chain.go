@@ -213,7 +213,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
-	l1Height, err := obscuroClient.BlockNumber()
+	l1Height, err := rpcHandles.EthClients[nodeIdx].BlockNumber()
 	if err != nil {
 		t.Errorf("Node %d: Could not retrieve L1 height. Cause: %s", nodeIdx, err)
 	}

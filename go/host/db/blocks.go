@@ -2,7 +2,6 @@ package db
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -13,16 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-// DB methods relating to batches.
-
-// GetHeadBlockHeader returns the block header of the current head block.
-func (db *DB) GetHeadBlockHeader() (*types.Header, error) {
-	head, err := db.readHeadBlock(db.kvStore)
-	if err != nil {
-		return nil, err
-	}
-	return db.readBlockHeader(db.kvStore, *head)
-}
+// DB methods relating to blocks.
 
 // GetBlockHeader returns the block header given the hash.
 func (db *DB) GetBlockHeader(hash gethcommon.Hash) (*types.Header, error) {
@@ -35,18 +25,6 @@ func (db *DB) AddBlockHeader(header *types.Header) error {
 	err := db.writeBlockHeader(header)
 	if err != nil {
 		return fmt.Errorf("could not write block header. Cause: %w", err)
-	}
-
-	// update the head if the new height is greater than the existing one
-	headBlockHeader, err := db.GetHeadBlockHeader()
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not retrieve head block header. Cause: %w", err)
-	}
-	if errors.Is(err, errutil.ErrNotFound) || headBlockHeader.Number.Int64() <= header.Number.Int64() {
-		err = db.writeHeadBlockHash(header.Hash())
-		if err != nil {
-			return fmt.Errorf("could not write new head block hash. Cause: %w", err)
-		}
 	}
 
 	if err = b.Write(); err != nil {
@@ -75,14 +53,6 @@ func (db *DB) writeBlockHeader(header *types.Header) error {
 	return nil
 }
 
-func (db *DB) writeHeadBlockHash(val gethcommon.Hash) error {
-	err := db.kvStore.Put(headBlock, val.Bytes())
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // Retrieves the block header corresponding to the hash.
 func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*types.Header, error) {
 	f, err := r.Has(blockHeaderKey(hash))
@@ -104,20 +74,4 @@ func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*ty
 		return nil, err
 	}
 	return header, nil
-}
-
-func (db *DB) readHeadBlock(r ethdb.KeyValueReader) (*gethcommon.Hash, error) {
-	f, err := r.Has(headBlock)
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
-	value, err := r.Get(headBlock)
-	if err != nil {
-		return nil, err
-	}
-	h := gethcommon.BytesToHash(value)
-	return &h, nil
 }
