@@ -31,7 +31,7 @@ contract MessageBus is IMessageBus {
     function verifyMessageFinalized(Structs.CrossChainMessage calldata crossChainMessage) external view override returns (bool) 
     {
         bytes32 msgHash = keccak256(abi.encode(crossChainMessage));
-        return messageFinalityTimestamps[msgHash] >= block.timestamp;
+        return messageFinalityTimestamps[msgHash] >= block.number;
     }
 
     function getMessageTimeOfFinality(Structs.CrossChainMessage calldata crossChainMessage) external view override returns (uint256) {
@@ -44,13 +44,12 @@ contract MessageBus is IMessageBus {
 
     function submitOutOfNetworkMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) external override 
     {
-        require(finalAfterTimestamp > 0, "No.");
-
+        uint256 finalAtHeight = block.number + finalAfterTimestamp;
         bytes32 msgHash = keccak256(abi.encode(crossChainMessage));
         
         require(messageFinalityTimestamps[msgHash] == 0, "Message submitted more than once!");
 
-        messageFinalityTimestamps[msgHash] = finalAfterTimestamp;
+        messageFinalityTimestamps[msgHash] = finalAtHeight;
 
         messages[crossChainMessage.sender][crossChainMessage.topic].push(crossChainMessage);
     }

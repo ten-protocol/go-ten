@@ -8,5 +8,6 @@ interface Structs {
         uint32  nonce;
         uint32  topic;
         bytes   payload;
+        uint8   consistencyLevel;
     }
 }

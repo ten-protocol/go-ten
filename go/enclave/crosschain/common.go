@@ -29,11 +29,19 @@ func lazilyLogReceiptChecksum(msg string, receipts types.Receipts, logger gethlo
 			hasher.Reset()
 			for _, receipt := range receipts {
 				var buffer bytes.Buffer
-				receipt.EncodeRLP(&buffer)
+				err := receipt.EncodeRLP(&buffer)
+
+				if err != nil {
+					return err.Error()
+				}
 				hasher.Write(buffer.Bytes())
 			}
 			var hash gethcommon.Hash
-			hasher.Read(hash[:])
+			_, err := hasher.Read(hash[:])
+			if err != nil {
+				return err.Error()
+			}
+
 			return hash.Hex()
 		}})
 }
@@ -45,11 +53,19 @@ func lazilyLogChecksum(msg string, transactions types.Transactions, logger gethl
 			hasher.Reset()
 			for _, tx := range transactions {
 				var buffer bytes.Buffer
-				tx.EncodeRLP(&buffer)
+				err := tx.EncodeRLP(&buffer)
+
+				if err != nil {
+					return err.Error()
+				}
+
 				hasher.Write(buffer.Bytes())
 			}
 			var hash gethcommon.Hash
-			hasher.Read(hash[:])
+			_, err := hasher.Read(hash[:])
+			if err != nil {
+				return err.Error()
+			}
 			return hash.Hex()
 		}})
 }

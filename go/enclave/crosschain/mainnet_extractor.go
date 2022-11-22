@@ -88,8 +88,8 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 		"Block", block.Hash().Hex())
 
 	for _, message := range messages {
-		validAfter := big.NewInt(1)
-		data, err := ContractABI.Pack("submitOutOfNetworkMessage", &message, validAfter)
+		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
+		data, err := ContractABI.Pack("submitOutOfNetworkMessage", &message, delayInBlocks)
 		if err != nil {
 			return transactions, fmt.Errorf("failed packing submitOutOfNetworkMessage %+v", err)
 		}

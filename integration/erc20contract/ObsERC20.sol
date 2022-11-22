@@ -11,6 +11,7 @@ interface Structs {
         uint32  nonce;
         bytes   topic;
         bytes   payload;
+        uint8   consistencyLevel;
     }
 }
 

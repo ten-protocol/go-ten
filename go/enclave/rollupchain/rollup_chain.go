@@ -378,13 +378,17 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		return evm.ExecuteOffChainCall(&msg, clonedDB, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
 	}
 
-	rc.crossChainProcessors.LocalManager.SubmitRemoteMessagesLocally(
+	err := rc.crossChainProcessors.LocalManager.SubmitRemoteMessagesLocally(
 		fromBlock,
 		toBlock,
 		stateDB,
 		onChainCallFunc,
 		offChainCallFunc,
 	)
+
+	if err != nil {
+		rc.logger.Crit("[CrossChain] SubmitRemoteMessagesLocally failed!", log.ErrKey, err)
+	}
 
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
