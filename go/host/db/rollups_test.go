@@ -145,33 +145,3 @@ func TestTransactionsForUnknownRollupReturnsNotFound(t *testing.T) {
 		t.Errorf("did not store rollup number but was able to retrieve it")
 	}
 }
-
-func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
-	db := NewInMemoryDB()
-	headerOne := common.Header{
-		Number: big.NewInt(rollupNumber),
-	}
-	txHashesOne := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	err := db.AddRollupHeader(&headerOne, txHashesOne)
-	if err != nil {
-		t.Errorf("could not store rollup header. Cause: %s", err)
-	}
-
-	headerTwo := common.Header{
-		Number: big.NewInt(rollupNumber),
-	}
-	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
-	err = db.AddRollupHeader(&headerTwo, txHashesTwo)
-	if err != nil {
-		t.Errorf("could not store rollup header. Cause: %s", err)
-	}
-
-	totalTxs, err := db.GetTotalTransactions()
-	if err != nil {
-		t.Errorf("was not able to read total number of transactions. Cause: %s", err)
-	}
-
-	if int(totalTxs.Int64()) != len(txHashesOne)+len(txHashesTwo) {
-		t.Errorf("total number of rollup transactions was not stored correctly")
-	}
-}

@@ -83,6 +83,12 @@ func (db *DB) GetBatchTxs(rollupHash gethcommon.Hash) ([]gethcommon.Hash, error)
 	return db.readBatchTxHashes(rollupHash)
 }
 
+// GetBatchNumber returns the number of the batch containing the given transaction hash, or (nil, false) if no such
+// batch is found.
+func (db *DB) GetBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
+	return db.readBatchNumber(txHash)
+}
+
 // headerKey = batchHeaderPrefix  + hash
 func batchHeaderKey(hash gethcommon.Hash) []byte {
 	return append(batchHeaderPrefix, hash.Bytes()...)
@@ -241,4 +247,24 @@ func (db *DB) writeBatchTxHashes(w ethdb.KeyValueWriter, rollupHash common.L2Roo
 		return err
 	}
 	return nil
+}
+
+// Retrieves the number of the batch containing the transaction with the given hash, or (nil, false) if no such batch
+// is found.
+func (db *DB) readBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
+	f, err := db.kvStore.Has(batchNumberKey(txHash))
+	if err != nil {
+		return nil, err
+	}
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	data, err := db.kvStore.Get(batchNumberKey(txHash))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, errutil.ErrNotFound
+	}
+	return big.NewInt(0).SetBytes(data), nil
 }
