@@ -84,7 +84,7 @@
 * Wallet extension:
   * The wallet extension now supports separate ports for HTTP and WebSocket connections. Use the `--port` and `--portWS` 
     command line options respectively for each. For more information see the
-    [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension.html) documentation. 
+    [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension) documentation. 
 * Event subscription:
   * An early preview of event subscriptions is available in this release, though note that this is still undergoing 
     testing and feature enhancements and therefore is liable to issues and instability. For more information on the 
