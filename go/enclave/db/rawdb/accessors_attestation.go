@@ -2,6 +2,10 @@ package rawdb
 
 import (
 	"crypto/ecdsa"
+	"errors"
+	"fmt"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -11,16 +15,21 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
-func ReadAttestationKey(db ethdb.KeyValueReader, address gethcommon.Address, logger gethlog.Logger) *ecdsa.PublicKey {
+func ReadAttestationKey(db ethdb.KeyValueReader, address gethcommon.Address) (*ecdsa.PublicKey, error) {
 	key, err := db.Get(attestationPkKey(address))
 	if err != nil {
-		logger.Crit("Could not read key from db. ", log.ErrKey, err)
+		if errors.Is(err, errutil.ErrNotFound) {
+			return nil, errutil.ErrNotFound
+		}
+		return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", address, err)
 	}
+
 	publicKey, err := crypto.DecompressPubkey(key)
 	if err != nil {
-		logger.Crit("Could not parse key from db.", log.ErrKey, err)
+		return nil, fmt.Errorf("could not parse key from db. Cause: %w", err)
 	}
-	return publicKey
+
+	return publicKey, nil
 }
 
 func WriteAttestationKey(db ethdb.KeyValueWriter, address gethcommon.Address, key *ecdsa.PublicKey, logger gethlog.Logger) {

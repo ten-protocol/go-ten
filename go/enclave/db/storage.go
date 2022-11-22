@@ -346,8 +346,8 @@ func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Rece
 	return receipt, nil
 }
 
-func (s *storageImpl) FetchAttestedKey(aggregator gethcommon.Address) *ecdsa.PublicKey {
-	return obscurorawdb.ReadAttestationKey(s.db, aggregator, s.logger)
+func (s *storageImpl) FetchAttestedKey(aggregator gethcommon.Address) (*ecdsa.PublicKey, error) {
+	return obscurorawdb.ReadAttestationKey(s.db, aggregator)
 }
 
 func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) {

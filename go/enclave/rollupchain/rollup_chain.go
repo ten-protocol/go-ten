@@ -825,7 +825,13 @@ func (rc *RollupChain) verifySig(r *obscurocore.Rollup) bool {
 		rc.logger.Error("Missing signature on rollup")
 		return false
 	}
-	pubKey := rc.storage.FetchAttestedKey(r.Header.Agg)
+
+	pubKey, err := rc.storage.FetchAttestedKey(r.Header.Agg)
+	if err != nil {
+		rc.logger.Error("Could not retrieve attested key for aggregator %s. Cause: %w", r.Header.Agg, err)
+		return false
+	}
+
 	return ecdsa.Verify(pubKey, h[:], r.Header.R, r.Header.S)
 }
 

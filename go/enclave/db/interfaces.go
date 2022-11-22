@@ -90,7 +90,7 @@ type TransactionStorage interface {
 
 type AttestationStorage interface {
 	// FetchAttestedKey returns the public key of an attested aggregator, returns nil if not found
-	FetchAttestedKey(aggregator gethcommon.Address) *ecdsa.PublicKey
+	FetchAttestedKey(aggregator gethcommon.Address) (*ecdsa.PublicKey, error)
 	// StoreAttestedKey - store the public key of an attested aggregator
 	StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey)
 }
