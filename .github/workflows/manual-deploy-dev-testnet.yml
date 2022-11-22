@@ -38,15 +38,15 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_testnet_l1network:latest -f testnet/gethnetwork.Dockerfile  .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_testnet_l1network:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_l1network:latest -f testnet/gethnetwork.Dockerfile  .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_l1network:latest
 
       - name: 'Deploy to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: dev-testnet-gethnetwork
-          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_testnet_l1network:latest
+          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_l1network:latest
           registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
@@ -83,18 +83,18 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_enclave:latest -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_enclave:latest
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_host:latest -f dockerfiles/host.Dockerfile .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_host:latest
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_contractdeployer:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_enclave:latest -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_enclave:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_host:latest -f dockerfiles/host.Dockerfile .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_host:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_contractdeployer:latest
 
       - name: 'Deploy Contracts'
         id: deployContracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-contracts.sh --l1host=${{ github.event.inputs.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} --docker_image=${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_contractdeployer:latest
+          ./testnet/testnet-deploy-contracts.sh --l1host=${{ github.event.inputs.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} --docker_image=${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_contractdeployer:latest
           source ./testnet/.env
           echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
           echo "HOCERC20ADDR=$HOCERC20ADDR" >> $GITHUB_ENV
@@ -167,7 +167,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "Dev-ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "D-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
             --tags deploygroup=Dev-ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }} devtestnetlatest=true \
@@ -179,7 +179,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "Dev-ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
+            az vm open-port -g Testnet -n "D-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
 
       - name: 'Wait for Obscuro sequencer to start'
         shell: bash
@@ -189,7 +189,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "Dev-ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "D-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
@@ -261,7 +261,7 @@ jobs:
         id: deployL2Contracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-l2-contracts.sh --l2host=dev-obscuronode-0-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com --docker_image=${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_obscuro_contractdeployer:latest
+          ./testnet/testnet-deploy-l2-contracts.sh --l2host=dev-obscuronode-0-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com --docker_image=${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_contractdeployer:latest
 
   deploy-faucet:
     runs-on: ubuntu-latest

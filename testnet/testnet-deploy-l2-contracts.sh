@@ -16,7 +16,7 @@ help_and_exit() {
     echo ""
     echo "  l2port             *Optional* Set the l2 port. Defaults to 10000"
     echo ""
-    echo "  docker_image       *Optional* Sets the docker image to use. Defaults to testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest"
+    echo "  docker_image       *Optional* Sets the docker image to use. Defaults to testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest"
     echo ""
     echo ""
     echo ""
@@ -35,7 +35,7 @@ l2port=13001
 hocpkstring="6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 pocpkstring="4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
 hocerc20address="0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
-docker_image="testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest"
+docker_image="testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest"
 
 # Fetch options
 for argument in "$@"
