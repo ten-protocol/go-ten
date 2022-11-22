@@ -20,7 +20,7 @@ type MainNetMessageExtractor interface {
 
 type ObscuroCrossChainManager interface {
 	//Address of the identity owning the message bus.
-	GetOwner() *common.L2Address
+	GetOwner() common.L2Address
 
 	//Address of the messageBusContract
 	GetBusAddress() *common.L2Address

@@ -3,6 +3,7 @@ package crosschain
 import (
 	"bytes"
 	"errors"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -13,6 +14,12 @@ import (
 	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"golang.org/x/crypto/sha3"
+)
+
+var (
+	contractABI, _ = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	eventName      = "LogMessagePublished"
+	eventId        = contractABI.Events[eventName].ID
 )
 
 func lazilyLogReceiptChecksum(msg string, receipts types.Receipts, logger gethlog.Logger) {
@@ -120,11 +127,11 @@ func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) Mes
 
 func VerifyReceiptHash(block *common.L1Block, receipts common.L1Receipts) bool {
 	if len(receipts) == 0 {
-		return block.ReceiptHash() == types.EmptyRootHash
+		return bytes.Equal(block.ReceiptHash().Bytes(), types.EmptyRootHash.Bytes())
 	}
 
 	calculatedHash := types.DeriveSha(receipts, &trie.StackTrie{})
 	expectedHash := block.ReceiptHash()
 
-	return calculatedHash == expectedHash
+	return bytes.Equal(calculatedHash.Bytes(), expectedHash.Bytes())
 }

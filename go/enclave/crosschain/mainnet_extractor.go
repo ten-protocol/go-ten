@@ -3,13 +3,10 @@ package crosschain
 import (
 	"fmt"
 	"math/big"
-	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
@@ -19,22 +16,15 @@ type mainNetExtractor struct {
 	l2MessageBus *common.L2Address //TODO: remove this
 	storage      db.Storage
 	logger       gethlog.Logger
-	contractABI  abi.ABI
 }
 
 func NewMainNetExtractor(busAddress *common.L1Address, l2BusAddress *common.L2Address, storage db.Storage, logger gethlog.Logger) MainNetMessageExtractor {
-
-	contractABI, err := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	if err != nil {
-		logger.Crit("Unable to initialize MainNetExtractor due to error when parsing contract ABI!")
-	}
 
 	return &mainNetExtractor{
 		busAddress:   busAddress,
 		l2MessageBus: l2BusAddress,
 		storage:      storage,
 		logger:       logger,
-		contractABI:  contractABI,
 	}
 }
 
@@ -79,7 +69,6 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 		return transactions, nil
 	}
 
-	eventId := m.contractABI.Events["LogMessagePublished"].ID
 	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &eventId)
 
 	if err != nil {
@@ -88,7 +77,7 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 	}
 	m.logger.Trace("[CrossChain] extracted logs", "logCount", len(logs))
 
-	messages, err := convertLogsToMessages(logs, "LogMessagePublished", m.contractABI)
+	messages, err := convertLogsToMessages(logs, eventName, contractABI)
 
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
@@ -100,7 +89,7 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 
 	for _, message := range messages {
 		validAfter := big.NewInt(1)
-		data, err := m.contractABI.Pack("submitOutOfNetworkMessage", &message, validAfter)
+		data, err := contractABI.Pack("submitOutOfNetworkMessage", &message, validAfter)
 		if err != nil {
 			return transactions, fmt.Errorf("Failed packing submitOutOfNetworkMessage %+v", err)
 		}

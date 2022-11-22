@@ -16,7 +16,6 @@ type CrossChainProcessors struct {
 
 func NewCrossChainProcessors(
 	l1BusAddress *gethcommon.Address,
-	l2BusAddress *gethcommon.Address,
 	storage db.Storage, /*key *ecdsa.PrivateKey,*/
 	chainId *big.Int,
 	logger gethlog.Logger,

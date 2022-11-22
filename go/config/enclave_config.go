@@ -52,8 +52,8 @@ type EnclaveConfig struct {
 	ProfilerEnabled bool
 	// MinGasPrice is the minimum gas price for mining a transaction
 	MinGasPrice *big.Int
-	//MessageBusL1 & L2 addresses
-	MessageBusAddresses []*gethcommon.Address
+	//MessageBus L1 Address
+	MessageBusAddresses *gethcommon.Address
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
