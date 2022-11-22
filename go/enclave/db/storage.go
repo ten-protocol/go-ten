@@ -3,9 +3,10 @@ package db
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -32,9 +33,6 @@ type storageImpl struct {
 	chainConfig *params.ChainConfig
 	logger      gethlog.Logger
 }
-
-// ErrTxNotFound indicates that a transaction could not be found.
-var ErrTxNotFound = errors.New("transaction not found")
 
 func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	return &storageImpl{
@@ -308,7 +306,7 @@ func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) types.Receipts {
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
 	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash, s.logger)
 	if tx == nil {
-		return nil, gethcommon.Hash{}, 0, 0, ErrTxNotFound
+		return nil, gethcommon.Hash{}, 0, 0, errutil.ErrNotFound
 	}
 	return tx, blockHash, blockNumber, index, nil
 }
@@ -327,8 +325,7 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 }
 
 func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (gethcommon.Hash, error) {
-	tx := obscurorawdb.ReadContractTransaction(s.db, address, s.logger)
-	return tx, nil
+	return obscurorawdb.ReadContractTransaction(s.db, address, s.logger)
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error) {
