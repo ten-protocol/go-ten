@@ -72,7 +72,7 @@
 * ObscuroScan:
   * ObscuroScan supports a single API at [/rollup/](http://testnet.obscuroscan.io/rollup/) which allows web clients to 
     access a JSON representation of rollups and encrypted transactions. Further details 
-    [here](https://docs.obscu.ro/testnet/obscuroscan.html)
+    [here](https://docs.obscu.ro/testnet/obscuroscan)
 
 ## October 2022-10-21 (v0.5)
 * Event Subscriptions:
