@@ -142,8 +142,8 @@ func secret(storage db.Storage) []byte {
 	return secret[:]
 }
 
-func newErrorWithReasonAndCode(err error) SerialisableError {
-	result := SerialisableError{
+func newErrorWithReasonAndCode(err error) error {
+	result := &SerialisableError{
 		Err: err.Error(),
 	}
 
@@ -160,13 +160,13 @@ func newErrorWithReasonAndCode(err error) SerialisableError {
 	return result
 }
 
-func newRevertError(result *gethcore.ExecutionResult) SerialisableError {
+func newRevertError(result *gethcore.ExecutionResult) error {
 	reason, errUnpack := abi.UnpackRevert(result.Revert())
 	err := errors.New("execution reverted")
 	if errUnpack == nil {
 		err = fmt.Errorf("execution reverted: %v", reason)
 	}
-	return SerialisableError{
+	return &SerialisableError{
 		Err:    err.Error(),
 		Reason: hexutil.Encode(result.Revert()),
 		Code:   3, // todo - magic number
