@@ -463,7 +463,10 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
 	secret := crypto.GenerateEntropy(e.logger)
-	e.storage.StoreSecret(secret)
+	err := e.storage.StoreSecret(secret)
+	if err != nil {
+		return nil, fmt.Errorf("could not store secret. Cause: %w", err)
+	}
 	encSec, err := crypto.EncryptSecret(e.enclavePubKey, secret, e.logger)
 	if err != nil {
 		e.logger.Error("failed to encrypt secret.", log.ErrKey, err)
@@ -478,7 +481,10 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
 	if err != nil {
 		return err
 	}
-	e.storage.StoreSecret(*secret)
+	err = e.storage.StoreSecret(*secret)
+	if err != nil {
+		return fmt.Errorf("could not store secret. Cause: %w", err)
+	}
 	e.logger.Trace(fmt.Sprintf("Secret decrypted and stored. Secret: %v", secret))
 	return nil
 }

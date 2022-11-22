@@ -77,11 +77,11 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
 
 func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
 	s.assertSecretAvailable()
-	r := obscurorawdb.ReadRollup(s.db, hash, s.logger)
-	if r != nil {
-		return r, true
+	rollup, err := obscurorawdb.ReadRollup(s.db, hash, s.logger)
+	if err != nil {
+		return nil, false
 	}
-	return nil, false
+	return rollup, true
 }
 
 func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, bool) {
@@ -96,7 +96,7 @@ func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, bool) {
 	return s.FetchRollup(hash)
 }
 
-func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
+func (s *storageImpl) FetchRollups(height uint64) ([]*core.Rollup, error) {
 	s.assertSecretAvailable()
 	return obscurorawdb.ReadRollupsForHeight(s.db, height, s.logger)
 }
@@ -125,8 +125,8 @@ func (s *storageImpl) FetchHeadBlock() (*types.Block, bool) {
 	return s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
 }
 
-func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) {
-	obscurorawdb.WriteSharedSecret(s.db, secret, s.logger)
+func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
+	return obscurorawdb.WriteSharedSecret(s.db, secret)
 }
 
 func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
@@ -302,13 +302,12 @@ func (s *storageImpl) FetchHeadState() (*core.BlockState, error) {
 }
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
-func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) types.Receipts {
-	number := obscurorawdb.ReadHeaderNumber(s.db, hash)
-	if number == nil {
-		return nil
+func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) (types.Receipts, error) {
+	number, err := obscurorawdb.ReadHeaderNumber(s.db, hash)
+	if err != nil {
+		return nil, err
 	}
-	receipts := obscurorawdb.ReadReceipts(s.db, hash, *number, s.chainConfig, s.logger)
-	return receipts
+	return obscurorawdb.ReadReceipts(s.db, hash, *number, s.chainConfig, s.logger), nil
 }
 
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
@@ -342,7 +341,11 @@ func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Rece
 		return nil, err
 	}
 
-	receipts := s.GetReceiptsByHash(blockHash)
+	receipts, err := s.GetReceiptsByHash(blockHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve receipts for transaction. Cause: %w", err)
+	}
+
 	if len(receipts) <= int(index) {
 		return nil, fmt.Errorf("receipt index not matching the transactions in block: %s", blockHash.Hex())
 	}

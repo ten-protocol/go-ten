@@ -40,7 +40,7 @@ type RollupResolver interface {
 	// FetchRollupByHeight returns the rollup with the given height and true, or (nil, false) if no such rollup is stored.
 	FetchRollupByHeight(height uint64) (*core.Rollup, bool)
 	// FetchRollups returns all the proposed rollups with the given height
-	FetchRollups(height uint64) []*core.Rollup
+	FetchRollups(height uint64) ([]*core.Rollup, error)
 	// StoreRollup persists the rollup
 	StoreRollup(rollup *core.Rollup)
 	// ParentRollup returns the rollup's parent rollup, or (nil, false) if no such rollup was found.
@@ -72,7 +72,7 @@ type SharedSecretStorage interface {
 	// FetchSecret returns the enclave's secret.
 	FetchSecret() (*crypto.SharedEnclaveSecret, error)
 	// StoreSecret stores a secret in the enclave
-	StoreSecret(secret crypto.SharedEnclaveSecret)
+	StoreSecret(secret crypto.SharedEnclaveSecret) error
 }
 
 type TransactionStorage interface {
@@ -81,7 +81,7 @@ type TransactionStorage interface {
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error)
 	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
-	GetReceiptsByHash(hash gethcommon.Hash) types.Receipts
+	GetReceiptsByHash(hash gethcommon.Hash) (types.Receipts, error)
 	// GetSender returns the sender of the tx by hash
 	GetSender(txHash gethcommon.Hash) (gethcommon.Address, error)
 	// GetContractCreationTx returns the hash of the tx that created a contract

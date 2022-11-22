@@ -26,14 +26,15 @@ func ReadSharedSecret(db ethdb.KeyValueReader) (*crypto.SharedEnclaveSecret, err
 	return &ss, nil
 }
 
-func WriteSharedSecret(db ethdb.KeyValueWriter, ss crypto.SharedEnclaveSecret, logger gethlog.Logger) {
+func WriteSharedSecret(db ethdb.KeyValueWriter, ss crypto.SharedEnclaveSecret) error {
 	enc, err := rlp.EncodeToBytes(ss)
 	if err != nil {
-		logger.Crit("could not encode shared secret. ", log.ErrKey, err)
+		return fmt.Errorf("could not encode shared secret. Cause: %w", err)
 	}
 	if err = db.Put(sharedSecret, enc); err != nil {
-		logger.Crit("could not put shared secret in DB. ", log.ErrKey, err)
+		return fmt.Errorf("could not shared secret in DB. Cause: %w", err)
 	}
+	return nil
 }
 
 func ReadGenesisHash(db ethdb.KeyValueReader) (*common.Hash, bool) {
