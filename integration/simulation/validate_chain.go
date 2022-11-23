@@ -577,5 +577,14 @@ func checkObscuroscan(t *testing.T, s *Simulation) {
 		if totalTxs.Int64() < txThreshold {
 			t.Errorf("node %d: expected at least %d transactions, but only received %d", idx, txThreshold, totalTxs)
 		}
+
+		var latestTxs []gethcommon.Hash
+		err = client.Call(&latestTxs, rpc.GetLatestTxs, txThreshold)
+		if err != nil {
+			t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", idx, err)
+		}
+		if len(latestTxs) < txThreshold {
+			t.Errorf("node %d: expected at least %d transactions, but only received %d", idx, txThreshold, len(latestTxs))
+		}
 	}
 }
