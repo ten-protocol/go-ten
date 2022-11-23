@@ -225,20 +225,16 @@ func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 	return v
 }
 
-func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, bool) {
-	bs := obscurorawdb.ReadBlockState(s.db, hash, s.logger)
-	if bs != nil {
-		return bs, true
-	}
-	return nil, false
+func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, error) {
+	return obscurorawdb.ReadBlockState(s.db, hash)
 }
 
-func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, bool) {
+func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
 	logs := obscurorawdb.ReadBlockLogs(s.db, hash, s.logger)
-	if logs != nil {
-		return logs, true
+	if logs == nil {
+		return nil, errutil.ErrNotFound
 	}
-	return nil, false
+	return logs, nil
 }
 
 func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error {
@@ -294,12 +290,12 @@ func (s *storageImpl) FetchHeadState() (*core.BlockState, error) {
 		return nil, errutil.ErrNotFound
 	}
 
-	blockState := obscurorawdb.ReadBlockState(s.db, h, s.logger)
-	if blockState == nil {
-		return nil, fmt.Errorf("could not retrieve block state for head")
+	blockState, err := obscurorawdb.ReadBlockState(s.db, h)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve block state for head. Cause: %w", err)
 	}
 
-	return obscurorawdb.ReadBlockState(s.db, h, s.logger), nil
+	return blockState, nil
 }
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.

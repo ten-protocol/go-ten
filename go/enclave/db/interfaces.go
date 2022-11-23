@@ -54,10 +54,10 @@ type RollupResolver interface {
 }
 
 type BlockStateStorage interface {
-	// FetchBlockState returns the block's state, or (nil, false) if no such block was found.
-	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, bool)
-	// FetchLogs returns the block's logs, or (nil, false) if no such block was found.
-	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, bool)
+	// FetchBlockState returns the block's state.
+	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, error)
+	// FetchLogs returns the block's logs.
+	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 	// FetchHeadState returns the head block state.
 	FetchHeadState() (*core.BlockState, error)
 	// StoreNewHead saves the block state alongside its rollup, receipts and logs.

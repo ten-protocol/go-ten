@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
@@ -201,11 +203,16 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 //  STATE
 
 // Recursively calculates and stores the block state, receipts and logs for the given block.
-func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
+func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, error) {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
-	blockState, found := rc.storage.FetchBlockState(b.Hash())
-	if found {
-		return blockState
+	blockState, err := rc.storage.FetchBlockState(b.Hash())
+	if err == nil {
+		return blockState, nil
+	}
+
+	// If we get an error other than `ErrNotFound`, we return the error.
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
@@ -213,26 +220,32 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 
 	// processing blocks before genesis, so there is nothing to do
 	if !found && len(rollups) == 0 {
-		return nil
+		return nil, nil //nolint:nilnil
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handles the case of the block containing the genesis being processed multiple times.
 	genesisState, isGenesis := rc.handleGenesisRollup(b, rollups, genesisRollup)
 	if isGenesis {
-		return genesisState
+		return genesisState, nil
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	parentState, parentFound := rc.storage.FetchBlockState(b.ParentHash())
-	if !parentFound {
+	parentState, err := rc.storage.FetchBlockState(b.ParentHash())
+	if err != nil {
+		if !errors.Is(err, errutil.ErrNotFound) {
+			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
+		}
 		// go back and calculate the Root of the Parent
 		parent, found := rc.storage.FetchBlock(b.ParentHash())
 		if !found {
 			rc.logger.Crit("Could not find parent block when calculating block state. This should not happen.")
 		}
-		parentState = rc.updateState(parent)
+		parentState, err = rc.updateState(parent)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if parentState == nil {
@@ -253,12 +266,12 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
 	}
-	err := rc.storage.StoreNewHead(blockState, head, receipts, logs)
+	err = rc.storage.StoreNewHead(blockState, head, receipts, logs)
 	if err != nil {
 		rc.logger.Crit("Could not store new head.", log.ErrKey, err)
 	}
 
-	return blockState
+	return blockState, nil
 }
 
 func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (genesisState *obscurocore.BlockState, isGenesis bool) {
@@ -502,18 +515,19 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 	}
 
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
-	blockState := rc.updateState(&block)
+	// TODO - Handle error properly.
+	blockState, _ := rc.updateState(&block)
 	if blockState == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return rc.noBlockStateBlockSubmissionResponse(&block), nil
 	}
 
 	logs := []*types.Log{}
-	fetchedLogs, found := rc.storage.FetchLogs(block.Hash())
-	if found {
+	fetchedLogs, err := rc.storage.FetchLogs(block.Hash())
+	if err == nil {
 		logs = fetchedLogs
 	} else {
-		rc.logger.Error("Could not retrieve logs for stored block state. Returning no logs")
+		rc.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
 	}
 
 	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.HeadRollup)
