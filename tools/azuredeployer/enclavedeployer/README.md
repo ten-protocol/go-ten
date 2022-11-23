@@ -23,7 +23,7 @@ of simulation mode.
 Changes can be tested by checking out a branch on the VM or scp-ing the changed files over to the box. You will need to 
 re-run the docker build from inside the go-obscuro dir on the VM:
 
-    sudo docker build -t obscuro_enclave -f dockerfiles/enclave_local_build.Dockerfile .
+    sudo docker build -t enclave -f dockerfiles/enclave_local_build.Dockerfile .
 
 ## Multiple nodes
 

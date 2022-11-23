@@ -37,12 +37,12 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_enclave:latest
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest -f dockerfiles/host.Dockerfile .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_host:latest
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_contractdeployer:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/enclave:latest -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/enclave:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/host:latest -f dockerfiles/host.Dockerfile .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/host:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/contractdeployer:latest -f testnet/contractdeployer.Dockerfile .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/contractdeployer:latest
 
       - name: 'Deploy Contracts'
         id: deployContracts
@@ -120,7 +120,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "T${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
             --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}  testnetlatest=true \
@@ -132,7 +132,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
+            az vm open-port -g Testnet -n "T${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
 
       - name: 'Wait for Obscuro sequencer to start'
         shell: bash
@@ -142,7 +142,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "ObscuroNodeTestnet-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "T${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
@@ -196,8 +196,8 @@ jobs:
           inlineScript: |
             az network nic ip-config address-pool add \
               --address-pool Backend-Pool-Obscuro-Testnet \
-              --ip-config-name ipconfigObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name ObscuroNodeTestnet-0-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --ip-config-name ipconfigT-0-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name T-0-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
               --lb-name testnet-loadbalancer
 

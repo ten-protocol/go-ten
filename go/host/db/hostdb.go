@@ -49,7 +49,7 @@ func NewLevelDBBackedDB(logger gethlog.Logger) *DB {
 	}
 	cache := 128
 	handles := 128
-	db, err := leveldb.New(f, cache, handles, "obscuro_host", false)
+	db, err := leveldb.New(f, cache, handles, "host", false)
 	if err != nil {
 		logger.Crit("Could not create leveldb.", log.ErrKey, err)
 	}
