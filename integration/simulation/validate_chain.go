@@ -46,7 +46,15 @@ const (
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
-	// ensure L1 and L2 txs were issued
+	checkTransactionsInjected(t, s)
+	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
+	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
+	checkReceivedLogs(t, s)
+	checkObscuroscan(t, s)
+}
+
+// Ensures that L1 and L2 txs were actually issued.
+func checkTransactionsInjected(t *testing.T, s *Simulation) {
 	if len(s.TxInjector.TxTracker.L1Transactions) < txThreshold {
 		t.Errorf("Simulation only issued %d L1 transactions. At least %d expected", len(s.TxInjector.TxTracker.L1Transactions), txThreshold)
 	}
@@ -56,10 +64,6 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 	if len(s.TxInjector.TxTracker.WithdrawalL2Transactions) < txThreshold {
 		t.Errorf("Simulation only issued %d withdrawal L2 transactions. At least %d expected", len(s.TxInjector.TxTracker.WithdrawalL2Transactions), txThreshold)
 	}
-
-	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
-	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
-	checkReceivedLogs(t, s)
 }
 
 // checkEthereumBlockchainValidity: sanity check of the state of all L1 nodes
@@ -251,7 +255,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the pobi protocol doesn't waste too many blocks.
-	// todo- find the block where the genesis was published)
+	// todo - find the block where the genesis was published
 	efficiency := float64(l1Height-l2Height.Uint64()) / float64(l1Height)
 	if efficiency > s.Params.L2ToL1EfficiencyThreshold {
 		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeIdx, efficiency, s.Params.L2ToL1EfficiencyThreshold)
@@ -558,6 +562,20 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 	for logJSON, count := range logCount {
 		if count > 1 {
 			t.Errorf("received duplicate log with body %s", logJSON)
+		}
+	}
+}
+
+// Checks that the various APIs powering Obscuroscan are working correctly.
+func checkObscuroscan(t *testing.T, s *Simulation) {
+	for idx, client := range s.RPCHandles.RPCClients {
+		var totalTxs *big.Int
+		err := client.Call(&totalTxs, rpc.GetTotalTxs)
+		if err != nil {
+			t.Errorf("node %d: could not retrieve total transactions. Cause: %s", idx, err)
+		}
+		if totalTxs.Int64() < txThreshold {
+			t.Errorf("node %d: expected at least %d transactions, but only received %d", idx, txThreshold, totalTxs)
 		}
 	}
 }
