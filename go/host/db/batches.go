@@ -32,20 +32,23 @@ func (db *DB) GetBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
 }
 
 // AddBatchHeader adds a batch's header to the known headers
-func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) error {
+func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 	b := db.kvStore.NewBatch()
 
-	if err := db.writeBatchHeader(header); err != nil {
+	if err := db.writeBatchHeader(batch.Header); err != nil {
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
-	if err := db.writeBatchTxHashes(b, header.Hash(), txHashes); err != nil {
+	if err := db.writeBatch(batch); err != nil {
+		return fmt.Errorf("could not write batch. Cause: %w", err)
+	}
+	if err := db.writeBatchTxHashes(b, batch.Header.Hash(), batch.TxHashes); err != nil {
 		return fmt.Errorf("could not write batch transaction hashes. Cause: %w", err)
 	}
-	if err := db.writeBatchHash(b, header); err != nil {
+	if err := db.writeBatchHash(b, batch.Header); err != nil {
 		return fmt.Errorf("could not write batch hash. Cause: %w", err)
 	}
-	for _, txHash := range txHashes {
-		if err := db.writeBatchNumber(b, header, txHash); err != nil {
+	for _, txHash := range batch.TxHashes {
+		if err := db.writeBatchNumber(b, batch.Header, txHash); err != nil {
 			return fmt.Errorf("could not write batch number. Cause: %w", err)
 		}
 	}
@@ -55,7 +58,7 @@ func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) er
 	if err != nil {
 		return fmt.Errorf("could not retrieve total transactions. Cause: %w", err)
 	}
-	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(txHashes))))
+	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(batch.TxHashes))))
 	err = db.writeTotalTransactions(b, newTotal)
 	if err != nil {
 		return fmt.Errorf("could not write total transactions. Cause: %w", err)
@@ -66,8 +69,8 @@ func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) er
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
 	}
-	if errors.Is(err, errutil.ErrNotFound) || headBatchHeader.Number.Int64() <= header.Number.Int64() {
-		err = db.writeHeadBatchHash(header.Hash())
+	if errors.Is(err, errutil.ErrNotFound) || headBatchHeader.Number.Int64() <= batch.Header.Number.Int64() {
+		err = db.writeHeadBatchHash(batch.Header.Hash())
 		if err != nil {
 			return fmt.Errorf("could not write new head batch hash. Cause: %w", err)
 		}
@@ -102,9 +105,19 @@ func (db *DB) GetTotalTransactions() (*big.Int, error) {
 	return db.readTotalTransactions()
 }
 
+// GetBatch returns the batch with the given hash.
+func (db *DB) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
+	return db.readBatch(batchHash)
+}
+
 // headerKey = batchHeaderPrefix  + hash
 func batchHeaderKey(hash gethcommon.Hash) []byte {
 	return append(batchHeaderPrefix, hash.Bytes()...)
+}
+
+// headerKey = batchPrefix  + hash
+func batchKey(hash gethcommon.Hash) []byte {
+	return append(batchPrefix, hash.Bytes()...)
 }
 
 // headerKey = batchHashPrefix + number
@@ -309,4 +322,41 @@ func (db *DB) writeTotalTransactions(w ethdb.KeyValueWriter, newTotal *big.Int) 
 		return err
 	}
 	return nil
+}
+
+// Stores a batch into the database.
+func (db *DB) writeBatch(batch *common.ExtBatch) error {
+	// Write the encoded header
+	data, err := rlp.EncodeToBytes(batch)
+	if err != nil {
+		return err
+	}
+	key := batchKey(batch.Header.Hash())
+	if err := db.kvStore.Put(key, data); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Retrieves the batch corresponding to the hash.
+func (db *DB) readBatch(hash gethcommon.Hash) (*common.ExtBatch, error) {
+	f, err := db.kvStore.Has(batchKey(hash))
+	if err != nil {
+		return nil, err
+	}
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	data, err := db.kvStore.Get(batchKey(hash))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, errutil.ErrNotFound
+	}
+	batch := new(common.ExtBatch)
+	if err := rlp.Decode(bytes.NewReader(data), batch); err != nil {
+		return nil, err
+	}
+	return batch, nil
 }

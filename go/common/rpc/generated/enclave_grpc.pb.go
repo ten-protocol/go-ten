@@ -51,8 +51,6 @@ type EnclaveProtoClient interface {
 	// GetTransaction returns a transaction receipt given the transaction's signed hash, encrypted with the viewing key
 	// corresponding to the original transaction submitter
 	GetTransactionReceipt(ctx context.Context, in *GetTransactionReceiptRequest, opts ...grpc.CallOption) (*GetTransactionReceiptResponse, error)
-	// GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
-	GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error)
 	// AddViewingKey adds a viewing key to the enclave
 	AddViewingKey(ctx context.Context, in *AddViewingKeyRequest, opts ...grpc.CallOption) (*AddViewingKeyResponse, error)
 	// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
@@ -194,15 +192,6 @@ func (c *enclaveProtoClient) GetTransactionReceipt(ctx context.Context, in *GetT
 	return out, nil
 }
 
-func (c *enclaveProtoClient) GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error) {
-	out := new(GetRollupResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetRollup", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *enclaveProtoClient) AddViewingKey(ctx context.Context, in *AddViewingKeyRequest, opts ...grpc.CallOption) (*AddViewingKeyResponse, error) {
 	out := new(AddViewingKeyResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/AddViewingKey", in, out, opts...)
@@ -312,8 +301,6 @@ type EnclaveProtoServer interface {
 	// GetTransaction returns a transaction receipt given the transaction's signed hash, encrypted with the viewing key
 	// corresponding to the original transaction submitter
 	GetTransactionReceipt(context.Context, *GetTransactionReceiptRequest) (*GetTransactionReceiptResponse, error)
-	// GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
-	GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error)
 	// AddViewingKey adds a viewing key to the enclave
 	AddViewingKey(context.Context, *AddViewingKeyRequest) (*AddViewingKeyResponse, error)
 	// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
@@ -373,9 +360,6 @@ func (UnimplementedEnclaveProtoServer) GetTransaction(context.Context, *GetTrans
 }
 func (UnimplementedEnclaveProtoServer) GetTransactionReceipt(context.Context, *GetTransactionReceiptRequest) (*GetTransactionReceiptResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTransactionReceipt not implemented")
-}
-func (UnimplementedEnclaveProtoServer) GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetRollup not implemented")
 }
 func (UnimplementedEnclaveProtoServer) AddViewingKey(context.Context, *AddViewingKeyRequest) (*AddViewingKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddViewingKey not implemented")
@@ -648,24 +632,6 @@ func _EnclaveProto_GetTransactionReceipt_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveProto_GetRollup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRollupRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).GetRollup(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/GetRollup",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).GetRollup(ctx, req.(*GetRollupRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _EnclaveProto_AddViewingKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddViewingKeyRequest)
 	if err := dec(in); err != nil {
@@ -868,10 +834,6 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTransactionReceipt",
 			Handler:    _EnclaveProto_GetTransactionReceipt_Handler,
-		},
-		{
-			MethodName: "GetRollup",
-			Handler:    _EnclaveProto_GetRollup_Handler,
 		},
 		{
 			MethodName: "AddViewingKey",

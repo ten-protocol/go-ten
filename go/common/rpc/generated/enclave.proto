@@ -52,9 +52,6 @@ service EnclaveProto {
   // corresponding to the original transaction submitter
   rpc GetTransactionReceipt(GetTransactionReceiptRequest) returns (GetTransactionReceiptResponse) {}
 
-  // GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
-  rpc GetRollup(GetRollupRequest) returns (GetRollupResponse) {}
-
   // AddViewingKey adds a viewing key to the enclave
   rpc AddViewingKey(AddViewingKeyRequest) returns (AddViewingKeyResponse) {}
 
@@ -160,13 +157,6 @@ message GetTransactionReceiptRequest {
 }
 message GetTransactionReceiptResponse {
   bytes encryptedTxReceipt = 1;
-}
-
-message GetRollupRequest {
-  bytes rollupHash = 1;
-}
-message GetRollupResponse {
-  ExtRollupMsg extRollup = 2;
 }
 
 message AddViewingKeyRequest {

@@ -567,7 +567,7 @@ func (h *host) storeAndDistributeBatch(producedRollup common.ExtRollup) {
 		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
 	}
 
-	err := h.db.AddBatchHeader(batch.Header, batch.TxHashes)
+	err := h.db.AddBatchHeader(&batch)
 	if err != nil {
 		h.logger.Error("could not store batch", log.ErrKey, err)
 	}
@@ -582,8 +582,7 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 	// only update the host rollup headers if the enclave has found a new rollup head
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
-		// TODO - Fix bug here where tx hashes are being stored against the wrong rollup.
-		err := h.db.AddRollupHeader(result.IngestedRollupHeader, result.ProducedRollup.TxHashes)
+		err := h.db.AddRollupHeader(result.IngestedRollupHeader)
 		if err != nil {
 			return err
 		}
@@ -1033,7 +1032,7 @@ func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
 
 	// TODO - #718 - Implement a catch-up mechanism for historical batches.
 
-	err = h.db.AddBatchHeader(batch.Header, batch.TxHashes)
+	err = h.db.AddBatchHeader(&batch)
 	if err != nil {
 		return fmt.Errorf("could not store batch header. Cause: %w", err)
 	}

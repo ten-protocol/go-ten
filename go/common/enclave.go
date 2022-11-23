@@ -65,9 +65,6 @@ type Enclave interface {
 	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
 	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (EncryptedResponseGetTxReceipt, error)
 
-	// GetRollup returns the rollup with the given hash, or nil if no such rollup exists.
-	GetRollup(rollupHash L2RootHash) (*ExtRollup, error)
-
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
 	// Viewing keys are asymmetric keys generated inside the wallet extension, and then signed by the wallet (e.g.
 	// MetaMask) in which the user holds the signing keys.

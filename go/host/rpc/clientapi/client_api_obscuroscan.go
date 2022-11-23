@@ -39,32 +39,25 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 	return blockHeader, nil
 }
 
-// GetRollup returns the rollup with the given hash. Unlike `EthereumAPI.GetBlockByHash()`, returns the full
-// `ExtRollup`, and not just the header.
-// TODO - #718 - Switch to retrieving batch.
-func (api *ObscuroScanAPI) GetRollup(hash gethcommon.Hash) (*common.ExtRollup, error) {
-	return api.host.EnclaveClient().GetRollup(hash)
+// GetBatch returns the batch with the given hash. Unlike `EthereumAPI.GetBlockByHash()`, returns the full
+// `ExtBatch`, and not just the header.
+func (api *ObscuroScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
+	return api.host.DB().GetBatch(batchHash)
 }
 
-// GetRollupForTx returns the rollup containing a given transaction hash.
-// TODO - #718 - Switch to retrieving batch based on transaction.
-func (api *ObscuroScanAPI) GetRollupForTx(txHash gethcommon.Hash) (*common.ExtRollup, error) {
-	rollupNumber, err := api.host.DB().GetRollupNumber(txHash)
+// GetBatchForTx returns the batch containing a given transaction hash.
+func (api *ObscuroScanAPI) GetBatchForTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
+	batchNumber, err := api.host.DB().GetBatchNumber(txHash)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve rollup containing a transaction with hash %s. Cause: %w", txHash, err)
+		return nil, fmt.Errorf("could not retrieve batch containing a transaction with hash %s. Cause: %w", txHash, err)
 	}
 
-	rollupHash, err := api.host.DB().GetRollupHash(rollupNumber)
+	batchHash, err := api.host.DB().GetBatchHash(batchNumber)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", rollupNumber.Int64(), err)
+		return nil, fmt.Errorf("could not retrieve batch with number %d. Cause: %w", batchNumber.Int64(), err)
 	}
 
-	rollup, err := api.host.EnclaveClient().GetRollup(*rollupHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve rollup with hash %s. Cause: %w", rollupNumber, err)
-	}
-
-	return rollup, nil
+	return api.GetBatch(*batchHash)
 }
 
 // GetLatestTransactions returns the hashes of the latest `num` transactions confirmed in batches (or all the

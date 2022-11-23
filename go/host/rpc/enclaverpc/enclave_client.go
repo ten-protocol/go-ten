@@ -262,19 +262,6 @@ func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGet
 	return response.EncryptedTxReceipt, nil
 }
 
-func (c *Client) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.GetRollup(timeoutCtx, &generated.GetRollupRequest{RollupHash: rollupHash.Bytes()})
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve rollup with hash %s. Cause: %w", rollupHash.Hex(), err)
-	}
-
-	extRollup := rpc.FromExtRollupMsg(response.ExtRollup)
-	return &extRollup, nil
-}
-
 func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

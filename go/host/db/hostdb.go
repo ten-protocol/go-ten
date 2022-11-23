@@ -19,12 +19,12 @@ var (
 	batchHeaderPrefix    = []byte("ba")
 	batchHashPrefix      = []byte("bh")
 	batchNumberPrefix    = []byte("bn")
+	batchPrefix          = []byte("bp")
 	batchTxHashesPrefix  = []byte("bt")
 	headBatch            = []byte("hb")
 	headRollup           = []byte("hr")
 	rollupHeaderPrefix   = []byte("r")
 	rollupHashPrefix     = []byte("rh")
-	rollupNumberPrefix   = []byte("rn")
 	totalTransactionsKey = []byte("t")
 )
 
