@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
@@ -111,6 +112,9 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 	case rpc.Health:
 		return c.health(result)
+
+	case rpc.GetTotalTxs:
+		return c.getTotalTransactions(result)
 
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
@@ -297,6 +301,16 @@ func (c *inMemObscuroClient) addViewingKey(args []interface{}) error {
 func (c *inMemObscuroClient) health(result interface{}) error {
 	healty := true
 	*result.(**bool) = &healty
+	return nil
+}
+
+func (c *inMemObscuroClient) getTotalTransactions(result interface{}) error {
+	totalTxs, err := c.obscuroScanAPI.GetTotalTransactions()
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTotalTxs, err)
+	}
+
+	*result.(**big.Int) = totalTxs
 	return nil
 }
 
