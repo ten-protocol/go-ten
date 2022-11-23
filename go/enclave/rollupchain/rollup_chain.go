@@ -211,10 +211,8 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, err
 	}
 
 	// If we get an error other than `ErrNotFound`, we return the error.
-	if err != nil {
-		if !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
-		}
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
