@@ -28,14 +28,11 @@ func (db *DB) GetHeadRollupHeader() (*common.Header, error) {
 }
 
 // AddRollupHeader adds a rollup's header to the known headers
-func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) error {
+func (db *DB) AddRollupHeader(header *common.Header) error {
 	b := db.kvStore.NewBatch()
 
 	if err := db.writeRollupHeader(b, header); err != nil {
 		return fmt.Errorf("could not write rollup header. Cause: %w", err)
-	}
-	if err := db.writeRollupHash(b, header); err != nil {
-		return fmt.Errorf("could not write rollup hash. Cause: %w", err)
 	}
 
 	// update the head if the new height is greater than the existing one
@@ -61,11 +58,6 @@ func (db *DB) GetRollupHash(number *big.Int) (*gethcommon.Hash, error) {
 	return db.readRollupHash(number)
 }
 
-// GetRollupNumber returns the number of the rollup containing the given transaction hash, or (nil, false) if no such rollup is found.
-func (db *DB) GetRollupNumber(txHash gethcommon.Hash) (*big.Int, error) {
-	return db.readRollupNumber(txHash)
-}
-
 // headerKey = rollupHeaderPrefix  + hash
 func rollupHeaderKey(hash gethcommon.Hash) []byte {
 	return append(rollupHeaderPrefix, hash.Bytes()...)
@@ -74,11 +66,6 @@ func rollupHeaderKey(hash gethcommon.Hash) []byte {
 // headerKey = rollupHashPrefix + number
 func rollupHashKey(num *big.Int) []byte {
 	return append(rollupHashPrefix, []byte(num.String())...)
-}
-
-// headerKey = rollupNumberPrefix + hash
-func rollupNumberKey(txHash gethcommon.Hash) []byte {
-	return append(rollupNumberPrefix, txHash.Bytes()...)
 }
 
 // Stores a rollup header into the database
@@ -144,15 +131,6 @@ func (db *DB) writeHeadRollupHash(w ethdb.KeyValueWriter, val gethcommon.Hash) e
 	return nil
 }
 
-// Stores a rollup's hash in the database, keyed by the rollup's number.
-func (db *DB) writeRollupHash(w ethdb.KeyValueWriter, header *common.Header) error {
-	key := rollupHashKey(header.Number)
-	if err := w.Put(key, header.Hash().Bytes()); err != nil {
-		return err
-	}
-	return nil
-}
-
 // Retrieves the hash for the rollup with the given number, or (nil, false) if no such rollup is found.
 func (db *DB) readRollupHash(number *big.Int) (*gethcommon.Hash, error) {
 	f, err := db.kvStore.Has(rollupHashKey(number))
@@ -171,23 +149,4 @@ func (db *DB) readRollupHash(number *big.Int) (*gethcommon.Hash, error) {
 	}
 	hash := gethcommon.BytesToHash(data)
 	return &hash, nil
-}
-
-// Retrieves the number of the rollup containing the transaction with the given hash, or (nil, false) if no such rollup is found.
-func (db *DB) readRollupNumber(txHash gethcommon.Hash) (*big.Int, error) {
-	f, err := db.kvStore.Has(rollupNumberKey(txHash))
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
-	data, err := db.kvStore.Get(rollupNumberKey(txHash))
-	if err != nil {
-		return nil, err
-	}
-	if len(data) == 0 {
-		return nil, errutil.ErrNotFound
-	}
-	return big.NewInt(0).SetBytes(data), nil
 }

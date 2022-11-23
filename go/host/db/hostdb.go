@@ -25,7 +25,6 @@ var (
 	headRollup           = []byte("hr")
 	rollupHeaderPrefix   = []byte("r")
 	rollupHashPrefix     = []byte("rh")
-	rollupNumberPrefix   = []byte("rn")
 	totalTransactionsKey = []byte("t")
 )
 

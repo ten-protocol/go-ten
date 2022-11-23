@@ -7,7 +7,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
@@ -17,7 +16,7 @@ func TestHigherNumberRollupBecomesRollupHeader(t *testing.T) {
 	headerOne := common.Header{
 		Number: big.NewInt(rollupNumber),
 	}
-	err := db.AddRollupHeader(&headerOne, []gethcommon.Hash{})
+	err := db.AddRollupHeader(&headerOne)
 	if err != nil {
 		t.Errorf("could not store rollup header. Cause: %s", err)
 	}
@@ -26,7 +25,7 @@ func TestHigherNumberRollupBecomesRollupHeader(t *testing.T) {
 		// We give the second header a higher number, making it the head.
 		Number: big.NewInt(0).Add(headerOne.Number, big.NewInt(1)),
 	}
-	err = db.AddRollupHeader(&headerTwo, []gethcommon.Hash{})
+	err = db.AddRollupHeader(&headerTwo)
 	if err != nil {
 		t.Errorf("could not store rollup header. Cause: %s", err)
 	}
@@ -45,7 +44,7 @@ func TestLowerNumberRollupDoesNotBecomeRollupHeader(t *testing.T) {
 	headerOne := common.Header{
 		Number: big.NewInt(rollupNumber),
 	}
-	err := db.AddRollupHeader(&headerOne, []gethcommon.Hash{})
+	err := db.AddRollupHeader(&headerOne)
 	if err != nil {
 		t.Errorf("could not store rollup header. Cause: %s", err)
 	}
@@ -54,7 +53,7 @@ func TestLowerNumberRollupDoesNotBecomeRollupHeader(t *testing.T) {
 		// We give the second header a higher number, making it the head.
 		Number: big.NewInt(0).Sub(headerOne.Number, big.NewInt(1)),
 	}
-	err = db.AddRollupHeader(&headerTwo, []gethcommon.Hash{})
+	err = db.AddRollupHeader(&headerTwo)
 	if err != nil {
 		t.Errorf("could not store rollup header. Cause: %s", err)
 	}
@@ -82,7 +81,7 @@ func TestCanRetrieveRollupHashByNumber(t *testing.T) {
 	header := common.Header{
 		Number: big.NewInt(rollupNumber),
 	}
-	err := db.AddRollupHeader(&header, []gethcommon.Hash{})
+	err := db.AddRollupHeader(&header)
 	if err != nil {
 		t.Errorf("could not store rollup header. Cause: %s", err)
 	}
@@ -103,45 +102,5 @@ func TestUnknownRollupNumberReturnsNotFound(t *testing.T) {
 	_, err := db.GetRollupHash(header.Number)
 	if !errors.Is(err, errutil.ErrNotFound) {
 		t.Errorf("did not store rollup hash but was able to retrieve it")
-	}
-}
-
-func TestCanRetrieveRollupNumberByTxHash(t *testing.T) {
-	db := NewInMemoryDB()
-	header := common.Header{
-		Number: big.NewInt(rollupNumber),
-	}
-	txHash := gethcommon.BytesToHash([]byte("magicString"))
-	err := db.AddRollupHeader(&header, []gethcommon.Hash{txHash})
-	if err != nil {
-		t.Errorf("could not store rollup header. Cause: %s", err)
-	}
-
-	rollupNumber, err := db.GetRollupNumber(txHash)
-	if err != nil {
-		t.Errorf("stored rollup header but could not retrieve its number by transaction hash. Cause: %s", err)
-	}
-	// TODO - Temp fix due to off-by-one error in `writeRollupNumber`. Remove once fixed.
-	headerNumber := big.NewInt(0).Add(header.Number, big.NewInt(1))
-	if rollupNumber.Cmp(headerNumber) != 0 {
-		t.Errorf("rollup number was not stored correctly against transaction hash")
-	}
-}
-
-func TestUnknownRollupTxHashReturnsNotFound(t *testing.T) {
-	db := NewInMemoryDB()
-
-	_, err := db.GetRollupNumber(gethcommon.BytesToHash([]byte("magicString")))
-	if !errors.Is(err, errutil.ErrNotFound) {
-		t.Errorf("did not store rollup number but was able to retrieve it")
-	}
-}
-
-func TestTransactionsForUnknownRollupReturnsNotFound(t *testing.T) {
-	db := NewInMemoryDB()
-
-	_, err := db.GetRollupNumber(gethcommon.BytesToHash([]byte("magicString")))
-	if !errors.Is(err, errutil.ErrNotFound) {
-		t.Errorf("did not store rollup number but was able to retrieve it")
 	}
 }
