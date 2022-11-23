@@ -19,6 +19,7 @@ var (
 	batchHeaderPrefix    = []byte("ba")
 	batchHashPrefix      = []byte("bh")
 	batchNumberPrefix    = []byte("bn")
+	batchPrefix          = []byte("bp")
 	batchTxHashesPrefix  = []byte("bt")
 	headBatch            = []byte("hb")
 	headRollup           = []byte("hr")

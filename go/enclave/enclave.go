@@ -438,21 +438,6 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	return encryptedTxReceipt, nil
 }
 
-func (e *enclaveImpl) GetBatch(batchHash common.L2RootHash) (*common.ExtBatch, error) {
-	// TODO - #718 - Fetch batch, not rollup.
-	rollup, found := e.storage.FetchRollup(batchHash)
-	if !found {
-		return nil, errutil.ErrNotFound
-	}
-	extRollup := rollup.ToExtRollup(e.transactionBlobCrypto)
-	extBatch := common.ExtBatch{
-		Header:          extRollup.Header,
-		TxHashes:        extRollup.TxHashes,
-		EncryptedTxBlob: extRollup.EncryptedTxBlob,
-	}
-	return &extBatch, nil
-}
-
 func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
 	if e.enclavePubKey == nil {
 		e.logger.Error("public key not initialized, we can't produce the attestation report")

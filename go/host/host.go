@@ -567,7 +567,7 @@ func (h *host) storeAndDistributeBatch(producedRollup common.ExtRollup) {
 		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
 	}
 
-	err := h.db.AddBatchHeader(batch.Header, batch.TxHashes)
+	err := h.db.AddBatchHeader(&batch)
 	if err != nil {
 		h.logger.Error("could not store batch", log.ErrKey, err)
 	}
@@ -1033,7 +1033,7 @@ func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
 
 	// TODO - #718 - Implement a catch-up mechanism for historical batches.
 
-	err = h.db.AddBatchHeader(batch.Header, batch.TxHashes)
+	err = h.db.AddBatchHeader(&batch)
 	if err != nil {
 		return fmt.Errorf("could not store batch header. Cause: %w", err)
 	}

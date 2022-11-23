@@ -42,7 +42,7 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 // GetBatch returns the batch with the given hash. Unlike `EthereumAPI.GetBlockByHash()`, returns the full
 // `ExtBatch`, and not just the header.
 func (api *ObscuroScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
-	return api.host.EnclaveClient().GetBatch(batchHash)
+	return api.host.DB().GetBatch(batchHash)
 }
 
 // GetBatchForTx returns the batch containing a given transaction hash.

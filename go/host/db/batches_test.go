@@ -5,10 +5,10 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
@@ -17,7 +17,11 @@ func TestCanStoreAndRetrieveBatchHeader(t *testing.T) {
 	header := common.Header{
 		Number: big.NewInt(rollupNumber),
 	}
-	err := db.AddBatchHeader(&header, []gethcommon.Hash{})
+	batch := common.ExtBatch{
+		Header: &header,
+	}
+
+	err := db.AddBatchHeader(&batch)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -41,12 +45,16 @@ func TestUnknownBatchHeaderReturnsNotFound(t *testing.T) {
 	}
 }
 
-func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) {
+func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 	db := NewInMemoryDB()
 	headerOne := common.Header{
 		Number: big.NewInt(rollupNumber),
 	}
-	err := db.AddBatchHeader(&headerOne, []gethcommon.Hash{})
+	batchOne := common.ExtBatch{
+		Header: &headerOne,
+	}
+
+	err := db.AddBatchHeader(&batchOne)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -55,7 +63,11 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) {
 		// We give the second header a higher number, making it the head.
 		Number: big.NewInt(0).Add(headerOne.Number, big.NewInt(1)),
 	}
-	err = db.AddBatchHeader(&headerTwo, []gethcommon.Hash{})
+	batchTwo := common.ExtBatch{
+		Header: &headerTwo,
+	}
+
+	err = db.AddBatchHeader(&batchTwo)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -69,12 +81,16 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) {
 	}
 }
 
-func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) {
+func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 	db := NewInMemoryDB()
 	headerOne := common.Header{
 		Number: big.NewInt(rollupNumber),
 	}
-	err := db.AddBatchHeader(&headerOne, []gethcommon.Hash{})
+	batchOne := common.ExtBatch{
+		Header: &headerOne,
+	}
+
+	err := db.AddBatchHeader(&batchOne)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -83,7 +99,11 @@ func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) {
 		// We give the second header a higher number, making it the head.
 		Number: big.NewInt(0).Sub(headerOne.Number, big.NewInt(1)),
 	}
-	err = db.AddBatchHeader(&headerTwo, []gethcommon.Hash{})
+	batchTwo := common.ExtBatch{
+		Header: &headerTwo,
+	}
+
+	err = db.AddBatchHeader(&batchTwo)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -111,7 +131,11 @@ func TestCanRetrieveBatchHashByNumber(t *testing.T) {
 	header := common.Header{
 		Number: big.NewInt(rollupNumber),
 	}
-	err := db.AddBatchHeader(&header, []gethcommon.Hash{})
+	batch := common.ExtBatch{
+		Header: &header,
+	}
+
+	err := db.AddBatchHeader(&batch)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -141,7 +165,12 @@ func TestCanRetrieveBatchNumberByTxHash(t *testing.T) {
 		Number: big.NewInt(rollupNumber),
 	}
 	txHash := gethcommon.BytesToHash([]byte("magicString"))
-	err := db.AddBatchHeader(&header, []gethcommon.Hash{txHash})
+	batch := common.ExtBatch{
+		Header:   &header,
+		TxHashes: []gethcommon.Hash{txHash},
+	}
+
+	err := db.AddBatchHeader(&batch)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -170,7 +199,12 @@ func TestCanRetrieveBatchTransactions(t *testing.T) {
 		Number: big.NewInt(rollupNumber),
 	}
 	txHashes := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	err := db.AddBatchHeader(&header, txHashes)
+	batch := common.ExtBatch{
+		Header:   &header,
+		TxHashes: txHashes,
+	}
+
+	err := db.AddBatchHeader(&batch)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -204,7 +238,12 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 		Number: big.NewInt(rollupNumber),
 	}
 	txHashesOne := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	err := db.AddBatchHeader(&headerOne, txHashesOne)
+	batchOne := common.ExtBatch{
+		Header:   &headerOne,
+		TxHashes: txHashesOne,
+	}
+
+	err := db.AddBatchHeader(&batchOne)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -213,7 +252,12 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 		Number: big.NewInt(rollupNumber),
 	}
 	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
-	err = db.AddBatchHeader(&headerTwo, txHashesTwo)
+	batchTwo := common.ExtBatch{
+		Header:   &headerTwo,
+		TxHashes: txHashesTwo,
+	}
+
+	err = db.AddBatchHeader(&batchTwo)
 	if err != nil {
 		t.Errorf("could not store batch header. Cause: %s", err)
 	}
@@ -227,3 +271,5 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 		t.Errorf("total number of batch transactions was not stored correctly")
 	}
 }
+
+// TODO - #718 - Add tests of writing and reading extbatches.

@@ -121,19 +121,6 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 	return generated.ExtRollupMsg{Header: ToHeaderMsg(rollup.Header), TxHashes: txHashBytes, Txs: rollup.EncryptedTxBlob}
 }
 
-func ToExtBatchMsg(batch *common.ExtBatch) generated.ExtBatchMsg {
-	if batch == nil || batch.Header == nil {
-		return generated.ExtBatchMsg{}
-	}
-
-	txHashBytes := make([][]byte, len(batch.TxHashes))
-	for idx, txHash := range batch.TxHashes {
-		txHashBytes[idx] = txHash.Bytes()
-	}
-
-	return generated.ExtBatchMsg{Header: ToHeaderMsg(batch.Header), TxHashes: txHashBytes, Txs: batch.EncryptedTxBlob}
-}
-
 func ToHeaderMsg(header *common.Header) *generated.HeaderMsg {
 	if header == nil {
 		return nil
@@ -194,26 +181,6 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) common.ExtRollup {
 	}
 
 	return common.ExtRollup{
-		Header:          FromHeaderMsg(msg.Header),
-		TxHashes:        txHashes,
-		EncryptedTxBlob: msg.Txs,
-	}
-}
-
-func FromExtBatchMsg(msg *generated.ExtBatchMsg) common.ExtBatch {
-	if msg.Header == nil {
-		return common.ExtBatch{
-			Header: nil,
-		}
-	}
-
-	// We recreate the transaction hashes.
-	txHashes := make([]gethcommon.Hash, len(msg.TxHashes))
-	for idx, bytes := range msg.TxHashes {
-		txHashes[idx] = gethcommon.BytesToHash(bytes)
-	}
-
-	return common.ExtBatch{
 		Header:          FromHeaderMsg(msg.Header),
 		TxHashes:        txHashes,
 		EncryptedTxBlob: msg.Txs,
