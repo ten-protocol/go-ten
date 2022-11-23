@@ -34,6 +34,9 @@ func (db *DB) AddRollupHeader(header *common.Header) error {
 	if err := db.writeRollupHeader(b, header); err != nil {
 		return fmt.Errorf("could not write rollup header. Cause: %w", err)
 	}
+	if err := db.writeRollupHash(b, header); err != nil {
+		return fmt.Errorf("could not write rollup hash. Cause: %w", err)
+	}
 
 	// update the head if the new height is greater than the existing one
 	headRollupHeader, err := db.GetHeadRollupHeader()
@@ -126,6 +129,15 @@ func (db *DB) readHeadRollupHash() (*gethcommon.Hash, error) {
 func (db *DB) writeHeadRollupHash(w ethdb.KeyValueWriter, val gethcommon.Hash) error {
 	err := w.Put(headRollup, val.Bytes())
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Stores a rollup's hash in the database, keyed by the rollup's number.
+func (db *DB) writeRollupHash(w ethdb.KeyValueWriter, header *common.Header) error {
+	key := rollupHashKey(header.Number)
+	if err := w.Put(key, header.Hash().Bytes()); err != nil {
 		return err
 	}
 	return nil
