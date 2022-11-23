@@ -442,7 +442,7 @@ func (e *enclaveImpl) GetBatch(batchHash common.L2RootHash) (*common.ExtBatch, e
 	// TODO - #718 - Fetch batch, not rollup.
 	rollup, found := e.storage.FetchRollup(batchHash)
 	if !found {
-		return nil, nil //nolint:nilnil
+		return nil, errutil.ErrNotFound
 	}
 	extRollup := rollup.ToExtRollup(e.transactionBlobCrypto)
 	extBatch := common.ExtBatch{
