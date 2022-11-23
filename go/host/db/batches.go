@@ -87,8 +87,8 @@ func (db *DB) GetBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 
 // GetBatchTxs returns the transaction hashes of the batch with the given hash, or (nil, false) if no such batch is
 // found.
-func (db *DB) GetBatchTxs(rollupHash gethcommon.Hash) ([]gethcommon.Hash, error) {
-	return db.readBatchTxHashes(rollupHash)
+func (db *DB) GetBatchTxs(batchHash gethcommon.Hash) ([]gethcommon.Hash, error) {
+	return db.readBatchTxHashes(batchHash)
 }
 
 // GetBatchNumber returns the number of the batch containing the given transaction hash, or (nil, false) if no such
@@ -216,8 +216,8 @@ func (db *DB) readBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 }
 
 // Returns the transaction hashes in the batch with the given hash, or (nil, false) if no such batch is found.
-func (db *DB) readBatchTxHashes(hash gethcommon.Hash) ([]gethcommon.Hash, error) {
-	f, err := db.kvStore.Has(batchTxHashesKey(hash))
+func (db *DB) readBatchTxHashes(batchHash common.L2RootHash) ([]gethcommon.Hash, error) {
+	f, err := db.kvStore.Has(batchTxHashesKey(batchHash))
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func (db *DB) readBatchTxHashes(hash gethcommon.Hash) ([]gethcommon.Hash, error)
 		return nil, errutil.ErrNotFound
 	}
 
-	data, err := db.kvStore.Get(batchTxHashesKey(hash))
+	data, err := db.kvStore.Get(batchTxHashesKey(batchHash))
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +237,7 @@ func (db *DB) readBatchTxHashes(hash gethcommon.Hash) ([]gethcommon.Hash, error)
 	if err = rlp.Decode(bytes.NewReader(data), &txHashes); err != nil {
 		return nil, err
 	}
+
 	return txHashes, nil
 }
 
@@ -250,12 +251,12 @@ func (db *DB) writeBatchNumber(w ethdb.KeyValueWriter, header *common.Header, tx
 }
 
 // Writes the transaction hashes against the batch containing them.
-func (db *DB) writeBatchTxHashes(w ethdb.KeyValueWriter, rollupHash common.L2RootHash, txHashes []gethcommon.Hash) error {
+func (db *DB) writeBatchTxHashes(w ethdb.KeyValueWriter, batchHash common.L2RootHash, txHashes []gethcommon.Hash) error {
 	data, err := rlp.EncodeToBytes(txHashes)
 	if err != nil {
 		return err
 	}
-	key := batchTxHashesKey(rollupHash)
+	key := batchTxHashesKey(batchHash)
 	if err = w.Put(key, data); err != nil {
 		return err
 	}

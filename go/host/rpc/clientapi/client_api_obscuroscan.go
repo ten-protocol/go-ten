@@ -97,7 +97,7 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 		for _, txHash := range batchTxHashes {
 			txHashes = append(txHashes, txHash)
 			if len(txHashes) >= num {
-				break
+				return txHashes, nil
 			}
 		}
 
