@@ -510,14 +510,14 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 		}
 	}
 
-	if isLatestBlock {
-		if result.ProducedRollup.Header == nil {
-			return nil
-		}
+	if isLatestBlock && result.ProducedRollup.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
+	}
+
+	if result.ProducedRollup.Header != nil {
 		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.distributeBatch(result.ProducedRollup)
+		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
 
 	return nil
@@ -560,14 +560,19 @@ func (h *host) publishRollup(producedRollup common.ExtRollup) {
 }
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
-func (h *host) distributeBatch(producedRollup common.ExtRollup) {
+func (h *host) storeAndDistributeBatch(producedRollup common.ExtRollup) {
 	batch := common.ExtBatch{
 		Header:          producedRollup.Header,
 		TxHashes:        producedRollup.TxHashes,
 		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
 	}
 
-	err := h.p2p.BroadcastBatch(&batch)
+	err := h.db.AddBatchHeader(batch.Header, batch.TxHashes)
+	if err != nil {
+		h.logger.Error("could not store batch", log.ErrKey, err)
+	}
+
+	err = h.p2p.BroadcastBatch(&batch)
 	if err != nil {
 		h.logger.Error("could not broadcast batch", log.ErrKey, err)
 	}
@@ -579,16 +584,6 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 		// adding a header will update the head if it has a higher height
 		// TODO - Fix bug here where tx hashes are being stored against the wrong rollup.
 		err := h.db.AddRollupHeader(result.IngestedRollupHeader, result.ProducedRollup.TxHashes)
-		if err != nil {
-			return err
-		}
-
-		batch := common.ExtBatch{
-			Header:          result.IngestedRollupHeader,
-			TxHashes:        result.ProducedRollup.TxHashes,
-			EncryptedTxBlob: result.ProducedRollup.EncryptedTxBlob,
-		}
-		err = h.db.AddBatchHeader(batch.Header, batch.TxHashes)
 		if err != nil {
 			return err
 		}
