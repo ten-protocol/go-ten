@@ -42,7 +42,7 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
 		ProducedRollup:          &producedRollupMsg,
 		IngestedNewRollup:       response.FoundNewHead,
-		RollupHead:              ToHeaderMsg(response.IngestedRollupHeader),
+		RollupHead:              ToRollupHeaderMsg(response.IngestedRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
 	}, nil
@@ -102,7 +102,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
 		FoundNewHead:            msg.IngestedNewRollup,
-		IngestedRollupHeader:    FromHeaderMsg(msg.RollupHead),
+		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
 	}, nil
@@ -118,10 +118,10 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 		txHashBytes[idx] = txHash.Bytes()
 	}
 
-	return generated.ExtRollupMsg{Header: ToHeaderMsg(rollup.Header), TxHashes: txHashBytes, Txs: rollup.EncryptedTxBlob}
+	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), TxHashes: txHashBytes, Txs: rollup.EncryptedTxBlob}
 }
 
-func ToHeaderMsg(header *common.Header) *generated.HeaderMsg {
+func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
 	if header == nil {
 		return nil
 	}
@@ -181,13 +181,13 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) common.ExtRollup {
 	}
 
 	return common.ExtRollup{
-		Header:          FromHeaderMsg(msg.Header),
+		Header:          FromRollupHeaderMsg(msg.Header),
 		TxHashes:        txHashes,
 		EncryptedTxBlob: msg.Txs,
 	}
 }
 
-func FromHeaderMsg(header *generated.HeaderMsg) *common.Header {
+func FromRollupHeaderMsg(header *generated.HeaderMsg) *common.Header {
 	if header == nil {
 		return nil
 	}

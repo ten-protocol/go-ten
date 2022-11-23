@@ -331,7 +331,7 @@ func (db *DB) writeBatch(batch *common.ExtBatch) error {
 	if err != nil {
 		return err
 	}
-	key := batchKey(batch.Hash())
+	key := batchKey(batch.Header.Hash())
 	if err := db.kvStore.Put(key, data); err != nil {
 		return err
 	}

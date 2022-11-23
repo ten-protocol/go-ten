@@ -623,12 +623,12 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 	}
 
 	var batchByHash *common.ExtBatch
-	err = client.Call(&batchByHash, rpc.GetBatch, batchByTx.Hash())
+	err = client.Call(&batchByHash, rpc.GetBatch, batchByTx.Header.Hash())
 	if err != nil {
 		t.Errorf("node %d: could not retrieve batch by hash. Cause: %s", nodeIdx, err)
 		return
 	}
-	if batchByHash.Header.Hash() != batchByTx.Hash() {
+	if batchByHash.Header.Hash() != batchByTx.Header.Hash() {
 		t.Errorf("node %d: retrieved batch by hash, but hash was incorrect", nodeIdx)
 	}
 }
