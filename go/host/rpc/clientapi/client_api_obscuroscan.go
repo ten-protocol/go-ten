@@ -27,7 +27,7 @@ func NewObscuroScanAPI(host host.Host) *ObscuroScanAPI {
 	}
 }
 
-// GetBlockHeaderByHash returns the header for the block with the given number.
+// GetBlockHeaderByHash returns the header for the block with the given hash.
 func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*types.Header, error) {
 	blockHeader, err := api.host.DB().GetBlockHeader(blockHash)
 	if err != nil {
@@ -97,7 +97,7 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 		for _, txHash := range batchTxHashes {
 			txHashes = append(txHashes, txHash)
 			if len(txHashes) >= num {
-				break
+				return txHashes, nil
 			}
 		}
 

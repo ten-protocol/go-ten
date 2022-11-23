@@ -3,6 +3,8 @@ package network
 import (
 	"math/rand"
 
+	"github.com/obscuronet/go-obscuro/go/rpc"
+
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -31,8 +33,10 @@ type RPCHandles struct {
 	// an eth client per eth node in the network
 	EthClients []ethadapter.EthClient
 
-	// an obscuro client per obscuro node in the network (used for things like validation rather than transactions on behalf of sim accounts)
+	// An Obscuro client per Obscuro node in the network.
 	ObscuroClients []*obsclient.ObsClient
+	// An RPC client per Obscuro node in the network (used for APIs that don't have methods on `ObsClient`.
+	RPCClients []rpc.Client
 
 	// an RPC client per node per wallet, with a viewing key set up (on the client and registered on its corresponding host enclave),
 	//	to mimic user acc interaction via a wallet extension
