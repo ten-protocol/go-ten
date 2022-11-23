@@ -570,22 +570,65 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 // Checks that the various APIs powering Obscuroscan are working correctly.
 func checkObscuroscan(t *testing.T, s *Simulation) {
 	for idx, client := range s.RPCHandles.RPCClients {
-		var totalTxs *big.Int
-		err := client.Call(&totalTxs, rpc.GetTotalTxs)
-		if err != nil {
-			t.Errorf("node %d: could not retrieve total transactions. Cause: %s", idx, err)
+		checkTotalTransactions(t, client, idx)
+		latestTxHashes := checkLatestTxs(t, client, idx)
+		time.Sleep(3 * time.Second)
+		for _, txHash := range latestTxHashes {
+			checkRollupFromTxs(t, client, txHash, idx)
 		}
-		if totalTxs.Int64() < txThreshold {
-			t.Errorf("node %d: expected at least %d transactions, but only received %d", idx, txThreshold, totalTxs)
-		}
+	}
+}
 
-		var latestTxs []gethcommon.Hash
-		err = client.Call(&latestTxs, rpc.GetLatestTxs, txThreshold)
-		if err != nil {
-			t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", idx, err)
+// Checks that the node has stored sufficient transactions.
+func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
+	var totalTxs *big.Int
+	err := client.Call(&totalTxs, rpc.GetTotalTxs)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve total transactions. Cause: %s", nodeIdx, err)
+	}
+	if totalTxs.Int64() < txThreshold {
+		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, txThreshold, totalTxs)
+	}
+}
+
+// Checks that we can retrieve the latest transactions for the node.
+func checkLatestTxs(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.Hash {
+	var latestTxHashes []gethcommon.Hash
+	err := client.Call(&latestTxHashes, rpc.GetLatestTxs, txThreshold)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
+	}
+	if len(latestTxHashes) != txThreshold {
+		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, txThreshold, len(latestTxHashes))
+	}
+	return latestTxHashes
+}
+
+// Retrieves the rollup using the transaction hash, and validates it.
+func checkRollupFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, nodeIdx int) {
+	var rollupByTx *common.ExtRollup
+	err := client.Call(&rollupByTx, rpc.GetRollupForTx, txHash)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve rollup for transaction. Cause: %s", nodeIdx, err)
+		return
+	}
+	var containsTx bool
+	for _, txHashFromRollup := range rollupByTx.TxHashes {
+		if txHashFromRollup == txHash {
+			containsTx = true
 		}
-		if len(latestTxs) < txThreshold {
-			t.Errorf("node %d: expected at least %d transactions, but only received %d", idx, txThreshold, len(latestTxs))
-		}
+	}
+	if !containsTx {
+		t.Errorf("node %d: retrieved rollup by transaction, but transaction was missing from rollup", nodeIdx)
+	}
+
+	var rollupByHash *common.ExtRollup
+	err = client.Call(&rollupByHash, rpc.GetRollup, rollupByTx.Hash())
+	if err != nil {
+		t.Errorf("node %d: could not retrieve rollup by hash. Cause: %s", nodeIdx, err)
+		return
+	}
+	if rollupByHash.Header.Hash() != rollupByTx.Hash() {
+		t.Errorf("node %d: retrieved rollup by hash, but hash was incorrect", nodeIdx)
 	}
 }

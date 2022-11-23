@@ -119,6 +119,12 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.GetLatestTxs:
 		return c.getLatestTransactions(result, args)
 
+	case rpc.GetRollupForTx:
+		return c.getRollupForTx(result, args)
+
+	case rpc.GetRollup:
+		return c.getRollup(result, args)
+
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
@@ -332,6 +338,42 @@ func (c *inMemObscuroClient) getLatestTransactions(result interface{}, args []in
 	}
 
 	*result.(*[]gethcommon.Hash) = latestTxs
+	return nil
+}
+
+func (c *inMemObscuroClient) getRollupForTx(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetRollupForTx, len(args))
+	}
+	txHash, ok := args[0].(gethcommon.Hash)
+	if !ok {
+		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetRollupForTx, args[0])
+	}
+
+	rollup, err := c.obscuroScanAPI.GetRollupForTx(txHash)
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetRollupForTx, err)
+	}
+
+	*result.(**common.ExtRollup) = rollup
+	return nil
+}
+
+func (c *inMemObscuroClient) getRollup(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetRollup, len(args))
+	}
+	rollupHash, ok := args[0].(gethcommon.Hash)
+	if !ok {
+		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetRollup, args[0])
+	}
+
+	rollup, err := c.obscuroScanAPI.GetRollup(rollupHash)
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetRollup, err)
+	}
+
+	*result.(**common.ExtRollup) = rollup
 	return nil
 }
 
