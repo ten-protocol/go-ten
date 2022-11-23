@@ -36,7 +36,6 @@ type RPCHandles struct {
 	// An Obscuro client per Obscuro node in the network.
 	ObscuroClients []*obsclient.ObsClient
 	// An RPC client per Obscuro node in the network (used for APIs that don't have methods on `ObsClient`.
-	// TDOO - Switch to a pointer.
 	RPCClients []rpc.Client
 
 	// an RPC client per node per wallet, with a viewing key set up (on the client and registered on its corresponding host enclave),
