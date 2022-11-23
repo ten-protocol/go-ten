@@ -595,7 +595,7 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 
 // Called only by the first enclave to bootstrap the network
 func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
-	// Create the genesis rollup and submit it to the management contract
+	// Create the genesis rollup.
 	genesisResponse, err := h.enclaveClient.ProduceGenesis(block.Hash())
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not produce genesis. Cause: %w", err)
@@ -604,14 +604,19 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
 			common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 		))
-	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToExtRollup())
+
+	// Distribute the corresponding batch.
+	producedRollup := genesisResponse.ProducedRollup.ToExtRollup()
+	h.storeAndDistributeBatch(*producedRollup)
+
+	// Submit the rollup to the management contract.
+	encodedRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
 	l1tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
-
 	rollupTx := h.mgmtContractLib.CreateRollup(l1tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 	if err != nil {
