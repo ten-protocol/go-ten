@@ -572,7 +572,6 @@ func checkObscuroscan(t *testing.T, s *Simulation) {
 	for idx, client := range s.RPCHandles.RPCClients {
 		checkTotalTransactions(t, client, idx)
 		latestTxHashes := checkLatestTxs(t, client, idx)
-		time.Sleep(3 * time.Second)
 		for _, txHash := range latestTxHashes {
 			checkRollupFromTxs(t, client, txHash, idx)
 		}
