@@ -295,8 +295,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 	encryptedResponse, err := h.enclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
-		h.logger.Info("Could not submit transaction", log.ErrKey, err)
-		return nil, err
+		return nil, fmt.Errorf("could not submit transaction. Cause: %w", err)
 	}
 
 	err = h.p2p.BroadcastTx(encryptedTx)
