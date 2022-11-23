@@ -182,6 +182,7 @@ func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState, logger gethlo
 }
 
 func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) (*core.BlockState, error) {
+	// TODO - Handle error.
 	data, _ := kv.Get(blockStateKey(hash))
 	if data == nil {
 		return nil, errutil.ErrNotFound
