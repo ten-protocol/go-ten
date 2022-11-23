@@ -194,14 +194,14 @@ func (s *server) GetTransactionReceipt(_ context.Context, request *generated.Get
 	return &generated.GetTransactionReceiptResponse{EncryptedTxReceipt: encryptedTxReceipt}, nil
 }
 
-func (s *server) GetRollup(_ context.Context, request *generated.GetRollupRequest) (*generated.GetRollupResponse, error) {
-	extRollup, err := s.enclave.GetRollup(gethcommon.BytesToHash(request.RollupHash))
+func (s *server) GetBatch(_ context.Context, request *generated.GetBatchRequest) (*generated.GetBatchResponse, error) {
+	extBatch, err := s.enclave.GetBatch(gethcommon.BytesToHash(request.BatchHash))
 	if err != nil {
 		return nil, err
 	}
 
-	extRollupMsg := rpc.ToExtRollupMsg(extRollup)
-	return &generated.GetRollupResponse{ExtRollup: &extRollupMsg}, nil
+	extBatchMsg := rpc.ToExtBatchMsg(extBatch)
+	return &generated.GetBatchResponse{ExtBatch: &extBatchMsg}, nil
 }
 
 func (s *server) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {

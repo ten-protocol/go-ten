@@ -262,17 +262,17 @@ func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGet
 	return response.EncryptedTxReceipt, nil
 }
 
-func (c *Client) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
+func (c *Client) GetBatch(batchHash common.L2RootHash) (*common.ExtBatch, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.GetRollup(timeoutCtx, &generated.GetRollupRequest{RollupHash: rollupHash.Bytes()})
+	response, err := c.protoClient.GetBatch(timeoutCtx, &generated.GetBatchRequest{BatchHash: batchHash.Bytes()})
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve rollup with hash %s. Cause: %w", rollupHash.Hex(), err)
+		return nil, fmt.Errorf("failed to retrieve batch with hash %s. Cause: %w", batchHash.Hex(), err)
 	}
 
-	extRollup := rpc.FromExtRollupMsg(response.ExtRollup)
-	return &extRollup, nil
+	extBatch := rpc.FromExtBatchMsg(response.ExtBatch)
+	return &extBatch, nil
 }
 
 func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {

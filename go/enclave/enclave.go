@@ -438,13 +438,19 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	return encryptedTxReceipt, nil
 }
 
-func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
-	rollup, found := e.storage.FetchRollup(rollupHash)
+func (e *enclaveImpl) GetBatch(batchHash common.L2RootHash) (*common.ExtBatch, error) {
+	// TODO - #718 - Fetch batch, not rollup.
+	rollup, found := e.storage.FetchRollup(batchHash)
 	if !found {
 		return nil, nil //nolint:nilnil
 	}
 	extRollup := rollup.ToExtRollup(e.transactionBlobCrypto)
-	return &extRollup, nil
+	extBatch := common.ExtBatch{
+		Header:          extRollup.Header,
+		TxHashes:        extRollup.TxHashes,
+		EncryptedTxBlob: extRollup.EncryptedTxBlob,
+	}
+	return &extBatch, nil
 }
 
 func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {

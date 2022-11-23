@@ -338,7 +338,7 @@ func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http
 		// A "0x" prefix indicates that we should retrieve the rollup by transaction hash.
 		txHash := gethcommon.HexToHash(buffer.String())
 
-		err = o.client.Call(&rollup, rpc.GetRollupForTx, txHash)
+		err = o.client.Call(&rollup, rpc.GetBatchForTx, txHash)
 		if err != nil || rollup.Header == nil {
 			o.logger.Error("could not retrieve rollup.", log.ErrKey, err)
 			logAndSendErr(resp, fmt.Sprintf("Could not fetch rollup for transaction %s.", txHash))
@@ -482,7 +482,7 @@ func (o *Obscuroscan) getRollupByNumber(rollupNumber int64) (*common.ExtRollup, 
 	}
 
 	var rollup *common.ExtRollup
-	err = o.client.Call(&rollup, rpc.GetRollup, rollupHeader.Hash())
+	err = o.client.Call(&rollup, rpc.GetBatch, rollupHeader.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup. Cause: %w", err)
 	}

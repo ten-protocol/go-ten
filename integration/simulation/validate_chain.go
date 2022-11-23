@@ -573,7 +573,7 @@ func checkObscuroscan(t *testing.T, s *Simulation) {
 		checkTotalTransactions(t, client, idx)
 		latestTxHashes := checkLatestTxs(t, client, idx)
 		for _, txHash := range latestTxHashes {
-			checkRollupFromTxs(t, client, txHash, idx)
+			checkBatchFromTxs(t, client, txHash, idx)
 		}
 	}
 }
@@ -603,31 +603,32 @@ func checkLatestTxs(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.H
 	return latestTxHashes
 }
 
-// Retrieves the rollup using the transaction hash, and validates it.
-func checkRollupFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, nodeIdx int) {
-	var rollupByTx *common.ExtRollup
-	err := client.Call(&rollupByTx, rpc.GetRollupForTx, txHash)
+// Retrieves the batch using the transaction hash, and validates it.
+func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, nodeIdx int) {
+	var batchByTx *common.ExtBatch
+	err := client.Call(&batchByTx, rpc.GetBatchForTx, txHash)
 	if err != nil {
-		t.Errorf("node %d: could not retrieve rollup for transaction. Cause: %s", nodeIdx, err)
+		t.Errorf("node %d: could not retrieve batch for transaction. Cause: %s", nodeIdx, err)
 		return
 	}
+
 	var containsTx bool
-	for _, txHashFromRollup := range rollupByTx.TxHashes {
-		if txHashFromRollup == txHash {
+	for _, txHashFromBatch := range batchByTx.TxHashes {
+		if txHashFromBatch == txHash {
 			containsTx = true
 		}
 	}
 	if !containsTx {
-		t.Errorf("node %d: retrieved rollup by transaction, but transaction was missing from rollup", nodeIdx)
+		t.Errorf("node %d: retrieved batch by transaction, but transaction was missing from batch", nodeIdx)
 	}
 
-	var rollupByHash *common.ExtRollup
-	err = client.Call(&rollupByHash, rpc.GetRollup, rollupByTx.Hash())
+	var batchByHash *common.ExtBatch
+	err = client.Call(&batchByHash, rpc.GetBatch, batchByTx.Hash())
 	if err != nil {
-		t.Errorf("node %d: could not retrieve rollup by hash. Cause: %s", nodeIdx, err)
+		t.Errorf("node %d: could not retrieve batch by hash. Cause: %s", nodeIdx, err)
 		return
 	}
-	if rollupByHash.Header.Hash() != rollupByTx.Hash() {
-		t.Errorf("node %d: retrieved rollup by hash, but hash was incorrect", nodeIdx)
+	if batchByHash.Header.Hash() != batchByTx.Hash() {
+		t.Errorf("node %d: retrieved batch by hash, but hash was incorrect", nodeIdx)
 	}
 }
