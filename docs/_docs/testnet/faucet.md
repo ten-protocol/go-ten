@@ -20,7 +20,7 @@ Using the steps below you will request testnet OBX tokens from the faucet availa
     ![faucet ack](../../assets/images/faucet-ack.png)
 5. After a short period of time the faucet will confirm the Testnet OBX tokens have been credited to your wallet:
 
-    ![faucet complete](../.../assets/images/faucet-done.png)
+    ![faucet complete](../../assets/images/faucet-done.png)
 
 ## Viewing Your Wallet Balance
 To view the balance of your wallet you will need to establish a connection from your wallet to the Obscuro Testnet. An essential part of how Obscuro provides full privacy is the encryption of communication between an Obscuro application and Obscuro nodes on the network. As a result, you will need to use the wallet extension to allow your wallet to communication with the Obscuro Testnet.
