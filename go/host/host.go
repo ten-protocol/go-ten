@@ -1031,6 +1031,8 @@ func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
 
 	// TODO - #718 - Have the enclave process batch, so that it's up to date.
 
+	// TODO - #718 - Implement a catch-up mechanism for historical batches.
+
 	err = h.db.AddBatchHeader(batch.Header, batch.TxHashes)
 	if err != nil {
 		return fmt.Errorf("could not store batch header. Cause: %w", err)
