@@ -448,7 +448,7 @@ func (h *host) startProcessing() { //nolint:gocognit
 
 		case batch := <-h.batchP2PCh:
 			if err := h.handleBatch(&batch); err != nil {
-				h.logger.Warn("Could not handle batch. ", log.ErrKey, err)
+				h.logger.Error("Could not handle batch. ", log.ErrKey, err)
 			}
 
 		case <-h.exitHostCh:
@@ -510,12 +510,13 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 		}
 	}
 
-	if isLatestBlock && result.ProducedRollup.Header != nil {
-		// TODO - #718 - Unlink rollup production from L1 cadence.
-		h.publishRollup(result.ProducedRollup)
+	if result.ProducedRollup.Header == nil {
+		return nil
 	}
 
-	if result.ProducedRollup.Header != nil {
+	if isLatestBlock {
+		// TODO - #718 - Unlink rollup production from L1 cadence.
+		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
 		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
