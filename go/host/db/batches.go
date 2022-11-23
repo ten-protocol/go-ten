@@ -38,13 +38,28 @@ func (db *DB) AddBatchHeader(header *common.Header, txHashes []common.TxHash) er
 	if err := db.writeBatchHeader(header); err != nil {
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
+	if err := db.writeBatchTxHashes(b, header.Hash(), txHashes); err != nil {
+		return fmt.Errorf("could not write batch transaction hashes. Cause: %w", err)
+	}
 	if err := db.writeBatchHash(b, header); err != nil {
 		return fmt.Errorf("could not write batch hash. Cause: %w", err)
 	}
+	for _, txHash := range txHashes {
+		if err := db.writeBatchNumber(b, header, txHash); err != nil {
+			return fmt.Errorf("could not write batch number. Cause: %w", err)
+		}
+	}
 
-	// TODO - #718 - Store the batch txs and batch number per transaction hash, if needed (see `AddRollupHeader`).
-
-	// TODO - #718 - Update the total transactions, once we no longer do this in `AddRollupHeader`.
+	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
+	currentTotal, err := db.readTotalTransactions()
+	if err != nil {
+		return fmt.Errorf("could not retrieve total transactions. Cause: %w", err)
+	}
+	newTotal := big.NewInt(0).Add(currentTotal, big.NewInt(int64(len(txHashes))))
+	err = db.writeTotalTransactions(b, newTotal)
+	if err != nil {
+		return fmt.Errorf("could not write total transactions. Cause: %w", err)
+	}
 
 	// update the head if the new height is greater than the existing one
 	headBatchHeader, err := db.GetHeadBatchHeader()
@@ -70,6 +85,23 @@ func (db *DB) GetBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 	return db.readBatchHash(number)
 }
 
+// GetBatchTxs returns the transaction hashes of the batch with the given hash, or (nil, false) if no such batch is
+// found.
+func (db *DB) GetBatchTxs(batchHash gethcommon.Hash) ([]gethcommon.Hash, error) {
+	return db.readBatchTxHashes(batchHash)
+}
+
+// GetBatchNumber returns the number of the batch containing the given transaction hash, or (nil, false) if no such
+// batch is found.
+func (db *DB) GetBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
+	return db.readBatchNumber(txHash)
+}
+
+// GetTotalTransactions returns the total number of batched transactions.
+func (db *DB) GetTotalTransactions() (*big.Int, error) {
+	return db.readTotalTransactions()
+}
+
 // headerKey = batchHeaderPrefix  + hash
 func batchHeaderKey(hash gethcommon.Hash) []byte {
 	return append(batchHeaderPrefix, hash.Bytes()...)
@@ -78,6 +110,16 @@ func batchHeaderKey(hash gethcommon.Hash) []byte {
 // headerKey = batchHashPrefix + number
 func batchHashKey(num *big.Int) []byte {
 	return append(batchHashPrefix, []byte(num.String())...)
+}
+
+// headerKey = batchTxHashesPrefix + batch hash
+func batchTxHashesKey(hash gethcommon.Hash) []byte {
+	return append(batchTxHashesPrefix, hash.Bytes()...)
+}
+
+// headerKey = batchNumberPrefix + hash
+func batchNumberKey(txHash gethcommon.Hash) []byte {
+	return append(batchNumberPrefix, txHash.Bytes()...)
 }
 
 // Retrieves the batch header corresponding to the hash.
@@ -171,4 +213,100 @@ func (db *DB) readBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 	}
 	hash := gethcommon.BytesToHash(data)
 	return &hash, nil
+}
+
+// Returns the transaction hashes in the batch with the given hash, or (nil, false) if no such batch is found.
+func (db *DB) readBatchTxHashes(batchHash common.L2RootHash) ([]gethcommon.Hash, error) {
+	f, err := db.kvStore.Has(batchTxHashesKey(batchHash))
+	if err != nil {
+		return nil, err
+	}
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+
+	data, err := db.kvStore.Get(batchTxHashesKey(batchHash))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, errutil.ErrNotFound
+	}
+
+	txHashes := []gethcommon.Hash{}
+	if err = rlp.Decode(bytes.NewReader(data), &txHashes); err != nil {
+		return nil, err
+	}
+
+	return txHashes, nil
+}
+
+// Stores a batch's number in the database, keyed by the hash of a transaction in that rollup.
+func (db *DB) writeBatchNumber(w ethdb.KeyValueWriter, header *common.Header, txHash gethcommon.Hash) error {
+	key := batchNumberKey(txHash)
+	if err := w.Put(key, header.Number.Bytes()); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Writes the transaction hashes against the batch containing them.
+func (db *DB) writeBatchTxHashes(w ethdb.KeyValueWriter, batchHash common.L2RootHash, txHashes []gethcommon.Hash) error {
+	data, err := rlp.EncodeToBytes(txHashes)
+	if err != nil {
+		return err
+	}
+	key := batchTxHashesKey(batchHash)
+	if err = w.Put(key, data); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Retrieves the number of the batch containing the transaction with the given hash, or (nil, false) if no such batch
+// is found.
+func (db *DB) readBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
+	f, err := db.kvStore.Has(batchNumberKey(txHash))
+	if err != nil {
+		return nil, err
+	}
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	data, err := db.kvStore.Get(batchNumberKey(txHash))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, errutil.ErrNotFound
+	}
+	return big.NewInt(0).SetBytes(data), nil
+}
+
+// Retrieves the total number of rolled-up transactions.
+func (db *DB) readTotalTransactions() (*big.Int, error) {
+	f, err := db.kvStore.Has(totalTransactionsKey)
+	if err != nil {
+		return nil, err
+	}
+	if !f {
+		return big.NewInt(0), nil
+	}
+	data, err := db.kvStore.Get(totalTransactionsKey)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return big.NewInt(0), nil
+	}
+	return big.NewInt(0).SetBytes(data), nil
+}
+
+// Stores the total number of transactions in the database.
+func (db *DB) writeTotalTransactions(w ethdb.KeyValueWriter, newTotal *big.Int) error {
+	err := w.Put(totalTransactionsKey, newTotal.Bytes())
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -12,35 +12,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
-func TestCanStoreAndRetrieveRollupHeader(t *testing.T) {
-	db := NewInMemoryDB()
-	header := common.Header{
-		Number: big.NewInt(rollupNumber),
-	}
-	err := db.AddRollupHeader(&header, []gethcommon.Hash{})
-	if err != nil {
-		t.Errorf("could not store rollup header. Cause: %s", err)
-	}
-
-	rollupHeader, err := db.GetRollupHeader(header.Hash())
-	if err != nil {
-		t.Errorf("stored rollup header but could not retrieve it. Cause: %s", err)
-	}
-	if rollupHeader.Number.Cmp(header.Number) != 0 {
-		t.Errorf("rollup header was not stored correctly")
-	}
-}
-
-func TestUnknownRollupHeaderReturnsNotFound(t *testing.T) {
-	db := NewInMemoryDB()
-	header := types.Header{}
-
-	_, err := db.GetRollupHeader(header.Hash())
-	if !errors.Is(err, errutil.ErrNotFound) {
-		t.Errorf("did not store rollup header but was able to retrieve it")
-	}
-}
-
 func TestHigherNumberRollupBecomesRollupHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	headerOne := common.Header{
@@ -166,66 +137,11 @@ func TestUnknownRollupTxHashReturnsNotFound(t *testing.T) {
 	}
 }
 
-func TestCanRetrieveRollupTransactions(t *testing.T) {
-	db := NewInMemoryDB()
-	header := common.Header{
-		Number: big.NewInt(rollupNumber),
-	}
-	txHashes := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	err := db.AddRollupHeader(&header, txHashes)
-	if err != nil {
-		t.Errorf("could not store rollup header. Cause: %s", err)
-	}
-
-	rollupTxs, err := db.GetRollupTxs(header.Hash())
-	if err != nil {
-		t.Errorf("stored rollup header but could not retrieve its transactions. Cause: %s", err)
-	}
-	if len(rollupTxs) != len(txHashes) {
-		t.Errorf("rollup transactions were not stored correctly")
-	}
-	for idx, rollupTx := range rollupTxs {
-		if rollupTx != txHashes[idx] {
-			t.Errorf("rollup transactions were not stored correctly")
-		}
-	}
-}
-
 func TestTransactionsForUnknownRollupReturnsNotFound(t *testing.T) {
 	db := NewInMemoryDB()
 
 	_, err := db.GetRollupNumber(gethcommon.BytesToHash([]byte("magicString")))
 	if !errors.Is(err, errutil.ErrNotFound) {
 		t.Errorf("did not store rollup number but was able to retrieve it")
-	}
-}
-
-func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
-	db := NewInMemoryDB()
-	headerOne := common.Header{
-		Number: big.NewInt(rollupNumber),
-	}
-	txHashesOne := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	err := db.AddRollupHeader(&headerOne, txHashesOne)
-	if err != nil {
-		t.Errorf("could not store rollup header. Cause: %s", err)
-	}
-
-	headerTwo := common.Header{
-		Number: big.NewInt(rollupNumber),
-	}
-	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
-	err = db.AddRollupHeader(&headerTwo, txHashesTwo)
-	if err != nil {
-		t.Errorf("could not store rollup header. Cause: %s", err)
-	}
-
-	totalTxs, err := db.GetTotalTransactions()
-	if err != nil {
-		t.Errorf("was not able to read total number of transactions. Cause: %s", err)
-	}
-
-	if int(totalTxs.Int64()) != len(txHashesOne)+len(txHashesTwo) {
-		t.Errorf("total number of rollup transactions was not stored correctly")
 	}
 }

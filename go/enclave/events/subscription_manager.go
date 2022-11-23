@@ -2,9 +2,12 @@ package events
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -129,27 +132,33 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 	// We gather the logs across all the blocks in the canonical chain.
 	logs := []*types.Log{}
 	for _, hash := range blockHashes {
-		blockLogs, found := s.storage.FetchLogs(hash)
-		if !found {
-			break // Blocks before the genesis rollup do not have associated logs (or block state).
+		blockLogs, err := s.storage.FetchLogs(hash)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				break // Blocks before the genesis rollup do not have associated logs (or block state).
+			}
+			return nil, fmt.Errorf("could not fetch logs for block hash. Cause: %w", err)
 		}
 		logs = append(logs, blockLogs...)
 	}
 
 	// We proceed in this way instead of calling `FetchHeadRollup` because we want to ensure the chain has not advanced
 	// causing a head block/head rollup mismatch.
-	headBlockState, found := s.storage.FetchBlockState(headBlock.Hash())
-	if !found {
-		return nil, fmt.Errorf("could not filter logs as block state for head block could not be found")
+	headBlockState, err := s.storage.FetchBlockState(headBlock.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("could not filter logs as block state for head block could not be retrieved. Cause: %w", err)
 	}
-	return s.FilterLogs(logs, headBlockState.HeadRollup, account, filter), nil
+	return s.FilterLogs(logs, headBlockState.HeadRollup, account, filter)
 }
 
 // FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs
 // filtered based on the provided account and filter.
-func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2RootHash, account *gethcommon.Address, filter *filters.FilterCriteria) []*types.Log {
+func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2RootHash, account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
 	filteredLogs := []*types.Log{}
-	stateDB := s.storage.CreateStateDB(rollupHash)
+	stateDB, err := s.storage.CreateStateDB(rollupHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
+	}
 
 	for _, logItem := range logs {
 		userAddrs := getUserAddrsFromLogTopics(logItem, stateDB)
@@ -158,33 +167,40 @@ func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2
 		}
 	}
 
-	return filteredLogs
+	return filteredLogs, nil
 }
 
 // GetSubscribedLogsEncrypted returns, for each subscription, the logs filtered and encrypted with the appropriate
 // viewing key.
 func (s *SubscriptionManager) GetSubscribedLogsEncrypted(logs []*types.Log, rollupHash common.L2RootHash) (map[gethrpc.ID][]byte, error) {
-	filteredLogs := s.getSubscribedLogs(logs, rollupHash)
+	filteredLogs, err := s.getSubscribedLogs(logs, rollupHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not get subscribed logs. Cause: %w", err)
+	}
 	return s.encryptLogs(filteredLogs)
 }
 
 // Filters out irrelevant logs, those that are not subscribed to, and those the subscription has seen before, and
 // organises them by their subscribing ID.
-func (s *SubscriptionManager) getSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) map[gethrpc.ID][]*types.Log {
+func (s *SubscriptionManager) getSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) (map[gethrpc.ID][]*types.Log, error) {
 	relevantLogsByID := map[gethrpc.ID][]*types.Log{}
 
 	// If there are no subscriptions, we return early, to avoid the overhead of creating the state DB.
 	if s.getNumberOfSubsThreadsafe() == 0 {
-		return map[gethrpc.ID][]*types.Log{}
+		return map[gethrpc.ID][]*types.Log{}, nil
 	}
 
-	stateDB := s.storage.CreateStateDB(rollupHash)
+	stateDB, err := s.storage.CreateStateDB(rollupHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not create stateDB to extract user addresses. Cause: %w", err)
+	}
+
 	for _, logItem := range logs {
 		userAddrs := getUserAddrsFromLogTopics(logItem, stateDB)
 		s.updateRelevantLogs(logItem, userAddrs, relevantLogsByID)
 	}
 
-	return relevantLogsByID
+	return relevantLogsByID, nil
 }
 
 // Encrypts each log with the appropriate viewing key.

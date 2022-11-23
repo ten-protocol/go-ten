@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
@@ -201,11 +203,16 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 //  STATE
 
 // Recursively calculates and stores the block state, receipts and logs for the given block.
-func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
+func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, error) {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
-	blockState, found := rc.storage.FetchBlockState(b.Hash())
-	if found {
-		return blockState
+	blockState, err := rc.storage.FetchBlockState(b.Hash())
+	if err == nil {
+		return blockState, nil
+	}
+
+	// If we get an error other than `ErrNotFound`, we return the error.
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
@@ -213,26 +220,32 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 
 	// processing blocks before genesis, so there is nothing to do
 	if !found && len(rollups) == 0 {
-		return nil
+		return nil, nil //nolint:nilnil
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handles the case of the block containing the genesis being processed multiple times.
 	genesisState, isGenesis := rc.handleGenesisRollup(b, rollups, genesisRollup)
 	if isGenesis {
-		return genesisState
+		return genesisState, nil
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	parentState, parentFound := rc.storage.FetchBlockState(b.ParentHash())
-	if !parentFound {
+	parentState, err := rc.storage.FetchBlockState(b.ParentHash())
+	if err != nil {
+		if !errors.Is(err, errutil.ErrNotFound) {
+			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
+		}
 		// go back and calculate the Root of the Parent
 		parent, found := rc.storage.FetchBlock(b.ParentHash())
 		if !found {
 			rc.logger.Crit("Could not find parent block when calculating block state. This should not happen.")
 		}
-		parentState = rc.updateState(parent)
+		parentState, err = rc.updateState(parent)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if parentState == nil {
@@ -253,9 +266,12 @@ func (rc *RollupChain) updateState(b *types.Block) *obscurocore.BlockState {
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
 	}
-	rc.storage.StoreNewHead(blockState, head, receipts, logs)
+	err = rc.storage.StoreNewHead(blockState, head, receipts, logs)
+	if err != nil {
+		rc.logger.Crit("Could not store new head.", log.ErrKey, err)
+	}
 
-	return blockState
+	return blockState, nil
 }
 
 func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (genesisState *obscurocore.BlockState, isGenesis bool) {
@@ -274,8 +290,12 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
 		}
-		rc.storage.StoreNewHead(&bs, genesis, nil, []*types.Log{})
-		err := rc.faucet.CalculateGenesisState(rc.storage)
+		err := rc.storage.StoreNewHead(&bs, genesis, nil, []*types.Log{})
+		if err != nil {
+			return nil, false
+		}
+
+		err = rc.faucet.CalculateGenesisState(rc.storage)
 		if err != nil {
 			return nil, false
 		}
@@ -427,7 +447,11 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 
 // verifies that the headers of the rollup match the results of executing the transactions
 func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*types.Receipt, error) { //nolint
-	stateDB := rc.storage.CreateStateDB(r.Header.ParentHash)
+	stateDB, err := rc.storage.CreateStateDB(r.Header.ParentHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+
 	// calculate the state to compare with what is in the Rollup
 	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
 	if len(successfulTxs) != len(r.Transactions) {
@@ -491,18 +515,19 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 	}
 
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
-	blockState := rc.updateState(&block)
+	// TODO - Handle error properly.
+	blockState, _ := rc.updateState(&block)
 	if blockState == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return rc.noBlockStateBlockSubmissionResponse(&block), nil
 	}
 
 	logs := []*types.Log{}
-	fetchedLogs, found := rc.storage.FetchLogs(block.Hash())
-	if found {
+	fetchedLogs, err := rc.storage.FetchLogs(block.Hash())
+	if err == nil {
 		logs = fetchedLogs
 	} else {
-		rc.logger.Error("Could not retrieve logs for stored block state. Returning no logs")
+		rc.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
 	}
 
 	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.HeadRollup)
@@ -582,7 +607,11 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	}
 
 	newRollupTxs = rc.mempool.CurrentTxs(headRollup, rc.storage)
-	newRollupState = rc.storage.CreateStateDB(r.Header.ParentHash)
+	newRollupState, err = rc.storage.CreateStateDB(r.Header.ParentHash)
+	if err != nil {
+		rc.logger.Crit("could not create stateDB", log.ErrKey, err)
+		return nil
+	}
 
 	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, newRollupTxs, newRollupState)
 
@@ -709,7 +738,7 @@ func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalan
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
 		}
-		transaction, _, _, _, err := rc.storage.GetTransaction(txHash)
+		transaction, _, _, _, err := rc.storage.GetTransaction(*txHash)
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
 		}
@@ -739,10 +768,11 @@ func (rc *RollupChain) GetChainStateAtBlock(blockNumber gethrpc.BlockNumber) (*s
 	}
 
 	// We get that of the chain at that height
-	blockchainState := rc.storage.CreateStateDB(rollup.Hash())
+	blockchainState, err := rc.storage.CreateStateDB(rollup.Hash())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
+
 	if blockchainState == nil {
 		return nil, fmt.Errorf("unable to fetch chain state for rollup %s", rollup.Hash().Hex())
 	}
@@ -777,9 +807,9 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
 	}
 
-	hs := rc.storage.FetchHeadState()
-	if hs == nil {
-		return nil, fmt.Errorf("unable to fetch head state")
+	hs, err := rc.storage.FetchHeadState()
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch head state. Cause: %w", err)
 	}
 	// todo - get the parent
 	r, f := rc.storage.FetchRollup(hs.HeadRollup)
@@ -788,7 +818,11 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 	}
 
 	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
-	s := rc.storage.CreateStateDB(hs.HeadRollup)
+	s, err := rc.storage.CreateStateDB(hs.HeadRollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+
 	result, err := evm.ExecuteOffChainCall(&callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
@@ -825,7 +859,13 @@ func (rc *RollupChain) verifySig(r *obscurocore.Rollup) bool {
 		rc.logger.Error("Missing signature on rollup")
 		return false
 	}
-	pubKey := rc.storage.FetchAttestedKey(r.Header.Agg)
+
+	pubKey, err := rc.storage.FetchAttestedKey(r.Header.Agg)
+	if err != nil {
+		rc.logger.Error("Could not retrieve attested key for aggregator %s. Cause: %w", r.Header.Agg, err)
+		return false
+	}
+
 	return ecdsa.Verify(pubKey, h[:], r.Header.R, r.Header.S)
 }
 
@@ -843,9 +883,12 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
-		rollupHash := rc.storage.FetchHeadState().HeadRollup
+		headState, err := rc.storage.FetchHeadState()
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve head state. Cause: %w", err)
+		}
 		var found bool
-		rollup, found = rc.storage.FetchRollup(rollupHash)
+		rollup, found = rc.storage.FetchRollup(headState.HeadRollup)
 		if !found {
 			return nil, fmt.Errorf("rollup with requested height %d was not found", height)
 		}

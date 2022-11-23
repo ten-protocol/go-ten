@@ -245,8 +245,8 @@ jobs:
           inlineScript: |
             az network nic ip-config address-pool add \
               --address-pool Dev-Backend-Pool-Obscuro-Testnet \
-              --ip-config-name ipconfigD-1-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name D-1-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --ip-config-name ipconfigD-0-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name D-0-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
               --lb-name dev-testnet-loadbalancer
 

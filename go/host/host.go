@@ -295,8 +295,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 	encryptedResponse, err := h.enclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
-		h.logger.Info("Could not submit transaction", log.ErrKey, err)
-		return nil, err
+		return nil, fmt.Errorf("could not submit transaction. Cause: %w", err)
 	}
 
 	err = h.p2p.BroadcastTx(encryptedTx)
@@ -448,7 +447,7 @@ func (h *host) startProcessing() { //nolint:gocognit
 
 		case batch := <-h.batchP2PCh:
 			if err := h.handleBatch(&batch); err != nil {
-				h.logger.Warn("Could not handle batch. ", log.ErrKey, err)
+				h.logger.Error("Could not handle batch. ", log.ErrKey, err)
 			}
 
 		case <-h.exitHostCh:
@@ -510,14 +509,15 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 		}
 	}
 
+	if result.ProducedRollup.Header == nil {
+		return nil
+	}
+
 	if isLatestBlock {
-		if result.ProducedRollup.Header == nil {
-			return nil
-		}
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.distributeBatch(result.ProducedRollup)
+		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
 
 	return nil
@@ -560,14 +560,19 @@ func (h *host) publishRollup(producedRollup common.ExtRollup) {
 }
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
-func (h *host) distributeBatch(producedRollup common.ExtRollup) {
+func (h *host) storeAndDistributeBatch(producedRollup common.ExtRollup) {
 	batch := common.ExtBatch{
 		Header:          producedRollup.Header,
 		TxHashes:        producedRollup.TxHashes,
 		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
 	}
 
-	err := h.p2p.BroadcastBatch(&batch)
+	err := h.db.AddBatchHeader(batch.Header, batch.TxHashes)
+	if err != nil {
+		h.logger.Error("could not store batch", log.ErrKey, err)
+	}
+
+	err = h.p2p.BroadcastBatch(&batch)
 	if err != nil {
 		h.logger.Error("could not broadcast batch", log.ErrKey, err)
 	}
@@ -582,16 +587,6 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 		if err != nil {
 			return err
 		}
-
-		batch := common.ExtBatch{
-			Header:          result.IngestedRollupHeader,
-			TxHashes:        result.ProducedRollup.TxHashes,
-			EncryptedTxBlob: result.ProducedRollup.EncryptedTxBlob,
-		}
-		err = h.db.AddBatchHeader(batch.Header, batch.TxHashes)
-		if err != nil {
-			return err
-		}
 	}
 
 	// adding a header will update the head if it has a higher height
@@ -600,7 +595,7 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 
 // Called only by the first enclave to bootstrap the network
 func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
-	// Create the genesis rollup and submit it to the management contract
+	// Create the genesis rollup.
 	genesisResponse, err := h.enclaveClient.ProduceGenesis(block.Hash())
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not produce genesis. Cause: %w", err)
@@ -609,14 +604,19 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
 			common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 		))
-	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToExtRollup())
+
+	// Distribute the corresponding batch.
+	producedRollup := genesisResponse.ProducedRollup.ToExtRollup()
+	h.storeAndDistributeBatch(*producedRollup)
+
+	// Submit the rollup to the management contract.
+	encodedRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
 	l1tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
-
 	rollupTx := h.mgmtContractLib.CreateRollup(l1tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 	if err != nil {
@@ -1030,6 +1030,8 @@ func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
 	}
 
 	// TODO - #718 - Have the enclave process batch, so that it's up to date.
+
+	// TODO - #718 - Implement a catch-up mechanism for historical batches.
 
 	err = h.db.AddBatchHeader(batch.Header, batch.TxHashes)
 	if err != nil {

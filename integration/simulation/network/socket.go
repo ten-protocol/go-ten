@@ -71,6 +71,7 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 	return &RPCHandles{
 		EthClients:     n.gethClients,
 		ObscuroClients: obscuroClients,
+		RPCClients:     n.l2Clients,
 		AuthObsClients: walletClients,
 	}, nil
 }
