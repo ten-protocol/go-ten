@@ -419,7 +419,7 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 		parentNumber := header.Number.Uint64() - 1
 		header, err = obscuroClient.RollupHeaderByHash(header.ParentHash)
 		if err != nil {
-			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup %d header by hash. Cause: %s", parentNumber, nodeIdx, err))
+			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup %d header by hash. Cause: %s", nodeIdx, parentNumber, err))
 			return
 		}
 	}
