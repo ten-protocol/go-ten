@@ -206,13 +206,15 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, error) {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
 	blockState, err := rc.storage.FetchBlockState(b.Hash())
+	if err == nil {
+		return blockState, nil
+	}
+
+	// If we get an error other than `ErrNotFound`, we return the error.
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
 		}
-	}
-	if err == nil {
-		return blockState, nil
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
@@ -527,7 +529,7 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 	if err == nil {
 		logs = fetchedLogs
 	} else {
-		rc.logger.Error("Could not retrieve logs for stored block state. Returning no logs")
+		rc.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
 	}
 
 	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.HeadRollup)

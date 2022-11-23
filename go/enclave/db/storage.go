@@ -226,11 +226,7 @@ func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
 }
 
 func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, error) {
-	bs, err := obscurorawdb.ReadBlockState(s.db, hash)
-	if err != nil {
-		return nil, err
-	}
-	return bs, nil
+	return obscurorawdb.ReadBlockState(s.db, hash)
 }
 
 func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
