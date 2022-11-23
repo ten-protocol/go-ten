@@ -37,11 +37,6 @@ func (db *DB) AddRollupHeader(header *common.Header, txHashes []common.TxHash) e
 	if err := db.writeRollupHash(b, header); err != nil {
 		return fmt.Errorf("could not write rollup hash. Cause: %w", err)
 	}
-	for _, txHash := range txHashes {
-		if err := db.writeRollupNumber(b, header, txHash); err != nil {
-			return fmt.Errorf("could not write rollup number. Cause: %w", err)
-		}
-	}
 
 	// update the head if the new height is greater than the existing one
 	headRollupHeader, err := db.GetHeadRollupHeader()
@@ -153,18 +148,6 @@ func (db *DB) writeHeadRollupHash(w ethdb.KeyValueWriter, val gethcommon.Hash) e
 func (db *DB) writeRollupHash(w ethdb.KeyValueWriter, header *common.Header) error {
 	key := rollupHashKey(header.Number)
 	if err := w.Put(key, header.Hash().Bytes()); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Stores a rollup's number in the database, keyed by the hash of a transaction in that rollup.
-func (db *DB) writeRollupNumber(w ethdb.KeyValueWriter, header *common.Header, txHash gethcommon.Hash) error {
-	key := rollupNumberKey(txHash)
-	// TODO - Investigate this off-by-one issue. The tx hashes that are in the `BlockSubmissionResponse` for rollup #1
-	//  are actually the transactions for rollup #2.
-	number := big.NewInt(0).Add(header.Number, big.NewInt(1))
-	if err := w.Put(key, number.Bytes()); err != nil {
 		return err
 	}
 	return nil
