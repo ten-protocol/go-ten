@@ -685,9 +685,9 @@ func (h *host) requestSecret() error {
 		Attestation: encodedAttestation,
 	}
 	// record the L1 head height before we submit the secret request so we know which block to watch from
-	l1Head, f := h.ethClient.FetchHeadBlock()
-	if !f {
-		panic("no head found for L1")
+	l1Head, err := h.ethClient.FetchHeadBlock()
+	if err != nil {
+		panic(fmt.Errorf("could not fetch head L1 block. Cause: %w", err))
 	}
 	requestSecretTx := h.mgmtContractLib.CreateRequestSecret(l1tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(requestSecretTx, l1TxTriesSecret)

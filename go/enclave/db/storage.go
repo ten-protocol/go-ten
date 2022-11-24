@@ -48,12 +48,16 @@ func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
 	s.StoreRollup(rol)
 }
 
-func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, bool) {
-	hash, found := obscurorawdb.ReadGenesisHash(s.db)
-	if !found {
-		return nil, false
+func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, error) {
+	hash, err := obscurorawdb.ReadGenesisHash(s.db)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 	}
-	return s.FetchRollup(*hash)
+	rollup, f := s.FetchRollup(*hash)
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	return rollup, nil
 }
 
 func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
@@ -87,7 +91,11 @@ func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
 
 func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, bool) {
 	if height == 0 {
-		return s.FetchGenesisRollup()
+		genesisRollup, err := s.FetchGenesisRollup()
+		if err != nil {
+			return nil, false
+		}
+		return genesisRollup, true
 	}
 
 	hash := obscurorawdb.ReadCanonicalHash(s.db, height)
@@ -102,10 +110,9 @@ func (s *storageImpl) FetchRollups(height uint64) ([]*core.Rollup, error) {
 	return obscurorawdb.ReadRollupsForHeight(s.db, height, s.logger)
 }
 
-func (s *storageImpl) StoreBlock(b *types.Block) bool {
+func (s *storageImpl) StoreBlock(b *types.Block) {
 	s.assertSecretAvailable()
 	rawdb.WriteBlock(s.db, b)
-	return true
 }
 
 func (s *storageImpl) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {
@@ -121,9 +128,13 @@ func (s *storageImpl) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {
 	return nil, false
 }
 
-func (s *storageImpl) FetchHeadBlock() (*types.Block, bool) {
+func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
 	s.assertSecretAvailable()
-	return s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
+	block, f := s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	return block, nil
 }
 
 func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
@@ -207,7 +218,6 @@ func (s *storageImpl) assertSecretAvailable() {
 	//}
 }
 
-// ProofHeight - return the height of the L1 proof, or GenesisHeight - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
 func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
 	v, f := s.FetchBlock(r.Header.L1Proof)
@@ -217,12 +227,12 @@ func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
 	return int64(v.NumberU64())
 }
 
-func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
-	v, f := s.FetchBlock(r.Header.L1Proof)
+func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
+	block, f := s.FetchBlock(r.Header.L1Proof)
 	if !f {
-		s.logger.Crit("could not find proof for this rollup")
+		return nil, errutil.ErrNotFound
 	}
-	return v
+	return block, nil
 }
 
 func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, error) {

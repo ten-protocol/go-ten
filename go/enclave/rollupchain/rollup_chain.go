@@ -145,12 +145,16 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 		}
 	}
 	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	prevL1Head, found := rc.storage.FetchHeadBlock()
+	prevL1Head, err := rc.storage.FetchHeadBlock()
 
-	// we do a basic sanity check, comparing the received block to the head block on the chain
-	if !found {
-		// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
-		return &blockIngestionType{latest: isLatest, fork: false, preGenesis: true}, nil
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
+			return &blockIngestionType{latest: isLatest, fork: false, preGenesis: true}, nil
+		}
+		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
+
+		// we do a basic sanity check, comparing the received block to the head block on the chain
 	} else if block.ParentHash() != prevL1Head.Hash() {
 		lcaBlock, err := gethutil.LCA(block, prevL1Head, rc.storage)
 		if err != nil {
@@ -231,11 +235,16 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, err
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
-	genesisRollup, found := rc.storage.FetchGenesisRollup()
-
+	genesisRollup, err := rc.storage.FetchGenesisRollup()
 	// processing blocks before genesis, so there is nothing to do
-	if !found && len(rollups) == 0 {
-		return nil, nil //nolint:nilnil
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			if len(rollups) == 0 {
+				return nil, nil //nolint:nilnil
+			}
+		} else {
+			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
+		}
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
@@ -362,12 +371,18 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		rc.logger.Crit("Sanity check. Rollup has no parent.")
 	}
 
-	fromBlock := rc.storage.Proof(parent)
-	toBlock := rc.storage.Proof(rollup)
+	parentProof, err := rc.storage.Proof(parent)
+	if err != nil {
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
+	}
+	rollupProof, err := rc.storage.Proof(rollup)
+	if err != nil {
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
+	}
 
 	depositTxs := rc.bridge.ExtractDeposits(
-		fromBlock,
-		toBlock,
+		parentProof,
+		rollupProof,
 		rc.storage,
 		stateDB,
 	)
@@ -398,9 +413,9 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		return evm.ExecuteOffChainCall(&msg, clonedDB, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
 	}
 
-	err := rc.crossChainProcessors.LocalManager.SubmitRemoteMessagesLocally(
-		fromBlock,
-		toBlock,
+	err = rc.crossChainProcessors.LocalManager.SubmitRemoteMessagesLocally(
+		parentProof,
+		rollupProof,
 		stateDB,
 		onChainCallFunc,
 		offChainCallFunc,
@@ -425,7 +440,11 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
-		rollupBlock := rc.storage.Proof(rollup)
+		rollupBlock, err := rc.storage.Proof(rollup)
+		if err != nil {
+			rc.logger.Crit("Failed to extract rollup proof", log.ErrKey, err)
+		}
+
 		rc.logger.Error(fmt.Sprintf("[rollupBlock=%d] Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
 			common.ShortHash(rollupBlock.Hash()), common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts))
 		return false
@@ -554,10 +573,7 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, receipts types.Receipts,
 		"ingestionType", ingestionType)
 
 	// Only store the block if the L1 chain insertion succeeded
-	stored := rc.storage.StoreBlock(&block)
-	if !stored {
-		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
-	}
+	rc.storage.StoreBlock(&block)
 
 	// This requires block to be stored first ... but can permanently fail a block
 	err = rc.crossChainProcessors.RemoteManager.ProcessCrossChainMessages(&block, receipts)
@@ -681,7 +697,10 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 
 	rc.logger.Trace(fmt.Sprintf("[CrossChain] Added %d cross chain messages to rollup. Equivalent withdrawals in header - %d", len(r.Header.CrossChainMessages), len(r.Header.Withdrawals)))
 
-	crossChainBind := rc.storage.Proof(r)
+	crossChainBind, err := rc.storage.Proof(r)
+	if err != nil {
+		rc.logger.Crit("Failed to extract rollup proof that should exist!")
+	}
 
 	r.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
 	r.Header.LatestInboundCrossChainHeight = crossChainBind.Number()
@@ -938,9 +957,9 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 	var rollup *obscurocore.Rollup
 	switch height {
 	case gethrpc.EarliestBlockNumber:
-		genesisRollup, found := rc.storage.FetchGenesisRollup()
-		if !found {
-			return nil, fmt.Errorf("genesis rollup was not found")
+		genesisRollup, err := rc.storage.FetchGenesisRollup()
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
 		rollup = genesisRollup
 	case gethrpc.PendingBlockNumber:
@@ -966,14 +985,15 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 	return rollup, nil
 }
 
-func (rc *RollupChain) rejectBlockErr(err error) *common.BlockRejectError {
-	l1Head, found := rc.storage.FetchHeadBlock()
+func (rc *RollupChain) rejectBlockErr(cause error) *common.BlockRejectError {
 	var hash gethcommon.Hash
-	if found {
+	l1Head, err := rc.storage.FetchHeadBlock()
+	// TODO - Handle error.
+	if err == nil {
 		hash = l1Head.Hash()
 	}
 	return &common.BlockRejectError{
 		L1Head:  hash,
-		Wrapped: err,
+		Wrapped: cause,
 	}
 }

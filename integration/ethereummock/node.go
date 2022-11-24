@@ -2,10 +2,13 @@ package ethereummock
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 
@@ -103,9 +106,12 @@ func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
 }
 
 func (m *Node) BlockNumber() (uint64, error) {
-	blk, found := m.Resolver.FetchHeadBlock()
-	if !found {
-		return 0, ethereum.NotFound
+	blk, err := m.Resolver.FetchHeadBlock()
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			return 0, ethereum.NotFound
+		}
+		return 0, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
 	return blk.NumberU64(), nil
 }
@@ -116,9 +122,12 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	}
 	// TODO this should be a method in the resolver
 	var f bool
-	blk, found := m.Resolver.FetchHeadBlock()
-	if !found {
-		return nil, ethereum.NotFound
+	blk, err := m.Resolver.FetchHeadBlock()
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			return nil, ethereum.NotFound
+		}
+		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
 	for !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()) {
 		if blk.NumberU64() == n.Uint64() {
@@ -141,8 +150,12 @@ func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 	return blk, nil
 }
 
-func (m *Node) FetchHeadBlock() (*types.Block, bool) {
-	return m.Resolver.FetchHeadBlock()
+func (m *Node) FetchHeadBlock() (*types.Block, error) {
+	block, err := m.Resolver.FetchHeadBlock()
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
+	}
+	return block, nil
 }
 
 func (m *Node) Info() ethadapter.Info {
