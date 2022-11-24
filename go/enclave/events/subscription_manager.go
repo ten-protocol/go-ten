@@ -107,7 +107,7 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
 	headBlock, err := s.storage.FetchHeadBlock()
 	if err != nil {
-		// todo - joel - handle error?
+		// todo - joel - handle error
 		return nil, err
 	}
 

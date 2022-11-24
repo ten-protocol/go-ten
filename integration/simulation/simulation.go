@@ -90,8 +90,9 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 
 	for {
 		// spin through the L1 blocks periodically to see if the genesis rollup has arrived
-		head, found := client.FetchHeadBlock()
-		if found {
+		head, err := client.FetchHeadBlock()
+		// todo - joel - handle error
+		if err == nil {
 			for _, b := range client.BlocksBetween(common.GenesisBlock, head) {
 				for _, tx := range b.Transactions() {
 					t := s.Params.MgmtContractLib.DecodeTx(tx)
