@@ -38,18 +38,18 @@ func WriteSharedSecret(db ethdb.KeyValueWriter, ss crypto.SharedEnclaveSecret) e
 	return nil
 }
 
-func ReadGenesisHash(db ethdb.KeyValueReader) (*common.Hash, bool) {
+func ReadGenesisHash(db ethdb.KeyValueReader) (*common.Hash, error) {
 	var hash common.Hash
 
 	enc, _ := db.Get(genesisRollupHash)
 	if len(enc) == 0 {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	if err := rlp.DecodeBytes(enc, &hash); err != nil {
-		return nil, false
+		return nil, fmt.Errorf("could not decode genesis rollup. Cause: %w", err)
 	}
 
-	return &hash, true
+	return &hash, nil
 }
 
 func WriteGenesisHash(db ethdb.KeyValueWriter, hash common.Hash, logger gethlog.Logger) {

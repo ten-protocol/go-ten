@@ -17,7 +17,7 @@ type BlockResolver interface {
 	// FetchBlock returns the L1 Block with the given hash and true, or (nil, false) if no such Block is stored
 	FetchBlock(hash common.L1RootHash) (*types.Block, bool)
 	// StoreBlock persists the L1 Block
-	StoreBlock(block *types.Block) bool
+	StoreBlock(block *types.Block)
 	// ParentBlock returns the L1 Block's parent and true, or (nil, false) if no parent Block is stored
 	ParentBlock(block *types.Block) (*types.Block, bool)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
@@ -27,11 +27,11 @@ type BlockResolver interface {
 	// Todo - this is super confusing, analyze the usage
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
 	// FetchHeadBlock - returns the head of the current chain, or (nil, false) if no head is found
-	FetchHeadBlock() (*types.Block, bool)
-	// ProofHeight - return the height of the L1 proof, or GenesisHeight - if the block is not known
+	FetchHeadBlock() (*types.Block, error)
+	// ProofHeight - return the height of the L1 proof, or `-1` if the block is not known
 	ProofHeight(rollup *core.Rollup) int64
 	// Proof - returns the block used as proof for the rollup
-	Proof(rollup *core.Rollup) *types.Block
+	Proof(rollup *core.Rollup) (*types.Block, error)
 }
 
 type RollupResolver interface {
@@ -47,8 +47,8 @@ type RollupResolver interface {
 	ParentRollup(rollup *core.Rollup) (*core.Rollup, bool)
 	// StoreGenesisRollup stores the rollup genesis
 	StoreGenesisRollup(rol *core.Rollup)
-	// FetchGenesisRollup returns the rollup genesis, or (nil, false) if no such rollup was found.
-	FetchGenesisRollup() (*core.Rollup, bool)
+	// FetchGenesisRollup returns the rollup genesis.
+	FetchGenesisRollup() (*core.Rollup, error)
 	// FetchHeadRollup returns the current head rollup
 	FetchHeadRollup() (*core.Rollup, error)
 }

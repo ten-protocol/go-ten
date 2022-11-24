@@ -80,8 +80,8 @@ func (e *EthBlockProvider) Stop() {
 }
 
 func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
-	l1Head, f := e.ethClient.FetchHeadBlock()
-	return f && h == l1Head.Hash()
+	l1Head, err := e.ethClient.FetchHeadBlock()
+	return err == nil && h == l1Head.Hash()
 }
 
 // streamBlocks is the main loop. It should be run in a separate go routine. It will stream catch-up blocks from requested height until it
@@ -123,9 +123,9 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(fromHeight *big.Int) (*types.
 		return blk, nil
 	}
 
-	l1Block, f := e.ethClient.FetchHeadBlock()
-	if !f {
-		return nil, errors.New("l1 head block not found")
+	l1Block, err := e.ethClient.FetchHeadBlock()
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
 	l1Head := l1Block.Header()
 

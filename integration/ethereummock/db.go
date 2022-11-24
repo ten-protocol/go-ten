@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -22,7 +24,7 @@ func (n *blockResolverInMem) ProofHeight(_ *core.Rollup) int64 {
 	panic("implement me")
 }
 
-func (n *blockResolverInMem) Proof(_ *core.Rollup) *types.Block {
+func (n *blockResolverInMem) Proof(_ *core.Rollup) (*types.Block, error) {
 	panic("implement me")
 }
 
@@ -33,11 +35,10 @@ func NewResolver() db.BlockResolver {
 	}
 }
 
-func (n *blockResolverInMem) StoreBlock(block *types.Block) bool {
+func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 	n.m.Lock()
 	defer n.m.Unlock()
 	n.blockCache[block.Hash()] = block
-	return true
 }
 
 func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {
@@ -48,7 +49,7 @@ func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, b
 	return block, f
 }
 
-func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, bool) {
+func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, error) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	var max *types.Block
@@ -59,9 +60,9 @@ func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, bool) {
 		}
 	}
 	if max == nil {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
-	return max, true
+	return max, nil
 }
 
 func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, bool) {
