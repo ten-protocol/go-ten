@@ -2,7 +2,7 @@
 
 ## Scope
 
-The rollup is a public available object that's written as a bytecode in the Layer 1 chain.
+The rollup is a publicly available object that's written in the Layer 1 chain.
 Obscuro blockchain is a chain of rollups that represent the state changes.
 Given the private nature of Obscuro, the rollups must be confidential.
 The confidentiality model is described in this section.
