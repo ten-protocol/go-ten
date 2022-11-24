@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -102,9 +104,9 @@ func printBlock(b *types.Block, m Node) string {
 			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", to, l1Tx.Amount))
 		}
 	}
-	p, f := m.Resolver.ParentBlock(b)
-	if !f {
-		testlog.Logger().Crit("Should not happen. Parent not found")
+	p, err := m.Resolver.ParentBlock(b)
+	if err != nil {
+		testlog.Logger().Crit("Should not happen. Could not retrieve parent", log.ErrKey, err)
 	}
 
 	return fmt.Sprintf(" create b_%d(Height=%d, RollupNonce=%d)[parent=b_%d]. Txs: %v",

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -41,12 +43,15 @@ func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 	n.blockCache[block.Hash()] = block
 }
 
-func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {
+func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, error) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	block, f := n.blockCache[hash]
 
-	return block, f
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	return block, nil
 }
 
 func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, error) {
@@ -65,7 +70,7 @@ func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, error) {
 	return max, nil
 }
 
-func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, bool) {
+func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, error) {
 	return n.FetchBlock(b.Header().ParentHash)
 }
 
@@ -78,8 +83,8 @@ func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types
 		return false
 	}
 
-	p, f := n.ParentBlock(block)
-	if !f {
+	p, err := n.ParentBlock(block)
+	if err != nil {
 		return false
 	}
 
@@ -99,15 +104,16 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor c
 		return false
 	}
 
-	resolvedBlock, found := n.FetchBlock(maybeAncestor)
-	if found {
+	resolvedBlock, err := n.FetchBlock(maybeAncestor)
+	if err == nil {
 		if resolvedBlock.NumberU64() >= block.NumberU64() {
 			return false
 		}
 	}
 
-	p, f := n.ParentBlock(block)
-	if !f {
+	p, err := n.ParentBlock(block)
+	if err != nil {
+		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		return false
 	}
 
@@ -161,9 +167,9 @@ func (m *Node) removeCommittedTransactions(
 			break
 		}
 
-		p, f := resolver.ParentBlock(b)
-		if !f {
-			m.logger.Crit("Should not happen. Parent not found")
+		p, err := resolver.ParentBlock(b)
+		if err != nil {
+			m.logger.Crit("Could not retrieve parent block.", log.ErrKey, err)
 		}
 
 		b = p
