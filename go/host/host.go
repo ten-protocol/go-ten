@@ -650,15 +650,20 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
 func (h *host) watchForReceipt(txHash common.TxHash) {
 	var receipt *types.Receipt
 	var err error
-	err = retry.Do(func() error {
-		receipt, err = h.ethClient.TransactionReceipt(txHash)
-		return err
-	}, retry.NewTimeoutStrategy(maxWaitForL1Receipt, retryIntervalForL1Receipt))
+	err = retry.Do(
+		func() error {
+			receipt, err = h.ethClient.TransactionReceipt(txHash)
+			return err
+		},
+		retry.NewTimeoutStrategy(maxWaitForL1Receipt, retryIntervalForL1Receipt),
+	)
 	if err != nil {
 		h.logger.Error("receipt for L1 transaction never found despite 'successful' broadcast",
-			"err", err,
-			"signer", h.ethWallet.Address().Hex())
+			"err", err, "signer", h.ethWallet.Address().Hex(),
+		)
+		return
 	}
+
 	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
 		h.logger.Error("unsuccessful receipt found for published L1 transaction",
 			"status", receipt.Status,
