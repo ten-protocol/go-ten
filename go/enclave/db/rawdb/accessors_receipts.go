@@ -57,7 +57,7 @@ func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64, logger ge
 }
 
 // ReadReceipts retrieves all the transaction receipts belonging to a block, including
-// its correspoinding metadata fields. If it is unable to populate these metadata
+// its corresponding metadata fields. If it is unable to populate these metadata
 // fields then nil is returned.
 //
 // The current implementation populates these metadata fields by reading the receipts'
@@ -122,10 +122,11 @@ func ReadContractTransaction(db ethdb.Reader, address common.Address) (*common.H
 }
 
 // DeleteReceipts removes all receipt data associated with a block hash.
-func DeleteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, logger gethlog.Logger) {
+func DeleteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64) error {
 	if err := db.Delete(rollupReceiptsKey(number, hash)); err != nil {
-		logger.Crit("Failed to delete block receipts. ", log.ErrKey, err)
+		return fmt.Errorf("failed to delete block receipts. Cause: %w", err)
 	}
+	return nil
 }
 
 // storedReceiptRLP is the storage encoding of a receipt.
