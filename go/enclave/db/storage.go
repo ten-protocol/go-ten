@@ -225,7 +225,6 @@ func (s *storageImpl) assertSecretAvailable() {
 func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
 	v, err := s.FetchBlock(r.Header.L1Proof)
 	if err != nil {
-		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		return -1
 	}
 	return int64(v.NumberU64())
@@ -234,8 +233,7 @@ func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
 func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
 	block, err := s.FetchBlock(r.Header.L1Proof)
 	if err != nil {
-		// todo - joel - handle error
-		return nil, errutil.ErrNotFound
+		return nil, err
 	}
 	return block, nil
 }

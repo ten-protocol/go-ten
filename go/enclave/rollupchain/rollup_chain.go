@@ -515,8 +515,10 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 
 	_, err := rc.storage.FetchBlock(block.Hash())
 	if err == nil {
-		// todo - joel - handle error, unless it's not-found, which I can ignore
 		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
+	}
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 	}
 
 	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)

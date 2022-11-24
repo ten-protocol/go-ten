@@ -186,9 +186,12 @@ func (m *Node) Start() {
 		case p2pb := <-m.p2pCh: // Received from peers
 			_, err := m.Resolver.FetchBlock(p2pb.Hash())
 			// only process blocks if they haven't been processed before
-			// todo - joel - handle error
-			if err != nil && errors.Is(err, errutil.ErrNotFound) {
-				head = m.processBlock(p2pb, head)
+			if err != nil {
+				if errors.Is(err, errutil.ErrNotFound) {
+					head = m.processBlock(p2pb, head)
+				} else {
+					panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
+				}
 			}
 
 		case mb := <-m.miningCh: // Received from the local mining
