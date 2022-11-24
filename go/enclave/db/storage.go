@@ -367,5 +367,5 @@ func (s *storageImpl) FetchAttestedKey(aggregator gethcommon.Address) (*ecdsa.Pu
 }
 
 func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error {
-	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key, s.logger)
+	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
 }
