@@ -287,11 +287,15 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 	// the incoming block holds the genesis rollup
 	// calculate and return the new block state
 	// todo change this to an hardcoded hash on testnet/mainnet
+	// TODO - Surface errors instead of (as well as?) returning a bool.
 	if genesisRollup == nil && len(rollups) == 1 {
 		rc.logger.Info("Found genesis rollup", "l1Height", b.NumberU64(), "l1Hash", b.Hash())
 
 		genesis := rollups[0]
-		rc.storage.StoreGenesisRollup(genesis)
+		err := rc.storage.StoreGenesisRollup(genesis)
+		if err != nil {
+			return nil, false
+		}
 
 		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
 		bs := obscurocore.BlockState{
@@ -299,7 +303,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			HeadRollup:     genesis.Hash(),
 			FoundNewRollup: true,
 		}
-		err := rc.storage.StoreNewHead(&bs, genesis, nil, []*types.Log{})
+		err = rc.storage.StoreNewHead(&bs, genesis, nil, []*types.Log{})
 		if err != nil {
 			return nil, false
 		}
@@ -569,7 +573,11 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 	}
 
 	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
-	rc.storage.StoreRollup(r)
+	err = rc.storage.StoreRollup(r)
+	if err != nil {
+		return nil, err
+	}
+
 	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash())))
 
 	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), encryptedLogs), nil

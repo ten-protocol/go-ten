@@ -43,9 +43,9 @@ func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logge
 	}
 }
 
-func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
+func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) error {
 	obscurorawdb.WriteGenesisHash(s.db, rol.Hash(), s.logger)
-	s.StoreRollup(rol)
+	return s.StoreRollup(rol)
 }
 
 func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, error) {
@@ -69,14 +69,15 @@ func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
 	return r, nil
 }
 
-func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
+func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 	s.assertSecretAvailable()
 
 	batch := s.db.NewBatch()
 	obscurorawdb.WriteRollup(batch, rollup, s.logger)
 	if err := batch.Write(); err != nil {
-		s.logger.Crit("could not write rollup to storage. ", log.ErrKey, err)
+		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
 	}
+	return nil
 }
 
 func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {

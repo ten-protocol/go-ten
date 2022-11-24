@@ -42,11 +42,11 @@ type RollupResolver interface {
 	// FetchRollups returns all the proposed rollups with the given height
 	FetchRollups(height uint64) ([]*core.Rollup, error)
 	// StoreRollup persists the rollup
-	StoreRollup(rollup *core.Rollup)
+	StoreRollup(rollup *core.Rollup) error
 	// ParentRollup returns the rollup's parent rollup, or (nil, false) if no such rollup was found.
 	ParentRollup(rollup *core.Rollup) (*core.Rollup, bool)
 	// StoreGenesisRollup stores the rollup genesis
-	StoreGenesisRollup(rol *core.Rollup)
+	StoreGenesisRollup(rol *core.Rollup) error
 	// FetchGenesisRollup returns the rollup genesis.
 	FetchGenesisRollup() (*core.Rollup, error)
 	// FetchHeadRollup returns the current head rollup
