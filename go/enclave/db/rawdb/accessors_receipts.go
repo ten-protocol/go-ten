@@ -37,7 +37,7 @@ func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash, number uint64) (rlp.RawV
 // ReadRawReceipts retrieves all the transaction receipts belonging to a block.
 // The receipt metadata fields are not guaranteed to be populated, so they
 // should not be used. Use ReadReceipts instead if the metadata is needed.
-func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64, logger gethlog.Logger) (types.Receipts, error) {
+func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64) (types.Receipts, error) {
 	// Retrieve the flattened receipt slice
 	data, err := ReadReceiptsRLP(db, hash, number)
 	if err != nil {
@@ -64,7 +64,7 @@ func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64, logger ge
 // if the receipt itself is stored.
 func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) types.Receipts {
 	// We're deriving many fields from the block body, retrieve beside the receipt
-	receipts, err := ReadRawReceipts(db, hash, number, logger)
+	receipts, err := ReadRawReceipts(db, hash, number)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Could not read receipt.%s = %s; %s = %d;", "hash", hash, "number", number), log.ErrKey, err)
 		return nil
