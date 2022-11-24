@@ -223,12 +223,12 @@ func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
 	return int64(v.NumberU64())
 }
 
-func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
-	v, f := s.FetchBlock(r.Header.L1Proof)
+func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
+	block, f := s.FetchBlock(r.Header.L1Proof)
 	if !f {
-		s.logger.Crit("could not find proof for this rollup")
+		return nil, errutil.ErrNotFound
 	}
-	return v
+	return block, nil
 }
 
 func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, error) {

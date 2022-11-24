@@ -31,7 +31,7 @@ type BlockResolver interface {
 	// ProofHeight - return the height of the L1 proof, or `-1` if the block is not known
 	ProofHeight(rollup *core.Rollup) int64
 	// Proof - returns the block used as proof for the rollup
-	Proof(rollup *core.Rollup) *types.Block
+	Proof(rollup *core.Rollup) (*types.Block, error)
 }
 
 type RollupResolver interface {

@@ -351,9 +351,19 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	if !found {
 		rc.logger.Crit("Sanity check. Rollup has no parent.")
 	}
+
+	parentProof, err := rc.storage.Proof(parent)
+	if err != nil {
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
+	}
+	rollupProof, err := rc.storage.Proof(rollup)
+	if err != nil {
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
+	}
+
 	depositTxs := rc.bridge.ExtractDeposits(
-		rc.storage.Proof(parent),
-		rc.storage.Proof(rollup),
+		parentProof,
+		rollupProof,
 		rc.storage,
 		stateDB,
 	)
