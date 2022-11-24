@@ -80,7 +80,7 @@ func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *para
 }
 
 // WriteReceipts stores all the transaction receipts belonging to a block.
-func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, receipts types.Receipts, logger gethlog.Logger) {
+func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, receipts types.Receipts) error {
 	// Convert the receipts into their storage form and serialize them
 	storageReceipts := make([]*types.ReceiptForStorage, len(receipts))
 	for i, receipt := range receipts {
@@ -88,12 +88,13 @@ func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rec
 	}
 	bytes, err := rlp.EncodeToBytes(storageReceipts)
 	if err != nil {
-		logger.Crit("Failed to encode block receipts. ", log.ErrKey, err)
+		return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 	}
 	// Store the flattened receipt slice
-	if err := db.Put(rollupReceiptsKey(number, hash), bytes); err != nil {
-		logger.Crit("Failed to store block receipts. ", log.ErrKey, err)
+	if err = db.Put(rollupReceiptsKey(number, hash), bytes); err != nil {
+		return fmt.Errorf("failed to store block receipts. Cause: %w", err)
 	}
+	return nil
 }
 
 // WriteContractCreationTx stores a mapping between each contract and the tx that created it

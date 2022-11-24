@@ -257,7 +257,9 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64(), s.logger)
 		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup, s.logger)
 		obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash(), s.logger)
-		obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts, s.logger)
+		if err := obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts); err != nil {
+			return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
+		}
 		if err := obscurorawdb.WriteContractCreationTx(batch, receipts); err != nil {
 			return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
 		}
