@@ -15,15 +15,19 @@ The Cryptography area has been broken down into sections for interative implemen
 ## Rollup Encryption
 
 The rollups in Obscuro have an encrypted design.
-In the [Rollup Encryption](rollup_encryption.md) document the approach to encrypt and decrypt the rollup is described.
+The encryption and decryption rollup approach is described in the [Rollup Encryption](rollup_encryption.md) document.
 
 ## Key Derivation 
 
 In order to avoid reusing the same key for all encryption, keys are deterministically derived from the Master Seed.
-In the [Key Derivation](key_derivation.md) document the approach to derive new keys from the master seed is described.
+The derivation of new keys given a master seed is described in the [Key Derivation](key_derivation.md) document.
+
+## Transaction Revelation Period
+
+Transactions are able to specify the different revelation period desired, while being EVM compatible.
+The transaction changes that specify the revelation period are described in the [Transaction Revelation Period](transaction_revelation_period.md) document.
 
 ## Data Revelation Mechanism
 
 Generating different Encryption Keys and associating them with different time lengths allows to create multiple Data Revelation Periods.
-In the [Data Revelation](data_revelation.md) document the approach to reveal data is described.
-
+The data revelation mechanism is described in the [Data Revelation](data_revelation.md) document.
