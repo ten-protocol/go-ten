@@ -242,11 +242,14 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 	e.logger.Trace("SubmitBlock successful", "blk", block.Number(), "blkHash", block.Hash())
 
 	if bsr.IngestedRollupHeader != nil {
-		hr, f := e.storage.FetchRollup(bsr.IngestedRollupHeader.Hash())
-		if !f {
-			e.logger.Crit("This should not happen because this rollup was just processed.")
+		hr, err := e.storage.FetchRollup(bsr.IngestedRollupHeader.Hash())
+		if err != nil {
+			e.logger.Crit("Could not retrieve rollup. This should not happen because this rollup was just processed.", log.ErrKey, err)
 		}
-		e.mempool.RemoveMempoolTxs(hr, e.storage)
+		err = e.mempool.RemoveMempoolTxs(hr, e.storage)
+		if err != nil {
+			e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
+		}
 	}
 
 	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
@@ -394,9 +397,9 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// Only return receipts for transactions included in the canonical chain.
-	r, f := e.storage.FetchRollupByHeight(txRollupHeight)
-	if !f {
-		return nil, fmt.Errorf("transaction not included in the canonical chain")
+	r, err := e.storage.FetchRollupByHeight(txRollupHeight)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup containing transaction. Cause: %w", err)
 	}
 	if !bytes.Equal(r.Hash().Bytes(), txRollupHash.Bytes()) {
 		return nil, fmt.Errorf("transaction not included in the canonical chain")
