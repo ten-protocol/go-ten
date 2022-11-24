@@ -216,11 +216,17 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, err
 	}
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
-	genesisRollup, found := rc.storage.FetchGenesisRollup()
+	genesisRollup, err := rc.storage.FetchGenesisRollup()
 
 	// processing blocks before genesis, so there is nothing to do
-	if !found && len(rollups) == 0 {
-		return nil, nil //nolint:nilnil
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			if len(rollups) == 0 {
+				return nil, nil //nolint:nilnil
+			}
+		} else {
+			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
+		}
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
@@ -874,9 +880,9 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 	var rollup *obscurocore.Rollup
 	switch height {
 	case gethrpc.EarliestBlockNumber:
-		genesisRollup, found := rc.storage.FetchGenesisRollup()
-		if !found {
-			return nil, fmt.Errorf("genesis rollup was not found")
+		genesisRollup, err := rc.storage.FetchGenesisRollup()
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
 		rollup = genesisRollup
 	case gethrpc.PendingBlockNumber:

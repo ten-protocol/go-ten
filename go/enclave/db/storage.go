@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -48,12 +49,16 @@ func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
 	s.StoreRollup(rol)
 }
 
-func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, bool) {
-	hash, found := obscurorawdb.ReadGenesisHash(s.db)
-	if !found {
-		return nil, false
+func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, error) {
+	hash, err := obscurorawdb.ReadGenesisHash(s.db)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 	}
-	return s.FetchRollup(*hash)
+	rollup, f := s.FetchRollup(*hash)
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	return rollup, nil
 }
 
 func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
@@ -87,7 +92,14 @@ func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
 
 func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, bool) {
 	if height == 0 {
-		return s.FetchGenesisRollup()
+		genesisRollup, err := s.FetchGenesisRollup()
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				return nil, false
+			}
+			// todo - joel - handle error
+		}
+		return genesisRollup, true
 	}
 
 	hash := obscurorawdb.ReadCanonicalHash(s.db, height)

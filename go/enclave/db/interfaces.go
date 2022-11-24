@@ -47,8 +47,8 @@ type RollupResolver interface {
 	ParentRollup(rollup *core.Rollup) (*core.Rollup, bool)
 	// StoreGenesisRollup stores the rollup genesis
 	StoreGenesisRollup(rol *core.Rollup)
-	// FetchGenesisRollup returns the rollup genesis, or (nil, false) if no such rollup was found.
-	FetchGenesisRollup() (*core.Rollup, bool)
+	// FetchGenesisRollup returns the rollup genesis.
+	FetchGenesisRollup() (*core.Rollup, error)
 	// FetchHeadRollup returns the current head rollup
 	FetchHeadRollup() (*core.Rollup, error)
 }
