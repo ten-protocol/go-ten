@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -104,8 +106,7 @@ func printBlock(b *types.Block, m Node) string {
 	}
 	p, err := m.Resolver.ParentBlock(b)
 	if err != nil {
-		// todo - joel - handle error
-		testlog.Logger().Crit("Should not happen. Parent not found")
+		testlog.Logger().Crit("Should not happen. Could not retrieve parent", log.ErrKey, err)
 	}
 
 	return fmt.Sprintf(" create b_%d(Height=%d, RollupNonce=%d)[parent=b_%d]. Txs: %v",

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -169,8 +171,7 @@ func (m *Node) removeCommittedTransactions(
 
 		p, err := resolver.ParentBlock(b)
 		if err != nil {
-			// todo - joel - handle error
-			m.logger.Crit("Should not happen. Parent not found")
+			m.logger.Crit("Could not retrieve parent block.", log.ErrKey, err)
 		}
 
 		b = p

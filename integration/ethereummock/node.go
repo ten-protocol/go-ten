@@ -198,8 +198,7 @@ func (m *Node) Start() {
 			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Ignore the locally produced block if someone else found one already
 				p, err := m.Resolver.ParentBlock(mb)
 				if err != nil {
-					// todo - joel - handle error
-					panic("noo")
+					panic(fmt.Errorf("could not retrieve parent. Cause: %w", err))
 				}
 				encodedBlock, err := common.EncodeBlock(mb)
 				if err != nil {
@@ -272,8 +271,7 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 		} else {
 			p, err := m.Resolver.ParentBlock(b)
 			if err != nil {
-				// todo - joel - handle error
-				panic("This should not happen")
+				panic(fmt.Errorf("could not retrieve parent. Cause: %w", err))
 			}
 			encodedParentBlock, err := common.EncodeBlock(p)
 			if err != nil {
@@ -411,8 +409,7 @@ func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.
 		}
 		tempBlock, err = m.Resolver.ParentBlock(tempBlock)
 		if err != nil {
-			// todo - joel - handle error
-			panic("should not happen")
+			panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
 		}
 	}
 	n := len(blocks)

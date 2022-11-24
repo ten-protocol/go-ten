@@ -128,8 +128,7 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 		parentHash := currentBlock.ParentHash()
 		currentBlock, err = s.storage.FetchBlock(parentHash)
 		if err != nil {
-			// todo - joel - handle error
-			return nil, fmt.Errorf("could not retrieve block %s to extract its logs", parentHash)
+			return nil, fmt.Errorf("could not retrieve block %s to extract its logs. Cause: %w", parentHash, err)
 		}
 	}
 
