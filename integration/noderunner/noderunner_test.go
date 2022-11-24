@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -46,7 +45,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		LogDir:      testLogs,
 		TestType:    "noderunner",
 		TestSubtype: "test",
-		LogLevel:    log.LvlInfo,
+		LogLevel:    gethlog.LvlInfo,
 	})
 
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, integration.StartPortNodeRunnerTest)

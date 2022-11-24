@@ -112,9 +112,9 @@ func TestManagementContract(t *testing.T) {
 
 // nonAttestedNodesCannotCreateRollup issues a rollup from a node that did not receive the secret network key
 func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
-	block, ok := client.FetchHeadBlock()
-	if !ok {
-		t.Error("Failed retrieving head block")
+	block, err := client.FetchHeadBlock()
+	if err != nil {
+		t.Error(err)
 	}
 
 	rollup := datagenerator.RandomRollup(block)
@@ -187,9 +187,9 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 
 // attestedNodesCreateRollup attests a node by issuing a InitializeNetworkSecret, issues a rollups from the same node and verifies the rollup was stored
 func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
-	block, ok := client.FetchHeadBlock()
-	if !ok {
-		t.Error("Failed retrieving head block")
+	block, err := client.FetchHeadBlock()
+	if err != nil {
+		t.Error(err)
 	}
 
 	rollup := datagenerator.RandomRollup(block)
@@ -578,9 +578,9 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 		t.Error("expected agg to be attested")
 	}
 
-	block, ok := client.FetchHeadBlock()
-	if !ok {
-		t.Error("Failed retrieving head block")
+	block, err := client.FetchHeadBlock()
+	if err != nil {
+		t.Error(err)
 	}
 
 	// Issue a genesis rollup

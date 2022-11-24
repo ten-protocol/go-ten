@@ -405,7 +405,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 }
 
-func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsClient, currentHeader *common.Header) *big.Int {
+/*func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsClient, currentHeader *common.Header) *big.Int {
 	totalAmountLogged := big.NewInt(0)
 	for i := minObscuroHeight; i < currentHeader.Number.Uint64(); i++ {
 		header, err := obscuroClient.RollupHeaderByNumber(big.NewInt(int64(i)))
@@ -430,7 +430,7 @@ func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsC
 		}
 	}
 	return totalAmountLogged
-}
+} */
 
 // FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.
 func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int) {

@@ -344,7 +344,7 @@ func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j]
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
-func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt, []*types.Receipt) {
+func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
@@ -433,7 +433,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	sort.Sort(sortByTxIndex(depositReceipts))
 
 	// todo - handle the tx execution logs
-	return rootHash, executedTransactions, txReceipts, depositReceipts, depositReceipts
+	return rootHash, executedTransactions, txReceipts, depositReceipts
 }
 
 func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethcommon.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
@@ -513,7 +513,7 @@ func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*
 	}
 
 	// calculate the state to compare with what is in the Rollup
-	rootHash, successfulTxs, txReceipts, depositReceipts, _ := rc.processState(r, r.Transactions, stateDB)
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
 	if len(successfulTxs) != len(r.Transactions) {
 		return nil, nil, fmt.Errorf("all transactions that are included in a rollup must be executed")
 	}
@@ -680,7 +680,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 		return nil
 	}
 
-	rootHash, successfulTxs, txReceipts, depositReceipts, _ := rc.processState(r, newRollupTxs, newRollupState)
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, newRollupTxs, newRollupState)
 
 	r.Header.Root = rootHash
 	r.Transactions = successfulTxs

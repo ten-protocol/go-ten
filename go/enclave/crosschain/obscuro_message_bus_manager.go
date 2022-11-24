@@ -39,7 +39,7 @@ func NewObscuroMessageBusManager(
 
 	logger.Info(fmt.Sprintf("[CrossChain] L2 Cross Chain Owner Address: %s", wallet.Address().Hex()))
 
-	// Key is derived, address is predictable, thus address of contract is predictible across all enclaves
+	// Key is derived, address is predictable, thus address of contract is predictable across all enclaves
 	l2MessageBus := crypto.CreateAddress(wallet.Address(), 0)
 
 	return &obscuroMessageBusManager{
@@ -146,7 +146,7 @@ func (m *obscuroMessageBusManager) SubmitRemoteMessagesLocally(
 
 				res, err := processOffChainMessage(txCallMessage)
 				m.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
-				return fmt.Errorf("synthetic transaction failed. error: %+v result: %+v", err, res)
+				return fmt.Errorf("synthetic transaction failed. error: %w result: %+v", err, res)
 			}
 
 			synthReceipts[i] = rec
