@@ -13,7 +13,6 @@ linters:
     - bidichk
     - bodyclose
     - contextcheck
-    - deadcode
     - depguard
     - dogsled
     - dupl
@@ -55,7 +54,6 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
-    - structcheck
     - stylecheck
     - tagliatelle
     - tenv
@@ -64,7 +62,6 @@ linters:
     - unconvert
     - unparam
     - unused
-    - varcheck
     - wastedassign
     - whitespace
     # - cyclop Would be nice to enable this
