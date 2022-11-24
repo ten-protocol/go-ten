@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -94,10 +93,7 @@ func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, bool) {
 	if height == 0 {
 		genesisRollup, err := s.FetchGenesisRollup()
 		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				return nil, false
-			}
-			// todo - joel - handle error
+			return nil, false
 		}
 		return genesisRollup, true
 	}
