@@ -167,7 +167,7 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 
 	p, err := s.ParentBlock(block)
 	if err != nil {
-		// todo - joel - handle error
+		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		return false
 	}
 
@@ -190,7 +190,7 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 
 	resolvedBlock, err := s.FetchBlock(maybeAncestor)
 	if err == nil {
-		// todo - joel - handle error
+		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		if resolvedBlock.NumberU64() >= block.NumberU64() {
 			return false
 		}
@@ -198,7 +198,7 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 
 	p, err := s.ParentBlock(block)
 	if err != nil {
-		// todo - joel - handle error
+		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		return false
 	}
 
@@ -225,7 +225,7 @@ func (s *storageImpl) assertSecretAvailable() {
 func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
 	v, err := s.FetchBlock(r.Header.L1Proof)
 	if err != nil {
-		// todo - joel - handle error
+		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		return -1
 	}
 	return int64(v.NumberU64())

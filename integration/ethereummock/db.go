@@ -85,7 +85,7 @@ func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types
 
 	p, err := n.ParentBlock(block)
 	if err != nil {
-		// todo - joel - handle error
+		// TODO - Return an error is the error is not `errutil.ErrNotFound`.
 		return false
 	}
 
@@ -106,8 +106,8 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor c
 	}
 
 	resolvedBlock, err := n.FetchBlock(maybeAncestor)
-	if err != nil {
-		// todo - joel - handle error
+	// TODO - If error is non-nil and is not `errutil.ErrNotFound`, throw.
+	if err == nil {
 		if resolvedBlock.NumberU64() >= block.NumberU64() {
 			return false
 		}
@@ -115,7 +115,7 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor c
 
 	p, err := n.ParentBlock(block)
 	if err != nil {
-		// todo - joel - handle error
+		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		return false
 	}
 

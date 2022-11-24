@@ -135,8 +135,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 
 		blk, err = m.Resolver.FetchBlock(blk.ParentHash())
 		if err != nil {
-			// todo - joel - handle error
-			return nil, fmt.Errorf("block in the chain without a parent")
+			return nil, fmt.Errorf("could not retrieve parent for block in chain. Cause: %w", err)
 		}
 	}
 	return nil, ethereum.NotFound
@@ -145,8 +144,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 	blk, err := m.Resolver.FetchBlock(id)
 	if err != nil {
-		// todo - joel - handle error
-		return nil, fmt.Errorf("blk not found")
+		return nil, fmt.Errorf("block could not be retrieved. Cause: %w", err)
 	}
 	return blk, nil
 }
@@ -221,12 +219,13 @@ func (m *Node) Start() {
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	m.Resolver.StoreBlock(b)
 	_, err := m.Resolver.FetchBlock(b.Header().ParentHash)
-
 	// only proceed if the parent is available
-	// todo - joel - handle error
-	if err != nil && errors.Is(err, errutil.ErrNotFound) {
-		m.logger.Info(fmt.Sprintf("Parent block not found=b_%d", common.ShortHash(b.Header().ParentHash)))
-		return head
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			m.logger.Info(fmt.Sprintf("Parent block not found=b_%d", common.ShortHash(b.Header().ParentHash)))
+			return head
+		}
+		m.logger.Crit("Could not fetch block parent. Cause: %w", err)
 	}
 
 	// Ignore superseded blocks
