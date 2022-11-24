@@ -317,7 +317,7 @@ func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) (types.Receipts, e
 	if err != nil {
 		return nil, err
 	}
-	return obscurorawdb.ReadReceipts(s.db, hash, *number, s.chainConfig, s.logger), nil
+	return obscurorawdb.ReadReceipts(s.db, hash, *number, s.chainConfig, s.logger)
 }
 
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {

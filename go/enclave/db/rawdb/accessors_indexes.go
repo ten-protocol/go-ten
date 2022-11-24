@@ -110,7 +110,10 @@ func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig, 
 		return nil, common.Hash{}, 0, 0
 	}
 	// Read all the receipts from the block and return the one with the matching hash
-	receipts := ReadReceipts(db, blockHash, *blockNumber, config, logger)
+	receipts, err := ReadReceipts(db, blockHash, *blockNumber, config, logger)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Receipt could not be retrieved %s = %d; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash))
+	}
 	for receiptIndex, receipt := range receipts {
 		if receipt.TxHash == hash {
 			return receipt, blockHash, *blockNumber, uint64(receiptIndex)

@@ -62,24 +62,21 @@ func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64) (types.Re
 // The current implementation populates these metadata fields by reading the receipts'
 // corresponding block body, so if the block body is not found it will return nil even
 // if the receipt itself is stored.
-func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) types.Receipts {
+func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) (types.Receipts, error) {
 	// We're deriving many fields from the block body, retrieve beside the receipt
 	receipts, err := ReadRawReceipts(db, hash, number)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Could not read receipt.%s = %s; %s = %d;", "hash", hash, "number", number), log.ErrKey, err)
-		return nil
+		return nil, fmt.Errorf("could not read receipt. hash = %s; number = %d; err = %w", hash, number, err)
 	}
 	body := ReadBody(db, hash, number, logger)
 	if body == nil {
-		logger.Error(fmt.Sprintf("Missing body but have receipt.%s = %s; %s = %d;", "hash", hash, "number", number))
-		return nil
+		return nil, fmt.Errorf("missing body but have receipt. hash = %s; number = %d; err = %w", hash, number, err)
 	}
 
-	if err := receipts.DeriveFields(config, hash, number, types.Transactions(body)); err != nil {
-		logger.Error(fmt.Sprintf("Failed to derive block receipts fields. %s = %s; %s = %d; ", "hash", hash, "number", number), log.ErrKey, err)
-		return nil
+	if err = receipts.DeriveFields(config, hash, number, types.Transactions(body)); err != nil {
+		return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; err = %w", hash, number, err)
 	}
-	return receipts
+	return receipts, nil
 }
 
 // WriteReceipts stores all the transaction receipts belonging to a block.
@@ -219,8 +216,8 @@ func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.C
 // from a block which has its receipt stored in the legacy format. It'll
 // be removed after users have migrated their freezer databases.
 func readLegacyLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) [][]*types.Log {
-	receipts := ReadReceipts(db, hash, number, config, logger)
-	if receipts == nil {
+	receipts, err := ReadReceipts(db, hash, number, config, logger)
+	if err != nil {
 		return nil
 	}
 	logs := make([][]*types.Log, len(receipts))
