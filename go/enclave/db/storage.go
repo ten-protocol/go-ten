@@ -215,7 +215,6 @@ func (s *storageImpl) assertSecretAvailable() {
 	//}
 }
 
-// ProofHeight - return the height of the L1 proof, or GenesisHeight - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
 func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
 	v, f := s.FetchBlock(r.Header.L1Proof)

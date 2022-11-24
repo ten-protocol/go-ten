@@ -28,7 +28,7 @@ type BlockResolver interface {
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
 	// FetchHeadBlock - returns the head of the current chain, or (nil, false) if no head is found
 	FetchHeadBlock() (*types.Block, bool)
-	// ProofHeight - return the height of the L1 proof, or GenesisHeight - if the block is not known
+	// ProofHeight - return the height of the L1 proof, or `-1` if the block is not known
 	ProofHeight(rollup *core.Rollup) int64
 	// Proof - returns the block used as proof for the rollup
 	Proof(rollup *core.Rollup) *types.Block
