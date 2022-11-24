@@ -9,23 +9,23 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-type CrossChainProcessors struct {
+type Processors struct {
 	LocalManager  ObscuroCrossChainManager
 	RemoteManager MainNetMessageExtractor
 }
 
-func NewCrossChainProcessors(
+func New(
 	l1BusAddress *gethcommon.Address,
 	storage db.Storage, /*key *ecdsa.PrivateKey,*/
-	chainId *big.Int,
+	chainID *big.Int,
 	logger gethlog.Logger,
-) *CrossChainProcessors {
-	processors := CrossChainProcessors{}
-	processors.LocalManager = NewObscuroMessageBusManager(storage, chainId, logger)
+) *Processors {
+	processors := Processors{}
+	processors.LocalManager = NewObscuroMessageBusManager(storage, chainID, logger)
 	processors.RemoteManager = NewMainNetExtractor(l1BusAddress, processors.LocalManager.GetBusAddress(), storage, logger)
 	return &processors
 }
 
-func (c *CrossChainProcessors) Enabled() bool {
+func (c *Processors) Enabled() bool {
 	return c.RemoteManager.Enabled()
 }

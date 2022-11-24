@@ -31,11 +31,11 @@ type obscuroMessageBusManager struct {
 
 func NewObscuroMessageBusManager(
 	storage db.Storage, /*key *ecdsa.PrivateKey,*/
-	chainId *big.Int,
+	chainID *big.Int,
 	logger gethlog.Logger,
 ) ObscuroCrossChainManager {
 	key, _ := crypto.HexToECDSA(ownerKeyHex)
-	wallet := wallet.NewInMemoryWalletFromPK(chainId, key, logger)
+	wallet := wallet.NewInMemoryWalletFromPK(chainID, key, logger)
 
 	logger.Info(fmt.Sprintf("[CrossChain] L2 Cross Chain Owner Address: %s", wallet.Address().Hex()))
 
@@ -84,7 +84,7 @@ func (m *obscuroMessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, e
 }
 
 func (m *obscuroMessageBusManager) ExtractLocalMessages(receipts common.L2Receipts) (common.CrossChainMessages, error) {
-	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventId)
+	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventID)
 
 	if err != nil {
 		m.logger.Error("[CrossChain] Error extracting logs from L2 message bus!", "Error", err)
@@ -107,7 +107,6 @@ func (m *obscuroMessageBusManager) SubmitRemoteMessagesLocally(
 	processTxCall OnChainEVMExecutorFunc,
 	processOffChainMessage OffChainEVMCallFunc,
 ) error {
-
 	transactions := m.retrieveSyntheticTransactionsBetween(fromBlock, toBlock, rollupState)
 	m.logger.Trace("[CrossChain] Retrieved synthetic transactions",
 		"Count", len(transactions),

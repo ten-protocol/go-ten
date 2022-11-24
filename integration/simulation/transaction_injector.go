@@ -246,8 +246,8 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 		time.Sleep(2 * time.Second)
 
-		ti.stats.Deposit(txData.Amount)
-		//		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
+		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
+
 		go ti.TxTracker.trackL1Tx(txData)
 		sleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}

@@ -19,7 +19,7 @@ import (
 var (
 	ContractABI, _      = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
 	CrossChainEventName = "LogMessagePublished"
-	CrossChainEventId   = ContractABI.Events[CrossChainEventName].ID
+	CrossChainEventID   = ContractABI.Events[CrossChainEventName].ID
 )
 
 func lazilyLogReceiptChecksum(msg string, receipts types.Receipts, logger gethlog.Logger) {
@@ -97,7 +97,6 @@ func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, 
 	}
 
 	for _, log := range receipt.Logs {
-
 		shouldSkip := false
 
 		if address != nil && log.Address.Hex() != address.Hex() {

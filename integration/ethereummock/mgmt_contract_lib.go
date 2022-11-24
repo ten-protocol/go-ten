@@ -38,6 +38,10 @@ func (m *mockContractLib) GetContractAddr() *gethcommon.Address {
 }
 
 func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+	if tx.To().Hex() == depositTxAddr.Hex() {
+		return nil
+	}
+
 	return decodeTx(tx)
 }
 

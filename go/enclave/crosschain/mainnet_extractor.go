@@ -18,8 +18,12 @@ type mainNetExtractor struct {
 	logger       gethlog.Logger
 }
 
-func NewMainNetExtractor(busAddress *common.L1Address, l2BusAddress *common.L2Address, storage db.Storage, logger gethlog.Logger) MainNetMessageExtractor {
-
+func NewMainNetExtractor(
+	busAddress *common.L1Address,
+	l2BusAddress *common.L2Address,
+	storage db.Storage,
+	logger gethlog.Logger,
+) MainNetMessageExtractor {
 	return &mainNetExtractor{
 		busAddress:   busAddress,
 		l2MessageBus: l2BusAddress,
@@ -48,7 +52,6 @@ func (m *mainNetExtractor) ProcessCrossChainMessages(block *common.L1Block, rece
 
 	lazilyLogReceiptChecksum(fmt.Sprintf("[CrossChain] Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)), receipts, m.logger)
 	transactions, err := m.getSyntheticTransactions(block, receipts)
-
 	if err != nil {
 		return err
 	}
@@ -73,7 +76,7 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 		return transactions, nil
 	}
 
-	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &CrossChainEventId)
+	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &CrossChainEventID)
 
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
@@ -93,9 +96,9 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 
 	for _, message := range messages {
 		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
-		data, err := ContractABI.Pack("submitOutOfNetworkMessage", &message, delayInBlocks)
+		data, err := ContractABI.Pack("submitOutOfNetworkMessage", message, delayInBlocks)
 		if err != nil {
-			return transactions, fmt.Errorf("failed packing submitOutOfNetworkMessage %+v", err)
+			return transactions, fmt.Errorf("failed packing submitOutOfNetworkMessage %w", err)
 		}
 
 		tx := types.NewTx(&types.LegacyTx{

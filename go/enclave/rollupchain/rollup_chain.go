@@ -65,7 +65,7 @@ type RollupChain struct {
 	mempool               mempool.Manager
 	faucet                Faucet
 	subscriptionManager   *events.SubscriptionManager
-	crossChainProcessors  *crosschain.CrossChainProcessors
+	crossChainProcessors  *crosschain.Processors
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
@@ -77,7 +77,7 @@ type RollupChain struct {
 	BaseFee      *big.Int
 }
 
-func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, crossChainProcessors *crosschain.CrossChainProcessors, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
+func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, crossChainProcessors *crosschain.Processors, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
 	return &RollupChain{
 		hostID:                hostID,
 		nodeType:              nodeType,
