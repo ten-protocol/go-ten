@@ -23,8 +23,9 @@ func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[co
 		return makeMap(b.Transactions())
 	}
 	newMap := make(map[common.TxHash]*types.Transaction)
-	p, f := r.ParentBlock(b)
-	if !f {
+	p, err := r.ParentBlock(b)
+	if err != nil {
+		// todo - joel - handle error
 		panic("Should not happen. Parent not found")
 	}
 	for k, v := range allIncludedTransactions(p, r, db) {

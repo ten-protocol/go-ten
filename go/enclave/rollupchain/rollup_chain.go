@@ -100,8 +100,9 @@ func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage
 }
 
 func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, *types.Block) {
-	b, f := rc.storage.FetchBlock(blkHash)
-	if !f {
+	b, err := rc.storage.FetchBlock(blkHash)
+	if err != nil {
+		// todo - joel - handle error
 		rc.logger.Crit("Could not find the block used as proof for the genesis rollup.")
 	}
 
@@ -186,8 +187,9 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		rc.logger.Crit(msgNoRollup)
 	}
 
-	headBlock, f := rc.storage.FetchBlock(bs.Block)
-	if !f {
+	headBlock, err := rc.storage.FetchBlock(bs.Block)
+	if err != nil {
+		// todo - joel - handle error
 		rc.logger.Crit("could not fetch block")
 	}
 
@@ -247,8 +249,9 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, err
 			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
 		}
 		// go back and calculate the Root of the Parent
-		parent, found := rc.storage.FetchBlock(b.ParentHash())
-		if !found {
+		parent, err := rc.storage.FetchBlock(b.ParentHash())
+		if err != nil {
+			// todo - joel - handle error
 			rc.logger.Crit("Could not find parent block when calculating block state. This should not happen.")
 		}
 		parentState, err = rc.updateState(parent)
@@ -513,8 +516,9 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	_, foundBlock := rc.storage.FetchBlock(block.Hash())
-	if foundBlock {
+	_, err := rc.storage.FetchBlock(block.Hash())
+	if err == nil {
+		// todo - joel - handle error, unless it's not-found, which I can ignore
 		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
 	}
 

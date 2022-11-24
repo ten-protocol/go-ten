@@ -121,7 +121,6 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 		return common.GenesisBlock, nil
 	}
 	// TODO this should be a method in the resolver
-	var f bool
 	blk, err := m.Resolver.FetchHeadBlock()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -134,8 +133,9 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 			return blk, nil
 		}
 
-		blk, f = m.Resolver.FetchBlock(blk.ParentHash())
-		if !f {
+		blk, err = m.Resolver.FetchBlock(blk.ParentHash())
+		if err != nil {
+			// todo - joel - handle error
 			return nil, fmt.Errorf("block in the chain without a parent")
 		}
 	}
@@ -143,8 +143,9 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 }
 
 func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
-	blk, f := m.Resolver.FetchBlock(id)
-	if !f {
+	blk, err := m.Resolver.FetchBlock(id)
+	if err != nil {
+		// todo - joel - handle error
 		return nil, fmt.Errorf("blk not found")
 	}
 	return blk, nil
@@ -185,17 +186,19 @@ func (m *Node) Start() {
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			_, received := m.Resolver.FetchBlock(p2pb.Hash())
+			_, err := m.Resolver.FetchBlock(p2pb.Hash())
 			// only process blocks if they haven't been processed before
-			if !received {
+			// todo - joel - handle error
+			if err != nil && errors.Is(err, errutil.ErrNotFound) {
 				head = m.processBlock(p2pb, head)
 			}
 
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
 			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Ignore the locally produced block if someone else found one already
-				p, found := m.Resolver.ParentBlock(mb)
-				if !found {
+				p, err := m.Resolver.ParentBlock(mb)
+				if err != nil {
+					// todo - joel - handle error
 					panic("noo")
 				}
 				encodedBlock, err := common.EncodeBlock(mb)
@@ -218,10 +221,11 @@ func (m *Node) Start() {
 
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	m.Resolver.StoreBlock(b)
-	_, f := m.Resolver.FetchBlock(b.Header().ParentHash)
+	_, err := m.Resolver.FetchBlock(b.Header().ParentHash)
 
 	// only proceed if the parent is available
-	if !f {
+	// todo - joel - handle error
+	if err != nil && errors.Is(err, errutil.ErrNotFound) {
 		m.logger.Info(fmt.Sprintf("Parent block not found=b_%d", common.ShortHash(b.Header().ParentHash)))
 		return head
 	}
@@ -266,8 +270,9 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 		if b.NumberU64() == common.L1GenesisHeight {
 			go t.MockedNewHead(encodedBlock, nil)
 		} else {
-			p, f := m.Resolver.ParentBlock(b)
-			if !f {
+			p, err := m.Resolver.ParentBlock(b)
+			if err != nil {
+				// todo - joel - handle error
 				panic("This should not happen")
 			}
 			encodedParentBlock, err := common.EncodeBlock(p)
@@ -398,14 +403,15 @@ func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.
 	}
 	blocks := make([]*types.Block, 0)
 	tempBlock := blockB
-	var found bool
+	var err error
 	for {
 		blocks = append(blocks, tempBlock)
 		if bytes.Equal(tempBlock.Hash().Bytes(), blockA.Hash().Bytes()) {
 			break
 		}
-		tempBlock, found = m.Resolver.ParentBlock(tempBlock)
-		if !found {
+		tempBlock, err = m.Resolver.ParentBlock(tempBlock)
+		if err != nil {
+			// todo - joel - handle error
 			panic("should not happen")
 		}
 	}

@@ -102,8 +102,9 @@ func printBlock(b *types.Block, m Node) string {
 			txs = append(txs, fmt.Sprintf("deposit(%d=%d)", to, l1Tx.Amount))
 		}
 	}
-	p, f := m.Resolver.ParentBlock(b)
-	if !f {
+	p, err := m.Resolver.ParentBlock(b)
+	if err != nil {
+		// todo - joel - handle error
 		testlog.Logger().Crit("Should not happen. Parent not found")
 	}
 

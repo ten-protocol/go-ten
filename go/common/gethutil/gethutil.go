@@ -22,26 +22,30 @@ func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) (*
 		return blockA, nil
 	}
 	if blockA.NumberU64() > blockB.NumberU64() {
-		p, f := resolver.ParentBlock(blockA)
-		if !f {
+		p, err := resolver.ParentBlock(blockA)
+		if err != nil {
+			// todo - joel - handle error
 			return nil, errNoCommonAncestor
 		}
 		return LCA(p, blockB, resolver)
 	}
 	if blockB.NumberU64() > blockA.NumberU64() {
-		p, f := resolver.ParentBlock(blockB)
-		if !f {
+		p, err := resolver.ParentBlock(blockB)
+		if err != nil {
+			// todo - joel - handle error
 			return nil, errNoCommonAncestor
 		}
 
 		return LCA(blockA, p, resolver)
 	}
-	parentBlockA, f := resolver.ParentBlock(blockA)
-	if !f {
+	parentBlockA, err := resolver.ParentBlock(blockA)
+	if err != nil {
+		// todo - joel - handle error
 		return nil, errNoCommonAncestor
 	}
-	parentBlockB, f := resolver.ParentBlock(blockB)
-	if !f {
+	parentBlockB, err := resolver.ParentBlock(blockB)
+	if err != nil {
+		// todo - joel - handle error
 		return nil, errNoCommonAncestor
 	}
 

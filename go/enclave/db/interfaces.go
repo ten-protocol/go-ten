@@ -14,12 +14,12 @@ import (
 
 // BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
-	// FetchBlock returns the L1 Block with the given hash and true, or (nil, false) if no such Block is stored
-	FetchBlock(hash common.L1RootHash) (*types.Block, bool)
+	// FetchBlock returns the L1 Block with the given hash and true.
+	FetchBlock(hash common.L1RootHash) (*types.Block, error)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block)
-	// ParentBlock returns the L1 Block's parent and true, or (nil, false) if no parent Block is stored
-	ParentBlock(block *types.Block) (*types.Block, bool)
+	// ParentBlock returns the L1 Block's parent.
+	ParentBlock(block *types.Block) (*types.Block, error)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	IsAncestor(block *types.Block, maybeAncestor *types.Block) bool
 	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise

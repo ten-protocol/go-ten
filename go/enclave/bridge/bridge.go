@@ -257,8 +257,9 @@ func (bridge *Bridge) ExtractDeposits(
 			bridge.logger.Crit("block height is less than genesis height")
 			return nil
 		}
-		p, f := blockResolver.ParentBlock(b)
-		if !f {
+		p, err := blockResolver.ParentBlock(b)
+		if err != nil {
+			// todo - joel - handle error
 			bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
 			return nil
 		}

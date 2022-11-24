@@ -115,24 +115,24 @@ func (s *storageImpl) StoreBlock(b *types.Block) {
 	rawdb.WriteBlock(s.db, b)
 }
 
-func (s *storageImpl) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {
+func (s *storageImpl) FetchBlock(hash common.L1RootHash) (*types.Block, error) {
 	s.assertSecretAvailable()
 	height := rawdb.ReadHeaderNumber(s.db, hash)
 	if height == nil {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	b := rawdb.ReadBlock(s.db, hash, *height)
-	if b != nil {
-		return b, true
+	if b == nil {
+		return nil, errutil.ErrNotFound
 	}
-	return nil, false
+	return b, nil
 }
 
 func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
 	s.assertSecretAvailable()
-	block, f := s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
-	if !f {
-		return nil, errutil.ErrNotFound
+	block, err := s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
+	if err != nil {
+		return nil, err
 	}
 	return block, nil
 }
@@ -150,7 +150,7 @@ func (s *storageImpl) ParentRollup(r *core.Rollup) (*core.Rollup, bool) {
 	return s.FetchRollup(r.Header.ParentHash)
 }
 
-func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, bool) {
+func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, error) {
 	s.assertSecretAvailable()
 	return s.FetchBlock(b.Header().ParentHash)
 }
@@ -165,8 +165,9 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 		return false
 	}
 
-	p, f := s.ParentBlock(block)
-	if !f {
+	p, err := s.ParentBlock(block)
+	if err != nil {
+		// todo - joel - handle error
 		return false
 	}
 
@@ -187,15 +188,17 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 		return false
 	}
 
-	resolvedBlock, found := s.FetchBlock(maybeAncestor)
-	if found {
+	resolvedBlock, err := s.FetchBlock(maybeAncestor)
+	if err == nil {
+		// todo - joel - handle error
 		if resolvedBlock.NumberU64() >= block.NumberU64() {
 			return false
 		}
 	}
 
-	p, f := s.ParentBlock(block)
-	if !f {
+	p, err := s.ParentBlock(block)
+	if err != nil {
+		// todo - joel - handle error
 		return false
 	}
 
@@ -220,16 +223,18 @@ func (s *storageImpl) assertSecretAvailable() {
 
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
 func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
-	v, f := s.FetchBlock(r.Header.L1Proof)
-	if !f {
+	v, err := s.FetchBlock(r.Header.L1Proof)
+	if err != nil {
+		// todo - joel - handle error
 		return -1
 	}
 	return int64(v.NumberU64())
 }
 
 func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
-	block, f := s.FetchBlock(r.Header.L1Proof)
-	if !f {
+	block, err := s.FetchBlock(r.Header.L1Proof)
+	if err != nil {
+		// todo - joel - handle error
 		return nil, errutil.ErrNotFound
 	}
 	return block, nil
