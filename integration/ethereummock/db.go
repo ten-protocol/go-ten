@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -47,7 +49,7 @@ func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, b
 	return block, f
 }
 
-func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, bool) {
+func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, error) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	var max *types.Block
@@ -58,9 +60,9 @@ func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, bool) {
 		}
 	}
 	if max == nil {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
-	return max, true
+	return max, nil
 }
 
 func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, bool) {

@@ -128,9 +128,13 @@ func (s *storageImpl) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {
 	return nil, false
 }
 
-func (s *storageImpl) FetchHeadBlock() (*types.Block, bool) {
+func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
 	s.assertSecretAvailable()
-	return s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
+	block, f := s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	return block, nil
 }
 
 func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {

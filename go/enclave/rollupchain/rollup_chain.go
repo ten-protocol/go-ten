@@ -130,12 +130,16 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 		}
 	}
 	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	prevL1Head, found := rc.storage.FetchHeadBlock()
+	prevL1Head, err := rc.storage.FetchHeadBlock()
 
-	// we do a basic sanity check, comparing the received block to the head block on the chain
-	if !found {
-		// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
-		return &blockIngestionType{latest: isLatest, fork: false, preGenesis: true}, nil
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
+			return &blockIngestionType{latest: isLatest, fork: false, preGenesis: true}, nil
+		}
+		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
+
+		// we do a basic sanity check, comparing the received block to the head block on the chain
 	} else if block.ParentHash() != prevL1Head.Hash() {
 		lcaBlock, err := gethutil.LCA(block, prevL1Head, rc.storage)
 		if err != nil {
@@ -914,14 +918,15 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 	return rollup, nil
 }
 
-func (rc *RollupChain) rejectBlockErr(err error) *common.BlockRejectError {
-	l1Head, found := rc.storage.FetchHeadBlock()
+func (rc *RollupChain) rejectBlockErr(cause error) *common.BlockRejectError {
 	var hash gethcommon.Hash
-	if found {
+	l1Head, err := rc.storage.FetchHeadBlock()
+	// todo - joel - handle error
+	if err == nil {
 		hash = l1Head.Hash()
 	}
 	return &common.BlockRejectError{
 		L1Head:  hash,
-		Wrapped: err,
+		Wrapped: cause,
 	}
 }

@@ -103,8 +103,9 @@ func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
 }
 
 func (m *Node) BlockNumber() (uint64, error) {
-	blk, found := m.Resolver.FetchHeadBlock()
-	if !found {
+	blk, err := m.Resolver.FetchHeadBlock()
+	if err != nil {
+		// todo - joel - handle error
 		return 0, ethereum.NotFound
 	}
 	return blk.NumberU64(), nil
@@ -116,8 +117,9 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	}
 	// TODO this should be a method in the resolver
 	var f bool
-	blk, found := m.Resolver.FetchHeadBlock()
-	if !found {
+	blk, err := m.Resolver.FetchHeadBlock()
+	if err != nil {
+		// todo - joel - handle error
 		return nil, ethereum.NotFound
 	}
 	for !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()) {
@@ -142,7 +144,12 @@ func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 }
 
 func (m *Node) FetchHeadBlock() (*types.Block, bool) {
-	return m.Resolver.FetchHeadBlock()
+	// todo - joel - change this method's signature
+	block, err := m.Resolver.FetchHeadBlock()
+	if err != nil {
+		return nil, false
+	}
+	return block, true
 }
 
 func (m *Node) Info() ethadapter.Info {
