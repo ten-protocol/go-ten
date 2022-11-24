@@ -136,7 +136,7 @@ func WriteBodyRLP(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, 
 func ReadBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64, logger gethlog.Logger) rlp.RawValue {
 	data, err := db.Get(rollupBodyKey(number, hash))
 	if err != nil {
-		logger.Crit(fmt.Sprintf("could not retrieve rollup body :r_%d from DB.  Key: %s", common.ShortHash(hash), hexutils.BytesToHex(rollupBodyKey(number, hash))), log.ErrKey, err)
+		logger.Crit(fmt.Sprintf("could not retrieve rollup body :r_%d from DB. ", common.ShortHash(hash)), "key", hexutils.BytesToHex(rollupBodyKey(number, hash)), log.ErrKey, err)
 	}
 	return data
 }
