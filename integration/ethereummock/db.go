@@ -33,11 +33,10 @@ func NewResolver() db.BlockResolver {
 	}
 }
 
-func (n *blockResolverInMem) StoreBlock(block *types.Block) bool {
+func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 	n.m.Lock()
 	defer n.m.Unlock()
 	n.blockCache[block.Hash()] = block
-	return true
 }
 
 func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {

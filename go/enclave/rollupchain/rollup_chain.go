@@ -217,7 +217,6 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, err
 
 	rollups := rc.bridge.ExtractRollups(b, rc.storage)
 	genesisRollup, err := rc.storage.FetchGenesisRollup()
-
 	// processing blocks before genesis, so there is nothing to do
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -515,10 +514,7 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 		"ingestionType", ingestionType)
 
 	// Only store the block if the L1 chain insertion succeeded
-	stored := rc.storage.StoreBlock(&block)
-	if !stored {
-		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
-	}
+	rc.storage.StoreBlock(&block)
 
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
 	// TODO - Handle error properly.
