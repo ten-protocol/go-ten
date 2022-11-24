@@ -485,7 +485,7 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 
 	// submit each block to the enclave for ingestion plus validation
 	// todo: isLatest should only be true when we're not behind
-	result, err = h.enclaveClient.SubmitL1Block(*decoded, h.extractReceipts(decoded), isLatestBlock)
+	result, err = h.enclaveClient.SubmitL1Block(*decodedBlock, h.extractReceipts(decodedBlock), isLatestBlock)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decodedBlock.Hash()), err)
 	}
