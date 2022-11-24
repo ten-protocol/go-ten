@@ -119,8 +119,8 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		rc.faucet.GetGenesisRoot(rc.storage),
 	)
 
-	//todo::
-	//Probably not the best place to put this, but ...
+	// todo::
+	// Probably not the best place to put this, but ...
 	deployTx, err := rc.crossChainProcessors.LocalManager.GenerateMessageBusDeployTx()
 	if err != nil {
 		rc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
@@ -393,7 +393,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	}
 
 	offChainCallFunc := func(msg types.Message) (*core.ExecutionResult, error) {
-		//Should this be deleted somehow?
+		// Should this be deleted somehow?
 		clonedDB := stateDB.Copy()
 		return evm.ExecuteOffChainCall(&msg, clonedDB, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
 	}
@@ -405,7 +405,6 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		onChainCallFunc,
 		offChainCallFunc,
 	)
-
 	if err != nil {
 		rc.logger.Crit("[CrossChain] SubmitRemoteMessagesLocally failed!", log.ErrKey, err)
 	}
@@ -423,7 +422,6 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 }
 
 func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethcommon.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
-
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
@@ -561,7 +559,7 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, receipts types.Receipts,
 		return nil, rc.rejectBlockErr(errors.New("failed to store block"))
 	}
 
-	//This requires block to be stored first ... but can permanently fail a block
+	// This requires block to be stored first ... but can permanently fail a block
 	err = rc.crossChainProcessors.RemoteManager.ProcessCrossChainMessages(&block, receipts)
 	if err != nil {
 		return nil, rc.rejectBlockErr(errors.New("failed to process cross chain messages"))

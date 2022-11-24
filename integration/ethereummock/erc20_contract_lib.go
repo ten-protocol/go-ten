@@ -15,14 +15,13 @@ func (c *contractLib) CreateDepositTx(tx *ethadapter.L1DepositTx, nonce uint64) 
 }
 
 func (c *contractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
-
 	if bytes.Equal(tx.To().Bytes(), depositTxAddr.Bytes()) {
 		depositTx, ok := decodeTx(tx).(*ethadapter.L1DepositTx)
 		if !ok {
 			return nil
 		}
 
-		//Mock deposits towards the L! bridge target nil
+		// Mock deposits towards the L! bridge target nil
 		if depositTx.To != nil {
 			return nil
 		}

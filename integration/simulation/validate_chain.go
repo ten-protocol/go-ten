@@ -187,7 +187,6 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 }
 
 func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation) (*big.Int, uint64) {
-
 	client := node.EthClient()
 	if client == nil {
 		return nil, 0
@@ -195,7 +194,7 @@ func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *t
 
 	contractABI, err := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
 	if err != nil {
-		panic(err) //panic?
+		panic(err) // panic?
 	}
 
 	eventTopic := contractABI.Events["LogMessagePublished"].ID
@@ -216,7 +215,7 @@ func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *t
 	for _, log := range logs {
 		var event MessageBus.MessageBusLogMessagePublished
 		err := contractABI.UnpackIntoInterface(&event, "LogMessagePublished", log.Data)
-		if err != nil { //shouldn't happen since we query by event type so we shouldn't have foreign events
+		if err != nil { // shouldn't happen since we query by event type so we shouldn't have foreign events
 			panic(err)
 		}
 		events = append(events, &event)
@@ -227,7 +226,7 @@ func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *t
 		}
 
 		transfer := map[string]interface{}{}
-		err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, event.Payload) //can't figure out how to unpack it without cheating, geth is kinda clunky
+		err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, event.Payload) // can't figure out how to unpack it without cheating, geth is kinda clunky
 		if err != nil {
 			panic(err)
 		}
@@ -350,8 +349,8 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Node %d: Logged withdrawals do not match!", nodeIdx)
 	}
 
-	//rpc.GetRollupHeaderByNumber
-	//nodeClient
+	// rpc.GetRollupHeaderByNumber
+	// nodeClient
 
 	// sanity check number of withdrawal transaction
 	if numberOfWithdrawalRequests > len(s.TxInjector.TxTracker.GetL2WithdrawalRequests()) {
@@ -419,7 +418,7 @@ func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsC
 			}
 
 			transfer := map[string]interface{}{}
-			err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, msg.Payload) //can't figure out how to unpack it without cheating, geth is kinda clunky
+			err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, msg.Payload) // can't figure out how to unpack it without cheating, geth is kinda clunky
 			if err != nil {
 				panic(err)
 			}

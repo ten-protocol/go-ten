@@ -52,7 +52,7 @@ type EnclaveConfig struct {
 	ProfilerEnabled bool
 	// MinGasPrice is the minimum gas price for mining a transaction
 	MinGasPrice *big.Int
-	//MessageBus L1 Address
+	// MessageBus L1 Address
 	MessageBusAddress gethcommon.Address
 }
 

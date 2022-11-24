@@ -39,7 +39,7 @@ func NewObscuroMessageBusManager(
 
 	logger.Info(fmt.Sprintf("[CrossChain] L2 Cross Chain Owner Address: %s", wallet.Address().Hex()))
 
-	//Key is derived, address is predictable, thus address of contract is predictible across all enclaves
+	// Key is derived, address is predictable, thus address of contract is predictible across all enclaves
 	l2MessageBus := crypto.CreateAddress(wallet.Address(), 0)
 
 	return &obscuroMessageBusManager{
@@ -59,18 +59,18 @@ func (m *obscuroMessageBusManager) GetBusAddress() *common.L2Address {
 }
 
 func (m *obscuroMessageBusManager) DeriveOwner(seed []byte) (*common.L2Address, error) {
-	//TODO: Implement with cryptography epic!
+	// TODO: Implement with cryptography epic!
 	return m.messageBusAddress, nil
 }
 
 func (m *obscuroMessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
 	tx := &types.LegacyTx{
-		Nonce:    0, //this should be fixed probably :/
+		Nonce:    0, // this should be fixed probably :/
 		Value:    gethcommon.Big0,
-		Gas:      5_000_000,       //requires above 1m gas to deploy wtf.
-		GasPrice: gethcommon.Big0, //Synthetic transactions are on the house. Or the house.
+		Gas:      5_000_000,       // requires above 1m gas to deploy wtf.
+		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     gethcommon.FromHex(MessageBus.MessageBusMetaData.Bin),
-		To:       nil, //Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.
+		To:       nil, // Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.
 	}
 
 	stx, err := m.wallet.SignTransaction(tx)
@@ -85,7 +85,6 @@ func (m *obscuroMessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, e
 
 func (m *obscuroMessageBusManager) ExtractLocalMessages(receipts common.L2Receipts) (common.CrossChainMessages, error) {
 	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventID)
-
 	if err != nil {
 		m.logger.Error("[CrossChain] Error extracting logs from L2 message bus!", "Error", err)
 		return make(common.CrossChainMessages, 0), err
@@ -124,7 +123,7 @@ func (m *obscuroMessageBusManager) SubmitRemoteMessagesLocally(
 		i := 0
 		for _, resp := range syntheticTransactionsResponses {
 			rec, ok := resp.(*types.Receipt)
-			if !ok { //Еxtract reason for failing deposit.
+			if !ok { // Еxtract reason for failing deposit.
 				// TODO - Handle the case of an error (e.g. insufficient funds).
 				m.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
 				return errors.New("receipt missing for a guaranteed synthetic transaction")
@@ -179,7 +178,7 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 
 		m.logger.Trace(fmt.Sprintf("[CrossChain] Looking for transactions at block %s", b.Hash().Hex()))
 		syntheticTransactions := m.storage.ReadSyntheticTransactions(b.Hash())
-		transactions = append(transactions, syntheticTransactions...) //Ordering here might work in POBI, but might be weird for fast finality
+		transactions = append(transactions, syntheticTransactions...) // Ordering here might work in POBI, but might be weird for fast finality
 
 		if b.NumberU64() < height {
 			m.logger.Crit("block height is less than genesis height")
@@ -192,17 +191,17 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 	}
 	lazilyLogChecksum("[CrossChain] Read synthetic transactions checksum", transactions, m.logger)
 
-	//Todo:: iteration order is reversed! This might cause unintended consequences!
-	//Sign transactions and put proper nonces.
+	// Todo:: iteration order is reversed! This might cause unintended consequences!
+	// Sign transactions and put proper nonces.
 	startingNonce := rollupState.GetNonce(m.GetOwner())
 
 	signedTransactions := make(types.Transactions, 0)
 	for idx, unsignedTransaction := range transactions {
 		tx := &types.LegacyTx{
-			Nonce:    startingNonce + uint64(idx), //this should be fixed probably :/
+			Nonce:    startingNonce + uint64(idx), // this should be fixed probably :/
 			Value:    gethcommon.Big0,
 			Gas:      5_000_000,
-			GasPrice: gethcommon.Big0, //Synthetic transactions are on the house. Or the house.
+			GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 			Data:     unsignedTransaction.Data(),
 			To:       m.messageBusAddress,
 		}

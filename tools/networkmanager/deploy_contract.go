@@ -19,7 +19,6 @@ import (
 
 // DeployContract deploys a management contract or ERC20 contract to the L1 network, and prints its address.
 func DeployContract(config Config, logger gethlog.Logger) {
-
 	hostConfig := obscuroconfig.HostConfig{
 		PrivateKeyString: config.privateKeys[0], // We deploy the contract using the first private key.
 		L1ChainID:        config.l1ChainID,

@@ -11,7 +11,7 @@ type (
 	StateRoot = common.Hash
 	TxHash    = common.Hash
 
-	//MainNet aliases
+	// MainNet aliases
 	L1Address     = common.Address
 	L1RootHash    = common.Hash
 	L1Block       = types.Block
@@ -19,7 +19,7 @@ type (
 	L1Receipt     = types.Receipt
 	L1Receipts    = types.Receipts
 
-	//Local Obscuro aliases
+	// Local Obscuro aliases
 	L2RootHash     = common.Hash
 	L2Tx           = types.Transaction
 	L2Transactions = types.Transactions

@@ -13,7 +13,7 @@ import (
 
 type mainNetExtractor struct {
 	busAddress   *common.L1Address
-	l2MessageBus *common.L2Address //TODO: remove this
+	l2MessageBus *common.L2Address // TODO: remove this
 	storage      db.Storage
 	logger       gethlog.Logger
 }
@@ -45,8 +45,8 @@ func (m *mainNetExtractor) ProcessCrossChainMessages(block *common.L1Block, rece
 	}
 
 	if len(receipts) == 0 {
-		//Error if block receipts root does not match receipts hash
-		//else nil
+		// Error if block receipts root does not match receipts hash
+		// else nil
 		return nil
 	}
 
@@ -77,7 +77,6 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 	}
 
 	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &CrossChainEventID)
-
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
 		return transactions, err
@@ -85,7 +84,6 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 	m.logger.Trace("[CrossChain] extracted logs", "logCount", len(logs))
 
 	messages, err := convertLogsToMessages(logs, CrossChainEventName, ContractABI)
-
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
 		return transactions, err
@@ -102,10 +100,10 @@ func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, recei
 		}
 
 		tx := types.NewTx(&types.LegacyTx{
-			Nonce:    0, //This gets replaced later on
+			Nonce:    0, // This gets replaced later on
 			Value:    gethcommon.Big0,
 			Gas:      5_000_000,
-			GasPrice: gethcommon.Big0, //Synthetic transactions are on the house. Or the house.
+			GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 			Data:     data,
 			To:       m.l2MessageBus,
 		})

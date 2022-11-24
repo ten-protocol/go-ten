@@ -235,8 +235,8 @@ func (s *Simulation) prefundL1Accounts() {
 			}
 		}()
 
-		//Not sure why this is tracked as deposit; This is a prefunding transfer. Needs different logic.
-		//s.Stats.Deposit(initialBalance)
+		// Not sure why this is tracked as deposit; This is a prefunding transfer. Needs different logic.
+		// s.Stats.Deposit(initialBalance)
 
 		go s.TxInjector.TxTracker.trackL1Tx(txData)
 	}

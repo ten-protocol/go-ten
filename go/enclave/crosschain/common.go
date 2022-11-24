@@ -30,7 +30,6 @@ func lazilyLogReceiptChecksum(msg string, receipts types.Receipts, logger gethlo
 			for _, receipt := range receipts {
 				var buffer bytes.Buffer
 				err := receipt.EncodeRLP(&buffer)
-
 				if err != nil {
 					return err.Error()
 				}
@@ -54,7 +53,6 @@ func lazilyLogChecksum(msg string, transactions types.Transactions, logger gethl
 			for _, tx := range transactions {
 				var buffer bytes.Buffer
 				err := tx.EncodeRLP(&buffer)
-
 				if err != nil {
 					return err.Error()
 				}
