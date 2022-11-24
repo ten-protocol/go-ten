@@ -2,8 +2,11 @@ package bridge
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -257,9 +260,12 @@ func (bridge *Bridge) ExtractDeposits(
 			bridge.logger.Crit("block height is less than genesis height")
 			return nil
 		}
-		p, f := blockResolver.ParentBlock(b)
-		if !f {
-			bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
+		p, err := blockResolver.ParentBlock(b)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
+			}
+			bridge.logger.Crit("deposits can't be processed because the parent block could not be retrieved", log.ErrKey, err)
 			return nil
 		}
 		b = p

@@ -100,9 +100,9 @@ func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage
 }
 
 func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, *types.Block) {
-	b, f := rc.storage.FetchBlock(blkHash)
-	if !f {
-		rc.logger.Crit("Could not find the block used as proof for the genesis rollup.")
+	b, err := rc.storage.FetchBlock(blkHash)
+	if err != nil {
+		rc.logger.Crit("Could not retrieve the block used as proof for the genesis rollup.", log.ErrKey, err)
 	}
 
 	rolGenesis := obscurocore.NewRollup(
@@ -186,9 +186,9 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 		rc.logger.Crit(msgNoRollup)
 	}
 
-	headBlock, f := rc.storage.FetchBlock(bs.Block)
-	if !f {
-		rc.logger.Crit("could not fetch block")
+	headBlock, err := rc.storage.FetchBlock(bs.Block)
+	if err != nil {
+		rc.logger.Crit("could not fetch block", log.ErrKey, err)
 	}
 
 	var head *common.Header
@@ -247,9 +247,9 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, err
 			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
 		}
 		// go back and calculate the Root of the Parent
-		parent, found := rc.storage.FetchBlock(b.ParentHash())
-		if !found {
-			rc.logger.Crit("Could not find parent block when calculating block state. This should not happen.")
+		parent, err := rc.storage.FetchBlock(b.ParentHash())
+		if err != nil {
+			rc.logger.Crit("Could not retrieve parent block when calculating block state.", log.ErrKey, err)
 		}
 		parentState, err = rc.updateState(parent)
 		if err != nil {
@@ -513,9 +513,12 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	_, foundBlock := rc.storage.FetchBlock(block.Hash())
-	if foundBlock {
+	_, err := rc.storage.FetchBlock(block.Hash())
+	if err == nil {
 		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
+	}
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 	}
 
 	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
