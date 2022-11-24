@@ -192,7 +192,7 @@ func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.C
 	if err := rlp.DecodeBytes(data, &receipts); err != nil {
 		// Receipts might be in the legacy format, try decoding that.
 		// TODO: to be removed after users migrated
-		if logs := readLegacyLogs(db, hash, number, config, logger); logs != nil {
+		if logs, err := readLegacyLogs(db, hash, number, config, logger); err == nil {
 			return logs, nil
 		}
 		return nil, fmt.Errorf("invalid receipt array RLP.hash = %s. Cause: %w", hash, err)
@@ -215,14 +215,14 @@ func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.C
 // readLegacyLogs is a temporary workaround for when trying to read logs
 // from a block which has its receipt stored in the legacy format. It'll
 // be removed after users have migrated their freezer databases.
-func readLegacyLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) [][]*types.Log {
+func readLegacyLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) ([][]*types.Log, error) {
 	receipts, err := ReadReceipts(db, hash, number, config, logger)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("could not read receipts. Cause: %w", err)
 	}
 	logs := make([][]*types.Log, len(receipts))
 	for i, receipt := range receipts {
 		logs[i] = receipt.Logs
 	}
-	return logs
+	return logs, nil
 }
