@@ -18,11 +18,15 @@ import (
 
 // HasReceipts verifies the existence of all the transaction receipts belonging
 // to a block.
-func HasReceipts(db ethdb.Reader, hash common.Hash, number uint64) bool {
-	if has, err := db.Has(rollupReceiptsKey(number, hash)); !has || err != nil {
-		return false
+func HasReceipts(db ethdb.Reader, hash common.Hash, number uint64) (bool, error) {
+	has, err := db.Has(rollupReceiptsKey(number, hash))
+	if err != nil {
+		return false, err
 	}
-	return true
+	if !has {
+		return false, nil
+	}
+	return true, nil
 }
 
 // ReadReceiptsRLP retrieves all the transaction receipts belonging to a block in RLP encoding.
