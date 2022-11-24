@@ -314,7 +314,7 @@ docker images repository. Building the image is described in [dockerfiles](docke
 below in the root of the project;
 
 ```
-docker build -t obscuro_enclave -f ./dockerfiles/enclave.Dockerfile .
+docker build -t enclave -f ./dockerfiles/enclave.Dockerfile .
 ```
 
 To run all unit, integration and simulation tests locally, run the below in the root of the project;
@@ -340,11 +340,11 @@ The above will perform all the relevant builds and ensure the images are ready f
 ~4-5 mins to complete. The following images are created;
 
 ```
-testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave            # the enclave 
-testnetobscuronet.azurecr.io/obscuronet/obscuro_gethnetwork        # the L1 network 
-testnetobscuronet.azurecr.io/obscuronet/obscuro_host               # the host
+testnetobscuronet.azurecr.io/obscuronet/enclave            # the enclave 
+testnetobscuronet.azurecr.io/obscuronet/gethnetwork        # the L1 network 
+testnetobscuronet.azurecr.io/obscuronet/host               # the host
 testnetobscuronet.azurecr.io/obscuronet/obscuroscan                # the obscuroscan server
-testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer   # deploys the management contract to the host
+testnetobscuronet.azurecr.io/obscuronet/contractdeployer   # deploys the management contract to the host
 ```
 
 To start the test network locally run the below scripts. Note that it is recommended to use the scripts with arguments 

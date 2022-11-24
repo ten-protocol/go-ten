@@ -7,3 +7,5 @@ type ExtBatch struct {
 	TxHashes        []TxHash // The hashes of the transactions included in the batch.
 	EncryptedTxBlob EncryptedTransactions
 }
+
+// TODO - #718 - Cache hash calculation.

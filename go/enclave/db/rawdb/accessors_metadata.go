@@ -1,36 +1,41 @@
 package rawdb
 
 import (
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 )
 
-func ReadSharedSecret(db ethdb.KeyValueReader) (*crypto.SharedEnclaveSecret, bool) {
+func ReadSharedSecret(db ethdb.KeyValueReader) (*crypto.SharedEnclaveSecret, error) {
 	var ss crypto.SharedEnclaveSecret
 
+	// TODO - Handle error.
 	enc, _ := db.Get(sharedSecret)
 	if len(enc) == 0 {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	if err := rlp.DecodeBytes(enc, &ss); err != nil {
-		return nil, false
+		return nil, fmt.Errorf("could not decode shared secret")
 	}
 
-	return &ss, true
+	return &ss, nil
 }
 
-func WriteSharedSecret(db ethdb.KeyValueWriter, ss crypto.SharedEnclaveSecret, logger gethlog.Logger) {
+func WriteSharedSecret(db ethdb.KeyValueWriter, ss crypto.SharedEnclaveSecret) error {
 	enc, err := rlp.EncodeToBytes(ss)
 	if err != nil {
-		logger.Crit("could not encode shared secret. ", log.ErrKey, err)
+		return fmt.Errorf("could not encode shared secret. Cause: %w", err)
 	}
 	if err = db.Put(sharedSecret, enc); err != nil {
-		logger.Crit("could not put shared secret in DB. ", log.ErrKey, err)
+		return fmt.Errorf("could not shared secret in DB. Cause: %w", err)
 	}
+	return nil
 }
 
 func ReadGenesisHash(db ethdb.KeyValueReader) (*common.Hash, bool) {

@@ -52,6 +52,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 	return &RPCHandles{
 		EthClients:     n.gethClients,
 		ObscuroClients: obscuroClients,
+		RPCClients:     n.l2Clients,
 		AuthObsClients: walletClients,
 	}, nil
 }

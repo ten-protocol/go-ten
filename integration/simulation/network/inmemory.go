@@ -115,6 +115,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	return &RPCHandles{
 		EthClients:     l1Clients,
 		ObscuroClients: obscuroClients,
+		RPCClients:     n.l2Clients,
 		AuthObsClients: walletClients,
 	}, nil
 }

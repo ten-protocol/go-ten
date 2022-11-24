@@ -24,13 +24,13 @@ service EnclaveProto {
   // Start - start speculative execution
   rpc Start(StartRequest) returns (StartResponse) {}
 
-  // SubmitBlock - Used for the host to submit blocks to the enclave, these may be:
+  // SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
   //  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
   //  b. the latest block published by the L1, to which the enclave should respond with a rollup
   // It is the responsibility of the host to gossip the returned rollup
   // For good functioning the caller should always submit blocks ordered by height
   // submitting a block before receiving ancestors of it, will result in it being ignored
-  rpc SubmitBlock(SubmitBlockRequest) returns (SubmitBlockResponse) {}
+  rpc SubmitL1Block(SubmitBlockRequest) returns (SubmitBlockResponse) {}
 
   // SubmitTx - user transactions
   rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
@@ -51,9 +51,6 @@ service EnclaveProto {
   // GetTransaction returns a transaction receipt given the transaction's signed hash, encrypted with the viewing key
   // corresponding to the original transaction submitter
   rpc GetTransactionReceipt(GetTransactionReceiptRequest) returns (GetTransactionReceiptResponse) {}
-
-  // GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
-  rpc GetRollup(GetRollupRequest) returns (GetRollupResponse) {}
 
   // AddViewingKey adds a viewing key to the enclave
   rpc AddViewingKey(AddViewingKeyRequest) returns (AddViewingKeyResponse) {}
@@ -161,13 +158,6 @@ message GetTransactionReceiptRequest {
 }
 message GetTransactionReceiptResponse {
   bytes encryptedTxReceipt = 1;
-}
-
-message GetRollupRequest {
-  bytes rollupHash = 1;
-}
-message GetRollupResponse {
-  ExtRollupMsg extRollup = 2;
 }
 
 message AddViewingKeyRequest {

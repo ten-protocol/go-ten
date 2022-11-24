@@ -12,7 +12,7 @@ const (
 		sudo apt-get install -y docker.io
 		sudo systemctl enable --now docker
 		if ! [ -d "go-obscuro" ]; then git clone https://github.com/obscuronet/go-obscuro; else :; fi
-		sudo docker build -t obscuro_enclave - < go-obscuro/dockerfiles/enclave.Dockerfile`
+		sudo docker build -t enclave - < go-obscuro/dockerfiles/enclave.Dockerfile`
 )
 
 func main() {

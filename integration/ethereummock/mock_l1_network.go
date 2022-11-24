@@ -41,7 +41,7 @@ func NewMockEthNetwork(avgBlockDuration time.Duration, avgLatency time.Duration,
 }
 
 // BroadcastBlock broadcast a block to the l1 nodes
-func (n *MockEthNetwork) BroadcastBlock(b common.EncodedBlock, p common.EncodedBlock) {
+func (n *MockEthNetwork) BroadcastBlock(b common.EncodedL1Block, p common.EncodedL1Block) {
 	bl, _ := b.DecodeBlock()
 	for _, m := range n.AllNodes {
 		if m.Info().L2ID != n.CurrentNode.Info().L2ID {

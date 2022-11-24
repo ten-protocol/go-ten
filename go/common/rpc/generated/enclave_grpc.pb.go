@@ -34,7 +34,7 @@ type EnclaveProtoClient interface {
 	ProduceGenesis(ctx context.Context, in *ProduceGenesisRequest, opts ...grpc.CallOption) (*ProduceGenesisResponse, error)
 	// Start - start speculative execution
 	Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error)
-	// SubmitBlock - Used for the host to submit blocks to the enclave, these may be:
+	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
 	//
 	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
 	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
@@ -42,7 +42,7 @@ type EnclaveProtoClient interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitBlock(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
+	SubmitL1Block(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
 	// SubmitTx - user transactions
 	SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error)
 	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
@@ -57,8 +57,6 @@ type EnclaveProtoClient interface {
 	// GetTransaction returns a transaction receipt given the transaction's signed hash, encrypted with the viewing key
 	// corresponding to the original transaction submitter
 	GetTransactionReceipt(ctx context.Context, in *GetTransactionReceiptRequest, opts ...grpc.CallOption) (*GetTransactionReceiptResponse, error)
-	// GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
-	GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error)
 	// AddViewingKey adds a viewing key to the enclave
 	AddViewingKey(ctx context.Context, in *AddViewingKeyRequest, opts ...grpc.CallOption) (*AddViewingKeyResponse, error)
 	// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
@@ -137,9 +135,9 @@ func (c *enclaveProtoClient) Start(ctx context.Context, in *StartRequest, opts .
 	return out, nil
 }
 
-func (c *enclaveProtoClient) SubmitBlock(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error) {
+func (c *enclaveProtoClient) SubmitL1Block(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error) {
 	out := new(SubmitBlockResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/SubmitBlock", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/SubmitL1Block", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -194,15 +192,6 @@ func (c *enclaveProtoClient) GetTransaction(ctx context.Context, in *GetTransact
 func (c *enclaveProtoClient) GetTransactionReceipt(ctx context.Context, in *GetTransactionReceiptRequest, opts ...grpc.CallOption) (*GetTransactionReceiptResponse, error) {
 	out := new(GetTransactionReceiptResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetTransactionReceipt", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *enclaveProtoClient) GetRollup(ctx context.Context, in *GetRollupRequest, opts ...grpc.CallOption) (*GetRollupResponse, error) {
-	out := new(GetRollupResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetRollup", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +286,7 @@ type EnclaveProtoServer interface {
 	ProduceGenesis(context.Context, *ProduceGenesisRequest) (*ProduceGenesisResponse, error)
 	// Start - start speculative execution
 	Start(context.Context, *StartRequest) (*StartResponse, error)
-	// SubmitBlock - Used for the host to submit blocks to the enclave, these may be:
+	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
 	//
 	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
 	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
@@ -305,7 +294,7 @@ type EnclaveProtoServer interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitBlock(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error)
+	SubmitL1Block(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error)
 	// SubmitTx - user transactions
 	SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error)
 	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
@@ -320,8 +309,6 @@ type EnclaveProtoServer interface {
 	// GetTransaction returns a transaction receipt given the transaction's signed hash, encrypted with the viewing key
 	// corresponding to the original transaction submitter
 	GetTransactionReceipt(context.Context, *GetTransactionReceiptRequest) (*GetTransactionReceiptResponse, error)
-	// GetRollup returns a rollup given its hash, returns nil, false when the rollup is unknown
-	GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error)
 	// AddViewingKey adds a viewing key to the enclave
 	AddViewingKey(context.Context, *AddViewingKeyRequest) (*AddViewingKeyResponse, error)
 	// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
@@ -361,8 +348,8 @@ func (UnimplementedEnclaveProtoServer) ProduceGenesis(context.Context, *ProduceG
 func (UnimplementedEnclaveProtoServer) Start(context.Context, *StartRequest) (*StartResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
 }
-func (UnimplementedEnclaveProtoServer) SubmitBlock(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SubmitBlock not implemented")
+func (UnimplementedEnclaveProtoServer) SubmitL1Block(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SubmitL1Block not implemented")
 }
 func (UnimplementedEnclaveProtoServer) SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitTx not implemented")
@@ -381,9 +368,6 @@ func (UnimplementedEnclaveProtoServer) GetTransaction(context.Context, *GetTrans
 }
 func (UnimplementedEnclaveProtoServer) GetTransactionReceipt(context.Context, *GetTransactionReceiptRequest) (*GetTransactionReceiptResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTransactionReceipt not implemented")
-}
-func (UnimplementedEnclaveProtoServer) GetRollup(context.Context, *GetRollupRequest) (*GetRollupResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetRollup not implemented")
 }
 func (UnimplementedEnclaveProtoServer) AddViewingKey(context.Context, *AddViewingKeyRequest) (*AddViewingKeyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddViewingKey not implemented")
@@ -530,20 +514,20 @@ func _EnclaveProto_Start_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveProto_SubmitBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EnclaveProto_SubmitL1Block_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SubmitBlockRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveProtoServer).SubmitBlock(ctx, in)
+		return srv.(EnclaveProtoServer).SubmitL1Block(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/SubmitBlock",
+		FullMethod: "/generated.EnclaveProto/SubmitL1Block",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).SubmitBlock(ctx, req.(*SubmitBlockRequest))
+		return srv.(EnclaveProtoServer).SubmitL1Block(ctx, req.(*SubmitBlockRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -652,24 +636,6 @@ func _EnclaveProto_GetTransactionReceipt_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).GetTransactionReceipt(ctx, req.(*GetTransactionReceiptRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EnclaveProto_GetRollup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetRollupRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).GetRollup(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/GetRollup",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).GetRollup(ctx, req.(*GetRollupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -850,8 +816,8 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_Start_Handler,
 		},
 		{
-			MethodName: "SubmitBlock",
-			Handler:    _EnclaveProto_SubmitBlock_Handler,
+			MethodName: "SubmitL1Block",
+			Handler:    _EnclaveProto_SubmitL1Block_Handler,
 		},
 		{
 			MethodName: "SubmitTx",
@@ -876,10 +842,6 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTransactionReceipt",
 			Handler:    _EnclaveProto_GetTransactionReceipt_Handler,
-		},
-		{
-			MethodName: "GetRollup",
-			Handler:    _EnclaveProto_GetRollup_Handler,
 		},
 		{
 			MethodName: "AddViewingKey",

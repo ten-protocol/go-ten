@@ -27,8 +27,8 @@ The dApp has many of the features that you'd expect to find, including:
 
 # Set up your environment
 - You'll need to install MetaMask following the instructions [here](https://metamask.io/)
-- Then download and run the Obscuro Wallet extension following the instructions [here](https://docs.obscu.ro/wallet-extension/wallet-extension.html)
-- Now connect MetaMask to the Obscuro testnet following the instructions [here](https://docs.obscu.ro/wallet-extension/configure-metamask.html)
+- Then download and run the Obscuro Wallet extension following the instructions [here](https://docs.obscu.ro/wallet-extension/wallet-extension)
+- Now connect MetaMask to the Obscuro testnet following the instructions [here](https://docs.obscu.ro/wallet-extension/configure-metamask)
 - Finally, check you can open the Remix IDE by visiting the following URL in your browser https://remix.ethereum.org
 
 That's it. You're all set to start building your first dApp on Obscuro.
@@ -156,7 +156,7 @@ Our function to return the prize pool is:
 
 And that's it! Congratulations on writing your first Obscuro smart contract!
 
-You can now go ahead and deploy the contract following the instructions [here](https://docs.obscu.ro/testnet/deploying-a-smart-contract.html)
+You can now go ahead and deploy the contract following the instructions [here](https://docs.obscu.ro/testnet/deploying-a-smart-contract)
 
 With that done, why not have a go at extending the contract to include warmer/colder functionality. Then, when a returning player plays again for the same again, if their new guess is closer to the previous guess, they're told they're *warmer*, and if it's further, they're *colder*.
 

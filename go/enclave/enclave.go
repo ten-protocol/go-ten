@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/obscuronet/go-obscuro/go/common/gethapi"
@@ -200,9 +202,12 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, error) {
-	_, found := e.storage.FetchSecret()
-	if !found {
-		return common.AwaitingSecret, nil
+	_, err := e.storage.FetchSecret()
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			return common.AwaitingSecret, nil
+		}
+		return common.Unavailable, err
 	}
 	return common.Running, nil // The enclave is local so it is always ready
 }
@@ -231,8 +236,8 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubm
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitBlock(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
-	bsr, err := e.chain.SubmitBlock(block, receipts, isLatest)
+func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
+	bsr, err := e.chain.SubmitL1Block(block, receipts, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitBlock failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, err
@@ -312,11 +317,14 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err != nil {
 		return nil, err
 	}
-	hs := e.storage.FetchHeadState()
-	if hs != nil {
+	hs, err := e.storage.FetchHeadState()
+	if err == nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
-		s := e.storage.CreateStateDB(hs.HeadRollup)
+		s, err := e.storage.CreateStateDB(hs.HeadRollup)
+		if err != nil {
+			return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+		}
 		nonce = s.GetNonce(address)
 	}
 
@@ -345,7 +353,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
 	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
 	if err != nil {
-		if errors.Is(err, db.ErrTxNotFound) {
+		if errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil
 		}
 		return nil, err
@@ -382,7 +390,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// We retrieve the transaction.
 	tx, txRollupHash, txRollupHeight, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
-		if errors.Is(err, db.ErrTxNotFound) {
+		if errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil
 		}
 		return nil, err
@@ -400,7 +408,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// We retrieve the transaction receipt.
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
-		if errors.Is(err, db.ErrTxNotFound) {
+		if errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
@@ -413,7 +421,10 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We filter out irrelevant logs.
-	txReceipt.Logs = e.subscriptionManager.FilterLogs(txReceipt.Logs, txRollupHash, &sender, &filters.FilterCriteria{})
+	txReceipt.Logs, err = e.subscriptionManager.FilterLogs(txReceipt.Logs, txRollupHash, &sender, &filters.FilterCriteria{})
+	if err != nil {
+		return nil, fmt.Errorf("could not filter logs. Cause: %w", err)
+	}
 
 	// We marshal the receipt to JSON.
 	txReceiptBytes, err := txReceipt.MarshalJSON()
@@ -428,15 +439,6 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	return encryptedTxReceipt, nil
-}
-
-func (e *enclaveImpl) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
-	rollup, found := e.storage.FetchRollup(rollupHash)
-	if !found {
-		return nil, nil //nolint:nilnil
-	}
-	extRollup := rollup.ToExtRollup(e.transactionBlobCrypto)
-	return &extRollup, nil
 }
 
 func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
@@ -455,7 +457,10 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
 	secret := crypto.GenerateEntropy(e.logger)
-	e.storage.StoreSecret(secret)
+	err := e.storage.StoreSecret(secret)
+	if err != nil {
+		return nil, fmt.Errorf("could not store secret. Cause: %w", err)
+	}
 	encSec, err := crypto.EncryptSecret(e.enclavePubKey, secret, e.logger)
 	if err != nil {
 		e.logger.Error("failed to encrypt secret.", log.ErrKey, err)
@@ -470,7 +475,10 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
 	if err != nil {
 		return err
 	}
-	e.storage.StoreSecret(*secret)
+	err = e.storage.StoreSecret(*secret)
+	if err != nil {
+		return fmt.Errorf("could not store secret. Cause: %w", err)
+	}
 	e.logger.Trace(fmt.Sprintf("Secret decrypted and stored. Secret: %v", secret))
 	return nil
 }
@@ -488,9 +496,9 @@ func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationR
 	}
 	e.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.Owner))
 
-	secret, found := e.storage.FetchSecret()
-	if !found {
-		return nil, errors.New("secret was nil, no secret to share - this shouldn't happen")
+	secret, err := e.storage.FetchSecret()
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve secret; this should not happen. Cause: %w", err)
 	}
 	return crypto.EncryptSecret(att.PubKey, *secret, e.logger)
 }
@@ -507,7 +515,10 @@ func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse public key %w", err)
 	}
-	e.storage.StoreAttestedKey(att.Owner, key)
+	err = e.storage.StoreAttestedKey(att.Owner, key)
+	if err != nil {
+		return fmt.Errorf("could not store attested key. Cause: %w", err)
+	}
 	return nil
 }
 
@@ -516,7 +527,11 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 }
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
-	return e.storage.CreateStateDB(*rollupHash).GetCode(address), nil
+	stateDB, err := e.storage.CreateStateDB(*rollupHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+	return stateDB.GetCode(address), nil
 }
 
 func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) error {

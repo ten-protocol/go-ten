@@ -185,7 +185,7 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 	}, nil
 }
 
-// Maps an external rollup to a key/value map.
+// Converts a batch header to a key/value map.
 // TODO - Include all the fields of the rollup header that do not exist in the Geth block headers as well (not just withdrawals).
 func headerToMap(header *common.Header) map[string]interface{} {
 	return map[string]interface{}{

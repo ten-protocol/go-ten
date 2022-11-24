@@ -271,7 +271,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 
 		err = ti.rpcHandles.ObscuroWalletRndClient(obsWallet).SendTransaction(ti.ctx, signedTx)
 		if err != nil {
-			ti.logger.Info("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
+			ti.logger.Warn("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
 			continue
 		}
 
@@ -324,7 +324,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 
 		err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
 		if err != nil {
-			ti.logger.Info("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
+			ti.logger.Warn("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
 		}
 		time.Sleep(testcommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
 	}
