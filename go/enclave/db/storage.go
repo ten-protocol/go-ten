@@ -53,9 +53,9 @@ func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 	}
-	rollup, f := s.FetchRollup(*hash)
-	if !f {
-		return nil, errutil.ErrNotFound
+	rollup, err := s.FetchRollup(*hash)
+	if err != nil {
+		return nil, err
 	}
 	return rollup, nil
 }
@@ -80,14 +80,13 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 	return nil
 }
 
-func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
+func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, error) {
 	s.assertSecretAvailable()
 	rollup, err := obscurorawdb.ReadRollup(s.db, hash, s.logger)
 	if err != nil {
-		// TODO - Return this error.
-		return nil, false
+		return nil, err
 	}
-	return rollup, true
+	return rollup, nil
 }
 
 func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, error) {
@@ -103,12 +102,7 @@ func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, error) {
 	if hash == (gethcommon.Hash{}) {
 		return nil, errutil.ErrNotFound
 	}
-	// todo - joel - collapse this once `FetchRollup` returns an error.
-	rollup, f := s.FetchRollup(hash)
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
-	return rollup, nil
+	return s.FetchRollup(hash)
 }
 
 func (s *storageImpl) FetchRollups(height uint64) ([]*core.Rollup, error) {
@@ -151,7 +145,7 @@ func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 	return obscurorawdb.ReadSharedSecret(s.db)
 }
 
-func (s *storageImpl) ParentRollup(r *core.Rollup) (*core.Rollup, bool) {
+func (s *storageImpl) ParentRollup(r *core.Rollup) (*core.Rollup, error) {
 	s.assertSecretAvailable()
 	return s.FetchRollup(r.Header.ParentHash)
 }
@@ -279,9 +273,9 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 }
 
 func (s *storageImpl) CreateStateDB(hash common.L2RootHash) (*state.StateDB, error) {
-	rollup, f := s.FetchRollup(hash)
-	if !f {
-		return nil, errutil.ErrNotFound
+	rollup, err := s.FetchRollup(hash)
+	if err != nil {
+		return nil, err
 	}
 
 	// todo - snapshots?

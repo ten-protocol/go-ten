@@ -242,11 +242,14 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 	e.logger.Trace("SubmitBlock successful", "blk", block.Number(), "blkHash", block.Hash())
 
 	if bsr.IngestedRollupHeader != nil {
-		hr, f := e.storage.FetchRollup(bsr.IngestedRollupHeader.Hash())
-		if !f {
-			e.logger.Crit("This should not happen because this rollup was just processed.")
+		hr, err := e.storage.FetchRollup(bsr.IngestedRollupHeader.Hash())
+		if err != nil {
+			e.logger.Crit("Could not retrieve rollup. This should not happen because this rollup was just processed.", log.ErrKey, err)
 		}
-		e.mempool.RemoveMempoolTxs(hr, e.storage)
+		err = e.mempool.RemoveMempoolTxs(hr, e.storage)
+		if err != nil {
+			e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
+		}
 	}
 
 	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(block)

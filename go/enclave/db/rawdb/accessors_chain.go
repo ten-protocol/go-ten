@@ -21,7 +21,7 @@ import (
 )
 
 // todo - all the function in this file should return an error, which must be handled by the caller
-// once that is done, the logger parameter should be removed
+//  once that is done, the logger parameter should be removed
 
 func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Logger) (*core.Rollup, error) {
 	height, err := ReadHeaderNumber(db, hash)

@@ -35,16 +35,16 @@ type BlockResolver interface {
 }
 
 type RollupResolver interface {
-	// FetchRollup returns the rollup with the given hash and true, or (nil, false) if no such rollup is stored.
-	FetchRollup(hash common.L2RootHash) (*core.Rollup, bool)
-	// FetchRollupByHeight returns the rollup with the given height and true, or (nil, false) if no such rollup is stored.
+	// FetchRollup returns the rollup with the given hash.
+	FetchRollup(hash common.L2RootHash) (*core.Rollup, error)
+	// FetchRollupByHeight returns the rollup with the given height.
 	FetchRollupByHeight(height uint64) (*core.Rollup, error)
 	// FetchRollups returns all the proposed rollups with the given height
 	FetchRollups(height uint64) ([]*core.Rollup, error)
 	// StoreRollup persists the rollup
 	StoreRollup(rollup *core.Rollup) error
-	// ParentRollup returns the rollup's parent rollup, or (nil, false) if no such rollup was found.
-	ParentRollup(rollup *core.Rollup) (*core.Rollup, bool)
+	// ParentRollup returns the rollup's parent rollup.
+	ParentRollup(rollup *core.Rollup) (*core.Rollup, error)
 	// StoreGenesisRollup stores the rollup genesis
 	StoreGenesisRollup(rol *core.Rollup) error
 	// FetchGenesisRollup returns the rollup genesis.
