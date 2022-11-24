@@ -394,9 +394,9 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// Only return receipts for transactions included in the canonical chain.
-	r, f := e.storage.FetchRollupByHeight(txRollupHeight)
-	if !f {
-		return nil, fmt.Errorf("transaction not included in the canonical chain")
+	r, err := e.storage.FetchRollupByHeight(txRollupHeight)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup containing transaction. Cause: %w", err)
 	}
 	if !bytes.Equal(r.Hash().Bytes(), txRollupHash.Bytes()) {
 		return nil, fmt.Errorf("transaction not included in the canonical chain")

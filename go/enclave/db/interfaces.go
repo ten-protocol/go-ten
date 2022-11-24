@@ -38,7 +38,7 @@ type RollupResolver interface {
 	// FetchRollup returns the rollup with the given hash and true, or (nil, false) if no such rollup is stored.
 	FetchRollup(hash common.L2RootHash) (*core.Rollup, bool)
 	// FetchRollupByHeight returns the rollup with the given height and true, or (nil, false) if no such rollup is stored.
-	FetchRollupByHeight(height uint64) (*core.Rollup, bool)
+	FetchRollupByHeight(height uint64) (*core.Rollup, error)
 	// FetchRollups returns all the proposed rollups with the given height
 	FetchRollups(height uint64) ([]*core.Rollup, error)
 	// StoreRollup persists the rollup

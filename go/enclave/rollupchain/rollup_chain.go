@@ -920,9 +920,9 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 			return nil, fmt.Errorf("rollup with requested height %d was not found", height)
 		}
 	default:
-		maybeRollup, found := rc.storage.FetchRollupByHeight(uint64(height))
-		if !found {
-			return nil, fmt.Errorf("rollup with requested height %d was not found", height)
+		maybeRollup, err := rc.storage.FetchRollupByHeight(uint64(height))
+		if err != nil {
+			return nil, fmt.Errorf("rollup with requested height %d could not be retrieved. Cause: %w", height, err)
 		}
 		rollup = maybeRollup
 	}

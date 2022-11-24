@@ -90,20 +90,25 @@ func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
 	return rollup, true
 }
 
-func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, bool) {
+func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, error) {
 	if height == 0 {
 		genesisRollup, err := s.FetchGenesisRollup()
 		if err != nil {
-			return nil, false
+			return nil, fmt.Errorf("could not fetch genesis rollup. Cause: %w", err)
 		}
-		return genesisRollup, true
+		return genesisRollup, nil
 	}
 
 	hash := obscurorawdb.ReadCanonicalHash(s.db, height)
 	if hash == (gethcommon.Hash{}) {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
-	return s.FetchRollup(hash)
+	// todo - joel - collapse this once `FetchRollup` returns an error.
+	rollup, f := s.FetchRollup(hash)
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	return rollup, nil
 }
 
 func (s *storageImpl) FetchRollups(height uint64) ([]*core.Rollup, error) {
