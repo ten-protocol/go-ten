@@ -7,8 +7,6 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -184,37 +182,34 @@ func deriveLogFields(receipts []*receiptLogs, hash common.Hash, number uint64, t
 // ReadLogs retrieves the logs for all transactions in a block. The log fields
 // are populated with metadata. In case the receipts or the block body
 // are not found, a nil is returned.
-func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) [][]*types.Log {
+func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) ([][]*types.Log, error) {
 	// Retrieve the flattened receipt slice
 	data, err := ReadReceiptsRLP(db, hash, number)
 	if err != nil {
-		logger.Error(fmt.Sprintf("Could not read RLP receipts.%s = %s", "hash", hash), log.ErrKey, err)
+		return nil, fmt.Errorf("could not read RLP receipts.hash = %s. Cause: %w", hash, err)
 	}
 	receipts := []*receiptLogs{}
 	if err := rlp.DecodeBytes(data, &receipts); err != nil {
 		// Receipts might be in the legacy format, try decoding that.
 		// TODO: to be removed after users migrated
 		if logs := readLegacyLogs(db, hash, number, config, logger); logs != nil {
-			return logs
+			return logs, nil
 		}
-		logger.Error(fmt.Sprintf("Invalid receipt array RLP.%s = %s", "hash", hash), log.ErrKey, err)
-		return nil
+		return nil, fmt.Errorf("invalid receipt array RLP.hash = %s. Cause: %w", hash, err)
 	}
 
 	body := ReadBody(db, hash, number, logger)
 	if body == nil {
-		logger.Error(fmt.Sprintf("Missing body but have receipt. %s = %s; %s = %d;", "hash", hash, "number", number))
-		return nil
+		return nil, fmt.Errorf("missing body but have receipt. hash = %s; number = %d", hash, number)
 	}
-	if err := deriveLogFields(receipts, hash, number, types.Transactions(body)); err != nil {
-		logger.Error(fmt.Sprintf("Failed to derive block receipts fields. %s = %s; %s = %d", "hash", hash, "number", number), log.ErrKey, err)
-		return nil
+	if err = deriveLogFields(receipts, hash, number, types.Transactions(body)); err != nil {
+		return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; cause: %w", hash, number, err)
 	}
 	logs := make([][]*types.Log, len(receipts))
 	for i, receipt := range receipts {
 		logs[i] = receipt.Logs
 	}
-	return logs
+	return logs, nil
 }
 
 // readLegacyLogs is a temporary workaround for when trying to read logs
