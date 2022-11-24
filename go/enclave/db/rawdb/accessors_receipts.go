@@ -26,34 +26,33 @@ func HasReceipts(db ethdb.Reader, hash common.Hash, number uint64) bool {
 }
 
 // ReadReceiptsRLP retrieves all the transaction receipts belonging to a block in RLP encoding.
-func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash, number uint64, logger gethlog.Logger) rlp.RawValue {
+func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash, number uint64) (rlp.RawValue, error) {
 	data, err := db.Get(rollupReceiptsKey(number, hash))
 	if err != nil {
-		logger.Crit("Could not read receipts.", log.ErrKey, err)
+		return nil, fmt.Errorf("could not read receipts. Cause: %w", err)
 	}
-	return data
+	return data, nil
 }
 
 // ReadRawReceipts retrieves all the transaction receipts belonging to a block.
 // The receipt metadata fields are not guaranteed to be populated, so they
 // should not be used. Use ReadReceipts instead if the metadata is needed.
-func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64, logger gethlog.Logger) types.Receipts {
+func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64, logger gethlog.Logger) (types.Receipts, error) {
 	// Retrieve the flattened receipt slice
-	data := ReadReceiptsRLP(db, hash, number, logger)
-	if len(data) == 0 {
-		return nil
+	data, err := ReadReceiptsRLP(db, hash, number)
+	if err != nil {
+		return nil, err
 	}
 	// Convert the receipts from their storage form to their internal representation
 	storageReceipts := []*types.ReceiptForStorage{}
 	if err := rlp.DecodeBytes(data, &storageReceipts); err != nil {
-		logger.Error(fmt.Sprintf("Invalid receipt array RLP. %s = %s; %s = %s;", "hash", hash, "err", err))
-		return nil
+		return nil, fmt.Errorf("invalid receipt array RLP. hash = %s; err = %w", hash, err)
 	}
 	receipts := make(types.Receipts, len(storageReceipts))
 	for i, storageReceipt := range storageReceipts {
 		receipts[i] = (*types.Receipt)(storageReceipt)
 	}
-	return receipts
+	return receipts, nil
 }
 
 // ReadReceipts retrieves all the transaction receipts belonging to a block, including
@@ -65,8 +64,9 @@ func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64, logger ge
 // if the receipt itself is stored.
 func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) types.Receipts {
 	// We're deriving many fields from the block body, retrieve beside the receipt
-	receipts := ReadRawReceipts(db, hash, number, logger)
-	if receipts == nil {
+	receipts, err := ReadRawReceipts(db, hash, number, logger)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Could not read receipt.%s = %s; %s = %d;", "hash", hash, "number", number), log.ErrKey, err)
 		return nil
 	}
 	body := ReadBody(db, hash, number, logger)
@@ -183,9 +183,9 @@ func deriveLogFields(receipts []*receiptLogs, hash common.Hash, number uint64, t
 // are not found, a nil is returned.
 func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) [][]*types.Log {
 	// Retrieve the flattened receipt slice
-	data := ReadReceiptsRLP(db, hash, number, logger)
-	if len(data) == 0 {
-		return nil
+	data, err := ReadReceiptsRLP(db, hash, number)
+	if err != nil {
+		logger.Error(fmt.Sprintf("Could not read RLP receipts.%s = %s", "hash", hash), log.ErrKey, err)
 	}
 	receipts := []*receiptLogs{}
 	if err := rlp.DecodeBytes(data, &receipts); err != nil {
