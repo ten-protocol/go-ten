@@ -183,8 +183,8 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 		if b.NumberU64() < height {
 			m.logger.Crit("block height is less than genesis height")
 		}
-		p, f := m.storage.ParentBlock(b)
-		if !f {
+		p, err := m.storage.ParentBlock(b)
+		if err != nil {
 			m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork")
 		}
 		b = p
