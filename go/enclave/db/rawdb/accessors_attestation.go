@@ -4,8 +4,6 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -25,7 +23,7 @@ func ReadAttestationKey(db ethdb.KeyValueReader, address gethcommon.Address) (*e
 	return publicKey, nil
 }
 
-func WriteAttestationKey(db ethdb.KeyValueWriter, address gethcommon.Address, key *ecdsa.PublicKey, logger gethlog.Logger) error {
+func WriteAttestationKey(db ethdb.KeyValueWriter, address gethcommon.Address, key *ecdsa.PublicKey) error {
 	if err := db.Put(attestationPkKey(address), crypto.CompressPubkey(key)); err != nil {
 		return fmt.Errorf("could not write attestation key. Cause: %w", err)
 	}

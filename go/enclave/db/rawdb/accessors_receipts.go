@@ -7,8 +7,6 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -18,72 +16,73 @@ import (
 
 // HasReceipts verifies the existence of all the transaction receipts belonging
 // to a block.
-func HasReceipts(db ethdb.Reader, hash common.Hash, number uint64) bool {
-	if has, err := db.Has(rollupReceiptsKey(number, hash)); !has || err != nil {
-		return false
+func HasReceipts(db ethdb.Reader, hash common.Hash, number uint64) (bool, error) {
+	has, err := db.Has(rollupReceiptsKey(number, hash))
+	if err != nil {
+		return false, err
 	}
-	return true
+	if !has {
+		return false, nil
+	}
+	return true, nil
 }
 
 // ReadReceiptsRLP retrieves all the transaction receipts belonging to a block in RLP encoding.
-func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash, number uint64, logger gethlog.Logger) rlp.RawValue {
+func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash, number uint64) (rlp.RawValue, error) {
 	data, err := db.Get(rollupReceiptsKey(number, hash))
 	if err != nil {
-		logger.Crit("Could not read receipts.", log.ErrKey, err)
+		return nil, fmt.Errorf("could not read receipts. Cause: %w", err)
 	}
-	return data
+	return data, nil
 }
 
 // ReadRawReceipts retrieves all the transaction receipts belonging to a block.
 // The receipt metadata fields are not guaranteed to be populated, so they
 // should not be used. Use ReadReceipts instead if the metadata is needed.
-func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64, logger gethlog.Logger) types.Receipts {
+func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64) (types.Receipts, error) {
 	// Retrieve the flattened receipt slice
-	data := ReadReceiptsRLP(db, hash, number, logger)
-	if len(data) == 0 {
-		return nil
+	data, err := ReadReceiptsRLP(db, hash, number)
+	if err != nil {
+		return nil, err
 	}
 	// Convert the receipts from their storage form to their internal representation
 	storageReceipts := []*types.ReceiptForStorage{}
 	if err := rlp.DecodeBytes(data, &storageReceipts); err != nil {
-		logger.Error(fmt.Sprintf("Invalid receipt array RLP. %s = %s; %s = %s;", "hash", hash, "err", err))
-		return nil
+		return nil, fmt.Errorf("invalid receipt array RLP. hash = %s; err = %w", hash, err)
 	}
 	receipts := make(types.Receipts, len(storageReceipts))
 	for i, storageReceipt := range storageReceipts {
 		receipts[i] = (*types.Receipt)(storageReceipt)
 	}
-	return receipts
+	return receipts, nil
 }
 
 // ReadReceipts retrieves all the transaction receipts belonging to a block, including
-// its correspoinding metadata fields. If it is unable to populate these metadata
+// its corresponding metadata fields. If it is unable to populate these metadata
 // fields then nil is returned.
 //
 // The current implementation populates these metadata fields by reading the receipts'
 // corresponding block body, so if the block body is not found it will return nil even
 // if the receipt itself is stored.
-func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) types.Receipts {
+func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) (types.Receipts, error) {
 	// We're deriving many fields from the block body, retrieve beside the receipt
-	receipts := ReadRawReceipts(db, hash, number, logger)
-	if receipts == nil {
-		return nil
+	receipts, err := ReadRawReceipts(db, hash, number)
+	if err != nil {
+		return nil, fmt.Errorf("could not read receipt. hash = %s; number = %d; err = %w", hash, number, err)
 	}
 	body := ReadBody(db, hash, number, logger)
 	if body == nil {
-		logger.Error(fmt.Sprintf("Missing body but have receipt.%s = %s; %s = %d;", "hash", hash, "number", number))
-		return nil
+		return nil, fmt.Errorf("missing body but have receipt. hash = %s; number = %d; err = %w", hash, number, err)
 	}
 
-	if err := receipts.DeriveFields(config, hash, number, types.Transactions(body)); err != nil {
-		logger.Error(fmt.Sprintf("Failed to derive block receipts fields. %s = %s; %s = %d; ", "hash", hash, "number", number), log.ErrKey, err)
-		return nil
+	if err = receipts.DeriveFields(config, hash, number, types.Transactions(body)); err != nil {
+		return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; err = %w", hash, number, err)
 	}
-	return receipts
+	return receipts, nil
 }
 
 // WriteReceipts stores all the transaction receipts belonging to a block.
-func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, receipts types.Receipts, logger gethlog.Logger) {
+func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, receipts types.Receipts) error {
 	// Convert the receipts into their storage form and serialize them
 	storageReceipts := make([]*types.ReceiptForStorage, len(receipts))
 	for i, receipt := range receipts {
@@ -91,24 +90,26 @@ func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rec
 	}
 	bytes, err := rlp.EncodeToBytes(storageReceipts)
 	if err != nil {
-		logger.Crit("Failed to encode block receipts. ", log.ErrKey, err)
+		return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 	}
 	// Store the flattened receipt slice
-	if err := db.Put(rollupReceiptsKey(number, hash), bytes); err != nil {
-		logger.Crit("Failed to store block receipts. ", log.ErrKey, err)
+	if err = db.Put(rollupReceiptsKey(number, hash), bytes); err != nil {
+		return fmt.Errorf("failed to store block receipts. Cause: %w", err)
 	}
+	return nil
 }
 
 // WriteContractCreationTx stores a mapping between each contract and the tx that created it
-func WriteContractCreationTx(db ethdb.KeyValueWriter, receipts types.Receipts, logger gethlog.Logger) {
+func WriteContractCreationTx(db ethdb.KeyValueWriter, receipts types.Receipts) error {
 	for _, receipt := range receipts {
 		// determine receipts which create accounts and store the txHash
 		if !bytes.Equal(receipt.ContractAddress.Bytes(), (common.Address{}).Bytes()) {
 			if err := db.Put(contractReceiptKey(receipt.ContractAddress), receipt.TxHash.Bytes()); err != nil {
-				logger.Crit("Failed to store contract receipt.", log.ErrKey, err)
+				return fmt.Errorf("failed to store contract receipt. Cause: %w", err)
 			}
 		}
 	}
+	return nil
 }
 
 // ReadContractTransaction - returns the tx that created a contract
@@ -122,10 +123,11 @@ func ReadContractTransaction(db ethdb.Reader, address common.Address) (*common.H
 }
 
 // DeleteReceipts removes all receipt data associated with a block hash.
-func DeleteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, logger gethlog.Logger) {
+func DeleteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64) error {
 	if err := db.Delete(rollupReceiptsKey(number, hash)); err != nil {
-		logger.Crit("Failed to delete block receipts. ", log.ErrKey, err)
+		return fmt.Errorf("failed to delete block receipts. Cause: %w", err)
 	}
+	return nil
 }
 
 // storedReceiptRLP is the storage encoding of a receipt.
@@ -180,50 +182,47 @@ func deriveLogFields(receipts []*receiptLogs, hash common.Hash, number uint64, t
 // ReadLogs retrieves the logs for all transactions in a block. The log fields
 // are populated with metadata. In case the receipts or the block body
 // are not found, a nil is returned.
-func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) [][]*types.Log {
+func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) ([][]*types.Log, error) {
 	// Retrieve the flattened receipt slice
-	data := ReadReceiptsRLP(db, hash, number, logger)
-	if len(data) == 0 {
-		return nil
+	data, err := ReadReceiptsRLP(db, hash, number)
+	if err != nil {
+		return nil, fmt.Errorf("could not read RLP receipts.hash = %s. Cause: %w", hash, err)
 	}
 	receipts := []*receiptLogs{}
 	if err := rlp.DecodeBytes(data, &receipts); err != nil {
 		// Receipts might be in the legacy format, try decoding that.
 		// TODO: to be removed after users migrated
-		if logs := readLegacyLogs(db, hash, number, config, logger); logs != nil {
-			return logs
+		if logs, err := readLegacyLogs(db, hash, number, config, logger); err == nil {
+			return logs, nil
 		}
-		logger.Error(fmt.Sprintf("Invalid receipt array RLP.%s = %s", "hash", hash), log.ErrKey, err)
-		return nil
+		return nil, fmt.Errorf("invalid receipt array RLP.hash = %s. Cause: %w", hash, err)
 	}
 
 	body := ReadBody(db, hash, number, logger)
 	if body == nil {
-		logger.Error(fmt.Sprintf("Missing body but have receipt. %s = %s; %s = %d;", "hash", hash, "number", number))
-		return nil
+		return nil, fmt.Errorf("missing body but have receipt. hash = %s; number = %d", hash, number)
 	}
-	if err := deriveLogFields(receipts, hash, number, types.Transactions(body)); err != nil {
-		logger.Error(fmt.Sprintf("Failed to derive block receipts fields. %s = %s; %s = %d", "hash", hash, "number", number), log.ErrKey, err)
-		return nil
+	if err = deriveLogFields(receipts, hash, number, types.Transactions(body)); err != nil {
+		return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; cause: %w", hash, number, err)
 	}
 	logs := make([][]*types.Log, len(receipts))
 	for i, receipt := range receipts {
 		logs[i] = receipt.Logs
 	}
-	return logs
+	return logs, nil
 }
 
 // readLegacyLogs is a temporary workaround for when trying to read logs
 // from a block which has its receipt stored in the legacy format. It'll
 // be removed after users have migrated their freezer databases.
-func readLegacyLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) [][]*types.Log {
-	receipts := ReadReceipts(db, hash, number, config, logger)
-	if receipts == nil {
-		return nil
+func readLegacyLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) ([][]*types.Log, error) {
+	receipts, err := ReadReceipts(db, hash, number, config, logger)
+	if err != nil {
+		return nil, fmt.Errorf("could not read receipts. Cause: %w", err)
 	}
 	logs := make([][]*types.Log, len(receipts))
 	for i, receipt := range receipts {
 		logs[i] = receipt.Logs
 	}
-	return logs
+	return logs, nil
 }

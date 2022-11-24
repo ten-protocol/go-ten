@@ -2,7 +2,6 @@ package rawdb
 
 import (
 	"bytes"
-	"fmt"
 	"math/big"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -85,7 +84,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (
 	}
 	transactions := ReadBody(db, blockHash, *blockNumber, logger)
 	if transactions == nil {
-		logger.Error(fmt.Sprintf("Transaction referenced missing %s = %d; %s = %s", "number", *blockNumber, "hash", blockHash))
+		logger.Error("Transaction referenced missing.", "number", *blockNumber, "hash", blockHash)
 		return nil, common.Hash{}, 0, 0
 	}
 	for txIndex, tx := range transactions {
@@ -93,7 +92,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (
 			return tx, blockHash, *blockNumber, uint64(txIndex)
 		}
 	}
-	logger.Error(fmt.Sprintf("Transaction not found %s = %d; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash))
+	logger.Error("Transaction not found.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
 	return nil, common.Hash{}, 0, 0
 }
 
@@ -110,13 +109,16 @@ func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig, 
 		return nil, common.Hash{}, 0, 0
 	}
 	// Read all the receipts from the block and return the one with the matching hash
-	receipts := ReadReceipts(db, blockHash, *blockNumber, config, logger)
+	receipts, err := ReadReceipts(db, blockHash, *blockNumber, config, logger)
+	if err != nil {
+		logger.Error("Receipt could not be retrieved.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
+	}
 	for receiptIndex, receipt := range receipts {
 		if receipt.TxHash == hash {
 			return receipt, blockHash, *blockNumber, uint64(receiptIndex)
 		}
 	}
-	logger.Error(fmt.Sprintf("Receipt not found %s = %d; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash))
+	logger.Error("Receipt not found.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
 	return nil, common.Hash{}, 0, 0
 }
 

@@ -5,10 +5,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 )
 
@@ -52,12 +50,13 @@ func ReadGenesisHash(db ethdb.KeyValueReader) (*common.Hash, error) {
 	return &hash, nil
 }
 
-func WriteGenesisHash(db ethdb.KeyValueWriter, hash common.Hash, logger gethlog.Logger) {
+func WriteGenesisHash(db ethdb.KeyValueWriter, hash common.Hash) error {
 	enc, err := rlp.EncodeToBytes(hash)
 	if err != nil {
-		logger.Crit("could not encode genesis hash. ", log.ErrKey, err)
+		return fmt.Errorf("could not encode genesis hash. Cause: %w", err)
 	}
 	if err = db.Put(genesisRollupHash, enc); err != nil {
-		logger.Crit("could not put genesis hash in DB. ", log.ErrKey, err)
+		return fmt.Errorf("could not genesis hash in DB. Cause: %w", err)
 	}
+	return nil
 }
