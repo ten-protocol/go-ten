@@ -167,7 +167,6 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 
 	p, err := s.ParentBlock(block)
 	if err != nil {
-		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		return false
 	}
 
@@ -190,7 +189,6 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 
 	resolvedBlock, err := s.FetchBlock(maybeAncestor)
 	if err == nil {
-		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		if resolvedBlock.NumberU64() >= block.NumberU64() {
 			return false
 		}
