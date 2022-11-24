@@ -14,19 +14,19 @@ import (
 
 // BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
-	// FetchBlock returns the L1 Block with the given hash and true, or (nil, false) if no such Block is stored
-	FetchBlock(hash common.L1RootHash) (*types.Block, bool)
+	// FetchBlock returns the L1 Block with the given hash.
+	FetchBlock(hash common.L1RootHash) (*types.Block, error)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block)
-	// ParentBlock returns the L1 Block's parent and true, or (nil, false) if no parent Block is stored
-	ParentBlock(block *types.Block) (*types.Block, bool)
+	// ParentBlock returns the L1 Block's parent.
+	ParentBlock(block *types.Block) (*types.Block, error)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	IsAncestor(block *types.Block, maybeAncestor *types.Block) bool
 	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
 	// Todo - this is super confusing, analyze the usage
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
-	// FetchHeadBlock - returns the head of the current chain, or (nil, false) if no head is found
+	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
 	// ProofHeight - return the height of the L1 proof, or `-1` if the block is not known
 	ProofHeight(rollup *core.Rollup) int64
