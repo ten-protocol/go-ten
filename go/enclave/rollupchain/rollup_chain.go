@@ -921,7 +921,7 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 func (rc *RollupChain) rejectBlockErr(cause error) *common.BlockRejectError {
 	var hash gethcommon.Hash
 	l1Head, err := rc.storage.FetchHeadBlock()
-	// todo - joel - handle error
+	// TODO - Handle error.
 	if err == nil {
 		hash = l1Head.Hash()
 	}

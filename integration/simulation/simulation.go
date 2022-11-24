@@ -2,10 +2,13 @@ package simulation
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -91,7 +94,9 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 	for {
 		// spin through the L1 blocks periodically to see if the genesis rollup has arrived
 		head, err := client.FetchHeadBlock()
-		// todo - joel - handle error
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			panic(fmt.Errorf("could not fetch head block. Cause: %w", err))
+		}
 		if err == nil {
 			for _, b := range client.BlocksBetween(common.GenesisBlock, head) {
 				for _, tx := range b.Transactions() {

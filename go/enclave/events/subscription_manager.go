@@ -107,7 +107,10 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
 	headBlock, err := s.storage.FetchHeadBlock()
 	if err != nil {
-		// todo - joel - handle error
+		if errors.Is(err, errutil.ErrNotFound) {
+			// There is no head block, and thus no logs to retrieve.
+			return nil, nil
+		}
 		return nil, err
 	}
 
