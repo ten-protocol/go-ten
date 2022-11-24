@@ -44,7 +44,10 @@ func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logge
 }
 
 func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) error {
-	obscurorawdb.WriteGenesisHash(s.db, rol.Hash(), s.logger)
+	err := obscurorawdb.WriteGenesisHash(s.db, rol.Hash())
+	if err != nil {
+		return fmt.Errorf("could not write genesis hash. Cause: %w", err)
+	}
 	return s.StoreRollup(rol)
 }
 
