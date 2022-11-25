@@ -1,8 +1,12 @@
 package errutil
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/ethereum/go-ethereum"
+)
 
 var (
-	ErrNotFound = errors.New("not found")
+	ErrNotFound = ethereum.NotFound
 	ErrNoImpl   = errors.New("not implemented")
 )
