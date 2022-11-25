@@ -386,7 +386,9 @@ func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, rec
 	if err := obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64()); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
 	}
-	obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup, s.logger)
+	if err := obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup); err != nil {
+		return fmt.Errorf("could not write transaction lookup entries by block. Cause: %w", err)
+	}
 	if err := obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash()); err != nil {
 		return fmt.Errorf("could not write head rollup hash. Cause: %w", err)
 	}

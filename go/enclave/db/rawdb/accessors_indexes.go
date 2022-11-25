@@ -2,6 +2,7 @@ package rawdb
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -33,28 +34,37 @@ func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash, logger gethlog.Logger)
 
 // writeTxLookupEntry stores a positional metadata for a transaction,
 // enabling hash based transaction and receipt lookups.
-func writeTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash, numberBytes []byte, logger gethlog.Logger) {
+func writeTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash, numberBytes []byte) error {
 	if err := db.Put(txLookupKey(hash), numberBytes); err != nil {
-		logger.Crit("Failed to store transaction lookup entry.", log.ErrKey, err)
+		return fmt.Errorf("failed to store transaction lookup entry. Cause: %w", err)
 	}
+	return nil
 }
 
 // WriteTxLookupEntries is identical to WriteTxLookupEntry, but it works on
 // a list of hashes
-func WriteTxLookupEntries(db ethdb.KeyValueWriter, number uint64, hashes []common.Hash, logger gethlog.Logger) {
+func WriteTxLookupEntries(db ethdb.KeyValueWriter, number uint64, hashes []common.Hash) error {
 	numberBytes := new(big.Int).SetUint64(number).Bytes()
 	for _, hash := range hashes {
-		writeTxLookupEntry(db, hash, numberBytes, logger)
+		err := writeTxLookupEntry(db, hash, numberBytes)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // WriteTxLookupEntriesByBlock stores a positional metadata for every transaction from
 // a block, enabling hash based transaction and receipt lookups.
-func WriteTxLookupEntriesByBlock(db ethdb.KeyValueWriter, rollup *core.Rollup, logger gethlog.Logger) {
+func WriteTxLookupEntriesByBlock(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 	numberBytes := rollup.Number().Bytes()
 	for _, tx := range rollup.Transactions {
-		writeTxLookupEntry(db, tx.Hash(), numberBytes, logger)
+		err := writeTxLookupEntry(db, tx.Hash(), numberBytes)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // DeleteTxLookupEntry removes all transaction data associated with a hash.
