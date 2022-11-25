@@ -12,8 +12,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	obscurorawdb "github.com/obscuronet/go-obscuro/go/enclave/db/rawdb"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -293,12 +291,12 @@ func (s *storageImpl) CreateStateDB(hash common.L2RootHash) (*state.StateDB, err
 	return statedb, nil
 }
 
-func (s *storageImpl) EmptyStateDB() *state.StateDB {
+func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	statedb, err := state.New(gethcommon.BigToHash(big.NewInt(0)), s.stateDB, nil)
 	if err != nil {
-		s.logger.Crit("could not create state DB. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}
-	return statedb
+	return statedb, nil
 }
 
 func (s *storageImpl) FetchHeadState() (*core.BlockState, error) {
