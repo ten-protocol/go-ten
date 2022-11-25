@@ -104,7 +104,7 @@ func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
 	return p.broadcast(msg)
 }
 
-func (p *p2pImpl) RequestBatchesSince(batchNumber *big.Int) ([]*common.ExtBatch, error) {
+func (p *p2pImpl) RequestBatches(from *big.Int, to *big.Int) ([]*common.ExtBatch, error) {
 	panic("not implemented")
 }
 

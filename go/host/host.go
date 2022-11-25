@@ -1056,8 +1056,7 @@ func (h *host) requestMissingBatches(batch common.ExtBatch) error {
 	parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
 	for {
 		// If we have reached the head of the chain, break.
-		// TODO - Use constant for genesis rollup number.
-		if parentBatchNumber.Int64() < 0 {
+		if parentBatchNumber.Int64() < int64(common.L2GenesisHeight) {
 			break
 		}
 
@@ -1081,7 +1080,8 @@ func (h *host) requestMissingBatches(batch common.ExtBatch) error {
 		return nil
 	}
 
-	batches, err := h.p2p.RequestBatchesSince(earliestMissingBatch)
+	latestMissingBatch := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
+	batches, err := h.p2p.RequestBatches(earliestMissingBatch, latestMissingBatch)
 	if err != nil {
 		return fmt.Errorf("could not request historical batches. Cause: %w", err)
 	}
