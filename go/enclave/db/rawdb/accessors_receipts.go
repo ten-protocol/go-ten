@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -64,7 +62,7 @@ func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64) (types.Re
 // The current implementation populates these metadata fields by reading the receipts'
 // corresponding block body, so if the block body is not found it will return nil even
 // if the receipt itself is stored.
-func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) (types.Receipts, error) {
+func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig) (types.Receipts, error) {
 	// We're deriving many fields from the block body, retrieve beside the receipt
 	receipts, err := ReadRawReceipts(db, hash, number)
 	if err != nil {
@@ -182,7 +180,7 @@ func deriveLogFields(receipts []*receiptLogs, hash common.Hash, number uint64, t
 // ReadLogs retrieves the logs for all transactions in a block. The log fields
 // are populated with metadata. In case the receipts or the block body
 // are not found, a nil is returned.
-func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) ([][]*types.Log, error) {
+func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig) ([][]*types.Log, error) {
 	// Retrieve the flattened receipt slice
 	data, err := ReadReceiptsRLP(db, hash, number)
 	if err != nil {
@@ -192,7 +190,7 @@ func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.C
 	if err := rlp.DecodeBytes(data, &receipts); err != nil {
 		// Receipts might be in the legacy format, try decoding that.
 		// TODO: to be removed after users migrated
-		if logs, err := readLegacyLogs(db, hash, number, config, logger); err == nil {
+		if logs, err := readLegacyLogs(db, hash, number, config); err == nil {
 			return logs, nil
 		}
 		return nil, fmt.Errorf("invalid receipt array RLP.hash = %s. Cause: %w", hash, err)
@@ -215,8 +213,8 @@ func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.C
 // readLegacyLogs is a temporary workaround for when trying to read logs
 // from a block which has its receipt stored in the legacy format. It'll
 // be removed after users have migrated their freezer databases.
-func readLegacyLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) ([][]*types.Log, error) {
-	receipts, err := ReadReceipts(db, hash, number, config, logger)
+func readLegacyLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig) ([][]*types.Log, error) {
+	receipts, err := ReadReceipts(db, hash, number, config)
 	if err != nil {
 		return nil, fmt.Errorf("could not read receipts. Cause: %w", err)
 	}

@@ -54,11 +54,16 @@ func (f *Faucet) CalculateGenesisState(storage db.Storage) error {
 
 // Applies the faucet preallocation on top of an empty state DB.
 func (f *Faucet) applyFaucetPrealloc(storage db.Storage) *state.StateDB {
-	s := storage.EmptyStateDB()
+	s, err := storage.EmptyStateDB()
+	if err != nil {
+		panic(fmt.Errorf("could not initialise empty state DB. Cause: %w", err))
+	}
+
 	faucetPreallocBig, success := big.NewInt(0).SetString(faucetPrealloc, 10)
 	if !success {
 		panic(fmt.Errorf("could not initialise faucet prealloc Big from string %s", faucetPrealloc))
 	}
+
 	s.SetBalance(f.faucetAddress, faucetPreallocBig)
 	return s
 }
