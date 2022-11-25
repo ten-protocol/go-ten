@@ -197,9 +197,8 @@ func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState) error {
 }
 
 func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) (*core.BlockState, error) {
-	// TODO - Handle error.
-	data, _ := kv.Get(blockStateKey(hash))
-	if data == nil {
+	data, err := kv.Get(blockStateKey(hash))
+	if err != nil {
 		return nil, errutil.ErrNotFound
 	}
 	bs := new(core.BlockState)
