@@ -68,11 +68,11 @@ func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *para
 	// We're deriving many fields from the block body, retrieve beside the receipt
 	receipts, err := ReadRawReceipts(db, hash, number)
 	if err != nil {
-		return nil, fmt.Errorf("could not read receipt. hash = %s; number = %d; err = %w", hash, number, err)
+		return nil, fmt.Errorf("could not read receipt. Cause: %w", err)
 	}
-	body := ReadBody(db, hash, number, logger)
-	if body == nil {
-		return nil, fmt.Errorf("missing body but have receipt. hash = %s; number = %d; err = %w", hash, number, err)
+	body, err := ReadBody(db, hash, number)
+	if err != nil {
+		return nil, fmt.Errorf("missing body but have receipt. Cause: %w", err)
 	}
 
 	if err = receipts.DeriveFields(config, hash, number, types.Transactions(body)); err != nil {
@@ -198,11 +198,11 @@ func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.C
 		return nil, fmt.Errorf("invalid receipt array RLP.hash = %s. Cause: %w", hash, err)
 	}
 
-	body := ReadBody(db, hash, number, logger)
-	if body == nil {
-		return nil, fmt.Errorf("missing body but have receipt. hash = %s; number = %d", hash, number)
+	body, err := ReadBody(db, hash, number)
+	if err != nil {
+		return nil, fmt.Errorf("have receipt but could not retrieve body. Cause: %w", err)
 	}
-	if err = deriveLogFields(receipts, hash, number, types.Transactions(body)); err != nil {
+	if err = deriveLogFields(receipts, hash, number, body); err != nil {
 		return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; cause: %w", hash, number, err)
 	}
 	logs := make([][]*types.Log, len(receipts))

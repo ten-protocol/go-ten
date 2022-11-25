@@ -85,8 +85,8 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (
 		return nil, common.Hash{}, 0, 0
 	}
 
-	transactions := ReadBody(db, *blockHash, *blockNumber, logger)
-	if transactions == nil {
+	transactions, err := ReadBody(db, *blockHash, *blockNumber)
+	if err != nil {
 		logger.Error("Transaction referenced missing.", "number", *blockNumber, "hash", blockHash)
 		return nil, common.Hash{}, 0, 0
 	}

@@ -10,20 +10,15 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/status-im/keycard-go/hexutils"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
-// todo - all the function in this file should return an error, which must be handled by the caller
-//  once that is done, the logger parameter should be removed
-
-func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Logger) (*core.Rollup, error) {
+func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash) (*core.Rollup, error) {
 	height, err := ReadHeaderNumber(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header number. Cause: %w", err)
@@ -34,9 +29,14 @@ func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Lo
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
 
+	body, err := ReadBody(db, hash, *height)
+	if err != nil {
+		return nil, fmt.Errorf("could not read body. Cause: %w", err)
+	}
+
 	return &core.Rollup{
 		Header:       header,
-		Transactions: ReadBody(db, hash, *height, logger),
+		Transactions: body,
 	}, nil
 }
 
@@ -130,16 +130,16 @@ func writeBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, bod
 }
 
 // ReadBody retrieves the rollup body corresponding to the hash.
-func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64, logger gethlog.Logger) []*common.L2Tx {
-	data := readBodyRLP(db, hash, number, logger)
-	if len(data) == 0 {
-		return nil
+func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) ([]*common.L2Tx, error) {
+	data, err := readBodyRLP(db, hash, number)
+	if err != nil {
+		return nil, fmt.Errorf("could not read body. Cause: %w", err)
 	}
 	body := new([]*common.L2Tx)
 	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
-		logger.Crit("could not decode L2 transactions. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not decode L2 transactions. Cause: %w", err)
 	}
-	return *body
+	return *body, nil
 }
 
 // Stores an RLP encoded block body into the database.
@@ -151,19 +151,19 @@ func writeBodyRLP(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, 
 }
 
 // Retrieves the block body (transactions and uncles) in RLP encoding.
-func readBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64, logger gethlog.Logger) rlp.RawValue {
+func readBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (rlp.RawValue, error) {
 	data, err := db.Get(rollupBodyKey(number, hash))
 	if err != nil {
-		logger.Crit(fmt.Sprintf("could not retrieve rollup body :r_%d from DB. ", common.ShortHash(hash)), "key", hexutils.BytesToHex(rollupBodyKey(number, hash)), log.ErrKey, err)
+		return nil, fmt.Errorf("could not retrieve rollup body from DB. Cause: %w", err)
 	}
-	return data
+	return data, nil
 }
 
-func ReadRollupsForHeight(db ethdb.Database, number uint64, logger gethlog.Logger) ([]*core.Rollup, error) {
+func ReadRollupsForHeight(db ethdb.Database, number uint64) ([]*core.Rollup, error) {
 	hashes := readAllHashes(db, number)
 	rollups := make([]*core.Rollup, len(hashes))
 	for i, hash := range hashes {
-		rollup, err := ReadRollup(db, hash, logger)
+		rollup, err := ReadRollup(db, hash)
 		if err != nil {
 			return nil, err
 		}
