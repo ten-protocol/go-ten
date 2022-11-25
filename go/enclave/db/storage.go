@@ -246,8 +246,9 @@ func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState,
 }
 
 func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
-	logs := obscurorawdb.ReadBlockLogs(s.db, hash, s.logger)
-	if logs == nil {
+	logs, err := obscurorawdb.ReadBlockLogs(s.db, hash)
+	if err != nil {
+		// TODO - Return the error itself, once we move from `errutil.ErrNotFound` to `ethereum.NotFound`
 		return nil, errutil.ErrNotFound
 	}
 	return logs, nil

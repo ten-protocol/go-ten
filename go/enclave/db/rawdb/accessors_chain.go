@@ -7,9 +7,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -231,15 +228,15 @@ func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*
 	return nil
 }
 
-func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash, logger gethlog.Logger) []*types.Log {
-	data, _ := kv.Get(logsKey(blockHash))
-	if data == nil {
-		return nil
+func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) ([]*types.Log, error) {
+	data, err := kv.Get(logsKey(blockHash))
+	if err != nil {
+		return nil, err
 	}
 
 	logsForStorage := new([]*logForStorage)
 	if err := rlp.Decode(bytes.NewReader(data), logsForStorage); err != nil {
-		logger.Crit("could not decode logs. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not decode logs. Cause: %w", err)
 	}
 
 	logs := make([]*types.Log, len(*logsForStorage))
@@ -247,7 +244,7 @@ func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash, logger ge
 		logs[idx] = logToStore.toLog()
 	}
 
-	return logs
+	return logs, nil
 }
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.
