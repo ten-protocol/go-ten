@@ -257,25 +257,10 @@ func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
 func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error {
 	batch := s.db.NewBatch()
 
-	if state.FoundNewRollup { //nolint:nestif
-		if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
-			return fmt.Errorf("could not write rollup. Cause: %w", err)
-		}
-		if err := obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash()); err != nil {
-			return fmt.Errorf("could not write head header hash. Cause: %w", err)
-		}
-		if err := obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64()); err != nil {
-			return fmt.Errorf("could not write canonical hash. Cause: %w", err)
-		}
-		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup, s.logger)
-		if err := obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash()); err != nil {
-			return fmt.Errorf("could not write head rollup hash. Cause: %w", err)
-		}
-		if err := obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts); err != nil {
-			return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
-		}
-		if err := obscurorawdb.WriteContractCreationTx(batch, receipts); err != nil {
-			return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
+	if state.FoundNewRollup {
+		err := s.storeNewRollup(batch, rollup, receipts)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -285,7 +270,6 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 	if err := obscurorawdb.WriteBlockLogs(batch, state.Block, logs); err != nil {
 		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
-
 	rawdb.WriteHeadHeaderHash(batch, state.Block)
 
 	if err := batch.Write(); err != nil {
@@ -390,4 +374,27 @@ func (s *storageImpl) FetchAttestedKey(aggregator gethcommon.Address) (*ecdsa.Pu
 
 func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error {
 	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
+}
+
+func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, receipts []*types.Receipt) error {
+	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
+		return fmt.Errorf("could not write rollup. Cause: %w", err)
+	}
+	if err := obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash()); err != nil {
+		return fmt.Errorf("could not write head header hash. Cause: %w", err)
+	}
+	if err := obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64()); err != nil {
+		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
+	}
+	obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup, s.logger)
+	if err := obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash()); err != nil {
+		return fmt.Errorf("could not write head rollup hash. Cause: %w", err)
+	}
+	if err := obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts); err != nil {
+		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
+	}
+	if err := obscurorawdb.WriteContractCreationTx(batch, receipts); err != nil {
+		return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
+	}
+	return nil
 }
