@@ -1055,12 +1055,18 @@ func (h *host) requestMissingBatches(batch common.ExtBatch) error {
 	var earliestMissingBatch *big.Int
 	parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
 	for {
+		// If we have reached the head of the chain, break.
+		// TODO - Use constant for genesis rollup number.
+		if parentBatchNumber.Int64() < 0 {
+			break
+		}
+
 		_, err := h.db.GetBatchHash(parentBatchNumber)
 		if err != nil {
 			// If the batch is not found, we update the variable tracking the earliest missing batch.
 			if errors.Is(err, errutil.ErrNotFound) {
 				earliestMissingBatch = parentBatchNumber
-				parentBatchNumber = big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
+				parentBatchNumber = big.NewInt(0).Sub(parentBatchNumber, big.NewInt(1))
 				continue
 			}
 			return fmt.Errorf("could not get batch hash by number. Cause: %w", err)
