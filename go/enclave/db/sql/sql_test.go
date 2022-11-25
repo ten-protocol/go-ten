@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -115,7 +117,7 @@ func createDB(t *testing.T) ethdb.Database {
 	lite := setupSQLite(t)
 	_, err := lite.Exec(createQry)
 	failIfError(t, err, "Failed to create key-value table in test db")
-	s, err := CreateSQLEthDatabase(lite)
+	s, err := CreateSQLEthDatabase(lite, testlog.Logger())
 	failIfError(t, err, "Failed to create SQLEthDatabase for test")
 	return s
 }

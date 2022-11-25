@@ -12,7 +12,7 @@ type Manager interface {
 	// AddMempoolTx adds an transaction to the mempool
 	AddMempoolTx(tx *common.L2Tx) error
 	// RemoveMempoolTxs removes transactions that are considered immune to re-orgs
-	RemoveMempoolTxs(r *obscurocore.Rollup, resolver db.RollupResolver)
+	RemoveMempoolTxs(r *obscurocore.Rollup, resolver db.RollupResolver) error
 	// CurrentTxs Returns the transactions that should be included in the current rollup
-	CurrentTxs(head *obscurocore.Rollup, resolver db.RollupResolver) []*common.L2Tx
+	CurrentTxs(head *obscurocore.Rollup, resolver db.RollupResolver) ([]*common.L2Tx, error)
 }

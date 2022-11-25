@@ -46,7 +46,15 @@ const (
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
-	// ensure L1 and L2 txs were issued
+	checkTransactionsInjected(t, s)
+	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
+	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
+	checkReceivedLogs(t, s)
+	checkObscuroscan(t, s)
+}
+
+// Ensures that L1 and L2 txs were actually issued.
+func checkTransactionsInjected(t *testing.T, s *Simulation) {
 	if len(s.TxInjector.TxTracker.L1Transactions) < txThreshold {
 		t.Errorf("Simulation only issued %d L1 transactions. At least %d expected", len(s.TxInjector.TxTracker.L1Transactions), txThreshold)
 	}
@@ -56,10 +64,6 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 	if len(s.TxInjector.TxTracker.WithdrawalL2Transactions) < txThreshold {
 		t.Errorf("Simulation only issued %d withdrawal L2 transactions. At least %d expected", len(s.TxInjector.TxTracker.WithdrawalL2Transactions), txThreshold)
 	}
-
-	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
-	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
-	checkReceivedLogs(t, s)
 }
 
 // checkEthereumBlockchainValidity: sanity check of the state of all L1 nodes
@@ -113,9 +117,9 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 }
 
 func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation, nodeIdx int) uint64 {
-	head, found := node.FetchHeadBlock()
-	if !found {
-		t.Errorf("Node %d: Could not find head block", nodeIdx)
+	head, err := node.FetchHeadBlock()
+	if err != nil {
+		t.Errorf("Node %d: Could not find head block. Cause: %s", nodeIdx, err)
 	}
 	height := head.NumberU64()
 
@@ -213,7 +217,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
 	// produced since maxEthereumHeight was calculated from querying all L1 nodes - the simulation is still running, so
 	// new blocks might have been added in the meantime).
-	l1Height, err := obscuroClient.BlockNumber()
+	l1Height, err := rpcHandles.EthClients[nodeIdx].BlockNumber()
 	if err != nil {
 		t.Errorf("Node %d: Could not retrieve L1 height. Cause: %s", nodeIdx, err)
 	}
@@ -251,7 +255,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the pobi protocol doesn't waste too many blocks.
-	// todo- find the block where the genesis was published)
+	// todo - find the block where the genesis was published
 	efficiency := float64(l1Height-l2Height.Uint64()) / float64(l1Height)
 	if efficiency > s.Params.L2ToL1EfficiencyThreshold {
 		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeIdx, efficiency, s.Params.L2ToL1EfficiencyThreshold)
@@ -414,7 +418,9 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 
 		header, err = obscuroClient.RollupHeaderByHash(header.ParentHash)
 		if err != nil {
-			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header by hash", nodeIdx))
+			// TODO - #718 - Renable this check once we've implemented catch-up for batches.
+			// t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header by hash. Cause: %s", nodeIdx, err))
+			return
 		}
 	}
 }
@@ -558,5 +564,71 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 		if count > 1 {
 			t.Errorf("received duplicate log with body %s", logJSON)
 		}
+	}
+}
+
+// Checks that the various APIs powering Obscuroscan are working correctly.
+func checkObscuroscan(t *testing.T, s *Simulation) {
+	for idx, client := range s.RPCHandles.RPCClients {
+		checkTotalTransactions(t, client, idx)
+		latestTxHashes := checkLatestTxs(t, client, idx)
+		for _, txHash := range latestTxHashes {
+			checkBatchFromTxs(t, client, txHash, idx)
+		}
+	}
+}
+
+// Checks that the node has stored sufficient transactions.
+func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
+	var totalTxs *big.Int
+	err := client.Call(&totalTxs, rpc.GetTotalTxs)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve total transactions. Cause: %s", nodeIdx, err)
+	}
+	if totalTxs.Int64() < txThreshold {
+		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, txThreshold, totalTxs)
+	}
+}
+
+// Checks that we can retrieve the latest transactions for the node.
+func checkLatestTxs(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.Hash {
+	var latestTxHashes []gethcommon.Hash
+	err := client.Call(&latestTxHashes, rpc.GetLatestTxs, txThreshold)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
+	}
+	if len(latestTxHashes) != txThreshold {
+		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, txThreshold, len(latestTxHashes))
+	}
+	return latestTxHashes
+}
+
+// Retrieves the batch using the transaction hash, and validates it.
+func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, nodeIdx int) {
+	var batchByTx *common.ExtBatch
+	err := client.Call(&batchByTx, rpc.GetBatchForTx, txHash)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve batch for transaction. Cause: %s", nodeIdx, err)
+		return
+	}
+
+	var containsTx bool
+	for _, txHashFromBatch := range batchByTx.TxHashes {
+		if txHashFromBatch == txHash {
+			containsTx = true
+		}
+	}
+	if !containsTx {
+		t.Errorf("node %d: retrieved batch by transaction, but transaction was missing from batch", nodeIdx)
+	}
+
+	var batchByHash *common.ExtBatch
+	err = client.Call(&batchByHash, rpc.GetBatch, batchByTx.Header.Hash())
+	if err != nil {
+		t.Errorf("node %d: could not retrieve batch by hash. Cause: %s", nodeIdx, err)
+		return
+	}
+	if batchByHash.Header.Hash() != batchByTx.Header.Hash() {
+		t.Errorf("node %d: retrieved batch by hash, but hash was incorrect", nodeIdx)
 	}
 }

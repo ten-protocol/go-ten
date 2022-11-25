@@ -2,6 +2,53 @@
 ---
 # Obscuro Testnet Change Log
 
+## November 2022-11-22 (v0.7)
+  * A variety of stability related issues are fixed within this release. 
+  * Inclusion of a health endpoint for system status monitoring. 
+  * It is now possible to run an Obscuroscan against a locally deployed testnet. For more information see 
+    [building and running a local testnet](https://github.com/obscuronet/go-obscuro/blob/main/README.md#building-and-running-a-local-testnet) 
+    in the project readme.
+  * A list of the relevant PRs addressed in this release is as below;
+    * `12a04c40` Checks whether the head rollup is nil (#859)
+    * `619d39b4` Clarify that blocks are L1 blocks (#858)
+    * `01884de0` Removes endpoint to get L1 height from Obs node (#856)
+    * `9b975f3d` eth_getBlockByNumber and eth_getBlockByHash responds based on the batches, not the rollups (#855)
+    * `87588e54` Stores batch at the correct point (#854)
+    * `f4d37f6e` Remove geth EVM trace logger (#853)
+    * `fcc02555` Distribute and store batches (#850)
+    * `243f7ef7` Replace panics with logger.Crit in the enclave (#844)
+    * `5f97c1a4` Returns errors from DB methods, instead of `found` bools and critical log events (#842)
+    * `3dd03cdc` Uses a write lock instead of a read lock (#847)
+    * `c039df7d` Locks the subscription list in LogEventManager for threadsafety (#846)
+    * `b1bfed47` Gets number of subs in threadsafe way (#845)
+    * `76fde61d` Revert "Fix EVM error casting to use pointer variable" (#841)
+    * `d225a75c` Adds methods to host DB for batches (#837)
+    * `f3d60127` Fix EVM error casting to use pointer variable (#840)
+    * `8e21374b` Fix issues with submit block errors (#838)
+    * `ddecd719` Fixes concurrency bug in subscription manager (#839)
+    * `12f34d46` Create blockprovider and use it for awaitSecret (#813)
+    * `9e524e7f` Removes HeaderWithHashes type (#836)
+    * `756b7c16` Removes ExtRollup/ExtRollupWithHash split (#835)
+    * `17940c7b` Fixing node start out of sync (#832)
+    * `81b8d9c8` Testnet DNS now point to node1 (#827)
+    * `de9dbc6f` Cleans up the GetLatestTransactions API method (#833)
+    * `6932e020` Fixes grabbing a rollup via ObscuroScan (#829)
+    * `c9e978f0` Adds booleans to DB methods to indicate whether was found. (#831)
+    * `849ea7aa` Fetch latest Rollup Head now returns error (#826)
+    * `bc652690` Adding health check endpoint (#825)
+    * `8f049ff9` Handle all errors from ethcall and estimate gas (#823)
+    * `9107d571` Fixes eth call error propagation (#822)
+    * `976d872c` Remove unused test APIs. Rename RPC method constants for clarity (#821)
+    * `3a6f197f` Stop in-mem nodes properly. Prune unused in-mem RPC methods (#820)
+    * `84e7c615` Provides logger for Obscuroscan (#819)
+    * `088d8f50` Dynamic estimate gas (#815)
+    * `4478ffbd` Fix the bridge address to pass the checksums (#812)
+    * `ef0e04d9` Downgrade the spammy log message (#810)
+    * `6cb0d85a` Have sims test the eth_blockNumber endpoint (#809)
+    * `d83c201e` Confusing description of `DB.writeRollupNumber`. Minor clean-up (#791)
+    * `5faab414` Fix to use the dev build of the contract deployer (#807)
+
+
 ## November 2022-11-08 (v0.6)
   * The Number Guessing Game has been removed from static and auto deployment scripts, and is now hosted 
     [in a sample applications repository](https://github.com/obscuronet/sample-applications). Given the move for 
@@ -22,6 +69,11 @@
   * The [Obscuro docs site](https://docs.obscu.ro/) is now searchable. 
   * Testnet is now officially termed `Evan's Cat`.
 
+* ObscuroScan:
+  * ObscuroScan supports a single API at [/rollup/](http://testnet.obscuroscan.io/rollup/) which allows web clients to 
+    access a JSON representation of rollups and encrypted transactions. Further details 
+    [here](https://docs.obscu.ro/testnet/obscuroscan)
+
 ## October 2022-10-21 (v0.5)
 * Event Subscriptions:
   * Event subscriptions for logs are now supported via the eth_subscribe and eth_getLogs approaches. This has been 
@@ -32,7 +84,7 @@
 * Wallet extension:
   * The wallet extension now supports separate ports for HTTP and WebSocket connections. Use the `--port` and `--portWS` 
     command line options respectively for each. For more information see the
-    [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension.html) documentation. 
+    [Wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension) documentation. 
 * Event subscription:
   * An early preview of event subscriptions is available in this release, though note that this is still undergoing 
     testing and feature enhancements and therefore is liable to issues and instability. For more information on the 

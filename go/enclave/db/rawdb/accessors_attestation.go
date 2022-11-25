@@ -2,29 +2,30 @@ package rawdb
 
 import (
 	"crypto/ecdsa"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
+	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
-func ReadAttestationKey(db ethdb.KeyValueReader, address gethcommon.Address, logger gethlog.Logger) *ecdsa.PublicKey {
+func ReadAttestationKey(db ethdb.KeyValueReader, address gethcommon.Address) (*ecdsa.PublicKey, error) {
 	key, err := db.Get(attestationPkKey(address))
 	if err != nil {
-		logger.Crit("Could not read key from db. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", address, err)
 	}
+
 	publicKey, err := crypto.DecompressPubkey(key)
 	if err != nil {
-		logger.Crit("Could not parse key from db.", log.ErrKey, err)
+		return nil, fmt.Errorf("could not parse key from db. Cause: %w", err)
 	}
-	return publicKey
+
+	return publicKey, nil
 }
 
-func WriteAttestationKey(db ethdb.KeyValueWriter, address gethcommon.Address, key *ecdsa.PublicKey, logger gethlog.Logger) {
+func WriteAttestationKey(db ethdb.KeyValueWriter, address gethcommon.Address, key *ecdsa.PublicKey) error {
 	if err := db.Put(attestationPkKey(address), crypto.CompressPubkey(key)); err != nil {
-		logger.Crit("Failed to store the attested key. ", log.ErrKey, err)
+		return fmt.Errorf("could not write attestation key. Cause: %w", err)
 	}
+	return nil
 }

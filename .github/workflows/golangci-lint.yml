@@ -4,6 +4,7 @@ on:
     paths-ignore:
       - 'docs/**'
       - 'design/**'
+      - 'planning/**'
     tags:
       - v*
     branches:

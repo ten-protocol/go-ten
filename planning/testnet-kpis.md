@@ -7,8 +7,8 @@ Key performance indicators (KPIs) will be used to determine the amount of Testne
 |--|--|--|--|--|
 | Testnet documentation page views (https://docs.obscu.ro/testnet/) | Gauges interest from developers in building on testnet. A good early indicator. Straightforward to capture | Google Analytics | Number of unique page views in the last 4 weeks | Targets will be determined once initial baseline data is captured |
 | Testnet uptime | Captures how robust and ready for mainnet Obscuro is | DataDog avg:system.uptime{*} | Average Testnet uptime over the last 4 weeks||
-| Number of end user accounts| Captures users using testnet in general and testing new dApps | TBD| Number of new end user account addresses in the last 4 weeks ||
-| DApps in development| This is difficult to measure as it’s not something we can look to the network to accurately measure. We need the community to tell us. One way to achieve this would be through a ‘honey pot’ such as offering a dedicated support engineer to assist with their development. | Discord #support channel| Number of new requests for support in the last 4 weeks||
+| Number of end user accounts| Captures users using testnet in general and testing new dApps and shows the pipeline from wallet extension download to actively using testnet | TBD | Number of new end user account addresses in the last 4 weeks ||
+|DApps in development| This is difficult to measure as it’s not something we can look to the network to accurately measure. We can use our business development CRM data as an indicator. | Airtable "Partnerships" tab| Number of partners with status changed to "Soft Commitment" in the last 4 weeks||
 | New dApps deployed on Testnet| Indicates how much new activity and commitment of effort from dApp builders| ObscuroScan?| Number of new dApp addresses deployed in the last 4 weeks||
 | Wallet extension downloads| Good proxy for the number of active users. Straightforward to capture.| GitHub|Number of wallet extension downloads in the last 4 weeks||
 

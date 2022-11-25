@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -19,27 +21,30 @@ import (
 )
 
 // todo - all the function in this file should return an error, which must be handled by the caller
-// once that is done, the logger parameter should be removed
+//  once that is done, the logger parameter should be removed
 
-func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Logger) *core.Rollup {
-	height := ReadHeaderNumber(db, hash)
-	if height == nil {
-		return nil
+func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Logger) (*core.Rollup, error) {
+	height, err := ReadHeaderNumber(db, hash)
+	if err != nil {
+		return nil, err
 	}
 	return &core.Rollup{
 		Header:       ReadHeader(db, hash, *height, logger),
 		Transactions: ReadBody(db, hash, *height, logger),
-	}
+	}, nil
 }
 
 // ReadHeaderNumber returns the header number assigned to a hash.
-func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) *uint64 {
-	data, _ := db.Get(headerNumberKey(hash))
+func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, error) {
+	data, err := db.Get(headerNumberKey(hash))
+	if err != nil {
+		return nil, err
+	}
 	if len(data) != 8 {
-		return nil
+		return nil, fmt.Errorf("header number bytes had wrong length")
 	}
 	number := binary.BigEndian.Uint64(data)
-	return &number
+	return &number, nil
 }
 
 func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup, logger gethlog.Logger) {
@@ -131,18 +136,22 @@ func WriteBodyRLP(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, 
 func ReadBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64, logger gethlog.Logger) rlp.RawValue {
 	data, err := db.Get(rollupBodyKey(number, hash))
 	if err != nil {
-		logger.Crit(fmt.Sprintf("could not retrieve rollup body :r_%d from DB.  Key: %s", common.ShortHash(hash), hexutils.BytesToHex(rollupBodyKey(number, hash))), log.ErrKey, err)
+		logger.Crit(fmt.Sprintf("could not retrieve rollup body :r_%d from DB. ", common.ShortHash(hash)), "key", hexutils.BytesToHex(rollupBodyKey(number, hash)), log.ErrKey, err)
 	}
 	return data
 }
 
-func ReadRollupsForHeight(db ethdb.Database, number uint64, logger gethlog.Logger) []*core.Rollup {
+func ReadRollupsForHeight(db ethdb.Database, number uint64, logger gethlog.Logger) ([]*core.Rollup, error) {
 	hashes := ReadAllHashes(db, number)
 	rollups := make([]*core.Rollup, len(hashes))
 	for i, hash := range hashes {
-		rollups[i] = ReadRollup(db, hash, logger)
+		rollup, err := ReadRollup(db, hash, logger)
+		if err != nil {
+			return nil, err
+		}
+		rollups[i] = rollup
 	}
-	return rollups
+	return rollups, nil
 }
 
 // ReadAllHashes retrieves all the hashes assigned to blocks at a certain heights,
@@ -172,16 +181,17 @@ func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState, logger gethlo
 	}
 }
 
-func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Logger) *core.BlockState {
+func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) (*core.BlockState, error) {
+	// TODO - Handle error.
 	data, _ := kv.Get(blockStateKey(hash))
 	if data == nil {
-		return nil
+		return nil, errutil.ErrNotFound
 	}
 	bs := new(core.BlockState)
 	if err := rlp.Decode(bytes.NewReader(data), bs); err != nil {
-		logger.Crit("could not decode block state. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not decode block state. Cause: %w", err)
 	}
-	return bs
+	return bs, nil
 }
 
 func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log, logger gethlog.Logger) {

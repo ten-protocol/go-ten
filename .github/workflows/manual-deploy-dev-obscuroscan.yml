@@ -1,4 +1,4 @@
-# Deploys Obscuroscan on Azure for Testnet
+# Deploys Obscuroscan on Azure for Dev-testnet
 # Builds the Obscuroscan network image, pushes the image to dockerhub and starts the Obscuroscan on azure
 #
 # Obscuroscan is a docker container that runs the obscuroscan package
@@ -6,9 +6,9 @@
 # HTTP:       80,
 #
 # Exposes the following addresses: (only accessible internally)
-#  testnet-obscuroscan.uksouth.azurecontainer.io
+#  dev-testnet-obscuroscan.uksouth.azurecontainer.io
 
-name: '[M] Deploy Testnet Obscuroscan'
+name: '[M] Deploy Dev-Testnet Obscuroscan'
 
 on:
   workflow_dispatch:
@@ -22,20 +22,6 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-buildx-action@v1
 
-# to be used when our dockerhub account is fixed
-#      - name: Login to DockerHub
-#        uses: docker/login-action@v2
-#        with:
-#          username: ${{ secrets.DOCKERHUB_USERNAME }}
-#          password: ${{ secrets.DOCKERHUB_TOKEN }}
-#
-#      - name: Build and push
-#        uses: docker/build-push-action@v3
-#        with:
-#          push: true
-#          tags: obscuronet/testnet_l1network:latest
-#          file: ./testnet/gethnetwork.Dockerfile
-
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
@@ -48,22 +34,22 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/testnet_obscuroscan:latest -f testnet/obscuroscan.Dockerfile  .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/testnet_obscuroscan:latest
+          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_obscuroscan:latest -f testnet/obscuroscan.Dockerfile  .
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_obscuroscan:latest
 
       - name: 'Deploy to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: testnet-obscuroscan
-          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/testnet_obscuroscan:latest
+          dns-name-label: dev-testnet-obscuroscan
+          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_obscuroscan:latest
           registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
-          name: testnet-obscuroscan
+          name: dev-testnet-obscuroscan
           location: 'uksouth'
           restart-policy: 'Never'
-          command-line: ./tools/obscuroscan/main/main --rpcServerAddress http://testnet.obscu.ro:13000 --address 0.0.0.0:80
+          command-line: ./tools/obscuroscan/main/main --rpcServerAddress http://dev-testnet.obscu.ro:13000 --address 0.0.0.0:80
           ports: '80'
           cpu: 2
           memory: 2

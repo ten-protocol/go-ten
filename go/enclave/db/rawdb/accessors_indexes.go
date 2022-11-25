@@ -2,7 +2,6 @@ package rawdb
 
 import (
 	"bytes"
-	"fmt"
 	"math/big"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -18,7 +17,7 @@ import (
 
 // ReadTxLookupEntry retrieves the positional metadata associated with a transaction
 // hash to allow retrieving the transaction or receipt by hash.
-func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash) *uint64 {
+func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) *uint64 {
 	data, _ := db.Get(txLookupKey(hash))
 	if len(data) == 0 {
 		return nil
@@ -28,7 +27,8 @@ func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash) *uint64 {
 		number := new(big.Int).SetBytes(data).Uint64()
 		return &number
 	}
-	panic("Should not be here")
+	logger.Crit("Should not be here")
+	return nil
 }
 
 // writeTxLookupEntry stores a positional metadata for a transaction,
@@ -74,7 +74,7 @@ func DeleteTxLookupEntries(db ethdb.KeyValueWriter, hashes []common.Hash, logger
 // ReadTransaction retrieves a specific transaction from the database, along with
 // its added positional metadata.
 func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (*types.Transaction, common.Hash, uint64, uint64) {
-	blockNumber := ReadTxLookupEntry(db, hash)
+	blockNumber := ReadTxLookupEntry(db, hash, logger)
 	if blockNumber == nil {
 		return nil, common.Hash{}, 0, 0
 	}
@@ -84,7 +84,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (
 	}
 	transactions := ReadBody(db, blockHash, *blockNumber, logger)
 	if transactions == nil {
-		logger.Error(fmt.Sprintf("Transaction referenced missing %s = %d; %s = %s", "number", *blockNumber, "hash", blockHash))
+		logger.Error("Transaction referenced missing.", "number", *blockNumber, "hash", blockHash)
 		return nil, common.Hash{}, 0, 0
 	}
 	for txIndex, tx := range transactions {
@@ -92,7 +92,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (
 			return tx, blockHash, *blockNumber, uint64(txIndex)
 		}
 	}
-	logger.Error(fmt.Sprintf("Transaction not found %s = %d; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash))
+	logger.Error("Transaction not found.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
 	return nil, common.Hash{}, 0, 0
 }
 
@@ -100,7 +100,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (
 // its added positional metadata.
 func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig, logger gethlog.Logger) (*types.Receipt, common.Hash, uint64, uint64) {
 	// Retrieve the context of the receipt based on the transaction hash
-	blockNumber := ReadTxLookupEntry(db, hash)
+	blockNumber := ReadTxLookupEntry(db, hash, logger)
 	if blockNumber == nil {
 		return nil, common.Hash{}, 0, 0
 	}
@@ -109,13 +109,16 @@ func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig, 
 		return nil, common.Hash{}, 0, 0
 	}
 	// Read all the receipts from the block and return the one with the matching hash
-	receipts := ReadReceipts(db, blockHash, *blockNumber, config, logger)
+	receipts, err := ReadReceipts(db, blockHash, *blockNumber, config, logger)
+	if err != nil {
+		logger.Error("Receipt could not be retrieved.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
+	}
 	for receiptIndex, receipt := range receipts {
 		if receipt.TxHash == hash {
 			return receipt, blockHash, *blockNumber, uint64(receiptIndex)
 		}
 	}
-	logger.Error(fmt.Sprintf("Receipt not found %s = %d; %s = %s; %s = %s;", "number", *blockNumber, "hash", blockHash, "txhash", hash))
+	logger.Error("Receipt not found.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
 	return nil, common.Hash{}, 0, 0
 }
 

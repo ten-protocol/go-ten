@@ -120,9 +120,9 @@ func (s *server) Start(_ context.Context, request *generated.StartRequest) (*gen
 	return &generated.StartResponse{}, nil
 }
 
-func (s *server) SubmitBlock(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
+func (s *server) SubmitL1Block(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl := s.decodeBlock(request.EncodedBlock)
-	blockSubmissionResponse, err := s.enclave.SubmitBlock(bl, request.IsLatest)
+	blockSubmissionResponse, err := s.enclave.SubmitL1Block(bl, request.IsLatest)
 	if err != nil {
 		var rejErr *common.BlockRejectError
 		isReject := errors.As(err, &rejErr)
@@ -192,16 +192,6 @@ func (s *server) GetTransactionReceipt(_ context.Context, request *generated.Get
 		return nil, err
 	}
 	return &generated.GetTransactionReceiptResponse{EncryptedTxReceipt: encryptedTxReceipt}, nil
-}
-
-func (s *server) GetRollup(_ context.Context, request *generated.GetRollupRequest) (*generated.GetRollupResponse, error) {
-	extRollup, err := s.enclave.GetRollup(gethcommon.BytesToHash(request.RollupHash))
-	if err != nil {
-		return nil, err
-	}
-
-	extRollupMsg := rpc.ToExtRollupMsg(extRollup)
-	return &generated.GetRollupResponse{ExtRollup: &extRollupMsg}, nil
 }
 
 func (s *server) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {
@@ -286,12 +276,12 @@ func serializeEVMError(err error) ([]byte, error) {
 	var errReturn interface{}
 
 	// check if it's a serialized error and handle any error wrapping that might have occurred
-	var e evm.SerialisableError
+	var e *evm.SerialisableError
 	if ok := errors.As(err, &e); ok {
 		errReturn = e
 	} else {
 		// it's a generic error, serialise it
-		errReturn = evm.SerialisableError{Err: err.Error()}
+		errReturn = &evm.SerialisableError{Err: err.Error()}
 	}
 
 	// serialise the error object returned by the evm into a json

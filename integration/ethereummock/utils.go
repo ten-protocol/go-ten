@@ -1,6 +1,8 @@
 package ethereummock
 
 import (
+	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -23,9 +25,9 @@ func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[co
 		return makeMap(b.Transactions())
 	}
 	newMap := make(map[common.TxHash]*types.Transaction)
-	p, f := r.ParentBlock(b)
-	if !f {
-		panic("Should not happen. Parent not found")
+	p, err := r.ParentBlock(b)
+	if err != nil {
+		panic(fmt.Errorf("should not happen. Could not retrieve parent. Cause: %w", err))
 	}
 	for k, v := range allIncludedTransactions(p, r, db) {
 		newMap[k] = v

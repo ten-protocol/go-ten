@@ -161,7 +161,7 @@ func (c *Client) Start(block types.Block) error {
 	return nil
 }
 
-func (c *Client) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (c *Client) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -170,7 +170,7 @@ func (c *Client) SubmitBlock(block types.Block, isLatest bool) (*common.BlockSub
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
-	response, err := c.protoClient.SubmitBlock(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), IsLatest: isLatest})
+	response, err := c.protoClient.SubmitL1Block(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), IsLatest: isLatest})
 	if err != nil {
 		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
@@ -260,19 +260,6 @@ func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGet
 		return nil, err
 	}
 	return response.EncryptedTxReceipt, nil
-}
-
-func (c *Client) GetRollup(rollupHash common.L2RootHash) (*common.ExtRollup, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.GetRollup(timeoutCtx, &generated.GetRollupRequest{RollupHash: rollupHash.Bytes()})
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve rollup with hash %s. Cause: %w", rollupHash.Hex(), err)
-	}
-
-	extRollup := rpc.FromExtRollupMsg(response.ExtRollup)
-	return &extRollup, nil
 }
 
 func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {

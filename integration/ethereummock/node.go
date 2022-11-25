@@ -2,10 +2,13 @@ package ethereummock
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 
@@ -28,7 +31,7 @@ import (
 
 type L1Network interface {
 	// BroadcastBlock - send the block and the parent to make sure there are no gaps
-	BroadcastBlock(b common.EncodedBlock, p common.EncodedBlock)
+	BroadcastBlock(b common.EncodedL1Block, p common.EncodedL1Block)
 	BroadcastTx(tx *types.Transaction)
 }
 
@@ -48,8 +51,8 @@ type StatsCollector interface {
 }
 
 type NotifyNewBlock interface {
-	MockedNewHead(b common.EncodedBlock, p common.EncodedBlock)
-	MockedNewFork(b []common.EncodedBlock)
+	MockedNewHead(b common.EncodedL1Block, p common.EncodedL1Block)
+	MockedNewFork(b []common.EncodedL1Block)
 }
 
 type Node struct {
@@ -102,39 +105,56 @@ func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
 	return make(chan *types.Header), &mockSubscription{}
 }
 
+func (m *Node) BlockNumber() (uint64, error) {
+	blk, err := m.Resolver.FetchHeadBlock()
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			return 0, ethereum.NotFound
+		}
+		return 0, fmt.Errorf("could not retrieve head block. Cause: %w", err)
+	}
+	return blk.NumberU64(), nil
+}
+
 func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	if n.Int64() == 0 {
 		return common.GenesisBlock, nil
 	}
 	// TODO this should be a method in the resolver
-	var f bool
-	blk, found := m.Resolver.FetchHeadBlock()
-	if !found {
-		return nil, ethereum.NotFound
+	blk, err := m.Resolver.FetchHeadBlock()
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			return nil, ethereum.NotFound
+		}
+		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
 	for !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()) {
 		if blk.NumberU64() == n.Uint64() {
 			return blk, nil
 		}
 
-		blk, f = m.Resolver.FetchBlock(blk.ParentHash())
-		if !f {
-			return nil, fmt.Errorf("block in the chain without a parent")
+		blk, err = m.Resolver.FetchBlock(blk.ParentHash())
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve parent for block in chain. Cause: %w", err)
 		}
 	}
 	return nil, ethereum.NotFound
 }
 
 func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
-	blk, f := m.Resolver.FetchBlock(id)
-	if !f {
-		return nil, fmt.Errorf("blk not found")
+	blk, err := m.Resolver.FetchBlock(id)
+	if err != nil {
+		return nil, fmt.Errorf("block could not be retrieved. Cause: %w", err)
 	}
 	return blk, nil
 }
 
-func (m *Node) FetchHeadBlock() (*types.Block, bool) {
-	return m.Resolver.FetchHeadBlock()
+func (m *Node) FetchHeadBlock() (*types.Block, error) {
+	block, err := m.Resolver.FetchHeadBlock()
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
+	}
+	return block, nil
 }
 
 func (m *Node) Info() ethadapter.Info {
@@ -164,18 +184,22 @@ func (m *Node) Start() {
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			_, received := m.Resolver.FetchBlock(p2pb.Hash())
+			_, err := m.Resolver.FetchBlock(p2pb.Hash())
 			// only process blocks if they haven't been processed before
-			if !received {
-				head = m.processBlock(p2pb, head)
+			if err != nil {
+				if errors.Is(err, errutil.ErrNotFound) {
+					head = m.processBlock(p2pb, head)
+				} else {
+					panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
+				}
 			}
 
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
 			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Ignore the locally produced block if someone else found one already
-				p, found := m.Resolver.ParentBlock(mb)
-				if !found {
-					panic("noo")
+				p, err := m.Resolver.ParentBlock(mb)
+				if err != nil {
+					panic(fmt.Errorf("could not retrieve parent. Cause: %w", err))
 				}
 				encodedBlock, err := common.EncodeBlock(mb)
 				if err != nil {
@@ -197,12 +221,14 @@ func (m *Node) Start() {
 
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	m.Resolver.StoreBlock(b)
-	_, f := m.Resolver.FetchBlock(b.Header().ParentHash)
-
+	_, err := m.Resolver.FetchBlock(b.Header().ParentHash)
 	// only proceed if the parent is available
-	if !f {
-		m.logger.Info(fmt.Sprintf("Parent block not found=b_%d", common.ShortHash(b.Header().ParentHash)))
-		return head
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			m.logger.Info(fmt.Sprintf("Parent block not found=b_%d", common.ShortHash(b.Header().ParentHash)))
+			return head
+		}
+		m.logger.Crit("Could not fetch block parent. Cause: %w", err)
 	}
 
 	// Ignore superseded blocks
@@ -245,9 +271,9 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 		if b.NumberU64() == common.L1GenesisHeight {
 			go t.MockedNewHead(encodedBlock, nil)
 		} else {
-			p, f := m.Resolver.ParentBlock(b)
-			if !f {
-				panic("This should not happen")
+			p, err := m.Resolver.ParentBlock(b)
+			if err != nil {
+				panic(fmt.Errorf("could not retrieve parent. Cause: %w", err))
 			}
 			encodedParentBlock, err := common.EncodeBlock(p)
 			if err != nil {
@@ -267,7 +293,7 @@ func (m *Node) setFork(blocks []*types.Block) *types.Block {
 		return head
 	}
 
-	fork := make([]common.EncodedBlock, len(blocks))
+	fork := make([]common.EncodedL1Block, len(blocks))
 	for i, block := range blocks {
 		encodedBlock, err := common.EncodeBlock(block)
 		if err != nil {
@@ -287,7 +313,7 @@ func (m *Node) setFork(blocks []*types.Block) *types.Block {
 
 // P2PReceiveBlock is called by counterparties when there is a block to broadcast
 // All it does is drop the blocks in a channel for processing.
-func (m *Node) P2PReceiveBlock(b common.EncodedBlock, p common.EncodedBlock) {
+func (m *Node) P2PReceiveBlock(b common.EncodedL1Block, p common.EncodedL1Block) {
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return
 	}
@@ -378,15 +404,15 @@ func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.
 	}
 	blocks := make([]*types.Block, 0)
 	tempBlock := blockB
-	var found bool
+	var err error
 	for {
 		blocks = append(blocks, tempBlock)
 		if bytes.Equal(tempBlock.Hash().Bytes(), blockA.Hash().Bytes()) {
 			break
 		}
-		tempBlock, found = m.Resolver.ParentBlock(tempBlock)
-		if !found {
-			panic("should not happen")
+		tempBlock, err = m.Resolver.ParentBlock(tempBlock)
+		if err != nil {
+			panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
 		}
 	}
 	n := len(blocks)

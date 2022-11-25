@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 
 	"github.com/obscuronet/go-obscuro/go/common/retry"
@@ -74,9 +76,10 @@ type host struct {
 	stopHostInterrupt     *int32
 	bootstrappingComplete *int32 // Marks when the host is done bootstrapping
 
-	blockRPCCh chan blockAndParent        // The channel that new blocks from the L1 node are sent to
-	forkRPCCh  chan []common.EncodedBlock // The channel that new forks from the L1 node are sent to
-	txP2PCh    chan common.EncryptedTx    // The channel that new transactions from peers are sent to
+	l1BlockRPCCh chan l1BlockAndParent        // The channel that new blocks from the L1 node are sent to
+	forkRPCCh    chan []common.EncodedL1Block // The channel that new forks from the L1 node are sent to
+	txP2PCh      chan common.EncryptedTx      // The channel that new transactions from peers are sent to
+	batchP2PCh   chan common.EncodedBatch     // The channel that new batches from peers are sent to
 
 	db *db.DB // Stores the host's publicly-available data
 
@@ -106,9 +109,10 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		bootstrappingComplete: new(int32),
 
 		// incoming data
-		blockRPCCh: make(chan blockAndParent),
-		forkRPCCh:  make(chan []common.EncodedBlock),
-		txP2PCh:    make(chan common.EncryptedTx),
+		l1BlockRPCCh: make(chan l1BlockAndParent),
+		forkRPCCh:    make(chan []common.EncodedL1Block),
+		txP2PCh:      make(chan common.EncryptedTx),
+		batchP2PCh:   make(chan common.EncodedBatch),
 
 		// Initialize the host DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -132,7 +136,7 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 			{
 				Namespace: APINamespaceEth,
 				Version:   APIVersion1,
-				Service:   clientapi.NewEthereumAPI(host),
+				Service:   clientapi.NewEthereumAPI(host, logger),
 				Public:    true,
 			},
 			{
@@ -207,16 +211,16 @@ func (h *host) Start() {
 	go h.monitorBlocks()
 
 	// bootstrap the host
-	latestBlock := h.bootstrapHost()
+	latestL1Block := h.bootstrapHost()
 
-	// start the enclave speculative work from last block
-	err = h.enclaveClient.Start(latestBlock)
+	// start the enclave speculative work from last L1 block
+	err = h.enclaveClient.Start(latestL1Block)
 	if err != nil {
 		h.logger.Crit("Could not start the enclave.", log.ErrKey, err.Error())
 	}
 
 	if h.config.IsGenesis {
-		_, err = h.initialiseProtocol(&latestBlock)
+		_, err = h.initialiseProtocol(&latestL1Block)
 		if err != nil {
 			h.logger.Crit("Could not bootstrap.", log.ErrKey, err.Error())
 		}
@@ -279,11 +283,11 @@ func (h *host) EnclaveClient() common.Enclave {
 	return h.enclaveClient
 }
 
-func (h *host) MockedNewHead(b common.EncodedBlock, p common.EncodedBlock) {
-	h.blockRPCCh <- blockAndParent{b, p}
+func (h *host) MockedNewHead(b common.EncodedL1Block, p common.EncodedL1Block) {
+	h.l1BlockRPCCh <- l1BlockAndParent{b, p}
 }
 
-func (h *host) MockedNewFork(b []common.EncodedBlock) {
+func (h *host) MockedNewFork(b []common.EncodedL1Block) {
 	h.forkRPCCh <- b
 }
 
@@ -291,8 +295,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 	encryptedResponse, err := h.enclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
-		h.logger.Info("Could not submit transaction", log.ErrKey, err)
-		return nil, err
+		return nil, fmt.Errorf("could not submit transaction. Cause: %w", err)
 	}
 
 	err = h.p2p.BroadcastTx(encryptedTx)
@@ -306,6 +309,11 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 // ReceiveTx receives a new transaction
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
 	h.txP2PCh <- tx
+}
+
+// ReceiveBatch receives a new batch
+func (h *host) ReceiveBatch(batch common.EncodedBatch) {
+	h.batchP2PCh <- batch
 }
 
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
@@ -400,9 +408,9 @@ func (h *host) startProcessing() { //nolint:gocognit
 	// - Process new Transactions gossiped from L2 Peers
 	for {
 		select {
-		case b := <-h.blockRPCCh:
+		case blockAndParent := <-h.l1BlockRPCCh:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			err := h.processBlock(b.p, false)
+			err := h.processL1Block(blockAndParent.parent, false)
 			if err != nil {
 				var rejErr *common.BlockRejectError
 				if errors.As(err, &rejErr) {
@@ -412,7 +420,7 @@ func (h *host) startProcessing() { //nolint:gocognit
 					h.logger.Info("Could not process parent block. ", log.ErrKey, err)
 				}
 			}
-			err = h.processBlock(b.b, true)
+			err = h.processL1Block(blockAndParent.block, true)
 			if err != nil {
 				var rejErr *common.BlockRejectError
 				if errors.As(err, &rejErr) {
@@ -426,7 +434,7 @@ func (h *host) startProcessing() { //nolint:gocognit
 			roundInterrupt = triggerInterrupt(roundInterrupt)
 			for i, blk := range f {
 				isLatest := i == (len(f) - 1)
-				err := h.processBlock(blk, isLatest)
+				err := h.processL1Block(blk, isLatest)
 				if err != nil && isLatest {
 					h.logger.Warn("Could not process latest fork block received via RPC.", log.ErrKey, err)
 				}
@@ -435,6 +443,11 @@ func (h *host) startProcessing() { //nolint:gocognit
 		case tx := <-h.txP2PCh:
 			if _, err := h.enclaveClient.SubmitTx(tx); err != nil {
 				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
+			}
+
+		case batch := <-h.batchP2PCh:
+			if err := h.handleBatch(&batch); err != nil {
+				h.logger.Error("Could not handle batch. ", log.ErrKey, err)
 			}
 
 		case <-h.exitHostCh:
@@ -451,33 +464,37 @@ func triggerInterrupt(interrupt *int32) *int32 {
 	return &i
 }
 
-type blockAndParent struct {
-	b common.EncodedBlock
-	p common.EncodedBlock
+type l1BlockAndParent struct {
+	block  common.EncodedL1Block
+	parent common.EncodedL1Block
 }
 
-func (h *host) processBlock(block common.EncodedBlock, isLatestBlock bool) error {
-	var result *common.BlockSubmissionResponse
-
+func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) error {
 	// For the genesis block the parent is nil
 	if block == nil {
 		return nil
 	}
 
-	decoded, err := block.DecodeBlock()
+	var result *common.BlockSubmissionResponse
+
+	decodedBlock, err := block.DecodeBlock()
 	if err != nil {
 		return err
 	}
-	h.processBlockTransactions(decoded)
+	h.processL1BlockTransactions(decodedBlock)
 
 	// submit each block to the enclave for ingestion plus validation
 	// todo: isLatest should only be true when we're not behind
-	result, err = h.enclaveClient.SubmitBlock(*decoded, isLatestBlock)
+	result, err = h.enclaveClient.SubmitL1Block(*decodedBlock, isLatestBlock)
 	if err != nil {
-		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decoded.Hash()), err)
+		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decodedBlock.Hash()), err)
 	}
 
-	h.storeBlockProcessingResult(result)
+	err = h.storeBlockProcessingResult(result)
+	if err != nil {
+		h.logger.Crit("submitted block to enclave but could not store the block processing result")
+	}
+
 	h.logEventManager.SendLogsToSubscribers(result)
 
 	// We check that we only produced a rollup if we're the sequencer.
@@ -492,21 +509,22 @@ func (h *host) processBlock(block common.EncodedBlock, isLatestBlock bool) error
 		}
 	}
 
+	if result.ProducedRollup.Header == nil {
+		return nil
+	}
+
 	if isLatestBlock {
-		if result.ProducedRollup.Header == nil {
-			return nil
-		}
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.distributeBatch(result.ProducedRollup)
+		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
 
 	return nil
 }
 
 // Looks at each transaction in the block, and kicks off special handling for the transaction if needed.
-func (h *host) processBlockTransactions(b *types.Block) {
+func (h *host) processL1BlockTransactions(b *types.Block) {
 	for _, tx := range b.Transactions() {
 		t := h.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -542,26 +560,41 @@ func (h *host) publishRollup(producedRollup common.ExtRollup) {
 }
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
-func (h *host) distributeBatch(producedRollup common.ExtRollup) {
-	// TODO - #718 - Store batch
-	// TODO - #718 - Distribute batch
+func (h *host) storeAndDistributeBatch(producedRollup common.ExtRollup) {
+	batch := common.ExtBatch{
+		Header:          producedRollup.Header,
+		TxHashes:        producedRollup.TxHashes,
+		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
+	}
+
+	err := h.db.AddBatchHeader(&batch)
+	if err != nil {
+		h.logger.Error("could not store batch", log.ErrKey, err)
+	}
+
+	err = h.p2p.BroadcastBatch(&batch)
+	if err != nil {
+		h.logger.Error("could not broadcast batch", log.ErrKey, err)
+	}
 }
 
-func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) {
+func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) error {
 	// only update the host rollup headers if the enclave has found a new rollup head
 	if result.FoundNewHead {
 		// adding a header will update the head if it has a higher height
-		// TODO - Fix bug here where tx hashes are being stored against the wrong rollup.
-		h.db.AddRollupHeader(result.IngestedRollupHeader, result.ProducedRollup.TxHashes)
+		err := h.db.AddRollupHeader(result.IngestedRollupHeader)
+		if err != nil {
+			return err
+		}
 	}
 
 	// adding a header will update the head if it has a higher height
-	h.db.AddBlockHeader(result.BlockHeader)
+	return h.db.AddBlockHeader(result.BlockHeader)
 }
 
 // Called only by the first enclave to bootstrap the network
 func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
-	// Create the genesis rollup and submit it to the management contract
+	// Create the genesis rollup.
 	genesisResponse, err := h.enclaveClient.ProduceGenesis(block.Hash())
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not produce genesis. Cause: %w", err)
@@ -570,14 +603,19 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
 			common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
 		))
-	encodedRollup, err := common.EncodeRollup(genesisResponse.ProducedRollup.ToExtRollup())
+
+	// Distribute the corresponding batch.
+	producedRollup := genesisResponse.ProducedRollup.ToExtRollup()
+	h.storeAndDistributeBatch(*producedRollup)
+
+	// Submit the rollup to the management contract.
+	encodedRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
 	l1tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
-
 	rollupTx := h.mgmtContractLib.CreateRollup(l1tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 	if err != nil {
@@ -647,9 +685,9 @@ func (h *host) requestSecret() error {
 		Attestation: encodedAttestation,
 	}
 	// record the L1 head height before we submit the secret request so we know which block to watch from
-	l1Head, f := h.ethClient.FetchHeadBlock()
-	if !f {
-		panic("no head found for L1")
+	l1Head, err := h.ethClient.FetchHeadBlock()
+	if err != nil {
+		panic(fmt.Errorf("could not fetch head L1 block. Cause: %w", err))
 	}
 	requestSecretTx := h.mgmtContractLib.CreateRequestSecret(l1tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(requestSecretTx, l1TxTriesSecret)
@@ -875,7 +913,7 @@ func (h *host) encodeAndIngest(block *types.Block, blockParent *types.Block) err
 		return fmt.Errorf("could not encode block's parent with hash %s. Cause: %w", block.ParentHash().String(), err)
 	}
 
-	h.blockRPCCh <- blockAndParent{encodedBlock, encodedBlockParent}
+	h.l1BlockRPCCh <- l1BlockAndParent{encodedBlock, encodedBlockParent}
 	return nil
 }
 
@@ -886,18 +924,18 @@ func (h *host) bootstrapHost() types.Block {
 	// build up from the genesis block
 	// todo update to bootstrap from the last block in storage
 	// todo the genesis block should be the block where the contract was deployed
-	currentBlock, err := h.ethClient.BlockByNumber(big.NewInt(0))
+	currentL1Block, err := h.ethClient.BlockByNumber(big.NewInt(0))
 	if err != nil {
 		h.logger.Crit("Internal error", log.ErrKey, err)
 	}
 
-	h.logger.Info(fmt.Sprintf("Started host bootstrap with block %d", currentBlock.NumberU64()))
+	h.logger.Info(fmt.Sprintf("Started host bootstrap with block %d", currentL1Block.NumberU64()))
 
 	startTime, logTime := time.Now(), time.Now()
 	for {
-		cb := *currentBlock
-		h.processBlockTransactions(&cb)
-		result, err := h.enclaveClient.SubmitBlock(cb, false)
+		cb := *currentL1Block
+		h.processL1BlockTransactions(&cb)
+		result, err := h.enclaveClient.SubmitL1Block(cb, false)
 		if err != nil {
 			var bsErr *common.BlockRejectError
 			isBSE := errors.As(err, &bsErr)
@@ -910,7 +948,10 @@ func (h *host) bootstrapHost() types.Block {
 				common.ShortHash(result.BlockHeader.Hash()), bsErr))
 		} else {
 			// submission was successful
-			h.storeBlockProcessingResult(result)
+			err := h.storeBlockProcessingResult(result)
+			if err != nil {
+				h.logger.Crit("Could not store block processing result", log.ErrKey, err)
+			}
 		}
 
 		nextBlk, err = h.ethClient.BlockByNumber(big.NewInt(cb.Number().Int64() + 1))
@@ -920,7 +961,7 @@ func (h *host) bootstrapHost() types.Block {
 			}
 			h.logger.Crit("Internal error", log.ErrKey, err)
 		}
-		currentBlock = nextBlk
+		currentL1Block = nextBlk
 
 		if time.Since(logTime) > 30*time.Second {
 			h.logger.Info(fmt.Sprintf("Bootstrapping host at block... %d", cb.NumberU64()))
@@ -929,10 +970,10 @@ func (h *host) bootstrapHost() types.Block {
 	}
 	atomic.StoreInt32(h.bootstrappingComplete, 1)
 	h.logger.Info(fmt.Sprintf("Finished bootstrap process with block %d after %s",
-		currentBlock.NumberU64(),
+		currentL1Block.NumberU64(),
 		time.Since(startTime),
 	))
-	return *currentBlock
+	return *currentL1Block
 }
 
 func (h *host) awaitSecret(fromHeight *big.Int) error {
@@ -977,6 +1018,26 @@ func (h *host) checkBlockForSecretResponse(block *types.Block) bool {
 	}
 	// response not found
 	return false
+}
+
+// Handles an incoming batch.
+func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
+	batch := common.ExtBatch{}
+	err := rlp.DecodeBytes(*encodedBatch, &batch)
+	if err != nil {
+		return fmt.Errorf("could not decode batch using RLP. Cause: %w", err)
+	}
+
+	// TODO - #718 - Have the enclave process batch, so that it's up to date.
+
+	// TODO - #718 - Implement a catch-up mechanism for historical batches.
+
+	err = h.db.AddBatchHeader(&batch)
+	if err != nil {
+		return fmt.Errorf("could not store batch header. Cause: %w", err)
+	}
+
+	return nil
 }
 
 // Checks the host config is valid.

@@ -3,9 +3,10 @@ package db
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -33,9 +34,6 @@ type storageImpl struct {
 	logger      gethlog.Logger
 }
 
-// ErrTxNotFound indicates that a transaction could not be found.
-var ErrTxNotFound = errors.New("transaction not found")
-
 func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	return &storageImpl{
 		db:          backingDB,
@@ -45,17 +43,24 @@ func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logge
 	}
 }
 
-func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) {
-	obscurorawdb.WriteGenesisHash(s.db, rol.Hash(), s.logger)
-	s.StoreRollup(rol)
+func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) error {
+	err := obscurorawdb.WriteGenesisHash(s.db, rol.Hash())
+	if err != nil {
+		return fmt.Errorf("could not write genesis hash. Cause: %w", err)
+	}
+	return s.StoreRollup(rol)
 }
 
-func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, bool) {
-	hash, found := obscurorawdb.ReadGenesisHash(s.db)
-	if !found {
-		return nil, false
+func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, error) {
+	hash, err := obscurorawdb.ReadGenesisHash(s.db)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 	}
-	return s.FetchRollup(*hash)
+	rollup, err := s.FetchRollup(*hash)
+	if err != nil {
+		return nil, err
+	}
+	return rollup, nil
 }
 
 func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
@@ -67,80 +72,88 @@ func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
 	return r, nil
 }
 
-func (s *storageImpl) StoreRollup(rollup *core.Rollup) {
+func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 	s.assertSecretAvailable()
 
 	batch := s.db.NewBatch()
 	obscurorawdb.WriteRollup(batch, rollup, s.logger)
 	if err := batch.Write(); err != nil {
-		s.logger.Crit("could not write rollup to storage. ", log.ErrKey, err)
+		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
 	}
+	return nil
 }
 
-func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, bool) {
+func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, error) {
 	s.assertSecretAvailable()
-	r := obscurorawdb.ReadRollup(s.db, hash, s.logger)
-	if r != nil {
-		return r, true
+	rollup, err := obscurorawdb.ReadRollup(s.db, hash, s.logger)
+	if err != nil {
+		return nil, err
 	}
-	return nil, false
+	return rollup, nil
 }
 
-func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, bool) {
+func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, error) {
 	if height == 0 {
-		return s.FetchGenesisRollup()
+		genesisRollup, err := s.FetchGenesisRollup()
+		if err != nil {
+			return nil, fmt.Errorf("could not fetch genesis rollup. Cause: %w", err)
+		}
+		return genesisRollup, nil
 	}
 
 	hash := obscurorawdb.ReadCanonicalHash(s.db, height)
 	if hash == (gethcommon.Hash{}) {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	return s.FetchRollup(hash)
 }
 
-func (s *storageImpl) FetchRollups(height uint64) []*core.Rollup {
+func (s *storageImpl) FetchRollups(height uint64) ([]*core.Rollup, error) {
 	s.assertSecretAvailable()
 	return obscurorawdb.ReadRollupsForHeight(s.db, height, s.logger)
 }
 
-func (s *storageImpl) StoreBlock(b *types.Block) bool {
+func (s *storageImpl) StoreBlock(b *types.Block) {
 	s.assertSecretAvailable()
 	rawdb.WriteBlock(s.db, b)
-	return true
 }
 
-func (s *storageImpl) FetchBlock(hash common.L1RootHash) (*types.Block, bool) {
+func (s *storageImpl) FetchBlock(hash common.L1RootHash) (*types.Block, error) {
 	s.assertSecretAvailable()
 	height := rawdb.ReadHeaderNumber(s.db, hash)
 	if height == nil {
-		return nil, false
+		return nil, errutil.ErrNotFound
 	}
 	b := rawdb.ReadBlock(s.db, hash, *height)
-	if b != nil {
-		return b, true
+	if b == nil {
+		return nil, errutil.ErrNotFound
 	}
-	return nil, false
+	return b, nil
 }
 
-func (s *storageImpl) FetchHeadBlock() (*types.Block, bool) {
+func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
 	s.assertSecretAvailable()
-	return s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
+	block, err := s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
 }
 
-func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) {
-	obscurorawdb.WriteSharedSecret(s.db, secret, s.logger)
+func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
+	return obscurorawdb.WriteSharedSecret(s.db, secret)
 }
 
-func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, bool) {
+func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 	return obscurorawdb.ReadSharedSecret(s.db)
 }
 
-func (s *storageImpl) ParentRollup(r *core.Rollup) (*core.Rollup, bool) {
+func (s *storageImpl) ParentRollup(r *core.Rollup) (*core.Rollup, error) {
 	s.assertSecretAvailable()
 	return s.FetchRollup(r.Header.ParentHash)
 }
 
-func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, bool) {
+func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, error) {
 	s.assertSecretAvailable()
 	return s.FetchBlock(b.Header().ParentHash)
 }
@@ -155,8 +168,8 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 		return false
 	}
 
-	p, f := s.ParentBlock(block)
-	if !f {
+	p, err := s.ParentBlock(block)
+	if err != nil {
 		return false
 	}
 
@@ -177,15 +190,16 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 		return false
 	}
 
-	resolvedBlock, found := s.FetchBlock(maybeAncestor)
-	if found {
+	resolvedBlock, err := s.FetchBlock(maybeAncestor)
+	if err == nil {
 		if resolvedBlock.NumberU64() >= block.NumberU64() {
 			return false
 		}
 	}
 
-	p, f := s.ParentBlock(block)
-	if !f {
+	p, err := s.ParentBlock(block)
+	if err != nil {
+		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		return false
 	}
 
@@ -208,41 +222,36 @@ func (s *storageImpl) assertSecretAvailable() {
 	//}
 }
 
-// ProofHeight - return the height of the L1 proof, or GenesisHeight - if the block is not known
 // todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
 func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
-	v, f := s.FetchBlock(r.Header.L1Proof)
-	if !f {
+	v, err := s.FetchBlock(r.Header.L1Proof)
+	if err != nil {
 		return -1
 	}
 	return int64(v.NumberU64())
 }
 
-func (s *storageImpl) Proof(r *core.Rollup) *types.Block {
-	v, f := s.FetchBlock(r.Header.L1Proof)
-	if !f {
-		s.logger.Crit("could not find proof for this rollup")
+func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
+	block, err := s.FetchBlock(r.Header.L1Proof)
+	if err != nil {
+		return nil, err
 	}
-	return v
+	return block, nil
 }
 
-func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, bool) {
-	bs := obscurorawdb.ReadBlockState(s.db, hash, s.logger)
-	if bs != nil {
-		return bs, true
-	}
-	return nil, false
+func (s *storageImpl) FetchBlockState(hash common.L1RootHash) (*core.BlockState, error) {
+	return obscurorawdb.ReadBlockState(s.db, hash)
 }
 
-func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, bool) {
+func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
 	logs := obscurorawdb.ReadBlockLogs(s.db, hash, s.logger)
-	if logs != nil {
-		return logs, true
+	if logs == nil {
+		return nil, errutil.ErrNotFound
 	}
-	return nil, false
+	return logs, nil
 }
 
-func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) {
+func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error {
 	batch := s.db.NewBatch()
 
 	if state.FoundNewRollup {
@@ -251,8 +260,12 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64(), s.logger)
 		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup, s.logger)
 		obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash(), s.logger)
-		obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts, s.logger)
-		obscurorawdb.WriteContractCreationTx(batch, receipts, s.logger)
+		if err := obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts); err != nil {
+			return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
+		}
+		if err := obscurorawdb.WriteContractCreationTx(batch, receipts); err != nil {
+			return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
+		}
 	}
 
 	obscurorawdb.WriteBlockState(batch, state, s.logger)
@@ -261,21 +274,24 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 	rawdb.WriteHeadHeaderHash(batch, state.Block)
 
 	if err := batch.Write(); err != nil {
-		s.logger.Crit("could not save new head. ", log.ErrKey, err)
+		return fmt.Errorf("could not save new head. Cause: %w", err)
 	}
+	return nil
 }
 
-func (s *storageImpl) CreateStateDB(hash common.L2RootHash) *state.StateDB {
-	rollup, f := s.FetchRollup(hash)
-	if !f {
-		s.logger.Crit("could not retrieve rollup for hash %s", hash.String())
+func (s *storageImpl) CreateStateDB(hash common.L2RootHash) (*state.StateDB, error) {
+	rollup, err := s.FetchRollup(hash)
+	if err != nil {
+		return nil, err
 	}
+
 	// todo - snapshots?
 	statedb, err := state.New(rollup.Header.Root, s.stateDB, nil)
 	if err != nil {
-		s.logger.Crit("could not create state DB. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}
-	return statedb
+
+	return statedb, nil
 }
 
 func (s *storageImpl) EmptyStateDB() *state.StateDB {
@@ -286,29 +302,33 @@ func (s *storageImpl) EmptyStateDB() *state.StateDB {
 	return statedb
 }
 
-func (s *storageImpl) FetchHeadState() *core.BlockState {
+func (s *storageImpl) FetchHeadState() (*core.BlockState, error) {
 	h := rawdb.ReadHeadHeaderHash(s.db)
 	if (bytes.Equal(h.Bytes(), gethcommon.Hash{}.Bytes())) {
-		s.logger.Error("could not read head header hash from storage")
-		return nil
+		return nil, errutil.ErrNotFound
 	}
-	return obscurorawdb.ReadBlockState(s.db, h, s.logger)
+
+	blockState, err := obscurorawdb.ReadBlockState(s.db, h)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve block state for head. Cause: %w", err)
+	}
+
+	return blockState, nil
 }
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
-func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) types.Receipts {
-	number := obscurorawdb.ReadHeaderNumber(s.db, hash)
-	if number == nil {
-		return nil
+func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) (types.Receipts, error) {
+	number, err := obscurorawdb.ReadHeaderNumber(s.db, hash)
+	if err != nil {
+		return nil, err
 	}
-	receipts := obscurorawdb.ReadReceipts(s.db, hash, *number, s.chainConfig, s.logger)
-	return receipts
+	return obscurorawdb.ReadReceipts(s.db, hash, *number, s.chainConfig, s.logger)
 }
 
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
 	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash, s.logger)
 	if tx == nil {
-		return nil, gethcommon.Hash{}, 0, 0, ErrTxNotFound
+		return nil, gethcommon.Hash{}, 0, 0, errutil.ErrNotFound
 	}
 	return tx, blockHash, blockNumber, index, nil
 }
@@ -326,9 +346,8 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 	return msg.From(), nil
 }
 
-func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (gethcommon.Hash, error) {
-	tx := obscurorawdb.ReadContractTransaction(s.db, address, s.logger)
-	return tx, nil
+func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (*gethcommon.Hash, error) {
+	return obscurorawdb.ReadContractTransaction(s.db, address)
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error) {
@@ -337,7 +356,11 @@ func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Rece
 		return nil, err
 	}
 
-	receipts := s.GetReceiptsByHash(blockHash)
+	receipts, err := s.GetReceiptsByHash(blockHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve receipts for transaction. Cause: %w", err)
+	}
+
 	if len(receipts) <= int(index) {
 		return nil, fmt.Errorf("receipt index not matching the transactions in block: %s", blockHash.Hex())
 	}
@@ -346,10 +369,10 @@ func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Rece
 	return receipt, nil
 }
 
-func (s *storageImpl) FetchAttestedKey(aggregator gethcommon.Address) *ecdsa.PublicKey {
-	return obscurorawdb.ReadAttestationKey(s.db, aggregator, s.logger)
+func (s *storageImpl) FetchAttestedKey(aggregator gethcommon.Address) (*ecdsa.PublicKey, error) {
+	return obscurorawdb.ReadAttestationKey(s.db, aggregator)
 }
 
-func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) {
-	obscurorawdb.WriteAttestationKey(s.db, aggregator, key, s.logger)
+func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error {
+	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
 }

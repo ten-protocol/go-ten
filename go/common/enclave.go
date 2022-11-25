@@ -38,13 +38,13 @@ type Enclave interface {
 	// Start - start speculative execution
 	Start(block types.Block) error
 
-	// SubmitBlock - Used for the host to submit blocks to the enclave, these may be:
+	// SubmitL1Block - Used for the host to submit L1 blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
 	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitBlock(block types.Block, isLatest bool) (*BlockSubmissionResponse, error)
+	SubmitL1Block(block types.Block, isLatest bool) (*BlockSubmissionResponse, error)
 
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
@@ -64,9 +64,6 @@ type Enclave interface {
 
 	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
 	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (EncryptedResponseGetTxReceipt, error)
-
-	// GetRollup returns the rollup with the given hash, or nil if no such rollup exists.
-	GetRollup(rollupHash L2RootHash) (*ExtRollup, error)
 
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
 	// Viewing keys are asymmetric keys generated inside the wallet extension, and then signed by the wallet (e.g.

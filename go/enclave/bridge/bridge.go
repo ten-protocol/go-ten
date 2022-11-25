@@ -2,8 +2,11 @@ package bridge
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -166,6 +169,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			r, err := common.DecodeRollup(rolTx.Rollup)
 			if err != nil {
 				bridge.logger.Crit("could not decode rollup.", log.ErrKey, err)
+				return nil
 			}
 
 			// Ignore rollups created with proofs from different L1 blocks
@@ -190,7 +194,8 @@ func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcom
 
 	token := bridge.GetMapping(contract)
 	if token == nil {
-		panic("This should not happen as we don't generate deposits on unsupported tokens.")
+		bridge.logger.Crit("This should not happen as we don't generate deposits on unsupported tokens.")
+		return nil
 	}
 
 	// The nonce is adjusted with the number of deposits added to the rollup already.
@@ -209,6 +214,7 @@ func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcom
 	newTx, err := types.SignTx(tx, signer, token.Owner.PrivateKey())
 	if err != nil {
 		bridge.logger.Crit("could not sign synthetic deposit tx.", log.ErrKey, err)
+		return nil
 	}
 	return newTx
 }
@@ -228,6 +234,7 @@ func (bridge *Bridge) ExtractDeposits(
 		height = fromBlock.NumberU64()
 		if !blockResolver.IsAncestor(toBlock, fromBlock) {
 			bridge.logger.Crit("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
+			return nil
 		}
 	}
 
@@ -251,10 +258,15 @@ func (bridge *Bridge) ExtractDeposits(
 		}
 		if b.NumberU64() < height {
 			bridge.logger.Crit("block height is less than genesis height")
+			return nil
 		}
-		p, f := blockResolver.ParentBlock(b)
-		if !f {
-			bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
+		p, err := blockResolver.ParentBlock(b)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
+			}
+			bridge.logger.Crit("deposits can't be processed because the parent block could not be retrieved", log.ErrKey, err)
+			return nil
 		}
 		b = p
 	}
@@ -277,7 +289,8 @@ func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore
 				signer := types.NewLondonSigner(big.NewInt(bridge.ObscuroChainID))
 				from, err := types.Sender(signer, t)
 				if err != nil {
-					panic(err)
+					bridge.logger.Crit("Error retrieving the sender from the signature", log.ErrKey, err)
+					return nil
 				}
 				state.Logs()
 				w = append(w, common.Withdrawal{
