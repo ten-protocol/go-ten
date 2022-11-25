@@ -73,7 +73,7 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 		return nil
 	}
 
-	encodedBatch, err := rlp.EncodeToBytes(batch)
+	encodedBatches, err := rlp.EncodeToBytes([]*common.ExtBatch{batch})
 	if err != nil {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
@@ -81,7 +81,7 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 	for _, node := range netw.Nodes {
 		if node.Config().ID.Hex() != netw.CurrentNode.Config().ID.Hex() {
 			tempNode := node
-			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatch(encodedBatch) })
+			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatches(encodedBatches) })
 		}
 	}
 

@@ -81,7 +81,7 @@ type host struct {
 	l1BlockRPCCh chan l1BlockAndParent        // The channel that new blocks from the L1 node are sent to
 	forkRPCCh    chan []common.EncodedL1Block // The channel that new forks from the L1 node are sent to
 	txP2PCh      chan common.EncryptedTx      // The channel that new transactions from peers are sent to
-	batchP2PCh   chan common.EncodedBatch     // The channel that new batches from peers are sent to
+	batchP2PCh   chan common.EncodedBatches   // The channel that new batches from peers are sent to
 
 	db *db.DB // Stores the host's publicly-available data
 
@@ -114,7 +114,7 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		l1BlockRPCCh: make(chan l1BlockAndParent),
 		forkRPCCh:    make(chan []common.EncodedL1Block),
 		txP2PCh:      make(chan common.EncryptedTx),
-		batchP2PCh:   make(chan common.EncodedBatch),
+		batchP2PCh:   make(chan common.EncodedBatches),
 
 		// Initialize the host DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -313,9 +313,9 @@ func (h *host) ReceiveTx(tx common.EncryptedTx) {
 	h.txP2PCh <- tx
 }
 
-// ReceiveBatch receives a new batch
-func (h *host) ReceiveBatch(batch common.EncodedBatch) {
-	h.batchP2PCh <- batch
+// ReceiveBatches receives a new set of batches
+func (h *host) ReceiveBatches(batches common.EncodedBatches) {
+	h.batchP2PCh <- batches
 }
 
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
@@ -447,9 +447,9 @@ func (h *host) startProcessing() { //nolint:gocognit
 				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
 			}
 
-		case batch := <-h.batchP2PCh:
-			if err := h.handleBatch(&batch); err != nil {
-				h.logger.Error("Could not handle batch. ", log.ErrKey, err)
+		case batches := <-h.batchP2PCh:
+			if err := h.handleBatches(&batches); err != nil {
+				h.logger.Error("Could not handle batches. ", log.ErrKey, err)
 			}
 
 		case <-h.exitHostCh:
@@ -1027,17 +1027,17 @@ func (h *host) checkBlockForSecretResponse(block *types.Block) bool {
 	return false
 }
 
-// Handles an incoming batch.
-func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
-	batch := common.ExtBatch{}
-	err := rlp.DecodeBytes(*encodedBatch, &batch)
+// Handles an incoming set of batches.
+func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
+	var batches []*common.ExtBatch
+	err := rlp.DecodeBytes(*encodedBatches, &batches)
 	if err != nil {
-		return fmt.Errorf("could not decode batch using RLP. Cause: %w", err)
+		return fmt.Errorf("could not decode batches using RLP. Cause: %w", err)
 	}
 
-	// TODO - #718 - Have the enclave process batch, so that it's up to date.
+	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
 
-	// todo - joel - re-enable requesting missing batches.
+	// todo - joel - re-enable requesting missing batches. Sort batches and grab first (lowest number). Check for gaps.
 	//isRequested, err := h.requestMissingBatches(batch)
 	//if err != nil {
 	//	return fmt.Errorf("could not retrieve missing historical batches")
@@ -1046,9 +1046,11 @@ func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
 	//// If we did not need to request any batches, we can add the batch to the chain. If we did request batches, we skip
 	//// storing the batch for now; we'll store it later when we retrieve the full historical chain.
 	//if !isRequested {
-	err = h.db.AddBatchHeader(&batch)
-	if err != nil {
-		return fmt.Errorf("could not store batch header. Cause: %w", err)
+	for _, batch := range batches {
+		err = h.db.AddBatchHeader(batch)
+		if err != nil {
+			return fmt.Errorf("could not store batch header. Cause: %w", err)
+		}
 	}
 	//}
 

@@ -36,9 +36,9 @@ type (
 	EncryptedResponseEstimateGas  []byte // As above, but for an RPC estimateGas response.
 	EncryptedResponseGetLogs      []byte // As above, but for an RPC getLogs request.
 
-	Nonce         = uint64
-	EncodedRollup []byte
-	EncodedBatch  []byte
+	Nonce          = uint64
+	EncodedRollup  []byte
+	EncodedBatches []byte
 )
 
 const (

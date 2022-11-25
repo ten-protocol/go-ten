@@ -30,7 +30,7 @@ type msgType uint8
 
 const (
 	msgTypeTx msgType = iota
-	msgTypeBatch
+	msgTypeBatches
 	msgTypeBatchRequest
 )
 
@@ -102,12 +102,12 @@ func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
 }
 
 func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
-	encodedBatch, err := rlp.EncodeToBytes(batch)
+	encodedBatches, err := rlp.EncodeToBytes([]*common.ExtBatch{batch})
 	if err != nil {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
 
-	msg := message{Type: msgTypeBatch, Contents: encodedBatch}
+	msg := message{Type: msgTypeBatches, Contents: encodedBatches}
 	return p.broadcast(msg)
 }
 
@@ -160,8 +160,10 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	case msgTypeTx:
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		callback.ReceiveTx(msg.Contents)
-	case msgTypeBatch:
-		callback.ReceiveBatch(msg.Contents)
+	case msgTypeBatches:
+		callback.ReceiveBatches(msg.Contents)
+	case msgTypeBatchRequest:
+		// todo - joel - implement handler
 	}
 }
 
@@ -188,6 +190,7 @@ func (p *p2pImpl) sendToSequencer(msg message) error {
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to sequencer. Cause: %w", err)
 	}
+	// TODO - #718 - Use better method to identify sequencer?
 	p.sendBytes(nil, p.peerAddresses[0], msgEncoded)
 	return nil
 }
