@@ -78,18 +78,21 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (
 	if blockNumber == nil {
 		return nil, common.Hash{}, 0, 0
 	}
-	blockHash := ReadCanonicalHash(db, *blockNumber)
-	if blockHash == (common.Hash{}) {
+
+	blockHash, err := ReadCanonicalHash(db, *blockNumber)
+	if err != nil {
+		logger.Error("Transaction referenced hash missing.", "number", *blockNumber, "hash", blockHash)
 		return nil, common.Hash{}, 0, 0
 	}
-	transactions := ReadBody(db, blockHash, *blockNumber, logger)
+
+	transactions := ReadBody(db, *blockHash, *blockNumber, logger)
 	if transactions == nil {
 		logger.Error("Transaction referenced missing.", "number", *blockNumber, "hash", blockHash)
 		return nil, common.Hash{}, 0, 0
 	}
 	for txIndex, tx := range transactions {
 		if tx.Hash() == hash {
-			return tx, blockHash, *blockNumber, uint64(txIndex)
+			return tx, *blockHash, *blockNumber, uint64(txIndex)
 		}
 	}
 	logger.Error("Transaction not found.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
@@ -104,18 +107,20 @@ func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig, 
 	if blockNumber == nil {
 		return nil, common.Hash{}, 0, 0
 	}
-	blockHash := ReadCanonicalHash(db, *blockNumber)
-	if blockHash == (common.Hash{}) {
+	blockHash, err := ReadCanonicalHash(db, *blockNumber)
+	if err != nil {
+		logger.Error("Transaction referenced hash missing.", "number", *blockNumber, "hash", blockHash)
 		return nil, common.Hash{}, 0, 0
 	}
+
 	// Read all the receipts from the block and return the one with the matching hash
-	receipts, err := ReadReceipts(db, blockHash, *blockNumber, config, logger)
+	receipts, err := ReadReceipts(db, *blockHash, *blockNumber, config, logger)
 	if err != nil {
 		logger.Error("Receipt could not be retrieved.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
 	}
 	for receiptIndex, receipt := range receipts {
 		if receipt.TxHash == hash {
-			return receipt, blockHash, *blockNumber, uint64(receiptIndex)
+			return receipt, *blockHash, *blockNumber, uint64(receiptIndex)
 		}
 	}
 	logger.Error("Receipt not found.", "number", *blockNumber, "hash", blockHash, "txhash", hash)

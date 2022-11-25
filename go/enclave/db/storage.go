@@ -103,11 +103,11 @@ func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, error) {
 		return genesisRollup, nil
 	}
 
-	hash := obscurorawdb.ReadCanonicalHash(s.db, height)
-	if hash == (gethcommon.Hash{}) {
-		return nil, errutil.ErrNotFound
+	hash, err := obscurorawdb.ReadCanonicalHash(s.db, height)
+	if err != nil {
+		return nil, err
 	}
-	return s.FetchRollup(hash)
+	return s.FetchRollup(*hash)
 }
 
 func (s *storageImpl) FetchRollups(height uint64) ([]*core.Rollup, error) {

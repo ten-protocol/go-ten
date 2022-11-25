@@ -244,10 +244,14 @@ func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash, logger ge
 }
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.
-func ReadCanonicalHash(db ethdb.Reader, number uint64) gethcommon.Hash {
+func ReadCanonicalHash(db ethdb.Reader, number uint64) (*gethcommon.Hash, error) {
 	// Get it by hash from leveldb
-	data, _ := db.Get(headerHashKey(number))
-	return gethcommon.BytesToHash(data)
+	data, err := db.Get(headerHashKey(number))
+	if err != nil {
+		return nil, err
+	}
+	hash := gethcommon.BytesToHash(data)
+	return &hash, nil
 }
 
 // WriteCanonicalHash stores the hash assigned to a canonical block number.
