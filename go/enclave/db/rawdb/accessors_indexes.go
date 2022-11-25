@@ -18,18 +18,17 @@ import (
 
 // ReadTxLookupEntry retrieves the positional metadata associated with a transaction
 // hash to allow retrieving the transaction or receipt by hash.
-func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) *uint64 {
-	data, _ := db.Get(txLookupKey(hash))
-	if len(data) == 0 {
-		return nil
+func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash) (*uint64, error) {
+	data, err := db.Get(txLookupKey(hash))
+	if err != nil {
+		return nil, err
 	}
 	// Database v6 tx lookup just stores the block number
 	if len(data) < common.HashLength {
 		number := new(big.Int).SetBytes(data).Uint64()
-		return &number
+		return &number, nil
 	}
-	logger.Crit("Should not be here")
-	return nil
+	return nil, fmt.Errorf("could not read transaction lookup entry. Cause: %w", err)
 }
 
 // writeTxLookupEntry stores a positional metadata for a transaction,
@@ -89,8 +88,9 @@ func deleteTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash) error {
 // ReadTransaction retrieves a specific transaction from the database, along with
 // its added positional metadata.
 func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (*types.Transaction, common.Hash, uint64, uint64) {
-	blockNumber := ReadTxLookupEntry(db, hash, logger)
-	if blockNumber == nil {
+	blockNumber, err := ReadTxLookupEntry(db, hash)
+	if err != nil {
+		// todo - joel - return error
 		return nil, common.Hash{}, 0, 0
 	}
 
@@ -118,8 +118,9 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (
 // its added positional metadata.
 func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig, logger gethlog.Logger) (*types.Receipt, common.Hash, uint64, uint64) {
 	// Retrieve the context of the receipt based on the transaction hash
-	blockNumber := ReadTxLookupEntry(db, hash, logger)
-	if blockNumber == nil {
+	blockNumber, err := ReadTxLookupEntry(db, hash)
+	if err != nil {
+		// todo - joel - return err
 		return nil, common.Hash{}, 0, 0
 	}
 	blockHash, err := ReadCanonicalHash(db, *blockNumber)
