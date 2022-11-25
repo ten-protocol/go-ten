@@ -287,12 +287,13 @@ func WriteHeadRollupHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, logger g
 }
 
 // ReadHeadHeaderHash retrieves the hash of the current canonical head header.
-func ReadHeadHeaderHash(db ethdb.KeyValueReader) gethcommon.Hash {
-	data, _ := db.Get(headHeaderKey)
-	if len(data) == 0 {
-		return gethcommon.Hash{}
+func ReadHeadHeaderHash(db ethdb.KeyValueReader) (*gethcommon.Hash, error) {
+	data, err := db.Get(headHeaderKey)
+	if err != nil {
+		return nil, err
 	}
-	return gethcommon.BytesToHash(data)
+	hash := gethcommon.BytesToHash(data)
+	return &hash, nil
 }
 
 // WriteHeadHeaderHash stores the hash of the current canonical head header.
