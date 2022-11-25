@@ -281,7 +281,9 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 	if err := obscurorawdb.WriteBlockState(batch, state); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
-	obscurorawdb.WriteBlockLogs(batch, state.Block, logs, s.logger)
+	if err := obscurorawdb.WriteBlockLogs(batch, state.Block, logs); err != nil {
+		return fmt.Errorf("could not write block logs. Cause: %w", err)
+	}
 
 	rawdb.WriteHeadHeaderHash(batch, state.Block)
 

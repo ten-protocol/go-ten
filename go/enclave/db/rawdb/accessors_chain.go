@@ -212,7 +212,7 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) (*core.BlockS
 	return bs, nil
 }
 
-func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log, logger gethlog.Logger) {
+func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log) error {
 	// Geth serialises its logs in a reduced form to minimise storage space. For now, it is more straightforward for us
 	// to serialise all the fields by converting the logs to this type.
 	logsForStorage := make([]*logForStorage, len(logs))
@@ -222,12 +222,13 @@ func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*
 
 	logBytes, err := rlp.EncodeToBytes(logsForStorage)
 	if err != nil {
-		logger.Crit("could not encode logs. ", log.ErrKey, err)
+		return fmt.Errorf("could not encode logs. Cause: %w", err)
 	}
 
 	if err := db.Put(logsKey(blockHash), logBytes); err != nil {
-		logger.Crit("could not put logs in DB. ", log.ErrKey, err)
+		return fmt.Errorf("could not put logs in DB. Cause: %w", err)
 	}
+	return nil
 }
 
 func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash, logger gethlog.Logger) []*types.Log {
