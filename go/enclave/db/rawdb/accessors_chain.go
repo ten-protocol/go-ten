@@ -48,13 +48,16 @@ func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, e
 }
 
 func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup, logger gethlog.Logger) {
-	WriteHeader(db, rollup.Header, logger)
+	err := WriteHeader(db, rollup.Header, logger)
+	if err != nil {
+		logger.Crit("Could not write header. ", log.ErrKey, err)
+	}
 	WriteBody(db, rollup.Hash(), rollup.Header.Number.Uint64(), rollup.Transactions, logger)
 }
 
 // WriteHeader stores a rollup header into the database and also stores the hash-
 // to-number mapping.
-func WriteHeader(db ethdb.KeyValueWriter, header *common.Header, logger gethlog.Logger) {
+func WriteHeader(db ethdb.KeyValueWriter, header *common.Header, logger gethlog.Logger) error {
 	var (
 		hash   = header.Hash()
 		number = header.Number.Uint64()
@@ -65,12 +68,13 @@ func WriteHeader(db ethdb.KeyValueWriter, header *common.Header, logger gethlog.
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
-		logger.Crit("could not encode rollup header. ", log.ErrKey, err)
+		return fmt.Errorf("could not encode rollup header. Cause: %w", err)
 	}
 	key := headerKey(number, hash)
-	if err := db.Put(key, data); err != nil {
-		logger.Crit("could not put header in DB. ", log.ErrKey, err)
+	if err = db.Put(key, data); err != nil {
+		return fmt.Errorf("could not put header in DB. Cause: %w", err)
 	}
+	return nil
 }
 
 // WriteHeaderNumber stores the hash->number mapping.
