@@ -66,7 +66,10 @@ func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
 	if err != nil {
 		return nil, err
 	}
-	r, _ := s.FetchRollup(*hash)
+	r, err := s.FetchRollup(*hash)
+	if err != nil {
+		return nil, err
+	}
 	return r, nil
 }
 
