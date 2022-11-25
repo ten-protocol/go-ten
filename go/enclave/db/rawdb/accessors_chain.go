@@ -47,13 +47,14 @@ func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, e
 	return &number, nil
 }
 
-func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup, logger gethlog.Logger) {
+func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 	if err := WriteHeader(db, rollup.Header); err != nil {
-		logger.Crit("Could not write header. ", log.ErrKey, err)
+		return fmt.Errorf("could not write header. Cause: %w", err)
 	}
 	if err := WriteBody(db, rollup.Hash(), rollup.Header.Number.Uint64(), rollup.Transactions); err != nil {
-		logger.Crit("Could not write body. ", log.ErrKey, err)
+		return fmt.Errorf("could not write body. Cause: %w", err)
 	}
+	return nil
 }
 
 // WriteHeader stores a rollup header into the database and also stores the hash-to-number mapping.

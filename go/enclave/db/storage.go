@@ -76,7 +76,9 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 	s.assertSecretAvailable()
 
 	batch := s.db.NewBatch()
-	obscurorawdb.WriteRollup(batch, rollup, s.logger)
+	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
+		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
+	}
 	if err := batch.Write(); err != nil {
 		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
 	}
@@ -255,7 +257,9 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 	batch := s.db.NewBatch()
 
 	if state.FoundNewRollup {
-		obscurorawdb.WriteRollup(batch, rollup, s.logger)
+		if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
+			return fmt.Errorf("could not write rollup. Cause: %w", err)
+		}
 		obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash(), s.logger)
 		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64(), s.logger)
 		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup, s.logger)
