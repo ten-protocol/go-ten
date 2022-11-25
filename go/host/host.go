@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
@@ -1035,11 +1037,53 @@ func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
 
 	// TODO - #718 - Have the enclave process batch, so that it's up to date.
 
-	// TODO - #718 - Implement a catch-up mechanism for historical batches.
+	err = h.requestMissingBatches(batch)
+	if err != nil {
+		return fmt.Errorf("could not retrieve missing historical batches")
+	}
 
 	err = h.db.AddBatchHeader(&batch)
 	if err != nil {
 		return fmt.Errorf("could not store batch header. Cause: %w", err)
+	}
+
+	return nil
+}
+
+// Requests any historical batches we may be missing in the chain.
+func (h *host) requestMissingBatches(batch common.ExtBatch) error {
+	var earliestMissingBatch *big.Int
+	parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
+	for {
+		_, err := h.db.GetBatchHash(parentBatchNumber)
+		if err != nil {
+			// If the batch is not found, we update the variable tracking the earliest missing batch.
+			if errors.Is(err, errutil.ErrNotFound) {
+				earliestMissingBatch = parentBatchNumber
+				parentBatchNumber = big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
+				continue
+			}
+			return fmt.Errorf("could not get batch hash by number. Cause: %w", err)
+		}
+
+		// If there was no error, we have reach a stored batch.
+		break
+	}
+
+	// There are no missing batches to request.
+	if earliestMissingBatch == nil {
+		return nil
+	}
+
+	batches, err := h.p2p.RequestBatchesSince(earliestMissingBatch)
+	if err != nil {
+		return fmt.Errorf("could not request historical batches. Cause: %w", err)
+	}
+	for _, historicalBatch := range batches {
+		err = h.db.AddBatchHeader(historicalBatch)
+		if err != nil {
+			return fmt.Errorf("could not store batch. Cause: %w", err)
+		}
 	}
 
 	return nil

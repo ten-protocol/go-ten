@@ -2,8 +2,11 @@ package p2p
 
 import (
 	"fmt"
+	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -83,6 +86,10 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 	}
 
 	return nil
+}
+
+func (netw *MockP2P) RequestBatchesSince(batchNumber *big.Int) ([]*common.ExtBatch, error) {
+	panic(errutil.ErrNoImpl)
 }
 
 // delay returns an expected delay on the l2

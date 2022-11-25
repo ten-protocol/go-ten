@@ -3,6 +3,7 @@ package p2p
 import (
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -101,6 +102,10 @@ func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
 
 	msg := Message{Type: msgTypeBatch, Contents: encodedBatch}
 	return p.broadcast(msg)
+}
+
+func (p *p2pImpl) RequestBatchesSince(batchNumber *big.Int) ([]*common.ExtBatch, error) {
+	panic("not implemented")
 }
 
 // Listens for connections and handles them in a separate goroutine.
