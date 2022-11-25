@@ -26,10 +26,16 @@ import (
 func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Logger) (*core.Rollup, error) {
 	height, err := ReadHeaderNumber(db, hash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not read header number. Cause: %w", err)
 	}
+
+	header, err := readHeader(db, hash, *height)
+	if err != nil {
+		return nil, fmt.Errorf("could not read header. Cause: %w", err)
+	}
+
 	return &core.Rollup{
-		Header:       readHeader(db, hash, *height, logger),
+		Header:       header,
 		Transactions: ReadBody(db, hash, *height, logger),
 	}, nil
 }
@@ -91,16 +97,16 @@ func writeHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uin
 }
 
 // Retrieves the rollup header corresponding to the hash.
-func readHeader(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64, logger gethlog.Logger) *common.Header {
+func readHeader(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (*common.Header, error) {
 	data, err := readHeaderRLP(db, hash, number)
 	if err != nil {
-		logger.Crit("could not read header. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
 	header := new(common.Header)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
-		logger.Crit("could not decode rollup header. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not decode rollup header. Cause: %w", err)
 	}
-	return header
+	return header, nil
 }
 
 // Retrieves a block header in its raw RLP database encoding.
