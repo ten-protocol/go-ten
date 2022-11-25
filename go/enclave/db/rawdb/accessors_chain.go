@@ -280,10 +280,11 @@ func ReadHeadRollupHash(db ethdb.KeyValueReader) (*gethcommon.Hash, error) {
 }
 
 // WriteHeadRollupHash stores the head block's hash.
-func WriteHeadRollupHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, logger gethlog.Logger) {
+func WriteHeadRollupHash(db ethdb.KeyValueWriter, hash gethcommon.Hash) error {
 	if err := db.Put(headRollupKey, hash.Bytes()); err != nil {
-		logger.Crit("Failed to store last block's hash. ", log.ErrKey, err)
+		return fmt.Errorf("failed to store last block's hash. Cause: %w", err)
 	}
+	return nil
 }
 
 // ReadHeadHeaderHash retrieves the hash of the current canonical head header.
