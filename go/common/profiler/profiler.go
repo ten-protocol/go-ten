@@ -30,7 +30,7 @@ func (p *Profiler) Start() error {
 	go func() {
 		address := fmt.Sprintf("0.0.0.0:%d", p.port)
 		p.logger.Info(fmt.Sprintf("Profiler started @%s ", address))
-		p.logger.Info(fmt.Sprintf("%v", http.ListenAndServe(address, nil))) //nolint:gosec
+		p.logger.Info(fmt.Sprintf("%v", http.ListenAndServe(address, nil)))
 	}()
 	return nil
 }
