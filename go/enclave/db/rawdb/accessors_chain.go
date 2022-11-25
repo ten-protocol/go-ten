@@ -262,10 +262,11 @@ func WriteCanonicalHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, number ui
 }
 
 // DeleteCanonicalHash removes the number to hash canonical mapping.
-func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64, logger gethlog.Logger) {
+func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64) error {
 	if err := db.Delete(headerHashKey(number)); err != nil {
-		logger.Crit("Failed to delete number to hash mapping. ", log.ErrKey, err)
+		return fmt.Errorf("failed to delete number to hash mapping. Cause: %w", err)
 	}
+	return nil
 }
 
 // ReadHeadRollupHash retrieves the hash of the current canonical head block.
