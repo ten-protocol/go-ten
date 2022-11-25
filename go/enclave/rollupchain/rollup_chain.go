@@ -82,7 +82,7 @@ func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage
 		bridge:                bridge,
 		transactionBlobCrypto: txCrypto,
 		mempool:               mempool,
-		faucet:                NewFaucet(storage),
+		faucet:                NewFaucet(),
 		subscriptionManager:   subscriptionManager,
 		enclavePrivateKey:     privateKey,
 		rpcEncryptionManager:  rpcem,
@@ -95,10 +95,15 @@ func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage
 	}
 }
 
-func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, *types.Block) {
+func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, *types.Block, error) {
 	b, err := rc.storage.FetchBlock(blkHash)
 	if err != nil {
 		rc.logger.Crit("Could not retrieve the block used as proof for the genesis rollup.", log.ErrKey, err)
+	}
+
+	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	rolGenesis := obscurocore.NewRollup(
@@ -109,11 +114,11 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		[]*common.L2Tx{},
 		[]common.Withdrawal{},
 		common.GenerateNonce(),
-		rc.faucet.GetGenesisRoot(rc.storage),
+		*preFundGenesisState,
 	)
 	rc.signRollup(rolGenesis)
 
-	return rolGenesis, b
+	return rolGenesis, b, nil
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block
@@ -304,7 +309,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			return nil, false
 		}
 
-		err = rc.faucet.CalculateGenesisState(rc.storage)
+		_, err = rc.faucet.CommitGenesisState(rc.storage)
 		if err != nil {
 			return nil, false
 		}
