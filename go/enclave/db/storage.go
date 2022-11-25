@@ -256,11 +256,13 @@ func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
 func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error {
 	batch := s.db.NewBatch()
 
-	if state.FoundNewRollup {
+	if state.FoundNewRollup { //nolint:nestif
 		if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
 			return fmt.Errorf("could not write rollup. Cause: %w", err)
 		}
-		obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash(), s.logger)
+		if err := obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash()); err != nil {
+			return fmt.Errorf("could not write head header hash. Cause: %w", err)
+		}
 		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64(), s.logger)
 		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup, s.logger)
 		if err := obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash()); err != nil {

@@ -298,8 +298,9 @@ func ReadHeadHeaderHash(db ethdb.KeyValueReader) (*gethcommon.Hash, error) {
 }
 
 // WriteHeadHeaderHash stores the hash of the current canonical head header.
-func WriteHeadHeaderHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, logger gethlog.Logger) {
+func WriteHeadHeaderHash(db ethdb.KeyValueWriter, hash gethcommon.Hash) error {
 	if err := db.Put(headHeaderKey, hash.Bytes()); err != nil {
-		logger.Crit("Failed to store last header's hash. ", log.ErrKey, err)
+		return fmt.Errorf("failed to store last header's hash. Cause: %w", err)
 	}
+	return nil
 }
