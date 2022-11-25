@@ -335,7 +335,6 @@ func (m *Node) startMining() {
 	m.logger.Info(" starting miner...")
 	// stores all transactions seen from the beginning of time.
 	mempool := make([]*types.Transaction, 0)
-	types.DynamicFeeTx{}
 	z := int32(0)
 	interrupt := &z
 

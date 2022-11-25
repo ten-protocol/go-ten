@@ -17,32 +17,47 @@ An additional complexity is that Obscuro has the requirement to support temporar
 
 ## Scope
 
-1. Generating the Master seed
-2. Derive the Obscuro Key
-3. Encrypting transactions such that they can be revealed
+1. Master Seed Generation
+2. Enclave Encrypted Communication
+3. Transaction Encryption per Rollup with Revelation Period
 4. Reveal the rollup transactions
 
-## 1. Generating the Master seed
+## 1. Master Seed Generation
+- Master Seed is a strongly generated entropy data that serves as the encryption base of the network
 - Use the random number generation available inside the TEEs
 - Generation happens when the central sequencer bootstraps the network
+- The central sequencer generates the Master seed and initializes the Management Contract
+- Upon successful attestation the Central Sequencer uses the attested enclave public key to share the Master Seed
 
 
-## 2. Derive the Obscuro Key
+## 2. Ensure Enclave Encrypted Communication
+- Client-Enclave communication is encrypted using the Obscuro Key
+- Clients encrypt using the Obscuro Key - Public Key
+- Enclave responds encrypting with the Obscuro Key - Private Key
 - The Obscuro Key is a Key-Pair derived from the Master Seed + Genesis Rollup
 - The Public key will be published to the Management contract and used by all obscuro tooling ( like the wallet extension ) to encrypt transactions
-- The Private key will be determined by other enclaves by deriving the Master Seed + Genesis Rollup 
-  - The Master Seed will be shared using the attestation process
-  - The Genesis Rollup will be shared when reading the L1 blocks
+- The Private key will be only available inside the enclave through key derivation
+- Enclaves will determine the Private key when deriving the Master Seed + Genesis Rollup 
+  - Enclaves have the Master Seed through the attestation process
+  - Enclaves fetch Genesis Rollup through the Layer 1 blocks
+
 - HKDF (HMAC-based Key Derivation Function) is used to derive keys
   - Given the high entropy of the Master Seed no need for PBKDF Family key stretching
   - Derivations use public rollup metadata such as height ( or some other shared field ) in the Info component of HKDF and use a fixed size salt as per https://soatok.blog/2021/11/17/understanding-hkdf/
 
 
-## 3. Encrypting transactions such that they can be revealed
-- Transactions are encrypted by default using the smallest unit of time revelation period
-- Transactions using AccessList can specify the desired revelation period
-- Using Null Address combined with hexadecimal 1-5 level determines the revelation period
-- Obscuro interprets the revelation period and encrypts the transaction with the corresponding revelation period key
+## 3. Transaction Encryption per Rollup with Revelation Period
+- Transactions are encrypted in Obscuro to provide confidentiality
+- To avoid base-key compromise, transaction encryption keys are derived twice
+  - Each rollup has a Rollup Encryption Key derived from the Master Seed + Rollup
+  - Each transaction is encrypted with a Revelation Period Key that is derived from the Rollup Encryption Key + Revelation Period
+- HKDF (HMAC-based Key Derivation Function) is used to derive keys
+  - Given the high entropy of the Master Seed no need for PBKDF Family key stretching
+  - Derivations use public rollup metadata such as height ( or some other shared field ) in the Info component of HKDF and use a fixed size salt as per https://soatok.blog/2021/11/17/understanding-hkdf/
+- EVM-Compatible Transactions using [AccessList](https://eips.ethereum.org/EIPS/eip-2930) property are able to specify the desired revelation period
+  - Using `AccessList` Address _Null Address_ combined with Storage Key _hexadecimal 1-5_ determines the revelation period
+  - Transactions without Revelation Period specified are encrypted by default using the smallest unit of time revelation period
+
 
 The [specification](https://eips.ethereum.org/EIPS/eip-2930) of the `AccessList` Field is as follows:
 
@@ -103,7 +118,6 @@ An example would be:
 - Validators do not reveal keys so that keys are not susceptible to attacks
 - Central Sequencer stores the keys in a rollup, decrypt time, key tuple in a database.
 - When a Light Batch is created the revealed keys are appended to it and removed from the database.
-- If the database is lost for some reason, the Central Sequencer can recalculate the keys on-demand.
 
 
 ### Problems
@@ -120,8 +134,8 @@ An example would be:
 - Validators do not release keys, only the centralized sequencer releases them
 
 4. In the event of a db failure how does the central sequencer know which keys to recalculate
-- Traversing the existing chain might be too expensive
-- Sequencer can provide and on-demand key reveal service 
-  - Backed by enough horizontal scalability
-  - Providing the rollup height and revelation period any service can easily determine if the key is to be released
+- Traversing the existing chain and recalculating keys might be too expensive
+- Sequencer can reveal keys on-demand with recalculating the whole chain
 
+5. Do validators have a validation period ? How can a validation period be enforced if they are given a non-mutable Master Seed ?
+6. Do validators need the Obscuro Private Key ?
