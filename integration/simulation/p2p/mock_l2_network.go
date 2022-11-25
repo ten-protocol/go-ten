@@ -88,7 +88,7 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 	return nil
 }
 
-func (netw *MockP2P) RequestBatches(from *big.Int, to *big.Int) ([]*common.ExtBatch, error) {
+func (netw *MockP2P) RequestBatches(_ *big.Int, _ *big.Int) error {
 	panic(errutil.ErrNoImpl)
 }
 

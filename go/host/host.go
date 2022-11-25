@@ -1037,21 +1037,27 @@ func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
 
 	// TODO - #718 - Have the enclave process batch, so that it's up to date.
 
-	err = h.requestMissingBatches(batch)
-	if err != nil {
-		return fmt.Errorf("could not retrieve missing historical batches")
-	}
-
+	// todo - joel - re-enable requesting missing batches.
+	//isRequested, err := h.requestMissingBatches(batch)
+	//if err != nil {
+	//	return fmt.Errorf("could not retrieve missing historical batches")
+	//}
+	//
+	//// If we did not need to request any batches, we can add the batch to the chain. If we did request batches, we skip
+	//// storing the batch for now; we'll store it later when we retrieve the full historical chain.
+	//if !isRequested {
 	err = h.db.AddBatchHeader(&batch)
 	if err != nil {
 		return fmt.Errorf("could not store batch header. Cause: %w", err)
 	}
+	//}
 
 	return nil
 }
 
-// Requests any historical batches we may be missing in the chain.
-func (h *host) requestMissingBatches(batch common.ExtBatch) error {
+// Requests any historical batches we may be missing in the chain. Returns a bool indicating whether any additional
+// batches have been requested.
+func (h *host) requestMissingBatches(batch common.ExtBatch) (bool, error) {
 	var earliestMissingBatch *big.Int
 	parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
 	for {
@@ -1068,7 +1074,7 @@ func (h *host) requestMissingBatches(batch common.ExtBatch) error {
 				parentBatchNumber = big.NewInt(0).Sub(parentBatchNumber, big.NewInt(1))
 				continue
 			}
-			return fmt.Errorf("could not get batch hash by number. Cause: %w", err)
+			return false, fmt.Errorf("could not get batch hash by number. Cause: %w", err)
 		}
 
 		// If there was no error, we have reach a stored batch.
@@ -1077,22 +1083,14 @@ func (h *host) requestMissingBatches(batch common.ExtBatch) error {
 
 	// There are no missing batches to request.
 	if earliestMissingBatch == nil {
-		return nil
+		return false, nil
 	}
 
-	latestMissingBatch := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
-	batches, err := h.p2p.RequestBatches(earliestMissingBatch, latestMissingBatch)
+	err := h.p2p.RequestBatches(earliestMissingBatch, batch.Header.Number)
 	if err != nil {
-		return fmt.Errorf("could not request historical batches. Cause: %w", err)
+		return false, fmt.Errorf("could not request historical batches. Cause: %w", err)
 	}
-	for _, historicalBatch := range batches {
-		err = h.db.AddBatchHeader(historicalBatch)
-		if err != nil {
-			return fmt.Errorf("could not store batch. Cause: %w", err)
-		}
-	}
-
-	return nil
+	return true, nil
 }
 
 // Checks the host config is valid.
