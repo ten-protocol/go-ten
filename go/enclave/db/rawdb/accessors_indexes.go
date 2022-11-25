@@ -137,7 +137,7 @@ func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig) 
 }
 
 // ReadBloomBits retrieves the compressed bloom bit vector belonging to the given
-// section and bit index from the.
+// section and bit index.
 func ReadBloomBits(db ethdb.KeyValueReader, bit uint, section uint64, head common.Hash) ([]byte, error) {
 	return db.Get(bloomBitsKey(bit, section, head))
 }

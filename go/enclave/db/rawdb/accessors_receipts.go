@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -182,7 +180,7 @@ func deriveLogFields(receipts []*receiptLogs, hash common.Hash, number uint64, t
 // ReadLogs retrieves the logs for all transactions in a block. The log fields
 // are populated with metadata. In case the receipts or the block body
 // are not found, a nil is returned.
-func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig, logger gethlog.Logger) ([][]*types.Log, error) {
+func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig) ([][]*types.Log, error) {
 	// Retrieve the flattened receipt slice
 	data, err := ReadReceiptsRLP(db, hash, number)
 	if err != nil {
