@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"sync/atomic"
 	"time"
 
@@ -1037,29 +1038,45 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
 
-	// todo - joel - re-enable requesting missing batches. Sort batches and grab first (lowest number). Check for gaps.
-	//isRequested, err := h.requestMissingBatches(batch)
-	//if err != nil {
-	//	return fmt.Errorf("could not retrieve missing historical batches")
-	//}
-	//
-	//// If we did not need to request any batches, we can add the batch to the chain. If we did request batches, we skip
-	//// storing the batch for now; we'll store it later when we retrieve the full historical chain.
-	//if !isRequested {
-	for _, batch := range batches {
-		err = h.db.AddBatchHeader(batch)
-		if err != nil {
-			return fmt.Errorf("could not store batch header. Cause: %w", err)
+	// We sort the batches, then check for duplicates or gaps. Both are a sign that something is wrong.
+	sort.Slice(batches, func(i, j int) bool {
+		return batches[i].Header.Number.Cmp(batches[i].Header.Number) < 0
+	})
+	for idx := 0; idx < len(batches)-1; idx++ {
+		i := batches[idx]
+		j := batches[idx+1]
+		numberGap := big.NewInt(0).Sub(j.Header.Number, i.Header.Number)
+		if numberGap == big.NewInt(0) {
+			return fmt.Errorf("duplicates in set of batches to process")
+		}
+		if numberGap != big.NewInt(1) {
+			return fmt.Errorf("gaps in chain of set of batches to process")
 		}
 	}
-	//}
+
+	// We request any batches we've missed. If we did request batches, we skip storing the batch for now; we'll store
+	// it later when we receive ot alongside the full set of missing historical batches.
+	isRequested, err := h.requestMissingBatches(batches[0])
+	if err != nil {
+		return fmt.Errorf("could not retrieve missing historical batches")
+	}
+
+	// If we did not need to request any batches, we can add the batch to the chain.
+	if !isRequested {
+		for _, batch := range batches {
+			err = h.db.AddBatchHeader(batch)
+			if err != nil {
+				return fmt.Errorf("could not store batch header. Cause: %w", err)
+			}
+		}
+	}
 
 	return nil
 }
 
 // Requests any historical batches we may be missing in the chain. Returns a bool indicating whether any additional
 // batches have been requested.
-func (h *host) requestMissingBatches(batch common.ExtBatch) (bool, error) {
+func (h *host) requestMissingBatches(batch *common.ExtBatch) (bool, error) {
 	var earliestMissingBatch *big.Int
 	parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
 	for {
