@@ -325,9 +325,9 @@ func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) (types.Receipts, e
 }
 
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
-	tx, blockHash, blockNumber, index := obscurorawdb.ReadTransaction(s.db, txHash, s.logger)
-	if tx == nil {
-		return nil, gethcommon.Hash{}, 0, 0, errutil.ErrNotFound
+	tx, blockHash, blockNumber, index, err := obscurorawdb.ReadTransaction(s.db, txHash)
+	if err != nil {
+		return nil, gethcommon.Hash{}, 0, 0, err
 	}
 	return tx, blockHash, blockNumber, index, nil
 }

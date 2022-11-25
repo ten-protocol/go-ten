@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -19,14 +21,16 @@ import (
 func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash) (*uint64, error) {
 	data, err := db.Get(txLookupKey(hash))
 	if err != nil {
-		return nil, err
+		return nil, errutil.ErrNotFound
 	}
+
 	// Database v6 tx lookup just stores the block number
-	if len(data) < common.HashLength {
-		number := new(big.Int).SetBytes(data).Uint64()
-		return &number, nil
+	if len(data) >= common.HashLength {
+		return nil, fmt.Errorf("transaction positional metadata was too long. Cause: %w", err)
 	}
-	return nil, fmt.Errorf("could not read transaction lookup entry. Cause: %w", err)
+
+	number := new(big.Int).SetBytes(data).Uint64()
+	return &number, nil
 }
 
 // writeTxLookupEntry stores a positional metadata for a transaction,
@@ -85,31 +89,27 @@ func deleteTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash) error {
 
 // ReadTransaction retrieves a specific transaction from the database, along with
 // its added positional metadata.
-func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (*types.Transaction, common.Hash, uint64, uint64) {
+func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
 	blockNumber, err := ReadTxLookupEntry(db, hash)
 	if err != nil {
-		// todo - joel - return error
-		return nil, common.Hash{}, 0, 0
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve transaction lookup entry. Cause: %w", err)
 	}
 
 	blockHash, err := ReadCanonicalHash(db, *blockNumber)
 	if err != nil {
-		logger.Error("Transaction referenced hash missing.", "number", *blockNumber, "hash", blockHash)
-		return nil, common.Hash{}, 0, 0
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve canonical hash for block number. Cause: %w", err)
 	}
 
 	transactions, err := ReadBody(db, *blockHash, *blockNumber)
 	if err != nil {
-		logger.Error("Transaction referenced missing.", "number", *blockNumber, "hash", blockHash)
-		return nil, common.Hash{}, 0, 0
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve block body. Cause: %w", err)
 	}
 	for txIndex, tx := range transactions {
 		if tx.Hash() == hash {
-			return tx, *blockHash, *blockNumber, uint64(txIndex)
+			return tx, *blockHash, *blockNumber, uint64(txIndex), nil
 		}
 	}
-	logger.Error("Transaction not found.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
-	return nil, common.Hash{}, 0, 0
+	return nil, common.Hash{}, 0, 0, fmt.Errorf("transaction not found")
 }
 
 // ReadReceipt retrieves a specific transaction receipt from the database, along with
