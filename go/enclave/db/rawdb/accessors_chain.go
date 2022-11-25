@@ -183,14 +183,15 @@ func ReadAllHashes(db ethdb.Iteratee, number uint64) []gethcommon.Hash {
 	return hashes
 }
 
-func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState, logger gethlog.Logger) {
+func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState) error {
 	blockStateBytes, err := rlp.EncodeToBytes(bs)
 	if err != nil {
-		logger.Crit("could not encode block state. ", log.ErrKey, err)
+		return fmt.Errorf("could not encode block state. Cause: %w", err)
 	}
-	if err := db.Put(blockStateKey(bs.Block), blockStateBytes); err != nil {
-		logger.Crit("could not put block state in DB. ", log.ErrKey, err)
+	if err = db.Put(blockStateKey(bs.Block), blockStateBytes); err != nil {
+		return fmt.Errorf("could not put block state in DB. Cause: %w", err)
 	}
+	return nil
 }
 
 func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) (*core.BlockState, error) {
