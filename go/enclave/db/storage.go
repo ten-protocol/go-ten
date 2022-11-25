@@ -263,7 +263,9 @@ func (s *storageImpl) StoreNewHead(state *core.BlockState, rollup *core.Rollup, 
 		if err := obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash()); err != nil {
 			return fmt.Errorf("could not write head header hash. Cause: %w", err)
 		}
-		obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64(), s.logger)
+		if err := obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64()); err != nil {
+			return fmt.Errorf("could not write canonical hash. Cause: %w", err)
+		}
 		obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup, s.logger)
 		if err := obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash()); err != nil {
 			return fmt.Errorf("could not write head rollup hash. Cause: %w", err)

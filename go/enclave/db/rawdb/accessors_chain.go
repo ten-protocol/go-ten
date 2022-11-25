@@ -255,10 +255,11 @@ func ReadCanonicalHash(db ethdb.Reader, number uint64) (*gethcommon.Hash, error)
 }
 
 // WriteCanonicalHash stores the hash assigned to a canonical block number.
-func WriteCanonicalHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, logger gethlog.Logger) {
+func WriteCanonicalHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
 	if err := db.Put(headerHashKey(number), hash.Bytes()); err != nil {
-		logger.Crit("Failed to store number to hash mapping. ", log.ErrKey, err)
+		return fmt.Errorf("failed to store number to hash mapping. Cause: %w", err)
 	}
+	return nil
 }
 
 // DeleteCanonicalHash removes the number to hash canonical mapping.
