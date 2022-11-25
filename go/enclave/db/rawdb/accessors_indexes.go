@@ -7,8 +7,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -114,31 +112,28 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, com
 
 // ReadReceipt retrieves a specific transaction receipt from the database, along with
 // its added positional metadata.
-func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig, logger gethlog.Logger) (*types.Receipt, common.Hash, uint64, uint64) {
+func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig) (*types.Receipt, common.Hash, uint64, uint64, error) {
 	// Retrieve the context of the receipt based on the transaction hash
 	blockNumber, err := ReadTxLookupEntry(db, hash)
 	if err != nil {
-		// todo - joel - return err
-		return nil, common.Hash{}, 0, 0
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve transaction lookup entry. Cause: %w", err)
 	}
 	blockHash, err := ReadCanonicalHash(db, *blockNumber)
 	if err != nil {
-		logger.Error("Transaction referenced hash missing.", "number", *blockNumber, "hash", blockHash)
-		return nil, common.Hash{}, 0, 0
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve canonical hash for block number. Cause: %w", err)
 	}
 
 	// Read all the receipts from the block and return the one with the matching hash
-	receipts, err := ReadReceipts(db, *blockHash, *blockNumber, config, logger)
+	receipts, err := ReadReceipts(db, *blockHash, *blockNumber, config)
 	if err != nil {
-		logger.Error("Receipt could not be retrieved.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve receipts for block number. Cause: %w", err)
 	}
 	for receiptIndex, receipt := range receipts {
 		if receipt.TxHash == hash {
-			return receipt, *blockHash, *blockNumber, uint64(receiptIndex)
+			return receipt, *blockHash, *blockNumber, uint64(receiptIndex), nil
 		}
 	}
-	logger.Error("Receipt not found.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
-	return nil, common.Hash{}, 0, 0
+	return nil, common.Hash{}, 0, 0, fmt.Errorf("receipt not found. Cause: %w", err)
 }
 
 // ReadBloomBits retrieves the compressed bloom bit vector belonging to the given
