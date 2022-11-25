@@ -7,8 +7,6 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -151,15 +149,16 @@ func ReadBloomBits(db ethdb.KeyValueReader, bit uint, section uint64, head commo
 
 // WriteBloomBits stores the compressed bloom bits vector belonging to the given
 // section and bit index.
-func WriteBloomBits(db ethdb.KeyValueWriter, bit uint, section uint64, head common.Hash, bits []byte, logger gethlog.Logger) {
+func WriteBloomBits(db ethdb.KeyValueWriter, bit uint, section uint64, head common.Hash, bits []byte) error {
 	if err := db.Put(bloomBitsKey(bit, section, head), bits); err != nil {
-		logger.Crit("Failed to store bloom bits.", log.ErrKey, err)
+		return fmt.Errorf("failed to store bloom bits. Cause: %w", err)
 	}
+	return nil
 }
 
 // DeleteBloombits removes all compressed bloom bits vector belonging to the
 // given section range and bit index.
-func DeleteBloombits(db ethdb.Database, bit uint, from uint64, to uint64, logger gethlog.Logger) {
+func DeleteBloombits(db ethdb.Database, bit uint, from uint64, to uint64) error {
 	start, end := bloomBitsKey(bit, from, common.Hash{}), bloomBitsKey(bit, to, common.Hash{})
 	it := db.NewIterator(nil, start)
 	defer it.Release()
@@ -173,10 +172,11 @@ func DeleteBloombits(db ethdb.Database, bit uint, from uint64, to uint64, logger
 		}
 		err := db.Delete(it.Key())
 		if err != nil {
-			logger.Crit("Failed to delete bloom bits.", log.ErrKey, err)
+			return fmt.Errorf("failed to delete bloom bits. Cause: %w", err)
 		}
 	}
 	if it.Error() != nil {
-		logger.Crit("Failed to delete bloom bits.", log.ErrKey, it.Error())
+		return fmt.Errorf("failed to delete bloom bits. Cause: %w", it.Error())
 	}
+	return nil
 }
