@@ -7,30 +7,33 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/status-im/keycard-go/hexutils"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
-// todo - all the function in this file should return an error, which must be handled by the caller
-//  once that is done, the logger parameter should be removed
-
-func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash, logger gethlog.Logger) (*core.Rollup, error) {
+func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash) (*core.Rollup, error) {
 	height, err := ReadHeaderNumber(db, hash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not read header number. Cause: %w", err)
 	}
+
+	header, err := readHeader(db, hash, *height)
+	if err != nil {
+		return nil, fmt.Errorf("could not read header. Cause: %w", err)
+	}
+
+	body, err := ReadBody(db, hash, *height)
+	if err != nil {
+		return nil, fmt.Errorf("could not read body. Cause: %w", err)
+	}
+
 	return &core.Rollup{
-		Header:       ReadHeader(db, hash, *height, logger),
-		Transactions: ReadBody(db, hash, *height, logger),
+		Header:       header,
+		Transactions: body,
 	}, nil
 }
 
@@ -47,105 +50,117 @@ func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, e
 	return &number, nil
 }
 
-func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup, logger gethlog.Logger) {
-	WriteHeader(db, rollup.Header, logger)
-	WriteBody(db, rollup.Hash(), rollup.Header.Number.Uint64(), rollup.Transactions, logger)
+func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
+	if err := writeHeader(db, rollup.Header); err != nil {
+		return fmt.Errorf("could not write header. Cause: %w", err)
+	}
+	if err := writeBody(db, rollup.Hash(), rollup.Header.Number.Uint64(), rollup.Transactions); err != nil {
+		return fmt.Errorf("could not write body. Cause: %w", err)
+	}
+	return nil
 }
 
-// WriteHeader stores a rollup header into the database and also stores the hash-
-// to-number mapping.
-func WriteHeader(db ethdb.KeyValueWriter, header *common.Header, logger gethlog.Logger) {
-	var (
-		hash   = header.Hash()
-		number = header.Number.Uint64()
-	)
+// Stores a rollup header into the database and also stores the hash-to-number mapping.
+func writeHeader(db ethdb.KeyValueWriter, header *common.Header) error {
+	hash := header.Hash()
+	number := header.Number.Uint64()
+
 	// Write the hash -> number mapping
-	WriteHeaderNumber(db, hash, number, logger)
+	err := writeHeaderNumber(db, hash, number)
+	if err != nil {
+		return fmt.Errorf("could not write header number. Cause: %w", err)
+	}
 
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
-		logger.Crit("could not encode rollup header. ", log.ErrKey, err)
+		return fmt.Errorf("could not encode rollup header. Cause: %w", err)
 	}
 	key := headerKey(number, hash)
-	if err := db.Put(key, data); err != nil {
-		logger.Crit("could not put header in DB. ", log.ErrKey, err)
+	if err = db.Put(key, data); err != nil {
+		return fmt.Errorf("could not put header in DB. Cause: %w", err)
 	}
+	return nil
 }
 
-// WriteHeaderNumber stores the hash->number mapping.
-func WriteHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, logger gethlog.Logger) {
+// Stores the hash->number mapping.
+func writeHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
 	key := headerNumberKey(hash)
 	enc := encodeRollupNumber(number)
 	if err := db.Put(key, enc); err != nil {
-		logger.Crit("could not put header number in DB. ", log.ErrKey, err)
+		return fmt.Errorf("could not put header number in DB. Cause: %w", err)
 	}
+	return nil
 }
 
-// ReadHeader retrieves the rollup header corresponding to the hash.
-func ReadHeader(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64, logger gethlog.Logger) *common.Header {
-	data := ReadHeaderRLP(db, hash, number, logger)
-	if len(data) == 0 {
-		return nil
+// Retrieves the rollup header corresponding to the hash.
+func readHeader(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (*common.Header, error) {
+	data, err := readHeaderRLP(db, hash, number)
+	if err != nil {
+		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
 	header := new(common.Header)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
-		logger.Crit("could not decode rollup header. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not decode rollup header. Cause: %w", err)
 	}
-	return header
+	return header, nil
 }
 
-// ReadHeaderRLP retrieves a block header in its raw RLP database encoding.
-func ReadHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64, logger gethlog.Logger) rlp.RawValue {
+// Retrieves a block header in its raw RLP database encoding.
+func readHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (rlp.RawValue, error) {
 	data, err := db.Get(headerKey(number, hash))
 	if err != nil {
-		logger.Crit("could not retrieve block header. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not retrieve block header. Cause: %w", err)
 	}
-	return data
+	return data, nil
 }
 
-func WriteBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, body []*common.L2Tx, logger gethlog.Logger) {
+func writeBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, body []*common.L2Tx) error {
 	data, err := rlp.EncodeToBytes(body)
 	if err != nil {
-		logger.Crit("could not encode L2 transactions. ", log.ErrKey, err)
+		return fmt.Errorf("could not encode L2 transactions. Cause: %w", err)
 	}
-	WriteBodyRLP(db, hash, number, data, logger)
+	if err = writeBodyRLP(db, hash, number, data); err != nil {
+		return fmt.Errorf("could not write L2 transactions. Cause: %w", err)
+	}
+	return nil
 }
 
 // ReadBody retrieves the rollup body corresponding to the hash.
-func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64, logger gethlog.Logger) []*common.L2Tx {
-	data := ReadBodyRLP(db, hash, number, logger)
-	if len(data) == 0 {
-		return nil
+func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) ([]*common.L2Tx, error) {
+	data, err := readBodyRLP(db, hash, number)
+	if err != nil {
+		return nil, fmt.Errorf("could not read body. Cause: %w", err)
 	}
 	body := new([]*common.L2Tx)
 	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
-		logger.Crit("could not decode L2 transactions. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not decode L2 transactions. Cause: %w", err)
 	}
-	return *body
+	return *body, nil
 }
 
-// WriteBodyRLP stores an RLP encoded block body into the database.
-func WriteBodyRLP(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, rlp rlp.RawValue, logger gethlog.Logger) {
+// Stores an RLP encoded block body into the database.
+func writeBodyRLP(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, rlp rlp.RawValue) error {
 	if err := db.Put(rollupBodyKey(number, hash), rlp); err != nil {
-		logger.Crit("could not put rollup body into DB. ", log.ErrKey, err)
+		return fmt.Errorf("could not put rollup body into DB. Cause: %w", err)
 	}
+	return nil
 }
 
-// ReadBodyRLP retrieves the block body (transactions and uncles) in RLP encoding.
-func ReadBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64, logger gethlog.Logger) rlp.RawValue {
+// Retrieves the block body (transactions and uncles) in RLP encoding.
+func readBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (rlp.RawValue, error) {
 	data, err := db.Get(rollupBodyKey(number, hash))
 	if err != nil {
-		logger.Crit(fmt.Sprintf("could not retrieve rollup body :r_%d from DB. ", common.ShortHash(hash)), "key", hexutils.BytesToHex(rollupBodyKey(number, hash)), log.ErrKey, err)
+		return nil, fmt.Errorf("could not retrieve rollup body from DB. Cause: %w", err)
 	}
-	return data
+	return data, nil
 }
 
-func ReadRollupsForHeight(db ethdb.Database, number uint64, logger gethlog.Logger) ([]*core.Rollup, error) {
-	hashes := ReadAllHashes(db, number)
+func ReadRollupsForHeight(db ethdb.Database, number uint64) ([]*core.Rollup, error) {
+	hashes := readAllHashes(db, number)
 	rollups := make([]*core.Rollup, len(hashes))
 	for i, hash := range hashes {
-		rollup, err := ReadRollup(db, hash, logger)
+		rollup, err := ReadRollup(db, hash)
 		if err != nil {
 			return nil, err
 		}
@@ -154,9 +169,8 @@ func ReadRollupsForHeight(db ethdb.Database, number uint64, logger gethlog.Logge
 	return rollups, nil
 }
 
-// ReadAllHashes retrieves all the hashes assigned to blocks at a certain heights,
-// both canonical and reorged forks included.
-func ReadAllHashes(db ethdb.Iteratee, number uint64) []gethcommon.Hash {
+// Retrieves all the hashes assigned to blocks at a certain heights, both canonical and reorged forks included.
+func readAllHashes(db ethdb.Iteratee, number uint64) []gethcommon.Hash {
 	prefix := headerKeyPrefix(number)
 
 	hashes := make([]gethcommon.Hash, 0, 1)
@@ -171,14 +185,15 @@ func ReadAllHashes(db ethdb.Iteratee, number uint64) []gethcommon.Hash {
 	return hashes
 }
 
-func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState, logger gethlog.Logger) {
+func WriteBlockState(db ethdb.KeyValueWriter, bs *core.BlockState) error {
 	blockStateBytes, err := rlp.EncodeToBytes(bs)
 	if err != nil {
-		logger.Crit("could not encode block state. ", log.ErrKey, err)
+		return fmt.Errorf("could not encode block state. Cause: %w", err)
 	}
-	if err := db.Put(blockStateKey(bs.Block), blockStateBytes); err != nil {
-		logger.Crit("could not put block state in DB. ", log.ErrKey, err)
+	if err = db.Put(blockStateKey(bs.Block), blockStateBytes); err != nil {
+		return fmt.Errorf("could not put block state in DB. Cause: %w", err)
 	}
+	return nil
 }
 
 func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) (*core.BlockState, error) {
@@ -194,7 +209,7 @@ func ReadBlockState(kv ethdb.KeyValueReader, hash gethcommon.Hash) (*core.BlockS
 	return bs, nil
 }
 
-func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log, logger gethlog.Logger) {
+func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log) error {
 	// Geth serialises its logs in a reduced form to minimise storage space. For now, it is more straightforward for us
 	// to serialise all the fields by converting the logs to this type.
 	logsForStorage := make([]*logForStorage, len(logs))
@@ -204,23 +219,24 @@ func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*
 
 	logBytes, err := rlp.EncodeToBytes(logsForStorage)
 	if err != nil {
-		logger.Crit("could not encode logs. ", log.ErrKey, err)
+		return fmt.Errorf("could not encode logs. Cause: %w", err)
 	}
 
 	if err := db.Put(logsKey(blockHash), logBytes); err != nil {
-		logger.Crit("could not put logs in DB. ", log.ErrKey, err)
+		return fmt.Errorf("could not put logs in DB. Cause: %w", err)
 	}
+	return nil
 }
 
-func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash, logger gethlog.Logger) []*types.Log {
-	data, _ := kv.Get(logsKey(blockHash))
-	if data == nil {
-		return nil
+func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) ([]*types.Log, error) {
+	data, err := kv.Get(logsKey(blockHash))
+	if err != nil {
+		return nil, err
 	}
 
 	logsForStorage := new([]*logForStorage)
 	if err := rlp.Decode(bytes.NewReader(data), logsForStorage); err != nil {
-		logger.Crit("could not decode logs. ", log.ErrKey, err)
+		return nil, fmt.Errorf("could not decode logs. Cause: %w", err)
 	}
 
 	logs := make([]*types.Log, len(*logsForStorage))
@@ -228,28 +244,34 @@ func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash, logger ge
 		logs[idx] = logToStore.toLog()
 	}
 
-	return logs
+	return logs, nil
 }
 
 // ReadCanonicalHash retrieves the hash assigned to a canonical block number.
-func ReadCanonicalHash(db ethdb.Reader, number uint64) gethcommon.Hash {
+func ReadCanonicalHash(db ethdb.Reader, number uint64) (*gethcommon.Hash, error) {
 	// Get it by hash from leveldb
-	data, _ := db.Get(headerHashKey(number))
-	return gethcommon.BytesToHash(data)
+	data, err := db.Get(headerHashKey(number))
+	if err != nil {
+		return nil, err
+	}
+	hash := gethcommon.BytesToHash(data)
+	return &hash, nil
 }
 
 // WriteCanonicalHash stores the hash assigned to a canonical block number.
-func WriteCanonicalHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, logger gethlog.Logger) {
+func WriteCanonicalHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
 	if err := db.Put(headerHashKey(number), hash.Bytes()); err != nil {
-		logger.Crit("Failed to store number to hash mapping. ", log.ErrKey, err)
+		return fmt.Errorf("failed to store number to hash mapping. Cause: %w", err)
 	}
+	return nil
 }
 
 // DeleteCanonicalHash removes the number to hash canonical mapping.
-func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64, logger gethlog.Logger) {
+func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64) error {
 	if err := db.Delete(headerHashKey(number)); err != nil {
-		logger.Crit("Failed to delete number to hash mapping. ", log.ErrKey, err)
+		return fmt.Errorf("failed to delete number to hash mapping. Cause: %w", err)
 	}
+	return nil
 }
 
 // ReadHeadRollupHash retrieves the hash of the current canonical head block.
@@ -263,24 +285,27 @@ func ReadHeadRollupHash(db ethdb.KeyValueReader) (*gethcommon.Hash, error) {
 }
 
 // WriteHeadRollupHash stores the head block's hash.
-func WriteHeadRollupHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, logger gethlog.Logger) {
+func WriteHeadRollupHash(db ethdb.KeyValueWriter, hash gethcommon.Hash) error {
 	if err := db.Put(headRollupKey, hash.Bytes()); err != nil {
-		logger.Crit("Failed to store last block's hash. ", log.ErrKey, err)
+		return fmt.Errorf("failed to store last block's hash. Cause: %w", err)
 	}
+	return nil
 }
 
 // ReadHeadHeaderHash retrieves the hash of the current canonical head header.
-func ReadHeadHeaderHash(db ethdb.KeyValueReader) gethcommon.Hash {
-	data, _ := db.Get(headHeaderKey)
-	if len(data) == 0 {
-		return gethcommon.Hash{}
+func ReadHeadHeaderHash(db ethdb.KeyValueReader) (*gethcommon.Hash, error) {
+	data, err := db.Get(headHeaderKey)
+	if err != nil {
+		return nil, err
 	}
-	return gethcommon.BytesToHash(data)
+	hash := gethcommon.BytesToHash(data)
+	return &hash, nil
 }
 
 // WriteHeadHeaderHash stores the hash of the current canonical head header.
-func WriteHeadHeaderHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, logger gethlog.Logger) {
+func WriteHeadHeaderHash(db ethdb.KeyValueWriter, hash gethcommon.Hash) error {
 	if err := db.Put(headHeaderKey, hash.Bytes()); err != nil {
-		logger.Crit("Failed to store last header's hash. ", log.ErrKey, err)
+		return fmt.Errorf("failed to store last header's hash. Cause: %w", err)
 	}
+	return nil
 }
