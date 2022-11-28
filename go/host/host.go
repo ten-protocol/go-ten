@@ -461,7 +461,7 @@ func (h *host) startProcessing() { //nolint:gocognit
 
 		case batchRequest := <-h.batchRequestCh:
 			if err := h.handleBatchRequest(&batchRequest); err != nil {
-				h.logger.Error("Could not handle batches. ", log.ErrKey, err)
+				h.logger.Error("Could not handle batch request. ", log.ErrKey, err)
 			}
 
 		case <-h.exitHostCh:
@@ -1052,15 +1052,19 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
 
-	// We request any batches we've missed. If we did request batches, we skip storing the batch for now; we'll store
-	// it later when we receive ot alongside the full set of missing historical batches.
-	isRequested, err := h.requestMissingBatches(batches)
+	// We request any batches we've missed.
+	batchRequest, err := h.batchManager.CreateBatchRequest(batches)
 	if err != nil {
-		return fmt.Errorf("could not retrieve missing historical batches")
+		return err
 	}
 
-	// If we requested any batches, we return early and wait for the missing batches to arrive.
-	if isRequested {
+	if batchRequest != nil {
+		batchRequest.Requester = h.config.P2PPublicAddress
+		err = h.p2p.RequestBatches(batchRequest)
+		if err != nil {
+			return fmt.Errorf("could not request historical batches. Cause: %w", err)
+		}
+		// If we requested any batches, we return early and wait for the missing batches to arrive.
 		return nil
 	}
 
@@ -1069,26 +1073,6 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		return fmt.Errorf("could not store batches. Cause: %w", err)
 	}
 	return nil
-}
-
-// Requests any historical batches we may be missing in the chain. Returns a bool indicating whether any additional
-// batches have been requested.
-func (h *host) requestMissingBatches(batches []*common.ExtBatch) (bool, error) {
-	batchRequest, err := h.batchManager.CreateBatchRequest(batches)
-	if err != nil {
-		return false, err
-	}
-
-	if batchRequest == nil {
-		// There are no missing batches to request.
-		return false, nil
-	}
-	batchRequest.Requester = h.config.P2PPublicAddress
-	err = h.p2p.RequestBatches(batchRequest)
-	if err != nil {
-		return false, fmt.Errorf("could not request historical batches. Cause: %w", err)
-	}
-	return true, nil
 }
 
 func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchRequest) error {
