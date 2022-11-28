@@ -3,11 +3,12 @@ package batchmanager
 import (
 	"errors"
 	"fmt"
+	"math/big"
+	"sort"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/host/db"
-	"math/big"
-	"sort"
 )
 
 // BatchManager handles the creation and processing of batches for the host.
@@ -93,4 +94,15 @@ func (b *BatchManager) EarliestMissingBatch(batch *common.ExtBatch) (*big.Int, e
 		break
 	}
 	return earliestMissingBatch, nil
+}
+
+// todo - joel - comment
+func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
+	for _, batch := range batches {
+		err := b.db.AddBatchHeader(batch)
+		if err != nil {
+			return fmt.Errorf("could not store batch header. Cause: %w", err)
+		}
+	}
+	return nil
 }

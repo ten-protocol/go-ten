@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -1064,19 +1065,16 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	if err != nil {
 		return fmt.Errorf("could not retrieve missing historical batches")
 	}
+
 	// If we requested any batches, we return early and wait for the missing batches to arrive.
 	if isRequested {
 		return nil
 	}
 
-	// If we did not need to request any batches, we can add the batch to the chain.
-	for _, batch := range batches {
-		err = h.db.AddBatchHeader(batch)
-		if err != nil {
-			return fmt.Errorf("could not store batch header. Cause: %w", err)
-		}
+	err = h.batchManager.StoreBatches(batches)
+	if err != nil {
+		return fmt.Errorf("could not store batches. Cause: %w", err)
 	}
-
 	return nil
 }
 
@@ -1109,7 +1107,7 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 
 	batches, err := h.batchManager.RetrieveBatches(batchRequest)
 	if err != nil {
-		return fmt.Errorf("could not retrive batches based on request. Cause: %w", err)
+		return fmt.Errorf("could not retrieve batches based on request. Cause: %w", err)
 	}
 
 	return h.p2p.SendBatches(batches, batchRequest.Requester)
