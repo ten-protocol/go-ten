@@ -166,7 +166,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	case msgTypeBatches:
 		callback.ReceiveBatches(msg.Contents)
 	case msgTypeBatchRequest:
-		callback.SendBatches(msg.Contents)
+		callback.ReceiveBatchRequest(msg.Contents)
 	}
 }
 

@@ -22,19 +22,21 @@ func NewBatchManager(db *db.DB) *BatchManager {
 	}
 }
 
-// CreateBatchRequest identifies whether any batches are still missing, given the state of the host's database and the
-// batches provided. It creates a corresponding batch request, returning nil if no batches need to be requested.
-func (b *BatchManager) CreateBatchRequest(batches []*common.ExtBatch) (*common.BatchRequest, error) {
+// IsMissingBatches retruns a bool indicating whether any historical batches are missing, given the state of the host's
+// database and the batches provided. If batches are missing, it creates a corresponding batch request.
+func (b *BatchManager) IsMissingBatches(batches []*common.ExtBatch) (bool, *common.BatchRequest, error) {
 	// We sort the batches, then check for duplicates or gaps. If we don't identify gaps first, there's a risk that
 	// we won't request sufficient missing batches (e.g. we have `[0,1]` in our DB, and receive `[3,4,6]`; it is
 	// important that we don't "see" the `3` and fail to request the `5`).
 	b.sortBatchesByNumber(batches)
 	hasGapsOrDupes, err := b.checkForGapsAndDupes(batches)
 	if hasGapsOrDupes {
-		return nil, err
+		return false, nil, err
 	}
 
 	earliestReceivedBatch := batches[0]
+	latestReceivedBatch := batches[len(batches)-1]
+
 	var earliestMissingBatch *big.Int
 	parentBatchNumber := big.NewInt(0).Sub(earliestReceivedBatch.Header.Number, big.NewInt(1))
 	for {
@@ -51,7 +53,7 @@ func (b *BatchManager) CreateBatchRequest(batches []*common.ExtBatch) (*common.B
 				parentBatchNumber = big.NewInt(0).Sub(parentBatchNumber, big.NewInt(1))
 				continue
 			}
-			return nil, fmt.Errorf("could not get batch hash by number. Cause: %w", err)
+			return false, nil, fmt.Errorf("could not get batch hash by number. Cause: %w", err)
 		}
 
 		// If there was no error, we have reached a stored batch.
@@ -60,10 +62,10 @@ func (b *BatchManager) CreateBatchRequest(batches []*common.ExtBatch) (*common.B
 
 	if earliestMissingBatch == nil {
 		// There are no missing batches to request.
-		return nil, nil //nolint:nilnil
+		return false, nil, nil
 	}
 
-	return &common.BatchRequest{From: earliestMissingBatch, To: earliestReceivedBatch.Header.Number}, nil
+	return true, &common.BatchRequest{From: earliestMissingBatch, To: latestReceivedBatch.Header.Number}, nil
 }
 
 // GetBatches retrieves the batches matching the batch request from the host's database.

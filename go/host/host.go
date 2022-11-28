@@ -321,7 +321,7 @@ func (h *host) ReceiveBatches(batches common.EncodedBatches) {
 	h.batchP2PCh <- batches
 }
 
-func (h *host) SendBatches(batchRequest common.EncodedBatchRequest) {
+func (h *host) ReceiveBatchRequest(batchRequest common.EncodedBatchRequest) {
 	h.batchRequestCh <- batchRequest
 }
 
@@ -1039,7 +1039,11 @@ func (h *host) checkBlockForSecretResponse(block *types.Block) bool {
 	return false
 }
 
-// Handles an incoming set of batches.
+// Handles an incoming set of batches. There are two possibilities:
+// (1) There are no gaps in the historical chain of batches. The new batches can be added immediately
+// (2) There are gaps in the historical chain of batches. To avoid an inconsistent state (i.e. one where we have stored
+// a batch without its parent), we request the sequencer to resend the batches we've just received, plus any missing
+// historical batches, then discard the received batches. We will store all of these at once when we receive them
 func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	var batches []*common.ExtBatch
 	err := rlp.DecodeBytes(*encodedBatches, &batches)
@@ -1053,12 +1057,11 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
 
 	// We request any batches we've missed.
-	batchRequest, err := h.batchManager.CreateBatchRequest(batches)
+	isMissingBatches, batchRequest, err := h.batchManager.IsMissingBatches(batches)
 	if err != nil {
 		return err
 	}
-
-	if batchRequest != nil {
+	if isMissingBatches {
 		batchRequest.Requester = h.config.P2PPublicAddress
 		err = h.p2p.RequestBatches(batchRequest)
 		if err != nil {
