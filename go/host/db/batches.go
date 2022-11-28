@@ -53,6 +53,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 		}
 	}
 
+	// TODO - #718 - Check that we are not re-adding an existing batch before updating the number.
 	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
 	currentTotal, err := db.readTotalTransactions()
 	if err != nil {
@@ -69,7 +70,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
 	}
-	if errors.Is(err, errutil.ErrNotFound) || headBatchHeader.Number.Int64() <= batch.Header.Number.Int64() {
+	if errors.Is(err, errutil.ErrNotFound) || headBatchHeader.Number.Cmp(batch.Header.Number) == -1 {
 		err = db.writeHeadBatchHash(batch.Header.Hash())
 		if err != nil {
 			return fmt.Errorf("could not write new head batch hash. Cause: %w", err)

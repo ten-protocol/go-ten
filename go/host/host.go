@@ -1077,14 +1077,16 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	if err != nil {
 		return fmt.Errorf("could not retrieve missing historical batches")
 	}
+	// If we requested any batches, we return early and wait for the missing batches to arrive.
+	if isRequested {
+		return nil
+	}
 
 	// If we did not need to request any batches, we can add the batch to the chain.
-	if !isRequested {
-		for _, batch := range batches {
-			err = h.db.AddBatchHeader(batch)
-			if err != nil {
-				return fmt.Errorf("could not store batch header. Cause: %w", err)
-			}
+	for _, batch := range batches {
+		err = h.db.AddBatchHeader(batch)
+		if err != nil {
+			return fmt.Errorf("could not store batch header. Cause: %w", err)
 		}
 	}
 

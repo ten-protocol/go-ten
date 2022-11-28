@@ -416,10 +416,10 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 			numberOfWithdrawalRequests++
 		}
 
+		parentHash := header.ParentHash
 		header, err = obscuroClient.RollupHeaderByHash(header.ParentHash)
 		if err != nil {
-			// TODO - #718 - Renable this check once we've implemented catch-up for batches.
-			// t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header by hash. Cause: %s", nodeIdx, err))
+			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header %s. Cause: %s", nodeIdx, parentHash, err))
 			return
 		}
 	}
