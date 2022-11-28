@@ -70,11 +70,9 @@ func setupBlockProvider(mockEthClient EthClient) (EthBlockProvider, context.Canc
 
 	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut, log.NodeIDKey, "test")
 	blockProvider := EthBlockProvider{
-		ethClient:     mockEthClient,
-		ctx:           ctx,
-		runningStatus: new(int32),
-		streamCh:      make(chan *types.Block),
-		logger:        logger,
+		ethClient: mockEthClient,
+		ctx:       ctx,
+		logger:    logger,
 	}
 	return blockProvider, cancelCtx
 }
