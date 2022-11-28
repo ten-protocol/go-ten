@@ -32,7 +32,7 @@ type EthBlockProvider struct {
 	ethClient     EthClient
 	ctx           context.Context
 	logger        gethlog.Logger
-	cancelRunning context.CancelFunc // if this is not nil it kills the latest running goroutine
+	cancelRunning context.CancelFunc // if this is not nil it kills the currently running goroutine
 
 	// the state of the block provider
 	latestSent *types.Header // most recently sent block (reset to nil when a `StartStreaming...` method is called)
@@ -51,7 +51,7 @@ func (e *EthBlockProvider) StartStreamingFromHash(latestHash gethcommon.Hash) (<
 // StartStreamingFromHeight will (re)start streaming from the given height, closing out any existing stream channel and
 // returning the fresh channel - the next block will be the requested height
 func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, error) {
-	// make sure we stop any running stream
+	// make sure we stop the running stream if there is one
 	e.Stop()
 
 	// block heights start at 1
@@ -66,6 +66,7 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (<-chan *ty
 	return streamCh, nil
 }
 
+// Stop resets the state of the BlockProvider ready to start streaming again
 func (e *EthBlockProvider) Stop() {
 	if e.cancelRunning != nil {
 		e.cancelRunning()
