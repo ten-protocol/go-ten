@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
@@ -29,8 +31,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/ethereum/go-ethereum"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/naoina/toml"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -60,26 +60,24 @@ const (
 
 // Implementation of host.Host.
 type host struct {
-	config      config.HostConfig
-	shortID     uint64
-	isSequencer bool
+	config          config.HostConfig
+	shortID         uint64
+	isSequencer     bool
+	genesisRequired bool
 
 	p2p           hostcommon.P2P       // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	enclaveClient common.Enclave       // For communication with the enclave
 	rpcServer     clientrpc.Server     // For communication with Obscuro client applications
 
-	blockProvider hostcommon.ReconnectingBlockProvider
-
 	// control the host lifecycle
 	exitHostCh            chan bool
 	stopHostInterrupt     *int32
 	bootstrappingComplete *int32 // Marks when the host is done bootstrapping
 
-	l1BlockRPCCh chan l1BlockAndParent        // The channel that new blocks from the L1 node are sent to
-	forkRPCCh    chan []common.EncodedL1Block // The channel that new forks from the L1 node are sent to
-	txP2PCh      chan common.EncryptedTx      // The channel that new transactions from peers are sent to
-	batchP2PCh   chan common.EncodedBatch     // The channel that new batches from peers are sent to
+	l1BlockProvider hostcommon.ReconnectingBlockProvider
+	txP2PCh         chan common.EncryptedTx  // The channel that new transactions from peers are sent to
+	batchP2PCh      chan common.EncodedBatch // The channel that new batches from peers are sent to
 
 	db *db.DB // Stores the host's publicly-available data
 
@@ -90,7 +88,15 @@ type host struct {
 	logger gethlog.Logger
 }
 
-func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) hostcommon.MockHost {
+func NewHost(
+	config config.HostConfig,
+	p2p hostcommon.P2P,
+	ethClient ethadapter.EthClient,
+	enclaveClient common.Enclave,
+	ethWallet wallet.Wallet,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	logger gethlog.Logger,
+) hostcommon.Host {
 	host := &host{
 		// config
 		config:      config,
@@ -101,7 +107,6 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		p2p:           p2p,
 		ethClient:     ethClient,
 		enclaveClient: enclaveClient,
-		blockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
 
 		// lifecycle channels
 		exitHostCh:            make(chan bool),
@@ -109,10 +114,9 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		bootstrappingComplete: new(int32),
 
 		// incoming data
-		l1BlockRPCCh: make(chan l1BlockAndParent),
-		forkRPCCh:    make(chan []common.EncodedL1Block),
-		txP2PCh:      make(chan common.EncryptedTx),
-		batchP2PCh:   make(chan common.EncodedBatch),
+		l1BlockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
+		txP2PCh:         make(chan common.EncryptedTx),
+		batchP2PCh:      make(chan common.EncodedBatch),
 
 		// Initialize the host DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -207,23 +211,10 @@ func (h *host) Start() {
 		}
 	}
 
-	// attach the l1 monitor
-	go h.monitorBlocks()
-
-	// bootstrap the host
-	latestL1Block := h.bootstrapHost()
-
-	// start the enclave speculative work from last L1 block
-	err = h.enclaveClient.Start(latestL1Block)
-	if err != nil {
-		h.logger.Crit("Could not start the enclave.", log.ErrKey, err.Error())
-	}
-
 	if h.config.IsGenesis {
-		_, err = h.initialiseProtocol(&latestL1Block)
-		if err != nil {
-			h.logger.Crit("Could not bootstrap.", log.ErrKey, err.Error())
-		}
+		// the genesis node gets a flag set on it until it has published the genesis block
+		// todo: handle genesis separately as an initial step for the genesis node
+		h.genesisRequired = true
 	}
 	// start the obscuro RPC endpoints
 	if h.rpcServer != nil {
@@ -281,14 +272,6 @@ func (h *host) DB() *db.DB {
 
 func (h *host) EnclaveClient() common.Enclave {
 	return h.enclaveClient
-}
-
-func (h *host) MockedNewHead(b common.EncodedL1Block, p common.EncodedL1Block) {
-	h.l1BlockRPCCh <- l1BlockAndParent{b, p}
-}
-
-func (h *host) MockedNewFork(b []common.EncodedL1Block) {
-	h.forkRPCCh <- b
 }
 
 func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
@@ -352,8 +335,8 @@ func (h *host) Stop() {
 		// connection remains open, waiting for the RPC server to close.
 		go h.rpcServer.Stop()
 	}
-	if h.blockProvider != nil {
-		go h.blockProvider.Stop()
+	if h.l1BlockProvider != nil {
+		go h.l1BlockProvider.Stop()
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
@@ -393,10 +376,16 @@ func (h *host) waitForEnclave() {
 }
 
 // starts the host main processing loop
-// todo: matt to fix this complexity `nolint` in next PR with block provider
-func (h *host) startProcessing() { //nolint:gocognit
+func (h *host) startProcessing() {
 	// Only open the p2p connection when the host is fully initialised
 	h.p2p.StartListening(h)
+
+	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
+	// stream ch during the main loop if enclave gets out-of-sync, and we need to stream from an earlier block
+	blockStream, err := h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(0))
+	if err != nil {
+		h.logger.Crit("unable to stream l1 blocks for enclave", log.ErrKey, err)
+	}
 
 	// use the roundInterrupt as a signaling mechanism for interrupting block processing
 	// stops processing the current round if a new block arrives
@@ -408,37 +397,11 @@ func (h *host) startProcessing() { //nolint:gocognit
 	// - Process new Transactions gossiped from L2 Peers
 	for {
 		select {
-		case blockAndParent := <-h.l1BlockRPCCh:
+		case b := <-blockStream:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			err := h.processL1Block(blockAndParent.parent, false)
-			if err != nil {
-				var rejErr *common.BlockRejectError
-				if errors.As(err, &rejErr) {
-					// this is a common error (the parent has usually already been processed and is being sent just in case)
-					h.logger.Debug("Rejected parent block.", log.ErrKey, rejErr, "enclaveHead", rejErr.L1Head)
-				} else {
-					h.logger.Info("Could not process parent block. ", log.ErrKey, err)
-				}
-			}
-			err = h.processL1Block(blockAndParent.block, true)
-			if err != nil {
-				var rejErr *common.BlockRejectError
-				if errors.As(err, &rejErr) {
-					h.logger.Info("Rejected latest block.", log.ErrKey, rejErr, "enclaveHead", rejErr.L1Head)
-				} else {
-					h.logger.Warn("Could not process latest block.", log.ErrKey, err)
-				}
-			}
-
-		case f := <-h.forkRPCCh:
-			roundInterrupt = triggerInterrupt(roundInterrupt)
-			for i, blk := range f {
-				isLatest := i == (len(f) - 1)
-				err := h.processL1Block(blk, isLatest)
-				if err != nil && isLatest {
-					h.logger.Warn("Could not process latest fork block received via RPC.", log.ErrKey, err)
-				}
-			}
+			err := h.processL1Block(b, true) // h.l1BlockProvider.IsLive(b.Hash()))
+			// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
+			blockStream = h.handleProcessBlockErr(b, blockStream, err)
 
 		case tx := <-h.txP2PCh:
 			if _, err := h.enclaveClient.SubmitTx(tx); err != nil {
@@ -456,6 +419,31 @@ func (h *host) startProcessing() { //nolint:gocognit
 	}
 }
 
+func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream <-chan *types.Block, err error) <-chan *types.Block {
+	if err == nil {
+		return stream
+	}
+	var rejErr *common.BlockRejectError
+	if !errors.As(err, &rejErr) {
+		// received unexpected error (no useful information from the enclave)
+		// we log it out and ignore it until the enclave tells us more information
+		h.logger.Warn("Error processing block.", log.ErrKey, err)
+		return stream
+	}
+	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, "blk", processedBlock.Hash(), "blkHeight", processedBlock.Number())
+	if rejErr.L1Head == (gethcommon.Hash{}) {
+		h.logger.Warn("No L1 head information provided by enclave, continuing with existing stream")
+		return stream
+	}
+	h.logger.Info("Resetting block provider stream to enclave latest head.", "streamFrom", rejErr.L1Head)
+	replacementStream, err := h.l1BlockProvider.StartStreamingFromHash(rejErr.L1Head)
+	if err != nil {
+		h.logger.Warn("Could not reset block provider, continuing with previous stream", log.ErrKey, err)
+		return stream
+	}
+	return replacementStream
+}
+
 // activates the given interrupt (atomically) and returns a new interrupt
 func triggerInterrupt(interrupt *int32) *int32 {
 	// Notify the previous round to stop work
@@ -464,30 +452,19 @@ func triggerInterrupt(interrupt *int32) *int32 {
 	return &i
 }
 
-type l1BlockAndParent struct {
-	block  common.EncodedL1Block
-	parent common.EncodedL1Block
-}
-
-func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) error {
+func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	// For the genesis block the parent is nil
 	if block == nil {
 		return nil
 	}
 
-	var result *common.BlockSubmissionResponse
-
-	decodedBlock, err := block.DecodeBlock()
-	if err != nil {
-		return err
-	}
-	h.processL1BlockTransactions(decodedBlock)
+	h.processL1BlockTransactions(block)
 
 	// submit each block to the enclave for ingestion plus validation
 	// todo: isLatest should only be true when we're not behind
-	result, err = h.enclaveClient.SubmitL1Block(*decodedBlock, isLatestBlock)
+	result, err := h.enclaveClient.SubmitL1Block(*block, isLatestBlock)
 	if err != nil {
-		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decodedBlock.Hash()), err)
+		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
 
 	err = h.storeBlockProcessingResult(result)
@@ -509,11 +486,20 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 		}
 	}
 
-	if result.ProducedRollup.Header == nil {
-		return nil
-	}
-
 	if isLatestBlock {
+		if h.genesisRequired {
+			err := h.initialiseProtocol(block)
+			if err != nil {
+				h.logger.Crit("Could not initialise protocol.", log.ErrKey, err)
+			}
+			h.genesisRequired = false
+			return nil // nothing further to process since network had no genesis
+		}
+
+		if result.ProducedRollup.Header == nil {
+			return nil
+		}
+
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
@@ -593,11 +579,11 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 }
 
 // Called only by the first enclave to bootstrap the network
-func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
-	// Create the genesis rollup.
+func (h *host) initialiseProtocol(block *types.Block) error {
+	// Create the genesis rollup
 	genesisResponse, err := h.enclaveClient.ProduceGenesis(block.Hash())
 	if err != nil {
-		return common.L2RootHash{}, fmt.Errorf("could not produce genesis. Cause: %w", err)
+		return fmt.Errorf("could not produce genesis. Cause: %w", err)
 	}
 	h.logger.Info(
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
@@ -611,7 +597,7 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	// Submit the rollup to the management contract.
 	encodedRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
-		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
+		return fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
 	l1tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
@@ -619,10 +605,10 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	rollupTx := h.mgmtContractLib.CreateRollup(l1tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 	if err != nil {
-		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
+		return fmt.Errorf("could not initialise protocol. Cause: %w", err)
 	}
 
-	return genesisResponse.ProducedRollup.Header.ParentHash, nil
+	return nil
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.
@@ -704,7 +690,6 @@ func (h *host) requestSecret() error {
 	if err != nil {
 		h.logger.Crit("could not receive the secret", log.ErrKey, err)
 	}
-	h.logger.Info("§§§ Secret received")
 	return nil
 }
 
@@ -795,194 +780,8 @@ func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 	return nil
 }
 
-// monitors the L1 client for new blocks and injects them into the aggregator
-func (h *host) monitorBlocks() {
-	var lastKnownBlkHash gethcommon.Hash
-	listener, subs := h.ethClient.BlockListener()
-	h.logger.Info("Start monitoring Ethereum blocks..")
-
-	// only process blocks if the host is running
-	for atomic.LoadInt32(h.stopHostInterrupt) == 0 {
-		select {
-		case err := <-subs.Err():
-			if errors.Is(err, ethadapter.ErrSubscriptionNotSupported) {
-				// there will never be a block from this monitor process, we can abandon it
-				return
-			}
-			h.logger.Error("L1 block monitoring error", log.ErrKey, err)
-			h.logger.Info("Restarting L1 block Monitoring...")
-			// it's fine to immediately restart the listener, any incoming blocks will be on hold in the queue
-			listener, subs = h.ethClient.BlockListener()
-
-			err = h.catchupMissedBlocks(lastKnownBlkHash)
-			if err != nil {
-				h.logger.Crit("could not catch up missed blocks.", log.ErrKey, err)
-			}
-
-		case blkHeader := <-listener:
-			// don't process blocks if the host is stopping
-			if atomic.LoadInt32(h.stopHostInterrupt) == 1 {
-				break
-			}
-
-			// ignore blocks if bootstrapping is happening
-			if atomic.LoadInt32(h.bootstrappingComplete) == 0 {
-				h.logger.Trace(fmt.Sprintf("Host in bootstrap - ignoring block %s", blkHeader.Hash()))
-				continue
-			}
-
-			block, err := h.ethClient.BlockByHash(blkHeader.Hash())
-			if err != nil {
-				h.logger.Crit(fmt.Sprintf("could not fetch block for hash %s.", blkHeader.Hash().String()), log.ErrKey, err)
-			}
-			blockParent, err := h.ethClient.BlockByHash(block.ParentHash())
-			if err != nil {
-				h.logger.Crit(fmt.Sprintf("could not fetch block's parent with hash %s.", block.ParentHash().String()), log.ErrKey, err)
-			}
-
-			h.logger.Info(fmt.Sprintf(
-				"Received a new block b_%d(%d)",
-				common.ShortHash(blkHeader.Hash()),
-				blkHeader.Number.Uint64(),
-			))
-
-			// issue the block to the ingestion channel
-			err = h.encodeAndIngest(block, blockParent)
-			if err != nil {
-				h.logger.Crit("Internal error", log.ErrKey, err)
-			}
-			lastKnownBlkHash = block.Hash()
-		}
-	}
-
-	h.logger.Info("Stopped monitoring for l1 blocks")
-	// make sure it cleanly unsubscribes
-	// todo this should be defered when the errors are upstreamed instead of panic'd
-	subs.Unsubscribe()
-}
-
-func (h *host) catchupMissedBlocks(lastKnownBlkHash gethcommon.Hash) error {
-	var lastBlkNumber *big.Int
-	var reingestBlocks []*types.Block
-
-	// get the blockchain tip block
-	blk, err := h.ethClient.BlockByNumber(lastBlkNumber)
-	if err != nil {
-		return fmt.Errorf("catching up on missed blocks, unable to fetch tip block - reason: %w", err)
-	}
-
-	if blk.Hash().Hex() == lastKnownBlkHash.Hex() {
-		// if no new blocks have been issued then nothing to catchup
-		return nil
-	}
-	reingestBlocks = append(reingestBlocks, blk)
-
-	// get all blocks from the blockchain tip to the last block ingested by the host
-	for blk.Hash().Hex() != lastKnownBlkHash.Hex() {
-		blockParent, err := h.ethClient.BlockByHash(blk.ParentHash())
-		if err != nil {
-			return fmt.Errorf("catching up on missed blocks, could not fetch block's parent with hash %s. Cause: %w", blk.ParentHash(), err)
-		}
-
-		reingestBlocks = append(reingestBlocks, blockParent)
-		blk = blockParent
-	}
-
-	// make sure to have the last ingested block available for ingestion (because we always ingest ( blk, blk_parent)
-	lastKnownBlk, err := h.ethClient.BlockByHash(lastKnownBlkHash)
-	if err != nil {
-		return fmt.Errorf("catching up on missed blocks, unable to feth last known block - reason: %w", err)
-	}
-	reingestBlocks = append(reingestBlocks, lastKnownBlk)
-
-	// issue the block to the ingestion channel in reverse, with the parent attached too
-	for i := len(reingestBlocks) - 2; i >= 0; i-- {
-		h.logger.Debug(fmt.Sprintf("Ingesting %s and %s blocks of %v", reingestBlocks[i].Hash(), reingestBlocks[i+1].Hash(), reingestBlocks))
-		err = h.encodeAndIngest(reingestBlocks[i], reingestBlocks[i+1])
-		if err != nil {
-			h.logger.Crit("Internal error", log.ErrKey, err)
-		}
-	}
-
-	return nil
-}
-
-func (h *host) encodeAndIngest(block *types.Block, blockParent *types.Block) error {
-	encodedBlock, err := common.EncodeBlock(block)
-	if err != nil {
-		return fmt.Errorf("could not encode block with hash %s. Cause: %w", block.Hash().String(), err)
-	}
-
-	encodedBlockParent, err := common.EncodeBlock(blockParent)
-	if err != nil {
-		return fmt.Errorf("could not encode block's parent with hash %s. Cause: %w", block.ParentHash().String(), err)
-	}
-
-	h.l1BlockRPCCh <- l1BlockAndParent{encodedBlock, encodedBlockParent}
-	return nil
-}
-
-func (h *host) bootstrapHost() types.Block {
-	var err error
-	var nextBlk *types.Block
-
-	// build up from the genesis block
-	// todo update to bootstrap from the last block in storage
-	// todo the genesis block should be the block where the contract was deployed
-	currentL1Block, err := h.ethClient.BlockByNumber(big.NewInt(0))
-	if err != nil {
-		h.logger.Crit("Internal error", log.ErrKey, err)
-	}
-
-	h.logger.Info(fmt.Sprintf("Started host bootstrap with block %d", currentL1Block.NumberU64()))
-
-	startTime, logTime := time.Now(), time.Now()
-	for {
-		cb := *currentL1Block
-		h.processL1BlockTransactions(&cb)
-		result, err := h.enclaveClient.SubmitL1Block(cb, false)
-		if err != nil {
-			var bsErr *common.BlockRejectError
-			isBSE := errors.As(err, &bsErr)
-			if !isBSE {
-				// unexpected error
-				h.logger.Crit("Internal error", log.ErrKey, err)
-			}
-			// todo: we need to use the latest hash info from the BlockRejectError to realign the block streaming for the enclave
-			h.logger.Info(fmt.Sprintf("Failed to ingest block b_%d. Cause: %s",
-				common.ShortHash(result.BlockHeader.Hash()), bsErr))
-		} else {
-			// submission was successful
-			err := h.storeBlockProcessingResult(result)
-			if err != nil {
-				h.logger.Crit("Could not store block processing result", log.ErrKey, err)
-			}
-		}
-
-		nextBlk, err = h.ethClient.BlockByNumber(big.NewInt(cb.Number().Int64() + 1))
-		if err != nil {
-			if errors.Is(err, ethereum.NotFound) {
-				break
-			}
-			h.logger.Crit("Internal error", log.ErrKey, err)
-		}
-		currentL1Block = nextBlk
-
-		if time.Since(logTime) > 30*time.Second {
-			h.logger.Info(fmt.Sprintf("Bootstrapping host at block... %d", cb.NumberU64()))
-			logTime = time.Now()
-		}
-	}
-	atomic.StoreInt32(h.bootstrappingComplete, 1)
-	h.logger.Info(fmt.Sprintf("Finished bootstrap process with block %d after %s",
-		currentL1Block.NumberU64(),
-		time.Since(startTime),
-	))
-	return *currentL1Block
-}
-
 func (h *host) awaitSecret(fromHeight *big.Int) error {
-	blkStream, err := h.blockProvider.StartStreamingFromHeight(fromHeight)
+	blkStream, err := h.l1BlockProvider.StartStreamingFromHeight(fromHeight)
 	if err != nil {
 		return err
 	}
@@ -992,7 +791,7 @@ func (h *host) awaitSecret(fromHeight *big.Int) error {
 		case blk := <-blkStream:
 			h.logger.Trace("checking block for secret resp", "height", blk.Number())
 			if h.checkBlockForSecretResponse(blk) {
-				h.blockProvider.Stop()
+				h.l1BlockProvider.Stop()
 				return nil
 			}
 
@@ -1001,7 +800,7 @@ func (h *host) awaitSecret(fromHeight *big.Int) error {
 			h.logger.Warn(fmt.Sprintf(" Waiting for secret from the L1. No blocks received for over %s", blockStreamWarningTimeout))
 
 		case <-h.exitHostCh:
-			h.blockProvider.Stop()
+			h.l1BlockProvider.Stop()
 			return nil
 		}
 	}

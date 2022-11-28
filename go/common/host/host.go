@@ -36,18 +36,6 @@ type Host interface {
 	HealthCheck() (bool, error)
 }
 
-// MockHost extends Host with additional methods that are only used for integration testing.
-// todo - remove this interface
-type MockHost interface {
-	Host
-
-	// MockedNewHead receives the notification of new blocks.
-	// TODO - Remove this method.
-	MockedNewHead(b common.EncodedL1Block, p common.EncodedL1Block)
-	// MockedNewFork receives the notification of a new fork.
-	MockedNewFork(b []common.EncodedL1Block)
-}
-
 // P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
 type P2P interface {
 	StartListening(callback Host)
