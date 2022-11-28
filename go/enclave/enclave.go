@@ -24,8 +24,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/params"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -43,6 +41,7 @@ import (
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 type enclaveImpl struct {
@@ -583,6 +582,11 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	callMsg, err := gethencoding.ExtractEthCall(paramList[0])
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
+	}
+
+	// encryption will fail if no From address is provided
+	if callMsg.From == nil {
+		return nil, fmt.Errorf("no from address provided")
 	}
 
 	// TODO hook the correct blockNumber from the API call (paramList[1])
