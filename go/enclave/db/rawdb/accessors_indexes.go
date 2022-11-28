@@ -2,11 +2,10 @@ package rawdb
 
 import (
 	"bytes"
+	"fmt"
 	"math/big"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,128 +16,144 @@ import (
 
 // ReadTxLookupEntry retrieves the positional metadata associated with a transaction
 // hash to allow retrieving the transaction or receipt by hash.
-func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) *uint64 {
-	data, _ := db.Get(txLookupKey(hash))
-	if len(data) == 0 {
-		return nil
+func ReadTxLookupEntry(db ethdb.Reader, hash common.Hash) (*uint64, error) {
+	data, err := db.Get(txLookupKey(hash))
+	if err != nil {
+		return nil, errutil.ErrNotFound
 	}
+
 	// Database v6 tx lookup just stores the block number
-	if len(data) < common.HashLength {
-		number := new(big.Int).SetBytes(data).Uint64()
-		return &number
+	if len(data) >= common.HashLength {
+		return nil, fmt.Errorf("transaction positional metadata was too long. Cause: %w", err)
 	}
-	logger.Crit("Should not be here")
-	return nil
+
+	number := new(big.Int).SetBytes(data).Uint64()
+	return &number, nil
 }
 
 // writeTxLookupEntry stores a positional metadata for a transaction,
 // enabling hash based transaction and receipt lookups.
-func writeTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash, numberBytes []byte, logger gethlog.Logger) {
+func writeTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash, numberBytes []byte) error {
 	if err := db.Put(txLookupKey(hash), numberBytes); err != nil {
-		logger.Crit("Failed to store transaction lookup entry.", log.ErrKey, err)
+		return fmt.Errorf("failed to store transaction lookup entry. Cause: %w", err)
 	}
+	return nil
 }
 
 // WriteTxLookupEntries is identical to WriteTxLookupEntry, but it works on
 // a list of hashes
-func WriteTxLookupEntries(db ethdb.KeyValueWriter, number uint64, hashes []common.Hash, logger gethlog.Logger) {
+func WriteTxLookupEntries(db ethdb.KeyValueWriter, number uint64, hashes []common.Hash) error {
 	numberBytes := new(big.Int).SetUint64(number).Bytes()
 	for _, hash := range hashes {
-		writeTxLookupEntry(db, hash, numberBytes, logger)
+		err := writeTxLookupEntry(db, hash, numberBytes)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // WriteTxLookupEntriesByBlock stores a positional metadata for every transaction from
 // a block, enabling hash based transaction and receipt lookups.
-func WriteTxLookupEntriesByBlock(db ethdb.KeyValueWriter, rollup *core.Rollup, logger gethlog.Logger) {
+func WriteTxLookupEntriesByBlock(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 	numberBytes := rollup.Number().Bytes()
 	for _, tx := range rollup.Transactions {
-		writeTxLookupEntry(db, tx.Hash(), numberBytes, logger)
+		err := writeTxLookupEntry(db, tx.Hash(), numberBytes)
+		if err != nil {
+			return err
+		}
 	}
-}
-
-// DeleteTxLookupEntry removes all transaction data associated with a hash.
-func DeleteTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash, logger gethlog.Logger) {
-	if err := db.Delete(txLookupKey(hash)); err != nil {
-		logger.Crit("Failed to delete transaction lookup entry.", log.ErrKey, err)
-	}
+	return nil
 }
 
 // DeleteTxLookupEntries removes all transaction lookups for a given block.
-func DeleteTxLookupEntries(db ethdb.KeyValueWriter, hashes []common.Hash, logger gethlog.Logger) {
+func DeleteTxLookupEntries(db ethdb.KeyValueWriter, hashes []common.Hash) error {
 	for _, hash := range hashes {
-		DeleteTxLookupEntry(db, hash, logger)
+		err := deleteTxLookupEntry(db, hash)
+		if err != nil {
+			return fmt.Errorf("could not delete transaction lookuo entry. Cause: %w", err)
+		}
 	}
+	return nil
+}
+
+// Removes all transaction data associated with a hash.
+func deleteTxLookupEntry(db ethdb.KeyValueWriter, hash common.Hash) error {
+	if err := db.Delete(txLookupKey(hash)); err != nil {
+		return fmt.Errorf("failed to delete transaction lookup entry. Cause: %w", err)
+	}
+	return nil
 }
 
 // ReadTransaction retrieves a specific transaction from the database, along with
 // its added positional metadata.
-func ReadTransaction(db ethdb.Reader, hash common.Hash, logger gethlog.Logger) (*types.Transaction, common.Hash, uint64, uint64) {
-	blockNumber := ReadTxLookupEntry(db, hash, logger)
-	if blockNumber == nil {
-		return nil, common.Hash{}, 0, 0
+func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, common.Hash, uint64, uint64, error) {
+	blockNumber, err := ReadTxLookupEntry(db, hash)
+	if err != nil {
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve transaction lookup entry. Cause: %w", err)
 	}
-	blockHash := ReadCanonicalHash(db, *blockNumber)
-	if blockHash == (common.Hash{}) {
-		return nil, common.Hash{}, 0, 0
+
+	blockHash, err := ReadCanonicalHash(db, *blockNumber)
+	if err != nil {
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve canonical hash for block number. Cause: %w", err)
 	}
-	transactions := ReadBody(db, blockHash, *blockNumber, logger)
-	if transactions == nil {
-		logger.Error("Transaction referenced missing.", "number", *blockNumber, "hash", blockHash)
-		return nil, common.Hash{}, 0, 0
+
+	transactions, err := ReadBody(db, *blockHash, *blockNumber)
+	if err != nil {
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve block body. Cause: %w", err)
 	}
 	for txIndex, tx := range transactions {
 		if tx.Hash() == hash {
-			return tx, blockHash, *blockNumber, uint64(txIndex)
+			return tx, *blockHash, *blockNumber, uint64(txIndex), nil
 		}
 	}
-	logger.Error("Transaction not found.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
-	return nil, common.Hash{}, 0, 0
+	return nil, common.Hash{}, 0, 0, fmt.Errorf("transaction not found")
 }
 
 // ReadReceipt retrieves a specific transaction receipt from the database, along with
 // its added positional metadata.
-func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig, logger gethlog.Logger) (*types.Receipt, common.Hash, uint64, uint64) {
+func ReadReceipt(db ethdb.Reader, hash common.Hash, config *params.ChainConfig) (*types.Receipt, common.Hash, uint64, uint64, error) {
 	// Retrieve the context of the receipt based on the transaction hash
-	blockNumber := ReadTxLookupEntry(db, hash, logger)
-	if blockNumber == nil {
-		return nil, common.Hash{}, 0, 0
-	}
-	blockHash := ReadCanonicalHash(db, *blockNumber)
-	if blockHash == (common.Hash{}) {
-		return nil, common.Hash{}, 0, 0
-	}
-	// Read all the receipts from the block and return the one with the matching hash
-	receipts, err := ReadReceipts(db, blockHash, *blockNumber, config, logger)
+	blockNumber, err := ReadTxLookupEntry(db, hash)
 	if err != nil {
-		logger.Error("Receipt could not be retrieved.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve transaction lookup entry. Cause: %w", err)
+	}
+	blockHash, err := ReadCanonicalHash(db, *blockNumber)
+	if err != nil {
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve canonical hash for block number. Cause: %w", err)
+	}
+
+	// Read all the receipts from the block and return the one with the matching hash
+	receipts, err := ReadReceipts(db, *blockHash, *blockNumber, config)
+	if err != nil {
+		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve receipts for block number. Cause: %w", err)
 	}
 	for receiptIndex, receipt := range receipts {
 		if receipt.TxHash == hash {
-			return receipt, blockHash, *blockNumber, uint64(receiptIndex)
+			return receipt, *blockHash, *blockNumber, uint64(receiptIndex), nil
 		}
 	}
-	logger.Error("Receipt not found.", "number", *blockNumber, "hash", blockHash, "txhash", hash)
-	return nil, common.Hash{}, 0, 0
+	return nil, common.Hash{}, 0, 0, fmt.Errorf("receipt not found. Cause: %w", err)
 }
 
 // ReadBloomBits retrieves the compressed bloom bit vector belonging to the given
-// section and bit index from the.
+// section and bit index.
 func ReadBloomBits(db ethdb.KeyValueReader, bit uint, section uint64, head common.Hash) ([]byte, error) {
 	return db.Get(bloomBitsKey(bit, section, head))
 }
 
 // WriteBloomBits stores the compressed bloom bits vector belonging to the given
 // section and bit index.
-func WriteBloomBits(db ethdb.KeyValueWriter, bit uint, section uint64, head common.Hash, bits []byte, logger gethlog.Logger) {
+func WriteBloomBits(db ethdb.KeyValueWriter, bit uint, section uint64, head common.Hash, bits []byte) error {
 	if err := db.Put(bloomBitsKey(bit, section, head), bits); err != nil {
-		logger.Crit("Failed to store bloom bits.", log.ErrKey, err)
+		return fmt.Errorf("failed to store bloom bits. Cause: %w", err)
 	}
+	return nil
 }
 
 // DeleteBloombits removes all compressed bloom bits vector belonging to the
 // given section range and bit index.
-func DeleteBloombits(db ethdb.Database, bit uint, from uint64, to uint64, logger gethlog.Logger) {
+func DeleteBloombits(db ethdb.Database, bit uint, from uint64, to uint64) error {
 	start, end := bloomBitsKey(bit, from, common.Hash{}), bloomBitsKey(bit, to, common.Hash{})
 	it := db.NewIterator(nil, start)
 	defer it.Release()
@@ -152,10 +167,11 @@ func DeleteBloombits(db ethdb.Database, bit uint, from uint64, to uint64, logger
 		}
 		err := db.Delete(it.Key())
 		if err != nil {
-			logger.Crit("Failed to delete bloom bits.", log.ErrKey, err)
+			return fmt.Errorf("failed to delete bloom bits. Cause: %w", err)
 		}
 	}
 	if it.Error() != nil {
-		logger.Crit("Failed to delete bloom bits.", log.ErrKey, it.Error())
+		return fmt.Errorf("failed to delete bloom bits. Cause: %w", it.Error())
 	}
+	return nil
 }

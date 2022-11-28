@@ -65,7 +65,7 @@ type BlockStateStorage interface {
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
-	EmptyStateDB() *state.StateDB
+	EmptyStateDB() (*state.StateDB, error)
 }
 
 type SharedSecretStorage interface {

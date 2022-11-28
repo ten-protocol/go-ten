@@ -4,21 +4,12 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"sort"
 	"strings"
 	"sync"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
-	"github.com/obscuronet/go-obscuro/go/common/gethapi"
-	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
-	"github.com/obscuronet/go-obscuro/go/common/gethutil"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
@@ -27,6 +18,9 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/gethapi"
+	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
@@ -34,10 +28,10 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/status-im/keycard-go/hexutils"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
 )
@@ -49,16 +43,14 @@ var (
 
 // RollupChain represents the canonical chain, and manages the state.
 type RollupChain struct {
-	hostID          gethcommon.Address
-	nodeType        common.NodeType
-	ethereumChainID int64
-	chainConfig     *params.ChainConfig
+	hostID      gethcommon.Address
+	nodeType    common.NodeType
+	chainConfig *params.ChainConfig
 
 	storage               db.Storage
 	l1Blockchain          *core.BlockChain
 	bridge                *bridge.Bridge
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
-	rpcEncryptionManager  rpc.EncryptionManager
 	mempool               mempool.Manager
 	faucet                Faucet
 	subscriptionManager   *events.SubscriptionManager
@@ -73,7 +65,19 @@ type RollupChain struct {
 	BaseFee      *big.Int
 }
 
-func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage, l1Blockchain *core.BlockChain, bridge *bridge.Bridge, subscriptionManager *events.SubscriptionManager, txCrypto crypto.TransactionBlobCrypto, mempool mempool.Manager, rpcem rpc.EncryptionManager, privateKey *ecdsa.PrivateKey, ethereumChainID int64, chainConfig *params.ChainConfig, logger gethlog.Logger) *RollupChain {
+func New(
+	hostID gethcommon.Address,
+	nodeType common.NodeType,
+	storage db.Storage,
+	l1Blockchain *core.BlockChain,
+	bridge *bridge.Bridge,
+	subscriptionManager *events.SubscriptionManager,
+	txCrypto crypto.TransactionBlobCrypto,
+	mempool mempool.Manager,
+	privateKey *ecdsa.PrivateKey,
+	chainConfig *params.ChainConfig,
+	logger gethlog.Logger,
+) *RollupChain {
 	return &RollupChain{
 		hostID:                hostID,
 		nodeType:              nodeType,
@@ -82,11 +86,9 @@ func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage
 		bridge:                bridge,
 		transactionBlobCrypto: txCrypto,
 		mempool:               mempool,
-		faucet:                NewFaucet(storage),
+		faucet:                NewFaucet(),
 		subscriptionManager:   subscriptionManager,
 		enclavePrivateKey:     privateKey,
-		rpcEncryptionManager:  rpcem,
-		ethereumChainID:       ethereumChainID,
 		chainConfig:           chainConfig,
 		blockProcessingMutex:  sync.Mutex{},
 		logger:                logger,
@@ -95,10 +97,15 @@ func New(hostID gethcommon.Address, nodeType common.NodeType, storage db.Storage
 	}
 }
 
-func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, *types.Block) {
+func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, *types.Block, error) {
 	b, err := rc.storage.FetchBlock(blkHash)
 	if err != nil {
 		rc.logger.Crit("Could not retrieve the block used as proof for the genesis rollup.", log.ErrKey, err)
+	}
+
+	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	rolGenesis := obscurocore.NewRollup(
@@ -109,11 +116,11 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		[]*common.L2Tx{},
 		[]common.Withdrawal{},
 		common.GenerateNonce(),
-		rc.faucet.GetGenesisRoot(rc.storage),
+		*preFundGenesisState,
 	)
 	rc.signRollup(rolGenesis)
 
-	return rolGenesis, b
+	return rolGenesis, b, nil
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block
@@ -304,7 +311,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			return nil, false
 		}
 
-		err = rc.faucet.CalculateGenesisState(rc.storage)
+		_, err = rc.faucet.CommitGenesisState(rc.storage)
 		if err != nil {
 			return nil, false
 		}
@@ -672,35 +679,15 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	return r
 }
 
-func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
-	paramBytes, err := rc.rpcEncryptionManager.DecryptBytes(encryptedParams)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
-	}
-
-	// extract params from byte slice to array of strings
-	var paramList []interface{}
-	err = json.Unmarshal(paramBytes, &paramList)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode eth_call params - %w", err)
-	}
-
-	// params are [callMsg, block number (optional) ]
-	if len(paramList) < 1 {
-		return nil, fmt.Errorf("required at least 1 params, but received %d", len(paramList))
-	}
-
-	apiArgs, err := gethencoding.ExtractEthCall(paramList[0])
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
-	}
-
+// ExecuteOffChainTransaction executes non-state changing transactions at a given block height (eth_call)
+func (rc *RollupChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionArgs) (*core.ExecutionResult, error) {
 	// TODO Hook up the blockNumber
 	result, err := rc.ExecuteOffChainTransactionAtBlock(apiArgs, gethrpc.BlockNumber(0))
 	if err != nil {
 		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, err.Error())
 		return nil, err
 	}
+
 	// the execution might have succeeded but the evm contract logic might have failed
 	if result.Failed() {
 		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, result.Err)
@@ -709,80 +696,44 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 
 	rc.logger.Trace(fmt.Sprintf("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData)))
 
-	var encodedResult string
-	if len(result.ReturnData) != 0 {
-		encodedResult = hexutil.Encode(result.ReturnData)
-	}
-	encryptedResult, err := rc.rpcEncryptionManager.EncryptWithViewingKey(*apiArgs.From, []byte(encodedResult))
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
-	}
-
-	return encryptedResult, nil
+	return result, nil
 }
 
-func (rc *RollupChain) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
-	// We decrypt the request.
-	paramBytes, err := rc.rpcEncryptionManager.DecryptBytes(encryptedParams)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
-	}
-
-	// We extract the params from the request.
-	var paramList []string
-	err = json.Unmarshal(paramBytes, &paramList)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
-	}
-	if len(paramList) != 2 {
-		return nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
-	}
-	// TODO - Replace all usages of `HexToAddress` with a `SafeHexToAddress` that checks that the string does not exceed 20 bytes.
-	accountAddress := gethcommon.HexToAddress(paramList[0])
-	blockNumber := gethrpc.BlockNumber(0)
-	err = blockNumber.UnmarshalJSON([]byte(paramList[1]))
-	if err != nil {
-		return nil, fmt.Errorf("could not parse requested rollup number - %w", err)
-	}
-
+func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
 	// get account balance at certain block/height
 	balance, err := rc.GetBalanceAtBlock(accountAddress, blockNumber)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch balance for account - %w", err)
+		return nil, nil, err
 	}
 
 	// check if account is a contract
 	isAddrContract, err := rc.IsAccountContractAtBlock(accountAddress, blockNumber)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch balance for account - %w", err)
+		return nil, nil, err
 	}
 
-	// We encrypt the result.
+	// Decide which address to encrypt the result with
 	address := accountAddress
 	// If the accountAddress is a contract, encrypt with the address of the contract owner
 	if isAddrContract {
 		txHash, err := rc.storage.GetContractCreationTx(accountAddress)
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
+			return nil, nil, err
 		}
 		transaction, _, _, _, err := rc.storage.GetTransaction(*txHash)
 		if err != nil {
-			return nil, fmt.Errorf("failed to retrieve tx that created contract %s. Cause %w", accountAddress.Hex(), err)
+			return nil, nil, err
 		}
 		signer := types.NewLondonSigner(rc.chainConfig.ChainID)
 
 		sender, err := signer.Sender(transaction)
 		if err != nil {
-			return nil, fmt.Errorf("failed to verify signature. Cause %w", err)
+			return nil, nil, err
 		}
 		address = sender
 	}
 
-	encryptedBalance, err := rc.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(balance.String()))
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
-	}
-	return encryptedBalance, nil
+	return &address, balance, nil
 }
 
 // GetChainStateAtBlock is a helper function that returns the state of the chain at height

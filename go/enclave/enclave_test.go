@@ -1,4 +1,3 @@
-//nolint:unused
 package enclave
 
 import (
@@ -7,24 +6,27 @@ import (
 	"math/big"
 	"testing"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/trie"
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-
 	"github.com/stretchr/testify/assert"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const _testEnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -43,8 +45,6 @@ func init() { //nolint:gochecknoinits
 
 // TestGasEstimation runs the GasEstimation tests
 func TestGasEstimation(t *testing.T) {
-	// TODO create a Headstate in hs := rc.storage.FetchHeadState()
-	t.Skip("Skipping the gas estimation tests..")
 	tests := map[string]func(t *testing.T, w wallet.Wallet, enclave common.Enclave, vk *rpc.ViewingKey){
 		"gasEstimateSuccess":             gasEstimateSuccess,
 		"gasEstimateNoVKRegistered":      gasEstimateNoVKRegistered,
@@ -56,7 +56,10 @@ func TestGasEstimation(t *testing.T) {
 
 	for name, test := range tests {
 		// create the enclave
-		testEnclave := createTestEnclave()
+		testEnclave, err := createTestEnclave()
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		// create the wallet
 		w := datagenerator.RandomWallet(integration.ObscuroChainID)
@@ -76,8 +79,12 @@ func TestGasEstimation(t *testing.T) {
 
 func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, vk *rpc.ViewingKey) {
 	// create the callMsg
-	callMsg := datagenerator.CreateCallMsg()
-	callMsg.From = w.Address()
+	to := datagenerator.RandomAddress()
+	callMsg := &ethereum.CallMsg{
+		From: w.Address(),
+		To:   &to,
+		Data: []byte(ManagementContract.ManagementContractMetaData.Bin),
+	}
 
 	// create the request payload
 	req := []interface{}{obsclient.ToCallArg(*callMsg), nil}
@@ -110,7 +117,7 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 		t.Fatal(err)
 	}
 
-	if decodeUint64 != 5_000_000_000 {
+	if decodeUint64 != 393608 {
 		t.Fatal("unexpected gas price")
 	}
 }
@@ -120,8 +127,12 @@ func gasEstimateNoVKRegistered(t *testing.T, _ wallet.Wallet, enclave common.Enc
 	w := datagenerator.RandomWallet(integration.ObscuroChainID)
 
 	// create the callMsg
-	callMsg := datagenerator.CreateCallMsg()
-	callMsg.From = w.Address()
+	to := datagenerator.RandomAddress()
+	callMsg := &ethereum.CallMsg{
+		From: w.Address(),
+		To:   &to,
+		Data: []byte(ManagementContract.ManagementContractMetaData.Bin),
+	}
 
 	// create the request
 	req := []interface{}{obsclient.ToCallArg(*callMsg), nil}
@@ -149,6 +160,7 @@ func gasEstimateNoCallMsgFrom(t *testing.T, _ wallet.Wallet, enclave common.Encl
 
 	// create the request
 	req := []interface{}{obsclient.ToCallArg(*callMsg), nil}
+	delete(req[0].(map[string]interface{}), "from")
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +174,7 @@ func gasEstimateNoCallMsgFrom(t *testing.T, _ wallet.Wallet, enclave common.Encl
 
 	// Run gas Estimation
 	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "could not encrypt bytes because it does not have a viewing key for account") {
+	if !assert.ErrorContains(t, err, "no from address provided") {
 		t.Fatalf("unexpected error - %s", err)
 	}
 }
@@ -262,7 +274,7 @@ func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wal
 }
 
 // createTestEnclave returns a test instance of the enclave
-func createTestEnclave() common.Enclave {
+func createTestEnclave() (common.Enclave, error) {
 	rndAddr := gethcommon.HexToAddress("contract1")
 	rndAddr2 := gethcommon.HexToAddress("contract2")
 	enclaveConfig := config.EnclaveConfig{
@@ -274,5 +286,59 @@ func createTestEnclave() common.Enclave {
 		MinGasPrice:            big.NewInt(1),
 	}
 	logger := log.New(log.TestLogCmp, int(gethlog.LvlError), log.SysOut)
-	return NewEnclave(enclaveConfig, nil, nil, logger)
+	enclave := NewEnclave(enclaveConfig, nil, nil, logger)
+
+	_, err := enclave.GenerateSecret()
+	if err != nil {
+		return nil, err
+	}
+
+	err = createFakeGenesis(enclave)
+	if err != nil {
+		return nil, err
+	}
+
+	return enclave, nil
+}
+
+func createFakeGenesis(enclave common.Enclave) error {
+	// Random Layer 1 block where the genesis rollup is set
+	blk := types.NewBlock(&types.Header{}, nil, nil, nil, &trie.StackTrie{})
+	_, err := enclave.SubmitL1Block(*blk, true)
+	if err != nil {
+		return err
+	}
+
+	// make sure the state is updated otherwise balances will not be available
+	faucet := rollupchain.NewFaucet()
+	genesisPreallocStateDB, err := faucet.CommitGenesisState(enclave.(*enclaveImpl).storage)
+	if err != nil {
+		return err
+	}
+
+	// make sure the genesis is stored the rollup storage
+	genRollup := core.NewRollup(
+		blk.Hash(),
+		nil,
+		common.L2GenesisHeight,
+		gethcommon.HexToAddress("0x0"),
+		[]*common.L2Tx{},
+		[]common.Withdrawal{},
+		common.GenerateNonce(),
+		genesisPreallocStateDB.IntermediateRoot(true),
+	)
+
+	err = enclave.(*enclaveImpl).storage.StoreGenesisRollup(genRollup)
+	if err != nil {
+		return err
+	}
+
+	// make sure the genesis is stored as the new Head of the rollup chain
+	bs := &core.BlockState{
+		Block:          blk.Hash(),
+		HeadRollup:     genRollup.Hash(),
+		FoundNewRollup: true,
+	}
+
+	return enclave.(*enclaveImpl).storage.StoreNewHead(bs, genRollup, nil, nil)
 }
