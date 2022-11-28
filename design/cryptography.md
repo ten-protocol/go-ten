@@ -26,17 +26,13 @@ An additional complexity is that Obscuro has the requirement to support temporar
 - Master Seed is a strongly generated entropy data that serves as the encryption base of the network
 - Use the random number generation available inside the TEEs
 - Generation happens when the central sequencer bootstraps the network
-- The central sequencer generates the Master seed and initializes the Management Contract
-- Upon successful attestation the Central Sequencer uses the attested enclave public key to share the Master Seed
-
 
 ## 2. Ensure Enclave Encrypted Communication
-- Client-Enclave communication is encrypted using the Obscuro Key
-- Clients encrypt using the Obscuro Key - Public Key
-- Enclave responds encrypting with the Obscuro Key - Private Key
+- Client-Enclave communication is encrypted using the Obscuro Key and the Client Key
+- Clients encrypt using the Obscuro Public Key
+- Enclave responds encrypting with the Client Public Key ( also known as Viewing Keys )
 - The Obscuro Key is a Key-Pair derived from the Master Seed + Genesis Rollup
 - The Public key will be published to the Management contract and used by all obscuro tooling ( like the wallet extension ) to encrypt transactions
-- The Private key will be only available inside the enclave through key derivation
 - Enclaves will determine the Private key when deriving the Master Seed + Genesis Rollup 
   - Enclaves have the Master Seed through the attestation process
   - Enclaves fetch Genesis Rollup through the Layer 1 blocks
@@ -47,9 +43,9 @@ An additional complexity is that Obscuro has the requirement to support temporar
 
 
 ## 3. Transaction Encryption per Rollup with Revelation Period
-- Transactions are encrypted in Obscuro to provide confidentiality
-- To avoid base-key compromise, transaction encryption keys are derived twice
-  - Each rollup has a Rollup Encryption Key derived from the Master Seed + Rollup
+- Transactions are encrypted in the Obscuro chain providing confidentiality
+- To avoid reusing the same key, transaction encryption keys are derived twice
+  - Each rollup has a Rollup Encryption Key derived from the Master Seed + Rollup ( if a rollup encryption key is discovered other rollups are safe )
   - Each transaction is encrypted with a Revelation Period Key that is derived from the Rollup Encryption Key + Revelation Period
 - HKDF (HMAC-based Key Derivation Function) is used to derive keys
   - Given the high entropy of the Master Seed no need for PBKDF Family key stretching
@@ -115,9 +111,10 @@ An example would be:
     * M - 1 day (24 * 3600/12 = 7200 blocks)
     * L - 1 month (30 * 24 * 3600/12 = 216000 blocks)
     * XL - 1 year (12 * 30 * 24 * 3600/12 = 2592000 blocks)
-- Validators do not reveal keys so that keys are not susceptible to attacks
-- Central Sequencer stores the keys in a rollup, decrypt time, key tuple in a database.
-- When a Light Batch is created the revealed keys are appended to it and removed from the database.
+- Central Sequencer stores the rollup revelation keys in a database with the corresponding decrypt time.
+- When a Light Batch is created, the keys that available to be reveled, are appended to the LB and removed from the database.
+- Validators do not calculate reveal keys, they only release the keys that are reveled from the central sequencer.
+
 
 
 ### Problems
@@ -133,9 +130,13 @@ An example would be:
 3. Ensure a node operator can't fast-forward the clock.
 - Validators do not release keys, only the centralized sequencer releases them
 
-4. In the event of a db failure how does the central sequencer know which keys to recalculate
-- Traversing the existing chain and recalculating keys might be too expensive
-- Sequencer can reveal keys on-demand with recalculating the whole chain
+4. In the event of a catastrophic database failure are the stored revelation keys lost ?
+- No, keys are always recoverable by computing the base predicaments (rollup/LB, master seed, transaction)
+- Traversing the existing chain and recalculating keys is possible but might be too expensive
 
-5. Do validators have a validation period ? How can a validation period be enforced if they are given a non-mutable Master Seed ?
-6. Do validators need the Obscuro Private Key ?
+5. Do validators have a validation period ? A period of time in which they have the stake locked in and are participating in the validation of the network.
+6. How can a validation period be enforced if they are given a non-mutable Master Seed ?
+7. Do validators need the Obscuro Private Key ?
+8. Why is a Rollup Encryption key needed ?
+- To avoid all rollup encryption keys being compromised if one rollup encryption key is compromised.
+- In other words, each rollup has its own derived encryption key. If a rollup has its key compromised, then the other rollups are safe as they are using a different key.
