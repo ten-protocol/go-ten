@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"fmt"
-	"math/big"
 	"sync/atomic"
 	"time"
 
@@ -88,7 +87,11 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 	return nil
 }
 
-func (netw *MockP2P) RequestBatches(_ *big.Int, _ *big.Int) error {
+func (netw *MockP2P) RequestBatches(_ *common.BatchRequest) error {
+	panic(errutil.ErrNoImpl)
+}
+
+func (netw *MockP2P) SendBatches(_ []*common.ExtBatch, _ string) error {
 	panic(errutil.ErrNoImpl)
 }
 
