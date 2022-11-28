@@ -1129,9 +1129,11 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 		return fmt.Errorf("could not decode batch request using RLP. Cause: %w", err)
 	}
 
-	// todo - joel - implement this
-	panic("not implemented")
-	return nil
+	var batches []*common.ExtBatch
+
+	// todo - joel - gather the list of batches to send
+
+	return h.p2p.SendBatch(batches, batchRequest.Requester)
 }
 
 // Checks the host config is valid.

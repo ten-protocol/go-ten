@@ -55,9 +55,14 @@ type P2P interface {
 	StartListening(callback Host)
 	StopListening() error
 	UpdatePeerList([]string)
+	// BroadcastTx sends the encrypted transaction to every other node on the network.
 	BroadcastTx(tx common.EncryptedTx) error
+	// BroadcastBatch sends the batch to every other node on the network.
 	BroadcastBatch(batch *common.ExtBatch) error
+	// RequestBatches requests batches from the sequencer.
 	RequestBatches(batchRequest *common.BatchRequest) error
+	// SendBatch sends batches to a specific node, in response to a batch request.
+	SendBatch(batches []*common.ExtBatch, to *gethcommon.Address) error
 }
 
 // ReconnectingBlockProvider interface allows host to monitor and await L1 blocks.

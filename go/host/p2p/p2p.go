@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"io"
 	"net"
 	"sync"
@@ -112,6 +113,10 @@ func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
 
 	msg := message{Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
 	return p.sendToSequencer(msg)
+}
+
+func (p *p2pImpl) SendBatch(batches []*common.ExtBatch, to *gethcommon.Address) error {
+	panic("not implemented")
 }
 
 // Listens for connections and handles them in a separate goroutine.
