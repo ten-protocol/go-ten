@@ -112,6 +112,7 @@ func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
 
 	msg := message{Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
 	// TODO - #718 - Use better method to identify sequencer?
+	// TODO - #718 - Allow missing batches to be requested from peers other than sequencer?
 	return p.send(msg, p.peerAddresses[0])
 }
 
