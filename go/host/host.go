@@ -377,7 +377,6 @@ func (h *host) waitForEnclave() {
 
 // starts the host main processing loop
 func (h *host) startProcessing() {
-	// Only open the p2p connection when the host is fully initialised
 	h.p2p.StartListening(h)
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
@@ -399,17 +398,21 @@ func (h *host) startProcessing() {
 		select {
 		case b := <-blockStream:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			// todo: fix this to use `h.l1BlockProvider.IsLive(b.Hash())` instead of hardcoded true (triggers timing issues in in-mem sim)
-			err := h.processL1Block(b, true)
-			// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
-			blockStream = h.handleProcessBlockErr(b, blockStream, err)
+			isLive := h.l1BlockProvider.IsLive(b.Hash()) // checks where the block is the current head of the L1 (false if there is a newer block available)
+			err := h.processL1Block(b, isLive)
+			if err != nil {
+				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
+				blockStream = h.handleProcessBlockErr(b, blockStream, err)
+			}
 
 		case tx := <-h.txP2PCh:
+			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
 			if _, err := h.enclaveClient.SubmitTx(tx); err != nil {
 				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
 			}
 
 		case batch := <-h.batchP2PCh:
+			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
 			if err := h.handleBatch(&batch); err != nil {
 				h.logger.Error("Could not handle batch. ", log.ErrKey, err)
 			}
@@ -421,9 +424,6 @@ func (h *host) startProcessing() {
 }
 
 func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream <-chan *types.Block, err error) <-chan *types.Block {
-	if err == nil {
-		return stream
-	}
 	var rejErr *common.BlockRejectError
 	if !errors.As(err, &rejErr) {
 		// received unexpected error (no useful information from the enclave)
