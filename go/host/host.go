@@ -1082,17 +1082,17 @@ func (h *host) requestMissingBatches(batches []*common.ExtBatch) (bool, error) {
 	}
 
 	batch := batches[0]
-	earliestMissingBatch, err := h.batchManager.EarliestMissingBatch(batch)
+	batchRequest, err := h.batchManager.CreateBatchRequest(batch)
 	if err != nil {
 		return false, err
 	}
-	if earliestMissingBatch == nil {
+	if batchRequest == nil {
 		// There are no missing batches to request.
 		return false, nil
 	}
 
-	batchRequest := common.BatchRequest{Requester: h.config.P2PPublicAddress, From: earliestMissingBatch, To: batch.Header.Number}
-	err = h.p2p.RequestBatches(&batchRequest)
+	batchRequest.Requester = h.config.P2PPublicAddress
+	err = h.p2p.RequestBatches(batchRequest)
 	if err != nil {
 		return false, fmt.Errorf("could not request historical batches. Cause: %w", err)
 	}

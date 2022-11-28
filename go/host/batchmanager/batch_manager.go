@@ -70,7 +70,7 @@ func (b *BatchManager) CheckForGapsAndDupes(batches []*common.ExtBatch) error {
 }
 
 // todo - joel - comment
-func (b *BatchManager) EarliestMissingBatch(batch *common.ExtBatch) (*big.Int, error) {
+func (b *BatchManager) CreateBatchRequest(batch *common.ExtBatch) (*common.BatchRequest, error) {
 	var earliestMissingBatch *big.Int
 	parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
 	for {
@@ -93,7 +93,13 @@ func (b *BatchManager) EarliestMissingBatch(batch *common.ExtBatch) (*big.Int, e
 		// If there was no error, we have reach a stored batch.
 		break
 	}
-	return earliestMissingBatch, nil
+
+	if earliestMissingBatch == nil {
+		// There are no missing batches to request.
+		return nil, nil //nolint:nilnil
+	}
+
+	return &common.BatchRequest{From: earliestMissingBatch, To: batch.Header.Number}, nil
 }
 
 // todo - joel - comment
