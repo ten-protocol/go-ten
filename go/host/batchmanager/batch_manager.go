@@ -70,9 +70,18 @@ func (b *BatchManager) CheckForGapsAndDupes(batches []*common.ExtBatch) error {
 }
 
 // todo - joel - comment
-func (b *BatchManager) CreateBatchRequest(batch *common.ExtBatch) (*common.BatchRequest, error) {
+func (b *BatchManager) CreateBatchRequest(batches []*common.ExtBatch) (*common.BatchRequest, error) {
+	// We sort the batches, then check for duplicates or gaps. Both are a sign that something is wrong.
+	b.SortBatches(batches)
+	err := b.CheckForGapsAndDupes(batches)
+	if err != nil {
+		return nil, err
+	}
+
+	earliestReceivedBatch := batches[0]
+
 	var earliestMissingBatch *big.Int
-	parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
+	parentBatchNumber := big.NewInt(0).Sub(earliestReceivedBatch.Header.Number, big.NewInt(1))
 	for {
 		// If we have reached the head of the chain, break.
 		if parentBatchNumber.Int64() < int64(common.L2GenesisHeight) {
@@ -99,7 +108,7 @@ func (b *BatchManager) CreateBatchRequest(batch *common.ExtBatch) (*common.Batch
 		return nil, nil //nolint:nilnil
 	}
 
-	return &common.BatchRequest{From: earliestMissingBatch, To: batch.Header.Number}, nil
+	return &common.BatchRequest{From: earliestMissingBatch, To: earliestReceivedBatch.Header.Number}, nil
 }
 
 // todo - joel - comment

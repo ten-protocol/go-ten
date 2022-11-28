@@ -1074,23 +1074,15 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 // Requests any historical batches we may be missing in the chain. Returns a bool indicating whether any additional
 // batches have been requested.
 func (h *host) requestMissingBatches(batches []*common.ExtBatch) (bool, error) {
-	// We sort the batches, then check for duplicates or gaps. Both are a sign that something is wrong.
-	h.batchManager.SortBatches(batches)
-	err := h.batchManager.CheckForGapsAndDupes(batches)
+	batchRequest, err := h.batchManager.CreateBatchRequest(batches)
 	if err != nil {
 		return false, err
 	}
 
-	batch := batches[0]
-	batchRequest, err := h.batchManager.CreateBatchRequest(batch)
-	if err != nil {
-		return false, err
-	}
 	if batchRequest == nil {
 		// There are no missing batches to request.
 		return false, nil
 	}
-
 	batchRequest.Requester = h.config.P2PPublicAddress
 	err = h.p2p.RequestBatches(batchRequest)
 	if err != nil {
