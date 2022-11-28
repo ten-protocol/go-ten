@@ -3,7 +3,6 @@ package p2p
 import (
 	"fmt"
 	"io"
-	"math/big"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -38,12 +37,6 @@ const (
 type message struct {
 	Type     msgType
 	Contents []byte
-}
-
-// BatchRequest contains the range of batch numbers being requested.
-type BatchRequest struct {
-	From *big.Int
-	To   *big.Int
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
@@ -111,9 +104,7 @@ func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
 	return p.broadcast(msg)
 }
 
-func (p *p2pImpl) RequestBatches(from *big.Int, to *big.Int) error {
-	batchRequest := BatchRequest{From: from, To: to}
-
+func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
 	encodedBatchRequest, err := rlp.EncodeToBytes(batchRequest)
 	if err != nil {
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)

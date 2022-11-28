@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/host/p2p"
 	"math/big"
 	"sort"
 	"sync/atomic"
@@ -1115,7 +1114,8 @@ func (h *host) requestMissingBatches(batch *common.ExtBatch) (bool, error) {
 		return false, nil
 	}
 
-	err := h.p2p.RequestBatches(earliestMissingBatch, batch.Header.Number)
+	batchRequest := common.BatchRequest{Requester: &h.config.ID, From: earliestMissingBatch, To: batch.Header.Number}
+	err := h.p2p.RequestBatches(&batchRequest)
 	if err != nil {
 		return false, fmt.Errorf("could not request historical batches. Cause: %w", err)
 	}
@@ -1123,7 +1123,7 @@ func (h *host) requestMissingBatches(batch *common.ExtBatch) (bool, error) {
 }
 
 func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchRequest) error {
-	var batchRequest *p2p.BatchRequest
+	var batchRequest *common.BatchRequest
 	err := rlp.DecodeBytes(*encodedBatchRequest, &batchRequest)
 	if err != nil {
 		return fmt.Errorf("could not decode batch request using RLP. Cause: %w", err)
