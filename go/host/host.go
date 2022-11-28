@@ -1,6 +1,7 @@
 package host
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -60,6 +61,9 @@ const (
 
 // Implementation of host.Host.
 type host struct {
+	ctx        context.Context    // context managing the lifespan of this host object
+	ctxCleanup context.CancelFunc // function to clean-up the host context tree (todo: this should be controlled outside the host at a container level)
+
 	config          config.HostConfig
 	shortID         uint64
 	isSequencer     bool
@@ -97,7 +101,11 @@ func NewHost(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	logger gethlog.Logger,
 ) hostcommon.Host {
+	ctx, cancel := context.WithCancel(context.Background())
 	host := &host{
+		ctx:        ctx,
+		ctxCleanup: cancel,
+
 		// config
 		config:      config,
 		shortID:     common.ShortAddress(config.ID),
@@ -114,7 +122,7 @@ func NewHost(
 		bootstrappingComplete: new(int32),
 
 		// incoming data
-		l1BlockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
+		l1BlockProvider: ethadapter.NewEthBlockProvider(ctx, ethClient, logger),
 		txP2PCh:         make(chan common.EncryptedTx),
 		batchP2PCh:      make(chan common.EncodedBatch),
 
@@ -335,9 +343,7 @@ func (h *host) Stop() {
 		// connection remains open, waiting for the RPC server to close.
 		go h.rpcServer.Stop()
 	}
-	if h.l1BlockProvider != nil {
-		go h.l1BlockProvider.Stop()
-	}
+	h.ctxCleanup()
 
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
@@ -381,7 +387,7 @@ func (h *host) startProcessing() {
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
 	// stream ch during the main loop if enclave gets out-of-sync, and we need to stream from an earlier block
-	blockStream, err := h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(0))
+	blockStream, err := h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(1))
 	if err != nil {
 		h.logger.Crit("unable to stream l1 blocks for enclave", log.ErrKey, err)
 	}
@@ -398,7 +404,7 @@ func (h *host) startProcessing() {
 		select {
 		case b := <-blockStream:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			isLive := h.l1BlockProvider.IsLive(b.Hash()) // checks where the block is the current head of the L1 (false if there is a newer block available)
+			isLive := h.l1BlockProvider.IsLive(b.Hash()) // checks whether the block is the current head of the L1 (false if there is a newer block available)
 			err := h.processL1Block(b, isLive)
 			if err != nil {
 				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)

@@ -19,10 +19,10 @@ const (
 
 var one = big.NewInt(1)
 
-func NewEthBlockProvider(ethClient EthClient, logger gethlog.Logger) *EthBlockProvider {
+func NewEthBlockProvider(ctx context.Context, ethClient EthClient, logger gethlog.Logger) *EthBlockProvider {
 	return &EthBlockProvider{
 		ethClient: ethClient,
-		ctx:       context.TODO(),
+		ctx:       ctx,
 		logger:    logger,
 	}
 }
