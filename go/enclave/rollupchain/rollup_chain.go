@@ -227,11 +227,10 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, err
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
-		} else {
-			// Since there is no genesis yet and no rollups have arrived, there is nothing to do
-			if len(rollups) == 0 {
-				return nil, nil //nolint:nilnil
-			}
+		}
+		// Since there is no genesis yet and no rollups have arrived, there is nothing to do
+		if len(rollups) == 0 {
+			return nil, nil //nolint:nilnil
 		}
 	}
 
