@@ -1052,16 +1052,9 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
 
-	// We sort the batches, then check for duplicates or gaps. Both are a sign that something is wrong.
-	h.batchManager.SortBatches(batches)
-	err = h.batchManager.CheckForGapsAndDupes(batches)
-	if err != nil {
-		return err
-	}
-
 	// We request any batches we've missed. If we did request batches, we skip storing the batch for now; we'll store
 	// it later when we receive ot alongside the full set of missing historical batches.
-	isRequested, err := h.requestMissingBatches(batches[0])
+	isRequested, err := h.requestMissingBatches(batches)
 	if err != nil {
 		return fmt.Errorf("could not retrieve missing historical batches")
 	}
@@ -1080,7 +1073,15 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 // Requests any historical batches we may be missing in the chain. Returns a bool indicating whether any additional
 // batches have been requested.
-func (h *host) requestMissingBatches(batch *common.ExtBatch) (bool, error) {
+func (h *host) requestMissingBatches(batches []*common.ExtBatch) (bool, error) {
+	// We sort the batches, then check for duplicates or gaps. Both are a sign that something is wrong.
+	h.batchManager.SortBatches(batches)
+	err := h.batchManager.CheckForGapsAndDupes(batches)
+	if err != nil {
+		return false, err
+	}
+
+	batch := batches[0]
 	earliestMissingBatch, err := h.batchManager.EarliestMissingBatch(batch)
 	if err != nil {
 		return false, err
