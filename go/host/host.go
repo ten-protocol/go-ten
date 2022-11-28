@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
 	"math/big"
-	"sort"
 	"sync/atomic"
 	"time"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -90,11 +88,14 @@ type host struct {
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	ethWallet       wallet.Wallet                   // Wallet used to issue ethereum transactions
 	logEventManager events.LogEventManager
+	batchManager    *batchmanager.BatchManager
 
 	logger gethlog.Logger
 }
 
 func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) hostcommon.MockHost {
+	database := db.NewInMemoryDB() // todo - make this config driven
+
 	host := &host{
 		// config
 		config:      config,
@@ -120,12 +121,12 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		batchRequestCh: make(chan common.EncodedBatchRequest),
 
 		// Initialize the host DB
-		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
-		db: db.NewInMemoryDB(),
+		db: database,
 
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
 		ethWallet:       ethWallet,       // the host's ethereum wallet
 		logEventManager: events.NewLogEventManager(logger),
+		batchManager:    batchmanager.NewBatchManager(database),
 
 		logger: logger,
 	}
@@ -1044,7 +1045,6 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	if err != nil {
 		return fmt.Errorf("could not decode batches using RLP. Cause: %w", err)
 	}
-
 	if len(batches) == 0 {
 		return nil
 	}
@@ -1052,23 +1052,10 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
 
 	// We sort the batches, then check for duplicates or gaps. Both are a sign that something is wrong.
-	sort.Slice(batches, func(i, j int) bool {
-		return batches[i].Header.Number.Cmp(batches[i].Header.Number) < 0
-	})
-	for idx := 0; idx < len(batches)-1; idx++ {
-		i := batches[idx]
-		j := batches[idx+1]
-
-		numberGap := big.NewInt(0).Sub(j.Header.Number, i.Header.Number)
-		gapIsZero := numberGap.Cmp(big.NewInt(0)) == 0
-		gapIsMoreThanOne := numberGap.Cmp(big.NewInt(1)) != 0
-
-		if gapIsZero {
-			return fmt.Errorf("duplicates in set of batches to process")
-		}
-		if gapIsMoreThanOne {
-			return fmt.Errorf("gaps in chain of set of batches to process")
-		}
+	h.batchManager.SortBatches(batches)
+	err = h.batchManager.CheckForGapsAndDupes(batches)
+	if err != nil {
+		return err
 	}
 
 	// We request any batches we've missed. If we did request batches, we skip storing the batch for now; we'll store
@@ -1096,36 +1083,17 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 // Requests any historical batches we may be missing in the chain. Returns a bool indicating whether any additional
 // batches have been requested.
 func (h *host) requestMissingBatches(batch *common.ExtBatch) (bool, error) {
-	var earliestMissingBatch *big.Int
-	parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
-	for {
-		// If we have reached the head of the chain, break.
-		if parentBatchNumber.Int64() < int64(common.L2GenesisHeight) {
-			break
-		}
-
-		_, err := h.db.GetBatchHash(parentBatchNumber)
-		if err != nil {
-			// If the batch is not found, we update the variable tracking the earliest missing batch.
-			if errors.Is(err, errutil.ErrNotFound) {
-				earliestMissingBatch = parentBatchNumber
-				parentBatchNumber = big.NewInt(0).Sub(parentBatchNumber, big.NewInt(1))
-				continue
-			}
-			return false, fmt.Errorf("could not get batch hash by number. Cause: %w", err)
-		}
-
-		// If there was no error, we have reach a stored batch.
-		break
+	earliestMissingBatch, err := h.batchManager.EarliestMissingBatch(batch)
+	if err != nil {
+		return false, err
 	}
-
-	// There are no missing batches to request.
 	if earliestMissingBatch == nil {
+		// There are no missing batches to request.
 		return false, nil
 	}
 
 	batchRequest := common.BatchRequest{Requester: h.config.P2PPublicAddress, From: earliestMissingBatch, To: batch.Header.Number}
-	err := h.p2p.RequestBatches(&batchRequest)
+	err = h.p2p.RequestBatches(&batchRequest)
 	if err != nil {
 		return false, fmt.Errorf("could not request historical batches. Cause: %w", err)
 	}
@@ -1139,19 +1107,9 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 		return fmt.Errorf("could not decode batch request using RLP. Cause: %w", err)
 	}
 
-	var batches []*common.ExtBatch
-	currentBatchToRetrieve := batchRequest.From
-	for currentBatchToRetrieve.Cmp(batchRequest.To) != 1 {
-		batchHash, err := h.db.GetBatchHash(currentBatchToRetrieve)
-		if err != nil {
-			return fmt.Errorf("could not retrieve batch hash for batch number %d. Cause: %w", currentBatchToRetrieve, err)
-		}
-		batch, err := h.db.GetBatch(*batchHash)
-		if err != nil {
-			return fmt.Errorf("could not retrieve batch for batch hash %s. Cause: %w", batchHash, err)
-		}
-		batches = append(batches, batch)
-		currentBatchToRetrieve = big.NewInt(0).Add(currentBatchToRetrieve, big.NewInt(1))
+	batches, err := h.batchManager.RetrieveBatches(batchRequest)
+	if err != nil {
+		return fmt.Errorf("could not retrive batches based on request. Cause: %w", err)
 	}
 
 	return h.p2p.SendBatches(batches, batchRequest.Requester)
