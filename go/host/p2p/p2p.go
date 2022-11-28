@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"fmt"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"io"
 	"net"
 	"sync"
@@ -112,11 +111,18 @@ func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
 	}
 
 	msg := message{Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
-	return p.sendToSequencer(msg)
+	// TODO - #718 - Use better method to identify sequencer?
+	return p.send(msg, p.peerAddresses[0])
 }
 
-func (p *p2pImpl) SendBatch(batches []*common.ExtBatch, to *gethcommon.Address) error {
-	panic("not implemented")
+func (p *p2pImpl) SendBatches(batches []*common.ExtBatch, to string) error {
+	encodedBatches, err := rlp.EncodeToBytes(batches)
+	if err != nil {
+		return fmt.Errorf("could not encode batches using RLP. Cause: %w", err)
+	}
+
+	msg := message{Type: msgTypeBatches, Contents: encodedBatches}
+	return p.send(msg, to)
 }
 
 // Listens for connections and handles them in a separate goroutine.
@@ -181,13 +187,12 @@ func (p *p2pImpl) broadcast(msg message) error {
 }
 
 // Sends a message to the sequencer.
-func (p *p2pImpl) sendToSequencer(msg message) error {
+func (p *p2pImpl) send(msg message, to string) error {
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to sequencer. Cause: %w", err)
 	}
-	// TODO - #718 - Use better method to identify sequencer?
-	p.sendBytes(nil, p.peerAddresses[0], msgEncoded)
+	p.sendBytes(nil, to, msgEncoded)
 	return nil
 }
 

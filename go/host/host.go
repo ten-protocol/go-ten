@@ -1045,6 +1045,10 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		return fmt.Errorf("could not decode batches using RLP. Cause: %w", err)
 	}
 
+	if len(batches) == 0 {
+		return nil
+	}
+
 	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
 
 	// We sort the batches, then check for duplicates or gaps. Both are a sign that something is wrong.
@@ -1114,7 +1118,7 @@ func (h *host) requestMissingBatches(batch *common.ExtBatch) (bool, error) {
 		return false, nil
 	}
 
-	batchRequest := common.BatchRequest{Requester: &h.config.ID, From: earliestMissingBatch, To: batch.Header.Number}
+	batchRequest := common.BatchRequest{Requester: h.config.P2PPublicAddress, From: earliestMissingBatch, To: batch.Header.Number}
 	err := h.p2p.RequestBatches(&batchRequest)
 	if err != nil {
 		return false, fmt.Errorf("could not request historical batches. Cause: %w", err)
@@ -1130,10 +1134,21 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 	}
 
 	var batches []*common.ExtBatch
+	currentBatchToRetrieve := batchRequest.From
+	for currentBatchToRetrieve.Cmp(batchRequest.To) != 1 {
+		batchHash, err := h.db.GetBatchHash(currentBatchToRetrieve)
+		if err != nil {
+			return fmt.Errorf("could not retrieve batch hash for batch number %d. Cause: %w", currentBatchToRetrieve, err)
+		}
+		batch, err := h.db.GetBatch(*batchHash)
+		if err != nil {
+			return fmt.Errorf("could not retrieve batch for batch hash %s. Cause: %w", batchHash, err)
+		}
+		batches = append(batches, batch)
+		currentBatchToRetrieve = big.NewInt(0).Add(currentBatchToRetrieve, big.NewInt(1))
+	}
 
-	// todo - joel - gather the list of batches to send
-
-	return h.p2p.SendBatch(batches, batchRequest.Requester)
+	return h.p2p.SendBatches(batches, batchRequest.Requester)
 }
 
 // Checks the host config is valid.

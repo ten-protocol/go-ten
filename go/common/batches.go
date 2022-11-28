@@ -2,8 +2,6 @@ package common
 
 import (
 	"math/big"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // ExtBatch is an encrypted form of batch used when passing the batch around outside of an enclave.
@@ -18,7 +16,7 @@ type ExtBatch struct {
 
 // BatchRequest is used when request a range of batches from a peer.
 type BatchRequest struct {
-	Requester *gethcommon.Address
+	Requester string
 	From      *big.Int
 	To        *big.Int
 }
