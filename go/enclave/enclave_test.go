@@ -257,7 +257,7 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 
 // TestGetBalance runs the GetBalance tests
 func TestGetBalance(t *testing.T) {
-	tests := map[string]func(t *testing.T, w wallet.Wallet, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey){
+	tests := map[string]func(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey){
 		"getBalanceSuccess":     getBalanceSuccess,
 		"getBalanceRequestFail": getBalanceRequestFail,
 	}
@@ -288,12 +288,12 @@ func TestGetBalance(t *testing.T) {
 
 		// execute the tests
 		t.Run(name, func(t *testing.T) {
-			test(t, w, prefundedAddresses, testEnclave, vk)
+			test(t, prefundedAddresses, testEnclave, vk)
 		})
 	}
 }
 
-func getBalanceSuccess(t *testing.T, w wallet.Wallet, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey) {
+func getBalanceSuccess(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey) {
 	// create the request payload
 	req := []interface{}{prefund[0].address.Hex(), "latest"}
 	reqBytes, err := json.Marshal(req)
@@ -331,7 +331,7 @@ func getBalanceSuccess(t *testing.T, w wallet.Wallet, prefund []prefundedAddress
 	}
 }
 
-func getBalanceRequestFail(t *testing.T, w wallet.Wallet, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey) {
+func getBalanceRequestFail(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, _ *rpc.ViewingKey) {
 	type errorTest struct {
 		request  []interface{}
 		errorStr string
