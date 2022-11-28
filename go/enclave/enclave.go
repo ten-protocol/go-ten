@@ -579,7 +579,7 @@ func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 }
 
 // GetBalance handles param decryption, validation and encryption
-//// and requests the Rollup chain to execute the payload (eth_getBalance)
+// and requests the Rollup chain to execute the payload (eth_getBalance)
 func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
 	// Decrypt the request.
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
