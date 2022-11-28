@@ -169,7 +169,19 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 	memp := mempool.New(config.ObscuroChainID)
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
-	chain := rollupchain.New(config.HostID, config.NodeType, storage, l1Blockchain, obscuroBridge, subscriptionManager, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig, logger)
+	chain := rollupchain.New(
+		config.HostID,
+		config.NodeType,
+		storage,
+		l1Blockchain,
+		obscuroBridge,
+		subscriptionManager,
+		transactionBlobCrypto,
+		memp,
+		enclaveKey,
+		&chainConfig,
+		logger,
+	)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
@@ -301,12 +313,53 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	return encryptedResult, nil
 }
 
+// ExecuteOffChainTransaction handles param decryption, validation and encryption
+// and requests the Rollup chain to execute the payload (eth_call)
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
-	resp, err := e.chain.ExecuteOffChainTransaction(encryptedParams)
+	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
+	}
+
+	// extract params from byte slice to array of strings
+	var paramList []interface{}
+	err = json.Unmarshal(paramBytes, &paramList)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode eth_call params - %w", err)
+	}
+
+	// params are [callMsg, block number (optional) ]
+	if len(paramList) < 1 {
+		return nil, fmt.Errorf("required at least 1 params, but received %d", len(paramList))
+	}
+
+	apiArgs, err := gethencoding.ExtractEthCall(paramList[0])
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
+	}
+
+	// encryption will fail if no From address is provided
+	if apiArgs.From == nil {
+		return nil, fmt.Errorf("no from address provided")
+	}
+
+	execResult, err := e.chain.ExecuteOffChainTransaction(apiArgs)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
 	}
-	return resp, err
+
+	// encrypt the result payload
+	var encodedResult string
+	if len(execResult.ReturnData) != 0 {
+		encodedResult = hexutil.Encode(execResult.ReturnData)
+	}
+
+	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(*apiArgs.From, []byte(encodedResult))
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
+	}
+
+	return encryptedResult, nil
 }
 
 func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (common.EncryptedResponseGetTxCount, error) {
@@ -525,8 +578,44 @@ func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 	return nil
 }
 
+// GetBalance handles param decryption, validation and encryption
+//// and requests the Rollup chain to execute the payload (eth_getBalance)
 func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
-	return e.chain.GetBalance(encryptedParams)
+	// Decrypt the request.
+	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
+	}
+
+	// Extract the params from the request.
+	var paramList []string
+	err = json.Unmarshal(paramBytes, &paramList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
+	}
+	if len(paramList) != 2 {
+		return nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
+	}
+
+	// TODO - Replace all usages of `HexToAddress` with a `SafeHexToAddress` that checks that the string does not exceed 20 bytes.
+	accountAddress := gethcommon.HexToAddress(paramList[0])
+	blockNumber := gethrpc.BlockNumber(0)
+	err = blockNumber.UnmarshalJSON([]byte(paramList[1]))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse requested rollup number - %w", err)
+	}
+
+	encryptAddress, balance, err := e.chain.GetBalance(accountAddress, blockNumber)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get balance - %w", err)
+	}
+
+	encryptedBalance, err := e.rpcEncryptionManager.EncryptWithViewingKey(*encryptAddress, []byte(balance.String()))
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
+	}
+
+	return encryptedBalance, nil
 }
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
