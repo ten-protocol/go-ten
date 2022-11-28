@@ -700,6 +700,11 @@ func (rc *RollupChain) ExecuteOffChainTransaction(encryptedParams common.Encrypt
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
 
+	// encryption will fail if no From address is provided
+	if apiArgs.From == nil {
+		return nil, fmt.Errorf("no from address provided")
+	}
+
 	// TODO Hook up the blockNumber
 	result, err := rc.ExecuteOffChainTransactionAtBlock(apiArgs, gethrpc.BlockNumber(0))
 	if err != nil {
