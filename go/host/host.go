@@ -1,7 +1,6 @@
 package host
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -61,9 +60,6 @@ const (
 
 // Implementation of host.Host.
 type host struct {
-	ctx        context.Context    // context managing the lifespan of this host object
-	ctxCleanup context.CancelFunc // function to clean-up the host context tree (todo: this should be controlled outside the host at a container level)
-
 	config          config.HostConfig
 	shortID         uint64
 	isSequencer     bool
@@ -101,11 +97,7 @@ func NewHost(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	logger gethlog.Logger,
 ) hostcommon.Host {
-	ctx, cancel := context.WithCancel(context.Background())
 	host := &host{
-		ctx:        ctx,
-		ctxCleanup: cancel,
-
 		// config
 		config:      config,
 		shortID:     common.ShortAddress(config.ID),
@@ -122,7 +114,7 @@ func NewHost(
 		bootstrappingComplete: new(int32),
 
 		// incoming data
-		l1BlockProvider: ethadapter.NewEthBlockProvider(ctx, ethClient, logger),
+		l1BlockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
 		txP2PCh:         make(chan common.EncryptedTx),
 		batchP2PCh:      make(chan common.EncodedBatch),
 
@@ -343,7 +335,6 @@ func (h *host) Stop() {
 		// connection remains open, waiting for the RPC server to close.
 		go h.rpcServer.Stop()
 	}
-	h.ctxCleanup()
 
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
@@ -387,7 +378,7 @@ func (h *host) startProcessing() {
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
 	// stream ch during the main loop if enclave gets out-of-sync, and we need to stream from an earlier block
-	blockStream, err := h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(1))
+	blockStream, cancelStream, err := h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(1))
 	if err != nil {
 		h.logger.Crit("unable to stream l1 blocks for enclave", log.ErrKey, err)
 	}
@@ -408,7 +399,7 @@ func (h *host) startProcessing() {
 			err := h.processL1Block(b, isLive)
 			if err != nil {
 				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
-				blockStream = h.handleProcessBlockErr(b, blockStream, err)
+				blockStream, cancelStream = h.handleProcessBlockErr(b, blockStream, cancelStream, err)
 			}
 
 		case tx := <-h.txP2PCh:
@@ -429,26 +420,27 @@ func (h *host) startProcessing() {
 	}
 }
 
-func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream <-chan *types.Block, err error) <-chan *types.Block {
+func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream <-chan *types.Block, cancelStream func(), err error) (<-chan *types.Block, func()) {
 	var rejErr *common.BlockRejectError
 	if !errors.As(err, &rejErr) {
 		// received unexpected error (no useful information from the enclave)
 		// we log it out and ignore it until the enclave tells us more information
 		h.logger.Warn("Error processing block.", log.ErrKey, err)
-		return stream
+		return stream, nil
 	}
 	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, "blk", processedBlock.Hash(), "blkHeight", processedBlock.Number())
 	if rejErr.L1Head == (gethcommon.Hash{}) {
 		h.logger.Warn("No L1 head information provided by enclave, continuing with existing stream")
-		return stream
+		return stream, nil
 	}
 	h.logger.Info("Resetting block provider stream to enclave latest head.", "streamFrom", rejErr.L1Head)
-	replacementStream, err := h.l1BlockProvider.StartStreamingFromHash(rejErr.L1Head)
+	replacementStream, replacementCancel, err := h.l1BlockProvider.StartStreamingFromHash(rejErr.L1Head)
 	if err != nil {
 		h.logger.Warn("Could not reset block provider, continuing with previous stream", log.ErrKey, err)
-		return stream
+		return stream, nil
 	}
-	return replacementStream
+	cancelStream() // cancel the previous stream and return the replacement
+	return replacementStream, replacementCancel
 }
 
 // activates the given interrupt (atomically) and returns a new interrupt
@@ -788,17 +780,17 @@ func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 }
 
 func (h *host) awaitSecret(fromHeight *big.Int) error {
-	blkStream, err := h.l1BlockProvider.StartStreamingFromHeight(fromHeight)
+	blkStream, cancelStream, err := h.l1BlockProvider.StartStreamingFromHeight(fromHeight)
 	if err != nil {
 		return err
 	}
+	defer cancelStream()
 
 	for {
 		select {
 		case blk := <-blkStream:
 			h.logger.Trace("checking block for secret resp", "height", blk.Number())
 			if h.checkBlockForSecretResponse(blk) {
-				h.l1BlockProvider.Stop()
 				return nil
 			}
 
@@ -807,7 +799,6 @@ func (h *host) awaitSecret(fromHeight *big.Int) error {
 			h.logger.Warn(fmt.Sprintf(" Waiting for secret from the L1. No blocks received for over %s", blockStreamWarningTimeout))
 
 		case <-h.exitHostCh:
-			h.l1BlockProvider.Stop()
 			return nil
 		}
 	}

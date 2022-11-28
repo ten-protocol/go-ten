@@ -60,8 +60,8 @@ type P2P interface {
 //     \-> 13b --> 14b --> 15b
 //     If block provider had just published 14a and then discovered the 'b' fork is canonical, it would next publish 13b, 14b, 15b.
 type ReconnectingBlockProvider interface {
-	StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, error)
-	StartStreamingFromHash(latestHash gethcommon.Hash) (<-chan *types.Block, error)
-	Stop()
+	// StartStreamingFromHeight and StartStreamingFromHash return the streaming channel and a function to cancel/clean-up the stream with
+	StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, func(), error)
+	StartStreamingFromHash(latestHash gethcommon.Hash) (<-chan *types.Block, func(), error)
 	IsLive(hash gethcommon.Hash) bool // returns true if hash is of the latest known L1 head block
 }
