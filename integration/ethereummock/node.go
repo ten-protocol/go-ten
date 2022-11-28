@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -61,6 +62,7 @@ type Node struct {
 	Resolver db.BlockResolver
 	db       TxDB
 	subs     map[uuid.UUID]*mockSubscription // active subscription for mock blocks
+	subMu    sync.Mutex
 
 	// Channels
 	exitCh       chan bool // the Node stops
@@ -105,6 +107,8 @@ func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
 		id:     id,
 		headCh: make(chan *types.Header),
 	}
+	m.subMu.Lock()
+	defer m.subMu.Unlock()
 	m.subs[id] = mockSub
 	return mockSub.headCh, mockSub
 }
@@ -408,6 +412,8 @@ func (m *Node) EthClient() *ethclient_ethereum.Client {
 }
 
 func (m *Node) RemoveSubscription(id uuid.UUID) {
+	m.subMu.Lock()
+	defer m.subMu.Unlock()
 	delete(m.subs, id)
 }
 
@@ -438,6 +444,7 @@ func NewMiner(
 		mgmtContractLib:  NewMgmtContractLibMock(),
 		logger:           log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), cfg.LogFile, log.NodeIDKey, id),
 		subs:             map[uuid.UUID]*mockSubscription{},
+		subMu:            sync.Mutex{},
 	}
 }
 
