@@ -26,24 +26,23 @@ An additional complexity is that Obscuro has the requirement to support temporar
 - Master Seed is a strongly generated entropy data that serves as the encryption base of the network
 - Use the random number generation available inside the TEEs
 - Generation happens when the central sequencer bootstraps the network
+- The Master Seed is shared across Validators using the process described in the [whitepaper](https://whitepaper.obscu.ro/obscuro-whitepaper/amalgamated.html#sharing-the-master-seed)
 
 ## 2. Ensure Enclave Encrypted Communication
 - Client-Enclave communication is encrypted using the Obscuro Key and the Client Key
 - Clients encrypt using the Obscuro Public Key
 - Enclave responds encrypting with the Client Public Key ( also known as Viewing Keys )
-- The Obscuro Key is a Key-Pair derived from the Master Seed + Genesis Rollup
+- The Obscuro Key is a Key-Pair deterministically calculated from the Master Seed + Genesis Rollup
 - The Public key will be published to the Management contract and used by all obscuro tooling ( like the wallet extension ) to encrypt transactions
-- Enclaves will determine the Private key when deriving the Master Seed + Genesis Rollup 
+- Enclaves will determine the Private key when calculating the Master Seed + Genesis Rollup 
   - Enclaves have the Master Seed through the attestation process
   - Enclaves fetch Genesis Rollup through the Layer 1 blocks
 
-- HKDF (HMAC-based Key Derivation Function) is used to derive keys
-  - Given the high entropy of the Master Seed no need for PBKDF Family key stretching
-  - Derivations use public rollup metadata such as height ( or some other shared field ) in the Info component of HKDF and use a fixed size salt as per https://soatok.blog/2021/11/17/understanding-hkdf/
-
 
 ## 3. Transaction Encryption per Rollup with Revelation Period
-- Transactions are encrypted in the Obscuro chain providing confidentiality
+- Key derivation is a process that takes a key and derives a new key' given a set of inputs. 
+  - The new key' does not release any information for old key (one way function)
+  - Given the key and the input the new key' is deterministically calculated/derived
 - To avoid reusing the same key, transaction encryption keys are derived twice
   - Each rollup has a Rollup Encryption Key derived from the Master Seed + Rollup ( if a rollup encryption key is discovered other rollups are safe )
   - Each transaction is encrypted with a Revelation Period Key that is derived from the Rollup Encryption Key + Revelation Period
