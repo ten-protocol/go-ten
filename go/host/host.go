@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/host/p2p"
 	"math/big"
 	"sort"
 	"sync/atomic"
@@ -79,10 +80,11 @@ type host struct {
 	stopHostInterrupt     *int32
 	bootstrappingComplete *int32 // Marks when the host is done bootstrapping
 
-	l1BlockRPCCh chan l1BlockAndParent        // The channel that new blocks from the L1 node are sent to
-	forkRPCCh    chan []common.EncodedL1Block // The channel that new forks from the L1 node are sent to
-	txP2PCh      chan common.EncryptedTx      // The channel that new transactions from peers are sent to
-	batchP2PCh   chan common.EncodedBatches   // The channel that new batches from peers are sent to
+	l1BlockRPCCh   chan l1BlockAndParent           // The channel that new blocks from the L1 node are sent to
+	forkRPCCh      chan []common.EncodedL1Block    // The channel that new forks from the L1 node are sent to
+	txP2PCh        chan common.EncryptedTx         // The channel that new transactions from peers are sent to
+	batchP2PCh     chan common.EncodedBatches      // The channel that new batches from peers are sent to
+	batchRequestCh chan common.EncodedBatchRequest // The channel that batch requests from peers are sent to
 
 	db *db.DB // Stores the host's publicly-available data
 
@@ -112,10 +114,11 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		bootstrappingComplete: new(int32),
 
 		// incoming data
-		l1BlockRPCCh: make(chan l1BlockAndParent),
-		forkRPCCh:    make(chan []common.EncodedL1Block),
-		txP2PCh:      make(chan common.EncryptedTx),
-		batchP2PCh:   make(chan common.EncodedBatches),
+		l1BlockRPCCh:   make(chan l1BlockAndParent),
+		forkRPCCh:      make(chan []common.EncodedL1Block),
+		txP2PCh:        make(chan common.EncryptedTx),
+		batchP2PCh:     make(chan common.EncodedBatches),
+		batchRequestCh: make(chan common.EncodedBatchRequest),
 
 		// Initialize the host DB
 		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
@@ -309,14 +312,16 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	return encryptedResponse, nil
 }
 
-// ReceiveTx receives a new transaction
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
 	h.txP2PCh <- tx
 }
 
-// ReceiveBatches receives a new set of batches
 func (h *host) ReceiveBatches(batches common.EncodedBatches) {
 	h.batchP2PCh <- batches
+}
+
+func (h *host) SendBatches(batchRequest common.EncodedBatchRequest) {
+	h.batchRequestCh <- batchRequest
 }
 
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
@@ -450,6 +455,11 @@ func (h *host) startProcessing() { //nolint:gocognit
 
 		case batches := <-h.batchP2PCh:
 			if err := h.handleBatches(&batches); err != nil {
+				h.logger.Error("Could not handle batches. ", log.ErrKey, err)
+			}
+
+		case batchRequest := <-h.batchRequestCh:
+			if err := h.handleBatchRequest(&batchRequest); err != nil {
 				h.logger.Error("Could not handle batches. ", log.ErrKey, err)
 			}
 
@@ -1110,6 +1120,18 @@ func (h *host) requestMissingBatches(batch *common.ExtBatch) (bool, error) {
 		return false, fmt.Errorf("could not request historical batches. Cause: %w", err)
 	}
 	return true, nil
+}
+
+func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchRequest) error {
+	var batchRequest *p2p.BatchRequest
+	err := rlp.DecodeBytes(*encodedBatchRequest, &batchRequest)
+	if err != nil {
+		return fmt.Errorf("could not decode batch request using RLP. Cause: %w", err)
+	}
+
+	// todo - joel - implement this
+	panic("not implemented")
+	return nil
 }
 
 // Checks the host config is valid.

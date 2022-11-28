@@ -25,6 +25,8 @@ type Host interface {
 	ReceiveTx(tx common.EncryptedTx)
 	// ReceiveBatches receives a set of batches from a peer host.
 	ReceiveBatches(batches common.EncodedBatches)
+	// SendBatches sends a set of batches to a peer host. Used during catch-up.
+	SendBatches(batchRequest common.EncodedBatchRequest)
 	// Subscribe feeds logs matching the encrypted log subscription to the matchedLogs channel.
 	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error
 	// Unsubscribe terminates a log subscription between the host and the enclave.
