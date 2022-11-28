@@ -1058,11 +1058,15 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	for idx := 0; idx < len(batches)-1; idx++ {
 		i := batches[idx]
 		j := batches[idx+1]
+
 		numberGap := big.NewInt(0).Sub(j.Header.Number, i.Header.Number)
-		if numberGap == big.NewInt(0) {
+		gapIsZero := numberGap.Cmp(big.NewInt(0)) == 0
+		gapIsMoreThanOne := numberGap.Cmp(big.NewInt(1)) != 0
+
+		if gapIsZero {
 			return fmt.Errorf("duplicates in set of batches to process")
 		}
-		if numberGap != big.NewInt(1) {
+		if gapIsMoreThanOne {
 			return fmt.Errorf("gaps in chain of set of batches to process")
 		}
 	}
