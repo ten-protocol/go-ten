@@ -399,7 +399,7 @@ func (h *host) startProcessing() {
 		select {
 		case b := <-blockStream:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			err := h.processL1Block(b, true) // h.l1BlockProvider.IsLive(b.Hash()))
+			err := h.processL1Block(b, h.l1BlockProvider.IsLive(b.Hash()))
 			// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
 			blockStream = h.handleProcessBlockErr(b, blockStream, err)
 
