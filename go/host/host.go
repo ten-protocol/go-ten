@@ -552,7 +552,7 @@ func (h *host) processL1BlockTransactions(b *types.Block) {
 }
 
 // Publishes a rollup to the L1.
-func (h *host) publishRollup(producedRollup common.ExtRollup) {
+func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	encodedRollup, err := common.EncodeRollup(producedRollup.ToExtRollup())
 	if err != nil {
 		h.logger.Crit("could not encode rollup.", log.ErrKey, err)
@@ -569,7 +569,7 @@ func (h *host) publishRollup(producedRollup common.ExtRollup) {
 }
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
-func (h *host) storeAndDistributeBatch(producedRollup common.ExtRollup) {
+func (h *host) storeAndDistributeBatch(producedRollup *common.ExtRollup) {
 	batch := common.ExtBatch{
 		Header:          producedRollup.Header,
 		TxHashes:        producedRollup.TxHashes,
@@ -615,7 +615,7 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 
 	// Distribute the corresponding batch.
 	producedRollup := genesisResponse.GenesisRollup.ToExtRollup()
-	h.storeAndDistributeBatch(*producedRollup)
+	h.storeAndDistributeBatch(producedRollup)
 
 	// Submit the rollup to the management contract.
 	encodedRollup, err := common.EncodeRollup(producedRollup)

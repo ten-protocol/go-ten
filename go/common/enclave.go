@@ -46,6 +46,9 @@ type Enclave interface {
 	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitL1Block(block types.Block, isLatest bool) (*BlockSubmissionResponse, error)
 
+	// ProduceRollup creates a new rollup.
+	ProduceRollup() (*ExtRollup, error)
+
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
 
