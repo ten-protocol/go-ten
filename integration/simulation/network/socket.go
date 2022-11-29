@@ -50,7 +50,6 @@ func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Sta
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr, testlog.Logger())
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
 
-	fmt.Println(params.MessageBusAddr.Hex())
 	// Start the enclaves
 	startRemoteEnclaveServers(params)
 
