@@ -566,9 +566,8 @@ func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, blockSt
 }
 
 // ExecuteOffChainTransaction executes non-state changing transactions at a given block height (eth_call)
-func (rc *RollupChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionArgs) (*core.ExecutionResult, error) {
-	// TODO Hook up the blockNumber
-	result, err := rc.ExecuteOffChainTransactionAtBlock(apiArgs, gethrpc.BlockNumber(0))
+func (rc *RollupChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*core.ExecutionResult, error) {
+	result, err := rc.ExecuteOffChainTransactionAtBlock(apiArgs, blockNumber)
 	if err != nil {
 		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, err.Error())
 		return nil, err
@@ -585,7 +584,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionAr
 	return result, nil
 }
 
-func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
+func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
 	// get account balance at certain block/height
 	balance, err := rc.GetBalanceAtBlock(accountAddress, blockNumber)
 	if err != nil {
@@ -622,11 +621,11 @@ func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber
 	return &address, balance, nil
 }
 
-// GetChainStateAtBlock is a helper function that returns the state of the chain at height
+// GetChainStateAtRollup is a helper function that returns the state of the chain at height
 // TODO make this cacheable
-func (rc *RollupChain) GetChainStateAtBlock(blockNumber gethrpc.BlockNumber) (*state.StateDB, error) {
+func (rc *RollupChain) GetChainStateAtRollup(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
 	// We retrieve the rollup of interest.
-	rollup, err := rc.getRollup(blockNumber)
+	rollup, err := rc.getRollup(*blockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -645,8 +644,8 @@ func (rc *RollupChain) GetChainStateAtBlock(blockNumber gethrpc.BlockNumber) (*s
 }
 
 // GetBalanceAtBlock returns the balance of an account at a certain height
-func (rc *RollupChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber gethrpc.BlockNumber) (*hexutil.Big, error) {
-	chainState, err := rc.GetChainStateAtBlock(blockNumber)
+func (rc *RollupChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
+	chainState, err := rc.GetChainStateAtRollup(blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
@@ -655,8 +654,8 @@ func (rc *RollupChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNu
 }
 
 // IsAccountContractAtBlock returns the whether the account is a contract or not at a certain height
-func (rc *RollupChain) IsAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber gethrpc.BlockNumber) (bool, error) {
-	chainState, err := rc.GetChainStateAtBlock(blockNumber)
+func (rc *RollupChain) IsAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
+	chainState, err := rc.GetChainStateAtRollup(blockNumber)
 	if err != nil {
 		return false, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
@@ -664,30 +663,34 @@ func (rc *RollupChain) IsAccountContractAtBlock(accountAddr gethcommon.Address, 
 	return len(chainState.GetCode(accountAddr)) > 0, nil
 }
 
-func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber gethrpc.BlockNumber) (*core.ExecutionResult, error) {
+func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*core.ExecutionResult, error) {
 	// TODO review this during gas mechanics implementation
 	callMsg, err := apiArgs.ToMessage(rc.GlobalGasCap, rc.BaseFee)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
 	}
 
-	hs, err := rc.storage.FetchHeadState()
+	// fetch the chain state at given rollup
+	blockState, err := rc.GetChainStateAtRollup(blockNumber)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch head state. Cause: %w", err)
+		return nil, err
 	}
-	// todo - get the parent
-	r, err := rc.storage.FetchRollup(hs.HeadRollup)
+
+	r, err := rc.getRollup(*blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch head state rollup. Cause: %w", err)
 	}
 
-	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
-	s, err := rc.storage.CreateStateDB(hs.HeadRollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
-	}
+	rc.logger.Trace(
+		fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s",
+			callMsg.To(),
+			callMsg.From(),
+			hexutils.BytesToHex(callMsg.Data()),
+			common.ShortHash(r.Hash()),
+			r.Header.Root.Hex()),
+	)
 
-	result, err := evm.ExecuteOffChainCall(&callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
+	result, err := evm.ExecuteOffChainCall(&callMsg, blockState, r.Header, rc.storage, rc.chainConfig, rc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err

@@ -27,6 +27,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 const _testEnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -379,6 +380,55 @@ func getBalanceRequestFail(t *testing.T, prefund []prefundedAddress, enclave com
 	}
 }
 
+// TestGetBalanceBlockHeight tests the gas estimate given different block heights
+func TestGetBalanceBlockHeight(t *testing.T) {
+	// create the wallet
+	w := datagenerator.RandomWallet(integration.ObscuroChainID)
+	w2 := datagenerator.RandomWallet(integration.ObscuroChainID)
+
+	fundedAtBlock1 := prefundedAddress{
+		address: w.Address(),
+		amount:  big.NewInt(int64(datagenerator.RandomUInt64())),
+	}
+
+	// create the enclave
+	testEnclave, err := createTestEnclave(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// wallets should have no balance at block 0
+	err = checkExpectedBalance(testEnclave, gethrpc.BlockNumber(0), w, big.NewInt(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = checkExpectedBalance(testEnclave, gethrpc.BlockNumber(0), w2, big.NewInt(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = injectNewBlockAndChangeBalance(testEnclave, []prefundedAddress{fundedAtBlock1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// wallet 0 should have balance at block 1
+	err = checkExpectedBalance(testEnclave, gethrpc.BlockNumber(1), w, fundedAtBlock1.amount)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = checkExpectedBalance(testEnclave, gethrpc.BlockNumber(0), w2, big.NewInt(0))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// TODO review why injecting a new block crashes the enclave https://github.com/obscuronet/obscuro-internal/issues/1251
+	//err = injectNewBlockAndChangeBalance(testEnclave, fundedAtBlock2)
+	//if err != nil {
+	//	t.Fatal(err)
+	//}
+}
+
 // registerWalletViewingKey takes a wallet and registers a VK with the enclave
 func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wallet) (*rpc.ViewingKey, error) {
 	// generate the VK from the wallet
@@ -473,6 +523,90 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	}
 
 	return enclave.(*enclaveImpl).storage.StoreNewHead(bs, genRollup, nil, nil)
+}
+
+func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAddress) error {
+	headBlock, err := enclave.(*enclaveImpl).storage.FetchHeadBlock()
+	if err != nil {
+		return err
+	}
+	headRollup, err := enclave.(*enclaveImpl).storage.FetchHeadRollup()
+	if err != nil {
+		return err
+	}
+
+	// insert the new l1 block
+	blk := types.NewBlock(
+		&types.Header{
+			Number:     big.NewInt(0).Add(headBlock.Number(), big.NewInt(1)),
+			ParentHash: headBlock.Hash(),
+		}, nil, nil, nil, &trie.StackTrie{})
+	_, err = enclave.SubmitL1Block(*blk, true)
+	if err != nil {
+		return err
+	}
+
+	// make sure the state is updated otherwise balances will not be available
+	headState, err := enclave.(*enclaveImpl).storage.FetchHeadState()
+	if err != nil {
+		return err
+	}
+	stateDB, err := enclave.(*enclaveImpl).storage.CreateStateDB(headState.HeadRollup)
+	if err != nil {
+		return err
+	}
+
+	for _, fund := range funds {
+		stateDB.SetBalance(fund.address, fund.amount)
+	}
+
+	_, err = stateDB.Commit(false)
+	if err != nil {
+		return err
+	}
+
+	// make sure the rollup is stored the rollup storage
+	rollup := core.NewRollup(
+		blk.Hash(),
+		nil,
+		headRollup.NumberU64()+1,
+		gethcommon.HexToAddress("0x0"),
+		[]*common.L2Tx{},
+		[]common.Withdrawal{},
+		common.GenerateNonce(),
+		stateDB.IntermediateRoot(true),
+	)
+
+	err = enclave.(*enclaveImpl).storage.StoreRollup(rollup)
+	if err != nil {
+		return err
+	}
+
+	// make sure the genesis is stored as the new Head of the rollup chain
+	bs := &core.BlockState{
+		Block:          blk.Hash(),
+		HeadRollup:     rollup.Hash(),
+		FoundNewRollup: true,
+	}
+
+	err = enclave.(*enclaveImpl).storage.StoreNewHead(bs, rollup, nil, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber, w wallet.Wallet, expectedAmount *big.Int) error {
+	balance, err := enclave.(*enclaveImpl).chain.GetBalanceAtBlock(w.Address(), &blkNumber)
+	if err != nil {
+		return err
+	}
+
+	if balance.ToInt().Cmp(expectedAmount) != 0 {
+		return fmt.Errorf("unexpected balance. expected %d got %d", big.NewInt(0), balance.ToInt())
+	}
+
+	return nil
 }
 
 type prefundedAddress struct {
