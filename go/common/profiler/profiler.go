@@ -3,6 +3,7 @@ package profiler
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -29,8 +30,13 @@ func NewProfiler(port int, logger gethlog.Logger) *Profiler {
 func (p *Profiler) Start() error {
 	go func() {
 		address := fmt.Sprintf("0.0.0.0:%d", p.port)
+		server := &http.Server{
+			Addr:              address,
+			ReadHeaderTimeout: 3 * time.Second,
+		}
+
 		p.logger.Info(fmt.Sprintf("Profiler started @%s ", address))
-		p.logger.Info(fmt.Sprintf("%v", http.ListenAndServe(address, nil)))
+		p.logger.Info(fmt.Sprintf("%v", server.ListenAndServe()))
 	}()
 	return nil
 }

@@ -15,7 +15,7 @@ import (
 // BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
 	// FetchBlock returns the L1 Block with the given hash.
-	FetchBlock(hash common.L1RootHash) (*types.Block, error)
+	FetchBlock(blockHash common.L1RootHash) (*types.Block, error)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block)
 	// ParentBlock returns the L1 Block's parent.
@@ -35,37 +35,37 @@ type BlockResolver interface {
 }
 
 type RollupResolver interface {
-	// FetchRollup returns the rollup with the given hash and true, or (nil, false) if no such rollup is stored.
-	FetchRollup(hash common.L2RootHash) (*core.Rollup, bool)
-	// FetchRollupByHeight returns the rollup with the given height and true, or (nil, false) if no such rollup is stored.
-	FetchRollupByHeight(height uint64) (*core.Rollup, bool)
+	// FetchRollup returns the rollup with the given hash.
+	FetchRollup(hash common.L2RootHash) (*core.Rollup, error)
+	// FetchRollupByHeight returns the rollup with the given height.
+	FetchRollupByHeight(height uint64) (*core.Rollup, error)
 	// FetchRollups returns all the proposed rollups with the given height
 	FetchRollups(height uint64) ([]*core.Rollup, error)
 	// StoreRollup persists the rollup
-	StoreRollup(rollup *core.Rollup)
-	// ParentRollup returns the rollup's parent rollup, or (nil, false) if no such rollup was found.
-	ParentRollup(rollup *core.Rollup) (*core.Rollup, bool)
+	StoreRollup(rollup *core.Rollup) error
+	// ParentRollup returns the rollup's parent rollup.
+	ParentRollup(rollup *core.Rollup) (*core.Rollup, error)
 	// StoreGenesisRollup stores the rollup genesis
-	StoreGenesisRollup(rol *core.Rollup)
+	StoreGenesisRollup(rol *core.Rollup) error
 	// FetchGenesisRollup returns the rollup genesis.
 	FetchGenesisRollup() (*core.Rollup, error)
 	// FetchHeadRollup returns the current head rollup
 	FetchHeadRollup() (*core.Rollup, error)
 }
 
-type BlockStateStorage interface {
-	// FetchBlockState returns the block's state.
-	FetchBlockState(blockHash common.L1RootHash) (*core.BlockState, error)
+type HeadsAfterL1BlockStorage interface {
+	// FetchHeadsAfterL1Block returns the chain heads for a given L1 block hash.
+	FetchHeadsAfterL1Block(blockHash common.L1RootHash) (*core.HeadsAfterL1Block, error)
 	// FetchLogs returns the block's logs.
 	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
-	// FetchHeadState returns the head block state.
-	FetchHeadState() (*core.BlockState, error)
+	// FetchCurrentHeadsAfterL1Block returns the current chain heads.
+	FetchCurrentHeadsAfterL1Block() (*core.HeadsAfterL1Block, error)
 	// StoreNewHead saves the block state alongside its rollup, receipts and logs.
-	StoreNewHead(state *core.BlockState, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error
+	StoreNewHead(state *core.HeadsAfterL1Block, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
-	EmptyStateDB() *state.StateDB
+	EmptyStateDB() (*state.StateDB, error)
 }
 
 type SharedSecretStorage interface {
@@ -105,7 +105,7 @@ type Storage interface {
 	BlockResolver
 	RollupResolver
 	SharedSecretStorage
-	BlockStateStorage
+	HeadsAfterL1BlockStorage
 	TransactionStorage
 	AttestationStorage
 	CrossChainMessagesStorage

@@ -33,7 +33,7 @@ type Enclave interface {
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash gethcommon.Hash) (*BlockSubmissionResponse, error)
+	ProduceGenesis(blkHash gethcommon.Hash) (*ProduceGenesisResponse, error)
 
 	// Start - start speculative execution
 	Start(block types.Block) error
@@ -45,6 +45,9 @@ type Enclave interface {
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitL1Block(block L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, error)
+
+	// ProduceRollup creates a new rollup.
+	ProduceRollup(blockHash *L1RootHash) (*ExtRollup, error)
 
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
@@ -107,17 +110,18 @@ type Enclave interface {
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
-	BlockHeader *types.Header // the header of the consumed block. Todo - only the hash required
-
-	ProducedRollup       ExtRollup // The new rollup produced as a result of ingesting this block, if any.
-	FoundNewHead         bool      // Whether the block contained a new head rollup for the canonical rollup chain.
-	IngestedRollupHeader *Header   // The header of the rollup contained in the ingested block, if any.
-
+	BlockHeader             *types.Header             // The header of the consumed block.
+	UpdatedHeadRollup       bool                      // Whether the block contained a new head rollup for the canonical rollup chain.
+	IngestedRollupHeader    *Header                   // The header of the winning rollup contained in the ingested block, if any.
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
+	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the block and all its ancestors for each subscription ID.
+	RejectError             *BlockRejectError         // this is set if block was rejected, contains information about what block to submit next
+}
 
-	SubscribedLogs map[rpc.ID][]byte // The logs produced by the block and all its ancestors for each subscription ID.
-
-	RejectError *BlockRejectError // this is set if block was rejected, contains information about what block to submit next
+// ProduceGenesisResponse is the response sent from the enclave back to the node after requesting the production of the genesis rollup.
+type ProduceGenesisResponse struct {
+	GenesisRollup ExtRollup     // The genesis rollup.
+	BlockHeader   *types.Header // The header of the block containing the genesis rollup.
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block

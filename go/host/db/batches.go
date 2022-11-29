@@ -26,7 +26,7 @@ func (db *DB) GetHeadBatchHeader() (*common.Header, error) {
 	return db.readBatchHeader(*headBatchHash)
 }
 
-// GetBatchHeader returns the batch header given the hash, or (nil, false) if no such header is found.
+// GetBatchHeader returns the batch header given the hash.
 func (db *DB) GetBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
 	return db.readBatchHeader(hash)
 }
@@ -53,6 +53,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 		}
 	}
 
+	// TODO - #718 - Check that we are not re-adding an existing batch before updating the number.
 	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
 	currentTotal, err := db.readTotalTransactions()
 	if err != nil {
@@ -69,7 +70,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
 	}
-	if errors.Is(err, errutil.ErrNotFound) || headBatchHeader.Number.Int64() <= batch.Header.Number.Int64() {
+	if errors.Is(err, errutil.ErrNotFound) || headBatchHeader.Number.Cmp(batch.Header.Number) == -1 {
 		err = db.writeHeadBatchHash(batch.Header.Hash())
 		if err != nil {
 			return fmt.Errorf("could not write new head batch hash. Cause: %w", err)
@@ -83,19 +84,17 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 	return nil
 }
 
-// GetBatchHash returns the hash of a batch given its number, or (nil, false) if no such batch is found.
+// GetBatchHash returns the hash of a batch given its number.
 func (db *DB) GetBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 	return db.readBatchHash(number)
 }
 
-// GetBatchTxs returns the transaction hashes of the batch with the given hash, or (nil, false) if no such batch is
-// found.
+// GetBatchTxs returns the transaction hashes of the batch with the given hash.
 func (db *DB) GetBatchTxs(batchHash gethcommon.Hash) ([]gethcommon.Hash, error) {
 	return db.readBatchTxHashes(batchHash)
 }
 
-// GetBatchNumber returns the number of the batch containing the given transaction hash, or (nil, false) if no such
-// batch is found.
+// GetBatchNumber returns the number of the batch containing the given transaction hash.
 func (db *DB) GetBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
 	return db.readBatchNumber(txHash)
 }
@@ -208,7 +207,7 @@ func (db *DB) writeBatchHash(w ethdb.KeyValueWriter, header *common.Header) erro
 	return nil
 }
 
-// Retrieves the hash for the batch with the given number, or (nil, false) if no such batch is found.
+// Retrieves the hash for the batch with the given number..
 func (db *DB) readBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 	f, err := db.kvStore.Has(batchHashKey(number))
 	if err != nil {
@@ -228,7 +227,7 @@ func (db *DB) readBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 	return &hash, nil
 }
 
-// Returns the transaction hashes in the batch with the given hash, or (nil, false) if no such batch is found.
+// Returns the transaction hashes in the batch with the given hash.
 func (db *DB) readBatchTxHashes(batchHash common.L2RootHash) ([]gethcommon.Hash, error) {
 	f, err := db.kvStore.Has(batchTxHashesKey(batchHash))
 	if err != nil {
@@ -276,8 +275,7 @@ func (db *DB) writeBatchTxHashes(w ethdb.KeyValueWriter, batchHash common.L2Root
 	return nil
 }
 
-// Retrieves the number of the batch containing the transaction with the given hash, or (nil, false) if no such batch
-// is found.
+// Retrieves the number of the batch containing the transaction with the given hash.
 func (db *DB) readBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
 	f, err := db.kvStore.Has(batchNumberKey(txHash))
 	if err != nil {

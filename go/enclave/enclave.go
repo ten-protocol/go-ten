@@ -24,8 +24,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/params"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -44,6 +42,7 @@ import (
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 type enclaveImpl struct {
@@ -174,7 +173,20 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
-	chain := rollupchain.New(config.HostID, config.NodeType, storage, l1Blockchain, obscuroBridge, subscriptionManager, crossChainProcessors, transactionBlobCrypto, memp, rpcEncryptionManager, enclaveKey, config.L1ChainID, &chainConfig, logger)
+	chain := rollupchain.New(
+		config.HostID,
+		config.NodeType,
+		storage,
+		l1Blockchain,
+		obscuroBridge,
+		subscriptionManager,
+		crossChainProcessors,
+		transactionBlobCrypto,
+		memp,
+		enclaveKey,
+		&chainConfig,
+		logger,
+	)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
@@ -229,34 +241,45 @@ func (e *enclaveImpl) Start(block types.Block) error {
 	return nil
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubmissionResponse, error) {
-	rolGenesis, b := e.chain.ProduceGenesis(blkHash)
-	return &common.BlockSubmissionResponse{
-		ProducedRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
-		BlockHeader:    b.Header(),
+func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ProduceGenesisResponse, error) {
+	rolGenesis, b, err := e.chain.ProduceGenesis(blkHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return &common.ProduceGenesisResponse{
+		GenesisRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
+		BlockHeader:   b.Header(),
 	}, nil
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
-	bsr, err := e.chain.SubmitL1Block(block, receipts, isLatest)
+	newHeadsAfterL1Block, err := e.chain.UpdateStateFromL1Block(block, receipts, isLatest)
 	if err != nil {
-		e.logger.Trace("SubmitBlock failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
-		return nil, err
+		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
+		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
 	}
-	e.logger.Trace("SubmitBlock successful", "blk", block.Number(), "blkHash", block.Hash())
+	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
-	if bsr.IngestedRollupHeader != nil {
-		hr, f := e.storage.FetchRollup(bsr.IngestedRollupHeader.Hash())
-		if !f {
-			e.logger.Crit("This should not happen because this rollup was just processed.")
-		}
-		e.mempool.RemoveMempoolTxs(hr, e.storage)
+	// We prepare the block submission response.
+	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, newHeadsAfterL1Block)
+	if err != nil {
+		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
+	}
+	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
+
+	// We remove any rolled-up transactions from the mempool.
+	err = e.removeMempoolTxs(blockSubmissionResponse.IngestedRollupHeader)
+	if err != nil {
+		e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
 	}
 
-	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
+	return blockSubmissionResponse, nil
+}
 
-	return bsr, nil
+func (e *enclaveImpl) ProduceRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
+	return e.chain.NewRollup(blockHash)
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -305,12 +328,60 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	return encryptedResult, nil
 }
 
+// ExecuteOffChainTransaction handles param decryption, validation and encryption
+// and requests the Rollup chain to execute the payload (eth_call)
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
-	resp, err := e.chain.ExecuteOffChainTransaction(encryptedParams)
+	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
+	}
+
+	// extract params from byte slice to array of strings
+	var paramList []interface{}
+	err = json.Unmarshal(paramBytes, &paramList)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode eth_call params - %w", err)
+	}
+
+	// params are [TransactionArgs, BlockNumber]
+	if len(paramList) != 2 {
+		return nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
+	}
+
+	apiArgs, err := gethencoding.ExtractEthCall(paramList[0])
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
+	}
+
+	// encryption will fail if no From address is provided
+	if apiArgs.From == nil {
+		return nil, fmt.Errorf("no from address provided")
+	}
+
+	// TODO hook up the block number to the execution
+	_, err = gethencoding.ExtractBlockNumber(paramList[1])
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+	}
+
+	execResult, err := e.chain.ExecuteOffChainTransaction(apiArgs)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
+		return nil, fmt.Errorf("unable to execute off chain transaction - %w", err)
 	}
-	return resp, err
+
+	// encrypt the result payload
+	var encodedResult string
+	if len(execResult.ReturnData) != 0 {
+		encodedResult = hexutil.Encode(execResult.ReturnData)
+	}
+
+	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(*apiArgs.From, []byte(encodedResult))
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
+	}
+
+	return encryptedResult, nil
 }
 
 func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (common.EncryptedResponseGetTxCount, error) {
@@ -324,7 +395,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err != nil {
 		return nil, err
 	}
-	hs, err := e.storage.FetchHeadState()
+	hs, err := e.storage.FetchCurrentHeadsAfterL1Block()
 	if err == nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
@@ -404,9 +475,9 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// Only return receipts for transactions included in the canonical chain.
-	r, f := e.storage.FetchRollupByHeight(txRollupHeight)
-	if !f {
-		return nil, fmt.Errorf("transaction not included in the canonical chain")
+	r, err := e.storage.FetchRollupByHeight(txRollupHeight)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup containing transaction. Cause: %w", err)
 	}
 	if !bytes.Equal(r.Hash().Bytes(), txRollupHash.Bytes()) {
 		return nil, fmt.Errorf("transaction not included in the canonical chain")
@@ -529,8 +600,47 @@ func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 	return nil
 }
 
+// GetBalance handles param decryption, validation and encryption
+// and requests the Rollup chain to execute the payload (eth_getBalance)
 func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
-	return e.chain.GetBalance(encryptedParams)
+	// Decrypt the request.
+	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
+	}
+
+	// Extract the params from the request.
+	var paramList []string
+	err = json.Unmarshal(paramBytes, &paramList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
+	}
+	if len(paramList) != 2 {
+		return nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
+	}
+
+	accountAddress, err := gethencoding.ExtractAddress(paramList[0])
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract requested address - %w", err)
+	}
+
+	// TODO hook up the block number to the execution
+	blockNumber, err := gethencoding.ExtractBlockNumber(paramList[1])
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+	}
+
+	encryptAddress, balance, err := e.chain.GetBalance(*accountAddress, *blockNumber)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get balance - %w", err)
+	}
+
+	encryptedBalance, err := e.rpcEncryptionManager.EncryptWithViewingKey(*encryptAddress, []byte(balance.String()))
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
+	}
+
+	return encryptedBalance, nil
 }
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
@@ -588,8 +698,19 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
 
+	// encryption will fail if From address is not provided
+	if callMsg.From == nil {
+		return nil, fmt.Errorf("no from address provided")
+	}
+
+	// extract optional block number - defaults to the latest block if not avail
+	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList[1])
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+	}
+
 	// TODO hook the correct blockNumber from the API call (paramList[1])
-	gasEstimate, err := e.DoEstimateGas(callMsg, gethrpc.BlockNumber(0), e.chain.GlobalGasCap)
+	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.chain.GlobalGasCap)
 	if err != nil {
 		return nil, fmt.Errorf("unable to estimate transaction - %w", err)
 	}
@@ -637,7 +758,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 // This is a copy of https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/api.go#L1055
 // there's a high complexity to the method due to geth business rules (which is mimic'd here)
 // once the work of obscuro gas mechanics is established this method should be simplified
-func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
+func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var (
 		lo  = params.TxGas - 1
@@ -679,7 +800,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethr
 	}
 	// Recap the highest gas limit with account's available balance.
 	if feeCap.BitLen() != 0 { //nolint:nestif
-		balance, err := e.chain.GetBalanceAtBlock(*args.From, blockNr)
+		balance, err := e.chain.GetBalanceAtBlock(*args.From, *blockNr)
 		if err != nil {
 			return 0, fmt.Errorf("unable to fetch account balance - %w", err)
 		}
@@ -913,6 +1034,24 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 	}
 	forAddress := gethcommon.HexToAddress(forAddressHex)
 	return &filter, &forAddress, nil
+}
+
+// Removes the transactions in the provided header from the mempool.
+func (e *enclaveImpl) removeMempoolTxs(rollupHeader *common.Header) error {
+	if rollupHeader == nil {
+		return nil
+	}
+
+	hr, err := e.storage.FetchRollup(rollupHeader.Hash())
+	if err != nil {
+		return fmt.Errorf("could not retrieve rollup. This should not happen because this rollup was just processed. Cause: %w", err)
+	}
+	err = e.mempool.RemoveMempoolTxs(hr, e.storage)
+	if err != nil {
+		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
+	}
+
+	return nil
 }
 
 // Todo - reinstate speculative execution after TN1
