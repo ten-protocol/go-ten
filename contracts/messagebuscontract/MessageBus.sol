@@ -4,7 +4,9 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./IMessageBus.sol";
 import "./Structs.sol";
 
-contract MessageBus is IMessageBus {
+import "../libs/openzeppelin/contracts/access/Ownable.sol";
+
+contract MessageBus is IMessageBus, Ownable {
 
     function messageFee() virtual internal returns (uint256) { return 0; }
 
@@ -77,9 +79,10 @@ contract MessageBus is IMessageBus {
     // This is the smart contract function which is used to store messages sent from the other linked layer. 
     // The function will be called by the ManagementContract on L1 and the enclave on L2. 
     // It should be access controlled and called according to the consistencyLevel and Obscuro platform rules.
-    function submitOutOfNetworkMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) external override 
+    function submitOutOfNetworkMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) 
+    external override onlyOwner
     {
-        uint256 finalAtHeight = block.number + finalAfterTimestamp;
+        uint256 finalAtHeight = block.timestamp + finalAfterTimestamp;
         bytes32 msgHash = keccak256(abi.encode(crossChainMessage));
         
         require(messageFinalityTimestamps[msgHash] == 0, "Message submitted more than once!");
