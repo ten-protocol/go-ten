@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -105,6 +106,9 @@ func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
 }
 
 func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
+	if len(p.peerAddresses) == 0 {
+		return errors.New("no peers available to request batches")
+	}
 	encodedBatchRequest, err := rlp.EncodeToBytes(batchRequest)
 	if err != nil {
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
