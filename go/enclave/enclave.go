@@ -256,15 +256,9 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 	}
 	e.logger.Trace("SubmitBlock successful", "blk", block.Number(), "blkHash", block.Hash())
 
-	if bsr.IngestedRollupHeader != nil {
-		hr, err := e.storage.FetchRollup(bsr.IngestedRollupHeader.Hash())
-		if err != nil {
-			e.logger.Crit("Could not retrieve rollup. This should not happen because this rollup was just processed.", log.ErrKey, err)
-		}
-		err = e.mempool.RemoveMempoolTxs(hr, e.storage)
-		if err != nil {
-			e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
-		}
+	err = e.removeMempoolTxs(bsr.IngestedRollupHeader)
+	if err != nil {
+		e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
 	}
 
 	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
@@ -1018,6 +1012,24 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 	}
 	forAddress := gethcommon.HexToAddress(forAddressHex)
 	return &filter, &forAddress, nil
+}
+
+// Removes the transactions in the provided header from the mempool.
+func (e *enclaveImpl) removeMempoolTxs(rollupHeader *common.Header) error {
+	if rollupHeader == nil {
+		return nil
+	}
+
+	hr, err := e.storage.FetchRollup(rollupHeader.Hash())
+	if err != nil {
+		return fmt.Errorf("could not retrieve rollup. This should not happen because this rollup was just processed. Cause: %w", err)
+	}
+	err = e.mempool.RemoveMempoolTxs(hr, e.storage)
+	if err != nil {
+		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
+	}
+
+	return nil
 }
 
 // Todo - reinstate speculative execution after TN1
