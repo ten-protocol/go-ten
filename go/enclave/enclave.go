@@ -328,9 +328,9 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 		return nil, fmt.Errorf("unable to decode eth_call params - %w", err)
 	}
 
-	// params are [callMsg, block number (optional) ]
-	if len(paramList) < 1 {
-		return nil, fmt.Errorf("required at least 1 params, but received %d", len(paramList))
+	// params are [TransactionArgs, BlockNumber]
+	if len(paramList) != 2 {
+		return nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
 	}
 
 	apiArgs, err := gethencoding.ExtractEthCall(paramList[0])
@@ -341,6 +341,12 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 	// encryption will fail if no From address is provided
 	if apiArgs.From == nil {
 		return nil, fmt.Errorf("no from address provided")
+	}
+
+	// TODO hook up the block number to the execution
+	_, err = gethencoding.ExtractBlockNumber(paramList[1])
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}
 
 	execResult, err := e.chain.ExecuteOffChainTransaction(apiArgs)
@@ -597,15 +603,18 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
 	}
 
-	// TODO - Replace all usages of `HexToAddress` with a `SafeHexToAddress` that checks that the string does not exceed 20 bytes.
-	accountAddress := gethcommon.HexToAddress(paramList[0])
-	blockNumber := gethrpc.BlockNumber(0)
-	err = blockNumber.UnmarshalJSON([]byte(paramList[1]))
+	accountAddress, err := gethencoding.ExtractAddress(paramList[0])
 	if err != nil {
-		return nil, fmt.Errorf("could not parse requested rollup number - %w", err)
+		return nil, fmt.Errorf("unable to extract requested address - %w", err)
 	}
 
-	encryptAddress, balance, err := e.chain.GetBalance(accountAddress, blockNumber)
+	// TODO hook up the block number to the execution
+	blockNumber, err := gethencoding.ExtractBlockNumber(paramList[1])
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+	}
+
+	encryptAddress, balance, err := e.chain.GetBalance(*accountAddress, *blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get balance - %w", err)
 	}
@@ -673,13 +682,19 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
 	}
 
-	// encryption will fail if no From address is provided
+	// encryption will fail if From address is not provided
 	if callMsg.From == nil {
 		return nil, fmt.Errorf("no from address provided")
 	}
 
+	// extract optional block number - defaults to the latest block if not avail
+	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList[1])
+	if err != nil {
+		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+	}
+
 	// TODO hook the correct blockNumber from the API call (paramList[1])
-	gasEstimate, err := e.DoEstimateGas(callMsg, gethrpc.BlockNumber(0), e.chain.GlobalGasCap)
+	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.chain.GlobalGasCap)
 	if err != nil {
 		return nil, fmt.Errorf("unable to estimate transaction - %w", err)
 	}
@@ -727,7 +742,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 // This is a copy of https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/api.go#L1055
 // there's a high complexity to the method due to geth business rules (which is mimic'd here)
 // once the work of obscuro gas mechanics is established this method should be simplified
-func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
+func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var (
 		lo  = params.TxGas - 1
@@ -769,7 +784,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr gethr
 	}
 	// Recap the highest gas limit with account's available balance.
 	if feeCap.BitLen() != 0 { //nolint:nestif
-		balance, err := e.chain.GetBalanceAtBlock(*args.From, blockNr)
+		balance, err := e.chain.GetBalanceAtBlock(*args.From, *blockNr)
 		if err != nil {
 			return 0, fmt.Errorf("unable to fetch account balance - %w", err)
 		}
