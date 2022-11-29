@@ -4,7 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// ChainHeads pairs the hash of the head L1 block with the hash of the head rollup after processing that block.
+// ChainHeads pairs the heads of the L1 and L2 chains, at a point in time.
 type ChainHeads struct {
 	HeadBlock         common.Hash // The hash of an L1 block.
 	HeadRollup        common.Hash // The head rollup after processing the L1 block.
