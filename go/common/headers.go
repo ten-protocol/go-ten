@@ -43,7 +43,7 @@ type Header struct {
 	Agg     common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
 	L1Proof L1RootHash     // the L1 block used by the enclave to generate the current rollup
 	R, S    *big.Int       // signature values
-	// Deprecated: Withdrawals are now contained within cross chain messages.
+	// TODO: mark as deprecated Withdrawals are now contained within cross chain messages.
 	Withdrawals        []Withdrawal
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 

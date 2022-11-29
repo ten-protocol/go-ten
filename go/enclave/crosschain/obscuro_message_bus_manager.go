@@ -190,11 +190,9 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 			m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 		}
 	}
-
 	// Iterate through the blocks.
 	b := toBlock
 	for {
-
 		if bytes.Equal(b.Hash().Bytes(), from.Bytes()) {
 			break
 		}
@@ -220,7 +218,6 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 
 	signedTransactions := make(types.Transactions, 0)
 	for idx, message := range messages {
-
 		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
 		data, err := ContractABI.Pack("submitOutOfNetworkMessage", message, delayInBlocks)
 		if err != nil {

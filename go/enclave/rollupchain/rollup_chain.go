@@ -415,7 +415,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		return evm.ExecuteTransactions(transactions, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 	}
 
-	// Create a wrapped function call that the local cross chain manager will use to determine revert reason if neccessary.
+	// Create a wrapped function call that the local cross chain manager will use to determine revert reason if necessary.
 	offChainCallFunc := func(msg types.Message) (*core.ExecutionResult, error) {
 		// TODO: Should this be deleted somehow?
 		clonedDB := stateDB.Copy()
