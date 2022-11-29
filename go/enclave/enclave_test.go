@@ -516,13 +516,13 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	}
 
 	// make sure the genesis is stored as the new Head of the rollup chain
-	bs := &core.BlockState{
-		Block:          blk.Hash(),
-		HeadRollup:     genRollup.Hash(),
-		FoundNewRollup: true,
+	headsAfterL1Block := &core.HeadsAfterL1Block{
+		HeadBlock:         blk.Hash(),
+		HeadRollup:        genRollup.Hash(),
+		UpdatedHeadRollup: true,
 	}
 
-	return enclave.(*enclaveImpl).storage.StoreNewHead(bs, genRollup, nil, nil)
+	return enclave.(*enclaveImpl).storage.StoreNewHead(headsAfterL1Block, genRollup, nil, nil)
 }
 
 func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAddress) error {
@@ -547,7 +547,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	}
 
 	// make sure the state is updated otherwise balances will not be available
-	headState, err := enclave.(*enclaveImpl).storage.FetchHeadState()
+	headState, err := enclave.(*enclaveImpl).storage.FetchCurrentHeadsAfterL1Block()
 	if err != nil {
 		return err
 	}
@@ -583,10 +583,10 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	}
 
 	// make sure the genesis is stored as the new Head of the rollup chain
-	bs := &core.BlockState{
-		Block:          blk.Hash(),
-		HeadRollup:     rollup.Hash(),
-		FoundNewRollup: true,
+	bs := &core.HeadsAfterL1Block{
+		HeadBlock:         blk.Hash(),
+		HeadRollup:        rollup.Hash(),
+		UpdatedHeadRollup: true,
 	}
 
 	err = enclave.(*enclaveImpl).storage.StoreNewHead(bs, rollup, nil, nil)

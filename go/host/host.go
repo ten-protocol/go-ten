@@ -488,9 +488,6 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 	if block == nil {
 		return nil
 	}
-
-	var result *common.BlockSubmissionResponse
-
 	decodedBlock, err := block.DecodeBlock()
 	if err != nil {
 		return err
@@ -499,39 +496,37 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 
 	// submit each block to the enclave for ingestion plus validation
 	// todo: isLatest should only be true when we're not behind
+	var result *common.BlockSubmissionResponse
 	result, err = h.enclaveClient.SubmitL1Block(*decodedBlock, isLatestBlock)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decodedBlock.Hash()), err)
 	}
-
 	err = h.storeBlockProcessingResult(result)
 	if err != nil {
-		h.logger.Crit("submitted block to enclave but could not store the block processing result")
+		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
 
 	h.logEventManager.SendLogsToSubscribers(result)
 
-	// We check that we only produced a rollup if we're the sequencer.
-	if result.ProducedRollup.Header != nil && !h.isSequencer {
-		h.logger.Crit("node produced a rollup but was not the sequencer")
+	err = h.publishSharedSecretResponses(result.ProducedSecretResponses)
+	if err != nil {
+		h.logger.Error("failed to publish response to secret request", log.ErrKey, err)
 	}
 
-	for _, secretResponse := range result.ProducedSecretResponses {
-		err := h.publishSharedSecretResponse(secretResponse)
-		if err != nil {
-			h.logger.Error("failed to publish response to secret request", log.ErrKey, err)
-		}
-	}
-
-	if result.ProducedRollup.Header == nil {
+	// If we're the sequencer, and we're processing the latest block, we produce, publish and distribute a new rollup.
+	if !h.isSequencer || !isLatestBlock {
 		return nil
 	}
-
-	if isLatestBlock {
+	blockHash := decodedBlock.Hash()
+	rollup, err := h.enclaveClient.ProduceRollup(&blockHash)
+	if err != nil {
+		return fmt.Errorf("could not produce rollup. Cause: %w", err)
+	}
+	if rollup.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
-		h.publishRollup(result.ProducedRollup)
+		h.publishRollup(rollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.storeAndDistributeBatch(result.ProducedRollup)
+		h.storeAndDistributeBatch(rollup)
 	}
 
 	return nil
@@ -557,7 +552,7 @@ func (h *host) processL1BlockTransactions(b *types.Block) {
 }
 
 // Publishes a rollup to the L1.
-func (h *host) publishRollup(producedRollup common.ExtRollup) {
+func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	encodedRollup, err := common.EncodeRollup(producedRollup.ToExtRollup())
 	if err != nil {
 		h.logger.Crit("could not encode rollup.", log.ErrKey, err)
@@ -574,7 +569,7 @@ func (h *host) publishRollup(producedRollup common.ExtRollup) {
 }
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
-func (h *host) storeAndDistributeBatch(producedRollup common.ExtRollup) {
+func (h *host) storeAndDistributeBatch(producedRollup *common.ExtRollup) {
 	batch := common.ExtBatch{
 		Header:          producedRollup.Header,
 		TxHashes:        producedRollup.TxHashes,
@@ -620,7 +615,7 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 
 	// Distribute the corresponding batch.
 	producedRollup := genesisResponse.GenesisRollup.ToExtRollup()
-	h.storeAndDistributeBatch(*producedRollup)
+	h.storeAndDistributeBatch(producedRollup)
 
 	// Submit the rollup to the management contract.
 	encodedRollup, err := common.EncodeRollup(producedRollup)
@@ -737,27 +732,29 @@ func (h *host) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 	return true
 }
 
-func (h *host) publishSharedSecretResponse(scrtResponse *common.ProducedSecretResponse) error {
-	// todo: implement proper protocol so only one host responds to this secret requests initially
-	// 	for now we just have the genesis host respond until protocol implemented
-	if !h.config.IsGenesis {
-		h.logger.Trace("Not genesis node, not publishing response to secret request.",
-			"requester", scrtResponse.RequesterID)
-		return nil
-	}
+func (h *host) publishSharedSecretResponses(scrtResponses []*common.ProducedSecretResponse) error {
+	for _, scrtResponse := range scrtResponses {
+		// todo: implement proper protocol so only one host responds to this secret requests initially
+		// 	for now we just have the genesis host respond until protocol implemented
+		if !h.config.IsGenesis {
+			h.logger.Trace("Not genesis node, not publishing response to secret request.",
+				"requester", scrtResponse.RequesterID)
+			return nil
+		}
 
-	l1tx := &ethadapter.L1RespondSecretTx{
-		Secret:      scrtResponse.Secret,
-		RequesterID: scrtResponse.RequesterID,
-		AttesterID:  h.config.ID,
-		HostAddress: scrtResponse.HostAddress,
-	}
-	// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	respondSecretTx := h.mgmtContractLib.CreateRespondSecret(l1tx, h.ethWallet.GetNonceAndIncrement(), false)
-	h.logger.Trace("Broadcasting secret response L1 tx.", "requester", scrtResponse.RequesterID)
-	err := h.signAndBroadcastL1Tx(respondSecretTx, l1TxTriesSecret)
-	if err != nil {
-		return fmt.Errorf("could not broadcast secret response. Cause %w", err)
+		l1tx := &ethadapter.L1RespondSecretTx{
+			Secret:      scrtResponse.Secret,
+			RequesterID: scrtResponse.RequesterID,
+			AttesterID:  h.config.ID,
+			HostAddress: scrtResponse.HostAddress,
+		}
+		// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
+		respondSecretTx := h.mgmtContractLib.CreateRespondSecret(l1tx, h.ethWallet.GetNonceAndIncrement(), false)
+		h.logger.Trace("Broadcasting secret response L1 tx.", "requester", scrtResponse.RequesterID)
+		err := h.signAndBroadcastL1Tx(respondSecretTx, l1TxTriesSecret)
+		if err != nil {
+			return fmt.Errorf("could not broadcast secret response. Cause %w", err)
+		}
 	}
 	return nil
 }
