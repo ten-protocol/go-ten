@@ -514,8 +514,10 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 	}
 
 	if isLatestBlock {
-		// TODO - #718 - Unlink rollup production from L1 cadence.
-		h.publishRollup(result.ProducedRollup)
+		// todo - joel - choose something better
+		if big.NewInt(0).Mod(decodedBlock.Number(), big.NewInt(100)).Cmp(big.NewInt(0)) == 0 {
+			h.publishRollup(result.ProducedRollup)
+		}
 		// TODO - #718 - Unlink batch production from L1 cadence.
 		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
