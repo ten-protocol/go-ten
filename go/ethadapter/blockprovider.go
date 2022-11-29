@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/host"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -34,17 +36,17 @@ type EthBlockProvider struct {
 
 // StartStreamingFromHash will look up the hash block, find the appropriate height (LCA if there have been forks) and
 // then call StartStreamingFromHeight based on that
-func (e *EthBlockProvider) StartStreamingFromHash(latestHash gethcommon.Hash) (<-chan *types.Block, func(), error) {
+func (e *EthBlockProvider) StartStreamingFromHash(latestHash gethcommon.Hash) (*host.BlockStream, error) {
 	ancestorBlk, err := e.latestCanonAncestor(latestHash)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	return e.StartStreamingFromHeight(increment(ancestorBlk.Number()))
 }
 
 // StartStreamingFromHeight will start streaming from the given height
 // returning the fresh channel (the next block will be the requested height) and a cancel function to kill the stream
-func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, func(), error) {
+func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (*host.BlockStream, error) {
 	// block heights start at 1
 	if height.Cmp(one) < 0 {
 		height = one
@@ -53,7 +55,7 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (<-chan *ty
 	streamCh := make(chan *types.Block)
 	go e.streamBlocks(ctx, height, streamCh)
 
-	return streamCh, cancel, nil
+	return &host.BlockStream{Stream: streamCh, Stop: cancel}, nil
 }
 
 func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {

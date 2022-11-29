@@ -19,18 +19,18 @@ import (
 
 func TestBlockProviderHappyPath_LiveStream(t *testing.T) {
 	mockEthClient := mockEthClient(3)
-	blockProvider, ctxCancel := setupBlockProvider(mockEthClient)
-	defer ctxCancel()
+	blockProvider := setupBlockProvider(mockEthClient)
 
 	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(3))
 	if err != nil {
 		t.Error(err)
 	}
+	defer blkStream.Stop()
 	blkCount := 0
 
 	for blkCount < 3 {
 		select {
-		case blk := <-blkStream:
+		case blk := <-blkStream.Stream:
 			if blk != nil {
 				blkCount++
 			}
@@ -43,18 +43,18 @@ func TestBlockProviderHappyPath_LiveStream(t *testing.T) {
 
 func TestBlockProviderHappyPath_HistoricThenStream(t *testing.T) {
 	mockEthClient := mockEthClient(3)
-	blockProvider, ctxCancel := setupBlockProvider(mockEthClient)
-	defer ctxCancel()
+	blockProvider := setupBlockProvider(mockEthClient)
 
 	blkStream, err := blockProvider.StartStreamingFromHeight(big.NewInt(1))
 	if err != nil {
 		t.Error(err)
 	}
+	defer blkStream.Stop()
 	blkCount := 0
 
 	for blkCount < 3 {
 		select {
-		case blk := <-blkStream:
+		case blk := <-blkStream.Stream:
 			if blk != nil {
 				blkCount++
 			}
@@ -65,16 +65,13 @@ func TestBlockProviderHappyPath_HistoricThenStream(t *testing.T) {
 	}
 }
 
-func setupBlockProvider(mockEthClient EthClient) (EthBlockProvider, context.CancelFunc) {
-	ctx, cancelCtx := context.WithCancel(context.Background())
-
+func setupBlockProvider(mockEthClient EthClient) EthBlockProvider {
 	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut, log.NodeIDKey, "test")
 	blockProvider := EthBlockProvider{
 		ethClient: mockEthClient,
-		ctx:       ctx,
 		logger:    logger,
 	}
-	return blockProvider, cancelCtx
+	return blockProvider
 }
 
 func mockEthClient(liveStreamingStart int) EthClient {

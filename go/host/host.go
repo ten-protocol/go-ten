@@ -378,7 +378,7 @@ func (h *host) startProcessing() {
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
 	// stream ch during the main loop if enclave gets out-of-sync, and we need to stream from an earlier block
-	blockStream, cancelStream, err := h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(1))
+	blockStream, err := h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(1))
 	if err != nil {
 		h.logger.Crit("unable to stream l1 blocks for enclave", log.ErrKey, err)
 	}
@@ -393,13 +393,13 @@ func (h *host) startProcessing() {
 	// - Process new Transactions gossiped from L2 Peers
 	for {
 		select {
-		case b := <-blockStream:
+		case b := <-blockStream.Stream:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
 			isLive := h.l1BlockProvider.IsLive(b.Hash()) // checks whether the block is the current head of the L1 (false if there is a newer block available)
 			err := h.processL1Block(b, isLive)
 			if err != nil {
 				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
-				blockStream, cancelStream = h.handleProcessBlockErr(b, blockStream, cancelStream, err)
+				blockStream = h.handleProcessBlockErr(b, blockStream, err)
 			}
 
 		case tx := <-h.txP2PCh:
@@ -420,27 +420,27 @@ func (h *host) startProcessing() {
 	}
 }
 
-func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream <-chan *types.Block, cancelStream func(), err error) (<-chan *types.Block, func()) {
+func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostcommon.BlockStream, err error) *hostcommon.BlockStream {
 	var rejErr *common.BlockRejectError
 	if !errors.As(err, &rejErr) {
 		// received unexpected error (no useful information from the enclave)
 		// we log it out and ignore it until the enclave tells us more information
 		h.logger.Warn("Error processing block.", log.ErrKey, err)
-		return stream, nil
+		return stream
 	}
 	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, "blk", processedBlock.Hash(), "blkHeight", processedBlock.Number())
 	if rejErr.L1Head == (gethcommon.Hash{}) {
 		h.logger.Warn("No L1 head information provided by enclave, continuing with existing stream")
-		return stream, nil
+		return stream
 	}
 	h.logger.Info("Resetting block provider stream to enclave latest head.", "streamFrom", rejErr.L1Head)
-	replacementStream, replacementCancel, err := h.l1BlockProvider.StartStreamingFromHash(rejErr.L1Head)
+	replacementStream, err := h.l1BlockProvider.StartStreamingFromHash(rejErr.L1Head)
 	if err != nil {
 		h.logger.Warn("Could not reset block provider, continuing with previous stream", log.ErrKey, err)
-		return stream, nil
+		return stream
 	}
-	cancelStream() // cancel the previous stream and return the replacement
-	return replacementStream, replacementCancel
+	stream.Stop() // cancel the previous stream and return the replacement
+	return replacementStream
 }
 
 // activates the given interrupt (atomically) and returns a new interrupt
@@ -780,15 +780,15 @@ func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 }
 
 func (h *host) awaitSecret(fromHeight *big.Int) error {
-	blkStream, cancelStream, err := h.l1BlockProvider.StartStreamingFromHeight(fromHeight)
+	blkStream, err := h.l1BlockProvider.StartStreamingFromHeight(fromHeight)
 	if err != nil {
 		return err
 	}
-	defer cancelStream()
+	defer blkStream.Stop()
 
 	for {
 		select {
-		case blk := <-blkStream:
+		case blk := <-blkStream.Stream:
 			h.logger.Trace("checking block for secret resp", "height", blk.Number())
 			if h.checkBlockForSecretResponse(blk) {
 				return nil
