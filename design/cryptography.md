@@ -2,9 +2,9 @@
 
 
 Privacy in Obscuro is achieved by:
-1. using local databases that run inside TEEs and write only encrypted data to disk
-2. the ledger (list of user transactions) is stored encrypted as rollups in Ethereum
-3. users submitting transactions encrypted with a well known key (the Obscuro Key)
+1. Using local databases that run inside TEEs and write only encrypted data to disk
+2. The ledger (list of user transactions) is stored encrypted as rollups in Ethereum
+3. Users submitting transactions in an encrypted channel using a well known key (the Obscuro Key)
 
 
 The first element can be achieved by using existing solutions like [edgelessDB](https://www.edgeless.systems/products/edgelessdb/).
@@ -18,7 +18,7 @@ An additional complexity is that Obscuro has the requirement to support temporar
 ## Scope
 
 1. Master Seed Generation
-2. Enclave Encrypted Communication
+2. Client-Enclave Encrypted Communication
 3. Transaction Encryption per Rollup with Revelation Period
 4. Reveal the rollup transactions
 
@@ -28,21 +28,22 @@ An additional complexity is that Obscuro has the requirement to support temporar
 - Generation happens when the central sequencer bootstraps the network
 - The Master Seed is shared across Validators using the process described in the [whitepaper](https://whitepaper.obscu.ro/obscuro-whitepaper/amalgamated.html#sharing-the-master-seed)
 
-## 2. Ensure Enclave Encrypted Communication
-- Client-Enclave communication is encrypted using the Obscuro Key and the Client Key
-- Clients encrypt using the Obscuro Public Key
-- Enclave responds encrypting with the Client Public Key ( also known as Viewing Keys )
-- The Obscuro Key is a Key-Pair deterministically calculated from the Master Seed + Genesis Rollup
-- The Public key will be published to the Management contract and used by all obscuro tooling ( like the wallet extension ) to encrypt transactions
-- Enclaves will determine the Private key when calculating the Master Seed + Genesis Rollup 
-  - Enclaves have the Master Seed through the attestation process
-  - Enclaves fetch Genesis Rollup through the Layer 1 blocks
+## 2. Client-Enclave Encrypted Communication
+- Client-Enclave communication is encrypted using both Obscuro Keys and the Client Keys
+- Obscuro Key and Client (Viewing Key) are both asymmetric key pairs
+  - The Private Obscuro Key is deterministically calculated from Master Seed + Genesis Rollup
+  - The Private Client Key is created by the client in any way it chooses
+  - Both the Public keys of Obscuro and Client are derived, via a one way function, from their corresponding Private keys
+- Clients encrypt communication payload using the Public Key of the Obscuro Key ( only holders of the Private Obscuro Key can decrypt this payload )
+- Enclaves respond to Client by encrypting with the Public Client Key ( only holders of the Private Client Key can decrypt this payload )
+- The Public Obscuro Key is published in the Management contract and used by all obscuro tooling ( like the wallet extension )
 
 
 ## 3. Transaction Encryption per Rollup with Revelation Period
 - Key derivation is a process that takes a key and derives a new key' given a set of inputs. 
-  - The new key' does not release any information for old key (one way function)
-  - Given the key and the input the new key' is deterministically calculated/derived
+  - The new key' does not release any information pertaining the old key (one way function)
+  - Given the same key and the same input, the new key' is deterministically calculated/derived
+- Key derivation allows to segregate vulnerability impact. If one key is compromised, other keys, including the original key are not affected
 - To avoid reusing the same key, transaction encryption keys are derived twice
   - Each rollup has a Rollup Encryption Key derived from the Master Seed + Rollup ( if a rollup encryption key is discovered other rollups are safe )
   - Each transaction is encrypted with a Revelation Period Key that is derived from the Rollup Encryption Key + Revelation Period
@@ -53,6 +54,23 @@ An additional complexity is that Obscuro has the requirement to support temporar
   - Using `AccessList` Address _Null Address_ combined with Storage Key _hexadecimal 1-5_ determines the revelation period
   - Transactions without Revelation Period specified are encrypted by default using the smallest unit of time revelation period
 
+
+### 4. Reveal the rollup transactions
+- L1 blocks are used as a clock mechanism
+  - There are 5 revelation periods
+    * XS - 12 seconds (1 block)
+    * S - 1 hour (3600/12 = 300 blocks)
+    * M - 1 day (24 * 3600/12 = 7200 blocks)
+    * L - 1 month (30 * 24 * 3600/12 = 216000 blocks)
+    * XL - 1 year (12 * 30 * 24 * 3600/12 = 2592000 blocks)
+- Central Sequencer stores the rollup revelation keys in a database with the corresponding decrypt time.
+- When a Light Batch is created, the keys that available to be reveled, are appended to the LB and removed from the database.
+- In the first phase, validators do not calculate reveal keys, they only release the keys that are reveled from the central sequencer.
+
+
+### Details
+
+#### AccessList 
 
 The [specification](https://eips.ethereum.org/EIPS/eip-2930) of the `AccessList` Field is as follows:
 
@@ -101,21 +119,6 @@ An example would be:
 ]
 ```
 
-
-### 4. Reveal the rollup transactions
-- L1 blocks are used as a clock mechanism
-  - There are 5 revelation periods
-    * XS - 12 seconds (1 block)
-    * S - 1 hour (3600/12 = 300 blocks)
-    * M - 1 day (24 * 3600/12 = 7200 blocks)
-    * L - 1 month (30 * 24 * 3600/12 = 216000 blocks)
-    * XL - 1 year (12 * 30 * 24 * 3600/12 = 2592000 blocks)
-- Central Sequencer stores the rollup revelation keys in a database with the corresponding decrypt time.
-- When a Light Batch is created, the keys that available to be reveled, are appended to the LB and removed from the database.
-- Validators do not calculate reveal keys, they only release the keys that are reveled from the central sequencer.
-
-
-
 ### Problems
 
 1. Symmetric vs Asymmetric encryption for rollup tx encryption.
@@ -139,3 +142,10 @@ An example would be:
 8. Why is a Rollup Encryption key needed ?
 - To avoid all rollup encryption keys being compromised if one rollup encryption key is compromised.
 - In other words, each rollup has its own derived encryption key. If a rollup has its key compromised, then the other rollups are safe as they are using a different key.
+
+9. Why don't validators release revelation keys ?
+- Validators do **release** revelation keys. Validators do **not** calculate the revelation keys.
+- Validator's enclaves can only access the revelation keys when validating the rollup not when revelling the keys.
+- Revelation Key is completely controlled by the Central Sequencer, this avoids any attack vector against the Validator
+- The Validator's enclave is not attackable per se, but the clock mechanism can
+- In phase 2 a mechanism can be implemented where the Validator is trusted to release the keys
