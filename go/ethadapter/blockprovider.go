@@ -7,8 +7,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -24,19 +22,25 @@ var one = big.NewInt(1)
 func NewEthBlockProvider(ethClient EthClient, logger gethlog.Logger) *EthBlockProvider {
 	return &EthBlockProvider{
 		ethClient: ethClient,
+		ctx:       context.TODO(),
 		logger:    logger,
 	}
 }
 
 // EthBlockProvider streams blocks from the ethereum L1 client in the order expected by the enclave (consecutive, canonical blocks)
 type EthBlockProvider struct {
-	ethClient EthClient
-	logger    gethlog.Logger
+	ethClient     EthClient
+	ctx           context.Context
+	logger        gethlog.Logger
+	cancelRunning context.CancelFunc // if this is not nil it kills the currently running goroutine
+
+	// the state of the block provider
+	latestSent *types.Header // most recently sent block (reset to nil when a `StartStreaming...` method is called)
 }
 
 // StartStreamingFromHash will look up the hash block, find the appropriate height (LCA if there have been forks) and
 // then call StartStreamingFromHeight based on that
-func (e *EthBlockProvider) StartStreamingFromHash(latestHash gethcommon.Hash) (*host.BlockStream, error) {
+func (e *EthBlockProvider) StartStreamingFromHash(latestHash gethcommon.Hash) (<-chan *types.Block, error) {
 	ancestorBlk, err := e.latestCanonAncestor(latestHash)
 	if err != nil {
 		return nil, err
@@ -44,18 +48,31 @@ func (e *EthBlockProvider) StartStreamingFromHash(latestHash gethcommon.Hash) (*
 	return e.StartStreamingFromHeight(increment(ancestorBlk.Number()))
 }
 
-// StartStreamingFromHeight will start streaming from the given height
-// returning the fresh channel (the next block will be the requested height) and a cancel function to kill the stream
-func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (*host.BlockStream, error) {
+// StartStreamingFromHeight will (re)start streaming from the given height, closing out any existing stream channel and
+// returning the fresh channel - the next block will be the requested height
+func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, error) {
+	// make sure we stop the running stream if there is one
+	e.Stop()
+
 	// block heights start at 1
 	if height.Cmp(one) < 0 {
 		height = one
 	}
-	ctx, cancel := context.WithCancel(context.Background())
 	streamCh := make(chan *types.Block)
-	go e.streamBlocks(ctx, height, streamCh)
+	streamCtx, cancel := context.WithCancel(e.ctx)
+	e.cancelRunning = cancel
+	go e.streamBlocks(streamCtx, height, streamCh)
 
-	return &host.BlockStream{Stream: streamCh, Stop: cancel}, nil
+	return streamCh, nil
+}
+
+// Stop resets the state of the BlockProvider ready to start streaming again
+func (e *EthBlockProvider) Stop() {
+	if e.cancelRunning != nil {
+		e.cancelRunning()
+		e.cancelRunning = nil
+		e.latestSent = nil
+	}
 }
 
 func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
@@ -69,15 +86,13 @@ func (e *EthBlockProvider) IsLive(h gethcommon.Hash) bool {
 // - publishing a block, it blocks on the outbound channel until the block is consumed
 // - awaiting a live block, when consumer is completely up-to-date it waits for a live block to arrive
 func (e *EthBlockProvider) streamBlocks(ctx context.Context, fromHeight *big.Int, streamCh chan *types.Block) {
-	var latestSent *types.Header // most recently sent block (reset to nil when a `StartStreaming...` method is called)
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
 			// this will block if we're up-to-date with live blocks
-			block, err := e.fetchNextCanonicalBlock(ctx, fromHeight, latestSent)
+			block, err := e.fetchNextCanonicalBlock(fromHeight)
 			if err != nil {
 				e.logger.Error("unexpected error while preparing block to stream, will retry in 1 sec", log.ErrKey, err)
 				time.Sleep(time.Second)
@@ -86,21 +101,21 @@ func (e *EthBlockProvider) streamBlocks(ctx context.Context, fromHeight *big.Int
 			e.logger.Trace("blockProvider streaming block", "height", block.Number(), "hash", block.Hash())
 			streamCh <- block // we block here until consumer takes it
 			// update stream state
-			latestSent = block.Header()
+			e.latestSent = block.Header()
 		}
 	}
 }
 
 // fetchNextCanonicalBlock finds the next block to send downstream to the consumer.
 // It looks at:
-//   - the latest block that was sent to the consumer (`latestSent`)
+//   - the latest block that was sent to the consumer (`e.latestSent`)
 //   - the current head of the L1 according to the Eth client (`l1Block`)
 //
 // If the consumer is up-to-date: this method will wait until a new block arrives from the L1
 // If the consumer is behind or there has been a fork: it returns the next canonical block that the consumer needs to see (no waiting)
-func (e *EthBlockProvider) fetchNextCanonicalBlock(ctx context.Context, fromHeight *big.Int, latestSent *types.Header) (*types.Block, error) {
+func (e *EthBlockProvider) fetchNextCanonicalBlock(fromHeight *big.Int) (*types.Block, error) {
 	// check for the initial case, when consumer has first requested a stream
-	if latestSent == nil {
+	if e.latestSent == nil {
 		// we try to return the canonical block at the height requested
 		blk, err := e.ethClient.BlockByNumber(fromHeight)
 		if err != nil {
@@ -116,17 +131,17 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(ctx context.Context, fromHeig
 	l1Head := l1Block.Header()
 
 	// check if the block provider is already up-to-date with the latest L1 block (if it is, then wait for a new block)
-	if l1Head.Hash() == latestSent.Hash() {
+	if l1Head.Hash() == e.latestSent.Hash() {
 		var err error
 		// block provider's current head is up-to-date, we will wait for the next L1 block to arrive
-		l1Head, err = e.awaitNewBlock(ctx)
+		l1Head, err = e.awaitNewBlock()
 		if err != nil {
 			return nil, fmt.Errorf("no new block found from stream - %w", err)
 		}
 	}
 
 	// most common path should be: new head block that arrived is the next block, and needs to be sent
-	if l1Head.ParentHash == latestSent.Hash() {
+	if l1Head.ParentHash == e.latestSent.Hash() {
 		blk, err := e.ethClient.BlockByHash(l1Head.Hash())
 		if err != nil {
 			return nil, fmt.Errorf("could not fetch block with hash=%s - %w", l1Head.Hash(), err)
@@ -135,9 +150,9 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(ctx context.Context, fromHeig
 	}
 
 	// and if not then, we walk back up the tree from the current head, to find the most recent **canonical** block we sent
-	latestCanon, err := e.latestCanonAncestor(latestSent.Hash())
+	latestCanon, err := e.latestCanonAncestor(e.latestSent.Hash())
 	if err != nil {
-		return nil, fmt.Errorf("could not find ancestor on canonical chain for hash=%s - %w", latestSent.Hash(), err)
+		return nil, fmt.Errorf("could not find ancestor on canonical chain for hash=%s - %w", e.latestSent.Hash(), err)
 	}
 
 	// and send the canonical block at the height after that
@@ -166,7 +181,7 @@ func (e *EthBlockProvider) latestCanonAncestor(blkHash gethcommon.Hash) (*types.
 
 // awaitNewBlock will block, waiting for the next live L1 block from the L1 client.
 // It is used when the block provider is up-to-date and waiting for a new block to forward to its consumer.
-func (e *EthBlockProvider) awaitNewBlock(ctx context.Context) (*types.Header, error) {
+func (e *EthBlockProvider) awaitNewBlock() (*types.Header, error) {
 	liveStream, streamSub := e.ethClient.BlockListener()
 
 	for {
@@ -176,7 +191,7 @@ func (e *EthBlockProvider) awaitNewBlock(ctx context.Context) (*types.Header, er
 			streamSub.Unsubscribe()
 			return blkHead, nil
 
-		case <-ctx.Done():
+		case <-e.ctx.Done():
 			return nil, fmt.Errorf("context closed before block was received")
 
 		case err := <-streamSub.Err():

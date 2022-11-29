@@ -71,7 +71,7 @@ func createInMemObscuroNode(
 	ethClient ethadapter.EthClient,
 	wallets *params.SimWallets,
 	mockP2P *simp2p.MockP2P,
-) commonhost.Host {
+) commonhost.MockHost {
 	hostConfig := config.HostConfig{
 		ID:                  gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:           isGenesis,

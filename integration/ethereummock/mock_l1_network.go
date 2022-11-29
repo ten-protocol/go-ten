@@ -50,7 +50,7 @@ func (n *MockEthNetwork) BroadcastBlock(b common.EncodedL1Block, p common.Encode
 			t := m
 			common.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
-			m.logger.Info(printBlock(bl, m))
+			m.logger.Info(printBlock(bl, *m))
 		}
 	}
 
@@ -75,7 +75,7 @@ func (n *MockEthNetwork) delay() time.Duration {
 	return testcommon.RndBtwTime(n.avgLatency/10, 2*n.avgLatency)
 }
 
-func printBlock(b *types.Block, m *Node) string {
+func printBlock(b *types.Block, m Node) string {
 	// This is just for printing
 	var txs []string
 	for _, tx := range b.Transactions() {
