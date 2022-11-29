@@ -227,7 +227,7 @@ message AttestationReportMsg {
 message BlockSubmissionResponseMsg {
   BlockHeaderMsg blockHeader = 1;
   ExtRollupMsg producedRollup = 2;
-  bool ingestedNewRollup = 3;
+  bool updatedHeadRollup = 3;
   HeaderMsg rollupHead = 4;
   repeated SecretResponseMsg producedSecretResponses = 5;
   bytes subscribedLogs = 6;

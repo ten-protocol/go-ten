@@ -39,10 +39,9 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 	}
 
 	return generated.BlockSubmissionResponseMsg{
-		BlockHeader:    ToBlockHeaderMsg(response.BlockHeader),
-		ProducedRollup: &producedRollupMsg,
-		// todo - joel - rename
-		IngestedNewRollup:       response.UpdatedHeadRollup,
+		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
+		ProducedRollup:          &producedRollupMsg,
+		UpdatedHeadRollup:       response.UpdatedHeadRollup,
 		RollupHead:              ToRollupHeaderMsg(response.IngestedRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
@@ -102,7 +101,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 	return &common.BlockSubmissionResponse{
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
-		UpdatedHeadRollup:       msg.IngestedNewRollup,
+		UpdatedHeadRollup:       msg.UpdatedHeadRollup,
 		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
