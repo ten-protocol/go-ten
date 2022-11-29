@@ -16,7 +16,7 @@ var (
 	headerHashSuffix         = []byte("on")          // rollupHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
 	rollupBodyPrefix         = []byte("ob")          // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
 	rollupHeaderNumberPrefix = []byte("oH")          // rollupHeaderNumberPrefix + hash -> num (uint64 big endian)
-	blockStatePrefix         = []byte("obs")         // blockStatePrefix + hash -> num (uint64 big endian)
+	chainHeadsPrefix         = []byte("och")         // chainHeadsPrefix + hash -> num (uint64 big endian)
 	logsPrefix               = []byte("olg")         // logsPrefix + hash -> block logs
 	rollupReceiptsPrefix     = []byte("or")          // rollupReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
 	contractReceiptPrefix    = []byte("ocr")         // contractReceiptPrefix + address -> tx hash
@@ -53,9 +53,9 @@ func rollupBodyKey(number uint64, hash common.Hash) []byte {
 	return append(append(rollupBodyPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
 }
 
-// blockStateKey = blockStatePrefix + hash
-func blockStateKey(hash common.Hash) []byte {
-	return append(blockStatePrefix, hash.Bytes()...)
+// chainHeadsKey = chainHeadsPrefix + hash
+func chainHeadsKey(hash common.Hash) []byte {
+	return append(chainHeadsPrefix, hash.Bytes()...)
 }
 
 // logsKey = logsPrefix + hash

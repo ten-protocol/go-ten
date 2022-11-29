@@ -250,7 +250,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ProduceGe
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	blockState, err := e.chain.UpdateStateFromL1Block(block, isLatest)
+	newChainHeads, err := e.chain.UpdateStateFromL1Block(block, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
@@ -258,7 +258,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
 	// We prepare the block submission response.
-	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, blockState, isLatest)
+	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, newChainHeads, isLatest)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 	}
@@ -380,7 +380,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err != nil {
 		return nil, err
 	}
-	hs, err := e.storage.FetchHeadState()
+	hs, err := e.storage.FetchCurrentChainHeads()
 	if err == nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
