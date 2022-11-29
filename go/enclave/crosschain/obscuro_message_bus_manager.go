@@ -15,6 +15,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
@@ -48,6 +49,15 @@ func NewObscuroMessageBusManager(
 		logger:            logger,
 		wallet:            wallet,
 	}
+}
+
+func (m *obscuroMessageBusManager) IsSyntheticTransaction(transaction common.L2Tx) bool {
+	sender, err := rpc.GetSender(&transaction)
+	if err != nil {
+		return false
+	}
+
+	return bytes.Equal(sender.Bytes(), m.GetOwner().Bytes())
 }
 
 // GetOwner - Returns the address of the identity owning the message bus.

@@ -55,6 +55,7 @@ type enclaveImpl struct {
 	rpcEncryptionManager rpc.EncryptionManager
 	bridge               *bridge.Bridge
 	subscriptionManager  *events.SubscriptionManager
+	crossChainProcessors *crosschain.Processors
 
 	chain *rollupchain.RollupChain
 
@@ -186,6 +187,7 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 		rpcEncryptionManager:  rpcEncryptionManager,
 		bridge:                obscuroBridge,
 		subscriptionManager:   subscriptionManager,
+		crossChainProcessors:  crossChainProcessors,
 		chain:                 chain,
 		txCh:                  make(chan *common.L2Tx),
 		exitCh:                make(chan bool),
@@ -267,6 +269,11 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	if err != nil {
 		e.logger.Info("could not decrypt transaction. ", log.ErrKey, err)
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
+	}
+
+	isSyntheticTx := e.crossChainProcessors.LocalManager.IsSyntheticTransaction(*decryptedTx)
+	if isSyntheticTx {
+		return nil, fmt.Errorf("synthetic transaction coming from external rpc! This should not be possible!")
 	}
 
 	err = e.checkGas(decryptedTx)
