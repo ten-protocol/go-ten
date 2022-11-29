@@ -1057,13 +1057,16 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
 
 	// We request any batches we've missed.
-	isMissingBatches, batchRequest, err := h.batchManager.IsMissingBatches(batches)
+	isMissingBatches, earliestMissingBatch, err := h.batchManager.IsMissingBatches(batches)
 	if err != nil {
 		return err
 	}
 	if isMissingBatches {
-		batchRequest.Requester = h.config.P2PPublicAddress
-		err = h.p2p.RequestBatches(batchRequest)
+		batchRequest := common.BatchRequest{
+			Requester:            h.config.P2PPublicAddress,
+			EarliestMissingBatch: earliestMissingBatch,
+		}
+		err = h.p2p.RequestBatches(&batchRequest)
 		if err != nil {
 			return fmt.Errorf("could not request historical batches. Cause: %w", err)
 		}

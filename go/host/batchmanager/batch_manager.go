@@ -23,8 +23,8 @@ func NewBatchManager(db *db.DB) *BatchManager {
 }
 
 // IsMissingBatches returns a bool indicating whether any historical batches are missing, given the state of the host's
-// database and the batches provided. If batches are missing, it creates a corresponding batch request.
-func (b *BatchManager) IsMissingBatches(batches []*common.ExtBatch) (bool, *common.BatchRequest, error) {
+// database and the batches provided. If batches are missing, it returns the earliest missing batch.
+func (b *BatchManager) IsMissingBatches(batches []*common.ExtBatch) (bool, *big.Int, error) {
 	// We sort the batches, then check for duplicates or gaps. If we don't identify gaps first, there's a risk that
 	// we won't request sufficient missing batches (e.g. we have `[0,1]` in our DB, and receive `[3,4,6]`; it is
 	// important that we don't "see" the `3` and fail to request the `5`).
@@ -35,7 +35,6 @@ func (b *BatchManager) IsMissingBatches(batches []*common.ExtBatch) (bool, *comm
 	}
 
 	earliestReceivedBatch := batches[0]
-	latestReceivedBatch := batches[len(batches)-1]
 
 	var earliestMissingBatch *big.Int
 	parentBatchNumber := big.NewInt(0).Sub(earliestReceivedBatch.Header.Number, big.NewInt(1))
@@ -65,16 +64,21 @@ func (b *BatchManager) IsMissingBatches(batches []*common.ExtBatch) (bool, *comm
 		return false, nil, nil
 	}
 
-	return true, &common.BatchRequest{From: earliestMissingBatch, To: latestReceivedBatch.Header.Number}, nil
+	return true, earliestMissingBatch, nil
 }
 
 // GetBatches retrieves the batches matching the batch request from the host's database.
 func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.ExtBatch, error) {
 	var batches []*common.ExtBatch
-	currentBatchToRetrieve := batchRequest.From
-	for currentBatchToRetrieve.Cmp(batchRequest.To) != 1 {
+
+	currentBatchToRetrieve := batchRequest.EarliestMissingBatch
+	for {
 		batchHash, err := b.db.GetBatchHash(currentBatchToRetrieve)
 		if err != nil {
+			// We have reached the latest batch. Our work is complete.
+			if errors.Is(err, errutil.ErrNotFound) {
+				break
+			}
 			return nil, fmt.Errorf("could not retrieve batch hash for batch number %d. Cause: %w", currentBatchToRetrieve, err)
 		}
 		batch, err := b.db.GetBatch(*batchHash)

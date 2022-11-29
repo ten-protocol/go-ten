@@ -14,9 +14,8 @@ type ExtBatch struct {
 
 // TODO - #718 - Cache hash calculation.
 
-// BatchRequest is used when request a range of batches from a peer.
+// BatchRequest is used when requesting a range of batches from a peer.
 type BatchRequest struct {
-	Requester string
-	From      *big.Int
-	To        *big.Int
+	Requester            string
+	EarliestMissingBatch *big.Int
 }
