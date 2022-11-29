@@ -37,7 +37,7 @@ func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 		parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
 		_, err := b.db.GetBatchHash(parentBatchNumber)
 
-		// We have stored the parent, or this is the genesis batch, so we store the batch.
+		// We have stored the batch's parent, or this batch is the genesis batch, so we store the batch.
 		if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
 			err = b.db.AddBatchHeader(batch)
 			if err != nil {
