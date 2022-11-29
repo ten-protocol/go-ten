@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
@@ -76,21 +78,25 @@ type host struct {
 	stopHostInterrupt     *int32
 	bootstrappingComplete *int32 // Marks when the host is done bootstrapping
 
-	l1BlockRPCCh chan l1BlockAndParent        // The channel that new blocks from the L1 node are sent to
-	forkRPCCh    chan []common.EncodedL1Block // The channel that new forks from the L1 node are sent to
-	txP2PCh      chan common.EncryptedTx      // The channel that new transactions from peers are sent to
-	batchP2PCh   chan common.EncodedBatch     // The channel that new batches from peers are sent to
+	l1BlockRPCCh   chan l1BlockAndParent           // The channel that new blocks from the L1 node are sent to
+	forkRPCCh      chan []common.EncodedL1Block    // The channel that new forks from the L1 node are sent to
+	txP2PCh        chan common.EncryptedTx         // The channel that new transactions from peers are sent to
+	batchP2PCh     chan common.EncodedBatches      // The channel that new batches from peers are sent to
+	batchRequestCh chan common.EncodedBatchRequest // The channel that batch requests from peers are sent to
 
 	db *db.DB // Stores the host's publicly-available data
 
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	ethWallet       wallet.Wallet                   // Wallet used to issue ethereum transactions
 	logEventManager events.LogEventManager
+	batchManager    *batchmanager.BatchManager
 
 	logger gethlog.Logger
 }
 
 func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) hostcommon.MockHost {
+	database := db.NewInMemoryDB() // todo - make this config driven
+
 	host := &host{
 		// config
 		config:      config,
@@ -109,18 +115,19 @@ func NewHost(config config.HostConfig, p2p hostcommon.P2P, ethClient ethadapter.
 		bootstrappingComplete: new(int32),
 
 		// incoming data
-		l1BlockRPCCh: make(chan l1BlockAndParent),
-		forkRPCCh:    make(chan []common.EncodedL1Block),
-		txP2PCh:      make(chan common.EncryptedTx),
-		batchP2PCh:   make(chan common.EncodedBatch),
+		l1BlockRPCCh:   make(chan l1BlockAndParent),
+		forkRPCCh:      make(chan []common.EncodedL1Block),
+		txP2PCh:        make(chan common.EncryptedTx),
+		batchP2PCh:     make(chan common.EncodedBatches),
+		batchRequestCh: make(chan common.EncodedBatchRequest),
 
 		// Initialize the host DB
-		// nodeDB:       NewLevelDBBackedDB(), // todo - make this config driven
-		db: db.NewInMemoryDB(),
+		db: database,
 
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
 		ethWallet:       ethWallet,       // the host's ethereum wallet
 		logEventManager: events.NewLogEventManager(logger),
+		batchManager:    batchmanager.NewBatchManager(database),
 
 		logger: logger,
 	}
@@ -306,14 +313,16 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	return encryptedResponse, nil
 }
 
-// ReceiveTx receives a new transaction
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
 	h.txP2PCh <- tx
 }
 
-// ReceiveBatch receives a new batch
-func (h *host) ReceiveBatch(batch common.EncodedBatch) {
-	h.batchP2PCh <- batch
+func (h *host) ReceiveBatches(batches common.EncodedBatches) {
+	h.batchP2PCh <- batches
+}
+
+func (h *host) ReceiveBatchRequest(batchRequest common.EncodedBatchRequest) {
+	h.batchRequestCh <- batchRequest
 }
 
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
@@ -445,9 +454,14 @@ func (h *host) startProcessing() { //nolint:gocognit
 				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
 			}
 
-		case batch := <-h.batchP2PCh:
-			if err := h.handleBatch(&batch); err != nil {
-				h.logger.Error("Could not handle batch. ", log.ErrKey, err)
+		case batches := <-h.batchP2PCh:
+			if err := h.handleBatches(&batches); err != nil {
+				h.logger.Error("Could not handle batches. ", log.ErrKey, err)
+			}
+
+		case batchRequest := <-h.batchRequestCh:
+			if err := h.handleBatchRequest(&batchRequest); err != nil {
+				h.logger.Error("Could not handle batch request. ", log.ErrKey, err)
 			}
 
 		case <-h.exitHostCh:
@@ -1025,24 +1039,59 @@ func (h *host) checkBlockForSecretResponse(block *types.Block) bool {
 	return false
 }
 
-// Handles an incoming batch.
-func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
-	batch := common.ExtBatch{}
-	err := rlp.DecodeBytes(*encodedBatch, &batch)
+// Handles an incoming set of batches. There are two possibilities:
+// (1) There are no gaps in the historical chain of batches. The new batches can be added immediately
+// (2) There are gaps in the historical chain of batches. To avoid an inconsistent state (i.e. one where we have stored
+// a batch without its parent), we request the sequencer to resend the batches we've just received, plus any missing
+// historical batches, then discard the received batches. We will store all of these at once when we receive them
+func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
+	var batches []*common.ExtBatch
+	err := rlp.DecodeBytes(*encodedBatches, &batches)
 	if err != nil {
-		return fmt.Errorf("could not decode batch using RLP. Cause: %w", err)
+		return fmt.Errorf("could not decode batches using RLP. Cause: %w", err)
+	}
+	if len(batches) == 0 {
+		return nil
 	}
 
-	// TODO - #718 - Have the enclave process batch, so that it's up to date.
+	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
 
-	// TODO - #718 - Implement a catch-up mechanism for historical batches.
-
-	err = h.db.AddBatchHeader(&batch)
+	// We store the batches. If we encounter any missing batches, we abort and request the missing batches instead.
+	err = h.batchManager.StoreBatches(batches)
 	if err != nil {
-		return fmt.Errorf("could not store batch header. Cause: %w", err)
+		batchesMissingError, ok := err.(*batchmanager.BatchesMissingError) //nolint:errorlint
+		if !ok {
+			return fmt.Errorf("could not store batches. Cause: %w", err)
+		}
+
+		batchRequest := common.BatchRequest{
+			Requester:            h.config.P2PPublicAddress,
+			EarliestMissingBatch: batchesMissingError.EarliestMissingBatch,
+		}
+		err = h.p2p.RequestBatches(&batchRequest)
+		if err != nil {
+			return fmt.Errorf("could not request historical batches. Cause: %w", err)
+		}
+		// If we requested any batches, we return early and wait for the missing batches to arrive.
+		return nil
 	}
 
 	return nil
+}
+
+func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchRequest) error {
+	var batchRequest *common.BatchRequest
+	err := rlp.DecodeBytes(*encodedBatchRequest, &batchRequest)
+	if err != nil {
+		return fmt.Errorf("could not decode batch request using RLP. Cause: %w", err)
+	}
+
+	batches, err := h.batchManager.GetBatches(batchRequest)
+	if err != nil {
+		return fmt.Errorf("could not retrieve batches based on request. Cause: %w", err)
+	}
+
+	return h.p2p.SendBatches(batches, batchRequest.Requester)
 }
 
 // Checks the host config is valid.
