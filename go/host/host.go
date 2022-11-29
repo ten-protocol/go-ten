@@ -503,8 +503,7 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 	}
 	err = h.storeBlockProcessingResult(result)
 	if err != nil {
-		// todo - joel - return error instead
-		h.logger.Crit("submitted block to enclave but could not store the block processing result")
+		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
 
 	h.logEventManager.SendLogsToSubscribers(result)
@@ -514,8 +513,8 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 		h.logger.Error("failed to publish response to secret request", log.ErrKey, err)
 	}
 
-	// If we're the sequencer, we produce, publish and distribute a new rollup.
-	if !h.isSequencer {
+	// If we're the sequencer, and we're processing the latest block, we produce, publish and distribute a new rollup.
+	if !h.isSequencer || !isLatestBlock {
 		return nil
 	}
 	blockHash := decodedBlock.Hash()
@@ -523,7 +522,7 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 	if err != nil {
 		return fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
-	if isLatestBlock {
+	if rollup.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(rollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.

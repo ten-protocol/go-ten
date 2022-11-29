@@ -770,11 +770,15 @@ func (rc *RollupChain) getEncryptedLogs(block types.Block, blockState *obscuroco
 func (rc *RollupChain) NewRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
 	block, err := rc.storage.FetchBlock(*blockHash)
 	if err != nil {
-		panic("todo - joel - handle better")
+		return nil, fmt.Errorf("could not retrieve block to produce rollup. Cause: %w", err)
 	}
 	blockState, err := rc.storage.FetchBlockState(*blockHash)
 	if err != nil {
-		panic("todo - joel - handle better")
+		if errors.Is(err, errutil.ErrNotFound) {
+			// not an error state, we ingested a block but no rollup head found
+			return nil, nil //nolint:nilnil
+		}
+		return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
 	}
 
 	rollup := rc.produceRollup(block, blockState)
