@@ -1056,11 +1056,6 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
 
-	for _, batch := range batches {
-		print(batch.Header.Number.Int64(), " ")
-	}
-	println()
-
 	// We store the batches. If we encounter any missing batches, we abort and request the missing batches instead.
 	err = h.batchManager.StoreBatches(batches)
 	if err != nil {
