@@ -201,11 +201,11 @@ func ReadChainHeads(kv ethdb.KeyValueReader, hash gethcommon.Hash) (*core.ChainH
 	if err != nil {
 		return nil, errutil.ErrNotFound
 	}
-	bs := new(core.ChainHeads)
-	if err := rlp.Decode(bytes.NewReader(data), bs); err != nil {
+	chainHeads := new(core.ChainHeads)
+	if err := rlp.Decode(bytes.NewReader(data), chainHeads); err != nil {
 		return nil, fmt.Errorf("could not decode block state. Cause: %w", err)
 	}
-	return bs, nil
+	return chainHeads, nil
 }
 
 func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log) error {

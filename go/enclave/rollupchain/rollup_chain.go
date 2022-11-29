@@ -300,12 +300,12 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 		}
 
 		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-		bs := obscurocore.ChainHeads{
+		chainHeads := obscurocore.ChainHeads{
 			HeadBlock:         b.Hash(),
 			HeadRollup:        genesis.Hash(),
 			UpdatedHeadRollup: true,
 		}
-		err = rc.storage.StoreNewHead(&bs, genesis, nil, []*types.Log{})
+		err = rc.storage.StoreNewHead(&chainHeads, genesis, nil, []*types.Log{})
 		if err != nil {
 			return nil, false
 		}
@@ -315,7 +315,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 			return nil, false
 		}
 
-		return &bs, true
+		return &chainHeads, true
 	}
 
 	// Re-processing the block that contains the rollup. This can happen as blocks can be fed to the enclave multiple times.
@@ -461,12 +461,12 @@ func (rc *RollupChain) calculateChainHeads(b *types.Block, parentState *obscuroc
 		newHeadRollup = currentHead
 	}
 
-	bs := obscurocore.ChainHeads{
+	chainHeads := obscurocore.ChainHeads{
 		HeadBlock:         b.Hash(),
 		HeadRollup:        newHeadRollup.Hash(),
 		UpdatedHeadRollup: found,
 	}
-	return &bs, newHeadRollup, rollupTxReceipts
+	return &chainHeads, newHeadRollup, rollupTxReceipts
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
