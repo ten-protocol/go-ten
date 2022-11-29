@@ -513,8 +513,8 @@ func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) 
 	return receipts
 }
 
-// SubmitL1Block is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+// UpdateStateFromL1Block is used to update the enclave with an additional L1 block.
+func (rc *RollupChain) UpdateStateFromL1Block(block types.Block, isLatest bool) (*obscurocore.BlockState, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
@@ -528,6 +528,7 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 
 	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
 	if err != nil {
+		// Do not store the block if the L1 chain insertion failed
 		return nil, rc.rejectBlockErr(err)
 	}
 	rc.logger.Trace("block inserted successfully",
@@ -535,17 +536,55 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 		"hash", block.Hash(),
 		"ingestionType", ingestionType)
 
-	// Only store the block if the L1 chain insertion succeeded
 	rc.storage.StoreBlock(&block)
 
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
-	// TODO - Handle error properly.
-	blockState, _ := rc.updateState(&block)
+	return rc.updateState(&block)
+}
+
+func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, blockState *obscurocore.BlockState, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	if blockState == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return rc.noBlockStateBlockSubmissionResponse(&block), nil
 	}
 
+	encryptedLogs := rc.getEncryptedLogs(block, blockState)
+
+	var extRollup common.ExtRollup
+	// If we're an aggregator on the head L1 block, we produce a rollup.
+	if isLatest && rc.nodeType == common.Aggregator {
+		rollup, err := rc.newRollup(block, blockState)
+		if err != nil {
+			return nil, err
+		}
+		extRollup = rollup.ToExtRollup(rc.transactionBlobCrypto)
+		rc.logger.Trace(fmt.Sprintf("Processed block: b_%d (%d). Produced rollup r_%d",
+			common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(extRollup.Hash())))
+	}
+
+	return rc.newBlockSubmissionResponse(blockState, extRollup, encryptedLogs), nil
+}
+
+// todo - joel - push these down
+func (rc *RollupChain) newRollup(block types.Block, blockState *obscurocore.BlockState) (*obscurocore.Rollup, error) {
+	rollup := rc.produceRollup(&block, blockState)
+	rc.signRollup(rollup)
+	// Sanity check the produced rollup
+	_, _, err := rc.checkRollup(rollup)
+	if err != nil {
+		return nil, err
+	}
+
+	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
+	err = rc.storage.StoreRollup(rollup)
+	if err != nil {
+		return nil, err
+	}
+	return rollup, nil
+}
+
+// Retrieves and encrypts the logs for the block.
+func (rc *RollupChain) getEncryptedLogs(block types.Block, blockState *obscurocore.BlockState) map[gethrpc.ID][]byte {
 	logs := []*types.Log{}
 	fetchedLogs, err := rc.storage.FetchLogs(block.Hash())
 	if err == nil {
@@ -553,35 +592,11 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, isLatest bool) (*common.
 	} else {
 		rc.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
 	}
-
 	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.HeadRollup)
 	if err != nil {
 		rc.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
 	}
-
-	// We do not produce a rollup if we're not an aggregator, or we're behind the L1 (in which case the rollup will be outdated).
-	if !isLatest || rc.nodeType != common.Aggregator {
-		return rc.newBlockSubmissionResponse(blockState, common.ExtRollup{}, encryptedLogs), nil
-	}
-
-	// As an aggregator on the head L1 block, we produce a rollup.
-	r := rc.produceRollup(&block, blockState)
-	rc.signRollup(r)
-	// Sanity check the produced rollup
-	_, _, err = rc.checkRollup(r)
-	if err != nil {
-		return nil, err
-	}
-
-	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
-	err = rc.storage.StoreRollup(r)
-	if err != nil {
-		return nil, err
-	}
-
-	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d(%d). Produced rollup r_%d", common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(r.Hash())))
-
-	return rc.newBlockSubmissionResponse(blockState, r.ToExtRollup(rc.transactionBlobCrypto), encryptedLogs), nil
+	return encryptedLogs
 }
 
 func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
