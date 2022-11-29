@@ -23,9 +23,8 @@ func WriteSyntheticTransactions(db ethdb.KeyValueWriter, blockHash gethcommon.Ha
 	return true
 }
 
-// HasReceipts verifies the existence of all the transaction receipts belonging
-// to a block.
-// db.Has is broken, dont use this for now.
+// HasReceipts verifies the existence of all the transaction receipts belonging to a block
+// TODO: db.Has is broken, dont use this for now.
 func HasSyntheticTransactions(db ethdb.KeyValueReader, blockHash gethcommon.Hash) bool {
 	if has, err := db.Has(syntheticTransactionsKey(blockHash)); !has || err != nil {
 		return false
