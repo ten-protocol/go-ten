@@ -31,9 +31,10 @@ An additional complexity is that Obscuro has the requirement to support temporar
 ## 2. Client-Enclave Encrypted Communication
 - Client-Enclave communication is encrypted using both Obscuro Keys and the Client Keys
 - Obscuro Key and Client (Viewing Key) are both asymmetric key pairs
-  - The Private Obscuro Key is deterministically calculated from Master Seed + Genesis Rollup
+  - The Private Obscuro Key is deterministically calculated from Master Seed
   - The Private Client Key is created by the client in any way it chooses
   - Both the Public keys of Obscuro and Client are derived, via a one way function, from their corresponding Private keys
+- Only [attested Enclaves](https://whitepaper.obscu.ro/obscuro-whitepaper/amalgamated.html#trusted-execution-environment) hold the Private Obscuro Key. They calculate it after receiving the Master Seed upon a [successful attestation](https://whitepaper.obscu.ro/obscuro-whitepaper/amalgamated.html#sharing-the-master-seed)
 - Clients encrypt communication payload using the Public Key of the Obscuro Key ( only holders of the Private Obscuro Key can decrypt this payload )
 - Enclaves respond to Client by encrypting with the Public Client Key ( only holders of the Private Client Key can decrypt this payload )
 - The Public Obscuro Key is published in the Management contract and used by all obscuro tooling ( like the wallet extension )
@@ -44,9 +45,9 @@ An additional complexity is that Obscuro has the requirement to support temporar
   - The new key' does not release any information pertaining the old key (one way function)
   - Given the same key and the same input, the new key' is deterministically calculated/derived
 - Key derivation allows to segregate vulnerability impact. If one key is compromised, other keys, including the original key are not affected
-- To avoid reusing the same key, transaction encryption keys are derived twice
-  - Each rollup has a Rollup Encryption Key derived from the Master Seed + Rollup ( if a rollup encryption key is discovered other rollups are safe )
-  - Each transaction is encrypted with a Revelation Period Key that is derived from the Rollup Encryption Key + Revelation Period
+  - Each rollup has a set of 5 keys corresponding to the [5 Revelation Periods](https://whitepaper.obscu.ro/obscuro-whitepaper/amalgamated.html#transaction-encryption) defined in the whitepaper
+  - Each of the 5 Revelation Period Keys are derived from the Master Seed, the Reveal Option, the running counter for that option, and the block height
+  - Each transaction is encrypted with a specific Revelation Period Key
 - HKDF (HMAC-based Key Derivation Function) is used to derive keys
   - Given the high entropy of the Master Seed no need for PBKDF Family key stretching
   - Derivations use public rollup metadata such as height ( or some other shared field ) in the Info component of HKDF and use a fixed size salt as per https://soatok.blog/2021/11/17/understanding-hkdf/
@@ -63,9 +64,14 @@ An additional complexity is that Obscuro has the requirement to support temporar
     * M - 1 day (24 * 3600/12 = 7200 blocks)
     * L - 1 month (30 * 24 * 3600/12 = 216000 blocks)
     * XL - 1 year (12 * 30 * 24 * 3600/12 = 2592000 blocks)
+- Revelation keys are released to public domain after a given amount of time. (The keys are accessible outside the enclaves)
+- Revelation Keys are independent - 1 key per revelation period per rollup - and as such they can be released independently without hindering other encrypted transactions.
+- Revelation keys can always be calculated given the Master Seed as described in [Transaction Encryption per Rollup with Revelation Period](###3. Transaction Encryption per Rollup with Revelation Period)
+- In the first phase, Validators do not calculate reveal keys, only release keys the Central Sequencer has revealed.
 - Central Sequencer stores the rollup revelation keys in a database with the corresponding decrypt time.
-- When a Light Batch is created, the keys that available to be reveled, are appended to the LB and removed from the database.
-- In the first phase, validators do not calculate reveal keys, they only release the keys that are reveled from the central sequencer.
+- When a Light Batch is created, keys available to be revealed, are appended to the LB and removed from the database.
+- When a Validator receives a Light Batch the revealed keys are made publicly available.
+
 
 
 ### Details
