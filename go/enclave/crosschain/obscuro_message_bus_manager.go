@@ -106,7 +106,7 @@ func (m *obscuroMessageBusManager) ExtractLocalMessages(receipts common.L2Receip
 		return make(common.CrossChainMessages, 0), err
 	}
 
-	messages, err := convertLogsToMessages(logs, CrossChainEventName, ContractABI)
+	messages, err := convertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
 	if err != nil {
 		m.logger.Error("[CrossChain] Error converting messages from L2 message bus!", "Error", err)
 		return make(common.CrossChainMessages, 0), err
@@ -219,7 +219,7 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 	signedTransactions := make(types.Transactions, 0)
 	for idx, message := range messages {
 		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
-		data, err := ContractABI.Pack("submitOutOfNetworkMessage", message, delayInBlocks)
+		data, err := MessageBusABI.Pack("submitOutOfNetworkMessage", message, delayInBlocks)
 		if err != nil {
 			m.logger.Crit("[CrossChain] Failed packing submitOutOfNetwork message!")
 			return signedTransactions

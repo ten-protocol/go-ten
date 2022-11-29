@@ -85,7 +85,7 @@ func (m *blockMessageExtractor) getSyntheticTransactions(block *common.L1Block, 
 	}
 	m.logger.Trace("[CrossChain] extracted logs", "logCount", len(logs))
 
-	messages, err := convertLogsToMessages(logs, CrossChainEventName, ContractABI)
+	messages, err := convertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
 		return make(common.CrossChainMessages, 0), err

@@ -192,12 +192,12 @@ func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *t
 		return nil, 0
 	}
 
-	contractABI, err := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	messageBusABI, err := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
 	if err != nil {
 		panic(err) // panic?
 	}
 
-	eventTopic := contractABI.Events["LogMessagePublished"].ID
+	eventTopic := messageBusABI.Events["LogMessagePublished"].ID
 	var topics [][]gethcommon.Hash
 	topics = append(topics, []gethcommon.Hash{eventTopic})
 
@@ -219,7 +219,7 @@ func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *t
 	totalDeposited := big.NewInt(0)
 	for _, log := range logs {
 		var event MessageBus.MessageBusLogMessagePublished
-		err := contractABI.UnpackIntoInterface(&event, "LogMessagePublished", log.Data)
+		err := messageBusABI.UnpackIntoInterface(&event, "LogMessagePublished", log.Data)
 		if err != nil { // shouldn't happen since we query by event type so we shouldn't have foreign events
 			panic(err)
 		}

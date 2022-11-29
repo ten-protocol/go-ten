@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	ContractABI, _      = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	MessageBusABI, _    = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
 	CrossChainEventName = "LogMessagePublished"
-	CrossChainEventID   = ContractABI.Events[CrossChainEventName].ID
+	CrossChainEventID   = MessageBusABI.Events[CrossChainEventName].ID
 )
 
 func lazilyLogReceiptChecksum(msg string, receipts types.Receipts, logger gethlog.Logger) {
@@ -117,12 +117,12 @@ func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, 
 	return logs, nil
 }
 
-func convertLogsToMessages(logs []types.Log, eventName string, contractABI abi.ABI) (common.CrossChainMessages, error) {
+func convertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.CrossChainMessages, error) {
 	messages := make(common.CrossChainMessages, 0)
 
 	for _, log := range logs {
 		var event MessageBus.MessageBusLogMessagePublished
-		err := contractABI.UnpackIntoInterface(&event, eventName, log.Data)
+		err := messageBusABI.UnpackIntoInterface(&event, eventName, log.Data)
 		if err != nil {
 			return messages, err
 		}
