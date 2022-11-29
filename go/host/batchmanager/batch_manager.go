@@ -22,7 +22,7 @@ func NewBatchManager(db *db.DB) *BatchManager {
 	}
 }
 
-// IsMissingBatches retruns a bool indicating whether any historical batches are missing, given the state of the host's
+// IsMissingBatches returns a bool indicating whether any historical batches are missing, given the state of the host's
 // database and the batches provided. If batches are missing, it creates a corresponding batch request.
 func (b *BatchManager) IsMissingBatches(batches []*common.ExtBatch) (bool, *common.BatchRequest, error) {
 	// We sort the batches, then check for duplicates or gaps. If we don't identify gaps first, there's a risk that
