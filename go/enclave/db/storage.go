@@ -370,18 +370,6 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key, s.logger)
 }
 
-func (s *storageImpl) StoreSyntheticTransactions(blockHash gethcommon.Hash, transactions types.Transactions) bool {
-	return obscurorawdb.WriteSyntheticTransactions(s.db, blockHash, transactions, s.logger)
-}
-
-func (s *storageImpl) ReadSyntheticTransactions(blockHash gethcommon.Hash) types.Transactions {
-	return obscurorawdb.ReadSyntheticTransactions(s.db, blockHash, s.logger)
-}
-
-func (s *storageImpl) HasSyntheticTransactions(blockHash gethcommon.Hash) bool {
-	return obscurorawdb.HasSyntheticTransactions(s.db, blockHash)
-}
-
 func (s *storageImpl) StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) bool {
 	return obscurorawdb.StoreL1Messages(s.db, blockHash, messages, s.logger)
 }

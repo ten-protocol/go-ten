@@ -95,11 +95,7 @@ type AttestationStorage interface {
 	StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error
 }
 
-type SyntheticTransactionsStorage interface {
-	StoreSyntheticTransactions(blockHash gethcommon.Hash, transactions types.Transactions) bool
-	ReadSyntheticTransactions(blockHash gethcommon.Hash) types.Transactions
-	HasSyntheticTransactions(blockHash gethcommon.Hash) bool
-
+type CrossChainMessagesStorage interface {
 	StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) bool
 	ReadL1Messages(blockHash gethcommon.Hash) common.CrossChainMessages
 }
@@ -112,7 +108,7 @@ type Storage interface {
 	BlockStateStorage
 	TransactionStorage
 	AttestationStorage
-	SyntheticTransactionsStorage
+	CrossChainMessagesStorage
 
 	// HealthCheck returns whether the storage is deemed healthy or not
 	HealthCheck() (bool, error)
