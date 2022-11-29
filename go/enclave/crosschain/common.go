@@ -45,6 +45,7 @@ func lazilyLogReceiptChecksum(msg string, receipts types.Receipts, logger gethlo
 		}})
 }
 
+/*
 func lazilyLogChecksum(msg string, transactions types.Transactions, logger gethlog.Logger) {
 	logger.Trace(msg, "Hash",
 		gethlog.Lazy{Fn: func() string {
@@ -67,6 +68,7 @@ func lazilyLogChecksum(msg string, transactions types.Transactions, logger gethl
 			return hash.Hex()
 		}})
 }
+*/
 
 func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
 	logs := make([]types.Log, 0)

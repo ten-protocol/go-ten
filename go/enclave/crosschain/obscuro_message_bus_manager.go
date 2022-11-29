@@ -56,7 +56,7 @@ func (m *obscuroMessageBusManager) GetOwner() common.L2Address {
 }
 
 // GetBusAddress - Returns the L2 address of the message bus contract.
-// TODO: Figure out how to expose the deployed contract to the external world.
+// TODO: Figure out how to expose the deployed contract to the external world. Perhaps extract event from contract construction?
 func (m *obscuroMessageBusManager) GetBusAddress() *common.L2Address {
 	return m.messageBusAddress
 }
@@ -165,9 +165,11 @@ func (m *obscuroMessageBusManager) SubmitRemoteMessagesLocally(
 }
 
 // retrieveSyntheticTransactionsBetween - Iterates the blocks backwards and returns the synthetic transaction
-// TODO: fix ordering of transactions, currently it is irrelevant.
+// TODO: Fix ordering of transactions, currently it is irrelevant.
+// TODO: Do not extract messages below their consistency level. Irrelevant security wise.
+// TODO: Surface errors
 func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.L2Transactions {
-	transactions := make(common.L2Transactions, 0)
+	messages := make(common.CrossChainMessages, 0)
 
 	from := common.GenesisBlock.Hash()
 	height := common.L1GenesisHeight
@@ -188,8 +190,8 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 		}
 
 		m.logger.Trace(fmt.Sprintf("[CrossChain] Looking for transactions at block %s", b.Hash().Hex()))
-		syntheticTransactions := m.storage.ReadSyntheticTransactions(b.Hash())
-		transactions = append(transactions, syntheticTransactions...) // Ordering here might work in POBI, but might be weird for fast finality
+		messagesForBlock := m.storage.ReadL1Messages(b.Hash())
+		messages = append(messages, messagesForBlock...) // Ordering here might work in POBI, but might be weird for fast finality
 
 		// No deposits before genesis.
 		if b.NumberU64() < height {
@@ -201,20 +203,30 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 		}
 		b = p
 	}
-	lazilyLogChecksum("[CrossChain] Read synthetic transactions checksum", transactions, m.logger)
 
 	// Get current nonce for this stateDB.
 	// There can be forks thus we cannot trust the wallet.
 	startingNonce := rollupState.GetNonce(m.GetOwner())
 
 	signedTransactions := make(types.Transactions, 0)
-	for idx, unsignedTransaction := range transactions {
+	for idx, message := range messages {
+
+		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
+		data, err := ContractABI.Pack("submitOutOfNetworkMessage", message, delayInBlocks)
+		if err != nil {
+			m.logger.Crit("[CrossChain] Failed packing submitOutOfNetwork message!")
+			return signedTransactions
+
+			// TODO: return error
+			//return nil, fmt.Errorf("failed packing submitOutOfNetworkMessage %w", err)
+		}
+
 		tx := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
 			Value:    gethcommon.Big0,
 			Gas:      5_000_000,
 			GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
-			Data:     unsignedTransaction.Data(),
+			Data:     data,
 			To:       m.messageBusAddress,
 		}
 

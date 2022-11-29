@@ -97,6 +97,6 @@ func attestationPkKey(aggregator common.Address) []byte {
 	return append(attestationKeyPrefix, aggregator.Bytes()...)
 }
 
-func syntheticTransactionsKey(blockHash common.Hash) []byte {
+func crossChainMessagesKey(blockHash common.Hash) []byte {
 	return append(syntheticTransactionsKeyPrefix, blockHash.Bytes()...)
 }

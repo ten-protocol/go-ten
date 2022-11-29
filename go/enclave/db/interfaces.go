@@ -99,6 +99,9 @@ type SyntheticTransactionsStorage interface {
 	StoreSyntheticTransactions(blockHash gethcommon.Hash, transactions types.Transactions) bool
 	ReadSyntheticTransactions(blockHash gethcommon.Hash) types.Transactions
 	HasSyntheticTransactions(blockHash gethcommon.Hash) bool
+
+	StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) bool
+	ReadL1Messages(blockHash gethcommon.Hash) common.CrossChainMessages
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore

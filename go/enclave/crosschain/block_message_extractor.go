@@ -2,10 +2,8 @@ package crosschain
 
 import (
 	"fmt"
-	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
@@ -55,15 +53,14 @@ func (m *blockMessageExtractor) ProcessCrossChainMessages(block *common.L1Block,
 	}
 
 	lazilyLogReceiptChecksum(fmt.Sprintf("[CrossChain] Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)), receipts, m.logger)
-	transactions, err := m.getSyntheticTransactions(block, receipts)
+	messages, err := m.getSyntheticTransactions(block, receipts)
 	if err != nil {
 		return err
 	}
 
-	if len(transactions) > 0 {
-		m.logger.Trace(fmt.Sprintf("[CrossChain] Storing %d transactions for block %s", len(transactions), block.Hash().Hex()))
-		lazilyLogChecksum("[CrossChain] Process synthetic transaction checksum", transactions, m.logger)
-		m.storage.StoreSyntheticTransactions(block.Hash(), transactions)
+	if len(messages) > 0 {
+		m.logger.Trace(fmt.Sprintf("[CrossChain] Storing %d messages for block %s", len(messages), block.Hash().Hex()))
+		m.storage.StoreL1Messages(block.Hash(), messages)
 	}
 
 	return nil
@@ -75,52 +72,28 @@ func (m *blockMessageExtractor) GetBusAddress() *common.L1Address {
 }
 
 // getSyntheticTransactions - Converts the relevant logs from the appropriate message bus address to synthetic transactions and returns them
-func (m *blockMessageExtractor) getSyntheticTransactions(block *common.L1Block, receipts common.L1Receipts) (common.L2Transactions, error) {
-	transactions := make(common.L2Transactions, 0)
+func (m *blockMessageExtractor) getSyntheticTransactions(block *common.L1Block, receipts common.L1Receipts) (common.CrossChainMessages, error) {
 
 	if len(receipts) == 0 {
-		return transactions, nil
+		return make(common.CrossChainMessages, 0), nil
 	}
 
 	//Retrieves the relevant logs from the message bus.
 	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &CrossChainEventID)
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
-		return transactions, err
+		return make(common.CrossChainMessages, 0), err
 	}
 	m.logger.Trace("[CrossChain] extracted logs", "logCount", len(logs))
 
 	messages, err := convertLogsToMessages(logs, CrossChainEventName, ContractABI)
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)
-		return transactions, err
+		return make(common.CrossChainMessages, 0), err
 	}
 
 	m.logger.Trace(fmt.Sprintf("[CrossChain] Found %d cross chain messages that will be submitted to L2!", len(messages)),
 		"Block", block.Hash().Hex())
 
-	for _, message := range messages {
-		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
-		data, err := ContractABI.Pack("submitOutOfNetworkMessage", message, delayInBlocks)
-		if err != nil {
-			return transactions, fmt.Errorf("failed packing submitOutOfNetworkMessage %w", err)
-		}
-
-		tx := types.NewTx(&types.LegacyTx{
-			Nonce:    0, // This gets replaced later on
-			Value:    gethcommon.Big0,
-			Gas:      5_000_000,
-			GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
-			Data:     data,
-			To:       m.l2MessageBus,
-		})
-
-		m.logger.Trace(fmt.Sprintf("[CrossChain] Creating synthetic tx for cross chain message to L2. From: %s Topic: %s",
-			message.Sender.Hex(),
-			fmt.Sprint(message.Topic)), "Block", block.Hash().Hex())
-
-		transactions = append(transactions, tx)
-	}
-
-	return transactions, nil
+	return messages, nil
 }

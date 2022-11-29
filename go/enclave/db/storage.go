@@ -381,3 +381,11 @@ func (s *storageImpl) ReadSyntheticTransactions(blockHash gethcommon.Hash) types
 func (s *storageImpl) HasSyntheticTransactions(blockHash gethcommon.Hash) bool {
 	return obscurorawdb.HasSyntheticTransactions(s.db, blockHash)
 }
+
+func (s *storageImpl) StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) bool {
+	return obscurorawdb.StoreL1Messages(s.db, blockHash, messages, s.logger)
+}
+
+func (s *storageImpl) ReadL1Messages(blockHash gethcommon.Hash) common.CrossChainMessages {
+	return obscurorawdb.ReadL1Messages(s.db, blockHash, s.logger)
+}
