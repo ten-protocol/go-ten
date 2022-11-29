@@ -65,22 +65,24 @@ func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.ExtBatch, error) {
 	var batches []*common.ExtBatch
 
-	currentBatchToRetrieve := batchRequest.EarliestMissingBatch
+	currentBatch := batchRequest.EarliestMissingBatch
 	for {
-		batchHash, err := b.db.GetBatchHash(currentBatchToRetrieve)
+		batchHash, err := b.db.GetBatchHash(currentBatch)
 		if err != nil {
-			// We have reached the latest batch. Our work is complete.
+			// We have reached the latest batch.
 			if errors.Is(err, errutil.ErrNotFound) {
 				break
 			}
-			return nil, fmt.Errorf("could not retrieve batch hash for batch number %d. Cause: %w", currentBatchToRetrieve, err)
+			return nil, fmt.Errorf("could not retrieve batch hash for batch number %d. Cause: %w", currentBatch, err)
 		}
+
 		batch, err := b.db.GetBatch(*batchHash)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch for batch hash %s. Cause: %w", batchHash, err)
 		}
+
 		batches = append(batches, batch)
-		currentBatchToRetrieve = big.NewInt(0).Add(currentBatchToRetrieve, big.NewInt(1))
+		currentBatch = big.NewInt(0).Add(currentBatch, big.NewInt(1))
 	}
 
 	return batches, nil
