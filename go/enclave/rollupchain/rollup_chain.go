@@ -195,13 +195,13 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 	}
 
 	var head *common.Header
-	if bs.FoundNewRollup {
+	if bs.UpdatedHeadRollup {
 		head = headRollup.Header
 	}
 	return &common.BlockSubmissionResponse{
 		BlockHeader:          headBlock.Header(),
 		ProducedRollup:       rollup,
-		UpdatedHeadRollup:    bs.FoundNewRollup,
+		UpdatedHeadRollup:    bs.UpdatedHeadRollup,
 		IngestedRollupHeader: head,
 		SubscribedLogs:       logs,
 	}
@@ -270,7 +270,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.BlockState, err
 	blockState, head, receipts := rc.calculateBlockState(b, parentState, rollups)
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(b.Hash()),
-		blockState.FoundNewRollup,
+		blockState.UpdatedHeadRollup,
 		common.ShortHash(blockState.HeadRollup)))
 
 	logs := []*types.Log{}
@@ -301,9 +301,9 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 
 		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
 		bs := obscurocore.BlockState{
-			Block:          b.Hash(),
-			HeadRollup:     genesis.Hash(),
-			FoundNewRollup: true,
+			Block:             b.Hash(),
+			HeadRollup:        genesis.Hash(),
+			UpdatedHeadRollup: true,
 		}
 		err = rc.storage.StoreNewHead(&bs, genesis, nil, []*types.Log{})
 		if err != nil {
@@ -462,9 +462,9 @@ func (rc *RollupChain) calculateBlockState(b *types.Block, parentState *obscuroc
 	}
 
 	bs := obscurocore.BlockState{
-		Block:          b.Hash(),
-		HeadRollup:     newHeadRollup.Hash(),
-		FoundNewRollup: found,
+		Block:             b.Hash(),
+		HeadRollup:        newHeadRollup.Hash(),
+		UpdatedHeadRollup: found,
 	}
 	return &bs, newHeadRollup, rollupTxReceipts
 }

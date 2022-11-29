@@ -4,9 +4,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-// BlockState pairs a block with the canonical head rollup and the rollup the block contains, if any.
+// BlockState pairs the hash of an L1 block with the hash of the head rollup in the L2 chain after processing that block.
 type BlockState struct {
-	Block          common.Hash
-	HeadRollup     common.Hash // The head rollup of the canonical L2 chain.
-	FoundNewRollup bool        // Whether the ingested block contains a new rollup.
+	Block             common.Hash // The hash of an L1 block.
+	HeadRollup        common.Hash // The head rollup after processing the L1 block.
+	UpdatedHeadRollup bool        // Indicates whether ingesting this block updated the head rollup.
 }
