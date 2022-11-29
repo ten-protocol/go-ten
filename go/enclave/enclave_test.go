@@ -466,13 +466,13 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	}
 
 	// make sure the genesis is stored as the new Head of the rollup chain
-	bs := &core.BlockState{
-		Block:          blk.Hash(),
-		HeadRollup:     genRollup.Hash(),
-		FoundNewRollup: true,
+	headsAfterL1Block := &core.HeadsAfterL1Block{
+		HeadBlock:         blk.Hash(),
+		HeadRollup:        genRollup.Hash(),
+		UpdatedHeadRollup: true,
 	}
 
-	return enclave.(*enclaveImpl).storage.StoreNewHead(bs, genRollup, nil, nil)
+	return enclave.(*enclaveImpl).storage.StoreNewHead(headsAfterL1Block, genRollup, nil, nil)
 }
 
 type prefundedAddress struct {
