@@ -53,15 +53,15 @@ type RollupResolver interface {
 	FetchHeadRollup() (*core.Rollup, error)
 }
 
-type ChainHeadsStorage interface {
-	// FetchChainHeads returns the chain heads for a given L1 block hash.
-	FetchChainHeads(blockHash common.L1RootHash) (*core.ChainHeads, error)
+type HeadsAfterL1BlockStorage interface {
+	// FetchHeadsAfterL1Block returns the chain heads for a given L1 block hash.
+	FetchHeadsAfterL1Block(blockHash common.L1RootHash) (*core.HeadsAfterL1Block, error)
 	// FetchLogs returns the block's logs.
 	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
-	// FetchCurrentChainHeads returns the current chain heads.
-	FetchCurrentChainHeads() (*core.ChainHeads, error)
+	// FetchCurrentHeadsAfterL1Block returns the current chain heads.
+	FetchCurrentHeadsAfterL1Block() (*core.HeadsAfterL1Block, error)
 	// StoreNewHead saves the block state alongside its rollup, receipts and logs.
-	StoreNewHead(state *core.ChainHeads, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error
+	StoreNewHead(state *core.HeadsAfterL1Block, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
@@ -100,7 +100,7 @@ type Storage interface {
 	BlockResolver
 	RollupResolver
 	SharedSecretStorage
-	ChainHeadsStorage
+	HeadsAfterL1BlockStorage
 	TransactionStorage
 	AttestationStorage
 
