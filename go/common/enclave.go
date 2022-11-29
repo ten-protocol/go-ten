@@ -110,8 +110,8 @@ type BlockSubmissionResponse struct {
 	BlockHeader *types.Header // the header of the consumed block. Todo - only the hash required
 
 	ProducedRollup       ExtRollup // The new rollup produced as a result of ingesting this block, if any.
-	FoundNewHead         bool      // Whether the block contained a new head rollup for the canonical rollup chain.
-	IngestedRollupHeader *Header   // The header of the rollup contained in the ingested block, if any.
+	UpdatedHeadRollup    bool      // Whether the block contained a new head rollup for the canonical rollup chain.
+	IngestedRollupHeader *Header   // The header of the winning rollup contained in the ingested block, if any.
 
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
 

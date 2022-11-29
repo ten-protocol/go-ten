@@ -594,7 +594,7 @@ func (h *host) storeAndDistributeBatch(producedRollup common.ExtRollup) {
 
 func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) error {
 	// only update the host rollup headers if the enclave has found a new rollup head
-	if result.FoundNewHead {
+	if result.UpdatedHeadRollup {
 		// adding a header will update the head if it has a higher height
 		err := h.db.AddRollupHeader(result.IngestedRollupHeader)
 		if err != nil {
