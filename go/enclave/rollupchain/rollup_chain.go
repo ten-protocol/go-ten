@@ -249,11 +249,11 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.HeadsAfterL1Blo
 			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
 		}
 		// go back and calculate the Root of the Parent
-		parent, err := rc.storage.FetchBlock(b.ParentHash())
+		parentBlock, err := rc.storage.FetchBlock(b.ParentHash())
 		if err != nil {
 			rc.logger.Crit("Could not retrieve parent block when calculating block state.", log.ErrKey, err)
 		}
-		headsAfterParentBlock, err = rc.updateState(parent)
+		headsAfterParentBlock, err = rc.updateState(parentBlock)
 		if err != nil {
 			return nil, err
 		}
@@ -267,17 +267,17 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.HeadsAfterL1Blo
 		))
 	}
 
-	headsAfterL1Block, head, receipts := rc.calculateHeadsAfterL1Block(b, headsAfterParentBlock, rollups)
+	headsAfterL1Block, headRollup, receipts := rc.calculateHeadsAfterL1Block(b, headsAfterParentBlock, rollups)
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(b.Hash()),
 		headsAfterL1Block.UpdatedHeadRollup,
 		common.ShortHash(headsAfterL1Block.HeadRollup)))
 
-	logs := []*types.Log{}
+	var logs []*types.Log
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
 	}
-	err = rc.storage.StoreNewHead(headsAfterL1Block, head, receipts, logs)
+	err = rc.storage.StoreNewHead(headsAfterL1Block, headRollup, receipts, logs)
 	if err != nil {
 		rc.logger.Crit("Could not store new head.", log.ErrKey, err)
 	}
