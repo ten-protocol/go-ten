@@ -19,6 +19,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
+// TODO: Cryptography epic remove this.
 const (
 	ownerKeyHex = "6e384a07a01263518a18a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 )
@@ -35,6 +36,7 @@ func NewObscuroMessageBusManager(
 	chainID *big.Int,
 	logger gethlog.Logger,
 ) ObscuroCrossChainManager {
+	// TODO: Cryptography epic remove this key and use the DeriveKey
 	key, _ := crypto.HexToECDSA(ownerKeyHex)
 	wallet := wallet.NewInMemoryWalletFromPK(chainID, key, logger)
 
@@ -56,7 +58,8 @@ func (m *obscuroMessageBusManager) IsSyntheticTransaction(transaction common.L2T
 	if err != nil {
 		return false
 	}
-
+	// The message bus manager considers the transaction synthetic only if the sender is
+	// the owner identity which should be available only to enclaves.
 	return bytes.Equal(sender.Bytes(), m.GetOwner().Bytes())
 }
 
@@ -80,9 +83,9 @@ func (m *obscuroMessageBusManager) DeriveOwner(seed []byte) (*common.L2Address, 
 // GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
 func (m *obscuroMessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
 	tx := &types.LegacyTx{
-		Nonce:    0, // this should be fixed probably :/
+		Nonce:    0, // The first transaction of the owner identity should always be deploying the contract
 		Value:    gethcommon.Big0,
-		Gas:      5_000_000,       // requires above 1m gas to deploy wtf.
+		Gas:      5_000_000,       // It's quite the expensive contract.
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     gethcommon.FromHex(MessageBus.MessageBusMetaData.Bin),
 		To:       nil, // Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.
@@ -129,46 +132,49 @@ func (m *obscuroMessageBusManager) SubmitRemoteMessagesLocally(
 		"FromBlock", common.ShortHash(fromBlock.Hash()),
 		"ToBlock", common.ShortHash(toBlock.Hash()))
 
-	if len(transactions) > 0 {
-		syntheticTransactionsResponses := processTxCall(transactions)
-		synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
-		if len(syntheticTransactionsResponses) != len(transactions) {
-			m.logger.Crit("Sanity check. Some synthetic transactions failed.")
-			return errors.New("evm failed to generate responses for every transaction")
+	if len(transactions) == 0 {
+		return nil
+	}
+
+	// Process the transactions
+	syntheticTransactionsResponses := processTxCall(transactions)
+	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
+	if len(syntheticTransactionsResponses) != len(transactions) {
+		m.logger.Crit("Sanity check. Some synthetic transactions failed.")
+		return errors.New("evm failed to generate responses for every transaction")
+	}
+
+	i := 0
+	for _, resp := range syntheticTransactionsResponses {
+		rec, ok := resp.(*types.Receipt)
+		if !ok { // Еxtract reason for failing deposit.
+			// TODO - Handle the case of an error (e.g. insufficient funds).
+			m.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
+			return errors.New("receipt missing for a guaranteed synthetic transaction")
 		}
 
-		i := 0
-		for _, resp := range syntheticTransactionsResponses {
-			rec, ok := resp.(*types.Receipt)
-			if !ok { // Еxtract reason for failing deposit.
-				// TODO - Handle the case of an error (e.g. insufficient funds).
-				m.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
-				return errors.New("receipt missing for a guaranteed synthetic transaction")
-			}
+		if rec.Status == 0 { // Synthetic transactions should not fail. In case of failure get the revert reason.
+			failingTx := transactions[i]
+			txCallMessage := types.NewMessage(
+				m.GetOwner(),
+				failingTx.To(),
+				rollupState.GetNonce(m.GetOwner()),
+				failingTx.Value(),
+				failingTx.Gas(),
+				gethcommon.Big0,
+				gethcommon.Big0,
+				gethcommon.Big0,
+				failingTx.Data(),
+				failingTx.AccessList(),
+				false)
 
-			if rec.Status == 0 {
-				failingTx := transactions[i]
-				txCallMessage := types.NewMessage(
-					m.GetOwner(),
-					failingTx.To(),
-					rollupState.GetNonce(m.GetOwner()),
-					failingTx.Value(),
-					failingTx.Gas(),
-					gethcommon.Big0,
-					gethcommon.Big0,
-					gethcommon.Big0,
-					failingTx.Data(),
-					failingTx.AccessList(),
-					false)
-
-				res, err := processOffChainMessage(txCallMessage)
-				m.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
-				return fmt.Errorf("synthetic transaction failed. error: %w result: %+v", err, res)
-			}
-
-			synthReceipts[i] = rec
-			i++
+			res, err := processOffChainMessage(txCallMessage)
+			m.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
+			return fmt.Errorf("synthetic transaction failed. error: %w result: %+v", err, res)
 		}
+
+		synthReceipts[i] = rec
+		i++
 	}
 
 	return nil

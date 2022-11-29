@@ -82,12 +82,13 @@ contract MessageBus is IMessageBus, Ownable {
     function submitOutOfNetworkMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) 
     external override onlyOwner
     {
-        uint256 finalAtHeight = block.timestamp + finalAfterTimestamp;
+        //Consider the message as verified after this period. Useful for having a challenge period.
+        uint256 finalAtTimestamp = block.timestamp + finalAfterTimestamp;
         bytes32 msgHash = keccak256(abi.encode(crossChainMessage));
         
         require(messageFinalityTimestamps[msgHash] == 0, "Message submitted more than once!");
 
-        messageFinalityTimestamps[msgHash] = finalAtHeight;
+        messageFinalityTimestamps[msgHash] = finalAtTimestamp;
 
         messages[crossChainMessage.sender][crossChainMessage.topic].push(crossChainMessage);
     }

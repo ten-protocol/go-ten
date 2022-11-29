@@ -277,6 +277,7 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 	return block
 }
 
+// decodeReceipts - converts the rlp encoded bytes to receipts if possible.
 func (s *server) decodeReceipts(encodedReceipts []byte) types.Receipts {
 	receipts := make(types.Receipts, 0)
 

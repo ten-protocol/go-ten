@@ -70,6 +70,7 @@ func lazilyLogChecksum(msg string, transactions types.Transactions, logger gethl
 }
 */
 
+// filterLogsFromReceipts - filters the receipts for logs matching address, if provided and topic if provided.
 func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
 
@@ -89,6 +90,7 @@ func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address
 	return logs, nil
 }
 
+// filterLogsFromReceipt - filters the receipt for logs matching address, if provided and topic if provided.
 func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
 
@@ -117,6 +119,7 @@ func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, 
 	return logs, nil
 }
 
+// convertLogsToMessages - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
 func convertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.CrossChainMessages, error) {
 	messages := make(common.CrossChainMessages, 0)
 
@@ -124,7 +127,7 @@ func convertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi
 		var event MessageBus.MessageBusLogMessagePublished
 		err := messageBusABI.UnpackIntoInterface(&event, eventName, log.Data)
 		if err != nil {
-			return messages, err
+			return nil, err
 		}
 
 		msg := createCrossChainMessage(event)
@@ -134,6 +137,7 @@ func convertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi
 	return messages, nil
 }
 
+// createCrossChainMessage - Uses the logged event by the message bus to produce a cross chain message struct
 func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) MessageBus.StructsCrossChainMessage {
 	return MessageBus.StructsCrossChainMessage{
 		Sender:   event.Sender,
