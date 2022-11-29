@@ -178,8 +178,8 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 
 func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) *common.BlockSubmissionResponse {
 	return &common.BlockSubmissionResponse{
-		BlockHeader:  block.Header(),
-		FoundNewHead: false,
+		BlockHeader:       block.Header(),
+		UpdatedHeadRollup: false,
 	}
 }
 
@@ -201,7 +201,7 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 	return &common.BlockSubmissionResponse{
 		BlockHeader:          headBlock.Header(),
 		ProducedRollup:       rollup,
-		FoundNewHead:         bs.FoundNewRollup,
+		UpdatedHeadRollup:    bs.FoundNewRollup,
 		IngestedRollupHeader: head,
 		SubscribedLogs:       logs,
 	}

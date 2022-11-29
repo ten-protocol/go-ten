@@ -102,7 +102,7 @@ message ProduceGenesisRequest {
 }
 
 message ProduceGenesisResponse {
-  BlockSubmissionResponseMsg blockSubmissionResponse = 1;
+  ProduceGenesisResponseMsg produceGenesisResponse = 1;
 }
 
 message StartRequest {
@@ -227,12 +227,18 @@ message AttestationReportMsg {
 message BlockSubmissionResponseMsg {
   BlockHeaderMsg blockHeader = 1;
   ExtRollupMsg producedRollup = 2;
-  bool ingestedNewRollup = 3;
+  bool updatedHeadRollup = 3;
   HeaderMsg rollupHead = 4;
   repeated SecretResponseMsg producedSecretResponses = 5;
   bytes subscribedLogs = 6;
   BlockSubmissionErrorMsg error = 7; // todo: avoid errors in Response objects, perhaps using gRPC Status responses
 }
+
+message ProduceGenesisResponseMsg {
+  BlockHeaderMsg blockHeader = 1;
+  ExtRollupMsg genesisRollup = 2;
+}
+
 message BlockSubmissionErrorMsg {
   string cause = 1; // error cause description
   bytes l1Head = 2; // hash for the L1 head block in enclave's view of the canonical chain

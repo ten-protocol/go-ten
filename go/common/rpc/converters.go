@@ -41,11 +41,20 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 	return generated.BlockSubmissionResponseMsg{
 		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
 		ProducedRollup:          &producedRollupMsg,
-		IngestedNewRollup:       response.FoundNewHead,
+		UpdatedHeadRollup:       response.UpdatedHeadRollup,
 		RollupHead:              ToRollupHeaderMsg(response.IngestedRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
 	}, nil
+}
+
+func ToProduceGenesisResponseMsg(response *common.ProduceGenesisResponse) generated.ProduceGenesisResponseMsg {
+	genesisRollupMsg := ToExtRollupMsg(&response.GenesisRollup)
+
+	return generated.ProduceGenesisResponseMsg{
+		BlockHeader:   ToBlockHeaderMsg(response.BlockHeader),
+		GenesisRollup: &genesisRollupMsg,
+	}
 }
 
 func ToBlockSubmissionRejectionMsg(rejectError *common.BlockRejectError) (generated.BlockSubmissionResponseMsg, error) {
@@ -101,10 +110,17 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 	return &common.BlockSubmissionResponse{
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
-		FoundNewHead:            msg.IngestedNewRollup,
+		UpdatedHeadRollup:       msg.UpdatedHeadRollup,
 		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
+	}, nil
+}
+
+func FromProduceGenesisResponseMsg(msg *generated.ProduceGenesisResponseMsg) (*common.ProduceGenesisResponse, error) {
+	return &common.ProduceGenesisResponse{
+		BlockHeader:   FromBlockHeaderMsg(msg.GetBlockHeader()),
+		GenesisRollup: FromExtRollupMsg(msg.GetGenesisRollup()),
 	}, nil
 }
 
