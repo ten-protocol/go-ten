@@ -810,38 +810,6 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState)
 	var newRollupTxs []*common.L2Tx
 	var newRollupState *state.StateDB
 
-	/*
-			speculativeExecutionSucceeded := false
-		   todo - reenable
-			if e.speculativeExecutionEnabled {
-				// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
-				e.speculativeWorkInCh <- true
-				speculativeRollup := <-e.speculativeWorkOutCh
-
-				newRollupTxs = speculativeRollup.txs
-				newRollupState = speculativeRollup.s
-				newRollupHeader = speculativeRollup.h
-
-				// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-				// or speculative execution is disabled
-				speculativeExecutionSucceeded = speculativeRollup.found && (speculativeRollup.r.Hash() == bs.HeadRollup)
-
-				if !speculativeExecutionSucceeded && speculativeRollup.r != nil {
-					nodecommon.LogWithID(e.nodeShortID, "Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
-						obscurocommon.ShortHash(speculativeRollup.r.Hash()),
-						speculativeRollup.r.Header.Number,
-						obscurocommon.ShortHash(bs.HeadRollup),
-						headRollup.Header.Number)
-					if e.statsCollector != nil {
-						e.statsCollector.L2Recalc(e.nodeID)
-					}
-				}
-			}
-	*/
-
-	// if !speculativeExecutionSucceeded {
-	// In case the speculative execution thread has not succeeded in producing a valid rollup
-	// we have to create a new one from the mempool transactions
 	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
 	nonce := common.GenerateNonce()
 	r, err := obscurocore.EmptyRollup(rc.hostID, headRollup.Header, b.Hash(), nonce)
