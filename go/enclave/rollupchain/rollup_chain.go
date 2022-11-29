@@ -565,134 +565,6 @@ func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, blockSt
 	return rc.newBlockSubmissionResponse(blockState, extRollup, encryptedLogs), nil
 }
 
-// todo - joel - push these down
-func (rc *RollupChain) newRollup(block types.Block, blockState *obscurocore.BlockState) (*obscurocore.Rollup, error) {
-	rollup := rc.produceRollup(&block, blockState)
-	rc.signRollup(rollup)
-	// Sanity check the produced rollup
-	_, _, err := rc.checkRollup(rollup)
-	if err != nil {
-		return nil, err
-	}
-
-	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
-	err = rc.storage.StoreRollup(rollup)
-	if err != nil {
-		return nil, err
-	}
-	return rollup, nil
-}
-
-// Retrieves and encrypts the logs for the block.
-func (rc *RollupChain) getEncryptedLogs(block types.Block, blockState *obscurocore.BlockState) map[gethrpc.ID][]byte {
-	logs := []*types.Log{}
-	fetchedLogs, err := rc.storage.FetchLogs(block.Hash())
-	if err == nil {
-		logs = fetchedLogs
-	} else {
-		rc.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
-	}
-	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.HeadRollup)
-	if err != nil {
-		rc.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
-	}
-	return encryptedLogs
-}
-
-func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
-	headRollup, err := rc.storage.FetchRollup(bs.HeadRollup)
-	if err != nil {
-		rc.logger.Crit("Could not retrieve head rollup", log.ErrKey, err)
-	}
-
-	// These variables will be used to create the new rollup
-	var newRollupTxs []*common.L2Tx
-	var newRollupState *state.StateDB
-
-	/*
-			speculativeExecutionSucceeded := false
-		   todo - reenable
-			if e.speculativeExecutionEnabled {
-				// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
-				e.speculativeWorkInCh <- true
-				speculativeRollup := <-e.speculativeWorkOutCh
-
-				newRollupTxs = speculativeRollup.txs
-				newRollupState = speculativeRollup.s
-				newRollupHeader = speculativeRollup.h
-
-				// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
-				// or speculative execution is disabled
-				speculativeExecutionSucceeded = speculativeRollup.found && (speculativeRollup.r.Hash() == bs.HeadRollup)
-
-				if !speculativeExecutionSucceeded && speculativeRollup.r != nil {
-					nodecommon.LogWithID(e.nodeShortID, "Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
-						obscurocommon.ShortHash(speculativeRollup.r.Hash()),
-						speculativeRollup.r.Header.Number,
-						obscurocommon.ShortHash(bs.HeadRollup),
-						headRollup.Header.Number)
-					if e.statsCollector != nil {
-						e.statsCollector.L2Recalc(e.nodeID)
-					}
-				}
-			}
-	*/
-
-	// if !speculativeExecutionSucceeded {
-	// In case the speculative execution thread has not succeeded in producing a valid rollup
-	// we have to create a new one from the mempool transactions
-	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
-	nonce := common.GenerateNonce()
-	r, err := obscurocore.EmptyRollup(rc.hostID, headRollup.Header, b.Hash(), nonce)
-	if err != nil {
-		rc.logger.Crit("could not create rollup", log.ErrKey, err)
-		return nil
-	}
-
-	newRollupTxs, err = rc.mempool.CurrentTxs(headRollup, rc.storage)
-	if err != nil {
-		rc.logger.Crit("could not retrieve current transactions", log.ErrKey, err)
-		return nil
-	}
-
-	newRollupState, err = rc.storage.CreateStateDB(r.Header.ParentHash)
-	if err != nil {
-		rc.logger.Crit("could not create stateDB", log.ErrKey, err)
-		return nil
-	}
-
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, newRollupTxs, newRollupState)
-
-	r.Header.Root = rootHash
-	r.Transactions = successfulTxs
-
-	// Postprocessing - withdrawals
-	txReceiptsMap := toReceiptMap(txReceipts)
-	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
-
-	receipts := allReceipts(txReceipts, depositReceipts)
-	if len(receipts) == 0 {
-		r.Header.ReceiptHash = types.EmptyRootHash
-	} else {
-		r.Header.ReceiptHash = types.DeriveSha(receipts, trie.NewStackTrie(nil))
-		r.Header.Bloom = types.CreateBloom(receipts)
-	}
-
-	if len(successfulTxs) == 0 {
-		r.Header.TxHash = types.EmptyRootHash
-	} else {
-		r.Header.TxHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
-	}
-
-	rc.logger.Trace("Create rollup.",
-		"State", gethlog.Lazy{Fn: func() string {
-			return strings.Replace(string(newRollupState.Dump(&state.DumpConfig{})), "\n", "", -1)
-		}},
-	)
-
-	return r
-}
-
 // ExecuteOffChainTransaction executes non-state changing transactions at a given block height (eth_call)
 func (rc *RollupChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionArgs) (*core.ExecutionResult, error) {
 	// TODO Hook up the blockNumber
@@ -891,6 +763,135 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 		rollup = maybeRollup
 	}
 	return rollup, nil
+}
+
+// Retrieves and encrypts the logs for the block.
+func (rc *RollupChain) getEncryptedLogs(block types.Block, blockState *obscurocore.BlockState) map[gethrpc.ID][]byte {
+	logs := []*types.Log{}
+	fetchedLogs, err := rc.storage.FetchLogs(block.Hash())
+	if err == nil {
+		logs = fetchedLogs
+	} else {
+		rc.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
+	}
+	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, blockState.HeadRollup)
+	if err != nil {
+		rc.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
+	}
+	return encryptedLogs
+}
+
+// Creates a rollup, signs it, checks it, and stores it.
+func (rc *RollupChain) newRollup(block types.Block, blockState *obscurocore.BlockState) (*obscurocore.Rollup, error) {
+	rollup := rc.produceRollup(&block, blockState)
+	rc.signRollup(rollup)
+	// Sanity check the produced rollup
+	_, _, err := rc.checkRollup(rollup)
+	if err != nil {
+		return nil, err
+	}
+
+	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
+	err = rc.storage.StoreRollup(rollup)
+	if err != nil {
+		return nil, err
+	}
+	return rollup, nil
+}
+
+// Creates a rollup.
+func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.BlockState) *obscurocore.Rollup {
+	headRollup, err := rc.storage.FetchRollup(bs.HeadRollup)
+	if err != nil {
+		rc.logger.Crit("Could not retrieve head rollup", log.ErrKey, err)
+	}
+
+	// These variables will be used to create the new rollup
+	var newRollupTxs []*common.L2Tx
+	var newRollupState *state.StateDB
+
+	/*
+			speculativeExecutionSucceeded := false
+		   todo - reenable
+			if e.speculativeExecutionEnabled {
+				// retrieve the speculatively calculated State based on the previous winner and the incoming transactions
+				e.speculativeWorkInCh <- true
+				speculativeRollup := <-e.speculativeWorkOutCh
+
+				newRollupTxs = speculativeRollup.txs
+				newRollupState = speculativeRollup.s
+				newRollupHeader = speculativeRollup.h
+
+				// the speculative execution has been processing on top of the wrong parent - due to failure in gossip or publishing to L1
+				// or speculative execution is disabled
+				speculativeExecutionSucceeded = speculativeRollup.found && (speculativeRollup.r.Hash() == bs.HeadRollup)
+
+				if !speculativeExecutionSucceeded && speculativeRollup.r != nil {
+					nodecommon.LogWithID(e.nodeShortID, "Recalculate. speculative=r_%d(%d), published=r_%d(%d)",
+						obscurocommon.ShortHash(speculativeRollup.r.Hash()),
+						speculativeRollup.r.Header.Number,
+						obscurocommon.ShortHash(bs.HeadRollup),
+						headRollup.Header.Number)
+					if e.statsCollector != nil {
+						e.statsCollector.L2Recalc(e.nodeID)
+					}
+				}
+			}
+	*/
+
+	// if !speculativeExecutionSucceeded {
+	// In case the speculative execution thread has not succeeded in producing a valid rollup
+	// we have to create a new one from the mempool transactions
+	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
+	nonce := common.GenerateNonce()
+	r, err := obscurocore.EmptyRollup(rc.hostID, headRollup.Header, b.Hash(), nonce)
+	if err != nil {
+		rc.logger.Crit("could not create rollup", log.ErrKey, err)
+		return nil
+	}
+
+	newRollupTxs, err = rc.mempool.CurrentTxs(headRollup, rc.storage)
+	if err != nil {
+		rc.logger.Crit("could not retrieve current transactions", log.ErrKey, err)
+		return nil
+	}
+
+	newRollupState, err = rc.storage.CreateStateDB(r.Header.ParentHash)
+	if err != nil {
+		rc.logger.Crit("could not create stateDB", log.ErrKey, err)
+		return nil
+	}
+
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, newRollupTxs, newRollupState)
+
+	r.Header.Root = rootHash
+	r.Transactions = successfulTxs
+
+	// Postprocessing - withdrawals
+	txReceiptsMap := toReceiptMap(txReceipts)
+	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
+
+	receipts := allReceipts(txReceipts, depositReceipts)
+	if len(receipts) == 0 {
+		r.Header.ReceiptHash = types.EmptyRootHash
+	} else {
+		r.Header.ReceiptHash = types.DeriveSha(receipts, trie.NewStackTrie(nil))
+		r.Header.Bloom = types.CreateBloom(receipts)
+	}
+
+	if len(successfulTxs) == 0 {
+		r.Header.TxHash = types.EmptyRootHash
+	} else {
+		r.Header.TxHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
+	}
+
+	rc.logger.Trace("Create rollup.",
+		"State", gethlog.Lazy{Fn: func() string {
+			return strings.Replace(string(newRollupState.Dump(&state.DumpConfig{})), "\n", "", -1)
+		}},
+	)
+
+	return r
 }
 
 func (rc *RollupChain) rejectBlockErr(cause error) *common.BlockRejectError {
