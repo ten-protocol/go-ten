@@ -210,46 +210,45 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.HeadsAfterL1Bl
 //  STATE
 
 // Recursively calculates and stores the block state, receipts and logs for the given block.
-func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.HeadsAfterL1Block, error) {
+func (rc *RollupChain) updateState(block *types.Block) (*obscurocore.HeadsAfterL1Block, error) {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
-	headsAfterL1Block, err := rc.storage.FetchHeadsAfterL1Block(b.Hash())
-	if err == nil {
-		return headsAfterL1Block, nil
-	}
-
-	// If we get an error other than `ErrNotFound`, we return the error.
+	headsAfterL1Block, err := rc.storage.FetchHeadsAfterL1Block(block.Hash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
 	}
+	if err == nil {
+		// The state has already been calculated, so we return it.
+		return headsAfterL1Block, nil
+	}
 
-	rollups := rc.bridge.ExtractRollups(b, rc.storage)
+	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 	genesisRollup, err := rc.storage.FetchGenesisRollup()
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
 		// Since there is no genesis yet and no rollups have arrived, there is nothing to do
-		if len(rollups) == 0 {
+		if len(rollupsInBlock) == 0 {
 			return nil, nil //nolint:nilnil
 		}
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handles the case of the block containing the genesis being processed multiple times.
-	genesisState, isGenesis := rc.handleGenesisRollup(b, rollups, genesisRollup)
+	genesisState, isGenesis := rc.handleGenesisRollup(block, rollupsInBlock, genesisRollup)
 	if isGenesis {
 		return genesisState, nil
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	headsAfterParentBlock, err := rc.storage.FetchHeadsAfterL1Block(b.ParentHash())
+	headsAfterParentBlock, err := rc.storage.FetchHeadsAfterL1Block(block.ParentHash())
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
 		}
-		// go back and calculate the Root of the Parent
-		parentBlock, err := rc.storage.FetchBlock(b.ParentHash())
+		// We recursively calculate the state after the parent.
+		parentBlock, err := rc.storage.FetchBlock(block.ParentHash())
 		if err != nil {
 			rc.logger.Crit("Could not retrieve parent block when calculating block state.", log.ErrKey, err)
 		}
@@ -261,15 +260,15 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.HeadsAfterL1Blo
 
 	if headsAfterParentBlock == nil {
 		rc.logger.Crit(fmt.Sprintf("Could not calculate parent block state when calculating block state. BlockNum=%d. \n Block: %d, Block Parent: %d  ",
-			b.Number(),
-			common.ShortHash(b.Hash()),
-			common.ShortHash(b.Header().ParentHash),
+			block.Number(),
+			common.ShortHash(block.Hash()),
+			common.ShortHash(block.Header().ParentHash),
 		))
 	}
 
-	headsAfterL1Block, headRollup, receipts := rc.calculateHeadsAfterL1Block(b, headsAfterParentBlock, rollups)
+	headsAfterL1Block, headRollup, receipts := rc.calculateHeadsAfterL1Block(block, headsAfterParentBlock, rollupsInBlock)
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
-		common.ShortHash(b.Hash()),
+		common.ShortHash(block.Hash()),
 		headsAfterL1Block.UpdatedHeadRollup,
 		common.ShortHash(headsAfterL1Block.HeadRollup)))
 
