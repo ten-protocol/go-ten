@@ -243,7 +243,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.HeadsAfterL1Blo
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	parentState, err := rc.storage.FetchHeadsAfterL1Block(b.ParentHash())
+	headsAfterParentBlock, err := rc.storage.FetchHeadsAfterL1Block(b.ParentHash())
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
@@ -253,13 +253,13 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.HeadsAfterL1Blo
 		if err != nil {
 			rc.logger.Crit("Could not retrieve parent block when calculating block state.", log.ErrKey, err)
 		}
-		parentState, err = rc.updateState(parent)
+		headsAfterParentBlock, err = rc.updateState(parent)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	if parentState == nil {
+	if headsAfterParentBlock == nil {
 		rc.logger.Crit(fmt.Sprintf("Could not calculate parent block state when calculating block state. BlockNum=%d. \n Block: %d, Block Parent: %d  ",
 			b.Number(),
 			common.ShortHash(b.Hash()),
@@ -267,7 +267,7 @@ func (rc *RollupChain) updateState(b *types.Block) (*obscurocore.HeadsAfterL1Blo
 		))
 	}
 
-	headsAfterL1Block, head, receipts := rc.calculateHeadsAfterL1Block(b, parentState, rollups)
+	headsAfterL1Block, head, receipts := rc.calculateHeadsAfterL1Block(b, headsAfterParentBlock, rollups)
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(b.Hash()),
 		headsAfterL1Block.UpdatedHeadRollup,
@@ -442,8 +442,8 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func (rc *RollupChain) calculateHeadsAfterL1Block(b *types.Block, parentState *obscurocore.HeadsAfterL1Block, rollups []*obscurocore.Rollup) (*obscurocore.HeadsAfterL1Block, *obscurocore.Rollup, []*types.Receipt) {
-	currentHead, err := rc.storage.FetchRollup(parentState.HeadRollup)
+func (rc *RollupChain) calculateHeadsAfterL1Block(b *types.Block, headsAfterParentBlock *obscurocore.HeadsAfterL1Block, rollups []*obscurocore.Rollup) (*obscurocore.HeadsAfterL1Block, *obscurocore.Rollup, []*types.Receipt) {
+	currentHead, err := rc.storage.FetchRollup(headsAfterParentBlock.HeadRollup)
 	if err != nil {
 		rc.logger.Crit("could not fetch parent rollup", log.ErrKey, err)
 	}
