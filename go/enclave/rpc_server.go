@@ -103,12 +103,8 @@ func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGen
 		return nil, err
 	}
 
-	blockSubmissionResponse, err := rpc.ToBlockSubmissionResponseMsg(genesisRollup)
-	if err != nil {
-		return nil, err
-	}
-
-	return &generated.ProduceGenesisResponse{BlockSubmissionResponse: &blockSubmissionResponse}, nil
+	produceGenesisResponse := rpc.ToProduceGenesisResponseMsg(genesisRollup)
+	return &generated.ProduceGenesisResponse{ProduceGenesisResponse: &produceGenesisResponse}, nil
 }
 
 func (s *server) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {

@@ -615,11 +615,11 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 	}
 	h.logger.Info(
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
-			common.ShortHash(genesisResponse.ProducedRollup.Header.Hash()),
+			common.ShortHash(genesisResponse.GenesisRollup.Header.Hash()),
 		))
 
 	// Distribute the corresponding batch.
-	producedRollup := genesisResponse.ProducedRollup.ToExtRollup()
+	producedRollup := genesisResponse.GenesisRollup.ToExtRollup()
 	h.storeAndDistributeBatch(*producedRollup)
 
 	// Submit the rollup to the management contract.
@@ -636,7 +636,7 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
 	}
 
-	return genesisResponse.ProducedRollup.Header.ParentHash, nil
+	return genesisResponse.GenesisRollup.Header.ParentHash, nil
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.
