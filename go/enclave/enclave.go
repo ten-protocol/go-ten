@@ -273,9 +273,8 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 	return blockSubmissionResponse, nil
 }
 
-func (e *enclaveImpl) ProduceRollup() (*common.ExtRollup, error) {
-	// todo - joel - return something real
-	return nil, nil
+func (e *enclaveImpl) ProduceRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
+	return e.chain.NewRollup(blockHash)
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {

@@ -121,13 +121,13 @@ func (s *storageImpl) StoreBlock(b *types.Block) {
 	rawdb.WriteBlock(s.db, b)
 }
 
-func (s *storageImpl) FetchBlock(hash common.L1RootHash) (*types.Block, error) {
+func (s *storageImpl) FetchBlock(blockHash common.L1RootHash) (*types.Block, error) {
 	s.assertSecretAvailable()
-	height := rawdb.ReadHeaderNumber(s.db, hash)
+	height := rawdb.ReadHeaderNumber(s.db, blockHash)
 	if height == nil {
 		return nil, errutil.ErrNotFound
 	}
-	b := rawdb.ReadBlock(s.db, hash, *height)
+	b := rawdb.ReadBlock(s.db, blockHash, *height)
 	if b == nil {
 		return nil, errutil.ErrNotFound
 	}

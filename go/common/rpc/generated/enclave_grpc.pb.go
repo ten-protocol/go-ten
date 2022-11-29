@@ -37,6 +37,8 @@ type EnclaveProtoClient interface {
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitL1Block(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
+	// ProduceRollup creates a new rollup.
+	ProduceRollup(ctx context.Context, in *ProduceRollupRequest, opts ...grpc.CallOption) (*ProduceRollupResponse, error)
 	// SubmitTx - user transactions
 	SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error)
 	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
@@ -132,6 +134,15 @@ func (c *enclaveProtoClient) Start(ctx context.Context, in *StartRequest, opts .
 func (c *enclaveProtoClient) SubmitL1Block(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error) {
 	out := new(SubmitBlockResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/SubmitL1Block", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *enclaveProtoClient) ProduceRollup(ctx context.Context, in *ProduceRollupRequest, opts ...grpc.CallOption) (*ProduceRollupResponse, error) {
+	out := new(ProduceRollupResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/ProduceRollup", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -287,6 +298,8 @@ type EnclaveProtoServer interface {
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitL1Block(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error)
+	// ProduceRollup creates a new rollup.
+	ProduceRollup(context.Context, *ProduceRollupRequest) (*ProduceRollupResponse, error)
 	// SubmitTx - user transactions
 	SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error)
 	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
@@ -342,6 +355,9 @@ func (UnimplementedEnclaveProtoServer) Start(context.Context, *StartRequest) (*S
 }
 func (UnimplementedEnclaveProtoServer) SubmitL1Block(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitL1Block not implemented")
+}
+func (UnimplementedEnclaveProtoServer) ProduceRollup(context.Context, *ProduceRollupRequest) (*ProduceRollupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ProduceRollup not implemented")
 }
 func (UnimplementedEnclaveProtoServer) SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitTx not implemented")
@@ -520,6 +536,24 @@ func _EnclaveProto_SubmitL1Block_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).SubmitL1Block(ctx, req.(*SubmitBlockRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EnclaveProto_ProduceRollup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProduceRollupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).ProduceRollup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/ProduceRollup",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).ProduceRollup(ctx, req.(*ProduceRollupRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -810,6 +844,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SubmitL1Block",
 			Handler:    _EnclaveProto_SubmitL1Block_Handler,
+		},
+		{
+			MethodName: "ProduceRollup",
+			Handler:    _EnclaveProto_ProduceRollup_Handler,
 		},
 		{
 			MethodName: "SubmitTx",

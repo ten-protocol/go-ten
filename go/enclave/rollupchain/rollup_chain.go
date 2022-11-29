@@ -766,12 +766,21 @@ func (rc *RollupChain) getEncryptedLogs(block types.Block, blockState *obscuroco
 	return encryptedLogs
 }
 
-// Creates a rollup, signs it, checks it, and stores it.
-func (rc *RollupChain) newRollup(block types.Block, blockState *obscurocore.BlockState) (*obscurocore.Rollup, error) {
-	rollup := rc.produceRollup(&block, blockState)
+// NewRollup creates a rollup, signs it, checks it, and stores it.
+func (rc *RollupChain) NewRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
+	block, err := rc.storage.FetchBlock(*blockHash)
+	if err != nil {
+		panic("todo - joel - handle better")
+	}
+	blockState, err := rc.storage.FetchBlockState(*blockHash)
+	if err != nil {
+		panic("todo - joel - handle better")
+	}
+
+	rollup := rc.produceRollup(block, blockState)
 	rc.signRollup(rollup)
 	// Sanity check the produced rollup
-	_, _, err := rc.checkRollup(rollup)
+	_, _, err = rc.checkRollup(rollup)
 	if err != nil {
 		return nil, err
 	}
@@ -781,7 +790,12 @@ func (rc *RollupChain) newRollup(block types.Block, blockState *obscurocore.Bloc
 	if err != nil {
 		return nil, err
 	}
-	return rollup, nil
+
+	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
+	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d (%d). Produced rollup r_%d",
+		common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(extRollup.Hash())))
+
+	return &extRollup, nil
 }
 
 // Creates a rollup.

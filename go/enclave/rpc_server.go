@@ -141,6 +141,16 @@ func (s *server) SubmitL1Block(_ context.Context, request *generated.SubmitBlock
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
+func (s *server) ProduceRollup(_ context.Context, request *generated.ProduceRollupRequest) (*generated.ProduceRollupResponse, error) {
+	blockHash := gethcommon.BytesToHash(request.BlockHash)
+	producedRollup, err := s.enclave.ProduceRollup(&blockHash)
+	if err != nil {
+		return nil, err
+	}
+	producedRollupMsg := rpc.ToExtRollupMsg(producedRollup)
+	return &generated.ProduceRollupResponse{ProducedRollup: &producedRollupMsg}, nil
+}
+
 func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
 	encryptedHash, err := s.enclave.SubmitTx(request.EncryptedTx)
 	return &generated.SubmitTxResponse{EncryptedHash: encryptedHash}, err

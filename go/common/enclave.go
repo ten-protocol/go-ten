@@ -47,7 +47,7 @@ type Enclave interface {
 	SubmitL1Block(block types.Block, isLatest bool) (*BlockSubmissionResponse, error)
 
 	// ProduceRollup creates a new rollup.
-	ProduceRollup() (*ExtRollup, error)
+	ProduceRollup(blockHash *L1RootHash) (*ExtRollup, error)
 
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
