@@ -183,7 +183,7 @@ func (rc *RollupChain) noBlockStateBlockSubmissionResponse(block *types.Block) *
 	}
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, rollup common.ExtRollup, logs map[gethrpc.ID][]byte) *common.BlockSubmissionResponse {
+func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, logs map[gethrpc.ID][]byte) *common.BlockSubmissionResponse {
 	headRollup, err := rc.storage.FetchRollup(bs.HeadRollup)
 	if err != nil {
 		rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
@@ -200,7 +200,6 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.BlockState, ro
 	}
 	return &common.BlockSubmissionResponse{
 		BlockHeader:          headBlock.Header(),
-		ProducedRollup:       rollup,
 		UpdatedHeadRollup:    bs.FoundNewRollup,
 		IngestedRollupHeader: head,
 		SubscribedLogs:       logs,
@@ -542,27 +541,13 @@ func (rc *RollupChain) UpdateStateFromL1Block(block types.Block, isLatest bool) 
 	return rc.updateState(&block)
 }
 
-func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, blockState *obscurocore.BlockState, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, blockState *obscurocore.BlockState) (*common.BlockSubmissionResponse, error) {
 	if blockState == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return rc.noBlockStateBlockSubmissionResponse(&block), nil
 	}
-
 	encryptedLogs := rc.getEncryptedLogs(block, blockState)
-
-	var extRollup common.ExtRollup
-	// If we're an aggregator on the head L1 block, we produce a rollup.
-	if isLatest && rc.nodeType == common.Aggregator {
-		rollup, err := rc.newRollup(block, blockState)
-		if err != nil {
-			return nil, err
-		}
-		extRollup = rollup.ToExtRollup(rc.transactionBlobCrypto)
-		rc.logger.Trace(fmt.Sprintf("Processed block: b_%d (%d). Produced rollup r_%d",
-			common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(extRollup.Hash())))
-	}
-
-	return rc.newBlockSubmissionResponse(blockState, extRollup, encryptedLogs), nil
+	return rc.newBlockSubmissionResponse(blockState, encryptedLogs), nil
 }
 
 // ExecuteOffChainTransaction executes non-state changing transactions at a given block height (eth_call)

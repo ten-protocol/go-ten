@@ -258,7 +258,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
 	// We prepare the block submission response.
-	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, blockState, isLatest)
+	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, blockState)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 	}

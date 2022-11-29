@@ -31,8 +31,6 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 }
 
 func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
-	producedRollupMsg := ToExtRollupMsg(&response.ProducedRollup)
-
 	subscribedLogBytes, err := json.Marshal(response.SubscribedLogs)
 	if err != nil {
 		return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
@@ -40,7 +38,6 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 
 	return generated.BlockSubmissionResponseMsg{
 		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
-		ProducedRollup:          &producedRollupMsg,
 		UpdatedHeadRollup:       response.UpdatedHeadRollup,
 		RollupHead:              ToRollupHeaderMsg(response.IngestedRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
@@ -109,7 +106,6 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 	}
 	return &common.BlockSubmissionResponse{
 		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
-		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
 		UpdatedHeadRollup:       msg.UpdatedHeadRollup,
 		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
