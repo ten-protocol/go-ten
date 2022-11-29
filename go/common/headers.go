@@ -40,13 +40,18 @@ type Header struct {
 	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
-	Agg                           common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
-	L1Proof                       L1RootHash     // the L1 block used by the enclave to generate the current rollup
-	R, S                          *big.Int       // signature values
-	Withdrawals                   []Withdrawal
-	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
-	LatestInboudCrossChainHash    common.Hash                           `json:"inboundCrossChainHash"`
-	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"`
+	Agg     common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
+	L1Proof L1RootHash     // the L1 block used by the enclave to generate the current rollup
+	R, S    *big.Int       // signature values
+	// Deprecated: Withdrawals are now contained within cross chain messages.
+	Withdrawals        []Withdrawal
+	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
+
+	//The block hash of the latest block that has been scanned for cross chain messages.
+	LatestInboudCrossChainHash common.Hash `json:"inboundCrossChainHash"`
+
+	//The block height of the latest block that has been scanned for cross chain messages.
+	LatestInboundCrossChainHeight *big.Int `json:"inboundCrossChainHeight"`
 }
 
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header.

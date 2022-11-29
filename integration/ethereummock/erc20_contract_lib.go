@@ -14,6 +14,7 @@ func (c *contractLib) CreateDepositTx(tx *ethadapter.L1DepositTx, nonce uint64) 
 	return encodeTx(tx, nonce, depositTxAddr)
 }
 
+// Return only deposit transactions to the management contract
 func (c *contractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	if bytes.Equal(tx.To().Bytes(), depositTxAddr.Bytes()) {
 		depositTx, ok := decodeTx(tx).(*ethadapter.L1DepositTx)
@@ -21,7 +22,8 @@ func (c *contractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 			return nil
 		}
 
-		// Mock deposits towards the L! bridge target nil
+		// Mock deposits towards the L1 bridge target nil as the management contract address
+		// is not set.
 		if depositTx.To != nil {
 			return nil
 		}

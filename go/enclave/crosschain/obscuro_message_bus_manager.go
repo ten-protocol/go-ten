@@ -50,19 +50,24 @@ func NewObscuroMessageBusManager(
 	}
 }
 
+// GetOwner - Returns the address of the identity owning the message bus.
 func (m *obscuroMessageBusManager) GetOwner() common.L2Address {
 	return m.wallet.Address()
 }
 
+// GetBusAddress - Returns the L2 address of the message bus contract.
+// TODO: Figure out how to expose the deployed contract to the external world.
 func (m *obscuroMessageBusManager) GetBusAddress() *common.L2Address {
 	return m.messageBusAddress
 }
 
+// DeriveOwner - Generates the key pair that will be used to transact with the L2 message bus.
 func (m *obscuroMessageBusManager) DeriveOwner(seed []byte) (*common.L2Address, error) {
 	// TODO: Implement with cryptography epic!
 	return m.messageBusAddress, nil
 }
 
+// GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
 func (m *obscuroMessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
 	tx := &types.LegacyTx{
 		Nonce:    0, // this should be fixed probably :/
@@ -83,6 +88,7 @@ func (m *obscuroMessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, e
 	return stx, nil
 }
 
+// ExtractLocalMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
 func (m *obscuroMessageBusManager) ExtractLocalMessages(receipts common.L2Receipts) (common.CrossChainMessages, error) {
 	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventID)
 	if err != nil {
@@ -99,6 +105,7 @@ func (m *obscuroMessageBusManager) ExtractLocalMessages(receipts common.L2Receip
 	return messages, nil
 }
 
+// SubmitRemoteMessagesLocally - Submits messages saved between the from and to blocks on chain using the provided function bindings.
 func (m *obscuroMessageBusManager) SubmitRemoteMessagesLocally(
 	fromBlock *common.L1Block,
 	toBlock *common.L1Block,
@@ -157,6 +164,8 @@ func (m *obscuroMessageBusManager) SubmitRemoteMessagesLocally(
 	return nil
 }
 
+// retrieveSyntheticTransactionsBetween - Iterates the blocks backwards and returns the synthetic transaction
+// TODO: fix ordering of transactions, currently it is irrelevant.
 func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.L2Transactions {
 	transactions := make(common.L2Transactions, 0)
 
@@ -170,8 +179,10 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 		}
 	}
 
+	// Iterate through the blocks.
 	b := toBlock
 	for {
+
 		if bytes.Equal(b.Hash().Bytes(), from.Bytes()) {
 			break
 		}
@@ -180,6 +191,7 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 		syntheticTransactions := m.storage.ReadSyntheticTransactions(b.Hash())
 		transactions = append(transactions, syntheticTransactions...) // Ordering here might work in POBI, but might be weird for fast finality
 
+		// No deposits before genesis.
 		if b.NumberU64() < height {
 			m.logger.Crit("block height is less than genesis height")
 		}
@@ -191,14 +203,14 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 	}
 	lazilyLogChecksum("[CrossChain] Read synthetic transactions checksum", transactions, m.logger)
 
-	// Todo:: iteration order is reversed! This might cause unintended consequences!
-	// Sign transactions and put proper nonces.
+	// Get current nonce for this stateDB.
+	// There can be forks thus we cannot trust the wallet.
 	startingNonce := rollupState.GetNonce(m.GetOwner())
 
 	signedTransactions := make(types.Transactions, 0)
 	for idx, unsignedTransaction := range transactions {
 		tx := &types.LegacyTx{
-			Nonce:    startingNonce + uint64(idx), // this should be fixed probably :/
+			Nonce:    startingNonce + uint64(idx),
 			Value:    gethcommon.Big0,
 			Gas:      5_000_000,
 			GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.

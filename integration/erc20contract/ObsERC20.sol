@@ -71,7 +71,6 @@ contract ObsERC20 is ERC20 {
         if (to == bridge) { 
             AssetTransferMessage memory message = AssetTransferMessage(from, to, amount);
             uint64 sequence = bus.publishMessage(uint32(block.number), uint32(Topics.TRANSFER), abi.encode(message), 0);
-            require(sequence == 1, "Sanity check fail");
         }
     }
 

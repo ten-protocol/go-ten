@@ -142,6 +142,7 @@ func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) Mes
 	}
 }
 
+// VerifyReceiptHash - ensures the receiptRoot in the block header matches the actual hash of the tree built from the receipts.
 func VerifyReceiptHash(block *common.L1Block, receipts common.L1Receipts) bool {
 	if len(receipts) == 0 {
 		return bytes.Equal(block.ReceiptHash().Bytes(), types.EmptyRootHash.Bytes())

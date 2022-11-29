@@ -163,10 +163,7 @@ func (s *Simulation) deployObscuroERC20s() {
 		go func(token bridge.ERC20) {
 			defer wg.Done()
 			owner := s.Params.Wallets.Tokens[token].L2Owner
-			/*	if token == "HOC" { //todo:: remove when not using HOC owner key for synthetic transactions
-				owner.SetNonce(1)
-			}*/
-
+			// 0x526c84529b2b8c11f57d93d3f5537aca3aecef9b - this is the address of the L2 contract which is currently hardcoded.
 			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), gethcommon.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b"))
 
 			deployContractTx := types.DynamicFeeTx{
@@ -216,30 +213,7 @@ func (s *Simulation) prefundL1Accounts() {
 			panic(err)
 		}
 
-		txClone := signedTx
-		go func() {
-			time.Sleep(3 * time.Second)
-			_, err := s.RPCHandles.RndEthClient().TransactionReceipt(txClone.Hash())
-			if err != nil {
-				panic(err)
-			}
-
-			_, err = s.RPCHandles.RndEthClient().CallContract(ethereum.CallMsg{
-				From:       ownerAddr,
-				To:         txClone.To(),
-				Gas:        txClone.Gas(),
-				GasPrice:   big.NewInt(20000000000),
-				GasTipCap:  big.NewInt(0),
-				Value:      txClone.Value(),
-				Data:       txClone.Data(),
-				AccessList: txClone.AccessList(),
-			})
-			if err != nil {
-				s.TxInjector.logger.Error(fmt.Sprintf("[InitialFunding] Deposit %s ERROR - %+v", txClone.Hash(), err))
-			} else {
-				s.TxInjector.logger.Trace(fmt.Sprintf("[InitialFunding] Deposit %s bn", txClone.Hash()))
-			}
-		}()
+		//TODO:: Add better tracking for failed transactions and display revert reasons
 
 		// Not sure why this is tracked as deposit; This is a prefunding transfer. Needs different logic.
 		// s.Stats.Deposit(initialBalance)

@@ -210,6 +210,11 @@ func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *t
 		panic(err)
 	}
 
+	contractAbi, err := abi.JSON(strings.NewReader(erc20.EthERC20MetaData.ABI))
+	if err != nil {
+		panic(err)
+	}
+
 	events := make([]*MessageBus.MessageBusLogMessagePublished, 0)
 	totalDeposited := big.NewInt(0)
 	for _, log := range logs {
@@ -219,11 +224,6 @@ func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *t
 			panic(err)
 		}
 		events = append(events, &event)
-
-		contractAbi, err := abi.JSON(strings.NewReader(erc20.EthERC20MetaData.ABI))
-		if err != nil {
-			panic(err)
-		}
 
 		transfer := map[string]interface{}{}
 		err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, event.Payload) // can't figure out how to unpack it without cheating, geth is kinda clunky

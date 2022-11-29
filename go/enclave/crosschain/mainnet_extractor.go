@@ -11,20 +11,20 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-type mainNetExtractor struct {
+type blockMessageExtractor struct {
 	busAddress   *common.L1Address
 	l2MessageBus *common.L2Address // TODO: remove this
 	storage      db.Storage
 	logger       gethlog.Logger
 }
 
-func NewMainNetExtractor(
+func NewBlockMessageExtractor(
 	busAddress *common.L1Address,
 	l2BusAddress *common.L2Address,
 	storage db.Storage,
 	logger gethlog.Logger,
-) MainNetMessageExtractor {
-	return &mainNetExtractor{
+) BlockMessageExtractor {
+	return &blockMessageExtractor{
 		busAddress:   busAddress,
 		l2MessageBus: l2BusAddress,
 		storage:      storage,
@@ -32,11 +32,15 @@ func NewMainNetExtractor(
 	}
 }
 
-func (m *mainNetExtractor) Enabled() bool {
+func (m *blockMessageExtractor) Enabled() bool {
 	return m.GetBusAddress().Hash().Big().Cmp(gethcommon.Big0) != 0
 }
 
-func (m *mainNetExtractor) ProcessCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error {
+// ProcessCrossChainMessages - extracts the cross chain messages for the corresponding block from the receipts.
+// The messages will be stored in DB storage for later usage.
+// block - the L1 block for which events are extracted.
+// receipts - all of the receipts for the corresponding block. This is validated.
+func (m *blockMessageExtractor) ProcessCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error {
 	areReceiptsValid := VerifyReceiptHash(block, receipts)
 
 	if !areReceiptsValid && m.Enabled() {
@@ -65,17 +69,20 @@ func (m *mainNetExtractor) ProcessCrossChainMessages(block *common.L1Block, rece
 	return nil
 }
 
-func (m *mainNetExtractor) GetBusAddress() *common.L1Address {
+// GetBusAddress - Returns the address of the L1 message bus.
+func (m *blockMessageExtractor) GetBusAddress() *common.L1Address {
 	return m.busAddress
 }
 
-func (m *mainNetExtractor) getSyntheticTransactions(block *common.L1Block, receipts common.L1Receipts) (common.L2Transactions, error) {
+// getSyntheticTransactions - Converts the relevant logs from the appropriate message bus address to synthetic transactions and returns them
+func (m *blockMessageExtractor) getSyntheticTransactions(block *common.L1Block, receipts common.L1Receipts) (common.L2Transactions, error) {
 	transactions := make(common.L2Transactions, 0)
 
 	if len(receipts) == 0 {
 		return transactions, nil
 	}
 
+	//Retrieves the relevant logs from the message bus.
 	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &CrossChainEventID)
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)

@@ -119,13 +119,14 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 		rc.faucet.GetGenesisRoot(rc.storage),
 	)
 
-	// todo::
-	// Probably not the best place to put this, but ...
+	// TODO: Figure out a better way to bootstrap the system contracts.
 	deployTx, err := rc.crossChainProcessors.LocalManager.GenerateMessageBusDeployTx()
 	if err != nil {
 		rc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
 	}
 
+	// Add transaction to mempool so it gets processed when it can.
+	// Should be the first transaction to be processed.
 	if err := rc.mempool.AddMempoolTx(deployTx); err != nil {
 		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
 	}
@@ -403,12 +404,15 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		i++
 	}
 
+	// Create a wrapped function call to the evm that the local cross chain manager will use to submit
+	// the synthetic transactions
 	onChainCallFunc := func(transactions common.L2Transactions) crosschain.OnChainEVMExecutorResponse {
 		return evm.ExecuteTransactions(transactions, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 	}
 
+	// Create a wrapped function call that the local cross chain manager will use to determine revert reason if neccessary.
 	offChainCallFunc := func(msg types.Message) (*core.ExecutionResult, error) {
-		// Should this be deleted somehow?
+		// TODO: Should this be deleted somehow?
 		clonedDB := stateDB.Copy()
 		return evm.ExecuteOffChainCall(&msg, clonedDB, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
 	}
@@ -440,13 +444,9 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
-		rollupBlock, err := rc.storage.Proof(rollup)
-		if err != nil {
-			rc.logger.Crit("Failed to extract rollup proof", log.ErrKey, err)
-		}
 
-		rc.logger.Error(fmt.Sprintf("[rollupBlock=%d] Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(rollupBlock.Hash()), common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts))
+		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
+			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts))
 		return false
 	}
 
@@ -562,6 +562,8 @@ func (rc *RollupChain) SubmitL1Block(block types.Block, receipts types.Receipts,
 		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 	}
 
+	// Reject block if not provided with matching receipts.
+	// This needs to happen before saving the block as otherwise it will be considered as processed.
 	if rc.crossChainProcessors.Enabled() && !crosschain.VerifyReceiptHash(&block, receipts) {
 		return nil, rc.rejectBlockErr(errors.New("receipts do not match receipt_root in block"))
 	}

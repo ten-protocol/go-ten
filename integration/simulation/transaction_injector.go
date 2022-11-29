@@ -204,8 +204,8 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			panic(err)
 		}
 		ti.logger.Info(fmt.Sprintf(
-			"Deposit transaction injected into L1. Hash: %s. From address: %d",
-			signedTx.Hash(),
+			"Deposit transaction injected into L1. Hash: %d. From address: %d",
+			common.ShortHash(signedTx.Hash()),
 			common.ShortAddress(ethWallet.Address()),
 		))
 		err = ti.rpcHandles.RndEthClient().SendTransaction(signedTx)
@@ -213,39 +213,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			panic(err)
 		}
 
-		txClone := *signedTx
-		go func() {
-			time.Sleep(3 * time.Second)
-			rec, err := ti.rpcHandles.RndEthClient().TransactionReceipt(txClone.Hash())
-			if err != nil {
-				panic(err)
-			}
-
-			if rec.Status == 1 {
-				ti.logger.Trace(fmt.Sprintf("[CrossChain] Successful Deposit at %s; Amount: %s Logs in receipt - %d",
-					rec.BlockHash.Hex(),
-					txData.Amount.String(),
-					len(rec.Logs)))
-				return
-			}
-
-			_, err = ti.rpcHandles.RndEthClient().CallContract(ethereum.CallMsg{
-				From:       addr,
-				To:         txClone.To(),
-				Gas:        txClone.Gas(),
-				GasPrice:   big.NewInt(20000000000),
-				GasTipCap:  big.NewInt(0),
-				Value:      txClone.Value(),
-				Data:       txClone.Data(),
-				AccessList: txClone.AccessList(),
-			})
-			if err != nil {
-				ti.logger.Error(fmt.Sprintf("Deposit %s ERROR - %+v", txClone.Hash(), err))
-			}
-		}()
-
-		time.Sleep(2 * time.Second)
-
+		//TODO: Add better tx tracking and display revert reasons
 		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
 
 		go ti.TxTracker.trackL1Tx(txData)
