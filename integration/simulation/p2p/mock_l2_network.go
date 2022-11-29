@@ -19,7 +19,7 @@ import (
 // Will be plugged into each node
 type MockP2P struct {
 	CurrentNode host.Host
-	Nodes       []host.MockHost
+	Nodes       []host.Host
 
 	avgLatency       time.Duration
 	avgBlockDuration time.Duration

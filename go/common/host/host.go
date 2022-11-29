@@ -36,18 +36,6 @@ type Host interface {
 	HealthCheck() (bool, error)
 }
 
-// MockHost extends Host with additional methods that are only used for integration testing.
-// todo - remove this interface
-type MockHost interface {
-	Host
-
-	// MockedNewHead receives the notification of new blocks.
-	// TODO - Remove this method.
-	MockedNewHead(b common.EncodedL1Block, p common.EncodedL1Block)
-	// MockedNewFork receives the notification of a new fork.
-	MockedNewFork(b []common.EncodedL1Block)
-}
-
 // P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
 type P2P interface {
 	StartListening(callback Host)
@@ -72,8 +60,13 @@ type P2P interface {
 //     \-> 13b --> 14b --> 15b
 //     If block provider had just published 14a and then discovered the 'b' fork is canonical, it would next publish 13b, 14b, 15b.
 type ReconnectingBlockProvider interface {
-	StartStreamingFromHeight(height *big.Int) (<-chan *types.Block, error)
-	StartStreamingFromHash(latestHash gethcommon.Hash) (<-chan *types.Block, error)
-	Stop()
+	// StartStreamingFromHeight and StartStreamingFromHash return the streaming channel and a function to cancel/clean-up the stream with
+	StartStreamingFromHeight(height *big.Int) (*BlockStream, error)
+	StartStreamingFromHash(latestHash gethcommon.Hash) (*BlockStream, error)
 	IsLive(hash gethcommon.Hash) bool // returns true if hash is of the latest known L1 head block
+}
+
+type BlockStream struct {
+	Stream <-chan *types.Block // the channel which will receive the consecutive, canonical blocks
+	Stop   func()              // function to permanently stop the stream and clean up any associated processes/resources
 }
