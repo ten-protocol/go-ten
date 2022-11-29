@@ -5,9 +5,11 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 const (
@@ -70,8 +72,53 @@ func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) 
 	return callMsg, nil
 }
 
+// ExtractAddress returns a gethcommon.Address given an interface{}, errors if unexpected values are used
+func ExtractAddress(param interface{}) (*gethcommon.Address, error) {
+	if param == nil {
+		return nil, fmt.Errorf("no address specified")
+	}
+
+	paramStr, ok := param.(string)
+	if !ok {
+		return nil, fmt.Errorf("unexpectd address value")
+	}
+
+	if len(strings.TrimSpace(paramStr)) == 0 {
+		return nil, fmt.Errorf("no address specified")
+	}
+
+	addr := gethcommon.HexToAddress(param.(string))
+	return &addr, nil
+}
+
+// ExtractOptionalBlockNumber defaults nil or empty block number params to latest block number
+func ExtractOptionalBlockNumber(param interface{}) (*gethrpc.BlockNumber, error) {
+	if param == nil {
+		return ExtractBlockNumber("latest")
+	}
+	if emptyStr, ok := param.(string); ok && len(strings.TrimSpace(emptyStr)) == 0 {
+		return ExtractBlockNumber("latest")
+	}
+
+	return ExtractBlockNumber(param)
+}
+
+// ExtractBlockNumber returns a gethrpc.BlockNumber given an interface{}, errors if unexpected values are used
+func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumber, error) {
+	blockNumber := gethrpc.BlockNumber(0)
+	if param == nil {
+		return nil, errutil.ErrNotFound
+	}
+
+	err := blockNumber.UnmarshalJSON([]byte(param.(string)))
+	if err != nil {
+		return nil, fmt.Errorf("could not parse requested rollup number - %w", err)
+	}
+	return &blockNumber, err
+}
+
 // ExtractEthCall extracts the eth_call gethapi.TransactionArgs from an interface{}
-func ExtractEthCall(paramBytes interface{}) (*gethapi.TransactionArgs, error) {
+func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 	// geth lowercases the field name and uses the last seen value
 	var valString string
 	var to, from *gethcommon.Address
@@ -80,7 +127,7 @@ func ExtractEthCall(paramBytes interface{}) (*gethapi.TransactionArgs, error) {
 	var ok bool
 	var gas *hexutil.Uint64
 
-	for field, val := range paramBytes.(map[string]interface{}) {
+	for field, val := range param.(map[string]interface{}) {
 		if val == nil {
 			continue
 		}

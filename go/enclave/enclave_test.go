@@ -3,6 +3,7 @@ package enclave
 import (
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -56,7 +56,7 @@ func TestGasEstimation(t *testing.T) {
 
 	for name, test := range tests {
 		// create the enclave
-		testEnclave, err := createTestEnclave()
+		testEnclave, err := createTestEnclave(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -255,6 +255,130 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 	}
 }
 
+// TestGetBalance runs the GetBalance tests
+func TestGetBalance(t *testing.T) {
+	tests := map[string]func(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey){
+		"getBalanceSuccess":     getBalanceSuccess,
+		"getBalanceRequestFail": getBalanceRequestFail,
+	}
+
+	for name, test := range tests {
+		// create the wallet
+		w := datagenerator.RandomWallet(integration.ObscuroChainID)
+
+		// prefund the wallet
+		prefundedAddresses := []prefundedAddress{
+			{
+				address: w.Address(),
+				amount:  big.NewInt(123_000_000),
+			},
+		}
+
+		// create the enclave
+		testEnclave, err := createTestEnclave(prefundedAddresses)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// register the VK with the enclave
+		vk, err := registerWalletViewingKey(t, testEnclave, w)
+		if err != nil {
+			t.Fatalf("unable to register wallets VK - %s", err)
+		}
+
+		// execute the tests
+		t.Run(name, func(t *testing.T) {
+			test(t, prefundedAddresses, testEnclave, vk)
+		})
+	}
+}
+
+func getBalanceSuccess(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey) {
+	// create the request payload
+	req := []interface{}{prefund[0].address.Hex(), "latest"}
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// callMsg encrypted with the VK
+	encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, reqBytes, nil, nil)
+	if err != nil {
+		t.Fatalf("could not encrypt the following request params with enclave public key - %s", err)
+	}
+
+	// Run gas Estimation
+	gas, err := enclave.GetBalance(encryptedParams)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// decrypt with the VK
+	decryptedResult, err := vk.PrivateKey.Decrypt(gas, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// parse it
+	balance, err := hexutil.DecodeBig(string(decryptedResult))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// make sure its de expected value
+	if prefund[0].amount.Cmp(balance) != 0 {
+		t.Errorf("unexpected balance, expected %d, got %d", prefund[0].amount, balance)
+	}
+}
+
+func getBalanceRequestFail(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, _ *rpc.ViewingKey) {
+	type errorTest struct {
+		request  []interface{}
+		errorStr string
+	}
+	for subtestName, test := range map[string]errorTest{
+		"No1stArg": {
+			request:  []interface{}{nil, "latest"},
+			errorStr: "no address specified",
+		},
+		"No2ndArg": {
+			request:  []interface{}{prefund[0].address.Hex()},
+			errorStr: "required exactly two params, but received 1",
+		},
+		"Nil2ndArg": {
+			request:  []interface{}{prefund[0].address.Hex(), nil},
+			errorStr: "empty hex string",
+		},
+		"Rubbish2ndArg": {
+			request:  []interface{}{prefund[0].address.Hex(), "Rubbish"},
+			errorStr: "hex string without 0x prefix",
+		},
+	} {
+		t.Run(subtestName, func(t *testing.T) {
+			reqBytes, err := json.Marshal(test.request)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// callMsg encrypted with the VK
+			encryptedParams, err := ecies.Encrypt(rand.Reader, _enclavePubKey, reqBytes, nil, nil)
+			if err != nil {
+				t.Fatalf("could not encrypt the following request params with enclave public key - %s", err)
+			}
+
+			// Run gas Estimation
+			_, err = enclave.GetBalance(encryptedParams)
+			if err == nil {
+				t.Fatal(err)
+			}
+
+			if !assert.ErrorContains(t, err, test.errorStr) {
+				t.Fatal("unexpected error")
+			}
+		})
+	}
+}
+
 // registerWalletViewingKey takes a wallet and registers a VK with the enclave
 func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wallet) (*rpc.ViewingKey, error) {
 	// generate the VK from the wallet
@@ -274,7 +398,7 @@ func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wal
 }
 
 // createTestEnclave returns a test instance of the enclave
-func createTestEnclave() (common.Enclave, error) {
+func createTestEnclave(prefundedAddresses []prefundedAddress) (common.Enclave, error) {
 	rndAddr := gethcommon.HexToAddress("contract1")
 	rndAddr2 := gethcommon.HexToAddress("contract2")
 	enclaveConfig := config.EnclaveConfig{
@@ -293,7 +417,7 @@ func createTestEnclave() (common.Enclave, error) {
 		return nil, err
 	}
 
-	err = createFakeGenesis(enclave)
+	err = createFakeGenesis(enclave, prefundedAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +425,7 @@ func createTestEnclave() (common.Enclave, error) {
 	return enclave, nil
 }
 
-func createFakeGenesis(enclave common.Enclave) error {
+func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) error {
 	// Random Layer 1 block where the genesis rollup is set
 	blk := types.NewBlock(&types.Header{}, nil, nil, nil, &trie.StackTrie{})
 	_, err := enclave.SubmitL1Block(*blk, true)
@@ -310,8 +434,16 @@ func createFakeGenesis(enclave common.Enclave) error {
 	}
 
 	// make sure the state is updated otherwise balances will not be available
-	faucet := rollupchain.NewFaucet()
-	genesisPreallocStateDB, err := faucet.CommitGenesisState(enclave.(*enclaveImpl).storage)
+	genesisPreallocStateDB, err := enclave.(*enclaveImpl).storage.EmptyStateDB()
+	if err != nil {
+		return fmt.Errorf("could not initialise empty state DB. Cause: %w", err)
+	}
+
+	for _, prefundedAddr := range addresses {
+		genesisPreallocStateDB.SetBalance(prefundedAddr.address, prefundedAddr.amount)
+	}
+
+	_, err = genesisPreallocStateDB.Commit(false)
 	if err != nil {
 		return err
 	}
@@ -341,4 +473,9 @@ func createFakeGenesis(enclave common.Enclave) error {
 	}
 
 	return enclave.(*enclaveImpl).storage.StoreNewHead(bs, genRollup, nil, nil)
+}
+
+type prefundedAddress struct {
+	address gethcommon.Address
+	amount  *big.Int
 }
