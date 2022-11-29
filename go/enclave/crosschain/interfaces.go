@@ -25,7 +25,6 @@ type BlockMessageExtractor interface {
 }
 
 type ObscuroCrossChainManager interface {
-
 	// IsSyntheticTransaction - Determines if a given L2 transaction is coming from the synthetic owner address.
 	IsSyntheticTransaction(transaction common.L2Tx) bool
 
@@ -42,7 +41,7 @@ type ObscuroCrossChainManager interface {
 	// GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
 	GenerateMessageBusDeployTx() (*common.L2Tx, error)
 
-	//ExtractLocalMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
+	// ExtractLocalMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
 	ExtractLocalMessages(receipts common.L2Receipts) (common.CrossChainMessages, error)
 
 	// SubmitRemoteMessagesLocally - Submits messages saved between the from and to blocks on chain using the provided function bindings.

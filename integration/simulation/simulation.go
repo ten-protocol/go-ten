@@ -213,7 +213,7 @@ func (s *Simulation) prefundL1Accounts() {
 			panic(err)
 		}
 
-		//TODO:: Add better tracking for failed transactions and display revert reasons
+		// TODO:: Add better tracking for failed transactions and display revert reasons
 
 		// Not sure why this is tracked as deposit; This is a prefunding transfer. Needs different logic.
 		// s.Stats.Deposit(initialBalance)

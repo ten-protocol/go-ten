@@ -213,7 +213,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			panic(err)
 		}
 
-		//TODO: Add better tx tracking and display revert reasons
+		// TODO: Add better tx tracking and display revert reasons
 		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
 
 		go ti.TxTracker.trackL1Tx(txData)

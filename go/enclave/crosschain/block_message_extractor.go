@@ -73,12 +73,11 @@ func (m *blockMessageExtractor) GetBusAddress() *common.L1Address {
 
 // getSyntheticTransactions - Converts the relevant logs from the appropriate message bus address to synthetic transactions and returns them
 func (m *blockMessageExtractor) getSyntheticTransactions(block *common.L1Block, receipts common.L1Receipts) (common.CrossChainMessages, error) {
-
 	if len(receipts) == 0 {
 		return make(common.CrossChainMessages, 0), nil
 	}
 
-	//Retrieves the relevant logs from the message bus.
+	// Retrieves the relevant logs from the message bus.
 	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &CrossChainEventID)
 	if err != nil {
 		m.logger.Error("[CrossChain]", "Error", err)

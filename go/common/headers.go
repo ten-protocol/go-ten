@@ -47,10 +47,10 @@ type Header struct {
 	Withdrawals        []Withdrawal
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 
-	//The block hash of the latest block that has been scanned for cross chain messages.
+	// The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboudCrossChainHash common.Hash `json:"inboundCrossChainHash"`
 
-	//The block height of the latest block that has been scanned for cross chain messages.
+	// The block height of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int `json:"inboundCrossChainHeight"`
 }
 

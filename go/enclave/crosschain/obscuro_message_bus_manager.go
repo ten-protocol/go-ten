@@ -228,7 +228,7 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 			return signedTransactions
 
 			// TODO: return error
-			//return nil, fmt.Errorf("failed packing submitOutOfNetworkMessage %w", err)
+			// return nil, fmt.Errorf("failed packing submitOutOfNetworkMessage %w", err)
 		}
 
 		tx := &types.LegacyTx{
