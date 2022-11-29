@@ -183,7 +183,7 @@ func (rc *RollupChain) noHeadsAfterL1BlockBlockSubmissionResponse(block *types.B
 	}
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.HeadsAfterL1Block, rollup common.ExtRollup, logs map[gethrpc.ID][]byte) *common.BlockSubmissionResponse {
+func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.HeadsAfterL1Block, logs map[gethrpc.ID][]byte) *common.BlockSubmissionResponse {
 	headRollup, err := rc.storage.FetchRollup(bs.HeadRollup)
 	if err != nil {
 		rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
@@ -200,7 +200,6 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.HeadsAfterL1Bl
 	}
 	return &common.BlockSubmissionResponse{
 		BlockHeader:          headBlock.Header(),
-		ProducedRollup:       rollup,
 		UpdatedHeadRollup:    bs.UpdatedHeadRollup,
 		IngestedRollupHeader: head,
 		SubscribedLogs:       logs,
@@ -541,27 +540,13 @@ func (rc *RollupChain) UpdateStateFromL1Block(block types.Block, isLatest bool) 
 	return rc.updateState(&block)
 }
 
-func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, headsAfterL1Block *obscurocore.HeadsAfterL1Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, headsAfterL1Block *obscurocore.HeadsAfterL1Block) (*common.BlockSubmissionResponse, error) {
 	if headsAfterL1Block == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return rc.noHeadsAfterL1BlockBlockSubmissionResponse(&block), nil
 	}
-
 	encryptedLogs := rc.getEncryptedLogs(block, headsAfterL1Block)
-
-	var extRollup common.ExtRollup
-	// If we're an aggregator on the head L1 block, we produce a rollup.
-	if isLatest && rc.nodeType == common.Aggregator {
-		rollup, err := rc.newRollup(block, headsAfterL1Block)
-		if err != nil {
-			return nil, err
-		}
-		extRollup = rollup.ToExtRollup(rc.transactionBlobCrypto)
-		rc.logger.Trace(fmt.Sprintf("Processed block: b_%d (%d). Produced rollup r_%d",
-			common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(extRollup.Hash())))
-	}
-
-	return rc.newBlockSubmissionResponse(headsAfterL1Block, extRollup, encryptedLogs), nil
+	return rc.newBlockSubmissionResponse(headsAfterL1Block, encryptedLogs), nil
 }
 
 // ExecuteOffChainTransaction executes non-state changing transactions at a given block height (eth_call)
@@ -780,12 +765,25 @@ func (rc *RollupChain) getEncryptedLogs(block types.Block, headsAfterL1Block *ob
 	return encryptedLogs
 }
 
-// Creates a rollup, signs it, checks it, and stores it.
-func (rc *RollupChain) newRollup(block types.Block, headsAfterL1Block *obscurocore.HeadsAfterL1Block) (*obscurocore.Rollup, error) {
-	rollup := rc.produceRollup(&block, headsAfterL1Block)
+// NewRollup creates a rollup, signs it, checks it, and stores it.
+func (rc *RollupChain) NewRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
+	block, err := rc.storage.FetchBlock(*blockHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve block to produce rollup. Cause: %w", err)
+	}
+	blockState, err := rc.storage.FetchHeadsAfterL1Block(*blockHash)
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			// not an error state, we ingested a block but no rollup head found
+			return nil, nil //nolint:nilnil
+		}
+		return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
+	}
+
+	rollup := rc.produceRollup(block, blockState)
 	rc.signRollup(rollup)
 	// Sanity check the produced rollup
-	_, _, err := rc.checkRollup(rollup)
+	_, _, err = rc.checkRollup(rollup)
 	if err != nil {
 		return nil, err
 	}
@@ -795,7 +793,12 @@ func (rc *RollupChain) newRollup(block types.Block, headsAfterL1Block *obscuroco
 	if err != nil {
 		return nil, err
 	}
-	return rollup, nil
+
+	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
+	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d (%d). Produced rollup r_%d",
+		common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(extRollup.Hash())))
+
+	return &extRollup, nil
 }
 
 // Creates a rollup.

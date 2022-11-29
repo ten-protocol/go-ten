@@ -258,7 +258,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
 	// We prepare the block submission response.
-	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, newHeadsAfterL1Block, isLatest)
+	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, newHeadsAfterL1Block)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
 	}
@@ -271,6 +271,10 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 	}
 
 	return blockSubmissionResponse, nil
+}
+
+func (e *enclaveImpl) ProduceRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
+	return e.chain.NewRollup(blockHash)
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {

@@ -15,7 +15,7 @@ import (
 // BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
 	// FetchBlock returns the L1 Block with the given hash.
-	FetchBlock(hash common.L1RootHash) (*types.Block, error)
+	FetchBlock(blockHash common.L1RootHash) (*types.Block, error)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block)
 	// ParentBlock returns the L1 Block's parent.
