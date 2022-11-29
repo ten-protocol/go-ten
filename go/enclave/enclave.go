@@ -249,27 +249,28 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.BlockSubm
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
-	bsr, err := e.chain.SubmitL1Block(block, isLatest)
+	// We update the enclave state based on the L1 block.
+	blockState, err := e.chain.UpdateStateFromL1Block(block, isLatest)
 	if err != nil {
-		e.logger.Trace("SubmitBlock failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
-		return nil, err
+		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
+		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
 	}
-	e.logger.Trace("SubmitBlock successful", "blk", block.Number(), "blkHash", block.Hash())
+	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
-	if bsr.IngestedRollupHeader != nil {
-		hr, err := e.storage.FetchRollup(bsr.IngestedRollupHeader.Hash())
-		if err != nil {
-			e.logger.Crit("Could not retrieve rollup. This should not happen because this rollup was just processed.", log.ErrKey, err)
-		}
-		err = e.mempool.RemoveMempoolTxs(hr, e.storage)
-		if err != nil {
-			e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
-		}
+	// We prepare the block submission response.
+	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, blockState, isLatest)
+	if err != nil {
+		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
+	}
+	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
+
+	// We remove any rolled-up transactions from the mempool.
+	err = e.removeMempoolTxs(blockSubmissionResponse.IngestedRollupHeader)
+	if err != nil {
+		e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
 	}
 
-	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
-
-	return bsr, nil
+	return blockSubmissionResponse, nil
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -1018,6 +1019,24 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 	}
 	forAddress := gethcommon.HexToAddress(forAddressHex)
 	return &filter, &forAddress, nil
+}
+
+// Removes the transactions in the provided header from the mempool.
+func (e *enclaveImpl) removeMempoolTxs(rollupHeader *common.Header) error {
+	if rollupHeader == nil {
+		return nil
+	}
+
+	hr, err := e.storage.FetchRollup(rollupHeader.Hash())
+	if err != nil {
+		return fmt.Errorf("could not retrieve rollup. This should not happen because this rollup was just processed. Cause: %w", err)
+	}
+	err = e.mempool.RemoveMempoolTxs(hr, e.storage)
+	if err != nil {
+		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
+	}
+
+	return nil
 }
 
 // Todo - reinstate speculative execution after TN1
