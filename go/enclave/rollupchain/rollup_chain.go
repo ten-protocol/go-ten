@@ -562,7 +562,7 @@ func (rc *RollupChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionAr
 		return nil, err
 	}
 
-	// the execution might have succeeded but the evm contract logic might have failed
+	// the execution might have succeeded (err == nil) but the evm contract logic might have failed (result.Failed() == true)
 	if result.Failed() {
 		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, result.Err)
 		return nil, result.Err
