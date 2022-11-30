@@ -460,30 +460,6 @@ func (rc *RollupChain) handleGenesisRollup(block *types.Block, rollupsInBlock []
 	return &l2Head, errIsGenesisRollupInBlock
 }
 
-func (rc *RollupChain) getL2HeadAfterParentBlock(parentBlockHash common.L1RootHash) (*common.L2RootHash, error) {
-	parentBlockRollup, err := rc.storage.FetchRollupForL1Block(parentBlockHash)
-	if err != nil {
-		if !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
-		}
-
-		// We don't have the state after the parent block stored. We recursively calculate it.
-		parentBlock, err := rc.storage.FetchBlock(parentBlockHash)
-		if err != nil {
-			return nil, fmt.Errorf("could not retrieve parent block when calculating block state. Cause: %w", err)
-		}
-		parentBlockRollup, err = rc.updateHeads(parentBlock)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if parentBlockRollup == nil {
-		return nil, fmt.Errorf("could not calculate parent block state when calculating block state. Cause: %w", err)
-	}
-	return parentBlockRollup, nil
-}
-
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
@@ -596,12 +572,12 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
 	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
-	parentBlockRollup, err := rc.getL2HeadAfterParentBlock(block.ParentHash())
+	currentHeadRollupHash, err := rc.storage.FetchRollupForL1Block(block.ParentHash())
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve heads after parent block. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve current head rollup hash. Cause: %w", err)
 	}
 
-	currentHeadRollup, err := rc.storage.FetchRollup(*parentBlockRollup)
+	currentHeadRollup, err := rc.storage.FetchRollup(*currentHeadRollupHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
