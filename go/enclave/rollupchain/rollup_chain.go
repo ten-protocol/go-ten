@@ -460,7 +460,7 @@ func (rc *RollupChain) handleGenesisRollup(block *types.Block, rollupsInBlock []
 	return &l2Head, errIsGenesisRollupInBlock
 }
 
-func (rc *RollupChain) getHeadsAfterParentBlock(parentBlockHash common.L1RootHash) (*common.L2RootHash, error) {
+func (rc *RollupChain) getL2HeadAfterParentBlock(parentBlockHash common.L1RootHash) (*common.L2RootHash, error) {
 	parentBlockRollup, err := rc.storage.FetchRollupForL1Block(parentBlockHash)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
@@ -595,7 +595,8 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
-	parentBlockRollup, err := rc.getHeadsAfterParentBlock(block.ParentHash())
+	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
+	parentBlockRollup, err := rc.getL2HeadAfterParentBlock(block.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve heads after parent block. Cause: %w", err)
 	}
