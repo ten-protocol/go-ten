@@ -242,7 +242,7 @@ func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
 	return block, nil
 }
 
-func (s *storageImpl) FetchHeadsAfterL1Block(hash common.L1RootHash) (*core.HeadsAfterL1Block, error) {
+func (s *storageImpl) FetchHeads(hash common.L1RootHash) (*core.HeadsAfterL1Block, error) {
 	return obscurorawdb.ReadHeadsAfterL1Block(s.db, hash)
 }
 

@@ -105,17 +105,13 @@ func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.E
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block to produce rollup. Cause: %w", err)
 	}
-	chainHeads, err := rc.storage.FetchHeadsAfterL1Block(*blockHash)
+	heads, err := rc.storage.FetchHeads(*blockHash)
 	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			// not an error state, we ingested a block but no rollup head found
-			return nil, nil //nolint:nilnil
-		}
-		return nil, fmt.Errorf("could not retrieve chain heads. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve chain heads to produce rollup. Cause: %w", err)
 	}
 
 	// We create the new rollup, sign it, check it, and store it.
-	rollup, err := rc.produceRollup(block, chainHeads)
+	rollup, err := rc.produceRollup(block, heads)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
@@ -393,13 +389,13 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, headsA
 // Recursively calculates and stores the block state, receipts and logs for the given block.
 func (rc *RollupChain) updateHeads(block *types.Block) (*core.HeadsAfterL1Block, error) {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
-	headsAfterL1Block, err := rc.storage.FetchHeadsAfterL1Block(block.Hash())
+	heads, err := rc.storage.FetchHeads(block.Hash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
 	}
 	if err == nil {
 		// The state has already been calculated, so we return it.
-		return headsAfterL1Block, nil
+		return heads, nil
 	}
 
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
@@ -421,25 +417,25 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*core.HeadsAfterL1Block,
 
 	// To calculate the state after the current block, we need the state after the parent.
 	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	headsAfterParentBlock, err := rc.getHeadsAfterParentBlock(block.ParentHash())
+	currentHeads, err := rc.getHeadsAfterParentBlock(block.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve heads after parent block. Cause: %w", err)
 	}
 
-	headsAfterL1Block, headRollup, receipts, err := rc.calculateNewHeads(block, headsAfterParentBlock, rollupsInBlock)
+	newHeads, headRollup, receipts, err := rc.calculateNewHeads(block, currentHeads, rollupsInBlock)
 	if err != nil {
 		return nil, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
 	}
 
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
-		common.ShortHash(block.Hash()), headsAfterL1Block.UpdatedHeadRollup, common.ShortHash(headsAfterL1Block.HeadRollup)))
+		common.ShortHash(block.Hash()), newHeads.UpdatedHeadRollup, common.ShortHash(newHeads.HeadRollup)))
 
-	err = rc.storage.StoreNewHeads(headsAfterL1Block, headRollup, receipts)
+	err = rc.storage.StoreNewHeads(newHeads, headRollup, receipts)
 	if err != nil {
 		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
 
-	return headsAfterL1Block, nil
+	return newHeads, nil
 }
 
 func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*core.Rollup) (*core.HeadsAfterL1Block, error) {
@@ -495,7 +491,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*cor
 }
 
 func (rc *RollupChain) getHeadsAfterParentBlock(parentBlockHash gethcommon.Hash) (*core.HeadsAfterL1Block, error) {
-	headsAfterParentBlock, err := rc.storage.FetchHeadsAfterL1Block(parentBlockHash)
+	headsAfterParentBlock, err := rc.storage.FetchHeads(parentBlockHash)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
