@@ -404,36 +404,20 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*core.HeadsAfterL1Block,
 	// Handles the case of the block containing the genesis being processed multiple times.
 	headsAfterGenesisRollup, err := rc.handleGenesisRollup(block, rollupsInBlock)
 	if err != nil {
-		if errors.Is(err, errIsPreGenesis) {
-			// We wait for the genesis rollup.
-			return nil, nil //nolint:nilnil
-		}
-		if errors.Is(err, errIsGenesisRollupInBlock) {
-			// We can return the genesis state immediately.
+		if errors.Is(err, errIsPreGenesis) || errors.Is(err, errIsGenesisRollupInBlock) {
+			// Either we're still waiting for the genesis rollup, or its already stored and we can return it immediately.
 			return headsAfterGenesisRollup, nil
 		}
 		return nil, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
 	}
 
-	// To calculate the state after the current block, we need the state after the parent.
-	// If this point is reached, there is a parent state guaranteed, because the genesis is handled above
-	currentHeads, err := rc.getHeadsAfterParentBlock(block.ParentHash())
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve heads after parent block. Cause: %w", err)
-	}
-
-	newHeads, headRollup, receipts, err := rc.calculateNewHeads(block, currentHeads, rollupsInBlock)
+	newHeads, err := rc.calculateAndStoreNewHeads(block, rollupsInBlock)
 	if err != nil {
 		return nil, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
 	}
 
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(block.Hash()), newHeads.UpdatedHeadRollup, common.ShortHash(newHeads.HeadRollup)))
-
-	err = rc.storage.StoreNewHeads(newHeads, headRollup, receipts)
-	if err != nil {
-		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
-	}
 
 	return newHeads, nil
 }
@@ -624,14 +608,15 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash gethcommon.H
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func (rc *RollupChain) calculateNewHeads(
-	block *types.Block,
-	headsAfterParentBlock *core.HeadsAfterL1Block,
-	rollupsInBlock []*core.Rollup,
-) (*core.HeadsAfterL1Block, *core.Rollup, []*types.Receipt, error) {
-	currentHeadRollup, err := rc.storage.FetchRollup(headsAfterParentBlock.HeadRollup)
+func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBlock []*core.Rollup) (*core.HeadsAfterL1Block, error) {
+	currentHeads, err := rc.getHeadsAfterParentBlock(block.ParentHash())
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve heads after parent block. Cause: %w", err)
+	}
+
+	currentHeadRollup, err := rc.storage.FetchRollup(currentHeads.HeadRollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
 
 	newHeadRollup, found := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
@@ -639,7 +624,7 @@ func (rc *RollupChain) calculateNewHeads(
 	if found {
 		rollupTxReceipts, err = rc.checkRollup(newHeadRollup)
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
+			return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
 		}
 	} else {
 		newHeadRollup = currentHeadRollup
@@ -648,12 +633,18 @@ func (rc *RollupChain) calculateNewHeads(
 	// TODO - #718 - Instead of updating the rollup head, we should validate the stored batches against the winning
 	//  rollup. We should still update the block head.
 
-	headsAfterL1Block := core.HeadsAfterL1Block{
+	newHeads := core.HeadsAfterL1Block{
 		HeadBlock:         block.Hash(),
 		HeadRollup:        newHeadRollup.Hash(),
 		UpdatedHeadRollup: found,
 	}
-	return &headsAfterL1Block, newHeadRollup, rollupTxReceipts, nil
+
+	err = rc.storage.StoreNewHeads(&newHeads, newHeadRollup, rollupTxReceipts)
+	if err != nil {
+		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
+	}
+
+	return &newHeads, nil
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
