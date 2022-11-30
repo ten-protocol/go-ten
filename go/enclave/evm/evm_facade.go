@@ -86,7 +86,14 @@ func logReceipt(r *types.Receipt, logger gethlog.Logger) {
 }
 
 // ExecuteOffChainCall - executes the eth_call call
-func ExecuteOffChainCall(msg *types.Message, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, logger gethlog.Logger) (*gethcore.ExecutionResult, error) {
+func ExecuteOffChainCall(
+	msg *types.Message,
+	s *state.StateDB,
+	header *common.Header,
+	storage db.Storage,
+	chainConfig *params.ChainConfig,
+	logger gethlog.Logger,
+) (*gethcore.ExecutionResult, error) {
 	chain, vmCfg, gp := initParams(storage, true, nil)
 	ethHeader, err := convertToEthHeader(header, secret(storage))
 	if err != nil {
