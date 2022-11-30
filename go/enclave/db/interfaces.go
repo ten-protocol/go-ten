@@ -54,7 +54,7 @@ type RollupResolver interface {
 }
 
 type HeadsAfterL1BlockStorage interface {
-	// FetchRollupForL1Block returns the rollup for a given L1 block hash.
+	// FetchRollupForL1Block returns the hash of the rollup produced from a given L1 block.
 	FetchRollupForL1Block(blockHash common.L1RootHash) (*common.L2RootHash, error)
 	// FetchLogs returns the block's logs.
 	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
