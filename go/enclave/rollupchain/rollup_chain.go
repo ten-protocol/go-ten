@@ -294,6 +294,11 @@ func (rc *RollupChain) insertAndStoreL1Block(block types.Block, isLatest bool) e
 	// We check whether we've already processed the block.
 	_, err := rc.storage.FetchBlock(block.Hash())
 	if err == nil {
+		// we assume the submitted block is the canonical head, this avoids a bug where returning to a fork that we have seen before gets us stuck in live lock
+		err = rc.storage.SetL1Head(block.Hash())
+		if err != nil {
+			rc.logger.Error("unable to set L1 head to submitted block. Cause: %w", err)
+		}
 		return rc.rejectBlockErr(errBlockAlreadyProcessed)
 	}
 	if !errors.Is(err, errutil.ErrNotFound) {
@@ -306,10 +311,13 @@ func (rc *RollupChain) insertAndStoreL1Block(block types.Block, isLatest bool) e
 		// Do not store the block if the L1 chain insertion failed
 		return rc.rejectBlockErr(err)
 	}
-	rc.logger.Trace("block inserted successfully",
-		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
 
-	rc.storage.StoreBlock(&block)
+	err = rc.storage.StoreL1HeadBlock(&block)
+	if err != nil {
+		return fmt.Errorf("failed to store L1 block, processing cannot continue. Cause: %w", err)
+	}
+	rc.logger.Error("§§§ block inserted successfully",
+		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
 	return nil
 }
 

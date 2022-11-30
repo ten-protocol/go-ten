@@ -16,8 +16,10 @@ import (
 type BlockResolver interface {
 	// FetchBlock returns the L1 Block with the given hash.
 	FetchBlock(blockHash common.L1RootHash) (*types.Block, error)
-	// StoreBlock persists the L1 Block
-	StoreBlock(block *types.Block)
+	// StoreL1HeadBlock stores L1 blocks (which should only be stored when they are the head of the chain that is known to the enclave)
+	StoreL1HeadBlock(block *types.Block) error
+	// SetL1Head sets the L1 canonical head to the given block (used if block has already been ingested but head has rewound/moved)
+	SetL1Head(block gethcommon.Hash) error
 	// ParentBlock returns the L1 Block's parent.
 	ParentBlock(block *types.Block) (*types.Block, error)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise

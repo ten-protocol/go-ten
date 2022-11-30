@@ -116,9 +116,29 @@ func (s *storageImpl) FetchRollups(height uint64) ([]*core.Rollup, error) {
 	return obscurorawdb.ReadRollupsForHeight(s.db, height)
 }
 
-func (s *storageImpl) StoreBlock(b *types.Block) {
+// SetL1Head L1 blocks should only be stored when they are the head of the chain that is known to the enclave
+func (s *storageImpl) SetL1Head(hash gethcommon.Hash) error {
 	s.assertSecretAvailable()
-	rawdb.WriteBlock(s.db, b)
+	batch := s.db.NewBatch()
+
+	rawdb.WriteHeadHeaderHash(batch, hash)
+	if err := batch.Write(); err != nil {
+		return fmt.Errorf("could not save new head. Cause: %w", err)
+	}
+	return nil
+}
+
+// StoreL1HeadBlock L1 blocks should only be stored when they are the head of the chain that is known to the enclave
+func (s *storageImpl) StoreL1HeadBlock(b *types.Block) error {
+	s.assertSecretAvailable()
+	batch := s.db.NewBatch()
+
+	rawdb.WriteBlock(batch, b)
+	rawdb.WriteHeadHeaderHash(batch, b.Hash())
+	if err := batch.Write(); err != nil {
+		return fmt.Errorf("could not save new head. Cause: %w", err)
+	}
+	return nil
 }
 
 func (s *storageImpl) FetchBlock(blockHash common.L1RootHash) (*types.Block, error) {
@@ -276,8 +296,6 @@ func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.
 	if err := obscurorawdb.WriteBlockLogs(batch, heads.HeadBlock, logs); err != nil {
 		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
-
-	rawdb.WriteHeadHeaderHash(batch, heads.HeadBlock)
 
 	if err := batch.Write(); err != nil {
 		return fmt.Errorf("could not save new head. Cause: %w", err)

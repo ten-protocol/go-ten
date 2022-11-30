@@ -509,7 +509,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		return fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
 
-	if rollup.Header != nil {
+	if rollup != nil && rollup.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(rollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.

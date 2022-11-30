@@ -186,7 +186,10 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	m.Resolver.StoreBlock(common.GenesisBlock)
+	err := m.Resolver.StoreL1HeadBlock(common.GenesisBlock)
+	if err != nil {
+		m.logger.Crit("unable to store L1 block. Cause: %w", err)
+	}
 	head := m.setHead(common.GenesisBlock)
 
 	for {
@@ -228,8 +231,11 @@ func (m *Node) Start() {
 }
 
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
-	m.Resolver.StoreBlock(b)
-	_, err := m.Resolver.FetchBlock(b.Header().ParentHash)
+	err := m.Resolver.StoreL1HeadBlock(b)
+	if err != nil {
+		m.logger.Crit("unable to store new L1 head block. Cause: %w", b)
+	}
+	_, err = m.Resolver.FetchBlock(b.Header().ParentHash)
 	// only proceed if the parent is available
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {

@@ -19,6 +19,7 @@ import (
 // Received blocks ar stored here
 type blockResolverInMem struct {
 	blockCache map[common.L1RootHash]*types.Block
+	head       common.L1RootHash
 	m          sync.RWMutex
 }
 
@@ -37,10 +38,19 @@ func NewResolver() db.BlockResolver {
 	}
 }
 
-func (n *blockResolverInMem) StoreBlock(block *types.Block) {
+func (n *blockResolverInMem) StoreL1HeadBlock(block *types.Block) error {
 	n.m.Lock()
 	defer n.m.Unlock()
 	n.blockCache[block.Hash()] = block
+	n.head = block.Hash()
+	return nil
+}
+
+func (n *blockResolverInMem) SetL1Head(hash common.L1RootHash) error {
+	n.m.Lock()
+	defer n.m.Unlock()
+	n.head = hash
+	return nil
 }
 
 func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, error) {
@@ -57,17 +67,7 @@ func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, e
 func (n *blockResolverInMem) FetchHeadBlock() (*types.Block, error) {
 	n.m.RLock()
 	defer n.m.RUnlock()
-	var max *types.Block
-	for k := range n.blockCache {
-		bh := n.blockCache[k]
-		if max == nil || max.NumberU64() < bh.NumberU64() {
-			max = bh
-		}
-	}
-	if max == nil {
-		return nil, errutil.ErrNotFound
-	}
-	return max, nil
+	return n.FetchBlock(n.head)
 }
 
 func (n *blockResolverInMem) ParentBlock(b *types.Block) (*types.Block, error) {
