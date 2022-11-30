@@ -97,15 +97,10 @@ func New(
 	}
 }
 
-func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, *types.Block, error) {
-	b, err := rc.storage.FetchBlock(blkHash)
-	if err != nil {
-		rc.logger.Crit("Could not retrieve the block used as proof for the genesis rollup.", log.ErrKey, err)
-	}
-
+func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, error) {
 	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	rolGenesis := obscurocore.NewRollup(
@@ -120,7 +115,7 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 	)
 	rc.signRollup(rolGenesis)
 
-	return rolGenesis, b, nil
+	return rolGenesis, nil
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block

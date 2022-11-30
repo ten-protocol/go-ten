@@ -119,8 +119,7 @@ type BlockSubmissionResponse struct {
 
 // ProduceGenesisResponse is the response sent from the enclave back to the node after requesting the production of the genesis rollup.
 type ProduceGenesisResponse struct {
-	GenesisRollup ExtRollup     // The genesis rollup.
-	BlockHeader   *types.Header // The header of the block containing the genesis rollup.
+	GenesisRollup ExtRollup // The genesis rollup.
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block

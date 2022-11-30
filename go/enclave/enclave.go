@@ -236,14 +236,13 @@ func (e *enclaveImpl) Start(block types.Block) error {
 }
 
 func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ProduceGenesisResponse, error) {
-	rolGenesis, b, err := e.chain.ProduceGenesis(blkHash)
+	rolGenesis, err := e.chain.ProduceGenesis(blkHash)
 	if err != nil {
 		return nil, err
 	}
 
 	return &common.ProduceGenesisResponse{
 		GenesisRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
-		BlockHeader:   b.Header(),
 	}, nil
 }
 
