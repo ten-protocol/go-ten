@@ -242,12 +242,12 @@ func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
 	return block, nil
 }
 
-func (s *storageImpl) FetchL2Head(hash common.L1RootHash) (*common.L2RootHash, error) {
-	return obscurorawdb.ReadL2Head(s.db, hash)
+func (s *storageImpl) FetchRollupForL1Block(blockHash common.L1RootHash) (*common.L2RootHash, error) {
+	return obscurorawdb.ReadL2Head(s.db, blockHash)
 }
 
-func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
-	logs, err := obscurorawdb.ReadBlockLogs(s.db, hash)
+func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error) {
+	logs, err := obscurorawdb.ReadBlockLogs(s.db, blockHash)
 	if err != nil {
 		// TODO - Return the error itself, once we move from `errutil.ErrNotFound` to `ethereum.NotFound`
 		return nil, errutil.ErrNotFound
