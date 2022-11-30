@@ -221,25 +221,18 @@ func (rc *RollupChain) updateState(block *types.Block) (*obscurocore.HeadsAfterL
 	}
 
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
-	genesisRollup, err := rc.storage.FetchGenesisRollup()
-	if err != nil {
-		// If there is no genesis yet and no rollups have arrived, there is nothing to do
-		if errors.Is(err, errutil.ErrNotFound) && len(rollupsInBlock) == 0 {
-			return nil, nil //nolint:nilnil
-		}
-		if !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
-		}
-	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handles the case of the block containing the genesis being processed multiple times.
-	isGenesisRollupInBlock, headsAfterGenesisRollup, err := rc.handleGenesisRollup(block, rollupsInBlock, genesisRollup)
+	isPreGenesis, isGenesisRollupInBlock, headsAfterGenesisRollup, err := rc.handleGenesisRollup(block, rollupsInBlock)
 	if err != nil {
 		return nil, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
 	}
 	if isGenesisRollupInBlock {
 		return headsAfterGenesisRollup, nil
+	}
+	if isPreGenesis {
+		return nil, nil //nolint:nilnil
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
@@ -249,23 +242,21 @@ func (rc *RollupChain) updateState(block *types.Block) (*obscurocore.HeadsAfterL
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
 		}
+
 		// We recursively calculate the state after the parent.
 		parentBlock, err := rc.storage.FetchBlock(block.ParentHash())
 		if err != nil {
-			rc.logger.Crit("Could not retrieve parent block when calculating block state.", log.ErrKey, err)
+			return nil, fmt.Errorf("could not retrieve parent block when calculating block state. Cause: %w", err)
 		}
 		headsAfterParentBlock, err = rc.updateState(parentBlock)
 		if err != nil {
 			return nil, err
 		}
 	}
-
 	if headsAfterParentBlock == nil {
-		rc.logger.Crit(fmt.Sprintf("Could not calculate parent block state when calculating block state. BlockNum=%d. \n Block: %d, Block Parent: %d  ",
-			block.Number(),
-			common.ShortHash(block.Hash()),
-			common.ShortHash(block.Header().ParentHash),
-		))
+		return nil, fmt.Errorf("could not calculate parent block state when calculating block state. BlockNum=%d. \n Block: %d, Block Parent: %d. Cause: %w",
+			block.Number(), common.ShortHash(block.Hash()), common.ShortHash(block.Header().ParentHash), err,
+		)
 	}
 
 	headsAfterL1Block, headRollup, receipts := rc.calculateHeadsAfterL1Block(block, headsAfterParentBlock, rollupsInBlock)
@@ -286,23 +277,35 @@ func (rc *RollupChain) updateState(block *types.Block) (*obscurocore.HeadsAfterL
 	return headsAfterL1Block, nil
 }
 
-func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (isGenesisRollupInBlock bool, genesisState *obscurocore.HeadsAfterL1Block, err error) {
+func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*obscurocore.Rollup) (isPreGenesis bool, isGenesisRollupInBlock bool, genesisState *obscurocore.HeadsAfterL1Block, err error) {
+	genesisRollup, err := rc.storage.FetchGenesisRollup()
+	if err != nil {
+		// If there is no genesis yet and no rollups have arrived, there is nothing to do
+		if errors.Is(err, errutil.ErrNotFound) && len(rollupsInBlock) == 0 {
+			return true, false, nil, nil
+		}
+		if !errors.Is(err, errutil.ErrNotFound) {
+			return false, false, nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
+		}
+	}
+
+	// We've already found the genesis rollup.
 	if genesisRollup != nil {
 		// Re-processing the block that contains the genesis rollup. This can happen as blocks can be fed to the enclave
 		// multiple times. We don't update the state and move on.
-		if len(rollups) == 1 && bytes.Equal(rollups[0].Header.Hash().Bytes(), genesisRollup.Hash().Bytes()) {
-			return true, nil, nil
+		if len(rollupsInBlock) == 1 && bytes.Equal(rollupsInBlock[0].Header.Hash().Bytes(), genesisRollup.Hash().Bytes()) {
+			return false, true, nil, nil
 		}
-		return false, nil, nil
+		return false, false, nil, nil
 	}
 
 	// The incoming block holds the genesis rollup. Calculate and return the new block state.
 	// todo change this to an hardcoded hash on testnet/mainnet
 	rc.logger.Info("Found genesis rollup", "l1Height", b.NumberU64(), "l1Hash", b.Hash())
-	genesis := rollups[0]
+	genesis := rollupsInBlock[0]
 	err = rc.storage.StoreGenesisRollup(genesis)
 	if err != nil {
-		return false, nil, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
+		return false, false, nil, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
 	}
 
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
@@ -313,15 +316,15 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocor
 	}
 	err = rc.storage.StoreNewHead(&headsAfterL1Block, genesis, nil, []*types.Log{})
 	if err != nil {
-		return false, nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
+		return false, false, nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
 	}
 
 	_, err = rc.faucet.CommitGenesisState(rc.storage)
 	if err != nil {
-		return false, nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
+		return false, false, nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
 	}
 
-	return true, &headsAfterL1Block, nil
+	return false, true, &headsAfterL1Block, nil
 }
 
 type sortByTxIndex []*types.Receipt
