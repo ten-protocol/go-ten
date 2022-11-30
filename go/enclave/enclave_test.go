@@ -260,7 +260,7 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 func TestGetBalance(t *testing.T) {
 	tests := map[string]func(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey){
 		"getBalanceSuccess":     getBalanceSuccess,
-		"getBalanceRequestFail": getBalanceRequestFail,
+		"getBalanceRequestFail": getBalanceRequestUnsuccessful,
 	}
 
 	for name, test := range tests {
@@ -332,7 +332,7 @@ func getBalanceSuccess(t *testing.T, prefund []prefundedAddress, enclave common.
 	}
 }
 
-func getBalanceRequestFail(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, _ *rpc.ViewingKey) {
+func getBalanceRequestUnsuccessful(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, _ *rpc.ViewingKey) {
 	type errorTest struct {
 		request  []interface{}
 		errorStr string
