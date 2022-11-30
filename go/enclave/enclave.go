@@ -248,18 +248,14 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	newHeadsAfterL1Block, err := e.chain.AddL1BlockAndUpdateState(block, isLatest)
+	blockSubmissionResponse, err := e.chain.AddL1BlockAndUpdateState(block, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
 	}
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
-	// We prepare the block submission response.
-	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, newHeadsAfterL1Block)
-	if err != nil {
-		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
-	}
+	// We add any secret responses.
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	// We remove any rolled-up transactions from the mempool.

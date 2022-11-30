@@ -125,7 +125,7 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 }
 
 // AddL1BlockAndUpdateState is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) AddL1BlockAndUpdateState(block types.Block, isLatest bool) (*obscurocore.HeadsAfterL1Block, error) {
+func (rc *RollupChain) AddL1BlockAndUpdateState(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
@@ -149,18 +149,11 @@ func (rc *RollupChain) AddL1BlockAndUpdateState(block types.Block, isLatest bool
 	rc.storage.StoreBlock(&block)
 
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
-	return rc.updateHeads(&block)
-}
-
-func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, headsAfterL1Block *obscurocore.HeadsAfterL1Block) (*common.BlockSubmissionResponse, error) {
-	if headsAfterL1Block == nil {
-		// not an error state, we ingested a block but no rollup head found
-		return &common.BlockSubmissionResponse{
-			UpdatedHeadRollup: false,
-		}, nil
+	headsAfterL1Block, err := rc.updateHeads(&block)
+	if err != nil {
+		return nil, rc.rejectBlockErr(err)
 	}
-	encryptedLogs := rc.getEncryptedLogs(block, headsAfterL1Block)
-	return rc.newBlockSubmissionResponse(headsAfterL1Block, encryptedLogs), nil
+	return rc.produceBlockSubmissionResponse(&block, headsAfterL1Block)
 }
 
 // NewRollup creates a rollup, signs it, checks it, and stores it.
@@ -367,21 +360,28 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.HeadsAfterL1Block, logs map[gethrpc.ID][]byte) *common.BlockSubmissionResponse {
-	headRollup, err := rc.storage.FetchRollup(bs.HeadRollup)
+func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, headsAfterL1Block *obscurocore.HeadsAfterL1Block) (*common.BlockSubmissionResponse, error) {
+	if headsAfterL1Block == nil {
+		// not an error state, we ingested a block but no rollup head found
+		return &common.BlockSubmissionResponse{
+			UpdatedHeadRollup: false,
+		}, nil
+	}
+
+	headRollup, err := rc.storage.FetchRollup(headsAfterL1Block.HeadRollup)
 	if err != nil {
 		rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
 	}
-
 	var ingestedRollupHeader *common.Header
-	if bs.UpdatedHeadRollup {
+	if headsAfterL1Block.UpdatedHeadRollup {
 		ingestedRollupHeader = headRollup.Header
 	}
+
 	return &common.BlockSubmissionResponse{
-		UpdatedHeadRollup:    bs.UpdatedHeadRollup,
+		UpdatedHeadRollup:    headsAfterL1Block.UpdatedHeadRollup,
 		IngestedRollupHeader: ingestedRollupHeader,
-		SubscribedLogs:       logs,
-	}
+		SubscribedLogs:       rc.getEncryptedLogs(*block, headsAfterL1Block),
+	}, nil
 }
 
 // Recursively calculates and stores the block state, receipts and logs for the given block.
