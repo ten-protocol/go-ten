@@ -255,10 +255,10 @@ func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
 	return logs, nil
 }
 
-func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.Rollup, receipts []*types.Receipt) error {
+func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
 	batch := s.db.NewBatch()
 
-	if heads.UpdatedHeadRollup {
+	if isNewRollup {
 		err := s.storeNewRollup(batch, rollup, receipts)
 		if err != nil {
 			return err

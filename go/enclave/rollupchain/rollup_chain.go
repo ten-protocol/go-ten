@@ -373,7 +373,7 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, headsA
 		rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
 	}
 	var ingestedRollupHeader *common.Header
-	if headsAfterL1Block.UpdatedHeadRollup {
+	if headRollup != nil {
 		ingestedRollupHeader = headRollup.Header
 	}
 
@@ -413,8 +413,8 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*core.HeadsAfterL1Block,
 		return nil, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
 	}
 
-	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
-		common.ShortHash(block.Hash()), newHeads.UpdatedHeadRollup, common.ShortHash(newHeads.HeadRollup)))
+	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: r_%d, ",
+		common.ShortHash(block.Hash()), common.ShortHash(newHeads.HeadRollup)))
 
 	return newHeads, nil
 }
@@ -454,11 +454,10 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*cor
 
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
 	headsAfterL1Block := core.HeadsAfterL1Block{
-		HeadBlock:         b.Hash(),
-		HeadRollup:        genesis.Hash(),
-		UpdatedHeadRollup: true,
+		HeadBlock:  b.Hash(),
+		HeadRollup: genesis.Hash(),
 	}
-	err = rc.storage.StoreNewHeads(&headsAfterL1Block, genesis, nil)
+	err = rc.storage.StoreNewHeads(&headsAfterL1Block, genesis, nil, true)
 	if err != nil {
 		return nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
 	}
@@ -622,9 +621,8 @@ func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBl
 	//  rollup. We should still update the block head.
 
 	newHeads := core.HeadsAfterL1Block{
-		HeadBlock:         block.Hash(),
-		HeadRollup:        newHeadRollup.Hash(),
-		UpdatedHeadRollup: isUpdated,
+		HeadBlock:  block.Hash(),
+		HeadRollup: newHeadRollup.Hash(),
 	}
 	var rollupTxReceipts []*types.Receipt
 	if isUpdated {
@@ -633,7 +631,7 @@ func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBl
 			return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
 		}
 	}
-	err = rc.storage.StoreNewHeads(&newHeads, newHeadRollup, rollupTxReceipts)
+	err = rc.storage.StoreNewHeads(&newHeads, newHeadRollup, rollupTxReceipts, isUpdated)
 	if err != nil {
 		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
