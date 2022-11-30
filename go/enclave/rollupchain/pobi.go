@@ -7,9 +7,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-// FindNextRollup returns the next rollup to publish, and a boolean indicating whether any of the provided rollups are suitable to be published next.
+// Returns the next rollup to publish, and a boolean indicating whether any of the provided rollups are suitable to be published next.
 // todo - add statistics to determine why there are conflicts.
-func FindNextRollup(parentRollup *obscurocore.Rollup, rollups []*obscurocore.Rollup, blockResolver db.BlockResolver) (*obscurocore.Rollup, bool) {
+func selectNextRollup(parentRollup *obscurocore.Rollup, rollups []*obscurocore.Rollup, blockResolver db.BlockResolver) (*obscurocore.Rollup, bool) {
 	var nextRollup *obscurocore.Rollup
 
 	// We iterate over the proposed rollups to select the best next rollup.

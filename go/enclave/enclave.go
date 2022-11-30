@@ -235,22 +235,20 @@ func (e *enclaveImpl) Start(block types.Block) error {
 	return nil
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ProduceGenesisResponse, error) {
-	rolGenesis, b, err := e.chain.ProduceGenesis(blkHash)
+func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup, error) {
+	genesisRollup, err := e.chain.ProduceGenesis(blkHash)
 	if err != nil {
 		return nil, err
 	}
 
-	return &common.ProduceGenesisResponse{
-		GenesisRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
-		BlockHeader:   b.Header(),
-	}, nil
+	genesisExtRollup := genesisRollup.ToExtRollup(e.transactionBlobCrypto)
+	return &genesisExtRollup, nil
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	newHeadsAfterL1Block, err := e.chain.UpdateStateFromL1Block(block, isLatest)
+	newHeadsAfterL1Block, err := e.chain.AddL1BlockAndUpdateState(block, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)

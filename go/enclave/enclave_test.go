@@ -472,7 +472,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 		UpdatedHeadRollup: true,
 	}
 
-	return enclave.(*enclaveImpl).storage.StoreNewHead(headsAfterL1Block, genRollup, nil, nil)
+	return enclave.(*enclaveImpl).storage.StoreNewHeads(headsAfterL1Block, genRollup, nil)
 }
 
 type prefundedAddress struct {

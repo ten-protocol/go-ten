@@ -103,8 +103,8 @@ func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGen
 		return nil, err
 	}
 
-	produceGenesisResponse := rpc.ToProduceGenesisResponseMsg(genesisRollup)
-	return &generated.ProduceGenesisResponse{ProduceGenesisResponse: &produceGenesisResponse}, nil
+	genesisRollupMsg := rpc.ToExtRollupMsg(genesisRollup)
+	return &generated.ProduceGenesisResponse{GenesisRollup: &genesisRollupMsg}, nil
 }
 
 func (s *server) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
