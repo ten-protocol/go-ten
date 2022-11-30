@@ -405,7 +405,7 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*core.HeadsAfterL1Block,
 	headsAfterGenesisRollup, err := rc.handleGenesisRollup(block, rollupsInBlock)
 	if err != nil {
 		if errors.Is(err, errIsPreGenesis) || errors.Is(err, errIsGenesisRollupInBlock) {
-			// Either we're still waiting for the genesis rollup, or its already stored and we can return it immediately.
+			// Either we're still waiting for the genesis rollup, or it's already stored and we can return it immediately.
 			return headsAfterGenesisRollup, nil
 		}
 		return nil, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
