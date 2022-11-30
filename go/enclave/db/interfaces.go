@@ -49,8 +49,6 @@ type RollupResolver interface {
 	StoreGenesisRollup(rol *core.Rollup) error
 	// FetchGenesisRollup returns the rollup genesis.
 	FetchGenesisRollup() (*core.Rollup, error)
-	// FetchHeadRollup returns the current head rollup
-	FetchHeadRollup() (*core.Rollup, error)
 }
 
 type HeadsAfterL1BlockStorage interface {

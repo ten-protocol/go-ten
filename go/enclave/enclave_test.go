@@ -524,7 +524,11 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	if err != nil {
 		return err
 	}
-	headRollup, err := enclave.(*enclaveImpl).storage.FetchHeadRollup()
+	headRollupHash, err := enclave.(*enclaveImpl).storage.FetchL2Head(headBlock.Hash())
+	if err != nil {
+		return err
+	}
+	headRollup, err := enclave.(*enclaveImpl).storage.FetchRollup(*headRollupHash)
 	if err != nil {
 		return err
 	}

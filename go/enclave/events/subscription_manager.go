@@ -80,14 +80,22 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	subscription.Filter.ToBlock = nil
 
 	// We set the FromBlock to the current rollup height, so that historical logs aren't returned.
-	rollup, err := s.storage.FetchHeadRollup()
+	_, l2Head, err := s.storage.FetchCurrentHeads()
+	if err != nil {
+		return fmt.Errorf("unable to fetch current heads. Cause: %w", err)
+	}
+	headRollup, err := s.storage.FetchRollup(*l2Head)
+	if err != nil {
+		return fmt.Errorf("unable to fetch head rollup")
+	}
+
 	if err != nil {
 		return fmt.Errorf("unable to fetch head rollup. Cause: %w", err)
 	}
-	if rollup == nil {
+	if headRollup == nil {
 		return fmt.Errorf("no head rollup is stored")
 	}
-	subscription.Filter.FromBlock = big.NewInt(0).Add(rollup.Number(), big.NewInt(1))
+	subscription.Filter.FromBlock = big.NewInt(0).Add(headRollup.Number(), big.NewInt(1))
 
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()

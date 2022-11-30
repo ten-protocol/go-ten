@@ -61,18 +61,6 @@ func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, error) {
 	return rollup, nil
 }
 
-func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
-	hash, err := obscurorawdb.ReadHeadRollupHash(s.db)
-	if err != nil {
-		return nil, err
-	}
-	r, err := s.FetchRollup(*hash)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
-}
-
 func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 	s.assertSecretAvailable()
 
@@ -210,11 +198,18 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 }
 
 func (s *storageImpl) HealthCheck() (bool, error) {
-	headRollup, err := s.FetchHeadRollup()
+	_, l2Head, err := s.FetchCurrentHeads()
 	if err != nil {
-		s.logger.Error("unable to HealthCheck storage", "err", err)
+		s.logger.Error("unable to fetch current heads to HealthCheck storage", "err", err)
 		return false, err
 	}
+
+	headRollup, err := s.FetchRollup(*l2Head)
+	if err != nil {
+		s.logger.Error("unable to fetch rollup to HealthCheck storage", "err", err)
+		return false, err
+	}
+
 	return headRollup != nil, nil
 }
 
@@ -391,9 +386,6 @@ func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, rec
 	}
 	if err := obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup); err != nil {
 		return fmt.Errorf("could not write transaction lookup entries by block. Cause: %w", err)
-	}
-	if err := obscurorawdb.WriteHeadRollupHash(batch, rollup.Hash()); err != nil {
-		return fmt.Errorf("could not write head rollup hash. Cause: %w", err)
 	}
 	if err := obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
