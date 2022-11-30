@@ -516,7 +516,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	}
 
 	// make sure the genesis is stored as the new Head of the rollup chain
-	return enclave.(*enclaveImpl).storage.StoreNewHeads(blk.Hash(), genRollup.Hash(), genRollup, nil, true)
+	return enclave.(*enclaveImpl).storage.StoreNewHeads(blk.Hash(), genRollup, nil, true)
 }
 
 func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAddress) error {
@@ -577,7 +577,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	}
 
 	// make sure the genesis is stored as the new Head of the rollup chain
-	err = enclave.(*enclaveImpl).storage.StoreNewHeads(blk.Hash(), rollup.Hash(), rollup, nil, true)
+	err = enclave.(*enclaveImpl).storage.StoreNewHeads(blk.Hash(), rollup, nil, true)
 	if err != nil {
 		return err
 	}

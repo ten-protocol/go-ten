@@ -61,7 +61,7 @@ type HeadsAfterL1BlockStorage interface {
 	// FetchCurrentL2Head returns the current L2 chain head.
 	FetchCurrentL2Head() (*common.L2RootHash, error)
 	// StoreNewHeads saves the new chain heads alongside its rollup, receipts and logs.
-	StoreNewHeads(l1Head common.L1RootHash, l2Head common.L2RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error
+	StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
