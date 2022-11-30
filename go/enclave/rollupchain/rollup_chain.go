@@ -315,7 +315,7 @@ func (rc *RollupChain) getHeadsAfterParentBlock(parentBlockHash gethcommon.Hash)
 			return nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
 		}
 
-		// We recursively calculate the state after the parent.
+		// We don't have the state after the parent block stored. We recursively calculate it.
 		parentBlock, err := rc.storage.FetchBlock(parentBlockHash)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve parent block when calculating block state. Cause: %w", err)
