@@ -242,10 +242,8 @@ func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
 	return block, nil
 }
 
-// todo - joel - do some renaming
-
-func (s *storageImpl) FetchHeads(hash common.L1RootHash) (*common.L2RootHash, error) {
-	return obscurorawdb.ReadHeadsAfterL1Block(s.db, hash)
+func (s *storageImpl) FetchL2Head(hash common.L1RootHash) (*common.L2RootHash, error) {
+	return obscurorawdb.ReadL2Head(s.db, hash)
 }
 
 func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
@@ -267,7 +265,7 @@ func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, l2Head common.L2Ro
 		}
 	}
 
-	if err := obscurorawdb.WriteHeadsAfterL1Block(batch, l1Head, l2Head); err != nil {
+	if err := obscurorawdb.WriteHeads(batch, l1Head, l2Head); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
@@ -316,7 +314,7 @@ func (s *storageImpl) FetchCurrentHeadsAfterL1Block() (*common.L1RootHash, *comm
 		return nil, nil, errutil.ErrNotFound
 	}
 
-	l2Head, err := obscurorawdb.ReadHeadsAfterL1Block(s.db, l1Head)
+	l2Head, err := obscurorawdb.ReadL2Head(s.db, l1Head)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not retrieve block state for head. Cause: %w", err)
 	}

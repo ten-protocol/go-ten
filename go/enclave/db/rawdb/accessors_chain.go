@@ -185,16 +185,14 @@ func readAllHashes(db ethdb.Iteratee, number uint64) []gethcommon.Hash {
 	return hashes
 }
 
-// todo - joel - do some renaming
-
-func WriteHeadsAfterL1Block(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
+func WriteHeads(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
 	if err := db.Put(headsAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
 		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
 	}
 	return nil
 }
 
-func ReadHeadsAfterL1Block(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
+func ReadL2Head(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
 	data, err := kv.Get(headsAfterL1BlockKey(l1Head))
 	if err != nil {
 		return nil, errutil.ErrNotFound

@@ -54,8 +54,8 @@ type RollupResolver interface {
 }
 
 type HeadsAfterL1BlockStorage interface {
-	// FetchHeads returns the chain heads for a given L1 block hash.
-	FetchHeads(blockHash common.L1RootHash) (*common.L2RootHash, error)
+	// FetchL2Head returns the L2 chain head for a given L1 block hash.
+	FetchL2Head(blockHash common.L1RootHash) (*common.L2RootHash, error)
 	// FetchLogs returns the block's logs.
 	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 	// FetchCurrentHeadsAfterL1Block returns the current chain heads.

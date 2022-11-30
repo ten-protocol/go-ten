@@ -105,13 +105,13 @@ func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.E
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block to produce rollup. Cause: %w", err)
 	}
-	heads, err := rc.storage.FetchHeads(*blockHash)
+	l2Head, err := rc.storage.FetchL2Head(*blockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve chain heads to produce rollup. Cause: %w", err)
 	}
 
 	// We create the new rollup, sign it, check it, and store it.
-	rollup, err := rc.produceRollup(block, heads)
+	rollup, err := rc.produceRollup(block, l2Head)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
@@ -386,7 +386,7 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head
 // Recursively calculates and stores the block state, receipts and logs for the given block.
 func (rc *RollupChain) updateHeads(block *types.Block) (*common.L1RootHash, *common.L2RootHash, error) {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
-	l2Head, err := rc.storage.FetchHeads(block.Hash())
+	l2Head, err := rc.storage.FetchL2Head(block.Hash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return nil, nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
 	}
@@ -456,8 +456,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*cor
 	l1Head := b.Hash()
 	l2Head := genesis.Hash()
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	// todo - joel - why pass in the rollup and the hash?
-	err = rc.storage.StoreNewHeads(l1Head, l2Head, genesis, nil, true)
+	err = rc.storage.StoreNewHeads(b.Hash(), genesis.Hash(), genesis, nil, true)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
 	}
@@ -472,7 +471,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*cor
 
 func (rc *RollupChain) getHeadsAfterParentBlock(parentBlockHash gethcommon.Hash) (*common.L1RootHash, *common.L2RootHash, error) {
 	l1Head := &parentBlockHash
-	l2Head, err := rc.storage.FetchHeads(parentBlockHash)
+	l2Head, err := rc.storage.FetchL2Head(parentBlockHash)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil, fmt.Errorf("could not retrieve parent block state. Cause: %w", err)
