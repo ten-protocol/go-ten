@@ -255,23 +255,23 @@ func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
 	return logs, nil
 }
 
-func (s *storageImpl) StoreNewHead(state *core.HeadsAfterL1Block, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error {
+func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error {
 	batch := s.db.NewBatch()
 
-	if state.UpdatedHeadRollup {
+	if heads.UpdatedHeadRollup {
 		err := s.storeNewRollup(batch, rollup, receipts)
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := obscurorawdb.WriteHeadsAfterL1Block(batch, state); err != nil {
+	if err := obscurorawdb.WriteHeadsAfterL1Block(batch, heads); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteBlockLogs(batch, state.HeadBlock, logs); err != nil {
+	if err := obscurorawdb.WriteBlockLogs(batch, heads.HeadBlock, logs); err != nil {
 		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
-	rawdb.WriteHeadHeaderHash(batch, state.HeadBlock)
+	rawdb.WriteHeadHeaderHash(batch, heads.HeadBlock)
 
 	if err := batch.Write(); err != nil {
 		return fmt.Errorf("could not save new head. Cause: %w", err)
