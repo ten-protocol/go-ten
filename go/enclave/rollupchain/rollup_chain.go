@@ -456,7 +456,6 @@ func (rc *RollupChain) handleGenesisRollup(block *types.Block, rollupsInBlock []
 		return nil, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
 	}
 
-	l2Head := genesisRollup.Hash()
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
 	err = rc.storage.StoreNewHeads(block.Hash(), genesisRollup, nil, true)
 	if err != nil {
@@ -468,6 +467,7 @@ func (rc *RollupChain) handleGenesisRollup(block *types.Block, rollupsInBlock []
 		return nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
 	}
 
+	l2Head := genesisRollup.Hash()
 	return &l2Head, errIsGenesisRollupInBlock
 }
 
