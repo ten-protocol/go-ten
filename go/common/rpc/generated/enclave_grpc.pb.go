@@ -115,7 +115,7 @@ func (c *enclaveProtoClient) InitEnclave(ctx context.Context, in *InitEnclaveReq
 
 func (c *enclaveProtoClient) ProduceGenesis(ctx context.Context, in *ProduceGenesisRequest, opts ...grpc.CallOption) (*ProduceGenesisResponse, error) {
 	out := new(ProduceGenesisResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/ProduceGenesisRollup", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/ProduceGenesis", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +348,7 @@ func (UnimplementedEnclaveProtoServer) InitEnclave(context.Context, *InitEnclave
 	return nil, status.Errorf(codes.Unimplemented, "method InitEnclave not implemented")
 }
 func (UnimplementedEnclaveProtoServer) ProduceGenesis(context.Context, *ProduceGenesisRequest) (*ProduceGenesisResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ProduceGenesisRollup not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method ProduceGenesis not implemented")
 }
 func (UnimplementedEnclaveProtoServer) Start(context.Context, *StartRequest) (*StartResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
@@ -496,7 +496,7 @@ func _EnclaveProto_ProduceGenesis_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/ProduceGenesisRollup",
+		FullMethod: "/generated.EnclaveProto/ProduceGenesis",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).ProduceGenesis(ctx, req.(*ProduceGenesisRequest))
@@ -834,7 +834,7 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_InitEnclave_Handler,
 		},
 		{
-			MethodName: "ProduceGenesisRollup",
+			MethodName: "ProduceGenesis",
 			Handler:    _EnclaveProto_ProduceGenesis_Handler,
 		},
 		{

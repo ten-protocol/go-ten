@@ -3200,7 +3200,7 @@ var file_enclave_proto_depIdxs = []int32{
 	2,  // 12: generated.EnclaveProto.Attestation:input_type -> generated.AttestationRequest
 	4,  // 13: generated.EnclaveProto.GenerateSecret:input_type -> generated.GenerateSecretRequest
 	6,  // 14: generated.EnclaveProto.InitEnclave:input_type -> generated.InitEnclaveRequest
-	8,  // 15: generated.EnclaveProto.ProduceGenesisRollup:input_type -> generated.ProduceGenesisRequest
+	8,  // 15: generated.EnclaveProto.ProduceGenesis:input_type -> generated.ProduceGenesisRequest
 	10, // 16: generated.EnclaveProto.Start:input_type -> generated.StartRequest
 	12, // 17: generated.EnclaveProto.SubmitL1Block:input_type -> generated.SubmitBlockRequest
 	14, // 18: generated.EnclaveProto.ProduceRollup:input_type -> generated.ProduceRollupRequest
@@ -3222,7 +3222,7 @@ var file_enclave_proto_depIdxs = []int32{
 	3,  // 34: generated.EnclaveProto.Attestation:output_type -> generated.AttestationResponse
 	5,  // 35: generated.EnclaveProto.GenerateSecret:output_type -> generated.GenerateSecretResponse
 	7,  // 36: generated.EnclaveProto.InitEnclave:output_type -> generated.InitEnclaveResponse
-	9,  // 37: generated.EnclaveProto.ProduceGenesisRollup:output_type -> generated.ProduceGenesisResponse
+	9,  // 37: generated.EnclaveProto.ProduceGenesis:output_type -> generated.ProduceGenesisResponse
 	11, // 38: generated.EnclaveProto.Start:output_type -> generated.StartResponse
 	13, // 39: generated.EnclaveProto.SubmitL1Block:output_type -> generated.SubmitBlockResponse
 	15, // 40: generated.EnclaveProto.ProduceRollup:output_type -> generated.ProduceRollupResponse
