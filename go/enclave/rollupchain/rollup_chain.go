@@ -440,7 +440,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*cor
 			return nil, errIsGenesisRollupInBlock
 		}
 		// We return - we do not need to handle the genesis rollup, since we already have.
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 
 	// The incoming block holds the genesis rollup. Calculate and return the new block state.
