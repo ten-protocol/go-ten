@@ -99,65 +99,8 @@ func New(
 	}
 }
 
-func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, error) {
-	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
-	if err != nil {
-		return nil, err
-	}
-
-	rolGenesis := obscurocore.NewRollup(
-		blkHash,
-		nil,
-		common.L2GenesisHeight,
-		gethcommon.HexToAddress("0x0"),
-		[]*common.L2Tx{},
-		[]common.Withdrawal{},
-		common.GenerateNonce(),
-		*preFundGenesisState,
-	)
-
-	err = rc.signRollup(rolGenesis)
-	if err != nil {
-		return nil, fmt.Errorf("could not sign genesis rollup. Cause: %w", err)
-	}
-
-	return rolGenesis, nil
-}
-
-// AddL1BlockAndUpdateState is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) AddL1BlockAndUpdateState(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
-	rc.blockProcessingMutex.Lock()
-	defer rc.blockProcessingMutex.Unlock()
-
-	// We check whether we've already processed the block.
-	_, err := rc.storage.FetchBlock(block.Hash())
-	if err == nil {
-		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
-	}
-	if !errors.Is(err, errutil.ErrNotFound) {
-		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
-	}
-
-	// We insert the block into the L1 chain and store it.
-	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
-	if err != nil {
-		// Do not store the block if the L1 chain insertion failed
-		return nil, rc.rejectBlockErr(err)
-	}
-	rc.logger.Trace("block inserted successfully",
-		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
-	rc.storage.StoreBlock(&block)
-
-	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
-	headsAfterL1Block, err := rc.updateHeads(&block)
-	if err != nil {
-		return nil, rc.rejectBlockErr(err)
-	}
-	return rc.produceBlockSubmissionResponse(&block, headsAfterL1Block)
-}
-
-// NewRollup creates a rollup, signs it, checks it, and stores it.
-func (rc *RollupChain) NewRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
+// ProduceNewRollup creates a rollup, signs it, checks it, and stores it.
+func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
 	block, err := rc.storage.FetchBlock(*blockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block to produce rollup. Cause: %w", err)
@@ -199,6 +142,64 @@ func (rc *RollupChain) NewRollup(blockHash *common.L1RootHash) (*common.ExtRollu
 		common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(extRollup.Hash())))
 
 	return &extRollup, nil
+}
+
+// ProduceGenesisRollup creates a genesis rollup linked to the provided L1 block and signs it.
+func (rc *RollupChain) ProduceGenesisRollup(blkHash gethcommon.Hash) (*obscurocore.Rollup, error) {
+	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
+	if err != nil {
+		return nil, err
+	}
+
+	rolGenesis := obscurocore.NewRollup(
+		blkHash,
+		nil,
+		common.L2GenesisHeight,
+		gethcommon.HexToAddress("0x0"),
+		[]*common.L2Tx{},
+		[]common.Withdrawal{},
+		common.GenerateNonce(),
+		*preFundGenesisState,
+	)
+
+	err = rc.signRollup(rolGenesis)
+	if err != nil {
+		return nil, fmt.Errorf("could not sign genesis rollup. Cause: %w", err)
+	}
+
+	return rolGenesis, nil
+}
+
+// ProcessL1Block is used to update the enclave with an additional L1 block.
+func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+	rc.blockProcessingMutex.Lock()
+	defer rc.blockProcessingMutex.Unlock()
+
+	// We check whether we've already processed the block.
+	_, err := rc.storage.FetchBlock(block.Hash())
+	if err == nil {
+		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
+	}
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
+	}
+
+	// We insert the block into the L1 chain and store it.
+	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
+	if err != nil {
+		// Do not store the block if the L1 chain insertion failed
+		return nil, rc.rejectBlockErr(err)
+	}
+	rc.logger.Trace("block inserted successfully",
+		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
+	rc.storage.StoreBlock(&block)
+
+	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
+	headsAfterL1Block, err := rc.updateHeads(&block)
+	if err != nil {
+		return nil, rc.rejectBlockErr(err)
+	}
+	return rc.produceBlockSubmissionResponse(&block, headsAfterL1Block)
 }
 
 func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
@@ -872,16 +873,13 @@ func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
 
 func toReceiptMap(txReceipts []*types.Receipt) map[gethcommon.Hash]*types.Receipt {
-	result := make(map[gethcommon.Hash]*types.Receipt, 0)
-	for _, r := range txReceipts {
-		result[r.TxHash] = r
+	receiptMap := make(map[gethcommon.Hash]*types.Receipt, 0)
+	for _, receipt := range txReceipts {
+		receiptMap[receipt.TxHash] = receipt
 	}
-	return result
+	return receiptMap
 }
 
 func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {
-	receipts := make([]*types.Receipt, 0)
-	receipts = append(receipts, txReceipts...)
-	receipts = append(receipts, depositReceipts...)
-	return receipts
+	return append(txReceipts, depositReceipts...)
 }

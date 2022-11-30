@@ -236,7 +236,7 @@ func (e *enclaveImpl) Start(block types.Block) error {
 }
 
 func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup, error) {
-	genesisRollup, err := e.chain.ProduceGenesis(blkHash)
+	genesisRollup, err := e.chain.ProduceGenesisRollup(blkHash)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +248,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	blockSubmissionResponse, err := e.chain.AddL1BlockAndUpdateState(block, isLatest)
+	blockSubmissionResponse, err := e.chain.ProcessL1Block(block, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
@@ -268,7 +268,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 }
 
 func (e *enclaveImpl) ProduceRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
-	return e.chain.NewRollup(blockHash)
+	return e.chain.ProduceNewRollup(blockHash)
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
