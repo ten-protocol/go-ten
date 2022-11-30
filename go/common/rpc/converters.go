@@ -37,7 +37,6 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 	}
 
 	return generated.BlockSubmissionResponseMsg{
-		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
 		UpdatedHeadRollup:       response.UpdatedHeadRollup,
 		RollupHead:              ToRollupHeaderMsg(response.IngestedRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
@@ -105,7 +104,6 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 		return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
 	}
 	return &common.BlockSubmissionResponse{
-		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
 		UpdatedHeadRollup:       msg.UpdatedHeadRollup,
 		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,

@@ -501,7 +501,7 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decodedBlock.Hash()), err)
 	}
-	err = h.storeBlockProcessingResult(result)
+	err = h.storeBlockProcessingResult(result, decodedBlock.Header())
 	if err != nil {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
@@ -587,7 +587,7 @@ func (h *host) storeAndDistributeBatch(producedRollup *common.ExtRollup) {
 	}
 }
 
-func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) error {
+func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse, blockHeader *types.Header) error {
 	// only update the host rollup headers if the enclave has found a new rollup head
 	if result.UpdatedHeadRollup {
 		// adding a header will update the head if it has a higher height
@@ -598,7 +598,7 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 	}
 
 	// adding a header will update the head if it has a higher height
-	return h.db.AddBlockHeader(result.BlockHeader)
+	return h.db.AddBlockHeader(blockHeader)
 }
 
 // Called only by the first enclave to bootstrap the network
@@ -960,11 +960,10 @@ func (h *host) bootstrapHost() types.Block {
 				h.logger.Crit("Internal error", log.ErrKey, err)
 			}
 			// todo: we need to use the latest hash info from the BlockRejectError to realign the block streaming for the enclave
-			h.logger.Info(fmt.Sprintf("Failed to ingest block b_%d. Cause: %s",
-				common.ShortHash(result.BlockHeader.Hash()), bsErr))
+			h.logger.Info(fmt.Sprintf("Failed to ingest block b_%d. Cause: %s", common.ShortHash(cb.Header().Hash()), bsErr))
 		} else {
 			// submission was successful
-			err := h.storeBlockProcessingResult(result)
+			err := h.storeBlockProcessingResult(result, cb.Header())
 			if err != nil {
 				h.logger.Crit("Could not store block processing result", log.ErrKey, err)
 			}

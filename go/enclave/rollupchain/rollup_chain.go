@@ -176,9 +176,8 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-func (rc *RollupChain) noHeadsAfterL1BlockBlockSubmissionResponse(block *types.Block) *common.BlockSubmissionResponse {
+func (rc *RollupChain) noHeadsAfterL1BlockBlockSubmissionResponse() *common.BlockSubmissionResponse {
 	return &common.BlockSubmissionResponse{
-		BlockHeader:       block.Header(),
 		UpdatedHeadRollup: false,
 	}
 }
@@ -189,17 +188,11 @@ func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.HeadsAfterL1Bl
 		rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
 	}
 
-	headBlock, err := rc.storage.FetchBlock(bs.HeadBlock)
-	if err != nil {
-		rc.logger.Crit("could not fetch block", log.ErrKey, err)
-	}
-
 	var head *common.Header
 	if bs.UpdatedHeadRollup {
 		head = headRollup.Header
 	}
 	return &common.BlockSubmissionResponse{
-		BlockHeader:          headBlock.Header(),
 		UpdatedHeadRollup:    bs.UpdatedHeadRollup,
 		IngestedRollupHeader: head,
 		SubscribedLogs:       logs,
@@ -553,7 +546,7 @@ func (rc *RollupChain) AddL1BlockAndUpdateState(block types.Block, isLatest bool
 func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, headsAfterL1Block *obscurocore.HeadsAfterL1Block) (*common.BlockSubmissionResponse, error) {
 	if headsAfterL1Block == nil {
 		// not an error state, we ingested a block but no rollup head found
-		return rc.noHeadsAfterL1BlockBlockSubmissionResponse(&block), nil
+		return rc.noHeadsAfterL1BlockBlockSubmissionResponse(), nil
 	}
 	encryptedLogs := rc.getEncryptedLogs(block, headsAfterL1Block)
 	return rc.newBlockSubmissionResponse(headsAfterL1Block, encryptedLogs), nil
