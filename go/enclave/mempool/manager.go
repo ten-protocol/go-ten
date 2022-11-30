@@ -10,7 +10,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
-	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -42,7 +42,7 @@ func New(chainID int64) Manager {
 func (db *mempoolManager) AddMempoolTx(tx *common.L2Tx) error {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
-	err := obscurocore.VerifySignature(db.obscuroChainID, tx)
+	err := core.VerifySignature(db.obscuroChainID, tx)
 	if err != nil {
 		return err
 	}
@@ -61,7 +61,7 @@ func (db *mempoolManager) FetchMempoolTxs() []*common.L2Tx {
 	return mpCopy
 }
 
-func (db *mempoolManager) RemoveMempoolTxs(rollup *obscurocore.Rollup, resolver db.RollupResolver) error {
+func (db *mempoolManager) RemoveMempoolTxs(rollup *core.Rollup, resolver db.RollupResolver) error {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 
@@ -83,7 +83,7 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *obscurocore.Rollup, resolver 
 }
 
 // Returns all transactions found 20 levels below
-func historicTxs(r *obscurocore.Rollup, resolver db.RollupResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
+func historicTxs(r *core.Rollup, resolver db.RollupResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
 	i := common.HeightCommittedBlocks
 	c := r
 	found := true
@@ -91,7 +91,7 @@ func historicTxs(r *obscurocore.Rollup, resolver db.RollupResolver) (map[gethcom
 	// todo - create method to return the canonical rollup from height N
 	for {
 		if !found || i == 0 || c.Header.Number.Uint64() == common.L2GenesisHeight {
-			return obscurocore.ToMap(c.Transactions), nil
+			return core.ToMap(c.Transactions), nil
 		}
 		i--
 		c, err = resolver.ParentRollup(c)
@@ -103,7 +103,7 @@ func historicTxs(r *obscurocore.Rollup, resolver db.RollupResolver) (map[gethcom
 }
 
 // CurrentTxs - Calculate transactions to be included in the current rollup
-func (db *mempoolManager) CurrentTxs(head *obscurocore.Rollup, resolver db.RollupResolver) ([]*common.L2Tx, error) {
+func (db *mempoolManager) CurrentTxs(head *core.Rollup, resolver db.RollupResolver) ([]*common.L2Tx, error) {
 	txs, err := findTxsNotIncluded(head, db.FetchMempoolTxs(), resolver)
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (db *mempoolManager) CurrentTxs(head *obscurocore.Rollup, resolver db.Rollu
 
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
-func findTxsNotIncluded(head *obscurocore.Rollup, txs []*common.L2Tx, s db.RollupResolver) ([]*common.L2Tx, error) {
+func findTxsNotIncluded(head *core.Rollup, txs []*common.L2Tx, s db.RollupResolver) ([]*common.L2Tx, error) {
 	// go back only HeightCommittedBlocks blocks to accumulate transactions to be diffed against the mempool
 	startAt := uint64(0)
 	if head.NumberU64() > common.HeightCommittedBlocks {
@@ -127,9 +127,9 @@ func findTxsNotIncluded(head *obscurocore.Rollup, txs []*common.L2Tx, s db.Rollu
 	return removeExisting(txs, included), nil
 }
 
-func allIncludedTransactions(r *obscurocore.Rollup, s db.RollupResolver, stopAtHeight uint64) (map[gethcommon.Hash]*common.L2Tx, error) {
+func allIncludedTransactions(r *core.Rollup, s db.RollupResolver, stopAtHeight uint64) (map[gethcommon.Hash]*common.L2Tx, error) {
 	if r.Header.Number.Uint64() == stopAtHeight {
-		return obscurocore.MakeMap(r.Transactions), nil
+		return core.MakeMap(r.Transactions), nil
 	}
 	newMap := make(map[gethcommon.Hash]*common.L2Tx)
 	parent, err := s.ParentRollup(r)
