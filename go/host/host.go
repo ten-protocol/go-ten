@@ -517,8 +517,7 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 	if !h.isSequencer || !isLatestBlock {
 		return nil
 	}
-	blockHash := decodedBlock.Hash()
-	rollup, err := h.enclaveClient.ProduceRollup(&blockHash)
+	rollup, err := h.enclaveClient.ProduceRollup()
 	if err != nil {
 		return fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}

@@ -179,11 +179,11 @@ func (c *Client) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockS
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) ProduceRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
+func (c *Client) ProduceRollup() (*common.ExtRollup, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.ProduceRollup(timeoutCtx, &generated.ProduceRollupRequest{BlockHash: blockHash.Bytes()})
+	response, err := c.protoClient.ProduceRollup(timeoutCtx, &generated.ProduceRollupRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}

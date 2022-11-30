@@ -99,20 +99,9 @@ func New(
 	}
 }
 
-// ProduceNewRollup creates a new rollup.
-func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
-	// We retrieve the relevant block and chain heads.
-	block, err := rc.storage.FetchBlock(*blockHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve block to produce rollup. Cause: %w", err)
-	}
-	l2Head, err := rc.storage.FetchL2Head(*blockHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve chain heads to produce rollup. Cause: %w", err)
-	}
-
-	// We create the new rollup, sign it, check it, and store it.
-	rollup, err := rc.produceRollup(block, l2Head)
+// ProduceNewRollup creates a new rollup, building on the latest chain heads.
+func (rc *RollupChain) ProduceNewRollup() (*common.ExtRollup, error) {
+	rollup, err := rc.produceRollup()
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
@@ -124,6 +113,7 @@ func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.E
 	if err != nil {
 		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
 	}
+
 	err = rc.storage.StoreRollup(rollup)
 	if err != nil {
 		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
@@ -132,8 +122,7 @@ func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.E
 	// TODO - #718 - This rollup should be stored as the new head.
 
 	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
-	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d (%d). Produced rollup r_%d",
-		common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(extRollup.Hash())))
+	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(extRollup.Hash())))
 	return &extRollup, nil
 }
 
@@ -710,7 +699,7 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
-		l2Head, err := rc.storage.FetchCurrentL2Head()
+		_, l2Head, err := rc.storage.FetchCurrentHeads()
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve head state. Cause: %w", err)
 		}
@@ -745,7 +734,12 @@ func (rc *RollupChain) getEncryptedLogs(block types.Block, l2Head *common.L2Root
 }
 
 // Creates a rollup.
-func (rc *RollupChain) produceRollup(b *types.Block, l2Head *common.L2RootHash) (*core.Rollup, error) {
+func (rc *RollupChain) produceRollup() (*core.Rollup, error) {
+	l1Head, l2Head, err := rc.storage.FetchCurrentHeads()
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch current L1 and L2 heads. Cause: %w", err)
+	}
+
 	headRollup, err := rc.storage.FetchRollup(*l2Head)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
@@ -757,7 +751,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, l2Head *common.L2RootHash) 
 
 	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
 	nonce := common.GenerateNonce()
-	r, err := core.EmptyRollup(rc.hostID, headRollup.Header, b.Hash(), nonce)
+	r, err := core.EmptyRollup(rc.hostID, headRollup.Header, *l1Head, nonce)
 	if err != nil {
 		return nil, fmt.Errorf("could not create rollup. Cause: %w", err)
 	}

@@ -307,18 +307,18 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	return statedb, nil
 }
 
-func (s *storageImpl) FetchCurrentL2Head() (*common.L2RootHash, error) {
+func (s *storageImpl) FetchCurrentHeads() (*common.L1RootHash, *common.L2RootHash, error) {
 	l1Head := rawdb.ReadHeadHeaderHash(s.db)
 	if (bytes.Equal(l1Head.Bytes(), gethcommon.Hash{}.Bytes())) {
-		return nil, errutil.ErrNotFound
+		return nil, nil, errutil.ErrNotFound
 	}
 
 	l2Head, err := obscurorawdb.ReadL2Head(s.db, l1Head)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve block state for head. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not retrieve block state for head. Cause: %w", err)
 	}
 
-	return l2Head, nil
+	return &l1Head, l2Head, nil
 }
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
