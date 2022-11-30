@@ -87,13 +87,6 @@ func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, header *common.Header) e
 
 // Retrieves the rollup header corresponding to the hash, or (nil, false) if no such header is found.
 func (db *DB) readRollupHeader(hash gethcommon.Hash) (*common.Header, error) {
-	f, err := db.kvStore.Has(rollupHeaderKey(hash))
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
 	data, err := db.kvStore.Get(rollupHeaderKey(hash))
 	if err != nil {
 		return nil, err
@@ -110,13 +103,6 @@ func (db *DB) readRollupHeader(hash gethcommon.Hash) (*common.Header, error) {
 
 // Returns the head rollup's hash, or (nil, false) is no such hash is found.
 func (db *DB) readHeadRollupHash() (*gethcommon.Hash, error) {
-	f, err := db.kvStore.Has(headRollup)
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
 	value, err := db.kvStore.Get(headRollup)
 	if err != nil {
 		return nil, err
@@ -145,13 +131,6 @@ func (db *DB) writeRollupHash(w ethdb.KeyValueWriter, header *common.Header) err
 
 // Retrieves the hash for the rollup with the given number, or (nil, false) if no such rollup is found.
 func (db *DB) readRollupHash(number *big.Int) (*gethcommon.Hash, error) {
-	f, err := db.kvStore.Has(rollupHashKey(number))
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
 	data, err := db.kvStore.Get(rollupHashKey(number))
 	if err != nil {
 		return nil, err
