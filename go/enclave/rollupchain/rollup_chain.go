@@ -619,16 +619,7 @@ func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBl
 		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
 
-	newHeadRollup, found := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
-	var rollupTxReceipts []*types.Receipt
-	if found {
-		rollupTxReceipts, err = rc.checkRollup(newHeadRollup)
-		if err != nil {
-			return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
-		}
-	} else {
-		newHeadRollup = currentHeadRollup
-	}
+	newHeadRollup, isUpdated := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
 
 	// TODO - #718 - Instead of updating the rollup head, we should validate the stored batches against the winning
 	//  rollup. We should still update the block head.
@@ -636,9 +627,15 @@ func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBl
 	newHeads := core.HeadsAfterL1Block{
 		HeadBlock:         block.Hash(),
 		HeadRollup:        newHeadRollup.Hash(),
-		UpdatedHeadRollup: found,
+		UpdatedHeadRollup: isUpdated,
 	}
-
+	var rollupTxReceipts []*types.Receipt
+	if isUpdated {
+		rollupTxReceipts, err = rc.checkRollup(newHeadRollup)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
+		}
+	}
 	err = rc.storage.StoreNewHeads(&newHeads, newHeadRollup, rollupTxReceipts)
 	if err != nil {
 		return nil, fmt.Errorf("could not store new head. Cause: %w", err)

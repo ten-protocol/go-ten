@@ -7,7 +7,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-// Returns the next rollup to publish, and a boolean indicating whether any of the provided rollups are suitable to be published next.
+// Returns the new head rollup, and a boolean indicating whether this is a new rollup or the existing head rollup.
 // todo - add statistics to determine why there are conflicts.
 func selectNextRollup(parentRollup *core.Rollup, rollups []*core.Rollup, blockResolver db.BlockResolver) (*core.Rollup, bool) {
 	var nextRollup *core.Rollup
@@ -29,7 +29,8 @@ func selectNextRollup(parentRollup *core.Rollup, rollups []*core.Rollup, blockRe
 	}
 
 	if nextRollup == nil {
-		return nil, false
+		// We remain with the existing head rollup.
+		return parentRollup, false
 	}
 	return nextRollup, true
 }
