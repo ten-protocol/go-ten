@@ -155,7 +155,17 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 // ProcessL1Block is used to update the enclave with an additional L1 block.
 func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	rc.blockProcessingMutex.Lock()
-	defer rc.blockProcessingMutex.Unlock()
+	defer func() {
+		if rc.hostID.Hex() == "0x0000000000000000000000000000000000000001" {
+			println(fmt.Sprintf("jjj exiting mutex"))
+		}
+		rc.blockProcessingMutex.Unlock()
+	}()
+
+	if rc.hostID.Hex() == "0x0000000000000000000000000000000000000001" {
+		println()
+		println(fmt.Sprintf("jjj entering mutex"))
+	}
 
 	err := rc.insertAndStoreL1Block(block, isLatest)
 	if err != nil {
@@ -167,7 +177,8 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 		return nil, rc.rejectBlockErr(err)
 	}
 
-	return rc.produceBlockSubmissionResponse(&block, l2Head)
+	bsr, err := rc.produceBlockSubmissionResponse(&block, l2Head)
+	return bsr, err
 }
 
 func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
@@ -570,6 +581,20 @@ func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBl
 	currentHeadRollup, err := rc.storage.FetchRollup(*currentHeadRollupHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
+	}
+
+	x, err := rc.storage.FetchHeadRollup()
+	if err != nil {
+		panic(err)
+	}
+
+	if rc.hostID.Hex() == "0x0000000000000000000000000000000000000001" {
+		println(fmt.Sprintf("jjj head rollup via FetchHeadRollupForL1Block(block.ParentHash()) is number %d, hash %s, block hash %s", currentHeadRollup.Number(), currentHeadRollup.Hash(), block.ParentHash().Hex()))
+		println(fmt.Sprintf("jjj head rollup via FetchHeadRollup() is number %d, hash %s, block hash %s", x.Number(), x.Hash(), currentHeadRollup.Header.L1Proof.Hex()))
+		// todo - check against getting FetchHeadRollupForL1Block for the *current* block, which should be null?
+		if currentHeadRollup.Hash().Hex() != x.Hash().Hex() {
+			panic("jjj bad")
+		}
 	}
 
 	latestRollup, isUpdated := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
