@@ -271,7 +271,7 @@ func (rc *RollupChain) updateState(block *types.Block) (*obscurocore.HeadsAfterL
 	}
 	err = rc.storage.StoreNewHead(headsAfterL1Block, headRollup, receipts, logs)
 	if err != nil {
-		rc.logger.Crit("Could not store new head.", log.ErrKey, err)
+		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
 
 	return headsAfterL1Block, nil
