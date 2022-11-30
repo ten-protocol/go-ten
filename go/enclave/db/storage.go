@@ -270,10 +270,8 @@ func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.
 	}
 
 	var logs []*types.Log
-	if receipts != nil {
-		for _, receipt := range receipts {
-			logs = append(logs, receipt.Logs...)
-		}
+	for _, receipt := range receipts {
+		logs = append(logs, receipt.Logs...)
 	}
 	if err := obscurorawdb.WriteBlockLogs(batch, heads.HeadBlock, logs); err != nil {
 		return fmt.Errorf("could not write block logs. Cause: %w", err)

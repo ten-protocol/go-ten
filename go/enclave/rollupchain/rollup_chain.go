@@ -242,7 +242,11 @@ func (rc *RollupChain) updateState(block *types.Block) (*obscurocore.HeadsAfterL
 		return nil, fmt.Errorf("could not retrieve heads after parent block. Cause: %w", err)
 	}
 
-	headsAfterL1Block, headRollup, receipts := rc.calculateHeadsAfterL1Block(block, headsAfterParentBlock, rollupsInBlock)
+	headsAfterL1Block, headRollup, receipts, err := rc.calculateHeadsAfterL1Block(block, headsAfterParentBlock, rollupsInBlock)
+	if err != nil {
+		return nil, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
+	}
+
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(block.Hash()), headsAfterL1Block.UpdatedHeadRollup, common.ShortHash(headsAfterL1Block.HeadRollup)))
 
@@ -444,60 +448,60 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func (rc *RollupChain) calculateHeadsAfterL1Block(b *types.Block, headsAfterParentBlock *obscurocore.HeadsAfterL1Block, rollups []*obscurocore.Rollup) (*obscurocore.HeadsAfterL1Block, *obscurocore.Rollup, []*types.Receipt) {
-	currentHead, err := rc.storage.FetchRollup(headsAfterParentBlock.HeadRollup)
+func (rc *RollupChain) calculateHeadsAfterL1Block(
+	block *types.Block,
+	headsAfterParentBlock *obscurocore.HeadsAfterL1Block,
+	rollupsInBlock []*obscurocore.Rollup,
+) (*obscurocore.HeadsAfterL1Block, *obscurocore.Rollup, []*types.Receipt, error) {
+	currentHeadRollup, err := rc.storage.FetchRollup(headsAfterParentBlock.HeadRollup)
 	if err != nil {
-		rc.logger.Crit("could not fetch parent rollup", log.ErrKey, err)
+		return nil, nil, nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
-	newHeadRollup, found := FindNextRollup(currentHead, rollups, rc.storage)
+
+	newHeadRollup, found := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
 	var rollupTxReceipts []*types.Receipt
-	// only change the state if there is a new l2 HeadRollup in the current block
 	if found {
-		rollupTxReceipts, _, err = rc.checkRollup(newHeadRollup)
-		// todo - this error needs to be surfaced to be used for the challenge
+		rollupTxReceipts, err = rc.checkRollup(newHeadRollup)
 		if err != nil {
-			rc.logger.Crit("Failed to check rollup", log.ErrKey, err)
-			return nil, nil, nil
+			return nil, nil, nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
 		}
 	} else {
-		newHeadRollup = currentHead
+		newHeadRollup = currentHeadRollup
 	}
 
 	headsAfterL1Block := obscurocore.HeadsAfterL1Block{
-		HeadBlock:         b.Hash(),
+		HeadBlock:         block.Hash(),
 		HeadRollup:        newHeadRollup.Hash(),
 		UpdatedHeadRollup: found,
 	}
-	return &headsAfterL1Block, newHeadRollup, rollupTxReceipts
+	return &headsAfterL1Block, newHeadRollup, rollupTxReceipts, nil
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
-func (rc *RollupChain) checkRollup(r *obscurocore.Rollup) ([]*types.Receipt, []*types.Receipt, error) { //nolint
-	stateDB, err := rc.storage.CreateStateDB(r.Header.ParentHash)
+func (rc *RollupChain) checkRollup(rollup *obscurocore.Rollup) ([]*types.Receipt, error) {
+	stateDB, err := rc.storage.CreateStateDB(rollup.Header.ParentHash)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
 	// calculate the state to compare with what is in the Rollup
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, r.Transactions, stateDB)
-	if len(successfulTxs) != len(r.Transactions) {
-		return nil, nil, fmt.Errorf("all transactions that are included in a rollup must be executed")
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(rollup, rollup.Transactions, stateDB)
+	if len(successfulTxs) != len(rollup.Transactions) {
+		return nil, fmt.Errorf("all transactions that are included in a rollup must be executed")
 	}
 
-	isValid := rc.validateRollup(r, rootHash, txReceipts, depositReceipts, stateDB)
-	if !isValid {
-		return nil, nil, fmt.Errorf("invalid rollup")
+	if !rc.validateRollup(rollup, rootHash, txReceipts, depositReceipts, stateDB) {
+		return nil, fmt.Errorf("invalid rollup")
 	}
 
 	// todo - check that the transactions hash to the header.txHash
 
 	// verify the signature
-	isValid = rc.verifySig(r)
-	if !isValid {
-		return nil, nil, fmt.Errorf("invalid signature")
+	if !rc.verifySig(rollup) {
+		return nil, fmt.Errorf("invalid signature")
 	}
 
-	return txReceipts, depositReceipts, nil
+	return txReceipts, nil
 }
 
 func toReceiptMap(txReceipts []*types.Receipt) map[gethcommon.Hash]*types.Receipt {
@@ -786,7 +790,7 @@ func (rc *RollupChain) NewRollup(blockHash *common.L1RootHash) (*common.ExtRollu
 	rollup := rc.produceRollup(block, blockState)
 	rc.signRollup(rollup)
 	// Sanity check the produced rollup
-	_, _, err = rc.checkRollup(rollup)
+	_, err = rc.checkRollup(rollup)
 	if err != nil {
 		return nil, err
 	}
