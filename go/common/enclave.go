@@ -33,7 +33,7 @@ type Enclave interface {
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash gethcommon.Hash) (*ProduceGenesisResponse, error)
+	ProduceGenesis(blkHash gethcommon.Hash) (*ExtRollup, error)
 
 	// Start - start speculative execution
 	Start(block types.Block) error
@@ -115,11 +115,6 @@ type BlockSubmissionResponse struct {
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
 	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the block and all its ancestors for each subscription ID.
 	RejectError             *BlockRejectError         // this is set if block was rejected, contains information about what block to submit next
-}
-
-// ProduceGenesisResponse is the response sent from the enclave back to the node after requesting the production of the genesis rollup.
-type ProduceGenesisResponse struct {
-	GenesisRollup ExtRollup // The genesis rollup.
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block

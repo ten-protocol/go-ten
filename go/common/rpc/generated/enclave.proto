@@ -105,7 +105,7 @@ message ProduceGenesisRequest {
 }
 
 message ProduceGenesisResponse {
-  ProduceGenesisResponseMsg produceGenesisResponse = 1;
+  ExtRollupMsg genesisRollup = 1;
 }
 
 message StartRequest {

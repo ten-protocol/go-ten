@@ -553,7 +553,7 @@ func (h *host) processL1BlockTransactions(b *types.Block) {
 
 // Publishes a rollup to the L1.
 func (h *host) publishRollup(producedRollup *common.ExtRollup) {
-	encodedRollup, err := common.EncodeRollup(producedRollup.ToExtRollup())
+	encodedRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
 		h.logger.Crit("could not encode rollup.", log.ErrKey, err)
 	}
@@ -604,21 +604,20 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 // Called only by the first enclave to bootstrap the network
 func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
 	// Create the genesis rollup.
-	genesisResponse, err := h.enclaveClient.ProduceGenesis(block.Hash())
+	genesisRollup, err := h.enclaveClient.ProduceGenesis(block.Hash())
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not produce genesis. Cause: %w", err)
 	}
 	h.logger.Info(
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
-			common.ShortHash(genesisResponse.GenesisRollup.Header.Hash()),
+			common.ShortHash(genesisRollup.Header.Hash()),
 		))
 
 	// Distribute the corresponding batch.
-	producedRollup := genesisResponse.GenesisRollup.ToExtRollup()
-	h.storeAndDistributeBatch(producedRollup)
+	h.storeAndDistributeBatch(genesisRollup)
 
 	// Submit the rollup to the management contract.
-	encodedRollup, err := common.EncodeRollup(producedRollup)
+	encodedRollup, err := common.EncodeRollup(genesisRollup)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
@@ -631,7 +630,7 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
 	}
 
-	return genesisResponse.GenesisRollup.Header.ParentHash, nil
+	return genesisRollup.Header.ParentHash, nil
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.

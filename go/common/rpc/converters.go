@@ -44,14 +44,6 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 	}, nil
 }
 
-func ToProduceGenesisResponseMsg(response *common.ProduceGenesisResponse) generated.ProduceGenesisResponseMsg {
-	genesisRollupMsg := ToExtRollupMsg(&response.GenesisRollup)
-
-	return generated.ProduceGenesisResponseMsg{
-		GenesisRollup: &genesisRollupMsg,
-	}
-}
-
 func ToBlockSubmissionRejectionMsg(rejectError *common.BlockRejectError) (generated.BlockSubmissionResponseMsg, error) {
 	errMsg := &generated.BlockSubmissionErrorMsg{
 		Cause:  rejectError.Wrapped.Error(),
@@ -107,12 +99,6 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
-	}, nil
-}
-
-func FromProduceGenesisResponseMsg(msg *generated.ProduceGenesisResponseMsg) (*common.ProduceGenesisResponse, error) {
-	return &common.ProduceGenesisResponse{
-		GenesisRollup: FromExtRollupMsg(msg.GetGenesisRollup()),
 	}, nil
 }
 
