@@ -609,12 +609,12 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash gethcommon.H
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBlock []*core.Rollup) (*core.HeadsAfterL1Block, error) {
-	currentHeads, err := rc.getHeadsAfterParentBlock(block.ParentHash())
+	currentHeadHashes, err := rc.getHeadsAfterParentBlock(block.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve heads after parent block. Cause: %w", err)
 	}
 
-	currentHeadRollup, err := rc.storage.FetchRollup(currentHeads.HeadRollup)
+	currentHeadRollup, err := rc.storage.FetchRollup(currentHeadHashes.HeadRollup)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
