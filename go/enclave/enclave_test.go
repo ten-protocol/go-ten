@@ -541,7 +541,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	}
 
 	// make sure the state is updated otherwise balances will not be available
-	_, l2Head, err := enclave.(*enclaveImpl).storage.FetchCurrentHeads()
+	_, l2Head, err := enclave.(*enclaveImpl).storage.FetchHeads()
 	if err != nil {
 		return err
 	}
