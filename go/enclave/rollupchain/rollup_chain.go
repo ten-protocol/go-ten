@@ -242,7 +242,7 @@ func (rc *RollupChain) updateState(block *types.Block) (*obscurocore.HeadsAfterL
 		return nil, fmt.Errorf("could not retrieve heads after parent block. Cause: %w", err)
 	}
 
-	headsAfterL1Block, headRollup, receipts, err := rc.calculateHeadsAfterL1Block(block, headsAfterParentBlock, rollupsInBlock)
+	headsAfterL1Block, headRollup, receipts, err := rc.calculateNewHeads(block, headsAfterParentBlock, rollupsInBlock)
 	if err != nil {
 		return nil, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
 	}
@@ -448,7 +448,7 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func (rc *RollupChain) calculateHeadsAfterL1Block(
+func (rc *RollupChain) calculateNewHeads(
 	block *types.Block,
 	headsAfterParentBlock *obscurocore.HeadsAfterL1Block,
 	rollupsInBlock []*obscurocore.Rollup,
