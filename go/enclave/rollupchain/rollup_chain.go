@@ -450,15 +450,15 @@ func (rc *RollupChain) handleGenesisRollup(block *types.Block, rollupsInBlock []
 	// The incoming block holds the genesis rollup. Calculate and return the new block state.
 	// todo change this to an hardcoded hash on testnet/mainnet
 	rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
-	genesis := rollupsInBlock[0]
-	err = rc.storage.StoreGenesisRollup(genesis)
+	genesisRollup = rollupsInBlock[0]
+	err = rc.storage.StoreGenesisRollup(genesisRollup)
 	if err != nil {
 		return nil, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
 	}
 
-	l2Head := genesis.Hash()
+	l2Head := genesisRollup.Hash()
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	err = rc.storage.StoreNewHeads(block.Hash(), genesis, nil, true)
+	err = rc.storage.StoreNewHeads(block.Hash(), genesisRollup, nil, true)
 	if err != nil {
 		return nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
 	}
