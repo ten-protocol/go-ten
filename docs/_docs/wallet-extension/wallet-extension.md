@@ -64,7 +64,7 @@ tools.
    The wallet extension is now listening on the specified host and port. For the remainder of this document, we'll 
    assume that the default ports of `3000` and `3001` were selected.
 
-3. Sign in to MetaMask and add the Obscuro Testnet network following the instructions [here](/wallet-extension/configure-metamask.html)
+3. Sign in to MetaMask and add the Obscuro Testnet network following the instructions [here](https://docs.obscu.ro/wallet-extension/configure-metamask).
 
 4. At this stage, no viewing key has been set up. The enclave will refuse to respond to sensitive RPC requests such 
    as `eth_getBalance`, `eth_call` and `eth_getTransactionReceipt`. As a result, your balance in MetaMask will not be 

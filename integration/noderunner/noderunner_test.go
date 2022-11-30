@@ -114,9 +114,9 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		counter++
 		time.Sleep(500 * time.Millisecond)
 
-		var result hexutil.Uint64
-		err = obscuroClient.Call(&result, rpc.RollupNumber)
-		if err == nil && result > 0 {
+		var rollupNumber hexutil.Uint64
+		err = obscuroClient.Call(&rollupNumber, rpc.RollupNumber)
+		if err == nil && rollupNumber > 0 {
 			return
 		}
 	}

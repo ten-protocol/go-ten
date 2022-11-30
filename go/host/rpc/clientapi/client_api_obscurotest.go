@@ -1,7 +1,6 @@
 package clientapi
 
 import (
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 )
 
@@ -16,18 +15,6 @@ func NewTestAPI(host host.Host) *TestAPI {
 	return &TestAPI{
 		host: host,
 	}
-}
-
-// BlockNumber returns the height of the current head block.
-// # TODO - #718 - Switch to returning height based on current batch.
-func (api *TestAPI) BlockNumber() hexutil.Uint64 {
-	head, found := api.host.DB().GetHeadBlockHeader()
-	if !found {
-		return 0
-	}
-
-	number := head.Number.Uint64()
-	return hexutil.Uint64(number)
 }
 
 // StopHost gracefully stops the host.

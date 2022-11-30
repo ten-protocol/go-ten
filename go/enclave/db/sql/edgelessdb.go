@@ -148,7 +148,7 @@ func EdgelessDBConnector(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (ethdb
 	}
 
 	// wrap it in our eth-compatible key-value store layer
-	return CreateSQLEthDatabase(sqlDB)
+	return CreateSQLEthDatabase(sqlDB, logger)
 }
 
 func waitForEdgelessDBToStart(edbHost string, logger gethlog.Logger) error {

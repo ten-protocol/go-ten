@@ -5,12 +5,12 @@ Using the steps below you will add an extension to your MetaMask wallet so it ca
 
 ## Prerequisites
 * [MetaMask](https://metamask.io/) wallet installed in your browser.
-* A local copy of the [Obscuro MetaMask wallet extension](../wallet-extension/wallet-extension.md)
+* A local copy of the [Obscuro MetaMask wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension/)
 
 ## Prepare Your MetaMask Wallet for Obscuro Testnet
 An essential part of how Obscuro provides full privacy is the encryption of communication between an Obscuro application and Obscuro nodes on the network.
 
-Follow the steps [here](../wallet-extension/wallet-extension.md) to configure and start the wallet extension and 
+Follow the steps [here](https://docs.obscu.ro/wallet-extension/wallet-extension/) to configure and start the wallet extension and 
 generate a viewing key. 
 
 
@@ -32,7 +32,7 @@ You can now go ahead and deploy your smart contract to the Obscuro Testnet.
 
 1. Compile your smart contract using the Remix Solidity Compiler.
 
-1. Log in to MetaMask and confirm you are connected to Obscuro Testnet network. The parameters for the Obscuro Testnet can be found [here](./essentials.md).
+1. Log in to MetaMask and confirm you are connected to Obscuro Testnet network. The parameters for the Obscuro Testnet can be found [here](https://docs.obscu.ro/testnet/essentials/).
 
 1. In the _Deploy & Run Transactions_ section of Remix change the Environment to _Injected Web3_. This tells Remix to use the network settings currently configured in your MetaMask wallet, which in this case is the Obscuro Testnet. If the connection to Obscuro Testnet is successful you will see the text _Custom (777) network_ displayed under _Injected Web3_.
 
@@ -48,4 +48,4 @@ Congratulations, your smart contract is now deployed to Obscuro Testnet!
 
 Because Obscuro provides full privacy, the details of your transaction are encrypted and only visible to you, as the holder of your wallet's private key.
 
-Now head over to the [ObscuroScan page](./obscuroscan.md) to see how you can view the transaction details.
+Now head over to the [ObscuroScan page](https://docs.obscu.ro/testnet/obscuroscan/) to see how you can view the transaction details.

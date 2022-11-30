@@ -13,10 +13,10 @@ import (
 // Perform the conversion between an Obscuro header and an Ethereum header that the EVM understands
 // in the first stage we just encode the obscuro header in the Extra field
 // todo - find a better way
-func convertToEthHeader(h *common.Header, secret []byte) *types.Header {
+func convertToEthHeader(h *common.Header, secret []byte) (*types.Header, error) {
 	obscuroHeader, err := rlp.EncodeToBytes(h)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// deterministically calculate private randomness that will be exposed to the evm
@@ -37,7 +37,7 @@ func convertToEthHeader(h *common.Header, secret []byte) *types.Header {
 		MixDigest:   gethcommon.BytesToHash(randomness),
 		Nonce:       types.BlockNonce{},
 		BaseFee:     gethcommon.Big0,
-	}
+	}, nil
 }
 
 /*

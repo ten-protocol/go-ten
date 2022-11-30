@@ -46,7 +46,7 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (ethdb.Databa
 		desc = "new"
 	}
 	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", desc, dbPath))
-	return CreateSQLEthDatabase(db)
+	return CreateSQLEthDatabase(db, logger)
 }
 
 func getTempDBFile() (string, error) {

@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -29,10 +30,12 @@ type msgType uint8
 
 const (
 	msgTypeTx msgType = iota
+	msgTypeBatches
+	msgTypeBatchRequest
 )
 
-// Message associates an encoded message to its type.
-type Message struct {
+// Associates an encoded message to its type.
+type message struct {
 	Type     msgType
 	Contents []byte
 }
@@ -88,8 +91,43 @@ func (p *p2pImpl) UpdatePeerList(newPeers []string) {
 }
 
 func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
-	msg := Message{Type: msgTypeTx, Contents: tx}
+	msg := message{Type: msgTypeTx, Contents: tx}
 	return p.broadcast(msg)
+}
+
+func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
+	encodedBatches, err := rlp.EncodeToBytes([]*common.ExtBatch{batch})
+	if err != nil {
+		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
+	}
+
+	msg := message{Type: msgTypeBatches, Contents: encodedBatches}
+	return p.broadcast(msg)
+}
+
+func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
+	if len(p.peerAddresses) == 0 {
+		return errors.New("no peers available to request batches")
+	}
+	encodedBatchRequest, err := rlp.EncodeToBytes(batchRequest)
+	if err != nil {
+		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
+	}
+
+	msg := message{Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
+	// TODO - #718 - Use better method to identify sequencer?
+	// TODO - #718 - Allow missing batches to be requested from peers other than sequencer?
+	return p.send(msg, p.peerAddresses[0])
+}
+
+func (p *p2pImpl) SendBatches(batches []*common.ExtBatch, to string) error {
+	encodedBatches, err := rlp.EncodeToBytes(batches)
+	if err != nil {
+		return fmt.Errorf("could not encode batches using RLP. Cause: %w", err)
+	}
+
+	msg := message{Type: msgTypeBatches, Contents: encodedBatches}
+	return p.send(msg, to)
 }
 
 // Listens for connections and handles them in a separate goroutine.
@@ -118,7 +156,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 		return
 	}
 
-	msg := Message{}
+	msg := message{}
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
 		p.logger.Warn("failed to decode message received from peer: ", log.ErrKey, err)
@@ -129,11 +167,15 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	case msgTypeTx:
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		callback.ReceiveTx(msg.Contents)
+	case msgTypeBatches:
+		callback.ReceiveBatches(msg.Contents)
+	case msgTypeBatchRequest:
+		callback.ReceiveBatchRequest(msg.Contents)
 	}
 }
 
 // Broadcasts a message to all peers.
-func (p *p2pImpl) broadcast(msg Message) error {
+func (p *p2pImpl) broadcast(msg message) error {
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to peers. Cause: %w", err)
@@ -149,9 +191,21 @@ func (p *p2pImpl) broadcast(msg Message) error {
 	return nil
 }
 
+// Sends a message to the sequencer.
+func (p *p2pImpl) send(msg message, to string) error {
+	msgEncoded, err := rlp.EncodeToBytes(msg)
+	if err != nil {
+		return fmt.Errorf("could not encode message to send to sequencer. Cause: %w", err)
+	}
+	p.sendBytes(nil, to, msgEncoded)
+	return nil
+}
+
 // sendBytes Sends the bytes over P2P to the given address.
 func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
-	defer wg.Done()
+	if wg != nil {
+		defer wg.Done()
+	}
 
 	conn, err := net.DialTimeout(tcp, address, p.p2pTimeout)
 	if conn != nil {

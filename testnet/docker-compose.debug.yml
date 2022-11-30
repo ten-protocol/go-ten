@@ -22,7 +22,7 @@ services:
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
       LOGLEVEL: some_int
-    image: testnetobscuronet.azurecr.io/obscuronet/obscuro_host:latest
+    image: testnetobscuronet.azurecr.io/obscuronet/host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
       "--l1NodeHost=$L1HOST",
@@ -55,7 +55,7 @@ services:
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
       LOGLEVEL: some_int
-    image: testnetobscuronet.azurecr.io/obscuronet/obscuro_enclave_debug:latest
+    image: testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest
     entrypoint: [
       "dlv",
       "--listen=:2345",

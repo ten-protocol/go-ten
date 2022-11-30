@@ -3,27 +3,26 @@ package db
 import (
 	"os"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
+	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/ethdb/leveldb"
+	"github.com/obscuronet/go-obscuro/go/common/gethdb"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/ethereum/go-ethereum/ethdb/leveldb"
-
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 // Schema keys, in alphabetical order.
 var (
-	headBlock            = []byte("hb")
-	headRollup           = []byte("hr")
-	headBatch            = []byte("hba")
 	blockHeaderPrefix    = []byte("b")
 	batchHeaderPrefix    = []byte("ba")
+	batchHashPrefix      = []byte("bh")
+	batchNumberPrefix    = []byte("bn")
+	batchPrefix          = []byte("bp")
+	batchTxHashesPrefix  = []byte("bt")
+	headBatch            = []byte("hb")
+	headRollup           = []byte("hr")
 	rollupHeaderPrefix   = []byte("r")
-	rollupTxHashesPrefix = []byte("rt")
 	rollupHashPrefix     = []byte("rh")
-	rollupNumberPrefix   = []byte("rn")
 	totalTransactionsKey = []byte("t")
 )
 
@@ -36,7 +35,7 @@ type DB struct {
 // NewInMemoryDB returns a new instance of the Node DB
 func NewInMemoryDB() *DB {
 	return &DB{
-		kvStore: memorydb.New(),
+		kvStore: gethdb.NewMemDB(),
 	}
 }
 
@@ -48,7 +47,7 @@ func NewLevelDBBackedDB(logger gethlog.Logger) *DB {
 	}
 	cache := 128
 	handles := 128
-	db, err := leveldb.New(f, cache, handles, "obscuro_host", false)
+	db, err := leveldb.New(f, cache, handles, "host", false)
 	if err != nil {
 		logger.Crit("Could not create leveldb.", log.ErrKey, err)
 	}

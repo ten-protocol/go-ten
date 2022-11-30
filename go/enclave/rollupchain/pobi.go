@@ -3,14 +3,14 @@ package rollupchain
 import (
 	"bytes"
 
-	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-// FindNextRollup returns the next rollup to publish, and a boolean indicating whether any of the provided rollups are suitable to be published next.
+// Returns the new head rollup, and a boolean indicating whether this is a new rollup or the existing head rollup.
 // todo - add statistics to determine why there are conflicts.
-func FindNextRollup(parentRollup *obscurocore.Rollup, rollups []*obscurocore.Rollup, blockResolver db.BlockResolver) (*obscurocore.Rollup, bool) {
-	var nextRollup *obscurocore.Rollup
+func selectNextRollup(parentRollup *core.Rollup, rollups []*core.Rollup, blockResolver db.BlockResolver) (*core.Rollup, bool) {
+	var nextRollup *core.Rollup
 
 	// We iterate over the proposed rollups to select the best next rollup.
 	for _, rollup := range rollups {
@@ -29,7 +29,8 @@ func FindNextRollup(parentRollup *obscurocore.Rollup, rollups []*obscurocore.Rol
 	}
 
 	if nextRollup == nil {
-		return nil, false
+		// We remain with the existing head rollup.
+		return parentRollup, false
 	}
 	return nextRollup, true
 }

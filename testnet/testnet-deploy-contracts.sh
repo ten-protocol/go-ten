@@ -14,7 +14,7 @@ help_and_exit() {
     echo ""
     echo "  l1port             *Optional* Set the l1 port. Defaults to 9000"
     echo ""
-    echo "  docker_image       *Optional* Sets the docker image to use. Defaults to testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest"
+    echo "  docker_image       *Optional* Sets the docker image to use. Defaults to testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest"
     echo ""
     echo ""
     echo ""
@@ -29,7 +29,7 @@ testnet_path="${start_path}"
 
 # Define defaults
 l1port=9000
-docker_image="testnetobscuronet.azurecr.io/obscuronet/obscuro_contractdeployer:latest"
+docker_image="testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest"
 
 # Fetch options
 for argument in "$@"

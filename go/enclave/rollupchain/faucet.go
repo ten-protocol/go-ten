@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 const (
@@ -18,47 +18,56 @@ const (
 
 // Faucet handles the preallocation of funds in the network.
 type Faucet struct {
-	storage       db.Storage
 	faucetAddress gethcommon.Address
 }
 
-func NewFaucet(storage db.Storage) Faucet {
+func NewFaucet() Faucet {
 	faucetPrivateKey, err := crypto.HexToECDSA(FaucetPrivateKeyHex)
 	if err != nil {
 		panic("could not convert faucet private key from hex to ECDSA")
 	}
-	faucetAddress := crypto.PubkeyToAddress(faucetPrivateKey.PublicKey)
 
 	return Faucet{
-		storage:       storage,
-		faucetAddress: faucetAddress,
+		faucetAddress: crypto.PubkeyToAddress(faucetPrivateKey.PublicKey),
 	}
 }
 
 // GetGenesisRoot applies the faucet preallocation on top of an empty state DB, and returns the corresponding trie
 // root.
-func (f *Faucet) GetGenesisRoot(storage db.Storage) gethcommon.Hash {
-	stateDB := f.applyFaucetPrealloc(storage)
-	return stateDB.IntermediateRoot(true)
+func (f *Faucet) GetGenesisRoot(storage db.Storage) (*gethcommon.Hash, error) {
+	stateDB, err := f.applyFaucetPrealloc(storage)
+	if err != nil {
+		return nil, err
+	}
+	stateHash := stateDB.IntermediateRoot(true)
+	return &stateHash, nil
 }
 
-// CalculateGenesisState applies the faucet preallocation on top of an empty state DB and commits the result.
-func (f *Faucet) CalculateGenesisState(storage db.Storage) error {
-	stateDB := f.applyFaucetPrealloc(storage)
-	_, err := stateDB.Commit(true)
+// CommitGenesisState applies the faucet preallocation on top of an empty state DB and commits the result.
+func (f *Faucet) CommitGenesisState(storage db.Storage) (*state.StateDB, error) {
+	stateDB, err := f.applyFaucetPrealloc(storage)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	_, err = stateDB.Commit(true)
+	if err != nil {
+		return nil, err
+	}
+	return stateDB, nil
 }
 
 // Applies the faucet preallocation on top of an empty state DB.
-func (f *Faucet) applyFaucetPrealloc(storage db.Storage) *state.StateDB {
-	s := storage.EmptyStateDB()
+func (f *Faucet) applyFaucetPrealloc(storage db.Storage) (*state.StateDB, error) {
+	s, err := storage.EmptyStateDB()
+	if err != nil {
+		return nil, fmt.Errorf("could not initialise empty state DB. Cause: %w", err)
+	}
+
 	faucetPreallocBig, success := big.NewInt(0).SetString(faucetPrealloc, 10)
 	if !success {
-		panic(fmt.Errorf("could not initialise faucet prealloc Big from string %s", faucetPrealloc))
+		return nil, fmt.Errorf("could not initialise faucet prealloc Big from string %s", faucetPrealloc)
 	}
+
 	s.SetBalance(f.faucetAddress, faucetPreallocBig)
-	return s
+	return s, nil
 }

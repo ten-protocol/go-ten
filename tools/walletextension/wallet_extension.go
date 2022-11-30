@@ -11,26 +11,19 @@ import (
 	"net/http"
 	"time"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	"github.com/go-kit/kit/transport/http/jsonrpc"
+	"github.com/obscuronet/go-obscuro/go/common/httputil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 )
 
 const (
@@ -41,14 +34,6 @@ const (
 	PathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "static"
 	wsProtocol             = "ws://"
-
-	// CORS-related constants.
-	corsAllowOrigin  = "Access-Control-Allow-Origin"
-	originAll        = "*"
-	corsAllowMethods = "Access-Control-Allow-Methods"
-	reqOptions       = "OPTIONS"
-	corsAllowHeaders = "Access-Control-Allow-Headers"
-	corsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
 
 	successMsg = "success"
 )
@@ -169,7 +154,7 @@ func (we *WalletExtension) createWSServer(host string, wsPort int) *http.Server 
 
 // Used to check whether the server is ready.
 func (we *WalletExtension) handleReady(resp http.ResponseWriter, req *http.Request) {
-	if we.enableCORS(resp, req) {
+	if httputil.EnableCORS(resp, req) {
 		return
 	}
 }
@@ -200,7 +185,7 @@ func (we *WalletExtension) handleSubmitViewingKeyWS(resp http.ResponseWriter, re
 
 // Creates an HTTP connection to handle the request.
 func (we *WalletExtension) handleRequestHTTP(resp http.ResponseWriter, req *http.Request, fun func(conn userconn.UserConn)) {
-	if we.enableCORS(resp, req) {
+	if httputil.EnableCORS(resp, req) {
 		return
 	}
 	userConn := userconn.NewUserConnHTTP(resp, req, we.logger)
@@ -299,17 +284,6 @@ func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
 			}
 		}
 	}
-}
-
-// Enables CORS, as required by some browsers (e.g. Firefox). Returns true if CORS was enabled.
-func (we *WalletExtension) enableCORS(resp http.ResponseWriter, req *http.Request) bool {
-	resp.Header().Set(corsAllowOrigin, originAll)
-	if (*req).Method == reqOptions {
-		resp.Header().Set(corsAllowMethods, reqOptions)
-		resp.Header().Set(corsAllowHeaders, corsHeaders)
-		return true
-	}
-	return false
 }
 
 func (we *WalletExtension) parseRequest(body []byte) (*accountmanager.RPCRequest, error) {

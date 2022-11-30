@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	connRetryMaxWait  = 10 * time.Minute // after this duration, we will stop retrying to connect and return the failure
 	connRetryInterval = 500 * time.Millisecond
 )
 
@@ -50,7 +51,7 @@ func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethc
 	}, nil
 }
 
-func (e *gethRPCClient) FetchHeadBlock() (*types.Block, bool) {
+func (e *gethRPCClient) FetchHeadBlock() (*types.Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
@@ -58,7 +59,7 @@ func (e *gethRPCClient) FetchHeadBlock() (*types.Block, bool) {
 	if err != nil {
 		e.logger.Crit("could not fetch head block.", log.ErrKey, err)
 	}
-	return blk, true
+	return blk, nil
 }
 
 func (e *gethRPCClient) Info() Info {
@@ -135,7 +136,7 @@ func (e *gethRPCClient) Nonce(account gethcommon.Address) (uint64, error) {
 }
 
 func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscription) {
-	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// this channel holds blocks that have been received from the geth network but not yet processed by the host,
@@ -146,10 +147,10 @@ func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscripti
 	err = retry.Do(func() error {
 		sub, err = e.client.SubscribeNewHead(ctx, ch)
 		if err != nil {
-			e.logger.Warn("could not subscribe for new head blocks, retrying...")
+			e.logger.Warn("could not subscribe for new head blocks")
 		}
 		return err
-	}, retry.NewTimeoutStrategy(e.timeout, connRetryInterval))
+	}, retry.NewTimeoutStrategy(connRetryMaxWait, connRetryInterval))
 	if err != nil {
 		// todo: handle this scenario better after refactor of node.go (health monitor report L1 unavailable, be able to recover without restarting host)
 		// couldn't connect after timeout period, cannot continue
@@ -157,6 +158,13 @@ func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscripti
 	}
 
 	return ch, sub
+}
+
+func (e *gethRPCClient) BlockNumber() (uint64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	return e.client.BlockNumber(ctx)
 }
 
 func (e *gethRPCClient) BlockByNumber(n *big.Int) (*types.Block, error) {

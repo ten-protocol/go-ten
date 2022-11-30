@@ -39,14 +39,13 @@ func NewOutputStats(simulation *Simulation) *OutputStats {
 }
 
 func (o *OutputStats) populateHeights() {
-	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
-
-	l1Height, err := obscuroClient.BlockNumber()
+	l1Height, err := o.simulation.RPCHandles.EthClients[0].BlockNumber()
 	if err != nil {
 		panic(fmt.Errorf("simulation failed because could not read L1 height. Cause: %w", err))
 	}
 	o.l1Height = int(l1Height)
 
+	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
 	o.l2Height = int(getHeadRollupHeader(obscuroClient).Number.Uint64())
 }
 

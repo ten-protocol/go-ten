@@ -2,7 +2,7 @@ package gethutil
 
 import (
 	"bytes"
-	"errors"
+	"fmt"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -10,8 +10,6 @@ import (
 )
 
 // Utilities for working with geth structures
-
-var errNoCommonAncestor = errors.New("no common ancestor found")
 
 // LCA - returns the least common ancestor of the 2 blocks or an error if no common ancestor is found
 func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) (*types.Block, error) {
@@ -22,27 +20,27 @@ func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) (*
 		return blockA, nil
 	}
 	if blockA.NumberU64() > blockB.NumberU64() {
-		p, f := resolver.ParentBlock(blockA)
-		if !f {
-			return nil, errNoCommonAncestor
+		p, err := resolver.ParentBlock(blockA)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 		}
 		return LCA(p, blockB, resolver)
 	}
 	if blockB.NumberU64() > blockA.NumberU64() {
-		p, f := resolver.ParentBlock(blockB)
-		if !f {
-			return nil, errNoCommonAncestor
+		p, err := resolver.ParentBlock(blockB)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 		}
 
 		return LCA(blockA, p, resolver)
 	}
-	parentBlockA, f := resolver.ParentBlock(blockA)
-	if !f {
-		return nil, errNoCommonAncestor
+	parentBlockA, err := resolver.ParentBlock(blockA)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 	}
-	parentBlockB, f := resolver.ParentBlock(blockB)
-	if !f {
-		return nil, errNoCommonAncestor
+	parentBlockB, err := resolver.ParentBlock(blockB)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 	}
 
 	return LCA(parentBlockA, parentBlockB, resolver)

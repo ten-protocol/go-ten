@@ -7,10 +7,10 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-// EncodedBlock the encoded version of an ExtBlock
-type EncodedBlock []byte
+// EncodedL1Block the encoded version of an L1 block.
+type EncodedL1Block []byte
 
-func EncodeBlock(b *types.Block) (EncodedBlock, error) {
+func EncodeBlock(b *types.Block) (EncodedL1Block, error) {
 	encoded, err := rlp.EncodeToBytes(b)
 	if err != nil {
 		return nil, fmt.Errorf("could not encode block to bytes. Cause: %w", err)
@@ -18,7 +18,7 @@ func EncodeBlock(b *types.Block) (EncodedBlock, error) {
 	return encoded, nil
 }
 
-func (eb EncodedBlock) DecodeBlock() (*types.Block, error) {
+func (eb EncodedL1Block) DecodeBlock() (*types.Block, error) {
 	b := types.Block{}
 	if err := rlp.DecodeBytes(eb, &b); err != nil {
 		return nil, fmt.Errorf("could not decode block from bytes. Cause: %w", err)

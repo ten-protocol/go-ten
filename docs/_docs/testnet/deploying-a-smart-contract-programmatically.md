@@ -13,7 +13,7 @@ the local host with default values `WHOST=127.0.0.1` and `WPORT=3000`.
 A walk through and explanation of the steps performed is given below;
 
 ## Connect to the network and create a local private key
-The [wallet extension](../wallet-extension/wallet-extension.md) acts as an HTTP server to mediate RPC requests. In the 
+The [wallet extension](https://docs.obscu.ro/wallet-extension/wallet-extension/) acts as an HTTP server to mediate RPC requests. In the 
 below a connection is made on the wallet extension host and port, a private key is locally created and the associated 
 account stored for later usage.
 

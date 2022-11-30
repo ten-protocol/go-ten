@@ -2,8 +2,11 @@ package bridge
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -18,7 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/common"
-	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
@@ -153,8 +156,8 @@ func (bridge *Bridge) GetMapping(l1ContractAddress *gethcommon.Address) *ERC20Ma
 }
 
 // ExtractRollups - returns a list of the rollups published in this block
-func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*obscurocore.Rollup {
-	rollups := make([]*obscurocore.Rollup, 0)
+func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
+	rollups := make([]*core.Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
 		t := bridge.MgmtContractLib.DecodeTx(tx)
@@ -166,12 +169,13 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			r, err := common.DecodeRollup(rolTx.Rollup)
 			if err != nil {
 				bridge.logger.Crit("could not decode rollup.", log.ErrKey, err)
+				return nil
 			}
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-				rollups = append(rollups, obscurocore.ToEnclaveRollup(r, bridge.TransactionBlobCrypto))
+				rollups = append(rollups, core.ToEnclaveRollup(r, bridge.TransactionBlobCrypto))
 				bridge.logger.Trace(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
 					common.ShortHash(r.Hash()),
 					common.ShortHash(b.Hash()),
@@ -190,7 +194,8 @@ func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcom
 
 	token := bridge.GetMapping(contract)
 	if token == nil {
-		panic("This should not happen as we don't generate deposits on unsupported tokens.")
+		bridge.logger.Crit("This should not happen as we don't generate deposits on unsupported tokens.")
+		return nil
 	}
 
 	// The nonce is adjusted with the number of deposits added to the rollup already.
@@ -209,6 +214,7 @@ func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcom
 	newTx, err := types.SignTx(tx, signer, token.Owner.PrivateKey())
 	if err != nil {
 		bridge.logger.Crit("could not sign synthetic deposit tx.", log.ErrKey, err)
+		return nil
 	}
 	return newTx
 }
@@ -228,6 +234,7 @@ func (bridge *Bridge) ExtractDeposits(
 		height = fromBlock.NumberU64()
 		if !blockResolver.IsAncestor(toBlock, fromBlock) {
 			bridge.logger.Crit("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
+			return nil
 		}
 	}
 
@@ -251,10 +258,15 @@ func (bridge *Bridge) ExtractDeposits(
 		}
 		if b.NumberU64() < height {
 			bridge.logger.Crit("block height is less than genesis height")
+			return nil
 		}
-		p, f := blockResolver.ParentBlock(b)
-		if !f {
-			bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
+		p, err := blockResolver.ParentBlock(b)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
+			}
+			bridge.logger.Crit("deposits can't be processed because the parent block could not be retrieved", log.ErrKey, err)
+			return nil
 		}
 		b = p
 	}
@@ -264,7 +276,7 @@ func (bridge *Bridge) ExtractDeposits(
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore.Rollup, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
+func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
 	w := make([]common.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
 	for _, t := range newHeadRollup.Transactions {
@@ -277,7 +289,8 @@ func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore
 				signer := types.NewLondonSigner(big.NewInt(bridge.ObscuroChainID))
 				from, err := types.Sender(signer, t)
 				if err != nil {
-					panic(err)
+					bridge.logger.Crit("Error retrieving the sender from the signature", log.ErrKey, err)
+					return nil
 				}
 				state.Logs()
 				w = append(w, common.Withdrawal{

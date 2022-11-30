@@ -70,11 +70,9 @@ func setupBlockProvider(mockEthClient EthClient) (EthBlockProvider, context.Canc
 
 	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut, log.NodeIDKey, "test")
 	blockProvider := EthBlockProvider{
-		ethClient:     mockEthClient,
-		ctx:           ctx,
-		runningStatus: new(int32),
-		streamCh:      make(chan *types.Block),
-		logger:        logger,
+		ethClient: mockEthClient,
+		ctx:       ctx,
+		logger:    logger,
 	}
 	return blockProvider, cancelCtx
 }
@@ -171,6 +169,11 @@ func (e *ethClientMock) BlockByNumber(num *big.Int) (*types.Block, error) {
 	return block, nil
 }
 
+func (e *ethClientMock) BlockNumber() (uint64, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (e *ethClientMock) SendTransaction(signedTx *types.Transaction) error {
 	// TODO implement me
 	panic("implement me")
@@ -196,12 +199,12 @@ func (e *ethClientMock) Info() Info {
 	panic("implement me")
 }
 
-func (e *ethClientMock) FetchHeadBlock() (*types.Block, bool) {
+func (e *ethClientMock) FetchHeadBlock() (*types.Block, error) {
 	if time.Since(e.lastBlockCreation) > 500*time.Millisecond {
 		e.createHeader(e.liveStreamingNext)
 		e.liveStreamingNext++
 	}
-	return e.blksByNum[e.liveStreamingNext-1], true
+	return e.blksByNum[e.liveStreamingNext-1], nil
 }
 
 func (e *ethClientMock) BlocksBetween(block *types.Block, head *types.Block) []*types.Block {
