@@ -58,7 +58,7 @@ type HeadsAfterL1BlockStorage interface {
 	FetchL2Head(blockHash common.L1RootHash) (*common.L2RootHash, error)
 	// FetchLogs returns the block's logs.
 	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
-	// FetchCurrentHeads returns the current L2 chain head.
+	// FetchCurrentL2Head returns the current L2 chain head.
 	FetchCurrentL2Head() (*common.L2RootHash, error)
 	// StoreNewHeads saves the new chain heads alongside its rollup, receipts and logs.
 	StoreNewHeads(l1Head common.L1RootHash, l2Head common.L2RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error
