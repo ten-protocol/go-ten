@@ -522,7 +522,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 		UpdatedHeadRollup: true,
 	}
 
-	return enclave.(*enclaveImpl).storage.StoreNewHead(headsAfterL1Block, genRollup, nil, nil)
+	return enclave.(*enclaveImpl).storage.StoreNewHeads(headsAfterL1Block, genRollup, nil)
 }
 
 func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAddress) error {
@@ -589,7 +589,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 		UpdatedHeadRollup: true,
 	}
 
-	err = enclave.(*enclaveImpl).storage.StoreNewHead(bs, rollup, nil, nil)
+	err = enclave.(*enclaveImpl).storage.StoreNewHeads(bs, rollup, nil)
 	if err != nil {
 		return err
 	}

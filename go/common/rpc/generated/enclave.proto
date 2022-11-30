@@ -105,7 +105,7 @@ message ProduceGenesisRequest {
 }
 
 message ProduceGenesisResponse {
-  ProduceGenesisResponseMsg produceGenesisResponse = 1;
+  ExtRollupMsg genesisRollup = 1;
 }
 
 message StartRequest {
@@ -234,18 +234,16 @@ message AttestationReportMsg {
 }
 
 message BlockSubmissionResponseMsg {
-  BlockHeaderMsg blockHeader = 1;
-  ExtRollupMsg producedRollup = 2;
-  bool updatedHeadRollup = 3;
-  HeaderMsg rollupHead = 4;
-  repeated SecretResponseMsg producedSecretResponses = 5;
-  bytes subscribedLogs = 6;
-  BlockSubmissionErrorMsg error = 7; // todo: avoid errors in Response objects, perhaps using gRPC Status responses
+  ExtRollupMsg producedRollup = 1;
+  bool updatedHeadRollup = 2;
+  HeaderMsg rollupHead = 3;
+  repeated SecretResponseMsg producedSecretResponses = 4;
+  bytes subscribedLogs = 5;
+  BlockSubmissionErrorMsg error = 6; // todo: avoid errors in Response objects, perhaps using gRPC Status responses
 }
 
 message ProduceGenesisResponseMsg {
-  BlockHeaderMsg blockHeader = 1;
-  ExtRollupMsg genesisRollup = 2;
+  ExtRollupMsg genesisRollup = 1;
 }
 
 message BlockSubmissionErrorMsg {
@@ -294,23 +292,4 @@ message WithdrawalMsg {
   bytes amount = 1;
   bytes recipient = 2;
   bytes contract = 3;
-}
-
-message BlockHeaderMsg {
-  bytes ParentHash = 1;
-  bytes UncleHash = 2;
-  bytes Coinbase = 3;
-  bytes Root = 4;
-  bytes TxHash = 5;
-  bytes ReceiptHash = 6;
-  bytes Bloom = 7;
-  uint64 Difficulty = 8;
-  uint64 Number = 9;
-  uint64 GasLimit = 10;
-  uint64 GasUsed = 11;
-  uint64 Time = 12;
-  bytes Extra = 13;
-  bytes MixDigest = 14;
-  uint64 Nonce = 15;
-  uint64 BaseFee = 16;
 }

@@ -235,33 +235,27 @@ func (e *enclaveImpl) Start(block types.Block) error {
 	return nil
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ProduceGenesisResponse, error) {
-	rolGenesis, b, err := e.chain.ProduceGenesis(blkHash)
+func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup, error) {
+	genesisRollup, err := e.chain.ProduceGenesisRollup(blkHash)
 	if err != nil {
 		return nil, err
 	}
 
-	return &common.ProduceGenesisResponse{
-		GenesisRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
-		BlockHeader:   b.Header(),
-	}, nil
+	genesisExtRollup := genesisRollup.ToExtRollup(e.transactionBlobCrypto)
+	return &genesisExtRollup, nil
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	newHeadsAfterL1Block, err := e.chain.UpdateStateFromL1Block(block, isLatest)
+	blockSubmissionResponse, err := e.chain.ProcessL1Block(block, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
 	}
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
-	// We prepare the block submission response.
-	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, newHeadsAfterL1Block)
-	if err != nil {
-		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
-	}
+	// We add any secret responses.
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	// We remove any rolled-up transactions from the mempool.
@@ -274,7 +268,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 }
 
 func (e *enclaveImpl) ProduceRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
-	return e.chain.NewRollup(blockHash)
+	return e.chain.ProduceNewRollup(blockHash)
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -691,7 +685,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// extract optional block number - defaults to the latest block if not avail
-	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList[1])
+	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList, 1)
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}

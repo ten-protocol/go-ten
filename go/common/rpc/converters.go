@@ -37,21 +37,11 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 	}
 
 	return generated.BlockSubmissionResponseMsg{
-		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
 		UpdatedHeadRollup:       response.UpdatedHeadRollup,
 		RollupHead:              ToRollupHeaderMsg(response.IngestedRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
 	}, nil
-}
-
-func ToProduceGenesisResponseMsg(response *common.ProduceGenesisResponse) generated.ProduceGenesisResponseMsg {
-	genesisRollupMsg := ToExtRollupMsg(&response.GenesisRollup)
-
-	return generated.ProduceGenesisResponseMsg{
-		BlockHeader:   ToBlockHeaderMsg(response.BlockHeader),
-		GenesisRollup: &genesisRollupMsg,
-	}
 }
 
 func ToBlockSubmissionRejectionMsg(rejectError *common.BlockRejectError) (generated.BlockSubmissionResponseMsg, error) {
@@ -105,18 +95,10 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 		return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
 	}
 	return &common.BlockSubmissionResponse{
-		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
 		UpdatedHeadRollup:       msg.UpdatedHeadRollup,
 		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
-	}, nil
-}
-
-func FromProduceGenesisResponseMsg(msg *generated.ProduceGenesisResponseMsg) (*common.ProduceGenesisResponse, error) {
-	return &common.ProduceGenesisResponse{
-		BlockHeader:   FromBlockHeaderMsg(msg.GetBlockHeader()),
-		GenesisRollup: FromExtRollupMsg(msg.GetGenesisRollup()),
 	}, nil
 }
 
@@ -236,57 +218,5 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *common.Header {
 		Time:        header.Time,
 		MixDigest:   gethcommon.BytesToHash(header.MixDigest),
 		BaseFee:     big.NewInt(int64(header.BaseFee)),
-	}
-}
-
-func FromBlockHeaderMsg(msg *generated.BlockHeaderMsg) *types.Header {
-	if msg == nil {
-		return nil
-	}
-	return &types.Header{
-		ParentHash:  gethcommon.BytesToHash(msg.ParentHash),
-		UncleHash:   gethcommon.BytesToHash(msg.UncleHash),
-		Coinbase:    gethcommon.BytesToAddress(msg.Coinbase),
-		Root:        gethcommon.BytesToHash(msg.Root),
-		TxHash:      gethcommon.BytesToHash(msg.TxHash),
-		ReceiptHash: gethcommon.BytesToHash(msg.ReceiptHash),
-		Bloom:       types.BytesToBloom(msg.Bloom),
-		Difficulty:  big.NewInt(int64(msg.Difficulty)),
-		Number:      big.NewInt(int64(msg.Number)),
-		GasLimit:    msg.GasLimit,
-		GasUsed:     msg.GasUsed,
-		Time:        msg.Time,
-		Extra:       msg.Extra,
-		MixDigest:   gethcommon.BytesToHash(msg.MixDigest),
-		Nonce:       types.EncodeNonce(msg.Nonce),
-		BaseFee:     big.NewInt(int64(msg.BaseFee)),
-	}
-}
-
-func ToBlockHeaderMsg(header *types.Header) *generated.BlockHeaderMsg {
-	if header == nil {
-		return nil
-	}
-	baseFee := uint64(0)
-	if header.BaseFee != nil {
-		baseFee = header.BaseFee.Uint64()
-	}
-	return &generated.BlockHeaderMsg{
-		ParentHash:  header.ParentHash.Bytes(),
-		UncleHash:   header.UncleHash.Bytes(),
-		Coinbase:    header.Coinbase.Bytes(),
-		Root:        header.Root.Bytes(),
-		TxHash:      header.TxHash.Bytes(),
-		ReceiptHash: header.ReceiptHash.Bytes(),
-		Bloom:       header.Bloom.Bytes(),
-		Difficulty:  header.Difficulty.Uint64(),
-		Number:      header.Number.Uint64(),
-		GasLimit:    header.GasLimit,
-		GasUsed:     header.GasUsed,
-		Time:        header.Time,
-		Extra:       header.Extra,
-		MixDigest:   header.MixDigest.Bytes(),
-		Nonce:       header.Nonce.Uint64(),
-		BaseFee:     baseFee,
 	}
 }

@@ -501,7 +501,7 @@ func (h *host) processL1Block(block common.EncodedL1Block, isLatestBlock bool) e
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(decodedBlock.Hash()), err)
 	}
-	err = h.storeBlockProcessingResult(result)
+	err = h.storeBlockProcessingResult(result, decodedBlock.Header())
 	if err != nil {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
@@ -553,7 +553,7 @@ func (h *host) processL1BlockTransactions(b *types.Block) {
 
 // Publishes a rollup to the L1.
 func (h *host) publishRollup(producedRollup *common.ExtRollup) {
-	encodedRollup, err := common.EncodeRollup(producedRollup.ToExtRollup())
+	encodedRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
 		h.logger.Crit("could not encode rollup.", log.ErrKey, err)
 	}
@@ -587,7 +587,7 @@ func (h *host) storeAndDistributeBatch(producedRollup *common.ExtRollup) {
 	}
 }
 
-func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse) error {
+func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse, blockHeader *types.Header) error {
 	// only update the host rollup headers if the enclave has found a new rollup head
 	if result.UpdatedHeadRollup {
 		// adding a header will update the head if it has a higher height
@@ -598,27 +598,26 @@ func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse
 	}
 
 	// adding a header will update the head if it has a higher height
-	return h.db.AddBlockHeader(result.BlockHeader)
+	return h.db.AddBlockHeader(blockHeader)
 }
 
 // Called only by the first enclave to bootstrap the network
 func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error) {
 	// Create the genesis rollup.
-	genesisResponse, err := h.enclaveClient.ProduceGenesis(block.Hash())
+	genesisRollup, err := h.enclaveClient.ProduceGenesis(block.Hash())
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not produce genesis. Cause: %w", err)
 	}
 	h.logger.Info(
 		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
-			common.ShortHash(genesisResponse.GenesisRollup.Header.Hash()),
+			common.ShortHash(genesisRollup.Header.Hash()),
 		))
 
 	// Distribute the corresponding batch.
-	producedRollup := genesisResponse.GenesisRollup.ToExtRollup()
-	h.storeAndDistributeBatch(producedRollup)
+	h.storeAndDistributeBatch(genesisRollup)
 
 	// Submit the rollup to the management contract.
-	encodedRollup, err := common.EncodeRollup(producedRollup)
+	encodedRollup, err := common.EncodeRollup(genesisRollup)
 	if err != nil {
 		return common.L2RootHash{}, fmt.Errorf("could not encode rollup. Cause: %w", err)
 	}
@@ -631,7 +630,7 @@ func (h *host) initialiseProtocol(block *types.Block) (common.L2RootHash, error)
 		return common.L2RootHash{}, fmt.Errorf("could not initialise protocol. Cause: %w", err)
 	}
 
-	return genesisResponse.GenesisRollup.Header.ParentHash, nil
+	return genesisRollup.Header.ParentHash, nil
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.
@@ -960,11 +959,10 @@ func (h *host) bootstrapHost() types.Block {
 				h.logger.Crit("Internal error", log.ErrKey, err)
 			}
 			// todo: we need to use the latest hash info from the BlockRejectError to realign the block streaming for the enclave
-			h.logger.Info(fmt.Sprintf("Failed to ingest block b_%d. Cause: %s",
-				common.ShortHash(result.BlockHeader.Hash()), bsErr))
+			h.logger.Info(fmt.Sprintf("Failed to ingest block b_%d. Cause: %s", common.ShortHash(cb.Header().Hash()), bsErr))
 		} else {
 			// submission was successful
-			err := h.storeBlockProcessingResult(result)
+			err := h.storeBlockProcessingResult(result, cb.Header())
 			if err != nil {
 				h.logger.Crit("Could not store block processing result", log.ErrKey, err)
 			}
