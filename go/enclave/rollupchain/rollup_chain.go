@@ -469,6 +469,9 @@ func (rc *RollupChain) calculateNewHeads(
 		newHeadRollup = currentHeadRollup
 	}
 
+	// TODO - #718 - Instead of updating the rollup head, we should validate the stored batches against the winning
+	//  rollup. We should still update the block head.
+
 	headsAfterL1Block := obscurocore.HeadsAfterL1Block{
 		HeadBlock:         block.Hash(),
 		HeadRollup:        newHeadRollup.Hash(),
@@ -800,6 +803,8 @@ func (rc *RollupChain) NewRollup(blockHash *common.L1RootHash) (*common.ExtRollu
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO - #718 - This rollup should be stored as the new head.
 
 	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
 	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d (%d). Produced rollup r_%d",
