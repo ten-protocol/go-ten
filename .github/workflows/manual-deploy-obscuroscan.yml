@@ -1,6 +1,21 @@
+- # Deploys Obscuroscan on Azure for Testnet
+- # Builds the Obscuroscan network image, pushes the image to dockerhub and starts Obscuroscan on Azure as a web app.
+- # This allows Obscuroscan to be served using HTTPS, important because API calls can then be made from different domains.
+- # Obscuroscan is a docker container that runs the obscuroscan package
+- # It exposes the following ports:
+- # HTTPS: 80
+- #
+- # Exposes the following addresses:
+- # https://testnet-obscuroscan.azurewebsites.net
+
 name: '[M] Deploy Obscuroscan'
 
-on: push
+on: 
+  push:
+    branches:
+    - main
+    paths:
+    - 'tools/obscuroscan/**'
 
 env:
   AZURE_WEBAPP_NAME: testnet-obscuroscan
@@ -9,9 +24,8 @@ env:
   AZURE_APP_PLAN: obscuroscan-plan  # set this to your App service plan's name - Needed only if you are provisioning the app in the workflow
   
 jobs:
-  build-and-deploy-to-dev:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    environment: dev
     steps:
     - uses: actions/checkout@master
     - name: Azure authentication
