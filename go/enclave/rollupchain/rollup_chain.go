@@ -118,13 +118,10 @@ func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.E
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
-
 	err = rc.signRollup(rollup)
 	if err != nil {
 		return nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
 	}
-
-	// Sanity check the produced rollup
 	_, err = rc.checkRollup(rollup)
 	if err != nil {
 		return nil, err
@@ -175,30 +172,16 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	// We check whether we've already processed the block.
-	_, err := rc.storage.FetchBlock(block.Hash())
-	if err == nil {
-		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
-	}
-	if !errors.Is(err, errutil.ErrNotFound) {
-		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
-	}
-
-	// We insert the block into the L1 chain and store it.
-	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
+	err := rc.insertAndStoreL1Block(block, isLatest)
 	if err != nil {
-		// Do not store the block if the L1 chain insertion failed
-		return nil, rc.rejectBlockErr(err)
+		return nil, err
 	}
-	rc.logger.Trace("block inserted successfully",
-		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
-	rc.storage.StoreBlock(&block)
 
-	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
 	headsAfterL1Block, err := rc.updateHeads(&block)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
+
 	return rc.produceBlockSubmissionResponse(&block, headsAfterL1Block)
 }
 
@@ -306,6 +289,29 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 	}
 
 	return result, nil
+}
+
+func (rc *RollupChain) insertAndStoreL1Block(block types.Block, isLatest bool) error {
+	// We check whether we've already processed the block.
+	_, err := rc.storage.FetchBlock(block.Hash())
+	if err == nil {
+		return rc.rejectBlockErr(errBlockAlreadyProcessed)
+	}
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("could not retrieve block. Cause: %w", err)
+	}
+
+	// We insert the block into the L1 chain and store it.
+	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
+	if err != nil {
+		// Do not store the block if the L1 chain insertion failed
+		return rc.rejectBlockErr(err)
+	}
+	rc.logger.Trace("block inserted successfully",
+		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
+
+	rc.storage.StoreBlock(&block)
+	return nil
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block
