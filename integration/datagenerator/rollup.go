@@ -15,7 +15,7 @@ func RandomRollup() common.ExtRollup {
 			Agg:         RandomAddress(),
 			L1Proof:     randomHash(),
 			Root:        randomHash(),
-			Number:      big.NewInt(int64(randomUInt64())),
+			Number:      big.NewInt(int64(RandomUInt64())),
 			Withdrawals: randomWithdrawals(10),
 		},
 		TxHashes:        []gethcommon.Hash{randomHash()},

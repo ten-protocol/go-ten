@@ -342,13 +342,12 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 		return nil, fmt.Errorf("no from address provided")
 	}
 
-	// TODO hook up the block number to the execution
-	_, err = gethencoding.ExtractBlockNumber(paramList[1])
+	blkNumber, err := gethencoding.ExtractBlockNumber(paramList[1])
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}
 
-	execResult, err := e.chain.ExecuteOffChainTransaction(apiArgs)
+	execResult, err := e.chain.ExecuteOffChainTransaction(apiArgs, blkNumber)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
 		return nil, err
@@ -608,13 +607,12 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return nil, fmt.Errorf("unable to extract requested address - %w", err)
 	}
 
-	// TODO hook up the block number to the execution
 	blockNumber, err := gethencoding.ExtractBlockNumber(paramList[1])
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}
 
-	encryptAddress, balance, err := e.chain.GetBalance(*accountAddress, *blockNumber)
+	encryptAddress, balance, err := e.chain.GetBalance(*accountAddress, blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get balance - %w", err)
 	}
@@ -742,7 +740,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 // This is a copy of https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/api.go#L1055
 // there's a high complexity to the method due to geth business rules (which is mimic'd here)
 // once the work of obscuro gas mechanics is established this method should be simplified
-func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
+func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var (
 		lo  = params.TxGas - 1
@@ -784,7 +782,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr *geth
 	}
 	// Recap the highest gas limit with account's available balance.
 	if feeCap.BitLen() != 0 { //nolint:nestif
-		balance, err := e.chain.GetBalanceAtBlock(*args.From, *blockNr)
+		balance, err := e.chain.GetBalanceAtBlock(*args.From, blkNumber)
 		if err != nil {
 			return 0, fmt.Errorf("unable to fetch account balance - %w", err)
 		}
@@ -819,7 +817,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr *geth
 	// Execute the binary search and hone in on an isGasEnough gas limit
 	for lo+1 < hi {
 		mid := (hi + lo) / 2
-		failed, _, err := e.isGasEnough(args, mid)
+		failed, _, err := e.isGasEnough(args, mid, blkNumber)
 		// If the error is not nil(consensus error), it means the provided message
 		// call or transaction will never be accepted no matter how much gas it is
 		// assigned. Return the error directly, don't struggle any more.
@@ -834,7 +832,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr *geth
 	}
 	// Reject the transaction as invalid if it still fails at the highest allowance
 	if hi == cap { //nolint:nestif
-		failed, result, err := e.isGasEnough(args, hi)
+		failed, result, err := e.isGasEnough(args, hi, blkNumber)
 		if err != nil {
 			return 0, err
 		}
@@ -868,9 +866,9 @@ func (e *enclaveImpl) HealthCheck() (bool, error) {
 
 // Create a helper to check if a gas allowance results in an executable transaction
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
-func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64) (bool, *gethcore.ExecutionResult, error) {
+func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
 	args.Gas = (*hexutil.Uint64)(&gas)
-	result, err := e.chain.ExecuteOffChainTransactionAtBlock(args, gethrpc.BlockNumber(0))
+	result, err := e.chain.ExecuteOffChainTransactionAtBlock(args, blkNumber)
 	if err != nil {
 		if errors.Is(err, gethcore.ErrIntrinsicGas) {
 			return true, nil, nil // Special case, raise gas limit
