@@ -351,6 +351,7 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 	execResult, err := e.chain.ExecuteOffChainTransaction(apiArgs)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
+		return nil, err
 	}
 
 	// encrypt the result payload
@@ -687,7 +688,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// extract optional block number - defaults to the latest block if not avail
-	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList[1])
+	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList, 1)
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}
