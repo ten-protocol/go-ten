@@ -185,27 +185,20 @@ func readAllHashes(db ethdb.Iteratee, number uint64) []gethcommon.Hash {
 	return hashes
 }
 
-func WriteHeadsAfterL1Block(db ethdb.KeyValueWriter, bs *core.HeadsAfterL1Block) error {
-	headsAfterL1BlockBytes, err := rlp.EncodeToBytes(bs)
-	if err != nil {
-		return fmt.Errorf("could not encode chain heads. Cause: %w", err)
-	}
-	if err = db.Put(headsAfterL1BlockKey(bs.HeadBlock), headsAfterL1BlockBytes); err != nil {
+func WriteHeads(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
+	if err := db.Put(headsAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
 		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
 	}
 	return nil
 }
 
-func ReadHeadsAfterL1Block(kv ethdb.KeyValueReader, hash gethcommon.Hash) (*core.HeadsAfterL1Block, error) {
-	data, err := kv.Get(headsAfterL1BlockKey(hash))
+func ReadL2Head(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
+	data, err := kv.Get(headsAfterL1BlockKey(l1Head))
 	if err != nil {
 		return nil, errutil.ErrNotFound
 	}
-	headsAfterL1Block := new(core.HeadsAfterL1Block)
-	if err := rlp.Decode(bytes.NewReader(data), headsAfterL1Block); err != nil {
-		return nil, fmt.Errorf("could not decode block state. Cause: %w", err)
-	}
-	return headsAfterL1Block, nil
+	l2Head := gethcommon.BytesToHash(data)
+	return &l2Head, nil
 }
 
 func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log) error {

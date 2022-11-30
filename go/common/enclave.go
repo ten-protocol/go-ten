@@ -110,7 +110,6 @@ type Enclave interface {
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
-	UpdatedHeadRollup       bool                      // Whether the block contained a new head rollup for the canonical rollup chain.
 	IngestedRollupHeader    *Header                   // The header of the winning rollup contained in the ingested block, if any.
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
 	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the block and all its ancestors for each subscription ID.

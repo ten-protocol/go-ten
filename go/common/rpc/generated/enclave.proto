@@ -235,11 +235,10 @@ message AttestationReportMsg {
 
 message BlockSubmissionResponseMsg {
   ExtRollupMsg producedRollup = 1;
-  bool updatedHeadRollup = 2;
-  HeaderMsg rollupHead = 3;
-  repeated SecretResponseMsg producedSecretResponses = 4;
-  bytes subscribedLogs = 5;
-  BlockSubmissionErrorMsg error = 6; // todo: avoid errors in Response objects, perhaps using gRPC Status responses
+  HeaderMsg rollupHead = 2;
+  repeated SecretResponseMsg producedSecretResponses = 3;
+  bytes subscribedLogs = 4;
+  BlockSubmissionErrorMsg error = 5; // todo: avoid errors in Response objects, perhaps using gRPC Status responses
 }
 
 message ProduceGenesisResponseMsg {
