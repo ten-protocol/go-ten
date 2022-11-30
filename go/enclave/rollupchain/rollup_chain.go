@@ -730,7 +730,7 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 
 // Retrieves and encrypts the logs for the block.
 func (rc *RollupChain) getEncryptedLogs(block types.Block, l2Head *common.L2RootHash) map[gethrpc.ID][]byte {
-	logs := []*types.Log{}
+	var logs []*types.Log
 	fetchedLogs, err := rc.storage.FetchLogs(block.Hash())
 	if err == nil {
 		logs = fetchedLogs
