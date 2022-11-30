@@ -376,18 +376,8 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head
 	}, nil
 }
 
-// Recursively calculates and stores the block state, receipts and logs for the given block.
+// Calculates and stores the block state, receipts and logs for the given block.
 func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, error) {
-	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
-	existingRollup, err := rc.storage.FetchRollupForL1Block(block.Hash())
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
-	}
-	if err == nil {
-		// The state has already been calculated, so we return it.
-		return existingRollup, nil
-	}
-
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
