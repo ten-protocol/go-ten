@@ -365,9 +365,7 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, headsAfterL1Block *core.HeadsAfterL1Block) (*common.BlockSubmissionResponse, error) {
 	if headsAfterL1Block == nil {
 		// not an error state, we ingested a block but no rollup head found
-		return &common.BlockSubmissionResponse{
-			UpdatedHeadRollup: false,
-		}, nil
+		return &common.BlockSubmissionResponse{}, nil
 	}
 
 	headRollup, err := rc.storage.FetchRollup(headsAfterL1Block.HeadRollup)
@@ -380,7 +378,6 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, headsA
 	}
 
 	return &common.BlockSubmissionResponse{
-		UpdatedHeadRollup:    headsAfterL1Block.UpdatedHeadRollup,
 		IngestedRollupHeader: ingestedRollupHeader,
 		SubscribedLogs:       rc.getEncryptedLogs(*block, headsAfterL1Block),
 	}, nil
