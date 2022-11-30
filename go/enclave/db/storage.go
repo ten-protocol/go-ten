@@ -255,18 +255,19 @@ func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
 	return logs, nil
 }
 
-func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, l2Head common.L2RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
+func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
 	batch := s.db.NewBatch()
+
+	rawdb.WriteHeadHeaderHash(batch, l1Head)
+	if err := obscurorawdb.WriteL2Head(batch, l1Head, rollup.Hash()); err != nil {
+		return fmt.Errorf("could not write block state. Cause: %w", err)
+	}
 
 	if isNewRollup {
 		err := s.storeNewRollup(batch, rollup, receipts)
 		if err != nil {
 			return err
 		}
-	}
-
-	if err := obscurorawdb.WriteHeads(batch, l1Head, l2Head); err != nil {
-		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
 	var logs []*types.Log
@@ -276,8 +277,6 @@ func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, l2Head common.L2Ro
 	if err := obscurorawdb.WriteBlockLogs(batch, l1Head, logs); err != nil {
 		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
-
-	rawdb.WriteHeadHeaderHash(batch, l1Head)
 
 	if err := batch.Write(); err != nil {
 		return fmt.Errorf("could not save new head. Cause: %w", err)
@@ -386,9 +385,6 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, receipts []*types.Receipt) error {
 	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
 		return fmt.Errorf("could not write rollup. Cause: %w", err)
-	}
-	if err := obscurorawdb.WriteHeadHeaderHash(batch, rollup.Hash()); err != nil {
-		return fmt.Errorf("could not write head header hash. Cause: %w", err)
 	}
 	if err := obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64()); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)

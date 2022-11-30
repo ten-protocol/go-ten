@@ -185,7 +185,7 @@ func readAllHashes(db ethdb.Iteratee, number uint64) []gethcommon.Hash {
 	return hashes
 }
 
-func WriteHeads(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
+func WriteL2Head(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
 	if err := db.Put(headsAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
 		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
 	}
@@ -280,24 +280,6 @@ func ReadHeadRollupHash(db ethdb.KeyValueReader) (*gethcommon.Hash, error) {
 func WriteHeadRollupHash(db ethdb.KeyValueWriter, hash gethcommon.Hash) error {
 	if err := db.Put(headRollupKey, hash.Bytes()); err != nil {
 		return fmt.Errorf("failed to store last block's hash. Cause: %w", err)
-	}
-	return nil
-}
-
-// ReadHeadHeaderHash retrieves the hash of the current canonical head header.
-func ReadHeadHeaderHash(db ethdb.KeyValueReader) (*gethcommon.Hash, error) {
-	data, err := db.Get(headHeaderKey)
-	if err != nil {
-		return nil, err
-	}
-	hash := gethcommon.BytesToHash(data)
-	return &hash, nil
-}
-
-// WriteHeadHeaderHash stores the hash of the current canonical head header.
-func WriteHeadHeaderHash(db ethdb.KeyValueWriter, hash gethcommon.Hash) error {
-	if err := db.Put(headHeaderKey, hash.Bytes()); err != nil {
-		return fmt.Errorf("failed to store last header's hash. Cause: %w", err)
 	}
 	return nil
 }

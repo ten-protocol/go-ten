@@ -412,7 +412,7 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, erro
 	return l2Head, nil
 }
 
-func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
+func (rc *RollupChain) handleGenesisRollup(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
 	genesisRollup, err := rc.storage.FetchGenesisRollup()
 	if err != nil {
 		// If there is no genesis yet and no rollups have arrived, there is nothing to do
@@ -438,16 +438,15 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*cor
 
 	// The incoming block holds the genesis rollup. Calculate and return the new block state.
 	// todo change this to an hardcoded hash on testnet/mainnet
-	rc.logger.Info("Found genesis rollup", "l1Height", b.NumberU64(), "l1Hash", b.Hash())
-	genesis := rollupsInBlock[0]
-	err = rc.storage.StoreGenesisRollup(genesis)
+	rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
+	genesisRollup = rollupsInBlock[0]
+	err = rc.storage.StoreGenesisRollup(genesisRollup)
 	if err != nil {
 		return nil, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
 	}
 
-	l2Head := genesis.Hash()
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	err = rc.storage.StoreNewHeads(b.Hash(), genesis.Hash(), genesis, nil, true)
+	err = rc.storage.StoreNewHeads(block.Hash(), genesisRollup, nil, true)
 	if err != nil {
 		return nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
 	}
@@ -457,6 +456,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*cor
 		return nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
 	}
 
+	l2Head := genesisRollup.Hash()
 	return &l2Head, errIsGenesisRollupInBlock
 }
 
@@ -605,25 +605,25 @@ func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBl
 		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
 
-	newHeadRollup, isUpdated := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
+	latestRollup, isUpdated := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
 
 	// TODO - #718 - Instead of updating the rollup head, we should validate the stored batches against the winning
 	//  rollup. We should still update the block head.
 
 	l1Head := block.Hash()
-	l2Head := newHeadRollup.Hash()
 	var rollupTxReceipts []*types.Receipt
 	if isUpdated {
-		rollupTxReceipts, err = rc.checkRollup(newHeadRollup)
+		rollupTxReceipts, err = rc.checkRollup(latestRollup)
 		if err != nil {
 			return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
 		}
 	}
-	err = rc.storage.StoreNewHeads(l1Head, l2Head, newHeadRollup, rollupTxReceipts, isUpdated)
+	err = rc.storage.StoreNewHeads(l1Head, latestRollup, rollupTxReceipts, isUpdated)
 	if err != nil {
 		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
 
+	l2Head := latestRollup.Hash()
 	return &l2Head, nil
 }
 
