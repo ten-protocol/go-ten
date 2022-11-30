@@ -173,12 +173,6 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-func (rc *RollupChain) noHeadsAfterL1BlockBlockSubmissionResponse() *common.BlockSubmissionResponse {
-	return &common.BlockSubmissionResponse{
-		UpdatedHeadRollup: false,
-	}
-}
-
 func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.HeadsAfterL1Block, logs map[gethrpc.ID][]byte) *common.BlockSubmissionResponse {
 	headRollup, err := rc.storage.FetchRollup(bs.HeadRollup)
 	if err != nil {
@@ -271,7 +265,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*obs
 			return nil, errIsGenesisRollupInBlock
 		}
 		// We return - we do not need to handle the genesis rollup, since we already have.
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 
 	// The incoming block holds the genesis rollup. Calculate and return the new block state.
@@ -547,7 +541,9 @@ func (rc *RollupChain) AddL1BlockAndUpdateState(block types.Block, isLatest bool
 func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, headsAfterL1Block *obscurocore.HeadsAfterL1Block) (*common.BlockSubmissionResponse, error) {
 	if headsAfterL1Block == nil {
 		// not an error state, we ingested a block but no rollup head found
-		return rc.noHeadsAfterL1BlockBlockSubmissionResponse(), nil
+		return &common.BlockSubmissionResponse{
+			UpdatedHeadRollup: false,
+		}, nil
 	}
 	encryptedLogs := rc.getEncryptedLogs(block, headsAfterL1Block)
 	return rc.newBlockSubmissionResponse(headsAfterL1Block, encryptedLogs), nil
