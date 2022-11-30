@@ -350,6 +350,7 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 	execResult, err := e.chain.ExecuteOffChainTransaction(apiArgs, blkNumber)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
+		return nil, err
 	}
 
 	// encrypt the result payload
