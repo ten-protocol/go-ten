@@ -255,7 +255,7 @@ func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
 	return logs, nil
 }
 
-func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.Rollup, receipts []*types.Receipt, logs []*types.Log) error {
+func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.Rollup, receipts []*types.Receipt) error {
 	batch := s.db.NewBatch()
 
 	if heads.UpdatedHeadRollup {
@@ -268,9 +268,17 @@ func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.
 	if err := obscurorawdb.WriteHeadsAfterL1Block(batch, heads); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
+
+	var logs []*types.Log
+	if receipts != nil {
+		for _, receipt := range receipts {
+			logs = append(logs, receipt.Logs...)
+		}
+	}
 	if err := obscurorawdb.WriteBlockLogs(batch, heads.HeadBlock, logs); err != nil {
 		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
+
 	rawdb.WriteHeadHeaderHash(batch, heads.HeadBlock)
 
 	if err := batch.Write(); err != nil {

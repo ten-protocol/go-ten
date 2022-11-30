@@ -246,11 +246,7 @@ func (rc *RollupChain) updateState(block *types.Block) (*obscurocore.HeadsAfterL
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: %t - r_%d, ",
 		common.ShortHash(block.Hash()), headsAfterL1Block.UpdatedHeadRollup, common.ShortHash(headsAfterL1Block.HeadRollup)))
 
-	var logs []*types.Log
-	for _, receipt := range receipts {
-		logs = append(logs, receipt.Logs...)
-	}
-	err = rc.storage.StoreNewHeads(headsAfterL1Block, headRollup, receipts, logs)
+	err = rc.storage.StoreNewHeads(headsAfterL1Block, headRollup, receipts)
 	if err != nil {
 		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
@@ -295,7 +291,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*obs
 		HeadRollup:        genesis.Hash(),
 		UpdatedHeadRollup: true,
 	}
-	err = rc.storage.StoreNewHeads(&headsAfterL1Block, genesis, nil, []*types.Log{})
+	err = rc.storage.StoreNewHeads(&headsAfterL1Block, genesis, nil)
 	if err != nil {
 		return false, false, nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
 	}
