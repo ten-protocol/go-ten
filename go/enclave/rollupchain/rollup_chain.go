@@ -798,7 +798,6 @@ func (rc *RollupChain) NewRollup(blockHash *common.L1RootHash) (*common.ExtRollu
 		return nil, err
 	}
 
-	// todo - should store proposal rollups in a different storage as they are ephemeral (round based)
 	err = rc.storage.StoreRollup(rollup)
 	if err != nil {
 		return nil, err
