@@ -378,11 +378,11 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err != nil {
 		return nil, err
 	}
-	hs, err := e.storage.FetchCurrentHeadsAfterL1Block()
+	_, l2Head, err := e.storage.FetchCurrentHeadsAfterL1Block()
 	if err == nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
-		s, err := e.storage.CreateStateDB(hs.HeadRollup)
+		s, err := e.storage.CreateStateDB(*l2Head)
 		if err != nil {
 			return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 		}

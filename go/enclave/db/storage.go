@@ -242,7 +242,9 @@ func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
 	return block, nil
 }
 
-func (s *storageImpl) FetchHeads(hash common.L1RootHash) (*core.HeadsAfterL1Block, error) {
+// todo - joel - do some renaming
+
+func (s *storageImpl) FetchHeads(hash common.L1RootHash) (*common.L2RootHash, error) {
 	return obscurorawdb.ReadHeadsAfterL1Block(s.db, hash)
 }
 
@@ -255,7 +257,7 @@ func (s *storageImpl) FetchLogs(hash common.L1RootHash) ([]*types.Log, error) {
 	return logs, nil
 }
 
-func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
+func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, l2Head common.L2RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
 	batch := s.db.NewBatch()
 
 	if isNewRollup {
@@ -265,7 +267,7 @@ func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.
 		}
 	}
 
-	if err := obscurorawdb.WriteHeadsAfterL1Block(batch, heads); err != nil {
+	if err := obscurorawdb.WriteHeadsAfterL1Block(batch, l1Head, l2Head); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
@@ -273,11 +275,11 @@ func (s *storageImpl) StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
 	}
-	if err := obscurorawdb.WriteBlockLogs(batch, heads.HeadBlock, logs); err != nil {
+	if err := obscurorawdb.WriteBlockLogs(batch, l1Head, logs); err != nil {
 		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
 
-	rawdb.WriteHeadHeaderHash(batch, heads.HeadBlock)
+	rawdb.WriteHeadHeaderHash(batch, l1Head)
 
 	if err := batch.Write(); err != nil {
 		return fmt.Errorf("could not save new head. Cause: %w", err)
@@ -308,18 +310,18 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	return statedb, nil
 }
 
-func (s *storageImpl) FetchCurrentHeadsAfterL1Block() (*core.HeadsAfterL1Block, error) {
-	h := rawdb.ReadHeadHeaderHash(s.db)
-	if (bytes.Equal(h.Bytes(), gethcommon.Hash{}.Bytes())) {
-		return nil, errutil.ErrNotFound
+func (s *storageImpl) FetchCurrentHeadsAfterL1Block() (*common.L1RootHash, *common.L2RootHash, error) {
+	l1Head := rawdb.ReadHeadHeaderHash(s.db)
+	if (bytes.Equal(l1Head.Bytes(), gethcommon.Hash{}.Bytes())) {
+		return nil, nil, errutil.ErrNotFound
 	}
 
-	headsAfterL1Block, err := obscurorawdb.ReadHeadsAfterL1Block(s.db, h)
+	l2Head, err := obscurorawdb.ReadHeadsAfterL1Block(s.db, l1Head)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve block state for head. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not retrieve block state for head. Cause: %w", err)
 	}
 
-	return headsAfterL1Block, nil
+	return &l1Head, l2Head, nil
 }
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.

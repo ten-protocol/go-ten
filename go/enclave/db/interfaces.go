@@ -55,13 +55,13 @@ type RollupResolver interface {
 
 type HeadsAfterL1BlockStorage interface {
 	// FetchHeads returns the chain heads for a given L1 block hash.
-	FetchHeads(blockHash common.L1RootHash) (*core.HeadsAfterL1Block, error)
+	FetchHeads(blockHash common.L1RootHash) (*common.L2RootHash, error)
 	// FetchLogs returns the block's logs.
 	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 	// FetchCurrentHeadsAfterL1Block returns the current chain heads.
-	FetchCurrentHeadsAfterL1Block() (*core.HeadsAfterL1Block, error)
+	FetchCurrentHeadsAfterL1Block() (*common.L1RootHash, *common.L2RootHash, error)
 	// StoreNewHeads saves the new chain heads alongside its rollup, receipts and logs.
-	StoreNewHeads(heads *core.HeadsAfterL1Block, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error
+	StoreNewHeads(l1Head common.L1RootHash, l2Head common.L2RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
