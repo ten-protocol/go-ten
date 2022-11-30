@@ -11,11 +11,14 @@ import (
 	"strings"
 	"sync"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core"
+	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -23,17 +26,13 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 	"github.com/status-im/keycard-go/hexutils"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
 var (
@@ -50,7 +49,7 @@ type RollupChain struct {
 	chainConfig *params.ChainConfig
 
 	storage               db.Storage
-	l1Blockchain          *core.BlockChain
+	l1Blockchain          *gethcore.BlockChain
 	bridge                *bridge.Bridge
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
 	mempool               mempool.Manager
@@ -71,7 +70,7 @@ func New(
 	hostID gethcommon.Address,
 	nodeType common.NodeType,
 	storage db.Storage,
-	l1Blockchain *core.BlockChain,
+	l1Blockchain *gethcore.BlockChain,
 	bridge *bridge.Bridge,
 	subscriptionManager *events.SubscriptionManager,
 	txCrypto crypto.TransactionBlobCrypto,
@@ -99,13 +98,56 @@ func New(
 	}
 }
 
-func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rollup, error) {
+// ProduceNewRollup creates a new rollup.
+func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
+	// We retrieve the relevant block and chain heads.
+	block, err := rc.storage.FetchBlock(*blockHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve block to produce rollup. Cause: %w", err)
+	}
+	chainHeads, err := rc.storage.FetchHeadsAfterL1Block(*blockHash)
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			// not an error state, we ingested a block but no rollup head found
+			return nil, nil //nolint:nilnil
+		}
+		return nil, fmt.Errorf("could not retrieve chain heads. Cause: %w", err)
+	}
+
+	// We create the new rollup, sign it, check it, and store it.
+	rollup, err := rc.produceRollup(block, chainHeads)
+	if err != nil {
+		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
+	}
+	err = rc.signRollup(rollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
+	}
+	_, err = rc.checkRollup(rollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
+	}
+	err = rc.storage.StoreRollup(rollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
+	}
+
+	// TODO - #718 - This rollup should be stored as the new head.
+
+	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
+	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d (%d). Produced rollup r_%d",
+		common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(extRollup.Hash())))
+	return &extRollup, nil
+}
+
+// ProduceGenesisRollup creates a genesis rollup linked to the provided L1 block and signs it.
+func (rc *RollupChain) ProduceGenesisRollup(blkHash gethcommon.Hash) (*core.Rollup, error) {
 	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
 	if err != nil {
 		return nil, err
 	}
 
-	rolGenesis := obscurocore.NewRollup(
+	rolGenesis := core.NewRollup(
 		blkHash,
 		nil,
 		common.L2GenesisHeight,
@@ -122,6 +164,153 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 	}
 
 	return rolGenesis, nil
+}
+
+// ProcessL1Block is used to update the enclave with an additional L1 block.
+func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+	rc.blockProcessingMutex.Lock()
+	defer rc.blockProcessingMutex.Unlock()
+
+	err := rc.insertAndStoreL1Block(block, isLatest)
+	if err != nil {
+		return nil, err
+	}
+
+	headsAfterL1Block, err := rc.updateHeads(&block)
+	if err != nil {
+		return nil, rc.rejectBlockErr(err)
+	}
+
+	return rc.produceBlockSubmissionResponse(&block, headsAfterL1Block)
+}
+
+func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber rpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
+	// get account balance at certain block/height
+	balance, err := rc.GetBalanceAtBlock(accountAddress, blockNumber)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// check if account is a contract
+	isAddrContract, err := rc.isAccountContractAtBlock(accountAddress, blockNumber)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Decide which address to encrypt the result with
+	address := accountAddress
+	// If the accountAddress is a contract, encrypt with the address of the contract owner
+	if isAddrContract {
+		txHash, err := rc.storage.GetContractCreationTx(accountAddress)
+		if err != nil {
+			return nil, nil, err
+		}
+		transaction, _, _, _, err := rc.storage.GetTransaction(*txHash)
+		if err != nil {
+			return nil, nil, err
+		}
+		signer := types.NewLondonSigner(rc.chainConfig.ChainID)
+
+		sender, err := signer.Sender(transaction)
+		if err != nil {
+			return nil, nil, err
+		}
+		address = sender
+	}
+
+	return &address, balance, nil
+}
+
+// GetBalanceAtBlock returns the balance of an account at a certain height
+func (rc *RollupChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber rpc.BlockNumber) (*hexutil.Big, error) {
+	chainState, err := rc.getChainStateAtBlock(blockNumber)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
+	}
+
+	return (*hexutil.Big)(chainState.GetBalance(accountAddr)), nil
+}
+
+// ExecuteOffChainTransaction executes non-state changing transactions at a given block height (eth_call)
+func (rc *RollupChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionArgs) (*gethcore.ExecutionResult, error) {
+	// TODO Hook up the blockNumber
+	result, err := rc.ExecuteOffChainTransactionAtBlock(apiArgs, rpc.BlockNumber(0))
+	if err != nil {
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, err.Error())
+		return nil, err
+	}
+
+	// the execution might have succeeded but the evm contract logic might have failed
+	if result.Failed() {
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, result.Err)
+		return nil, result.Err
+	}
+
+	rc.logger.Trace(fmt.Sprintf("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData)))
+
+	return result, nil
+}
+
+func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber rpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+	// TODO review this during gas mechanics implementation
+	callMsg, err := apiArgs.ToMessage(rc.GlobalGasCap, rc.BaseFee)
+	if err != nil {
+		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
+	}
+
+	headsAfterL1Block, err := rc.storage.FetchCurrentHeadsAfterL1Block()
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch head state. Cause: %w", err)
+	}
+	// todo - get the parent
+	r, err := rc.storage.FetchRollup(headsAfterL1Block.HeadRollup)
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch head state rollup. Cause: %w", err)
+	}
+
+	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
+	s, err := rc.storage.CreateStateDB(headsAfterL1Block.HeadRollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+
+	result, err := evm.ExecuteOffChainCall(&callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
+	if err != nil {
+		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
+		return result, err
+	}
+
+	// the execution outcome was unsuccessful, but it was able to execute the call
+	if result.Failed() {
+		// do not return an error
+		// the result object should be evaluated upstream
+		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
+	}
+
+	return result, nil
+}
+
+func (rc *RollupChain) insertAndStoreL1Block(block types.Block, isLatest bool) error {
+	// We check whether we've already processed the block.
+	_, err := rc.storage.FetchBlock(block.Hash())
+	if err == nil {
+		return rc.rejectBlockErr(errBlockAlreadyProcessed)
+	}
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("could not retrieve block. Cause: %w", err)
+	}
+
+	// We insert the block into the L1 chain and store it.
+	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
+	if err != nil {
+		// Do not store the block if the L1 chain insertion failed
+		return rc.rejectBlockErr(err)
+	}
+	rc.logger.Trace("block inserted successfully",
+		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
+
+	rc.storage.StoreBlock(&block)
+	return nil
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block
@@ -177,27 +366,32 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-func (rc *RollupChain) newBlockSubmissionResponse(bs *obscurocore.HeadsAfterL1Block, logs map[gethrpc.ID][]byte) *common.BlockSubmissionResponse {
-	headRollup, err := rc.storage.FetchRollup(bs.HeadRollup)
+func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, headsAfterL1Block *core.HeadsAfterL1Block) (*common.BlockSubmissionResponse, error) {
+	if headsAfterL1Block == nil {
+		// not an error state, we ingested a block but no rollup head found
+		return &common.BlockSubmissionResponse{
+			UpdatedHeadRollup: false,
+		}, nil
+	}
+
+	headRollup, err := rc.storage.FetchRollup(headsAfterL1Block.HeadRollup)
 	if err != nil {
 		rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
 	}
-
 	var ingestedRollupHeader *common.Header
-	if bs.UpdatedHeadRollup {
+	if headsAfterL1Block.UpdatedHeadRollup {
 		ingestedRollupHeader = headRollup.Header
 	}
+
 	return &common.BlockSubmissionResponse{
-		UpdatedHeadRollup:    bs.UpdatedHeadRollup,
+		UpdatedHeadRollup:    headsAfterL1Block.UpdatedHeadRollup,
 		IngestedRollupHeader: ingestedRollupHeader,
-		SubscribedLogs:       logs,
-	}
+		SubscribedLogs:       rc.getEncryptedLogs(*block, headsAfterL1Block),
+	}, nil
 }
 
-//  STATE
-
 // Recursively calculates and stores the block state, receipts and logs for the given block.
-func (rc *RollupChain) updateHeads(block *types.Block) (*obscurocore.HeadsAfterL1Block, error) {
+func (rc *RollupChain) updateHeads(block *types.Block) (*core.HeadsAfterL1Block, error) {
 	// This method is called recursively in case of re-orgs. Stop when state was calculated already.
 	headsAfterL1Block, err := rc.storage.FetchHeadsAfterL1Block(block.Hash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -248,7 +442,7 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*obscurocore.HeadsAfterL
 	return headsAfterL1Block, nil
 }
 
-func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*obscurocore.Rollup) (*obscurocore.HeadsAfterL1Block, error) {
+func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*core.Rollup) (*core.HeadsAfterL1Block, error) {
 	genesisRollup, err := rc.storage.FetchGenesisRollup()
 	if err != nil {
 		// If there is no genesis yet and no rollups have arrived, there is nothing to do
@@ -282,7 +476,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*obs
 	}
 
 	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-	headsAfterL1Block := obscurocore.HeadsAfterL1Block{
+	headsAfterL1Block := core.HeadsAfterL1Block{
 		HeadBlock:         b.Hash(),
 		HeadRollup:        genesis.Hash(),
 		UpdatedHeadRollup: true,
@@ -300,7 +494,7 @@ func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollupsInBlock []*obs
 	return &headsAfterL1Block, errIsGenesisRollupInBlock
 }
 
-func (rc *RollupChain) getHeadsAfterParentBlock(parentBlockHash gethcommon.Hash) (*obscurocore.HeadsAfterL1Block, error) {
+func (rc *RollupChain) getHeadsAfterParentBlock(parentBlockHash gethcommon.Hash) (*core.HeadsAfterL1Block, error) {
 	headsAfterParentBlock, err := rc.storage.FetchHeadsAfterL1Block(parentBlockHash)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
@@ -324,16 +518,10 @@ func (rc *RollupChain) getHeadsAfterParentBlock(parentBlockHash gethcommon.Hash)
 	return headsAfterParentBlock, nil
 }
 
-type sortByTxIndex []*types.Receipt
-
-func (c sortByTxIndex) Len() int           { return len(c) }
-func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
-func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
-
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
-func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
@@ -404,12 +592,12 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 	return rootHash, executedTransactions, txReceipts, depositReceipts
 }
 
-func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethcommon.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
+func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash gethcommon.Hash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
 		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, obscurocore.PrintTxs(rollup.Transactions), dump, depositReceipts))
+			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, core.PrintTxs(rollup.Transactions), dump, depositReceipts))
 		return false
 	}
 
@@ -442,9 +630,9 @@ func (rc *RollupChain) validateRollup(rollup *obscurocore.Rollup, rootHash gethc
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
 func (rc *RollupChain) calculateNewHeads(
 	block *types.Block,
-	headsAfterParentBlock *obscurocore.HeadsAfterL1Block,
-	rollupsInBlock []*obscurocore.Rollup,
-) (*obscurocore.HeadsAfterL1Block, *obscurocore.Rollup, []*types.Receipt, error) {
+	headsAfterParentBlock *core.HeadsAfterL1Block,
+	rollupsInBlock []*core.Rollup,
+) (*core.HeadsAfterL1Block, *core.Rollup, []*types.Receipt, error) {
 	currentHeadRollup, err := rc.storage.FetchRollup(headsAfterParentBlock.HeadRollup)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
@@ -464,7 +652,7 @@ func (rc *RollupChain) calculateNewHeads(
 	// TODO - #718 - Instead of updating the rollup head, we should validate the stored batches against the winning
 	//  rollup. We should still update the block head.
 
-	headsAfterL1Block := obscurocore.HeadsAfterL1Block{
+	headsAfterL1Block := core.HeadsAfterL1Block{
 		HeadBlock:         block.Hash(),
 		HeadRollup:        newHeadRollup.Hash(),
 		UpdatedHeadRollup: found,
@@ -473,7 +661,7 @@ func (rc *RollupChain) calculateNewHeads(
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
-func (rc *RollupChain) checkRollup(rollup *obscurocore.Rollup) ([]*types.Receipt, error) {
+func (rc *RollupChain) checkRollup(rollup *core.Rollup) ([]*types.Receipt, error) {
 	stateDB, err := rc.storage.CreateStateDB(rollup.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
@@ -499,199 +687,7 @@ func (rc *RollupChain) checkRollup(rollup *obscurocore.Rollup) ([]*types.Receipt
 	return txReceipts, nil
 }
 
-func toReceiptMap(txReceipts []*types.Receipt) map[gethcommon.Hash]*types.Receipt {
-	result := make(map[gethcommon.Hash]*types.Receipt, 0)
-	for _, r := range txReceipts {
-		result[r.TxHash] = r
-	}
-	return result
-}
-
-func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {
-	receipts := make([]*types.Receipt, 0)
-	receipts = append(receipts, txReceipts...)
-	receipts = append(receipts, depositReceipts...)
-	return receipts
-}
-
-// AddL1BlockAndUpdateState is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) AddL1BlockAndUpdateState(block types.Block, isLatest bool) (*obscurocore.HeadsAfterL1Block, error) {
-	rc.blockProcessingMutex.Lock()
-	defer rc.blockProcessingMutex.Unlock()
-
-	// We check whether we've already processed the block.
-	_, err := rc.storage.FetchBlock(block.Hash())
-	if err == nil {
-		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
-	}
-	if !errors.Is(err, errutil.ErrNotFound) {
-		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
-	}
-
-	// We insert the block into the L1 chain and store it.
-	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
-	if err != nil {
-		// Do not store the block if the L1 chain insertion failed
-		return nil, rc.rejectBlockErr(err)
-	}
-	rc.logger.Trace("block inserted successfully",
-		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
-	rc.storage.StoreBlock(&block)
-
-	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
-	return rc.updateHeads(&block)
-}
-
-func (rc *RollupChain) ProduceBlockSubmissionResponse(block types.Block, headsAfterL1Block *obscurocore.HeadsAfterL1Block) (*common.BlockSubmissionResponse, error) {
-	if headsAfterL1Block == nil {
-		// not an error state, we ingested a block but no rollup head found
-		return &common.BlockSubmissionResponse{
-			UpdatedHeadRollup: false,
-		}, nil
-	}
-	encryptedLogs := rc.getEncryptedLogs(block, headsAfterL1Block)
-	return rc.newBlockSubmissionResponse(headsAfterL1Block, encryptedLogs), nil
-}
-
-// ExecuteOffChainTransaction executes non-state changing transactions at a given block height (eth_call)
-func (rc *RollupChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionArgs) (*core.ExecutionResult, error) {
-	// TODO Hook up the blockNumber
-	result, err := rc.ExecuteOffChainTransactionAtBlock(apiArgs, gethrpc.BlockNumber(0))
-	if err != nil {
-		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, err.Error())
-		return nil, err
-	}
-
-	// the execution might have succeeded (err == nil) but the evm contract logic might have failed (result.Failed() == true)
-	if result.Failed() {
-		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, result.Err)
-		return nil, result.Err
-	}
-
-	rc.logger.Trace(fmt.Sprintf("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData)))
-
-	return result, nil
-}
-
-func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
-	// get account balance at certain block/height
-	balance, err := rc.GetBalanceAtBlock(accountAddress, blockNumber)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// check if account is a contract
-	isAddrContract, err := rc.IsAccountContractAtBlock(accountAddress, blockNumber)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Decide which address to encrypt the result with
-	address := accountAddress
-	// If the accountAddress is a contract, encrypt with the address of the contract owner
-	if isAddrContract {
-		txHash, err := rc.storage.GetContractCreationTx(accountAddress)
-		if err != nil {
-			return nil, nil, err
-		}
-		transaction, _, _, _, err := rc.storage.GetTransaction(*txHash)
-		if err != nil {
-			return nil, nil, err
-		}
-		signer := types.NewLondonSigner(rc.chainConfig.ChainID)
-
-		sender, err := signer.Sender(transaction)
-		if err != nil {
-			return nil, nil, err
-		}
-		address = sender
-	}
-
-	return &address, balance, nil
-}
-
-// GetChainStateAtBlock is a helper function that returns the state of the chain at height
-// TODO make this cacheable
-func (rc *RollupChain) GetChainStateAtBlock(blockNumber gethrpc.BlockNumber) (*state.StateDB, error) {
-	// We retrieve the rollup of interest.
-	rollup, err := rc.getRollup(blockNumber)
-	if err != nil {
-		return nil, err
-	}
-
-	// We get that of the chain at that height
-	blockchainState, err := rc.storage.CreateStateDB(rollup.Hash())
-	if err != nil {
-		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
-	}
-
-	if blockchainState == nil {
-		return nil, fmt.Errorf("unable to fetch chain state for rollup %s", rollup.Hash().Hex())
-	}
-
-	return blockchainState, err
-}
-
-// GetBalanceAtBlock returns the balance of an account at a certain height
-func (rc *RollupChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber gethrpc.BlockNumber) (*hexutil.Big, error) {
-	chainState, err := rc.GetChainStateAtBlock(blockNumber)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
-	}
-
-	return (*hexutil.Big)(chainState.GetBalance(accountAddr)), nil
-}
-
-// IsAccountContractAtBlock returns the whether the account is a contract or not at a certain height
-func (rc *RollupChain) IsAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber gethrpc.BlockNumber) (bool, error) {
-	chainState, err := rc.GetChainStateAtBlock(blockNumber)
-	if err != nil {
-		return false, fmt.Errorf("unable to get blockchain state - %w", err)
-	}
-
-	return len(chainState.GetCode(accountAddr)) > 0, nil
-}
-
-func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber gethrpc.BlockNumber) (*core.ExecutionResult, error) {
-	// TODO review this during gas mechanics implementation
-	callMsg, err := apiArgs.ToMessage(rc.GlobalGasCap, rc.BaseFee)
-	if err != nil {
-		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
-	}
-
-	headsAfterL1Block, err := rc.storage.FetchCurrentHeadsAfterL1Block()
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch head state. Cause: %w", err)
-	}
-	// todo - get the parent
-	r, err := rc.storage.FetchRollup(headsAfterL1Block.HeadRollup)
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch head state rollup. Cause: %w", err)
-	}
-
-	rc.logger.Trace(fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s", callMsg.To(), callMsg.From(), hexutils.BytesToHex(callMsg.Data()), common.ShortHash(r.Hash()), r.Header.Root.Hex()))
-	s, err := rc.storage.CreateStateDB(headsAfterL1Block.HeadRollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
-	}
-
-	result, err := evm.ExecuteOffChainCall(&callMsg, s, r.Header, rc.storage, rc.chainConfig, rc.logger)
-	if err != nil {
-		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
-		return result, err
-	}
-
-	// the execution outcome was unsuccessful, but it was able to execute the call
-	if result.Failed() {
-		// do not return an error
-		// the result object should be evaluated upstream
-		rc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
-	}
-
-	return result, nil
-}
-
-func (rc *RollupChain) signRollup(r *obscurocore.Rollup) error {
+func (rc *RollupChain) signRollup(r *core.Rollup) error {
 	var err error
 	h := r.Hash()
 	r.Header.R, r.Header.S, err = ecdsa.Sign(rand.Reader, rc.enclavePrivateKey, h[:])
@@ -701,7 +697,7 @@ func (rc *RollupChain) signRollup(r *obscurocore.Rollup) error {
 	return nil
 }
 
-func (rc *RollupChain) verifySig(r *obscurocore.Rollup) bool {
+func (rc *RollupChain) verifySig(r *core.Rollup) bool {
 	// If this rollup is generated by the current enclave skip the sig verification
 	if bytes.Equal(r.Header.Agg.Bytes(), rc.hostID.Bytes()) {
 		return true
@@ -723,19 +719,19 @@ func (rc *RollupChain) verifySig(r *obscurocore.Rollup) bool {
 }
 
 // Retrieves the rollup with the given height, with special handling for earliest/latest/pending .
-func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollup, error) {
-	var rollup *obscurocore.Rollup
+func (rc *RollupChain) getRollup(height rpc.BlockNumber) (*core.Rollup, error) {
+	var rollup *core.Rollup
 	switch height {
-	case gethrpc.EarliestBlockNumber:
+	case rpc.EarliestBlockNumber:
 		genesisRollup, err := rc.storage.FetchGenesisRollup()
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
 		rollup = genesisRollup
-	case gethrpc.PendingBlockNumber:
+	case rpc.PendingBlockNumber:
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
-	case gethrpc.LatestBlockNumber:
+	case rpc.LatestBlockNumber:
 		headsAfterL1Block, err := rc.storage.FetchCurrentHeadsAfterL1Block()
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve head state. Cause: %w", err)
@@ -755,7 +751,7 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*obscurocore.Rollu
 }
 
 // Retrieves and encrypts the logs for the block.
-func (rc *RollupChain) getEncryptedLogs(block types.Block, headsAfterL1Block *obscurocore.HeadsAfterL1Block) map[gethrpc.ID][]byte {
+func (rc *RollupChain) getEncryptedLogs(block types.Block, headsAfterL1Block *core.HeadsAfterL1Block) map[rpc.ID][]byte {
 	logs := []*types.Log{}
 	fetchedLogs, err := rc.storage.FetchLogs(block.Hash())
 	if err == nil {
@@ -770,53 +766,8 @@ func (rc *RollupChain) getEncryptedLogs(block types.Block, headsAfterL1Block *ob
 	return encryptedLogs
 }
 
-// NewRollup creates a rollup, signs it, checks it, and stores it.
-func (rc *RollupChain) NewRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
-	block, err := rc.storage.FetchBlock(*blockHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve block to produce rollup. Cause: %w", err)
-	}
-	blockState, err := rc.storage.FetchHeadsAfterL1Block(*blockHash)
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			// not an error state, we ingested a block but no rollup head found
-			return nil, nil //nolint:nilnil
-		}
-		return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
-	}
-
-	rollup, err := rc.produceRollup(block, blockState)
-	if err != nil {
-		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
-	}
-
-	err = rc.signRollup(rollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
-	}
-
-	// Sanity check the produced rollup
-	_, err = rc.checkRollup(rollup)
-	if err != nil {
-		return nil, err
-	}
-
-	err = rc.storage.StoreRollup(rollup)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO - #718 - This rollup should be stored as the new head.
-
-	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
-	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d (%d). Produced rollup r_%d",
-		common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(extRollup.Hash())))
-
-	return &extRollup, nil
-}
-
 // Creates a rollup.
-func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.HeadsAfterL1Block) (*obscurocore.Rollup, error) {
+func (rc *RollupChain) produceRollup(b *types.Block, bs *core.HeadsAfterL1Block) (*core.Rollup, error) {
 	headRollup, err := rc.storage.FetchRollup(bs.HeadRollup)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
@@ -828,7 +779,7 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.HeadsAfterL
 
 	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
 	nonce := common.GenerateNonce()
-	r, err := obscurocore.EmptyRollup(rc.hostID, headRollup.Header, b.Hash(), nonce)
+	r, err := core.EmptyRollup(rc.hostID, headRollup.Header, b.Hash(), nonce)
 	if err != nil {
 		return nil, fmt.Errorf("could not create rollup. Cause: %w", err)
 	}
@@ -886,4 +837,54 @@ func (rc *RollupChain) rejectBlockErr(cause error) *common.BlockRejectError {
 		L1Head:  hash,
 		Wrapped: cause,
 	}
+}
+
+// Returns the state of the chain at height
+// TODO make this cacheable
+func (rc *RollupChain) getChainStateAtBlock(blockNumber rpc.BlockNumber) (*state.StateDB, error) {
+	// We retrieve the rollup of interest.
+	rollup, err := rc.getRollup(blockNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	// We get that of the chain at that height
+	blockchainState, err := rc.storage.CreateStateDB(rollup.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+
+	if blockchainState == nil {
+		return nil, fmt.Errorf("unable to fetch chain state for rollup %s", rollup.Hash().Hex())
+	}
+
+	return blockchainState, err
+}
+
+// Returns the whether the account is a contract or not at a certain height
+func (rc *RollupChain) isAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber rpc.BlockNumber) (bool, error) {
+	chainState, err := rc.getChainStateAtBlock(blockNumber)
+	if err != nil {
+		return false, fmt.Errorf("unable to get blockchain state - %w", err)
+	}
+
+	return len(chainState.GetCode(accountAddr)) > 0, nil
+}
+
+type sortByTxIndex []*types.Receipt
+
+func (c sortByTxIndex) Len() int           { return len(c) }
+func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
+func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
+
+func toReceiptMap(txReceipts []*types.Receipt) map[gethcommon.Hash]*types.Receipt {
+	receiptMap := make(map[gethcommon.Hash]*types.Receipt, 0)
+	for _, receipt := range txReceipts {
+		receiptMap[receipt.TxHash] = receipt
+	}
+	return receiptMap
+}
+
+func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {
+	return append(txReceipts, depositReceipts...)
 }
