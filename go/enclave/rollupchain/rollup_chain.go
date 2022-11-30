@@ -223,20 +223,23 @@ func (rc *RollupChain) updateState(block *types.Block) (*obscurocore.HeadsAfterL
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 	genesisRollup, err := rc.storage.FetchGenesisRollup()
 	if err != nil {
+		// If there is no genesis yet and no rollups have arrived, there is nothing to do
+		if errors.Is(err, errutil.ErrNotFound) && len(rollupsInBlock) == 0 {
+			return nil, nil //nolint:nilnil
+		}
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
-		}
-		// Since there is no genesis yet and no rollups have arrived, there is nothing to do
-		if len(rollupsInBlock) == 0 {
-			return nil, nil //nolint:nilnil
 		}
 	}
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handles the case of the block containing the genesis being processed multiple times.
-	genesisState, isGenesis := rc.handleGenesisRollup(block, rollupsInBlock, genesisRollup)
-	if isGenesis {
-		return genesisState, nil
+	isGenesisRollupInBlock, headsAfterGenesisRollup, err := rc.handleGenesisRollup(block, rollupsInBlock, genesisRollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
+	}
+	if isGenesisRollupInBlock {
+		return headsAfterGenesisRollup, nil
 	}
 
 	// To calculate the state after the current block, we need the state after the parent.
@@ -283,45 +286,42 @@ func (rc *RollupChain) updateState(block *types.Block) (*obscurocore.HeadsAfterL
 	return headsAfterL1Block, nil
 }
 
-func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (genesisState *obscurocore.HeadsAfterL1Block, isGenesis bool) {
-	// the incoming block holds the genesis rollup
-	// calculate and return the new block state
+func (rc *RollupChain) handleGenesisRollup(b *types.Block, rollups []*obscurocore.Rollup, genesisRollup *obscurocore.Rollup) (isGenesisRollupInBlock bool, genesisState *obscurocore.HeadsAfterL1Block, err error) {
+	if genesisRollup != nil {
+		// Re-processing the block that contains the genesis rollup. This can happen as blocks can be fed to the enclave
+		// multiple times. We don't update the state and move on.
+		if len(rollups) == 1 && bytes.Equal(rollups[0].Header.Hash().Bytes(), genesisRollup.Hash().Bytes()) {
+			return true, nil, nil
+		}
+		return false, nil, nil
+	}
+
+	// The incoming block holds the genesis rollup. Calculate and return the new block state.
 	// todo change this to an hardcoded hash on testnet/mainnet
-	// TODO - Surface errors instead of (as well as?) returning a bool.
-	if genesisRollup == nil && len(rollups) == 1 {
-		rc.logger.Info("Found genesis rollup", "l1Height", b.NumberU64(), "l1Hash", b.Hash())
-
-		genesis := rollups[0]
-		err := rc.storage.StoreGenesisRollup(genesis)
-		if err != nil {
-			return nil, false
-		}
-
-		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
-		headsAfterL1Block := obscurocore.HeadsAfterL1Block{
-			HeadBlock:         b.Hash(),
-			HeadRollup:        genesis.Hash(),
-			UpdatedHeadRollup: true,
-		}
-		err = rc.storage.StoreNewHead(&headsAfterL1Block, genesis, nil, []*types.Log{})
-		if err != nil {
-			return nil, false
-		}
-
-		_, err = rc.faucet.CommitGenesisState(rc.storage)
-		if err != nil {
-			return nil, false
-		}
-
-		return &headsAfterL1Block, true
+	rc.logger.Info("Found genesis rollup", "l1Height", b.NumberU64(), "l1Hash", b.Hash())
+	genesis := rollups[0]
+	err = rc.storage.StoreGenesisRollup(genesis)
+	if err != nil {
+		return false, nil, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
 	}
 
-	// Re-processing the block that contains the rollup. This can happen as blocks can be fed to the enclave multiple times.
-	// In this case we don't update the state and move on.
-	if genesisRollup != nil && len(rollups) == 1 && bytes.Equal(rollups[0].Header.Hash().Bytes(), genesisRollup.Hash().Bytes()) {
-		return nil, true
+	// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
+	headsAfterL1Block := obscurocore.HeadsAfterL1Block{
+		HeadBlock:         b.Hash(),
+		HeadRollup:        genesis.Hash(),
+		UpdatedHeadRollup: true,
 	}
-	return nil, false
+	err = rc.storage.StoreNewHead(&headsAfterL1Block, genesis, nil, []*types.Log{})
+	if err != nil {
+		return false, nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
+	}
+
+	_, err = rc.faucet.CommitGenesisState(rc.storage)
+	if err != nil {
+		return false, nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
+	}
+
+	return true, &headsAfterL1Block, nil
 }
 
 type sortByTxIndex []*types.Receipt
@@ -511,11 +511,12 @@ func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) 
 	return receipts
 }
 
-// UpdateStateFromL1Block is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) UpdateStateFromL1Block(block types.Block, isLatest bool) (*obscurocore.HeadsAfterL1Block, error) {
+// AddL1BlockAndUpdateState is used to update the enclave with an additional L1 block.
+func (rc *RollupChain) AddL1BlockAndUpdateState(block types.Block, isLatest bool) (*obscurocore.HeadsAfterL1Block, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
+	// We check whether we've already processed the block.
 	_, err := rc.storage.FetchBlock(block.Hash())
 	if err == nil {
 		return nil, rc.rejectBlockErr(errBlockAlreadyProcessed)
@@ -524,16 +525,14 @@ func (rc *RollupChain) UpdateStateFromL1Block(block types.Block, isLatest bool) 
 		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 	}
 
+	// We insert the block into the L1 chain and store it.
 	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
 		return nil, rc.rejectBlockErr(err)
 	}
 	rc.logger.Trace("block inserted successfully",
-		"height", block.NumberU64(),
-		"hash", block.Hash(),
-		"ingestionType", ingestionType)
-
+		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
 	rc.storage.StoreBlock(&block)
 
 	rc.logger.Trace(fmt.Sprintf("Update state: b_%d", common.ShortHash(block.Hash())))
