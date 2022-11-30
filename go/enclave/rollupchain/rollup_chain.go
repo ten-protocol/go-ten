@@ -666,7 +666,7 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
-		_, l2Head, err := rc.storage.FetchCurrentHeads()
+		_, l2Head, err := rc.storage.FetchHeads()
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve head state. Cause: %w", err)
 		}
@@ -702,7 +702,7 @@ func (rc *RollupChain) getEncryptedLogs(block types.Block, l2Head *common.L2Root
 
 // Creates a rollup.
 func (rc *RollupChain) produceRollup() (*core.Rollup, error) {
-	l1Head, l2Head, err := rc.storage.FetchCurrentHeads()
+	l1Head, l2Head, err := rc.storage.FetchHeads()
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch current L1 and L2 heads. Cause: %w", err)
 	}
