@@ -99,22 +99,24 @@ func New(
 	}
 }
 
-// ProduceNewRollup creates a rollup, signs it, checks it, and stores it.
+// ProduceNewRollup creates a new rollup.
 func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
+	// We retrieve the relevant block and chain heads.
 	block, err := rc.storage.FetchBlock(*blockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block to produce rollup. Cause: %w", err)
 	}
-	blockState, err := rc.storage.FetchHeadsAfterL1Block(*blockHash)
+	chainHeads, err := rc.storage.FetchHeadsAfterL1Block(*blockHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// not an error state, we ingested a block but no rollup head found
 			return nil, nil //nolint:nilnil
 		}
-		return nil, fmt.Errorf("could not retrieve block state. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve chain heads. Cause: %w", err)
 	}
 
-	rollup, err := rc.produceRollup(block, blockState)
+	// We create the new rollup, sign it, check it, and store it.
+	rollup, err := rc.produceRollup(block, chainHeads)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
@@ -124,12 +126,11 @@ func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.E
 	}
 	_, err = rc.checkRollup(rollup)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
 	}
-
 	err = rc.storage.StoreRollup(rollup)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
 	}
 
 	// TODO - #718 - This rollup should be stored as the new head.
@@ -137,7 +138,6 @@ func (rc *RollupChain) ProduceNewRollup(blockHash *common.L1RootHash) (*common.E
 	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
 	rc.logger.Trace(fmt.Sprintf("Processed block: b_%d (%d). Produced rollup r_%d",
 		common.ShortHash(block.Hash()), block.NumberU64(), common.ShortHash(extRollup.Hash())))
-
 	return &extRollup, nil
 }
 
