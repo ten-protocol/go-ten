@@ -55,13 +55,6 @@ func (db *DB) writeBlockHeader(header *types.Header) error {
 
 // Retrieves the block header corresponding to the hash.
 func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*types.Header, error) {
-	f, err := r.Has(blockHeaderKey(hash))
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
 	data, err := r.Get(blockHeaderKey(hash))
 	if err != nil {
 		return nil, err

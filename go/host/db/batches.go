@@ -136,14 +136,6 @@ func batchNumberKey(txHash gethcommon.Hash) []byte {
 
 // Retrieves the batch header corresponding to the hash.
 func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
-	// TODO - #1208 - Analyse this weird Has/Get pattern, here and in other part of the `db` package.
-	f, err := db.kvStore.Has(batchHeaderKey(hash))
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
 	data, err := db.kvStore.Get(batchHeaderKey(hash))
 	if err != nil {
 		return nil, err
@@ -160,13 +152,6 @@ func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
 
 // Retrieves the hash of the head batch.
 func (db *DB) readHeadBatchHash() (*gethcommon.Hash, error) {
-	f, err := db.kvStore.Has(headBatch)
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
 	value, err := db.kvStore.Get(headBatch)
 	if err != nil {
 		return nil, err
@@ -209,13 +194,6 @@ func (db *DB) writeBatchHash(w ethdb.KeyValueWriter, header *common.Header) erro
 
 // Retrieves the hash for the batch with the given number..
 func (db *DB) readBatchHash(number *big.Int) (*gethcommon.Hash, error) {
-	f, err := db.kvStore.Has(batchHashKey(number))
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
 	data, err := db.kvStore.Get(batchHashKey(number))
 	if err != nil {
 		return nil, err
@@ -229,14 +207,6 @@ func (db *DB) readBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 
 // Returns the transaction hashes in the batch with the given hash.
 func (db *DB) readBatchTxHashes(batchHash common.L2RootHash) ([]gethcommon.Hash, error) {
-	f, err := db.kvStore.Has(batchTxHashesKey(batchHash))
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
-
 	data, err := db.kvStore.Get(batchTxHashesKey(batchHash))
 	if err != nil {
 		return nil, err
@@ -277,13 +247,6 @@ func (db *DB) writeBatchTxHashes(w ethdb.KeyValueWriter, batchHash common.L2Root
 
 // Retrieves the number of the batch containing the transaction with the given hash.
 func (db *DB) readBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
-	f, err := db.kvStore.Has(batchNumberKey(txHash))
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
 	data, err := db.kvStore.Get(batchNumberKey(txHash))
 	if err != nil {
 		return nil, err
@@ -294,17 +257,13 @@ func (db *DB) readBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
 	return big.NewInt(0).SetBytes(data), nil
 }
 
-// Retrieves the total number of rolled-up transactions.
+// Retrieves the total number of rolled-up transactions - returns 0 if no tx count is found
 func (db *DB) readTotalTransactions() (*big.Int, error) {
-	f, err := db.kvStore.Has(totalTransactionsKey)
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return big.NewInt(0), nil
-	}
 	data, err := db.kvStore.Get(totalTransactionsKey)
 	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			return big.NewInt(0), nil
+		}
 		return nil, err
 	}
 	if len(data) == 0 {
@@ -338,13 +297,6 @@ func (db *DB) writeBatch(batch *common.ExtBatch) error {
 
 // Retrieves the batch corresponding to the hash.
 func (db *DB) readBatch(hash gethcommon.Hash) (*common.ExtBatch, error) {
-	f, err := db.kvStore.Has(batchKey(hash))
-	if err != nil {
-		return nil, err
-	}
-	if !f {
-		return nil, errutil.ErrNotFound
-	}
 	data, err := db.kvStore.Get(batchKey(hash))
 	if err != nil {
 		return nil, err
