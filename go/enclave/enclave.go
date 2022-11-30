@@ -267,8 +267,8 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 	return blockSubmissionResponse, nil
 }
 
-func (e *enclaveImpl) ProduceRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
-	return e.chain.ProduceNewRollup(blockHash)
+func (e *enclaveImpl) ProduceRollup() (*common.ExtRollup, error) {
+	return e.chain.ProduceNewRollup()
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -378,7 +378,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err != nil {
 		return nil, err
 	}
-	l2Head, err := e.storage.FetchCurrentL2Head()
+	_, l2Head, err := e.storage.FetchCurrentHeads()
 	if err == nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized

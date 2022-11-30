@@ -141,9 +141,8 @@ func (s *server) SubmitL1Block(_ context.Context, request *generated.SubmitBlock
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
-func (s *server) ProduceRollup(_ context.Context, request *generated.ProduceRollupRequest) (*generated.ProduceRollupResponse, error) {
-	blockHash := gethcommon.BytesToHash(request.BlockHash)
-	producedRollup, err := s.enclave.ProduceRollup(&blockHash)
+func (s *server) ProduceRollup(context.Context, *generated.ProduceRollupRequest) (*generated.ProduceRollupResponse, error) {
+	producedRollup, err := s.enclave.ProduceRollup()
 	if err != nil {
 		return nil, err
 	}

@@ -122,7 +122,6 @@ message SubmitBlockResponse {
 }
 
 message ProduceRollupRequest {
-  bytes blockHash = 1;
 }
 message ProduceRollupResponse {
   ExtRollupMsg producedRollup = 1;
