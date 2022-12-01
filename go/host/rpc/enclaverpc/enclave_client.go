@@ -203,6 +203,18 @@ func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRa
 	return response.EncryptedHash, err
 }
 
+func (c *Client) SubmitBatch(batch *common.ExtBatch) error {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	batchMsg := rpc.ToExtBatchMsg(batch)
+	_, err := c.protoClient.SubmitBatch(timeoutCtx, &generated.SubmitBatchRequest{Batch: &batchMsg})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (c *Client) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

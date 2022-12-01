@@ -155,6 +155,11 @@ func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest)
 	return &generated.SubmitTxResponse{EncryptedHash: encryptedHash}, err
 }
 
+func (s *server) SubmitBatch(_ context.Context, request *generated.SubmitBatchRequest) (*generated.SubmitBatchResponse, error) {
+	batch := rpc.FromExtBatchMsg(request.Batch)
+	return &generated.SubmitBatchResponse{}, s.enclave.SubmitBatch(&batch)
+}
+
 func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
 	result, err := s.enclave.ExecuteOffChainTransaction(request.EncryptedParams)
 	if err != nil {

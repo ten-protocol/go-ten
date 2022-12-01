@@ -312,6 +312,11 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	return encryptedResult, nil
 }
 
+func (e *enclaveImpl) SubmitBatch(batch *common.ExtBatch) error {
+	// TODO - #718 - Store the received batch, once it's no longer stored when processing the L1 block.
+	return nil
+}
+
 // ExecuteOffChainTransaction handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_call)
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {

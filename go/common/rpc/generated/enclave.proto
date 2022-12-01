@@ -38,6 +38,9 @@ service EnclaveProto {
   // SubmitTx - user transactions
   rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
 
+  // SubmitBatch submits a batch received from the sequencer for processing.
+  rpc SubmitBatch(SubmitBatchRequest) returns (SubmitBatchResponse) {}
+
   // ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
   // viewing key corresponding to the `from` field
   rpc ExecuteOffChainTransaction(OffChainRequest) returns (OffChainResponse) {}
@@ -132,6 +135,12 @@ message SubmitTxRequest {
 }
 message SubmitTxResponse {
   bytes encryptedHash = 1;
+}
+
+message SubmitBatchRequest {
+  ExtBatchMsg batch = 1;
+}
+message SubmitBatchResponse {
 }
 
 message OffChainRequest {
@@ -250,6 +259,12 @@ message BlockSubmissionErrorMsg {
 }
 
 message ExtRollupMsg {
+  HeaderMsg header = 1;
+  repeated bytes txHashes = 2;
+  bytes txs = 3;
+}
+
+message ExtBatchMsg {
   HeaderMsg header = 1;
   repeated bytes txHashes = 2;
   bytes txs = 3;
