@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	common2 "github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -81,8 +80,7 @@ func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *para
 }
 
 // WriteReceipts stores all the transaction receipts belonging to a block.
-// todo - joel - fix import alias (`common2`)
-func WriteReceipts(db ethdb.KeyValueWriter, rollupHash common2.L2RootHash, number uint64, receipts types.Receipts) error {
+func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, receipts types.Receipts) error {
 	// Convert the receipts into their storage form and serialize them
 	storageReceipts := make([]*types.ReceiptForStorage, len(receipts))
 	for i, receipt := range receipts {
@@ -93,7 +91,7 @@ func WriteReceipts(db ethdb.KeyValueWriter, rollupHash common2.L2RootHash, numbe
 		return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 	}
 	// Store the flattened receipt slice
-	if err = db.Put(rollupReceiptsKey(number, rollupHash), bytes); err != nil {
+	if err = db.Put(rollupReceiptsKey(number, hash), bytes); err != nil {
 		return fmt.Errorf("failed to store block receipts. Cause: %w", err)
 	}
 	return nil

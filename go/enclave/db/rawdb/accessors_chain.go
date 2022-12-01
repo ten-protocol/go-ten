@@ -251,9 +251,8 @@ func ReadCanonicalHash(db ethdb.Reader, number uint64) (*gethcommon.Hash, error)
 }
 
 // WriteCanonicalHash stores the hash assigned to a canonical block number.
-// TODO - #718 - Do we need to store multiple batch hashes per block? Or can this remain tied to the single rollup?
-func WriteCanonicalHash(db ethdb.KeyValueWriter, rollupHash common.L2RootHash, number uint64) error {
-	if err := db.Put(headerHashKey(number), rollupHash.Bytes()); err != nil {
+func WriteCanonicalHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
+	if err := db.Put(headerHashKey(number), hash.Bytes()); err != nil {
 		return fmt.Errorf("failed to store number to hash mapping. Cause: %w", err)
 	}
 	return nil
