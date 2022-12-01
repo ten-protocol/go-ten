@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -313,8 +315,15 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 }
 
 func (e *enclaveImpl) SubmitBatch(batch *common.ExtBatch) error {
-	// TODO - #718 - Store the received batch, once it's no longer stored when processing the L1 block.
-	return nil
+	// TODO - #718 - Remove this conversion and work directly with batches.
+	extRollup := common.ExtRollup{
+		Header:          batch.Header,
+		TxHashes:        batch.TxHashes,
+		EncryptedTxBlob: batch.EncryptedTxBlob,
+	}
+
+	rollup := core.ToEnclaveRollup(&extRollup, e.transactionBlobCrypto)
+	return e.chain.SubmitRollup(rollup)
 }
 
 // ExecuteOffChainTransaction handles param decryption, validation and encryption

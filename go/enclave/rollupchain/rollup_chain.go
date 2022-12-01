@@ -99,6 +99,9 @@ func New(
 
 // ProduceNewRollup creates a new rollup, building on the latest chain heads.
 func (rc *RollupChain) ProduceNewRollup() (*common.ExtRollup, error) {
+	rc.blockProcessingMutex.Lock()
+	defer rc.blockProcessingMutex.Unlock()
+
 	rollup, err := rc.produceRollup()
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
@@ -112,7 +115,7 @@ func (rc *RollupChain) ProduceNewRollup() (*common.ExtRollup, error) {
 		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
 	}
 
-	err = rc.calculateAndStoreNewL2Head(rollup)
+	err = rc.storeNewL2Head(rollup)
 	if err != nil {
 		panic(err)
 	}
@@ -164,6 +167,14 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	}
 
 	return rc.produceBlockSubmissionResponse(&block, l2Head)
+}
+
+// SubmitRollup is used to update the enclave with an additional rollup.
+func (rc *RollupChain) SubmitRollup(rollup *core.Rollup) error {
+	rc.blockProcessingMutex.Lock()
+	defer rc.blockProcessingMutex.Unlock()
+
+	return rc.storeNewL2Head(rollup)
 }
 
 func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
@@ -580,21 +591,15 @@ func (rc *RollupChain) calculateAndStoreNewL1Head(block *types.Block, rollupsInB
 	return currentHeadRollupHash, nil
 }
 
-// Given a new rollup, calculates the state after ingesting the rollup.
-func (rc *RollupChain) calculateAndStoreNewL2Head(rollup *core.Rollup) error {
-	block, err := rc.storage.FetchBlock(rollup.Header.L1Proof)
-	if err != nil {
-		panic(err)
-	}
-
+// Stores a new rollup as the L2 head.
+func (rc *RollupChain) storeNewL2Head(rollup *core.Rollup) error {
 	var rollupTxReceipts []*types.Receipt
-	rollupTxReceipts, err = rc.checkRollup(rollup)
+	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
 		return fmt.Errorf("failed to check rollup. Cause: %w", err)
 	}
 
-	err = rc.storage.StoreNewHeads(block.Hash(), rollup, rollupTxReceipts, true)
-	if err != nil {
+	if err = rc.storage.StoreNewHeads(rollup.Header.L1Proof, rollup, rollupTxReceipts, true); err != nil {
 		return fmt.Errorf("could not store new head. Cause: %w", err)
 	}
 
