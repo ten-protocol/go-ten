@@ -41,6 +41,8 @@ type EnclaveProtoClient interface {
 	ProduceRollup(ctx context.Context, in *ProduceRollupRequest, opts ...grpc.CallOption) (*ProduceRollupResponse, error)
 	// SubmitTx - user transactions
 	SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error)
+	// SubmitBatch submits a batch received from the sequencer for processing.
+	SubmitBatch(ctx context.Context, in *SubmitBatchRequest, opts ...grpc.CallOption) (*SubmitBatchResponse, error)
 	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
 	// viewing key corresponding to the `from` field
 	ExecuteOffChainTransaction(ctx context.Context, in *OffChainRequest, opts ...grpc.CallOption) (*OffChainResponse, error)
@@ -152,6 +154,15 @@ func (c *enclaveProtoClient) ProduceRollup(ctx context.Context, in *ProduceRollu
 func (c *enclaveProtoClient) SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error) {
 	out := new(SubmitTxResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/SubmitTx", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *enclaveProtoClient) SubmitBatch(ctx context.Context, in *SubmitBatchRequest, opts ...grpc.CallOption) (*SubmitBatchResponse, error) {
+	out := new(SubmitBatchResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/SubmitBatch", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +313,8 @@ type EnclaveProtoServer interface {
 	ProduceRollup(context.Context, *ProduceRollupRequest) (*ProduceRollupResponse, error)
 	// SubmitTx - user transactions
 	SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error)
+	// SubmitBatch submits a batch received from the sequencer for processing.
+	SubmitBatch(context.Context, *SubmitBatchRequest) (*SubmitBatchResponse, error)
 	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
 	// viewing key corresponding to the `from` field
 	ExecuteOffChainTransaction(context.Context, *OffChainRequest) (*OffChainResponse, error)
@@ -361,6 +374,9 @@ func (UnimplementedEnclaveProtoServer) ProduceRollup(context.Context, *ProduceRo
 }
 func (UnimplementedEnclaveProtoServer) SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitTx not implemented")
+}
+func (UnimplementedEnclaveProtoServer) SubmitBatch(context.Context, *SubmitBatchRequest) (*SubmitBatchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SubmitBatch not implemented")
 }
 func (UnimplementedEnclaveProtoServer) ExecuteOffChainTransaction(context.Context, *OffChainRequest) (*OffChainResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteOffChainTransaction not implemented")
@@ -572,6 +588,24 @@ func _EnclaveProto_SubmitTx_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).SubmitTx(ctx, req.(*SubmitTxRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EnclaveProto_SubmitBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubmitBatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).SubmitBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/SubmitBatch",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).SubmitBatch(ctx, req.(*SubmitBatchRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -852,6 +886,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SubmitTx",
 			Handler:    _EnclaveProto_SubmitTx_Handler,
+		},
+		{
+			MethodName: "SubmitBatch",
+			Handler:    _EnclaveProto_SubmitBatch_Handler,
 		},
 		{
 			MethodName: "ExecuteOffChainTransaction",

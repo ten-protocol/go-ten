@@ -53,6 +53,9 @@ type Enclave interface {
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
 
+	// SubmitBatch submits a batch received from the sequencer for processing.
+	SubmitBatch(batch *ExtBatch) error
+
 	// ExecuteOffChainTransaction - Execute a smart contract to retrieve data
 	// Todo - return the result with a block delay. To prevent frontrunning.
 	ExecuteOffChainTransaction(encryptedParams EncryptedParamsCall) (EncryptedResponseCall, error)

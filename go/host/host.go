@@ -863,8 +863,6 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		return nil
 	}
 
-	// TODO - #718 - Have the enclave process the batch, so that it's up to date.
-
 	// We store the batches. If we encounter any missing batches, we abort and request the missing batches instead.
 	err = h.batchManager.StoreBatches(batches)
 	if err != nil {
@@ -883,6 +881,12 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		}
 		// If we requested any batches, we return early and wait for the missing batches to arrive.
 		return nil
+	}
+
+	for _, batch := range batches {
+		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
+			return fmt.Errorf("could not submit batch. Cause: %w", err)
+		}
 	}
 
 	return nil
