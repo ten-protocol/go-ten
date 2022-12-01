@@ -43,6 +43,7 @@ type HostConfigToml struct {
 	L1ChainID              int64
 	ObscuroChainID         int64
 	ProfilerEnabled        bool
+	L1StartHash            string
 }
 
 // ParseConfig returns a config.HostConfig based on either the file identified by the `config` flag, or the flags with
@@ -165,5 +166,6 @@ func fileBasedConfig(configPath string) (config.HostConfig, error) {
 		L1ChainID:              tomlConfig.L1ChainID,
 		ObscuroChainID:         tomlConfig.ObscuroChainID,
 		ProfilerEnabled:        tomlConfig.ProfilerEnabled,
+		L1StartHash:            gethcommon.HexToHash(tomlConfig.L1StartHash),
 	}, nil
 }
