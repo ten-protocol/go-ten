@@ -589,8 +589,13 @@ func (rc *RollupChain) calculateAndStoreNewL2Head(rollup *core.Rollup) error {
 		panic(err)
 	}
 
-	// todo - joel - readd retrieving transaction receipts
-	err = rc.storage.StoreNewHeads(block.Hash(), rollup, nil, true)
+	var rollupTxReceipts []*types.Receipt
+	rollupTxReceipts, err = rc.checkRollup(rollup)
+	if err != nil {
+		return fmt.Errorf("failed to check rollup. Cause: %w", err)
+	}
+
+	err = rc.storage.StoreNewHeads(block.Hash(), rollup, rollupTxReceipts, true)
 	if err != nil {
 		return fmt.Errorf("could not store new head. Cause: %w", err)
 	}

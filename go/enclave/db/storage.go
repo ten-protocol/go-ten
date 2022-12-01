@@ -401,12 +401,15 @@ func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, rec
 	if err := obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64()); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
 	}
+	// todo - joel - add the receipts to the existing ones?
 	if err := obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup); err != nil {
 		return fmt.Errorf("could not write transaction lookup entries by block. Cause: %w", err)
 	}
+	// todo - joel - add the receipts to the existing ones?
 	if err := obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
+	// todo - joel - add the receipts to the existing ones?
 	if err := obscurorawdb.WriteContractCreationTx(batch, receipts); err != nil {
 		return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
 	}
