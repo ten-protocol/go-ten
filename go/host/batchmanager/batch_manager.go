@@ -34,28 +34,40 @@ func (b BatchesMissingError) Error() string {
 // `BatchesMissingError`.
 func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 	for _, batch := range batches {
+		isGenesisBatch := batch.Header.Number.Uint64() == common.L2GenesisHeight
+
+		// If we don't have the parent batch and this is not the genesis batch, we request the missing batches.
 		parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
-		_, err := b.db.GetBatchHash(parentBatchNumber)
-
-		// We have stored the batch's parent, or this batch is the genesis batch, so we store the batch.
-		if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
-			err = b.db.AddBatchHeader(batch)
-			if err != nil {
-				return fmt.Errorf("could not store batch header. Cause: %w", err)
+		_, getParentBatchErr := b.db.GetBatchHash(parentBatchNumber)
+		if getParentBatchErr != nil {
+			if errors.Is(getParentBatchErr, errutil.ErrNotFound) && !isGenesisBatch {
+				earliestMissingBatch, err := b.findEarliestMissingBatch(parentBatchNumber)
+				if err != nil {
+					return fmt.Errorf("could not calculate earliest missing batch. Cause: %w", err)
+				}
+				return &BatchesMissingError{earliestMissingBatch}
 			}
-			continue
+			return fmt.Errorf("could not retrieve parent batch. Cause: %w", getParentBatchErr)
 		}
 
-		// If we could not find the parent, we have at least one missing batch.
-		if errors.Is(err, errutil.ErrNotFound) {
-			earliestMissingBatch, err := b.findEarliestMissingBatch(parentBatchNumber)
-			if err != nil {
-				return fmt.Errorf("could not calculate earliest missing batch. Cause: %w", err)
+		// If we don't have the L1 block, we request the batch to be resent to gain time.
+		// TODO - #718 - Find a more efficient solution, rather than forcing the sequencer to resend.
+		_, getL1BlockErr := b.db.GetBlockHeader(batch.Header.L1Proof)
+		if getL1BlockErr != nil {
+			if errors.Is(getL1BlockErr, errutil.ErrNotFound) {
+				earliestMissingBatch, err := b.findEarliestMissingBatch(parentBatchNumber)
+				if err != nil {
+					return fmt.Errorf("could not calculate earliest missing batch. Cause: %w", err)
+				}
+				return &BatchesMissingError{earliestMissingBatch}
 			}
-			return &BatchesMissingError{earliestMissingBatch}
+			return fmt.Errorf("could not retrieve batch's L1 block. Cause: %w", getL1BlockErr)
 		}
 
-		return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+		// We store the batch.
+		if err := b.db.AddBatchHeader(batch); err != nil {
+			return fmt.Errorf("could not store batch header. Cause: %w", err)
+		}
 	}
 
 	return nil
