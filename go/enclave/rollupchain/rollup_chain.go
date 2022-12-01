@@ -460,7 +460,7 @@ func (rc *RollupChain) handleGenesisRollup(block *types.Block, rollupsInBlock []
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
-func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt, error) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
@@ -489,11 +489,11 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 
 	parentProof, err := rc.storage.Proof(parent)
 	if err != nil {
-		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
+		return common.L2RootHash{}, nil, nil, nil, fmt.Errorf("could not retrieve a proof for rollup %s. Cause: %w", parent.Hash(), err)
 	}
 	rollupProof, err := rc.storage.Proof(rollup)
 	if err != nil {
-		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
+		return common.L2RootHash{}, nil, nil, nil, fmt.Errorf("could not retrieve a proof for rollup %s. Cause: %w", parent.Hash(), err)
 	}
 
 	depositTxs := rc.bridge.ExtractDeposits(
@@ -528,7 +528,7 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 	sort.Sort(sortByTxIndex(depositReceipts))
 
 	// todo - handle the tx execution logs
-	return rootHash, executedTransactions, txReceipts, depositReceipts
+	return rootHash, executedTransactions, txReceipts, depositReceipts, nil
 }
 
 func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2RootHash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
@@ -614,7 +614,11 @@ func (rc *RollupChain) checkRollup(rollup *core.Rollup) ([]*types.Receipt, error
 	}
 
 	// calculate the state to compare with what is in the Rollup
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(rollup, rollup.Transactions, stateDB)
+	rootHash, successfulTxs, txReceipts, depositReceipts, err := rc.processState(rollup, rollup.Transactions, stateDB)
+	if err != nil {
+		return nil, fmt.Errorf("could not process state. Cause: %w", err)
+	}
+
 	if len(successfulTxs) != len(rollup.Transactions) {
 		return nil, fmt.Errorf("all transactions that are included in a rollup must be executed")
 	}
@@ -745,7 +749,10 @@ func (rc *RollupChain) produceRollup() (*core.Rollup, error) {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, newRollupTxs, newRollupState)
+	rootHash, successfulTxs, txReceipts, depositReceipts, err := rc.processState(r, newRollupTxs, newRollupState)
+	if err != nil {
+		return nil, fmt.Errorf("could not process state. Cause: %w", err)
+	}
 
 	r.Header.Root = rootHash
 	r.Transactions = successfulTxs
