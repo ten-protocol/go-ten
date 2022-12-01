@@ -493,11 +493,11 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 
 	parentProof, err := rc.storage.Proof(parent)
 	if err != nil {
-		return common.L2RootHash{}, nil, nil, nil, fmt.Errorf("could not retrieve a proof for rollup %s. Cause: %w", parent.Hash(), err)
+		return common.L2RootHash{}, nil, nil, nil, fmt.Errorf("could not retrieve a proof for rollup parent %s. Cause: %w", parent.Hash(), err)
 	}
 	rollupProof, err := rc.storage.Proof(rollup)
 	if err != nil {
-		return common.L2RootHash{}, nil, nil, nil, fmt.Errorf("could not retrieve a proof for rollup %s. Cause: %w", parent.Hash(), err)
+		return common.L2RootHash{}, nil, nil, nil, fmt.Errorf("could not retrieve a proof for rollup %s. Cause: %w", rollup.Hash(), err)
 	}
 
 	depositTxs := rc.bridge.ExtractDeposits(
@@ -597,7 +597,27 @@ func (rc *RollupChain) calculateAndStoreNewL1Head(block *types.Block, rollupsInB
 
 // Stores a new rollup as the L2 head.
 func (rc *RollupChain) storeNewL2Head(rollup *core.Rollup) error {
-	var rollupTxReceipts []*types.Receipt
+	// todo - joel - fix up
+	if rollup.Header.Number.Int64() == 0 {
+		err := rc.storage.StoreGenesisRollup(rollup)
+		println("jjj genesis rollup hash (received) is", rollup.Hash().Hex())
+		if err != nil {
+			return fmt.Errorf("could not store genesis rollup. Cause: %w", err)
+		}
+
+		// The genesis rollup is part of the canonical chain and will be included in an L1 block by the first Aggregator.
+		err = rc.storage.StoreNewHeads(rollup.Header.L1Proof, rollup, nil, true)
+		if err != nil {
+			return fmt.Errorf("could not store new chain heads. Cause: %w", err)
+		}
+
+		_, err = rc.faucet.CommitGenesisState(rc.storage)
+		if err != nil {
+			return fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
+		}
+		return nil
+	}
+
 	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
 		return fmt.Errorf("rollup check failed. Cause: %w", err)
@@ -614,6 +634,9 @@ func (rc *RollupChain) storeNewL2Head(rollup *core.Rollup) error {
 func (rc *RollupChain) checkRollup(rollup *core.Rollup) ([]*types.Receipt, error) {
 	stateDB, err := rc.storage.CreateStateDB(rollup.Header.ParentHash)
 	if err != nil {
+		if rc.hostID.Hex() == "0x0000000000000000000000000000000000000001" {
+			println(fmt.Sprintf("jjj could not find parent for rollup number %d", rollup.Header.Number))
+		}
 		return nil, fmt.Errorf("could not create stateDB to check rollup. Cause: %w", err)
 	}
 

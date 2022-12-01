@@ -323,7 +323,12 @@ func (e *enclaveImpl) SubmitBatch(batch *common.ExtBatch) error {
 	}
 
 	rollup := core.ToEnclaveRollup(&extRollup, e.transactionBlobCrypto)
-	return e.chain.SubmitRollup(rollup)
+
+	err := e.chain.SubmitRollup(rollup)
+	if err != nil && e.config.HostID.Hex() == "0x0000000000000000000000000000000000000001" {
+		println(fmt.Sprintf("jjj failed to store rollup number %d. Cause: %s", rollup.Header.Number, err))
+	}
+	return err
 }
 
 // ExecuteOffChainTransaction handles param decryption, validation and encryption
