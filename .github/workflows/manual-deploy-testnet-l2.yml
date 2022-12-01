@@ -197,7 +197,7 @@ jobs:
             az network nic ip-config address-pool add \
               --address-pool Backend-Pool-Obscuro-Testnet \
               --ip-config-name ipconfigT-0-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name T-0-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --nic-name T-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
               --lb-name testnet-loadbalancer
 
