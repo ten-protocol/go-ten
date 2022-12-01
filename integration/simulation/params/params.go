@@ -43,11 +43,11 @@ type SimParams struct {
 
 type L1SetupData struct {
 	// ObscuroStartBlock is the L1 block hash where the Obscuro network activity begins (e.g. mgmt contract deployment)
-	ObscuroStartBlock *common.Hash
+	ObscuroStartBlock common.Hash
 	// MgmtContractAddr defines the management contract address
-	MgmtContractAddress *common.Address
+	MgmtContractAddress common.Address
 	// ObxErc20Address - the address of the "OBX" ERC20
-	ObxErc20Address *common.Address
+	ObxErc20Address common.Address
 	// EthErc20Address - the address of the "ETH" ERC20
-	EthErc20Address *common.Address
+	EthErc20Address common.Address
 }

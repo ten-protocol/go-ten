@@ -37,9 +37,9 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		int(params.AvgBlockDuration.Seconds()),
 	)
 
-	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.L1SetupData.MgmtContractAddress, testlog.Logger())
-	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.L1SetupData.MgmtContractAddress,
-		params.L1SetupData.ObxErc20Address, params.L1SetupData.EthErc20Address)
+	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&params.L1SetupData.MgmtContractAddress, testlog.Logger())
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(&params.L1SetupData.MgmtContractAddress,
+		&params.L1SetupData.ObxErc20Address, &params.L1SetupData.EthErc20Address)
 
 	// Start the obscuro nodes and return the handles
 	n.l2Clients = startInMemoryObscuroNodes(params, n.gethNetwork.GenesisJSON, n.gethClients)

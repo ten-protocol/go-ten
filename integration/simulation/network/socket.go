@@ -47,9 +47,9 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 		int(simParams.AvgBlockDuration.Seconds()),
 	)
 
-	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(simParams.L1SetupData.MgmtContractAddress, testlog.Logger())
-	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(simParams.L1SetupData.MgmtContractAddress,
-		simParams.L1SetupData.ObxErc20Address, simParams.L1SetupData.EthErc20Address)
+	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1SetupData.MgmtContractAddress, testlog.Logger())
+	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(&simParams.L1SetupData.MgmtContractAddress,
+		&simParams.L1SetupData.ObxErc20Address, &simParams.L1SetupData.EthErc20Address)
 
 	// Start the enclaves
 	startRemoteEnclaveServers(simParams)

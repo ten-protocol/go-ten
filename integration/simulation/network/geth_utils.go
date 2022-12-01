@@ -60,14 +60,14 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
 	}
 
-	erc20ContractAddr := make([]*common.Address, 0)
+	erc20ContractAddr := make([]common.Address, 0)
 	for _, token := range wallets.Tokens {
 		erc20receipt, err := DeployContract(tmpEthClient, token.L1Owner, erc20contract.L1BytecodeWithDefaultSupply(string(token.Name)))
 		if err != nil {
 			panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
 		}
 		token.L1ContractAddress = &erc20receipt.ContractAddress
-		erc20ContractAddr = append(erc20ContractAddr, &erc20receipt.ContractAddress)
+		erc20ContractAddr = append(erc20ContractAddr, erc20receipt.ContractAddress)
 	}
 
 	ethClients := make([]ethadapter.EthClient, nrNodes)
@@ -76,8 +76,8 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	}
 
 	l1Data := &params.L1SetupData{
-		ObscuroStartBlock:   &mgmtContractReceipt.BlockHash,
-		MgmtContractAddress: &mgmtContractReceipt.ContractAddress,
+		ObscuroStartBlock:   mgmtContractReceipt.BlockHash,
+		MgmtContractAddress: mgmtContractReceipt.ContractAddress,
 		ObxErc20Address:     erc20ContractAddr[0],
 		EthErc20Address:     erc20ContractAddr[1],
 	}
