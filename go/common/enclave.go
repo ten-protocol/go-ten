@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -122,6 +123,12 @@ type ProducedSecretResponse struct {
 	RequesterID gethcommon.Address
 	HostAddress string
 }
+
+// Standard errors that can be returned from block submission
+var (
+	ErrBlockAlreadyProcessed = errors.New("block already processed")
+	ErrBlockAncestorNotFound = errors.New("block ancestor not found")
+)
 
 // BlockRejectError is used as a standard format for error response from enclave for block submission errors
 // The L1 Head hash tells the host what the enclave knows as the canonical chain head, so it can feed it the appropriate block.

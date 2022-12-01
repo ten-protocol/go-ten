@@ -37,8 +37,6 @@ import (
 )
 
 var (
-	errBlockAlreadyProcessed  = errors.New("block already processed")
-	errBlockAncestorNotFound  = errors.New("block ancestor not found")
 	errIsPreGenesis           = errors.New("genesis rollup has not yet been received")
 	errIsGenesisRollupInBlock = errors.New("block contains genesis rollup")
 )
@@ -283,7 +281,7 @@ func (rc *RollupChain) insertAndStoreL1Block(block types.Block, isLatest bool) e
 	// We check whether we've already processed the block.
 	_, err := rc.storage.FetchBlock(block.Hash())
 	if err == nil {
-		return rc.rejectBlockErr(errBlockAlreadyProcessed)
+		return rc.rejectBlockErr(common.ErrBlockAlreadyProcessed)
 	}
 	if !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not retrieve block. Cause: %w", err)
@@ -325,7 +323,7 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	} else if block.ParentHash() != prevL1Head.Hash() {
 		lcaBlock, err := gethutil.LCA(block, prevL1Head, rc.storage)
 		if err != nil {
-			return nil, errBlockAncestorNotFound
+			return nil, common.ErrBlockAncestorNotFound
 		}
 		rc.logger.Trace("parent not found",
 			"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
