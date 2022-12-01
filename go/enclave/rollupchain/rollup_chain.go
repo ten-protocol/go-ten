@@ -596,7 +596,7 @@ func (rc *RollupChain) storeNewL2Head(rollup *core.Rollup) error {
 	var rollupTxReceipts []*types.Receipt
 	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
-		return fmt.Errorf("failed to check rollup. Cause: %w", err)
+		return fmt.Errorf("rollup check failed. Cause: %w", err)
 	}
 
 	if err = rc.storage.StoreNewHeads(rollup.Header.L1Proof, rollup, rollupTxReceipts, true); err != nil {
