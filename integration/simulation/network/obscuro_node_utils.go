@@ -57,6 +57,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			l1Clients[i],
 			params.Wallets,
 			p2pLayers[i],
+			params.L1SetupData.ObscuroStartBlock,
 		)
 	}
 	// make sure the aggregators can talk to each other
@@ -107,6 +108,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 			params.Wallets.NodeWallets[i],
 			params.MgmtContractLib,
 			gethClients[i],
+			params.L1SetupData.ObscuroStartBlock,
 		)
 
 		nodeRPCAddresses[i] = fmt.Sprintf("ws://%s:%d", Localhost, nodeRPCPortWS)

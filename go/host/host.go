@@ -385,9 +385,15 @@ func (h *host) startProcessing() {
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
 	// stream ch during the main loop if enclave gets out-of-sync, and we need to stream from an earlier block
-	blockStream, err := h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(1))
+	blockStream, err := h.l1BlockProvider.StartStreamingFromHash(h.config.L1StartHash)
 	if err != nil {
-		h.logger.Crit("unable to stream l1 blocks for enclave", log.ErrKey, err)
+		// maybe start hash wasn't provided or couldn't be found, instead we stream from L1 genesis
+		// note: in production this could be expensive, hence the WARN log message
+		h.logger.Warn("unable to stream from L1StartHash", log.ErrKey, err, "l1StartHash", h.config.L1StartHash)
+		blockStream, err = h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(1))
+		if err != nil {
+			h.logger.Crit("unable to stream l1 blocks for enclave", log.ErrKey, err)
+		}
 	}
 
 	// use the roundInterrupt as a signaling mechanism for interrupting block processing
@@ -453,6 +459,8 @@ func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostco
 		return stream
 	}
 	h.logger.Info("Resetting block provider stream to enclave latest head.", "streamFrom", rejErr.L1Head)
+	// streaming from the latest canonical ancestor of the enclave's L1 head (we may end up re-streaming some things it's
+	//	already processed, but we tolerate those failures)
 	replacementStream, err := h.l1BlockProvider.StartStreamingFromHash(rejErr.L1Head)
 	if err != nil {
 		h.logger.Warn("Could not reset block provider, continuing with previous stream", log.ErrKey, err)

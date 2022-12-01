@@ -76,6 +76,7 @@ func ParseConfig() (config.HostConfig, error) {
 	privateKeyStr := flag.String(privateKeyName, cfg.PrivateKeyString, flagUsageMap[privateKeyName])
 	pkAddress := flag.String(pkAddressName, cfg.PKAddress, flagUsageMap[pkAddressName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
+	l1StartHash := flag.String(l1StartHashName, cfg.L1StartHash.Hex(), flagUsageMap[l1StartHashName])
 
 	flag.Parse()
 
@@ -114,6 +115,7 @@ func ParseConfig() (config.HostConfig, error) {
 	cfg.L1ChainID = *l1ChainID
 	cfg.ObscuroChainID = *obscuroChainID
 	cfg.ProfilerEnabled = *profilerEnabled
+	cfg.L1StartHash = gethcommon.HexToHash(*l1StartHash)
 
 	return cfg, nil
 }

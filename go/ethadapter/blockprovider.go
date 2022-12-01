@@ -35,13 +35,13 @@ type EthBlockProvider struct {
 }
 
 // StartStreamingFromHash will look up the hash block, find the appropriate height (LCA if there have been forks) and
-// then call StartStreamingFromHeight based on that
+// then call StartStreamingFromHeight from there
 func (e *EthBlockProvider) StartStreamingFromHash(latestHash gethcommon.Hash) (*host.BlockStream, error) {
 	ancestorBlk, err := e.latestCanonAncestor(latestHash)
 	if err != nil {
 		return nil, err
 	}
-	return e.StartStreamingFromHeight(increment(ancestorBlk.Number()))
+	return e.StartStreamingFromHeight(ancestorBlk.Number())
 }
 
 // StartStreamingFromHeight will start streaming from the given height
