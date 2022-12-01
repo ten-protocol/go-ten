@@ -27,6 +27,7 @@ const (
 	l1ChainIDName                = "l1ChainID"
 	obscuroChainIDName           = "obscuroChainID"
 	profilerEnabledName          = "profilerEnabled"
+	l1StartHashName              = "l1Start"
 )
 
 // Returns a map of the flag usages.

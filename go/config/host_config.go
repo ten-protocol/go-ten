@@ -69,6 +69,8 @@ type HostConfig struct {
 	ObscuroChainID int64
 	// ProfilerEnabled starts a profiler instance
 	ProfilerEnabled bool
+	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
+	L1StartHash gethcommon.Hash
 }
 
 // DefaultHostConfig returns a HostConfig with default values.
@@ -99,5 +101,6 @@ func DefaultHostConfig() HostConfig {
 		L1ChainID:              1337,
 		ObscuroChainID:         777,
 		ProfilerEnabled:        false,
+		L1StartHash:            common.L1RootHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
 	}
 }

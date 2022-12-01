@@ -71,6 +71,7 @@ func createInMemObscuroNode(
 	ethClient ethadapter.EthClient,
 	wallets *params.SimWallets,
 	mockP2P *simp2p.MockP2P,
+	l1StartBlk gethcommon.Hash,
 ) commonhost.Host {
 	hostConfig := config.HostConfig{
 		ID:                  gethcommon.BigToAddress(big.NewInt(id)),
@@ -79,6 +80,7 @@ func createInMemObscuroNode(
 		GossipRoundDuration: avgGossipPeriod,
 		HasClientRPCHTTP:    false,
 		P2PPublicAddress:    "dummy_address", // Required because the node sanity-checks that this field is not empty at start-up.
+		L1StartHash:         l1StartBlk,
 	}
 
 	enclaveConfig := config.EnclaveConfig{
@@ -116,6 +118,7 @@ func createSocketObscuroNode(
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	ethClient ethadapter.EthClient,
+	l1StartBlk gethcommon.Hash,
 ) commonhost.Host {
 	hostConfig := config.HostConfig{
 		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
@@ -134,6 +137,7 @@ func createSocketObscuroNode(
 		P2PPublicAddress:       p2pAddr,
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,
+		L1StartHash:            l1StartBlk,
 	}
 
 	// create an enclave client

@@ -38,35 +38,36 @@ func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 	}
 }
 
-func (n *networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
+func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
-	params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
+	simParams.L1SetupData, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
-		params.StartPort,
-		params.NumberOfNodes,
-		int(params.AvgBlockDuration.Seconds()),
+		simParams.StartPort,
+		simParams.NumberOfNodes,
+		int(simParams.AvgBlockDuration.Seconds()),
 	)
 
-	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr, testlog.Logger())
-	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
+	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1SetupData.MgmtContractAddress, testlog.Logger())
+	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(&simParams.L1SetupData.MgmtContractAddress,
+		&simParams.L1SetupData.ObxErc20Address, &simParams.L1SetupData.EthErc20Address)
 
 	// Start the enclaves
-	startRemoteEnclaveServers(params)
+	startRemoteEnclaveServers(simParams)
 
-	n.enclaveAddresses = make([]string, params.NumberOfNodes)
-	for i := 0; i < params.NumberOfNodes; i++ {
-		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
+	n.enclaveAddresses = make([]string, simParams.NumberOfNodes)
+	for i := 0; i < simParams.NumberOfNodes; i++ {
+		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, simParams.StartPort+DefaultEnclaveOffset+i)
 	}
 
-	l2Clients, hostRPCAddresses := startStandaloneObscuroNodes(params, n.gethClients, n.enclaveAddresses)
+	l2Clients, hostRPCAddresses := startStandaloneObscuroNodes(simParams, n.gethClients, n.enclaveAddresses)
 	n.l2Clients = l2Clients
 	n.hostRPCAddresses = hostRPCAddresses
 
-	obscuroClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
+	obscuroClients := make([]*obsclient.ObsClient, simParams.NumberOfNodes)
 	for idx, l2Client := range n.l2Clients {
 		obscuroClients[idx] = obsclient.NewObsClient(l2Client)
 	}
-	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
+	walletClients := createAuthClientsPerWallet(n.l2Clients, simParams.Wallets)
 
 	return &RPCHandles{
 		EthClients:     n.gethClients,
