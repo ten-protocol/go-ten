@@ -57,7 +57,7 @@ func (o *OutputStats) countBlockChain() {
 	header := getHeadRollupHeader(obscuroClient)
 	var err error
 	for {
-		if header != nil && !bytes.Equal(header.Hash().Bytes(), common.GenesisHash.Bytes()) {
+		if header != nil && !bytes.Equal(header.Hash().Bytes(), (common.L1RootHash{}).Bytes()) {
 			break
 		}
 
@@ -70,7 +70,7 @@ func (o *OutputStats) countBlockChain() {
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for headBlock, _ := l1Node.FetchHeadBlock(); headBlock != nil && !bytes.Equal(headBlock.Hash().Bytes(), common.GenesisHash.Bytes()); headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
+	for headBlock, _ := l1Node.FetchHeadBlock(); headBlock != nil && !bytes.Equal(headBlock.Hash().Bytes(), (common.L1RootHash{}).Bytes()); headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
 		for _, tx := range headBlock.Transactions() {
 			t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
 			if t == nil {

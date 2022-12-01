@@ -227,15 +227,11 @@ func (bridge *Bridge) ExtractDeposits(
 	blockResolver db.BlockResolver,
 	rollupState *state.StateDB,
 ) []*common.L2Tx {
-	from := common.GenesisBlock.Hash()
-	height := common.L1GenesisHeight
-	if fromBlock != nil {
-		from = fromBlock.Hash()
-		height = fromBlock.NumberU64()
-		if !blockResolver.IsAncestor(toBlock, fromBlock) {
-			bridge.logger.Crit("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
-			return nil
-		}
+	from := fromBlock.Hash()
+	height := fromBlock.NumberU64()
+	if !blockResolver.IsAncestor(toBlock, fromBlock) {
+		bridge.logger.Crit("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
+		return nil
 	}
 
 	allDeposits := make([]*common.L2Tx, 0)

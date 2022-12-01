@@ -96,7 +96,7 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor c
 		return true
 	}
 
-	if bytes.Equal(maybeAncestor.Bytes(), common.GenesisBlock.Hash().Bytes()) {
+	if bytes.Equal(maybeAncestor.Bytes(), MockGenesisBlock.Hash().Bytes()) {
 		return true
 	}
 
