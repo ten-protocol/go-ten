@@ -48,12 +48,11 @@ func DeployContract(config Config, logger gethlog.Logger) {
 	}
 	l1Wallet.SetNonce(nonce)
 
-	var contractAddress *common.Address
-	contractAddress, err = network.DeployContract(l1Client, l1Wallet, contractBytes)
+	receipt, err := network.DeployContract(l1Client, l1Wallet, contractBytes)
 	if err != nil {
 		panic(err)
 	}
 
-	println(contractAddress.Hex())
+	println(receipt.ContractAddress.Hex())
 	os.Exit(0)
 }

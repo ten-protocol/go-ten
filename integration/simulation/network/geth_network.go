@@ -30,15 +30,16 @@ func NewNetworkInMemoryGeth(wallets *params.SimWallets) Network {
 // Create inits and starts the nodes, wires them up, and populates the network objects
 func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
-	params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address, n.gethClients, n.gethNetwork = SetUpGethNetwork(
+	params.L1SetupData, n.gethClients, n.gethNetwork = SetUpGethNetwork(
 		n.wallets,
 		params.StartPort,
 		params.NumberOfNodes,
 		int(params.AvgBlockDuration.Seconds()),
 	)
 
-	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(params.MgmtContractAddr, testlog.Logger())
-	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(params.MgmtContractAddr, params.ObxErc20Address, params.EthErc20Address)
+	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&params.L1SetupData.MgmtContractAddress, testlog.Logger())
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(&params.L1SetupData.MgmtContractAddress,
+		&params.L1SetupData.ObxErc20Address, &params.L1SetupData.EthErc20Address)
 
 	// Start the obscuro nodes and return the handles
 	n.l2Clients = startInMemoryObscuroNodes(params, n.gethNetwork.GenesisJSON, n.gethClients)

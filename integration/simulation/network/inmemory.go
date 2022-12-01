@@ -3,6 +3,8 @@ package network
 import (
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
@@ -37,7 +39,7 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
-	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
+	obscuroNodes := make([]host.Host, params.NumberOfNodes)
 	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 
@@ -67,11 +69,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			miner,
 			params.Wallets,
 			p2pLayers[i],
+			common.Hash{},
 		)
 		obscuroClient := p2p.NewInMemObscuroClient(agg)
-
-		// and connect them to each other
-		miner.AddClient(agg)
 
 		n.ethNodes[i] = miner
 		obscuroNodes[i] = agg

@@ -196,7 +196,7 @@ func (s *Simulation) prefundL1Accounts() {
 		addr := w.Address()
 		txData := &ethadapter.L1DepositTx{
 			Amount:        initialBalance,
-			To:            s.Params.MgmtContractAddr,
+			To:            &s.Params.L1SetupData.MgmtContractAddress,
 			TokenContract: s.Params.Wallets.Tokens[bridge.HOC].L1ContractAddress,
 			Sender:        &addr,
 		}

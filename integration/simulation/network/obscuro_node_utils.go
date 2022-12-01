@@ -38,7 +38,7 @@ const (
 
 func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
 	// Create the in memory obscuro nodes, each connect each to a geth node
-	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
+	obscuroNodes := make([]host.Host, params.NumberOfNodes)
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
@@ -57,6 +57,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			l1Clients[i],
 			params.Wallets,
 			p2pLayers[i],
+			params.L1SetupData.ObscuroStartBlock,
 		)
 	}
 	// make sure the aggregators can talk to each other
@@ -107,6 +108,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 			params.Wallets.NodeWallets[i],
 			params.MgmtContractLib,
 			gethClients[i],
+			params.L1SetupData.ObscuroStartBlock,
 		)
 
 		nodeRPCAddresses[i] = fmt.Sprintf("ws://%s:%d", Localhost, nodeRPCPortWS)
