@@ -3,6 +3,7 @@ package batchmanager
 import (
 	"errors"
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/host/db"
@@ -30,7 +31,7 @@ func (b BatchMissingError) Error() string {
 
 // StoreBatch stores the provided batch. If there is a batch missing in the chain, it returns a `BatchMissingError`.
 // There is no way to identify more than one missing batch in the chain - we cannot go by the batch numbers we have
-// stored, since these batches may have been stored as part of another chain.
+// stored, since these batches may have been stored as part of a discarded fork.
 func (b *BatchManager) StoreBatch(batch *common.ExtBatch) error {
 	_, err := b.db.GetBatch(batch.Header.ParentHash)
 
