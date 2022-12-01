@@ -174,7 +174,11 @@ func (rc *RollupChain) SubmitRollup(rollup *core.Rollup) error {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	return rc.storeNewL2Head(rollup)
+	err := rc.storeNewL2Head(rollup)
+	if err != nil {
+		return fmt.Errorf("failed to store new L2 head. Cause: %w", err)
+	}
+	return nil
 }
 
 func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
@@ -610,7 +614,7 @@ func (rc *RollupChain) storeNewL2Head(rollup *core.Rollup) error {
 func (rc *RollupChain) checkRollup(rollup *core.Rollup) ([]*types.Receipt, error) {
 	stateDB, err := rc.storage.CreateStateDB(rollup.Header.ParentHash)
 	if err != nil {
-		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+		return nil, fmt.Errorf("could not create stateDB to check rollup. Cause: %w", err)
 	}
 
 	// calculate the state to compare with what is in the Rollup
