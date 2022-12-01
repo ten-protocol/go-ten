@@ -1,8 +1,9 @@
 package network
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
