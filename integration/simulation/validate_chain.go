@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/obsclient"
@@ -127,7 +129,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeIdx, height, minHeight)
 	}
 
-	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(common.GenesisBlock, head, node, s, nodeIdx)
+	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
 	if len(findHashDups(deposits)) > 0 {

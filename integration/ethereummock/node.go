@@ -126,7 +126,7 @@ func (m *Node) BlockNumber() (uint64, error) {
 
 func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	if n.Int64() == 0 {
-		return common.GenesisBlock, nil
+		return MockGenesisBlock, nil
 	}
 	// TODO this should be a method in the resolver
 	blk, err := m.Resolver.FetchHeadBlock()
@@ -136,7 +136,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 		}
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
-	for !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()) {
+	for !bytes.Equal(blk.ParentHash().Bytes(), (common.L1RootHash{}).Bytes()) {
 		if blk.NumberU64() == n.Uint64() {
 			return blk, nil
 		}
@@ -186,8 +186,8 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	m.Resolver.StoreBlock(common.GenesisBlock)
-	head := m.setHead(common.GenesisBlock)
+	m.Resolver.StoreBlock(MockGenesisBlock)
+	head := m.setHead(MockGenesisBlock)
 
 	for {
 		select {
@@ -350,7 +350,7 @@ func (m *Node) startMining() {
 					return
 				}
 
-				m.miningCh <- common.NewBlock(canonicalBlock, m.l2ID, toInclude)
+				m.miningCh <- NewBlock(canonicalBlock, m.l2ID, toInclude)
 			})
 		}
 	}

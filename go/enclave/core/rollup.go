@@ -83,12 +83,8 @@ func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcomm
 	return &r, nil
 }
 
-// NewRollup - produces a new rollup. only used for genesis. todo - review
-func NewRollup(blkHash gethcommon.Hash, parent *Rollup, height uint64, a gethcommon.Address, txs []*common.L2Tx, withdrawals []common.Withdrawal, nonce common.Nonce, state common.StateRoot) *Rollup {
-	parentHash := common.GenesisHash
-	if parent != nil {
-		parentHash = parent.Hash()
-	}
+// NewRollup - produces a new rollup. only used for genesis and testing
+func NewRollup(blkHash gethcommon.Hash, parentHash gethcommon.Hash, height uint64, a gethcommon.Address, txs []*common.L2Tx, withdrawals []common.Withdrawal, state common.StateRoot) *Rollup {
 	h := common.Header{
 		Agg:         a,
 		ParentHash:  parentHash,

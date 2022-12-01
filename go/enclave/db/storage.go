@@ -181,7 +181,7 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 		return true
 	}
 
-	if bytes.Equal(maybeAncestor.Bytes(), common.GenesisBlock.Hash().Bytes()) {
+	if bytes.Equal(maybeAncestor.Bytes(), (common.L1RootHash{}).Bytes()) {
 		return true
 	}
 

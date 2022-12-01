@@ -133,12 +133,11 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 
 	rolGenesis := core.NewRollup(
 		blkHash,
-		nil,
+		common.L1RootHash{},
 		common.L2GenesisHeight,
 		gethcommon.HexToAddress("0x0"),
 		[]*common.L2Tx{},
 		[]common.Withdrawal{},
-		common.GenerateNonce(),
 		*preFundGenesisState,
 	)
 
