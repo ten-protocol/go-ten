@@ -33,23 +33,27 @@ func (b BatchMissingError) Error() string {
 // There is no way to identify more than one missing batch in the chain - we cannot go by the batch numbers we have
 // stored, since these batches may have been stored as part of a discarded fork.
 func (b *BatchManager) StoreBatch(batch *common.ExtBatch) error {
-	_, err := b.db.GetBatch(batch.Header.ParentHash)
+	// We store the batch.
+	err := b.db.AddBatchHeader(batch)
+	if err != nil {
+		return fmt.Errorf("could not store batch header. Cause: %w", err)
+	}
 
-	// We have stored the batch's parent, or this batch is the genesis batch, so we store the batch.
-	if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
-		err = b.db.AddBatchHeader(batch)
-		if err != nil {
-			return fmt.Errorf("could not store batch header. Cause: %w", err)
-		}
+	// If this is the genesis batch, there can be no missing parent.
+	if batch.Header.Number.Uint64() == common.L2GenesisHeight {
 		return nil
 	}
 
-	// If we could not find the parent, we return a `BatchMissingError`.
-	if errors.Is(err, errutil.ErrNotFound) {
-		return &BatchMissingError{&batch.Header.ParentHash}
+	// We check if we are missing the parent, in which case we request it.
+	if _, err = b.db.GetBatch(batch.Header.ParentHash); err != nil {
+		// If we could not find the parent, we return a `BatchMissingError`.
+		if errors.Is(err, errutil.ErrNotFound) {
+			return &BatchMissingError{&batch.Header.ParentHash}
+		}
+		return fmt.Errorf("could not retrieve batch's parent. Cause: %w", err)
 	}
 
-	return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+	return nil
 }
 
 // GetBatch retrieves the batch matching the batch request from the host's database.

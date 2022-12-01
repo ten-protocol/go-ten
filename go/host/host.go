@@ -850,8 +850,7 @@ func (h *host) checkBlockForSecretResponse(block *types.Block) bool {
 
 // Handles an incoming batch. There are two possibilities:
 // (1) There are no gaps in the historical chain of batches. The new batch can be added immediately
-// (2) There are gaps in the historical chain of batches. To avoid an inconsistent state (i.e. one where we have stored
-// a batch without its parent), we request the sequencer to resend the missing batch, then discard the received batch.
+// (2) There are gaps in the historical chain of batches. We store the received batch, then request its missing parent
 func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
 	var batch *common.ExtBatch
 	err := rlp.DecodeBytes(*encodedBatch, &batch)
@@ -862,7 +861,7 @@ func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
 		return nil
 	}
 
-	// We store the batches. If we encounter a missing batch, we abort and request the missing batch instead.
+	// We store the batch. If the batch's parent is missing, we request that as well.
 	err = h.batchManager.StoreBatch(batch)
 	if err != nil {
 		batchMissingError, ok := err.(*batchmanager.BatchMissingError) //nolint:errorlint
@@ -876,12 +875,11 @@ func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
 		}
 		err = h.p2p.RequestBatch(&batchRequest)
 		if err != nil {
-			return fmt.Errorf("could not request historical batches. Cause: %w", err)
+			return fmt.Errorf("could not request historical batch. Cause: %w", err)
 		}
-		// If we requested any batches, we return early and wait for the missing batches to arrive.
-		return nil
 	}
 
+	// TODO - #718 - How should we handle the case where we had a missing batch? Should we still submit?
 	if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 		return fmt.Errorf("could not submit batch. Cause: %w", err)
 	}
