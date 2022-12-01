@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
+
+	"github.com/ethereum/go-ethereum/core/state"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -499,16 +502,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	}
 
 	// make sure the genesis is stored the rollup storage
-	genRollup := core.NewRollup(
-		blk.Hash(),
-		nil,
-		common.L2GenesisHeight,
-		gethcommon.HexToAddress("0x0"),
-		[]*common.L2Tx{},
-		[]common.Withdrawal{},
-		common.GenerateNonce(),
-		genesisPreallocStateDB.IntermediateRoot(true),
-	)
+	genRollup := dummyRollup(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
 
 	err = enclave.(*enclaveImpl).storage.StoreGenesisRollup(genRollup)
 	if err != nil {
@@ -560,16 +554,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	}
 
 	// make sure the rollup is stored the rollup storage
-	rollup := core.NewRollup(
-		blk.Hash(),
-		nil,
-		headRollup.NumberU64()+1,
-		gethcommon.HexToAddress("0x0"),
-		[]*common.L2Tx{},
-		[]common.Withdrawal{},
-		common.GenerateNonce(),
-		stateDB.IntermediateRoot(true),
-	)
+	rollup := dummyRollup(blk.Hash(), headRollup.NumberU64()+1, stateDB)
 
 	err = enclave.(*enclaveImpl).storage.StoreRollup(rollup)
 	if err != nil {
@@ -600,4 +585,22 @@ func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber,
 type prefundedAddress struct {
 	address gethcommon.Address
 	amount  *big.Int
+}
+
+func dummyRollup(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Rollup {
+	h := common.Header{
+		Agg:         gethcommon.HexToAddress("0x0"),
+		ParentHash:  common.L1RootHash{},
+		L1Proof:     blkHash,
+		Root:        state.IntermediateRoot(true),
+		TxHash:      types.EmptyRootHash,
+		Number:      big.NewInt(int64(height)),
+		Withdrawals: []common.Withdrawal{},
+		ReceiptHash: types.EmptyRootHash,
+		Time:        uint64(time.Now().Unix()),
+	}
+	return &core.Rollup{
+		Header:       &h,
+		Transactions: []*common.L2Tx{},
+	}
 }

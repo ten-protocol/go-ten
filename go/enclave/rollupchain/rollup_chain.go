@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -131,15 +132,21 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 		return nil, err
 	}
 
-	rolGenesis := core.NewRollup(
-		blkHash,
-		common.L1RootHash{},
-		common.L2GenesisHeight,
-		gethcommon.HexToAddress("0x0"),
-		[]*common.L2Tx{},
-		[]common.Withdrawal{},
-		*preFundGenesisState,
-	)
+	h := common.Header{
+		Agg:         gethcommon.HexToAddress("0x0"),
+		ParentHash:  common.L1RootHash{},
+		L1Proof:     blkHash,
+		Root:        *preFundGenesisState,
+		TxHash:      types.EmptyRootHash,
+		Number:      big.NewInt(int64(0)),
+		Withdrawals: []common.Withdrawal{},
+		ReceiptHash: types.EmptyRootHash,
+		Time:        uint64(time.Now().Unix()),
+	}
+	rolGenesis := &core.Rollup{
+		Header:       &h,
+		Transactions: []*common.L2Tx{},
+	}
 
 	err = rc.signRollup(rolGenesis)
 	if err != nil {
