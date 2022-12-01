@@ -8,6 +8,7 @@
   * It is now possible to run an Obscuroscan against a locally deployed testnet. For more information see 
     [building and running a local testnet](https://github.com/obscuronet/go-obscuro/blob/main/README.md#building-and-running-a-local-testnet) 
     in the project readme.
+  * Obscuroscan's GitHub Actions [deploy script](https://github.com/obscuronet/go-obscuro/blob/main/.github/workflows/manual-deploy-obscuroscan.yml) has been modified to run the public Testnet Obscuroscan as an Azure web app. This allows access via HTTPS (TLS), which allows app developers to call the Obscuroscan API from other web apps.
   * A list of the relevant PRs addressed in this release is as below;
     * `12a04c40` Checks whether the head rollup is nil (#859)
     * `619d39b4` Clarify that blocks are L1 blocks (#858)
