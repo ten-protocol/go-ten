@@ -39,6 +39,8 @@ type SimParams struct {
 
 	StartPort int  // The port from which to start allocating ports. Must be unique across all simulations.
 	IsInMem   bool // Denotes that the sim does not have a full RPC layer.
+
+	Timeout int // How long to wait for transactions to be confirmed.
 }
 
 type L1SetupData struct {

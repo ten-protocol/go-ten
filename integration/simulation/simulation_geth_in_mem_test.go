@@ -36,6 +36,7 @@ func TestGethSimulation(t *testing.T) {
 		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationGethInMem,
 		IsInMem:                   true,
+		Timeout:                   30000,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

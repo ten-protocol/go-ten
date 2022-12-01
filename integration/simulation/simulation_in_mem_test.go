@@ -22,7 +22,6 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	numberOfSimWallets := 10
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
 
-	// temporarily increased the values
 	simParams := params.SimParams{
 		NumberOfNodes:             numberOfNodes,
 		AvgBlockDuration:          50 * time.Millisecond,
@@ -35,7 +34,8 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationInMem,
 		IsInMem:                   true,
-		L1SetupData:               &params.L1SetupData{}, //
+		L1SetupData:               &params.L1SetupData{},
+		Timeout:                   30000,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

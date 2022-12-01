@@ -152,7 +152,7 @@ func (s *Simulation) prefundObscuroAccounts() {
 	faucetWallet := s.Params.Wallets.L2FaucetWallet
 	faucetClient := s.RPCHandles.ObscuroWalletRndClient(faucetWallet)
 	nonce := NextNonce(s.ctx, s.RPCHandles, faucetWallet)
-	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), big.NewInt(allocObsWallets))
+	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), big.NewInt(allocObsWallets), s.Params.Timeout)
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
@@ -183,7 +183,7 @@ func (s *Simulation) deployObscuroERC20s() {
 				panic(err)
 			}
 
-			err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.ObscuroWalletRndClient(owner), signedTx.Hash())
+			err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.ObscuroWalletRndClient(owner), signedTx.Hash(), s.Params.Timeout)
 			if err != nil {
 				panic(fmt.Sprintf("ERC20 deployment transaction unsuccessful. Cause: %s", err))
 			}
