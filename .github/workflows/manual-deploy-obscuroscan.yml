@@ -1,13 +1,12 @@
-- # Deploys Obscuroscan on Azure for Testnet
-- # Builds the Obscuroscan network image, pushes the image to dockerhub and starts Obscuroscan on Azure as a web app.
-- # This allows Obscuroscan to be served using HTTPS, important because API calls can then be made from different domains.
-- # Obscuroscan is a docker container that runs the obscuroscan package
-- # It exposes the following ports:
-- # HTTPS: 80
-- #
-- # Exposes the following addresses:
-- # https://testnet-obscuroscan.azurewebsites.net
-
+# Deploys Obscuroscan on Azure for Testnet
+# Builds the Obscuroscan network image, pushes the image to dockerhub and starts Obscuroscan on Azure as a web app.
+# This allows Obscuroscan to be served using HTTPS, important because API calls can then be made from different domains.
+# Obscuroscan is a docker container that runs the obscuroscan package
+# It exposes the following ports:
+# HTTPS: 80
+#
+# Exposes the following addresses:
+# https://testnet-obscuroscan.azurewebsites.net
 name: '[M] Deploy Testnet Obscuroscan'
 
 on: 
