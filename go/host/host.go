@@ -441,6 +441,13 @@ func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostco
 		return stream
 	}
 	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, "blk", processedBlock.Hash(), "blkHeight", processedBlock.Number())
+	if errors.Is(rejErr, common.ErrBlockAlreadyProcessed) {
+		// resetting stream after rejection for duplicate is a possible optimisation in future but it's rarely an expensive case and
+		// it's a risky optimisation (need to ensure it can't get stuck in a loop)
+		// Instead we assume that only one or two blocks are being repeated (probably from revisiting a fork that was
+		// abandoned) and then the enclave will be progressing again
+		return stream
+	}
 	if rejErr.L1Head == (gethcommon.Hash{}) {
 		h.logger.Warn("No L1 head information provided by enclave, continuing with existing stream")
 		return stream
@@ -472,7 +479,6 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	h.processL1BlockTransactions(block)
 
 	// submit each block to the enclave for ingestion plus validation
-	// todo: isLatest should only be true when we're not behind
 	result, err := h.enclaveClient.SubmitL1Block(*block, isLatestBlock)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
