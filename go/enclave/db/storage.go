@@ -176,33 +176,11 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 }
 
 func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool {
-	s.assertSecretAvailable()
-	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) {
-		return true
-	}
-
-	if bytes.Equal(maybeAncestor.Bytes(), (common.L1RootHash{}).Bytes()) {
-		return true
-	}
-
-	if block.NumberU64() == common.L1GenesisHeight {
-		return false
-	}
-
 	resolvedBlock, err := s.FetchBlock(maybeAncestor)
-	if err == nil {
-		if resolvedBlock.NumberU64() >= block.NumberU64() {
-			return false
-		}
-	}
-
-	p, err := s.ParentBlock(block)
 	if err != nil {
-		// TODO - If error is not `errutil.ErrNotFound`, throw.
 		return false
 	}
-
-	return s.IsBlockAncestor(p, maybeAncestor)
+	return s.IsAncestor(block, resolvedBlock)
 }
 
 func (s *storageImpl) HealthCheck() (bool, error) {
