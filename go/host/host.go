@@ -388,7 +388,7 @@ func (h *host) startProcessing() {
 	blockStream, err := h.l1BlockProvider.StartStreamingFromHash(h.config.L1StartHash)
 	if err != nil {
 		// maybe start hash wasn't provided or couldn't be found, instead we stream from L1 genesis
-		// note: in production this could be expensive, hence the WARN log message
+		// note: in production this could be expensive, hence the WARN log message, todo: review whether we should fail here
 		h.logger.Warn("unable to stream from L1StartHash", log.ErrKey, err, "l1StartHash", h.config.L1StartHash)
 		blockStream, err = h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(1))
 		if err != nil {
