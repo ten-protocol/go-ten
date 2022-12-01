@@ -47,8 +47,8 @@ type P2P interface {
 	BroadcastTx(tx common.EncryptedTx) error
 	// BroadcastBatch sends the batch to every other node on the network.
 	BroadcastBatch(batch *common.ExtBatch) error
-	// RequestBatches requests batches from the sequencer.
-	RequestBatches(batchRequest *common.BatchRequest) error
+	// RequestBatch requests a batch from the sequencer.
+	RequestBatch(batchRequest *common.BatchRequest) error
 	// SendBatches sends batches to a specific node, in response to a batch request.
 	SendBatches(batches []*common.ExtBatch, to string) error
 }

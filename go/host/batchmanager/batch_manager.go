@@ -3,8 +3,6 @@ package batchmanager
 import (
 	"errors"
 	"fmt"
-	"math/big"
-
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/host/db"
@@ -21,21 +19,21 @@ func NewBatchManager(db *db.DB) *BatchManager {
 	}
 }
 
-// BatchesMissingError indicates that when processing new batches, one or more batches were missing from the database.
-type BatchesMissingError struct {
-	EarliestMissingBatch *big.Int
+// BatchMissingError indicates that when processing new batches, a batch was missing from the database.
+type BatchMissingError struct {
+	MissingBatch *common.L2RootHash
 }
 
-func (b BatchesMissingError) Error() string {
-	return fmt.Sprintf("missing batches; earliest missing batch is %d", b.EarliestMissingBatch)
+func (b BatchMissingError) Error() string {
+	return fmt.Sprintf("missing batch %d", b.MissingBatch)
 }
 
-// StoreBatches stores the provided batches. If there are missing batches in the chain, it returns a
-// `BatchesMissingError`.
+// StoreBatches stores the provided batches. If there is a batch missing in the chain, it returns a
+// `BatchMissingError`. There is no way to identify more than one missing batch in the chain - we cannot go by the
+// batch numbers we have stored, since these batches may have been stored as part of another chain.
 func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 	for _, batch := range batches {
-		parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
-		_, err := b.db.GetBatchHash(parentBatchNumber)
+		_, err := b.db.GetBatch(batch.Header.ParentHash)
 
 		// We have stored the batch's parent, or this batch is the genesis batch, so we store the batch.
 		if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
@@ -46,13 +44,9 @@ func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 			continue
 		}
 
-		// If we could not find the parent, we have at least one missing batch.
+		// If we could not find the parent, we return a `BatchMissingError`.
 		if errors.Is(err, errutil.ErrNotFound) {
-			earliestMissingBatch, err := b.findEarliestMissingBatch(parentBatchNumber)
-			if err != nil {
-				return fmt.Errorf("could not calculate earliest missing batch. Cause: %w", err)
-			}
-			return &BatchesMissingError{earliestMissingBatch}
+			return &BatchMissingError{&batch.Header.ParentHash}
 		}
 
 		return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
@@ -61,55 +55,12 @@ func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 	return nil
 }
 
-// GetBatches retrieves the batches matching the batch request from the host's database.
-func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.ExtBatch, error) {
-	var batches []*common.ExtBatch
-
-	currentBatch := batchRequest.EarliestMissingBatch
-	for {
-		batchHash, err := b.db.GetBatchHash(currentBatch)
-		if err != nil {
-			// We have reached the latest batch.
-			if errors.Is(err, errutil.ErrNotFound) {
-				break
-			}
-			return nil, fmt.Errorf("could not retrieve batch hash for batch number %d. Cause: %w", currentBatch, err)
-		}
-
-		batch, err := b.db.GetBatch(*batchHash)
-		if err != nil {
-			return nil, fmt.Errorf("could not retrieve batch for batch hash %s. Cause: %w", batchHash, err)
-		}
-
-		batches = append(batches, batch)
-		currentBatch = big.NewInt(0).Add(currentBatch, big.NewInt(1))
+// GetBatch retrieves the batch matching the batch request from the host's database.
+func (b *BatchManager) GetBatch(batchRequest *common.BatchRequest) (*common.ExtBatch, error) {
+	batch, err := b.db.GetBatch(*batchRequest.MissingBatch)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve batch for batch hash %s. Cause: %w", batchRequest.MissingBatch, err)
 	}
 
-	return batches, nil
-}
-
-// Starting from the provided number, we walk the chain batch until we find a stored batch.
-func (b *BatchManager) findEarliestMissingBatch(startBatchNumber *big.Int) (*big.Int, error) {
-	earliestMissingBatch := startBatchNumber
-
-	for {
-		// If we have reached the head of the chain, break.
-		if earliestMissingBatch.Int64() <= int64(common.L2GenesisHeight) {
-			return earliestMissingBatch, nil
-		}
-
-		// We check whether the batch is stored.
-		_, err := b.db.GetBatchHash(earliestMissingBatch)
-		// If there was no error, we have reached a stored batch.
-		if err == nil {
-			return earliestMissingBatch, nil
-		}
-
-		// If the batch is not found, we update the variable tracking the earliest missing batch.
-		if errors.Is(err, errutil.ErrNotFound) {
-			earliestMissingBatch = big.NewInt(0).Sub(earliestMissingBatch, big.NewInt(1))
-			continue
-		}
-		return nil, fmt.Errorf("could not get batch hash by number. Cause: %w", err)
-	}
+	return batch, nil
 }

@@ -105,7 +105,7 @@ func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
 	return p.broadcast(msg)
 }
 
-func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
+func (p *p2pImpl) RequestBatch(batchRequest *common.BatchRequest) error {
 	if len(p.peerAddresses) == 0 {
 		return errors.New("no peers available to request batches")
 	}
@@ -116,7 +116,7 @@ func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
 
 	msg := message{Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
 	// TODO - #718 - Use better method to identify sequencer?
-	// TODO - #718 - Allow missing batches to be requested from peers other than sequencer?
+	// TODO - #718 - Allow missing batch to be requested from peers other than sequencer?
 	return p.send(msg, p.peerAddresses[0])
 }
 

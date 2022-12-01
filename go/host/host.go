@@ -866,16 +866,16 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	// We store the batches. If we encounter any missing batches, we abort and request the missing batches instead.
 	err = h.batchManager.StoreBatches(batches)
 	if err != nil {
-		batchesMissingError, ok := err.(*batchmanager.BatchesMissingError) //nolint:errorlint
+		batchMissingError, ok := err.(*batchmanager.BatchMissingError) //nolint:errorlint
 		if !ok {
 			return fmt.Errorf("could not store batches. Cause: %w", err)
 		}
 
 		batchRequest := common.BatchRequest{
-			Requester:            h.config.P2PPublicAddress,
-			EarliestMissingBatch: batchesMissingError.EarliestMissingBatch,
+			Requester:    h.config.P2PPublicAddress,
+			MissingBatch: batchMissingError.MissingBatch,
 		}
-		err = h.p2p.RequestBatches(&batchRequest)
+		err = h.p2p.RequestBatch(&batchRequest)
 		if err != nil {
 			return fmt.Errorf("could not request historical batches. Cause: %w", err)
 		}
@@ -899,12 +899,12 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 		return fmt.Errorf("could not decode batch request using RLP. Cause: %w", err)
 	}
 
-	batches, err := h.batchManager.GetBatches(batchRequest)
+	batch, err := h.batchManager.GetBatch(batchRequest)
 	if err != nil {
 		return fmt.Errorf("could not retrieve batches based on request. Cause: %w", err)
 	}
 
-	return h.p2p.SendBatches(batches, batchRequest.Requester)
+	return h.p2p.SendBatches([]*common.ExtBatch{batch}, batchRequest.Requester)
 }
 
 // Checks the host config is valid.
