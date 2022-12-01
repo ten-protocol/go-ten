@@ -12,18 +12,25 @@ import (
 
 // BatchManager handles the creation and processing of batches for the host.
 type BatchManager struct {
-	db *db.DB
+	db   *db.DB
+	node int
 }
 
-func NewBatchManager(db *db.DB) *BatchManager {
+func NewBatchManager(db *db.DB, node int) *BatchManager {
 	return &BatchManager{
-		db: db,
+		db:   db,
+		node: node,
 	}
 }
 
 // BatchesMissingError indicates that when processing new batches, one or more batches were missing from the database.
 type BatchesMissingError struct {
 	EarliestMissingBatch *big.Int
+}
+
+// todo - joel - describe
+type L1BlockMissingError struct {
+	BatchNumber *big.Int
 }
 
 func (b BatchesMissingError) Error() string {
@@ -53,13 +60,21 @@ func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 		// TODO - #718 - Find a more efficient solution, rather than forcing the sequencer to resend.
 		if _, err := b.db.GetBlockHeader(batch.Header.L1Proof); err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
+				if b.node == 1 {
+					println(fmt.Sprintf("jjj waiting for block %s for rollup %d", batch.Header.L1Proof.Hex(), batch.Header.Number))
+				}
 				earliestMissingBatch, err := b.findEarliestMissingBatch(batch.Header.Number)
 				if err != nil {
 					return fmt.Errorf("could not calculate earliest missing batch. Cause: %w", err)
 				}
 				return &BatchesMissingError{earliestMissingBatch}
 			}
+			println("jjj could not query for block", batch.Header.L1Proof.Hex())
 			return fmt.Errorf("could not retrieve batch's L1 block. Cause: %w", err)
+		}
+
+		if b.node == 1 {
+			println("jjj got block", batch.Header.L1Proof.Hex())
 		}
 
 		// We store the batch.

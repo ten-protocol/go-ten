@@ -129,7 +129,7 @@ func NewHost(
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
 		ethWallet:       ethWallet,       // the host's ethereum wallet
 		logEventManager: events.NewLogEventManager(logger),
-		batchManager:    batchmanager.NewBatchManager(database),
+		batchManager:    batchmanager.NewBatchManager(database, int(common.ShortAddress(config.ID))),
 
 		logger: logger,
 	}
@@ -875,10 +875,15 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 			Requester:            h.config.P2PPublicAddress,
 			EarliestMissingBatch: batchesMissingError.EarliestMissingBatch,
 		}
-		err = h.p2p.RequestBatches(&batchRequest)
-		if err != nil {
-			return fmt.Errorf("could not request historical batches. Cause: %w", err)
-		}
+
+		go func() {
+			time.Sleep(50 * time.Millisecond)
+			err = h.p2p.RequestBatches(&batchRequest)
+			if err != nil {
+				// todo - joel - log instead
+				println(fmt.Sprintf("could not request historical batches. Cause: %s", err))
+			}
+		}()
 		// If we requested any batches, we return early and wait for the missing batches to arrive.
 		return nil
 	}
