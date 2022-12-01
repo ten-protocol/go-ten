@@ -114,12 +114,10 @@ func (rc *RollupChain) ProduceNewRollup() (*common.ExtRollup, error) {
 		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
 	}
 
-	err = rc.storage.StoreRollup(rollup)
+	err = rc.calculateAndStoreNewL2Head(rollup)
 	if err != nil {
-		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
+		panic(err)
 	}
-
-	// TODO - #718 - This rollup should be stored as the new head.
 
 	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
 	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(extRollup.Hash())))
@@ -391,7 +389,7 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, erro
 		return nil, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
 	}
 
-	l2Head, err := rc.calculateAndStoreNewHeads(block, rollupsInBlock)
+	l2Head, err := rc.calculateAndStoreNewL1Head(block, rollupsInBlock)
 	if err != nil {
 		return nil, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
 	}
@@ -559,9 +557,8 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 	return true
 }
 
-// given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
-	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
+// Given a new L1 block, calculates the state after ingesting the block.
+func (rc *RollupChain) calculateAndStoreNewL1Head(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
 	currentHeadRollupHash, err := rc.storage.FetchHeadRollupForL1Block(block.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve current head rollup hash. Cause: %w", err)
@@ -572,26 +569,33 @@ func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBl
 		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
 
-	latestRollup, isUpdated := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
+	selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
 
-	// TODO - #718 - Instead of updating the rollup head, we should validate the stored batches against the winning
-	//  rollup. We should still update the block head.
+	// TODO - #718 - Validate the stored batches against the winning rollup (probably in a separate method).
+	// TODO - #718 - Store the rollup used for validation.
 
-	l1Head := block.Hash()
-	var rollupTxReceipts []*types.Receipt
-	if isUpdated {
-		rollupTxReceipts, err = rc.checkRollup(latestRollup)
-		if err != nil {
-			return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
-		}
-	}
-	err = rc.storage.StoreNewHeads(l1Head, latestRollup, rollupTxReceipts, isUpdated)
+	err = rc.storage.StoreNewHeads(block.Hash(), currentHeadRollup, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
 
-	l2Head := latestRollup.Hash()
-	return &l2Head, nil
+	return currentHeadRollupHash, nil
+}
+
+// Given a new rollup, calculates the state after ingesting the rollup.
+func (rc *RollupChain) calculateAndStoreNewL2Head(rollup *core.Rollup) error {
+	block, err := rc.storage.FetchBlock(rollup.Header.L1Proof)
+	if err != nil {
+		panic(err)
+	}
+
+	// todo - joel - readd retrieving transaction receipts
+	err = rc.storage.StoreNewHeads(block.Hash(), rollup, nil, true)
+	if err != nil {
+		return fmt.Errorf("could not store new head. Cause: %w", err)
+	}
+
+	return nil
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
