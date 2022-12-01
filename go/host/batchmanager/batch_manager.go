@@ -28,31 +28,27 @@ func (b BatchMissingError) Error() string {
 	return fmt.Sprintf("missing batch %d", b.MissingBatch)
 }
 
-// StoreBatches stores the provided batches. If there is a batch missing in the chain, it returns a
-// `BatchMissingError`. There is no way to identify more than one missing batch in the chain - we cannot go by the
-// batch numbers we have stored, since these batches may have been stored as part of another chain.
-func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
-	for _, batch := range batches {
-		_, err := b.db.GetBatch(batch.Header.ParentHash)
+// StoreBatch stores the provided batch. If there is a batch missing in the chain, it returns a `BatchMissingError`.
+// There is no way to identify more than one missing batch in the chain - we cannot go by the batch numbers we have
+// stored, since these batches may have been stored as part of another chain.
+func (b *BatchManager) StoreBatch(batch *common.ExtBatch) error {
+	_, err := b.db.GetBatch(batch.Header.ParentHash)
 
-		// We have stored the batch's parent, or this batch is the genesis batch, so we store the batch.
-		if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
-			err = b.db.AddBatchHeader(batch)
-			if err != nil {
-				return fmt.Errorf("could not store batch header. Cause: %w", err)
-			}
-			continue
+	// We have stored the batch's parent, or this batch is the genesis batch, so we store the batch.
+	if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
+		err = b.db.AddBatchHeader(batch)
+		if err != nil {
+			return fmt.Errorf("could not store batch header. Cause: %w", err)
 		}
-
-		// If we could not find the parent, we return a `BatchMissingError`.
-		if errors.Is(err, errutil.ErrNotFound) {
-			return &BatchMissingError{&batch.Header.ParentHash}
-		}
-
-		return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+		return nil
 	}
 
-	return nil
+	// If we could not find the parent, we return a `BatchMissingError`.
+	if errors.Is(err, errutil.ErrNotFound) {
+		return &BatchMissingError{&batch.Header.ParentHash}
+	}
+
+	return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 }
 
 // GetBatch retrieves the batch matching the batch request from the host's database.

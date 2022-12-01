@@ -30,7 +30,7 @@ type msgType uint8
 
 const (
 	msgTypeTx msgType = iota
-	msgTypeBatches
+	msgTypeBatch
 	msgTypeBatchRequest
 )
 
@@ -96,12 +96,12 @@ func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
 }
 
 func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
-	encodedBatches, err := rlp.EncodeToBytes([]*common.ExtBatch{batch})
+	encodedBatch, err := rlp.EncodeToBytes(batch)
 	if err != nil {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
 
-	msg := message{Type: msgTypeBatches, Contents: encodedBatches}
+	msg := message{Type: msgTypeBatch, Contents: encodedBatch}
 	return p.broadcast(msg)
 }
 
@@ -120,13 +120,13 @@ func (p *p2pImpl) RequestBatch(batchRequest *common.BatchRequest) error {
 	return p.send(msg, p.peerAddresses[0])
 }
 
-func (p *p2pImpl) SendBatches(batches []*common.ExtBatch, to string) error {
-	encodedBatches, err := rlp.EncodeToBytes(batches)
+func (p *p2pImpl) SendBatch(batch *common.ExtBatch, to string) error {
+	encodedBatch, err := rlp.EncodeToBytes(batch)
 	if err != nil {
 		return fmt.Errorf("could not encode batches using RLP. Cause: %w", err)
 	}
 
-	msg := message{Type: msgTypeBatches, Contents: encodedBatches}
+	msg := message{Type: msgTypeBatch, Contents: encodedBatch}
 	return p.send(msg, to)
 }
 
@@ -167,8 +167,8 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	case msgTypeTx:
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		callback.ReceiveTx(msg.Contents)
-	case msgTypeBatches:
-		callback.ReceiveBatches(msg.Contents)
+	case msgTypeBatch:
+		callback.ReceiveBatch(msg.Contents)
 	case msgTypeBatchRequest:
 		callback.ReceiveBatchRequest(msg.Contents)
 	}

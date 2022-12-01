@@ -78,7 +78,7 @@ type host struct {
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
-	batchP2PCh      chan common.EncodedBatches      // The channel that new batches from peers are sent to
+	batchP2PCh      chan common.EncodedBatch        // The channel that new batches from peers are sent to
 	batchRequestCh  chan common.EncodedBatchRequest // The channel that batch requests from peers are sent to
 
 	db *db.DB // Stores the host's publicly-available data
@@ -120,7 +120,7 @@ func NewHost(
 		// incoming data
 		l1BlockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
 		txP2PCh:         make(chan common.EncryptedTx),
-		batchP2PCh:      make(chan common.EncodedBatches),
+		batchP2PCh:      make(chan common.EncodedBatch),
 		batchRequestCh:  make(chan common.EncodedBatchRequest),
 
 		// Initialize the host DB
@@ -298,8 +298,8 @@ func (h *host) ReceiveTx(tx common.EncryptedTx) {
 	h.txP2PCh <- tx
 }
 
-func (h *host) ReceiveBatches(batches common.EncodedBatches) {
-	h.batchP2PCh <- batches
+func (h *host) ReceiveBatch(batch common.EncodedBatch) {
+	h.batchP2PCh <- batch
 }
 
 func (h *host) ReceiveBatchRequest(batchRequest common.EncodedBatchRequest) {
@@ -421,10 +421,10 @@ func (h *host) startProcessing() {
 				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
 			}
 
-		case batches := <-h.batchP2PCh:
+		case batch := <-h.batchP2PCh:
 			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
-			if err := h.handleBatches(&batches); err != nil {
-				h.logger.Error("Could not handle batches. ", log.ErrKey, err)
+			if err := h.handleBatch(&batch); err != nil {
+				h.logger.Error("Could not handle batch. ", log.ErrKey, err)
 			}
 
 		case batchRequest := <-h.batchRequestCh:
@@ -848,23 +848,22 @@ func (h *host) checkBlockForSecretResponse(block *types.Block) bool {
 	return false
 }
 
-// Handles an incoming set of batches. There are two possibilities:
-// (1) There are no gaps in the historical chain of batches. The new batches can be added immediately
+// Handles an incoming batch. There are two possibilities:
+// (1) There are no gaps in the historical chain of batches. The new batch can be added immediately
 // (2) There are gaps in the historical chain of batches. To avoid an inconsistent state (i.e. one where we have stored
-// a batch without its parent), we request the sequencer to resend the batches we've just received, plus any missing
-// historical batches, then discard the received batches. We will store all of these at once when we receive them
-func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
-	var batches []*common.ExtBatch
-	err := rlp.DecodeBytes(*encodedBatches, &batches)
+// a batch without its parent), we request the sequencer to resend the missing batch, then discard the received batch.
+func (h *host) handleBatch(encodedBatch *common.EncodedBatch) error {
+	var batch *common.ExtBatch
+	err := rlp.DecodeBytes(*encodedBatch, &batch)
 	if err != nil {
 		return fmt.Errorf("could not decode batches using RLP. Cause: %w", err)
 	}
-	if len(batches) == 0 {
+	if batch == nil {
 		return nil
 	}
 
-	// We store the batches. If we encounter any missing batches, we abort and request the missing batches instead.
-	err = h.batchManager.StoreBatches(batches)
+	// We store the batches. If we encounter a missing batch, we abort and request the missing batch instead.
+	err = h.batchManager.StoreBatch(batch)
 	if err != nil {
 		batchMissingError, ok := err.(*batchmanager.BatchMissingError) //nolint:errorlint
 		if !ok {
@@ -883,10 +882,8 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		return nil
 	}
 
-	for _, batch := range batches {
-		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
-			return fmt.Errorf("could not submit batch. Cause: %w", err)
-		}
+	if err = h.enclaveClient.SubmitBatch(batch); err != nil {
+		return fmt.Errorf("could not submit batch. Cause: %w", err)
 	}
 
 	return nil
@@ -904,7 +901,7 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 		return fmt.Errorf("could not retrieve batches based on request. Cause: %w", err)
 	}
 
-	return h.p2p.SendBatches([]*common.ExtBatch{batch}, batchRequest.Requester)
+	return h.p2p.SendBatch(batch, batchRequest.Requester)
 }
 
 // Checks the host config is valid.

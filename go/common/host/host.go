@@ -23,8 +23,8 @@ type Host interface {
 	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
 	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
-	// ReceiveBatches receives a set of batches from a peer host.
-	ReceiveBatches(batches common.EncodedBatches)
+	// ReceiveBatch receives a batch from a peer host.
+	ReceiveBatch(batches common.EncodedBatch)
 	// ReceiveBatchRequest receives a batch request from a peer host. Used during catch-up.
 	ReceiveBatchRequest(batchRequest common.EncodedBatchRequest)
 	// Subscribe feeds logs matching the encrypted log subscription to the matchedLogs channel.
@@ -49,8 +49,8 @@ type P2P interface {
 	BroadcastBatch(batch *common.ExtBatch) error
 	// RequestBatch requests a batch from the sequencer.
 	RequestBatch(batchRequest *common.BatchRequest) error
-	// SendBatches sends batches to a specific node, in response to a batch request.
-	SendBatches(batches []*common.ExtBatch, to string) error
+	// SendBatch sends a batch to a specific node, in response to a batch request.
+	SendBatch(batch *common.ExtBatch, to string) error
 }
 
 // ReconnectingBlockProvider interface allows host to monitor and await L1 blocks.
