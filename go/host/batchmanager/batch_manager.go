@@ -34,8 +34,7 @@ func (b BatchesMissingError) Error() string {
 // `BatchesMissingError`.
 func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 	for _, batch := range batches {
-		parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
-		_, err := b.db.GetBatchHash(parentBatchNumber)
+		_, err := b.db.GetBatch(batch.Header.ParentHash)
 
 		// We have stored the batch's parent, or this batch is the genesis batch, so we store the batch.
 		if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
@@ -48,6 +47,7 @@ func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 
 		// If we could not find the parent, we have at least one missing batch.
 		if errors.Is(err, errutil.ErrNotFound) {
+			parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
 			earliestMissingBatch, err := b.findEarliestMissingBatch(parentBatchNumber)
 			if err != nil {
 				return fmt.Errorf("could not calculate earliest missing batch. Cause: %w", err)
@@ -80,8 +80,8 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch for batch hash %s. Cause: %w", batchHash, err)
 		}
-
 		batches = append(batches, batch)
+
 		currentBatch = big.NewInt(0).Add(currentBatch, big.NewInt(1))
 	}
 
@@ -98,9 +98,8 @@ func (b *BatchManager) findEarliestMissingBatch(startBatchNumber *big.Int) (*big
 			return earliestMissingBatch, nil
 		}
 
-		// We check whether the batch is stored.
+		// We check whether the batch is stored. If there was no error, we have reached a stored batch.
 		_, err := b.db.GetBatchHash(earliestMissingBatch)
-		// If there was no error, we have reached a stored batch.
 		if err == nil {
 			return earliestMissingBatch, nil
 		}
