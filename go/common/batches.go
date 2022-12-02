@@ -28,5 +28,5 @@ func (r *ExtBatch) Hash() L2RootHash {
 // BatchRequest is used when requesting a range of batches from a peer.
 type BatchRequest struct {
 	Requester        string
-	CurrentHeadBatch *gethcommon.Hash // The requester's view of the current head batch.
+	CurrentHeadBatch *gethcommon.Hash // The requester's view of the current head batch, or nil if they haven't stored any batches.
 }
