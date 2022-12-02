@@ -1,0 +1,25 @@
+# This compose builds the essential components for running a local testnet
+
+version: '3.9'
+services:
+  gethnetwork:
+    image: "testnetobscuronet.azurecr.io/obscuronet/gethnetwork:latest"
+    build:
+      context: ..
+      dockerfile: ./testnet/gethnetwork.Dockerfile
+  host:
+    image: "testnetobscuronet.azurecr.io/obscuronet/host:latest"
+    build:
+      context: ..
+      dockerfile: ./dockerfiles/host.Dockerfile
+  contractdeployer:
+    image: "testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest"
+    build:
+      context: ..
+      dockerfile: ./testnet/contractdeployer.Dockerfile
+  enclave:
+    image: "testnetobscuronet.azurecr.io/obscuronet/enclave:latest"
+    build:
+      context: ..
+      dockerfile: ./dockerfiles/enclave.Dockerfile
+
