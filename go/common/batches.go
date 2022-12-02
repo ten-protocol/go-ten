@@ -1,8 +1,9 @@
 package common
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"sync/atomic"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // ExtBatch is an encrypted form of batch used when passing the batch around outside of an enclave.

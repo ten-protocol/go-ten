@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// todo - joel - reverse
+	// todo - joel - revert
 	receiptTimeoutMillis = 10000 // The timeout in millis to wait for a receipt for a transaction.
 )
 

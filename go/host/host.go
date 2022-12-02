@@ -863,21 +863,19 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		return nil
 	}
 
-	// We store the batches. If we encounter any missing batches, we abort and request the missing batches instead.
-	err = h.batchManager.StoreBatches(batches, h.shortID)
+	// We store the batches.
+	err = h.batchManager.StoreBatches(batches)
 	if err != nil {
-		batchesMissingError, ok := err.(*batchmanager.BatchesMissingError) //nolint:errorlint
-		if !ok {
+		if !errors.Is(err, batchmanager.ErrBatchesMissing) {
 			return fmt.Errorf("could not store batches. Cause: %w", err)
 		}
 
-		batchRequest := common.BatchRequest{
-			Requester:        h.config.P2PPublicAddress,
-			CurrentHeadBatch: batchesMissingError.CurrentHeadBatch,
-		}
-
-		err = h.p2p.RequestBatches(&batchRequest)
+		// We have encountered missing batches. We abort the storage operation and request the missing batches.
+		batchRequest, err := h.batchManager.CreateBatchRequest(h.config.P2PPublicAddress)
 		if err != nil {
+			return fmt.Errorf("could not create batch request. Cause: %w", err)
+		}
+		if err = h.p2p.RequestBatches(batchRequest); err != nil {
 			return fmt.Errorf("could not request historical batches. Cause: %w", err)
 		}
 
@@ -885,6 +883,8 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		return nil
 	}
 
+	// TODO - #718 - We should probably submit each batch after storing it, and not submitting each one only if *every*
+	//  batch was stored correctly.
 	for _, batch := range batches {
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
