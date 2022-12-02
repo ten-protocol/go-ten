@@ -59,6 +59,10 @@ const (
 	blockStreamWarningTimeout = 30 * time.Second
 )
 
+var (
+	batchRequests = 0
+)
+
 // Implementation of host.Host.
 type host struct {
 	config          config.HostConfig
@@ -864,7 +868,7 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	}
 
 	// We store the batches.
-	err = h.batchManager.StoreBatches(batches)
+	err = h.batchManager.StoreBatches(batches, h.shortID)
 	if err != nil {
 		if !errors.Is(err, batchmanager.ErrBatchesMissing) {
 			return fmt.Errorf("could not store batches. Cause: %w", err)
