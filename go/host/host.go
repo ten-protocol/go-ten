@@ -864,7 +864,7 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	}
 
 	// We store the batches. If we encounter any missing batches, we abort and request the missing batches instead.
-	err = h.batchManager.StoreBatches(batches)
+	err = h.batchManager.StoreBatches(batches, h.shortID)
 	if err != nil {
 		batchesMissingError, ok := err.(*batchmanager.BatchesMissingError) //nolint:errorlint
 		if !ok {
@@ -875,10 +875,12 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 			Requester:            h.config.P2PPublicAddress,
 			EarliestMissingBatch: batchesMissingError.EarliestMissingBatch,
 		}
+
 		err = h.p2p.RequestBatches(&batchRequest)
 		if err != nil {
 			return fmt.Errorf("could not request historical batches. Cause: %w", err)
 		}
+
 		// If we requested any batches, we return early and wait for the missing batches to arrive.
 		return nil
 	}

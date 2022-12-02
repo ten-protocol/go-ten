@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	receiptTimeoutMillis = 30000 // The timeout in millis to wait for a receipt for a transaction.
+	// todo - joel - reverse
+	receiptTimeoutMillis = 10000 // The timeout in millis to wait for a receipt for a transaction.
 )
 
 func RndBtw(min uint64, max uint64) uint64 {
