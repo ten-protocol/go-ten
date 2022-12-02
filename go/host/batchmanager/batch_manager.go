@@ -83,7 +83,7 @@ func (b *BatchManager) CreateBatchRequest(nodeP2PAddress string) (*common.BatchR
 	}, nil
 }
 
-// GetBatches retrieves the batches matching the batch request from the host's database.
+// GetBatches retrieves the batches from the host's database matching the batch request.
 func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.ExtBatch, error) {
 	// We handle the case where the requester has no batches stored at all.
 	requesterHeadBatch := batchRequest.CurrentHeadBatch

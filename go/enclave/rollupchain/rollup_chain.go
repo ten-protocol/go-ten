@@ -163,7 +163,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 
 	err := rc.insertAndStoreL1Block(block, isLatest)
 	if err != nil {
-		return nil, err
+		return nil, rc.rejectBlockErr(err)
 	}
 
 	l2Head, err := rc.updateHeads(&block)
