@@ -35,6 +35,11 @@ func (db *DB) GetBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
 func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 	b := db.kvStore.NewBatch()
 
+	// Skip storing the batch if we've already stored it.
+	if _, err := db.GetBatchHeader(batch.Header.Hash()); err == nil {
+		return nil
+	}
+
 	if err := db.writeBatchHeader(batch.Header); err != nil {
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
