@@ -85,33 +85,27 @@ func (b *BatchManager) CreateBatchRequest(nodeP2PAddress string) (*common.BatchR
 
 // GetBatches retrieves the batches matching the batch request from the host's database.
 func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.ExtBatch, error) {
-	var currentBatch *common.ExtBatch
-
-	// todo - joel - big tidy up
+	// We handle the case where the requester has no batches stored at all.
+	requesterHeadBatch := batchRequest.CurrentHeadBatch
 	if (*batchRequest.CurrentHeadBatch == gethcommon.Hash{}) {
 		var err error
-		batchHash, err := b.db.GetBatchHash(big.NewInt(0))
+		requesterHeadBatch, err = b.db.GetBatchHash(big.NewInt(0))
 		if err != nil {
-			panic("todo - joel")
+			return nil, fmt.Errorf("could not retrieve zero'th batch hash. Cause: %w", err)
 		}
-		currentBatch, err = b.db.GetBatch(*batchHash)
-		if err != nil {
-			panic("todo - joel")
-		}
-	} else {
-		requesterHead := batchRequest.CurrentHeadBatch
-		latestCanonicalAncestor, err := b.latestCanonicalAncestor(requesterHead)
-		if err != nil {
-			panic("todo - joel")
-		}
-
-		currentBatch = latestCanonicalAncestor
 	}
 
-	batches := []*common.ExtBatch{currentBatch}
+	// We determine the latest canonical ancestor to start sending batches from.
+	canonicalAncestor, err := b.latestCanonicalAncestor(requesterHeadBatch)
+	if err != nil {
+		return nil, fmt.Errorf("could not determine latest canonical ancestor. Cause: %w", err)
+	}
+	batchesToSend := []*common.ExtBatch{canonicalAncestor}
+	currentBatchNumber := canonicalAncestor.Header.Number
 
+	// We gather the batches from the canonical chain.
 	for {
-		currentBatchNumber := big.NewInt(0).Add(currentBatch.Header.Number, big.NewInt(1))
+		currentBatchNumber = big.NewInt(0).Add(currentBatchNumber, big.NewInt(1))
 
 		batchHash, err := b.db.GetBatchHash(currentBatchNumber)
 		if err != nil {
@@ -126,29 +120,27 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch for batch hash %s. Cause: %w", batchHash, err)
 		}
-		batches = append(batches, batch)
-
-		currentBatch = batch
+		batchesToSend = append(batchesToSend, batch)
 	}
 
-	return batches, nil
+	return batchesToSend, nil
 }
 
-// todo - joel - describe
+// Determines the latest canonical ancestor between the provided batch hash and the sequencer's canonical chain.
 func (b *BatchManager) latestCanonicalAncestor(batchHash *gethcommon.Hash) (*common.ExtBatch, error) {
 	batch, err := b.db.GetBatch(*batchHash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not retrieve batch. Cause: %w", err)
 	}
 
-	canonAtSameHeight, err := b.db.GetBatchHash(batch.Header.Number)
+	canonicalBatchHashAtSameHeight, err := b.db.GetBatchHash(batch.Header.Number)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not retrieve canonical batch hash. Cause: %w", err)
 	}
 
-	if batch.Hash() != *canonAtSameHeight {
+	// If the batch's hash does not match the canonical batch's hash at the same height, we need to keep walking back.
+	if batch.Hash() != *canonicalBatchHashAtSameHeight {
 		return b.latestCanonicalAncestor(&batch.Header.ParentHash)
 	}
-
 	return batch, nil
 }
