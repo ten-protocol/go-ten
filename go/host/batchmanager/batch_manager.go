@@ -58,10 +58,10 @@ func (b *BatchManager) StoreBatches(batches []*common.ExtBatch, nodeId uint64) e
 
 		if nodeId == 2 {
 			println(fmt.Sprintf("jjj working on batch %d on node %d because we have block. Hash: %s; parent hash: %s",
-				batch.Header.Number.Uint64(), nodeId, batch.Header.Hash(), batch.Header.ParentHash))
+				batch.Header.Number.Uint64(), nodeId, batch.Hash(), batch.Header.ParentHash))
 		}
 
-		_, err = b.db.GetBatch(batch.Header.ParentHash)
+		_, err := b.db.GetBatch(batch.Header.ParentHash)
 
 		// We have stored the batch's parent, or this batch is the genesis batch, so we store the batch.
 		if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {

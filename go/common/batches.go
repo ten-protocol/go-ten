@@ -2,6 +2,7 @@ package common
 
 import (
 	"math/big"
+	"sync/atomic"
 )
 
 // ExtBatch is an encrypted form of batch used when passing the batch around outside of an enclave.
@@ -10,9 +11,19 @@ type ExtBatch struct {
 	Header          *Header
 	TxHashes        []TxHash // The hashes of the transactions included in the batch.
 	EncryptedTxBlob EncryptedTransactions
+	hash            atomic.Value
 }
 
-// TODO - #718 - Cache hash calculation.
+// Hash returns the keccak256 hash of the batch's header.
+// The hash is computed on the first call and cached thereafter.
+func (r *ExtBatch) Hash() L2RootHash {
+	if hash := r.hash.Load(); hash != nil {
+		return hash.(L2RootHash)
+	}
+	v := r.Header.Hash()
+	r.hash.Store(v)
+	return v
+}
 
 // BatchRequest is used when requesting a range of batches from a peer.
 type BatchRequest struct {
