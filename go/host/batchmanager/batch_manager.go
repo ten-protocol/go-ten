@@ -29,18 +29,8 @@ func NewBatchManager(db *db.DB) *BatchManager {
 // `ErrBatchesMissing`.
 func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 	for _, batch := range batches {
-		// We do not have the corresponding L1 block stored yet, so we discard the batch. We'll request the
-		// batch later as part of catch-up, once we have the L1 block stored.
-		_, err := b.db.GetBlockHeader(batch.Header.L1Proof)
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				return nil
-			}
-			return fmt.Errorf("could not retrieve L1 block for batch. Cause: %w", err)
-		}
-
 		// If we have stored the batch's parent, or this batch is the genesis batch, we store the batch.
-		_, err = b.db.GetBatch(batch.Header.ParentHash)
+		_, err := b.db.GetBatch(batch.Header.ParentHash)
 		if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
 			err = b.db.AddBatchHeader(batch)
 			if err != nil {
@@ -49,7 +39,7 @@ func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 			continue
 		}
 
-		// If we could not find the parent, we return a `ErrBatchesMissing`.
+		// If we could not find the parent, we return an `ErrBatchesMissing`.
 		if errors.Is(err, errutil.ErrNotFound) {
 			return ErrBatchesMissing
 		}
