@@ -872,8 +872,8 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		}
 
 		batchRequest := common.BatchRequest{
-			Requester:            h.config.P2PPublicAddress,
-			EarliestMissingBatch: batchesMissingError.EarliestMissingBatch,
+			Requester:        h.config.P2PPublicAddress,
+			CurrentHeadBatch: batchesMissingError.CurrentHeadBatch,
 		}
 
 		err = h.p2p.RequestBatches(&batchRequest)

@@ -1,7 +1,7 @@
 package common
 
 import (
-	"math/big"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"sync/atomic"
 )
 
@@ -27,6 +27,6 @@ func (r *ExtBatch) Hash() L2RootHash {
 
 // BatchRequest is used when requesting a range of batches from a peer.
 type BatchRequest struct {
-	Requester            string
-	EarliestMissingBatch *big.Int
+	Requester        string
+	CurrentHeadBatch *gethcommon.Hash // The requester's view of the current head batch.
 }
