@@ -122,8 +122,6 @@ func (rc *RollupChain) ProduceNewRollup() (*common.ExtRollup, error) {
 		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
 	}
 
-	// TODO - #718 - This rollup should be stored as the new head.
-
 	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
 	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(extRollup.Hash())))
 	return &extRollup, nil
