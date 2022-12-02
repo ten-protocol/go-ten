@@ -28,7 +28,8 @@ func NewBatchManager(db *db.DB) *BatchManager {
 // StoreBatches stores the provided batches. If there are missing batches in the chain, it returns a
 // `ErrBatchesMissing`.
 func (b *BatchManager) StoreBatches(batches []*common.ExtBatch, nodeId uint64) error {
-	// todo - joel - there's a big bug - sequential batches aren't linked by hash
+	// todo - joel - there's a big bug - sequential batches aren't linked by hash. try readding the L1 block catch-up,
+	//  and generating storing a rollup in the enclave as soon as the block is processed
 	if nodeId == 2 {
 		println()
 		print(fmt.Sprintf("jjj node %d received batches: ", nodeId))
