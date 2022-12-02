@@ -71,7 +71,7 @@ func (b *BatchManager) CreateBatchRequest(nodeP2PAddress string) (*common.BatchR
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 		}
-		headBatchHash = nil
+		headBatchHash = &gethcommon.Hash{}
 	} else {
 		hash := currentHeadBatch.Hash()
 		headBatchHash = &hash
