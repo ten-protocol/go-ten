@@ -270,10 +270,12 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 	}
 
 	// notify the client subscriptions
+	m.subMu.Lock()
 	for _, s := range m.subs {
 		sub := s
 		go sub.publish(b)
 	}
+	m.subMu.Unlock()
 	m.canonicalCh <- b
 
 	return b
@@ -286,10 +288,12 @@ func (m *Node) setFork(blocks []*types.Block) *types.Block {
 	}
 
 	// notify the client subs
+	m.subMu.Lock()
 	for _, s := range m.subs {
 		sub := s
 		go sub.publishAll(blocks)
 	}
+	m.subMu.Unlock()
 
 	m.canonicalCh <- head
 
