@@ -34,7 +34,17 @@ func (b BatchesMissingError) Error() string {
 // `BatchesMissingError`.
 func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 	for _, batch := range batches {
-		_, err := b.db.GetBatch(batch.Header.ParentHash)
+		_, err := b.db.GetBlockHeader(batch.Header.L1Proof)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				// We do not have the corresponding L1 block stored yet, so we discard the batch. We'll request the
+				// batch later as part of catch-up, once we have the L1 block stored.
+				return nil
+			}
+			return fmt.Errorf("could not retrieve L1 block for batch. Cause: %w", err)
+		}
+
+		_, err = b.db.GetBatch(batch.Header.ParentHash)
 
 		// We have stored the batch's parent, or this batch is the genesis batch, so we store the batch.
 		if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
@@ -48,6 +58,9 @@ func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 		// If we could not find the parent, we have at least one missing batch.
 		if errors.Is(err, errutil.ErrNotFound) {
 			parentBatchNumber := big.NewInt(0).Sub(batch.Header.Number, big.NewInt(1))
+			// This is not foolproof. We may find that we have a batch stored for a given number, but unbeknownst to
+			// us, it is for a different fork. This means that we may have to go through several rounds of requests,
+			// getting only one additional link in the chain each time.
 			earliestMissingBatch, err := b.findEarliestMissingBatch(parentBatchNumber)
 			if err != nil {
 				return fmt.Errorf("could not calculate earliest missing batch. Cause: %w", err)
@@ -88,7 +101,8 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 	return batches, nil
 }
 
-// Starting from the provided number, we walk the chain batch until we find a stored batch.
+// Starting from the provided number, we walk the chain batch until we find a batch number against which we have stored
+// a batch.
 func (b *BatchManager) findEarliestMissingBatch(startBatchNumber *big.Int) (*big.Int, error) {
 	earliestMissingBatch := startBatchNumber
 
