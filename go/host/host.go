@@ -526,6 +526,10 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		return fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
 
+	if result.RejectError != nil {
+		println("jjj block rejected with", result.RejectError.Error())
+	}
+
 	if rollup.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(rollup)
@@ -580,7 +584,7 @@ func (h *host) storeAndDistributeBatch(producedRollup *common.ExtRollup) {
 		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
 	}
 
-	println(fmt.Sprintf("jjj sequencer creating batch %d (hash: %s, parent hash: %s)", batch.Header.Number, batch.Hash(), batch.Header.ParentHash))
+	println(fmt.Sprintf("jjj sequencer creating batch %d (hash: %s, parent hash: %s, block: %s)", batch.Header.Number, batch.Hash(), batch.Header.ParentHash, batch.Header.L1Proof))
 
 	err := h.db.AddBatchHeader(&batch)
 	if err != nil {
