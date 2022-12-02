@@ -100,6 +100,10 @@ func New(
 
 // ProduceNewRollup creates a new rollup, building on the latest chain heads.
 func (rc *RollupChain) ProduceNewRollup() (*common.ExtRollup, error) {
+	// todo - joel - are these mutexes required?
+	rc.blockProcessingMutex.Lock()
+	defer rc.blockProcessingMutex.Unlock()
+
 	rollup, err := rc.produceRollup()
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
@@ -127,6 +131,10 @@ func (rc *RollupChain) ProduceNewRollup() (*common.ExtRollup, error) {
 
 // ProduceGenesisRollup creates a genesis rollup linked to the provided L1 block and signs it.
 func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Rollup, error) {
+	// todo - joel - are these mutexes required?
+	rc.blockProcessingMutex.Lock()
+	defer rc.blockProcessingMutex.Unlock()
+
 	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
 	if err != nil {
 		return nil, err
@@ -134,7 +142,7 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 
 	h := common.Header{
 		Agg:         gethcommon.HexToAddress("0x0"),
-		ParentHash:  common.L1RootHash{},
+		ParentHash:  common.L2RootHash{},
 		L1Proof:     blkHash,
 		Root:        *preFundGenesisState,
 		TxHash:      types.EmptyRootHash,
