@@ -78,7 +78,12 @@ type enclaveImpl struct {
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, erc20ContractLib erc20contractlib.ERC20ContractLib, logger gethlog.Logger) common.Enclave {
+func NewEnclave(
+	config config.EnclaveConfig,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	logger gethlog.Logger,
+) common.Enclave {
 	if len(config.ERC20ContractAddresses) < 2 {
 		logger.Crit("failed to initialise enclave. At least two ERC20 contract addresses are required - the HOC " +
 			"ERC20 address and the POC ERC20 address")

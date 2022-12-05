@@ -1,4 +1,3 @@
-id = ""
 isGenesis = true
 nodeType = "aggregator"
 gossipRoundDuration = 777

@@ -24,7 +24,8 @@ import (
 )
 
 // RunHost runs an Obscuro host as a standalone process.
-func RunHost(config config.HostConfig) {
+func RunHost(parsedConfig *config.HostInputConfig) {
+	config := parsedConfig.ToHostConfig()
 	logger := log.New(log.HostCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.ID)
 
 	fmt.Printf("Starting host with config: %+v", config)
@@ -37,12 +38,15 @@ func RunHost(config config.HostConfig) {
 		logger.Crit("could not create Ethereum client.", log.ErrKey, err)
 	}
 
-	ethWallet := wallet.NewInMemoryWalletFromConfig(config, logger)
+	ethWallet := wallet.NewInMemoryWalletFromConfig(config.PrivateKeyString, config.L1ChainID, logger)
 	nonce, err := l1Client.Nonce(ethWallet.Address())
 	if err != nil {
 		logger.Crit("could not retrieve Ethereum account nonce.", log.ErrKey, err)
 	}
 	ethWallet.SetNonce(nonce)
+
+	// set the Host ID as the Public Key Address
+	config.ID = ethWallet.Address()
 
 	enclaveClient := enclaverpc.NewClient(config, logger)
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)

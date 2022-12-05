@@ -39,7 +39,6 @@ func TestGethSimulation(t *testing.T) {
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
-	simParams.AvgGossipPeriod = simParams.AvgBlockDuration / 3
 
 	testSimulation(t, network.NewNetworkInMemoryGeth(wallets), simParams)
 }

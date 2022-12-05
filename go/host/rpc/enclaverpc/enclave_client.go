@@ -34,11 +34,11 @@ import (
 type Client struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
-	config      config.HostConfig
+	config      *config.HostConfig
 	logger      gethlog.Logger
 }
 
-func NewClient(config config.HostConfig, logger gethlog.Logger) *Client {
+func NewClient(config *config.HostConfig, logger gethlog.Logger) *Client {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
 	if err != nil {

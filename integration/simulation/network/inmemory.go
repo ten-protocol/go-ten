@@ -62,7 +62,6 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			GetNodeType(i),
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
-			params.AvgGossipPeriod,
 			false,
 			nil,
 			params.Wallets.NodeWallets[i],
