@@ -160,16 +160,19 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool, isSequen
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
+	// We update the L1 chain state.
 	err := rc.insertAndStoreL1Block(block, isLatest)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
 
+	// We update the L1 and L2 chain heads.
 	l2Head, isUpdatedRollupHead, err := rc.updateHeads(&block)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
 
+	// If we're the sequencer and we've ingested a rollup, we produce a new one.
 	var rollup *common.ExtRollup
 	if isSequencer && isUpdatedRollupHead {
 		rollup, err = rc.ProduceNewRollup()

@@ -59,10 +59,6 @@ const (
 	blockStreamWarningTimeout = 30 * time.Second
 )
 
-var (
-	latestRollup *common.ExtRollup = nil
-)
-
 // Implementation of host.Host.
 type host struct {
 	config          config.HostConfig
