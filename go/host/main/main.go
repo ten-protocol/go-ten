@@ -2,11 +2,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/obscuronet/go-obscuro/go/host/hostrunner"
 )
@@ -19,21 +14,4 @@ func main() {
 	}
 
 	hostrunner.RunHost(config)
-}
-
-func toAddress(privateKey string) gethcommon.Address {
-	privateKeyA, err := crypto.ToECDSA(hexutils.HexToBytes(removeHexPrefix(privateKey)))
-	if err != nil {
-		panic(err)
-	}
-	pubKeyA := privateKeyA.PublicKey
-	return crypto.PubkeyToAddress(pubKeyA)
-}
-
-func removeHexPrefix(hex string) string {
-	result := hex
-	if strings.HasPrefix(hex, "0x") {
-		result = hex[2:]
-	}
-	return result
 }
