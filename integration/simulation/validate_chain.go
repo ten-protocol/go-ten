@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/obsclient"
@@ -133,10 +135,10 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeIdx, height, minHeight)
 	}
 
-	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(common.GenesisBlock, head, node, s, nodeIdx)
+	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
-	totalDepositedLogged, eventCount := ExtractCrossChainDataFromEthereumChain(common.GenesisBlock, head, node, s)
+	totalDepositedLogged, eventCount := ExtractCrossChainDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s)
 
 	if len(findHashDups(deposits)) > 0 {
 		dups := findHashDups(deposits)
@@ -294,7 +296,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	headRollupHeader := getHeadRollupHeader(obscuroClient)
+	headRollupHeader := getHeadRollupHeader(obscuroClient, nodeIdx)
 	if headRollupHeader == nil {
 		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeIdx)
 		return
@@ -441,7 +443,7 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
 		l2tx, _, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
 		if err != nil {
-			panic(err)
+			panic(fmt.Errorf("node %d: could not retrieve transaction %s. Cause: %w", nodeIdx, tx.Hash(), err))
 		}
 		if l2tx == nil {
 			notFoundTransfers++
@@ -492,14 +494,14 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		}
 
 		if receipt.Status == types.ReceiptStatusFailed {
-			testlog.Logger().Info("Transaction failed.", log.TxKey, tx.Hash().Hex())
+			testlog.Logger().Info("Transaction receipt had failed status.", log.TxKey, tx.Hash().Hex())
 		}
 	}
 }
 
 func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int, numberOfWithdrawalRequests int) {
 	totalSuccessfullyWithdrawn = big.NewInt(0)
-	header := getHeadRollupHeader(obscuroClient)
+	header := getHeadRollupHeader(obscuroClient, nodeIdx)
 	if header == nil {
 		panic(fmt.Sprintf("Node %d: The current head should not be nil", nodeIdx))
 	}
@@ -520,11 +522,9 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 			numberOfWithdrawalRequests++
 		}
 
-		// parentHash := header.ParentHash
 		header, err = obscuroClient.RollupHeaderByHash(header.ParentHash)
 		if err != nil {
-			// TODO - #718 - Renable this check once we've implemented catch-up for batches and uncoupling of batches and rollups.
-			// t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header %s. Cause: %s", nodeIdx, parentHash, err))
+			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header %s. Cause: %s", nodeIdx, header.ParentHash, err))
 			return
 		}
 	}

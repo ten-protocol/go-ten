@@ -121,13 +121,12 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 	for {
 		blockHashes = append(blockHashes, currentBlock.Hash())
 
-		if currentBlock.NumberU64() <= common.L1GenesisHeight {
-			break // We have reached the end of the chain.
-		}
-
 		parentHash := currentBlock.ParentHash()
 		currentBlock, err = s.storage.FetchBlock(parentHash)
 		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				break // we have reached the beginning of the known chain
+			}
 			return nil, fmt.Errorf("could not retrieve block %s to extract its logs. Cause: %w", parentHash, err)
 		}
 	}
@@ -147,11 +146,11 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 
 	// We proceed in this way instead of calling `FetchHeadRollup` because we want to ensure the chain has not advanced
 	// causing a head block/head rollup mismatch.
-	currentHeadsAfterL1Block, err := s.storage.FetchHeadsAfterL1Block(headBlock.Hash())
+	l2Head, err := s.storage.FetchHeadRollupForL1Block(headBlock.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not filter logs as block state for head block could not be retrieved. Cause: %w", err)
 	}
-	return s.FilterLogs(logs, currentHeadsAfterL1Block.HeadRollup, account, filter)
+	return s.FilterLogs(logs, *l2Head, account, filter)
 }
 
 // FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs

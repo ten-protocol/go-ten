@@ -33,7 +33,8 @@ func GetL1Messages(db ethdb.KeyValueReader, blockHash gethcommon.Hash, logger ge
 	if err != nil {
 		logger.Trace("Could not read key from db. ", log.ErrKey, err)
 		// It is expected that not every block will have messages, thus do not surface it.
-		if errors.Is(err, errutil.ErrNotFound) {
+		// String comparison due to in memory tests using a different db.
+		if errors.Is(err, errutil.ErrNotFound) || err.Error() == "not found" {
 			return messages, nil
 		}
 		return nil, err

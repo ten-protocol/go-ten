@@ -41,7 +41,7 @@ type message struct {
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config config.HostConfig, logger gethlog.Logger) host.P2P {
+func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger) host.P2P {
 	return &p2pImpl{
 		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},

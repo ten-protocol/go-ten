@@ -37,22 +37,14 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 		return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
 	}
 
+	producedRollupMsg := ToExtRollupMsg(response.ProducedRollup)
+
 	return generated.BlockSubmissionResponseMsg{
-		BlockHeader:             ToBlockHeaderMsg(response.BlockHeader),
-		UpdatedHeadRollup:       response.UpdatedHeadRollup,
+		ProducedRollup:          &producedRollupMsg,
 		RollupHead:              ToRollupHeaderMsg(response.IngestedRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
 	}, nil
-}
-
-func ToProduceGenesisResponseMsg(response *common.ProduceGenesisResponse) generated.ProduceGenesisResponseMsg {
-	genesisRollupMsg := ToExtRollupMsg(&response.GenesisRollup)
-
-	return generated.ProduceGenesisResponseMsg{
-		BlockHeader:   ToBlockHeaderMsg(response.BlockHeader),
-		GenesisRollup: &genesisRollupMsg,
-	}
 }
 
 func ToBlockSubmissionRejectionMsg(rejectError *common.BlockRejectError) (generated.BlockSubmissionResponseMsg, error) {
@@ -106,18 +98,10 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 		return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
 	}
 	return &common.BlockSubmissionResponse{
-		BlockHeader:             FromBlockHeaderMsg(msg.GetBlockHeader()),
-		UpdatedHeadRollup:       msg.UpdatedHeadRollup,
+		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
 		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
-	}, nil
-}
-
-func FromProduceGenesisResponseMsg(msg *generated.ProduceGenesisResponseMsg) (*common.ProduceGenesisResponse, error) {
-	return &common.ProduceGenesisResponse{
-		BlockHeader:   FromBlockHeaderMsg(msg.GetBlockHeader()),
-		GenesisRollup: FromExtRollupMsg(msg.GetGenesisRollup()),
 	}, nil
 }
 
@@ -164,6 +148,19 @@ func FromCrossChainMsgs(messages []*generated.CrossChainMsg) []MessageBus.Struct
 	}
 
 	return outMessages
+}
+func ToExtBatchMsg(batch *common.ExtBatch) generated.ExtBatchMsg {
+	if batch == nil || batch.Header == nil {
+		return generated.ExtBatchMsg{}
+	}
+
+	txHashBytes := make([][]byte, len(batch.TxHashes))
+	for idx, txHash := range batch.TxHashes {
+		txHashBytes[idx] = txHash.Bytes()
+	}
+
+	// TODO - #718 - We use the rollup header converter for now. We'll need a separate one as the headers diverge.
+	return generated.ExtBatchMsg{Header: ToRollupHeaderMsg(batch.Header), TxHashes: txHashBytes, Txs: batch.EncryptedTxBlob}
 }
 
 func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
@@ -218,9 +215,9 @@ func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
 	return &headerMsg
 }
 
-func FromExtRollupMsg(msg *generated.ExtRollupMsg) common.ExtRollup {
+func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 	if msg.Header == nil {
-		return common.ExtRollup{
+		return &common.ExtRollup{
 			Header: nil,
 		}
 	}
@@ -231,7 +228,28 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) common.ExtRollup {
 		txHashes[idx] = gethcommon.BytesToHash(bytes)
 	}
 
-	return common.ExtRollup{
+	return &common.ExtRollup{
+		Header:          FromRollupHeaderMsg(msg.Header),
+		TxHashes:        txHashes,
+		EncryptedTxBlob: msg.Txs,
+	}
+}
+
+func FromExtBatchMsg(msg *generated.ExtBatchMsg) common.ExtBatch {
+	if msg.Header == nil {
+		return common.ExtBatch{
+			Header: nil,
+		}
+	}
+
+	// We recreate the transaction hashes.
+	txHashes := make([]gethcommon.Hash, len(msg.TxHashes))
+	for idx, bytes := range msg.TxHashes {
+		txHashes[idx] = gethcommon.BytesToHash(bytes)
+	}
+
+	return common.ExtBatch{
+		// TODO - #718 - We use the rollup header converter for now. We'll need a separate one as the headers diverge.
 		Header:          FromRollupHeaderMsg(msg.Header),
 		TxHashes:        txHashes,
 		EncryptedTxBlob: msg.Txs,
@@ -278,57 +296,5 @@ func FromRollupHeaderMsg(header *generated.HeaderMsg) *common.Header {
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
 		LatestInboudCrossChainHash:    gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
 		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),
-	}
-}
-
-func FromBlockHeaderMsg(msg *generated.BlockHeaderMsg) *types.Header {
-	if msg == nil {
-		return nil
-	}
-	return &types.Header{
-		ParentHash:  gethcommon.BytesToHash(msg.ParentHash),
-		UncleHash:   gethcommon.BytesToHash(msg.UncleHash),
-		Coinbase:    gethcommon.BytesToAddress(msg.Coinbase),
-		Root:        gethcommon.BytesToHash(msg.Root),
-		TxHash:      gethcommon.BytesToHash(msg.TxHash),
-		ReceiptHash: gethcommon.BytesToHash(msg.ReceiptHash),
-		Bloom:       types.BytesToBloom(msg.Bloom),
-		Difficulty:  big.NewInt(int64(msg.Difficulty)),
-		Number:      big.NewInt(int64(msg.Number)),
-		GasLimit:    msg.GasLimit,
-		GasUsed:     msg.GasUsed,
-		Time:        msg.Time,
-		Extra:       msg.Extra,
-		MixDigest:   gethcommon.BytesToHash(msg.MixDigest),
-		Nonce:       types.EncodeNonce(msg.Nonce),
-		BaseFee:     big.NewInt(int64(msg.BaseFee)),
-	}
-}
-
-func ToBlockHeaderMsg(header *types.Header) *generated.BlockHeaderMsg {
-	if header == nil {
-		return nil
-	}
-	baseFee := uint64(0)
-	if header.BaseFee != nil {
-		baseFee = header.BaseFee.Uint64()
-	}
-	return &generated.BlockHeaderMsg{
-		ParentHash:  header.ParentHash.Bytes(),
-		UncleHash:   header.UncleHash.Bytes(),
-		Coinbase:    header.Coinbase.Bytes(),
-		Root:        header.Root.Bytes(),
-		TxHash:      header.TxHash.Bytes(),
-		ReceiptHash: header.ReceiptHash.Bytes(),
-		Bloom:       header.Bloom.Bytes(),
-		Difficulty:  header.Difficulty.Uint64(),
-		Number:      header.Number.Uint64(),
-		GasLimit:    header.GasLimit,
-		GasUsed:     header.GasUsed,
-		Time:        header.Time,
-		Extra:       header.Extra,
-		MixDigest:   header.MixDigest.Bytes(),
-		Nonce:       header.Nonce.Uint64(),
-		BaseFee:     baseFee,
 	}
 }

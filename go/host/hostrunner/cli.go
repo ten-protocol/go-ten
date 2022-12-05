@@ -17,7 +17,6 @@ import (
 
 // HostConfigToml is the structure that a host's .toml config is parsed into.
 type HostConfigToml struct {
-	ID                     string
 	IsGenesis              bool
 	NodeType               string
 	GossipRoundDuration    int
@@ -39,20 +38,19 @@ type HostConfigToml struct {
 	LogLevel               int
 	LogPath                string
 	PrivateKeyString       string
-	PKAddress              string
 	L1ChainID              int64
 	ObscuroChainID         int64
 	ProfilerEnabled        bool
+	L1StartHash            string
 }
 
-// ParseConfig returns a config.HostConfig based on either the file identified by the `config` flag, or the flags with
+// ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
 // specific defaults (if the `config` flag isn't specified).
-func ParseConfig() (config.HostConfig, error) {
-	cfg := config.DefaultHostConfig()
+func ParseConfig() (*config.HostInputConfig, error) {
+	cfg := config.DefaultHostParsedConfig()
 	flagUsageMap := getFlagUsageMap()
 
 	configPath := flag.String(configName, "", flagUsageMap[configName])
-	nodeID := flag.String(nodeIDName, cfg.ID.Hex(), flagUsageMap[nodeIDName])
 	isGenesis := flag.Bool(isGenesisName, cfg.IsGenesis, flagUsageMap[isGenesisName])
 	nodeTypeStr := flag.String(nodeTypeName, cfg.NodeType.String(), flagUsageMap[nodeTypeName])
 	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(cfg.GossipRoundDuration), flagUsageMap[gossipRoundNanosName])
@@ -74,8 +72,8 @@ func ParseConfig() (config.HostConfig, error) {
 	l1ChainID := flag.Int64(l1ChainIDName, cfg.L1ChainID, flagUsageMap[l1ChainIDName])
 	obscuroChainID := flag.Int64(obscuroChainIDName, cfg.ObscuroChainID, flagUsageMap[obscuroChainIDName])
 	privateKeyStr := flag.String(privateKeyName, cfg.PrivateKeyString, flagUsageMap[privateKeyName])
-	pkAddress := flag.String(pkAddressName, cfg.PKAddress, flagUsageMap[pkAddressName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
+	l1StartHash := flag.String(l1StartHashName, cfg.L1StartHash.Hex(), flagUsageMap[l1StartHashName])
 
 	flag.Parse()
 
@@ -85,10 +83,9 @@ func ParseConfig() (config.HostConfig, error) {
 
 	nodeType, err := common.ToNodeType(*nodeTypeStr)
 	if err != nil {
-		return config.HostConfig{}, fmt.Errorf("unrecognised node type '%s'", *nodeTypeStr)
+		return &config.HostInputConfig{}, fmt.Errorf("unrecognised node type '%s'", *nodeTypeStr)
 	}
 
-	cfg.ID = gethcommon.HexToAddress(*nodeID)
 	cfg.IsGenesis = *isGenesis
 	cfg.NodeType = nodeType
 	cfg.GossipRoundDuration = time.Duration(*gossipRoundNanos)
@@ -108,18 +105,18 @@ func ParseConfig() (config.HostConfig, error) {
 	cfg.P2PConnectionTimeout = time.Duration(*p2pConnectionTimeoutSecs) * time.Second
 	cfg.RollupContractAddress = gethcommon.HexToAddress(*rollupContractAddress)
 	cfg.PrivateKeyString = *privateKeyStr
-	cfg.PKAddress = *pkAddress
 	cfg.LogLevel = *logLevel
 	cfg.LogPath = *logPath
 	cfg.L1ChainID = *l1ChainID
 	cfg.ObscuroChainID = *obscuroChainID
 	cfg.ProfilerEnabled = *profilerEnabled
+	cfg.L1StartHash = gethcommon.HexToHash(*l1StartHash)
 
 	return cfg, nil
 }
 
 // Parses the config from the .toml file at configPath.
-func fileBasedConfig(configPath string) (config.HostConfig, error) {
+func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 	bytes, err := os.ReadFile(configPath)
 	if err != nil {
 		panic(fmt.Sprintf("could not read config file at %s. Cause: %s", configPath, err))
@@ -133,11 +130,10 @@ func fileBasedConfig(configPath string) (config.HostConfig, error) {
 
 	nodeType, err := common.ToNodeType(tomlConfig.NodeType)
 	if err != nil {
-		return config.HostConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
+		return &config.HostInputConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
 	}
 
-	return config.HostConfig{
-		ID:                     gethcommon.HexToAddress(tomlConfig.ID),
+	return &config.HostInputConfig{
 		IsGenesis:              tomlConfig.IsGenesis,
 		NodeType:               nodeType,
 		GossipRoundDuration:    time.Duration(tomlConfig.GossipRoundDuration),
@@ -159,9 +155,9 @@ func fileBasedConfig(configPath string) (config.HostConfig, error) {
 		LogLevel:               tomlConfig.LogLevel,
 		LogPath:                tomlConfig.LogPath,
 		PrivateKeyString:       tomlConfig.PrivateKeyString,
-		PKAddress:              tomlConfig.PKAddress,
 		L1ChainID:              tomlConfig.L1ChainID,
 		ObscuroChainID:         tomlConfig.ObscuroChainID,
 		ProfilerEnabled:        tomlConfig.ProfilerEnabled,
+		L1StartHash:            gethcommon.HexToHash(tomlConfig.L1StartHash),
 	}, nil
 }

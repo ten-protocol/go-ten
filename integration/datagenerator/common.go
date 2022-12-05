@@ -31,7 +31,7 @@ func RandomAddress() gethcommon.Address {
 	return gethcommon.BytesToAddress(RandomBytes(20))
 }
 
-func randomUInt64() uint64 {
+func RandomUInt64() uint64 {
 	val, err := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 	if err != nil {
 		panic(err)
@@ -41,7 +41,7 @@ func randomUInt64() uint64 {
 
 func randomWithdrawal() common.Withdrawal {
 	return common.Withdrawal{
-		Amount:    common.ValueInWei(big.NewInt(int64(randomUInt64()))),
+		Amount:    common.ValueInWei(big.NewInt(int64(RandomUInt64()))),
 		Recipient: RandomAddress(),
 	}
 }
@@ -74,11 +74,11 @@ func CreateCallMsg() *ethereum.CallMsg {
 	return &ethereum.CallMsg{
 		From:       RandomAddress(),
 		To:         &to,
-		Gas:        randomUInt64(),
-		GasPrice:   big.NewInt(int64(randomUInt64())),
+		Gas:        RandomUInt64(),
+		GasPrice:   big.NewInt(int64(RandomUInt64())),
 		GasFeeCap:  nil,
 		GasTipCap:  nil,
-		Value:      big.NewInt(int64(randomUInt64())),
+		Value:      big.NewInt(int64(RandomUInt64())),
 		Data:       make([]byte, 0),
 		AccessList: nil,
 	}

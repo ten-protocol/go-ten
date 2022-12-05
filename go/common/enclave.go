@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -33,7 +34,7 @@ type Enclave interface {
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
 
 	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash gethcommon.Hash) (*ProduceGenesisResponse, error)
+	ProduceGenesis(blkHash gethcommon.Hash) (*ExtRollup, error)
 
 	// Start - start speculative execution
 	Start(block types.Block) error
@@ -47,10 +48,13 @@ type Enclave interface {
 	SubmitL1Block(block L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, error)
 
 	// ProduceRollup creates a new rollup.
-	ProduceRollup(blockHash *L1RootHash) (*ExtRollup, error)
+	ProduceRollup() (*ExtRollup, error)
 
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
+
+	// SubmitBatch submits a batch received from the sequencer for processing.
+	SubmitBatch(batch *ExtBatch) error
 
 	// ExecuteOffChainTransaction - Execute a smart contract to retrieve data
 	// Todo - return the result with a block delay. To prevent frontrunning.
@@ -110,18 +114,11 @@ type Enclave interface {
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
-	BlockHeader             *types.Header             // The header of the consumed block.
-	UpdatedHeadRollup       bool                      // Whether the block contained a new head rollup for the canonical rollup chain.
-	IngestedRollupHeader    *Header                   // The header of the winning rollup contained in the ingested block, if any.
-	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
-	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the block and all its ancestors for each subscription ID.
-	RejectError             *BlockRejectError         // this is set if block was rejected, contains information about what block to submit next
-}
-
-// ProduceGenesisResponse is the response sent from the enclave back to the node after requesting the production of the genesis rollup.
-type ProduceGenesisResponse struct {
-	GenesisRollup ExtRollup     // The genesis rollup.
-	BlockHeader   *types.Header // The header of the block containing the genesis rollup.
+	ProducedRollup          *ExtRollup                // If the node is the sequencer, the rollup produced if the ingested L1 block contained a new rollup.
+	IngestedRollupHeader    *Header                   // The header of the winning rollup contained in the ingested L1 block, if any.
+	ProducedSecretResponses []*ProducedSecretResponse // The responses to any secret requests in the ingested L1 block.
+	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the L1 block and all its ancestors for each subscription ID.
+	RejectError             *BlockRejectError         // If block was rejected, contains information about what block to submit next.
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block
@@ -130,6 +127,12 @@ type ProducedSecretResponse struct {
 	RequesterID gethcommon.Address
 	HostAddress string
 }
+
+// Standard errors that can be returned from block submission
+var (
+	ErrBlockAlreadyProcessed = errors.New("block already processed")
+	ErrBlockAncestorNotFound = errors.New("block ancestor not found")
+)
 
 // BlockRejectError is used as a standard format for error response from enclave for block submission errors
 // The L1 Head hash tells the host what the enclave knows as the canonical chain head, so it can feed it the appropriate block.

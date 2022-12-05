@@ -38,7 +38,7 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
-	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
+	obscuroNodes := make([]host.Host, params.NumberOfNodes)
 	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 
@@ -62,7 +62,6 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			GetNodeType(i),
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
-			params.AvgGossipPeriod,
 			false,
 			nil,
 			params.Wallets.NodeWallets[i],
@@ -70,11 +69,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			params.Wallets,
 			p2pLayers[i],
 			&disabledBus,
+			common.Hash{},
 		)
 		obscuroClient := p2p.NewInMemObscuroClient(agg)
-
-		// and connect them to each other
-		miner.AddClient(agg)
 
 		n.ethNodes[i] = miner
 		obscuroNodes[i] = agg

@@ -103,8 +103,8 @@ func (s *server) ProduceGenesis(_ context.Context, request *generated.ProduceGen
 		return nil, err
 	}
 
-	produceGenesisResponse := rpc.ToProduceGenesisResponseMsg(genesisRollup)
-	return &generated.ProduceGenesisResponse{ProduceGenesisResponse: &produceGenesisResponse}, nil
+	genesisRollupMsg := rpc.ToExtRollupMsg(genesisRollup)
+	return &generated.ProduceGenesisResponse{GenesisRollup: &genesisRollupMsg}, nil
 }
 
 func (s *server) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
@@ -142,9 +142,8 @@ func (s *server) SubmitL1Block(_ context.Context, request *generated.SubmitBlock
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
-func (s *server) ProduceRollup(_ context.Context, request *generated.ProduceRollupRequest) (*generated.ProduceRollupResponse, error) {
-	blockHash := gethcommon.BytesToHash(request.BlockHash)
-	producedRollup, err := s.enclave.ProduceRollup(&blockHash)
+func (s *server) ProduceRollup(context.Context, *generated.ProduceRollupRequest) (*generated.ProduceRollupResponse, error) {
+	producedRollup, err := s.enclave.ProduceRollup()
 	if err != nil {
 		return nil, err
 	}
@@ -155,6 +154,11 @@ func (s *server) ProduceRollup(_ context.Context, request *generated.ProduceRoll
 func (s *server) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
 	encryptedHash, err := s.enclave.SubmitTx(request.EncryptedTx)
 	return &generated.SubmitTxResponse{EncryptedHash: encryptedHash}, err
+}
+
+func (s *server) SubmitBatch(_ context.Context, request *generated.SubmitBatchRequest) (*generated.SubmitBatchResponse, error) {
+	batch := rpc.FromExtBatchMsg(request.Batch)
+	return &generated.SubmitBatchResponse{}, s.enclave.SubmitBatch(&batch)
 }
 
 func (s *server) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {

@@ -8,7 +8,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
@@ -69,7 +68,7 @@ func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcomm
 		Agg:        agg,
 		ParentHash: parent.Hash(),
 		L1Proof:    blkHash,
-		Number:     big.NewInt(int64(parent.Number.Uint64() + 1)),
+		Number:     big.NewInt(0).Add(parent.Number, big.NewInt(1)),
 		// TODO - Consider how this time should align with the time of the L1 block used as proof.
 		Time: uint64(time.Now().Unix()),
 		// generate true randomness inside the enclave.
@@ -81,28 +80,4 @@ func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcomm
 		Header: &h,
 	}
 	return &r, nil
-}
-
-// NewRollup - produces a new rollup. only used for genesis. todo - review
-func NewRollup(blkHash gethcommon.Hash, parent *Rollup, height uint64, a gethcommon.Address, txs []*common.L2Tx, withdrawals []common.Withdrawal, nonce common.Nonce, state common.StateRoot) *Rollup {
-	parentHash := common.GenesisHash
-	if parent != nil {
-		parentHash = parent.Hash()
-	}
-	h := common.Header{
-		Agg:         a,
-		ParentHash:  parentHash,
-		L1Proof:     blkHash,
-		Root:        state,
-		TxHash:      types.EmptyRootHash,
-		Number:      big.NewInt(int64(height)),
-		Withdrawals: withdrawals,
-		ReceiptHash: types.EmptyRootHash,
-		Time:        uint64(time.Now().Unix()),
-	}
-	r := Rollup{
-		Header:       &h,
-		Transactions: txs,
-	}
-	return &r
 }

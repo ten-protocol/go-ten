@@ -13,18 +13,16 @@ var (
 	syntheticTransactionsKeyPrefix = []byte("oSTX") // attestationKeyPrefix + address -> key
 
 	genesisRollupHash        = []byte("GenesisRollupHash")
-	rollupHeaderPrefix       = []byte("oh")          // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
-	headerHashSuffix         = []byte("on")          // rollupHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
-	rollupBodyPrefix         = []byte("ob")          // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
-	rollupHeaderNumberPrefix = []byte("oH")          // rollupHeaderNumberPrefix + hash -> num (uint64 big endian)
-	headsAfterL1BlockPrefix  = []byte("och")         // headsAfterL1BlockPrefix + hash -> num (uint64 big endian)
-	logsPrefix               = []byte("olg")         // logsPrefix + hash -> block logs
-	rollupReceiptsPrefix     = []byte("or")          // rollupReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
-	contractReceiptPrefix    = []byte("ocr")         // contractReceiptPrefix + address -> tx hash
-	txLookupPrefix           = []byte("ol")          // txLookupPrefix + hash -> transaction/receipt lookup metadata
-	bloomBitsPrefix          = []byte("oB")          // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
-	headRollupKey            = []byte("oLastBlock")  // headRollupKey tracks the latest known full block's hash.
-	headHeaderKey            = []byte("oLastHeader") // headHeaderKey tracks the latest known header's hash.
+	rollupHeaderPrefix       = []byte("oh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
+	headerHashSuffix         = []byte("on")  // rollupHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
+	rollupBodyPrefix         = []byte("ob")  // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
+	rollupHeaderNumberPrefix = []byte("oH")  // rollupHeaderNumberPrefix + hash -> num (uint64 big endian)
+	headsAfterL1BlockPrefix  = []byte("och") // headsAfterL1BlockPrefix + hash -> num (uint64 big endian)
+	logsPrefix               = []byte("olg") // logsPrefix + hash -> block logs
+	rollupReceiptsPrefix     = []byte("or")  // rollupReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
+	contractReceiptPrefix    = []byte("ocr") // contractReceiptPrefix + address -> tx hash
+	txLookupPrefix           = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
+	bloomBitsPrefix          = []byte("oB")  // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
 )
 
 // encodeRollupNumber encodes a rollup number as big endian uint64

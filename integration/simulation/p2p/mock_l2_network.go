@@ -5,8 +5,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
@@ -21,7 +19,7 @@ import (
 // Will be plugged into each node
 type MockP2P struct {
 	CurrentNode host.Host
-	Nodes       []host.MockHost
+	Nodes       []host.Host
 
 	avgLatency       time.Duration
 	avgBlockDuration time.Duration
@@ -87,12 +85,30 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 	return nil
 }
 
-func (netw *MockP2P) RequestBatches(_ *common.BatchRequest) error {
-	panic(errutil.ErrNoImpl)
+func (netw *MockP2P) RequestBatches(batchRequest *common.BatchRequest) error {
+	encodedBatchRequest, err := rlp.EncodeToBytes(batchRequest)
+	if err != nil {
+		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
+	}
+	netw.Nodes[0].ReceiveBatchRequest(encodedBatchRequest)
+	return nil
 }
 
-func (netw *MockP2P) SendBatches(_ []*common.ExtBatch, _ string) error {
-	panic(errutil.ErrNoImpl)
+func (netw *MockP2P) SendBatches(batches []*common.ExtBatch, requesterAddress string) error {
+	var requester host.Host
+	for _, node := range netw.Nodes {
+		if node.Config().P2PPublicAddress == requesterAddress {
+			requester = node
+		}
+	}
+
+	encodedBatches, err := rlp.EncodeToBytes(batches)
+	if err != nil {
+		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
+	}
+
+	requester.ReceiveBatches(encodedBatches)
+	return nil
 }
 
 // delay returns an expected delay on the l2

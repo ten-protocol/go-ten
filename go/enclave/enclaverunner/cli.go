@@ -17,6 +17,7 @@ import (
 // EnclaveConfigToml is the structure that an enclave's .toml config is parsed into.
 type EnclaveConfigToml struct {
 	HostID                    string
+	IsSequencerEnclave        bool
 	HostAddress               string
 	Address                   string
 	NodeType                  string
@@ -46,6 +47,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 
 	configPath := flag.String(configName, "", flagUsageMap[configName])
 	hostID := flag.String(hostIDName, cfg.HostID.Hex(), flagUsageMap[hostIDName])
+	isSequencerEnclave := flag.Bool(isSequencerEnclaveName, cfg.IsSequencerEnclave, flagUsageMap[isSequencerEnclaveName])
 	hostAddress := flag.String(hostAddressName, cfg.HostAddress, flagUsageMap[hostAddressName])
 	address := flag.String(addressName, cfg.Address, flagUsageMap[addressName])
 	nodeTypeStr := flag.String(nodeTypeName, cfg.NodeType.String(), flagUsageMap[nodeTypeName])
@@ -89,6 +91,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	}
 
 	cfg.HostID = gethcommon.HexToAddress(*hostID)
+	cfg.IsSequencerEnclave = *isSequencerEnclave
 	cfg.HostAddress = *hostAddress
 	cfg.Address = *address
 	cfg.NodeType = nodeType

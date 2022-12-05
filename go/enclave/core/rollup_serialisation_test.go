@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 )
 
 func TestSerialiseL2Tx(t *testing.T) {
@@ -28,7 +29,7 @@ func TestSerialiseL2Tx(t *testing.T) {
 func TestSerialiseRollup(t *testing.T) {
 	height := atomic.Value{}
 	height.Store(1)
-	rollup := datagenerator.RandomRollup(common.GenesisBlock)
+	rollup := datagenerator.RandomRollup(ethereummock.MockGenesisBlock)
 	_, read, err := rlp.EncodeToReader(&rollup)
 	if err != nil {
 		panic(err)

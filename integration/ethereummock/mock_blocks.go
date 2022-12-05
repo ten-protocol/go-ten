@@ -1,4 +1,4 @@
-package common
+package ethereummock
 
 import (
 	"math/big"
@@ -8,15 +8,11 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 )
 
-var GenesisHash = common.HexToHash("0000000000000000000000000000000000000000000000000000000000000000")
+var MockGenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transaction{})
 
-// GenesisBlock - this is a hack that has to be removed ASAP.
-var GenesisBlock = NewBlock(nil, common.HexToAddress("0x0"), []*types.Transaction{})
-
-// NewBlock - todo - remove this ASAP
 func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transaction) *types.Block {
-	parentHash := GenesisHash
-	height := L1GenesisHeight
+	var parentHash common.Hash
+	var height uint64
 	if parent != nil {
 		parentHash = parent.Hash()
 		height = parent.NumberU64() + 1

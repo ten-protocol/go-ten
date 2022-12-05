@@ -3,14 +3,12 @@ package db
 import (
 	"os"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
+	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/ethdb/leveldb"
+	"github.com/obscuronet/go-obscuro/go/common/gethdb"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/ethereum/go-ethereum/ethdb/leveldb"
-
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 // Schema keys, in alphabetical order.
@@ -37,7 +35,7 @@ type DB struct {
 // NewInMemoryDB returns a new instance of the Node DB
 func NewInMemoryDB() *DB {
 	return &DB{
-		kvStore: memorydb.New(),
+		kvStore: gethdb.NewMemDB(),
 	}
 }
 

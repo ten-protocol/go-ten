@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum"
@@ -48,7 +50,7 @@ type Simulation struct {
 
 // Start executes the simulation given all the Params. Injects transactions.
 func (s *Simulation) Start() {
-	testlog.Logger().Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(common.GenesisBlock.Hash())))
+	testlog.Logger().Info(fmt.Sprintf("Genesis block: b_%d.", common.ShortHash(ethereummock.MockGenesisBlock.Hash())))
 	s.ctx = context.Background() // use injected context for graceful shutdowns
 
 	s.waitForObscuroGenesisOnL1()
@@ -98,7 +100,7 @@ func (s *Simulation) waitForObscuroGenesisOnL1() {
 			panic(fmt.Errorf("could not fetch head block. Cause: %w", err))
 		}
 		if err == nil {
-			for _, b := range client.BlocksBetween(common.GenesisBlock, head) {
+			for _, b := range client.BlocksBetween(ethereummock.MockGenesisBlock, head) {
 				for _, tx := range b.Transactions() {
 					t := s.Params.MgmtContractLib.DecodeTx(tx)
 					if t == nil {
@@ -150,7 +152,7 @@ func (s *Simulation) prefundObscuroAccounts() {
 	faucetWallet := s.Params.Wallets.L2FaucetWallet
 	faucetClient := s.RPCHandles.ObscuroWalletRndClient(faucetWallet)
 	nonce := NextNonce(s.ctx, s.RPCHandles, faucetWallet)
-	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), big.NewInt(allocObsWallets))
+	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), big.NewInt(allocObsWallets), s.Params.ReceiptTimeout)
 }
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
@@ -182,7 +184,7 @@ func (s *Simulation) deployObscuroERC20s() {
 				panic(err)
 			}
 
-			err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.ObscuroWalletRndClient(owner), signedTx.Hash())
+			err = testcommon.AwaitReceipt(s.ctx, s.RPCHandles.ObscuroWalletRndClient(owner), signedTx.Hash(), s.Params.ReceiptTimeout)
 			if err != nil {
 				panic(fmt.Sprintf("ERC20 deployment transaction unsuccessful. Cause: %s", err))
 			}

@@ -80,7 +80,12 @@ type enclaveImpl struct {
 // NewEnclave creates a new enclave.
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, erc20ContractLib erc20contractlib.ERC20ContractLib, logger gethlog.Logger) common.Enclave {
+func NewEnclave(
+	config config.EnclaveConfig,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	erc20ContractLib erc20contractlib.ERC20ContractLib,
+	logger gethlog.Logger,
+) common.Enclave {
 	if len(config.ERC20ContractAddresses) < 2 {
 		logger.Crit("failed to initialise enclave. At least two ERC20 contract addresses are required - the HOC " +
 			"ERC20 address and the POC ERC20 address")
@@ -175,6 +180,7 @@ func NewEnclave(config config.EnclaveConfig, mgmtContractLib mgmtcontractlib.Mgm
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 	chain := rollupchain.New(
 		config.HostID,
+		config.IsSequencerEnclave,
 		config.NodeType,
 		storage,
 		l1Blockchain,
@@ -241,33 +247,27 @@ func (e *enclaveImpl) Start(block types.Block) error {
 	return nil
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ProduceGenesisResponse, error) {
-	rolGenesis, b, err := e.chain.ProduceGenesis(blkHash)
+func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup, error) {
+	genesisRollup, err := e.chain.ProduceGenesisRollup(blkHash)
 	if err != nil {
 		return nil, err
 	}
 
-	return &common.ProduceGenesisResponse{
-		GenesisRollup: rolGenesis.ToExtRollup(e.transactionBlobCrypto),
-		BlockHeader:   b.Header(),
-	}, nil
+	genesisExtRollup := genesisRollup.ToExtRollup(e.transactionBlobCrypto)
+	return &genesisExtRollup, nil
 }
 
 // SubmitBlock is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	newHeadsAfterL1Block, err := e.chain.UpdateStateFromL1Block(block, receipts, isLatest)
+	blockSubmissionResponse, err := e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
 	}
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
-	// We prepare the block submission response.
-	blockSubmissionResponse, err := e.chain.ProduceBlockSubmissionResponse(block, newHeadsAfterL1Block)
-	if err != nil {
-		return nil, fmt.Errorf("could not produce block submission response. Cause: %w", err)
-	}
+	// We add any secret responses.
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	// We remove any rolled-up transactions from the mempool.
@@ -279,8 +279,8 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	return blockSubmissionResponse, nil
 }
 
-func (e *enclaveImpl) ProduceRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
-	return e.chain.NewRollup(blockHash)
+func (e *enclaveImpl) ProduceRollup() (*common.ExtRollup, error) {
+	return nil, errutil.ErrNoImpl
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -329,6 +329,11 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	return encryptedResult, nil
 }
 
+func (e *enclaveImpl) SubmitBatch(batch *common.ExtBatch) error {
+	// TODO - #718 - Store the received batch, once it's no longer stored when processing the L1 block.
+	return nil
+}
+
 // ExecuteOffChainTransaction handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_call)
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
@@ -359,16 +364,15 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 		return nil, fmt.Errorf("no from address provided")
 	}
 
-	// TODO hook up the block number to the execution
-	_, err = gethencoding.ExtractBlockNumber(paramList[1])
+	blkNumber, err := gethencoding.ExtractBlockNumber(paramList[1])
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}
 
-	execResult, err := e.chain.ExecuteOffChainTransaction(apiArgs)
+	execResult, err := e.chain.ExecuteOffChainTransaction(apiArgs, blkNumber)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
-		return nil, fmt.Errorf("unable to execute off chain transaction - %w", err)
+		return nil, err
 	}
 
 	// encrypt the result payload
@@ -396,11 +400,11 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err != nil {
 		return nil, err
 	}
-	hs, err := e.storage.FetchCurrentHeadsAfterL1Block()
+	_, l2Head, err := e.storage.FetchHeads()
 	if err == nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
-		s, err := e.storage.CreateStateDB(hs.HeadRollup)
+		s, err := e.storage.CreateStateDB(*l2Head)
 		if err != nil {
 			return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 		}
@@ -625,13 +629,12 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return nil, fmt.Errorf("unable to extract requested address - %w", err)
 	}
 
-	// TODO hook up the block number to the execution
 	blockNumber, err := gethencoding.ExtractBlockNumber(paramList[1])
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}
 
-	encryptAddress, balance, err := e.chain.GetBalance(*accountAddress, *blockNumber)
+	encryptAddress, balance, err := e.chain.GetBalance(*accountAddress, blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get balance - %w", err)
 	}
@@ -705,7 +708,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// extract optional block number - defaults to the latest block if not avail
-	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList[1])
+	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList, 1)
 	if err != nil {
 		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}
@@ -759,7 +762,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 // This is a copy of https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/api.go#L1055
 // there's a high complexity to the method due to geth business rules (which is mimic'd here)
 // once the work of obscuro gas mechanics is established this method should be simplified
-func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
+func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var (
 		lo  = params.TxGas - 1
@@ -801,7 +804,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr *geth
 	}
 	// Recap the highest gas limit with account's available balance.
 	if feeCap.BitLen() != 0 { //nolint:nestif
-		balance, err := e.chain.GetBalanceAtBlock(*args.From, *blockNr)
+		balance, err := e.chain.GetBalanceAtBlock(*args.From, blkNumber)
 		if err != nil {
 			return 0, fmt.Errorf("unable to fetch account balance - %w", err)
 		}
@@ -836,7 +839,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr *geth
 	// Execute the binary search and hone in on an isGasEnough gas limit
 	for lo+1 < hi {
 		mid := (hi + lo) / 2
-		failed, _, err := e.isGasEnough(args, mid)
+		failed, _, err := e.isGasEnough(args, mid, blkNumber)
 		// If the error is not nil(consensus error), it means the provided message
 		// call or transaction will never be accepted no matter how much gas it is
 		// assigned. Return the error directly, don't struggle any more.
@@ -851,7 +854,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blockNr *geth
 	}
 	// Reject the transaction as invalid if it still fails at the highest allowance
 	if hi == cap { //nolint:nestif
-		failed, result, err := e.isGasEnough(args, hi)
+		failed, result, err := e.isGasEnough(args, hi, blkNumber)
 		if err != nil {
 			return 0, err
 		}
@@ -885,9 +888,9 @@ func (e *enclaveImpl) HealthCheck() (bool, error) {
 
 // Create a helper to check if a gas allowance results in an executable transaction
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
-func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64) (bool, *gethcore.ExecutionResult, error) {
+func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
 	args.Gas = (*hexutil.Uint64)(&gas)
-	result, err := e.chain.ExecuteOffChainTransactionAtBlock(args, gethrpc.BlockNumber(0))
+	result, err := e.chain.ExecuteOffChainTransactionAtBlock(args, blkNumber)
 	if err != nil {
 		if errors.Is(err, gethcore.ErrIntrinsicGas) {
 			return true, nil, nil // Special case, raise gas limit

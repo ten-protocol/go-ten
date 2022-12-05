@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
@@ -50,20 +53,16 @@ type StatsCollector interface {
 	L1Reorg(id gethcommon.Address)
 }
 
-type NotifyNewBlock interface {
-	MockedNewHead(b common.EncodedL1Block, p common.EncodedL1Block)
-	MockedNewFork(b []common.EncodedL1Block)
-}
-
 type Node struct {
 	l2ID     gethcommon.Address // the address of the Obscuro node this client is dedicated to
 	cfg      MiningConfig
-	clients  []NotifyNewBlock
 	Network  L1Network
 	mining   bool
 	stats    StatsCollector
 	Resolver db.BlockResolver
 	db       TxDB
+	subs     map[uuid.UUID]*mockSubscription // active subscription for mock blocks
+	subMu    sync.Mutex
 
 	// Channels
 	exitCh       chan bool // the Node stops
@@ -100,9 +99,18 @@ func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 	return 0, nil
 }
 
-// BlockListener is not used in the mock
+// BlockListener provides stream of latest mock head headers as they are created
 func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
-	return make(chan *types.Header), &mockSubscription{}
+	id := uuid.New()
+	mockSub := &mockSubscription{
+		node:   m,
+		id:     id,
+		headCh: make(chan *types.Header),
+	}
+	m.subMu.Lock()
+	defer m.subMu.Unlock()
+	m.subs[id] = mockSub
+	return mockSub.headCh, mockSub
 }
 
 func (m *Node) BlockNumber() (uint64, error) {
@@ -118,7 +126,7 @@ func (m *Node) BlockNumber() (uint64, error) {
 
 func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 	if n.Int64() == 0 {
-		return common.GenesisBlock, nil
+		return MockGenesisBlock, nil
 	}
 	// TODO this should be a method in the resolver
 	blk, err := m.Resolver.FetchHeadBlock()
@@ -128,7 +136,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 		}
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
-	for !bytes.Equal(blk.ParentHash().Bytes(), common.GenesisHash.Bytes()) {
+	for !bytes.Equal(blk.ParentHash().Bytes(), (common.L1RootHash{}).Bytes()) {
 		if blk.NumberU64() == n.Uint64() {
 			return blk, nil
 		}
@@ -178,8 +186,8 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	m.Resolver.StoreBlock(common.GenesisBlock)
-	head := m.setHead(common.GenesisBlock)
+	m.Resolver.StoreBlock(MockGenesisBlock)
+	head := m.setHead(MockGenesisBlock)
 
 	for {
 		select {
@@ -261,27 +269,13 @@ func (m *Node) setHead(b *types.Block) *types.Block {
 		return b
 	}
 
-	// notify the clients
-	for _, c := range m.clients {
-		t := c
-		encodedBlock, err := common.EncodeBlock(b)
-		if err != nil {
-			panic(fmt.Errorf("could not encode block. Cause: %w", err))
-		}
-		if b.NumberU64() == common.L1GenesisHeight {
-			go t.MockedNewHead(encodedBlock, nil)
-		} else {
-			p, err := m.Resolver.ParentBlock(b)
-			if err != nil {
-				panic(fmt.Errorf("could not retrieve parent. Cause: %w", err))
-			}
-			encodedParentBlock, err := common.EncodeBlock(p)
-			if err != nil {
-				panic(fmt.Errorf("could not encode parent block. Cause: %w", err))
-			}
-			go t.MockedNewHead(encodedBlock, encodedParentBlock)
-		}
+	// notify the client subscriptions
+	m.subMu.Lock()
+	for _, s := range m.subs {
+		sub := s
+		go sub.publish(b)
 	}
+	m.subMu.Unlock()
 	m.canonicalCh <- b
 
 	return b
@@ -293,19 +287,14 @@ func (m *Node) setFork(blocks []*types.Block) *types.Block {
 		return head
 	}
 
-	fork := make([]common.EncodedL1Block, len(blocks))
-	for i, block := range blocks {
-		encodedBlock, err := common.EncodeBlock(block)
-		if err != nil {
-			panic(fmt.Errorf("could not encode block. Cause: %w", err))
-		}
-		fork[i] = encodedBlock
+	// notify the client subs
+	m.subMu.Lock()
+	for _, s := range m.subs {
+		sub := s
+		go sub.publishAll(blocks)
 	}
+	m.subMu.Unlock()
 
-	// notify the clients
-	for _, c := range m.clients {
-		go c.MockedNewFork(fork)
-	}
 	m.canonicalCh <- head
 
 	return head
@@ -365,7 +354,7 @@ func (m *Node) startMining() {
 					return
 				}
 
-				m.miningCh <- common.NewBlock(canonicalBlock, m.l2ID, toInclude)
+				m.miningCh <- NewBlock(canonicalBlock, m.l2ID, toInclude)
 			})
 		}
 	}
@@ -391,10 +380,6 @@ func (m *Node) Stop() {
 
 	m.exitMiningCh <- true
 	m.exitCh <- true
-}
-
-func (m *Node) AddClient(client NotifyNewBlock) {
-	m.clients = append(m.clients, client)
 }
 
 func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.Block {
@@ -430,6 +415,12 @@ func (m *Node) EthClient() *ethclient_ethereum.Client {
 	return nil
 }
 
+func (m *Node) RemoveSubscription(id uuid.UUID) {
+	m.subMu.Lock()
+	defer m.subMu.Unlock()
+	delete(m.subs, id)
+}
+
 func NewMiner(
 	id gethcommon.Address,
 	cfg MiningConfig,
@@ -456,18 +447,32 @@ func NewMiner(
 		erc20ContractLib: NewERC20ContractLibMock(),
 		mgmtContractLib:  NewMgmtContractLibMock(),
 		logger:           log.New(log.EthereumL1Cmp, int(gethlog.LvlInfo), cfg.LogFile, log.NodeIDKey, id),
+		subs:             map[uuid.UUID]*mockSubscription{},
+		subMu:            sync.Mutex{},
 	}
 }
 
 // implements the ethereum.Subscription
-type mockSubscription struct{}
+type mockSubscription struct {
+	id     uuid.UUID
+	headCh chan *types.Header
+	node   *Node // we hold a reference to the node to unsubscribe ourselves - not ideal but this is just a mock
+}
 
 func (sub *mockSubscription) Err() <-chan error {
-	c := make(chan error, 2) // size 2, so that we don't block
-	// drop an error in to this channel to remind callers that this client does not stream.
-	c <- ethadapter.ErrSubscriptionNotSupported
-	return c
+	return make(chan error)
 }
 
 func (sub *mockSubscription) Unsubscribe() {
+	sub.node.RemoveSubscription(sub.id)
+}
+
+func (sub *mockSubscription) publish(b *types.Block) {
+	sub.headCh <- b.Header()
+}
+
+func (sub *mockSubscription) publishAll(blocks []*types.Block) {
+	for _, b := range blocks {
+		sub.publish(b)
+	}
 }

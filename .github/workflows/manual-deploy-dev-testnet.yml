@@ -218,7 +218,6 @@ jobs:
                --mgmtcontractaddr=${{needs.build-l2.outputs.mgmtContractAddr}} \
                --hocerc20addr=${{needs.build-l2.outputs.hocErc20Addr}} \
                --pocerc20addr=${{needs.build-l2.outputs.pocErc20Addr}} \
-               --pkaddress=${{ secrets[matrix.node_pk_addr] }} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --dev_testnet=true \
                --p2p_public_address=dev-obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
@@ -245,8 +244,8 @@ jobs:
           inlineScript: |
             az network nic ip-config address-pool add \
               --address-pool Dev-Backend-Pool-Obscuro-Testnet \
-              --ip-config-name ipconfigD-0-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name D-0-${{ GITHUB.RUN_NUMBER }}VMNic \
+              --ip-config-name ipconfigD-1-${{ GITHUB.RUN_NUMBER }} \
+              --nic-name D-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
               --lb-name dev-testnet-loadbalancer
 

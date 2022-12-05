@@ -55,9 +55,9 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	address := crypto.PubkeyToAddress(privateKey.PublicKey)
+	hostAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	hostConfig := config.DefaultHostConfig()
+	hostConfig := config.DefaultHostParsedConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveRPCAddress = enclaveAddr
 	hostConfig.ClientRPCPortWS = obscuroWebsocketPort
@@ -66,6 +66,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig.LogPath = testlog.LogFile()
 
 	enclaveConfig := config.DefaultEnclaveConfig()
+	enclaveConfig.HostID = hostAddress
 	enclaveConfig.Address = enclaveAddr
 	dummyContractAddress := common.BytesToAddress([]byte("AA"))
 	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
@@ -76,7 +77,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{address.String()}, "", int(gethlog.LvlDebug))
+	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{hostAddress.String()}, "", int(gethlog.LvlDebug))
 	defer network.StopNodes()
 
 	go enclaverunner.RunEnclave(enclaveConfig)

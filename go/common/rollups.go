@@ -12,14 +12,6 @@ type ExtRollup struct {
 	hash            atomic.Value
 }
 
-func (r ExtRollup) ToExtRollup() *ExtRollup {
-	return &ExtRollup{
-		Header:          r.Header,
-		TxHashes:        r.TxHashes,
-		EncryptedTxBlob: r.EncryptedTxBlob,
-	}
-}
-
 // Hash returns the keccak256 hash of the rollup's header.
 // The hash is computed on the first call and cached thereafter.
 func (r *ExtRollup) Hash() L2RootHash {

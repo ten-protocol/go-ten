@@ -35,11 +35,11 @@ import (
 type Client struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
-	config      config.HostConfig
+	config      *config.HostConfig
 	logger      gethlog.Logger
 }
 
-func NewClient(config config.HostConfig, logger gethlog.Logger) *Client {
+func NewClient(config *config.HostConfig, logger gethlog.Logger) *Client {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
 	if err != nil {
@@ -129,7 +129,7 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	return nil
 }
 
-func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (*common.ProduceGenesisResponse, error) {
+func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -138,11 +138,8 @@ func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (*common.ProduceGenesis
 		return nil, fmt.Errorf("could not produce genesis block. Cause: %w", err)
 	}
 
-	produceGenesisResponse, err := rpc.FromProduceGenesisResponseMsg(response.ProduceGenesisResponse)
-	if err != nil {
-		return nil, fmt.Errorf("could not create produce genesis response. Cause: %w", err)
-	}
-	return produceGenesisResponse, nil
+	genesisRollup := rpc.FromExtRollupMsg(response.GenesisRollup)
+	return genesisRollup, nil
 }
 
 func (c *Client) Start(block types.Block) error {
@@ -188,17 +185,17 @@ func (c *Client) SubmitL1Block(block types.Block, receipts types.Receipts, isLat
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) ProduceRollup(blockHash *common.L1RootHash) (*common.ExtRollup, error) {
+func (c *Client) ProduceRollup() (*common.ExtRollup, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.ProduceRollup(timeoutCtx, &generated.ProduceRollupRequest{BlockHash: blockHash.Bytes()})
+	response, err := c.protoClient.ProduceRollup(timeoutCtx, &generated.ProduceRollupRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
 
 	rollup := rpc.FromExtRollupMsg(response.ProducedRollup)
-	return &rollup, nil
+	return rollup, nil
 }
 
 func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -210,6 +207,18 @@ func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRa
 		return nil, err
 	}
 	return response.EncryptedHash, err
+}
+
+func (c *Client) SubmitBatch(batch *common.ExtBatch) error {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	batchMsg := rpc.ToExtBatchMsg(batch)
+	_, err := c.protoClient.SubmitBatch(timeoutCtx, &generated.SubmitBatchRequest{Batch: &batchMsg})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Client) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {

@@ -92,15 +92,18 @@ func ExtractAddress(param interface{}) (*gethcommon.Address, error) {
 }
 
 // ExtractOptionalBlockNumber defaults nil or empty block number params to latest block number
-func ExtractOptionalBlockNumber(param interface{}) (*gethrpc.BlockNumber, error) {
-	if param == nil {
+func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNumber, error) {
+	if len(params) <= 1 {
 		return ExtractBlockNumber("latest")
 	}
-	if emptyStr, ok := param.(string); ok && len(strings.TrimSpace(emptyStr)) == 0 {
+	if params[idx] == nil {
+		return ExtractBlockNumber("latest")
+	}
+	if emptyStr, ok := params[idx].(string); ok && len(strings.TrimSpace(emptyStr)) == 0 {
 		return ExtractBlockNumber("latest")
 	}
 
-	return ExtractBlockNumber(param)
+	return ExtractBlockNumber(params[idx])
 }
 
 // ExtractBlockNumber returns a gethrpc.BlockNumber given an interface{}, errors if unexpected values are used

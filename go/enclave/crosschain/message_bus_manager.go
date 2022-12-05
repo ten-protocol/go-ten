@@ -125,14 +125,10 @@ func (m *MessageBusManager) ExtractOutboundMessages(receipts common.L2Receipts) 
 func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.CrossChainMessages {
 	messages := make(common.CrossChainMessages, 0)
 
-	from := common.GenesisBlock.Hash()
-	height := common.L1GenesisHeight
-	if fromBlock != nil {
-		from = fromBlock.Hash()
-		height = fromBlock.NumberU64()
-		if !m.storage.IsAncestor(toBlock, fromBlock) {
-			m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
-		}
+	from := fromBlock.Hash()
+	height := fromBlock.NumberU64()
+	if !m.storage.IsAncestor(toBlock, fromBlock) {
+		m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 	}
 	// Iterate through the blocks.
 	b := toBlock

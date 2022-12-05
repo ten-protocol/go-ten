@@ -3,33 +3,34 @@ package rollupchain
 import (
 	"bytes"
 
-	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-// FindNextRollup returns the next rollup to publish, and a boolean indicating whether any of the provided rollups are suitable to be published next.
+// Returns the new head rollup, and a boolean indicating whether this is a new rollup or the existing head rollup.
 // todo - add statistics to determine why there are conflicts.
-func FindNextRollup(parentRollup *obscurocore.Rollup, rollups []*obscurocore.Rollup, blockResolver db.BlockResolver) (*obscurocore.Rollup, bool) {
-	var nextRollup *obscurocore.Rollup
+func selectNextRollup(currentHeadRollup *core.Rollup, rollups []*core.Rollup, blockResolver db.BlockResolver) (*core.Rollup, bool) {
+	var newHeadRollup *core.Rollup
 
-	// We iterate over the proposed rollups to select the best next rollup.
+	// We iterate over the proposed rollups to select the best new head rollup.
 	for _, rollup := range rollups {
-		// We ignore rollups from L2 forks, or that are older than the parent rollup.
-		isFromFork := !bytes.Equal(rollup.Header.ParentHash.Bytes(), parentRollup.Hash().Bytes())
-		isOlderThanParent := rollup.Header.Number.Int64() <= parentRollup.Header.Number.Int64()
-		if isFromFork || isOlderThanParent {
+		// We ignore rollups from L2 forks, or that are not newer than the parent rollup.
+		isFromFork := !bytes.Equal(rollup.Header.ParentHash.Bytes(), currentHeadRollup.Hash().Bytes())
+		isNotNewerThanParent := rollup.Header.Number.Int64() <= currentHeadRollup.Header.Number.Int64()
+		if isFromFork || isNotNewerThanParent {
 			continue
 		}
 
-		// If this is the first rollup to pass the checks above, or it is newer than the existing candidate, we make it
-		// the candidate next rollup.
-		if nextRollup == nil || blockResolver.ProofHeight(rollup) > blockResolver.ProofHeight(nextRollup) {
-			nextRollup = rollup
+		// If this is the first rollup to pass the checks above, or it is produced from a newer L1 block, we make it
+		// the candidate new head rollup.
+		if newHeadRollup == nil || blockResolver.ProofHeight(rollup) > blockResolver.ProofHeight(newHeadRollup) {
+			newHeadRollup = rollup
 		}
 	}
 
-	if nextRollup == nil {
-		return nil, false
+	if newHeadRollup != nil {
+		return newHeadRollup, true
 	}
-	return nextRollup, true
+	// We remain with the existing head rollup.
+	return currentHeadRollup, false
 }

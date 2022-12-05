@@ -95,14 +95,15 @@ func TestManagementContract(t *testing.T) {
 				panic(err)
 			}
 			// deploy the same contract to a new address
-			contractAddr, err := network.DeployContract(client, w, bytecode)
+			receipt, err := network.DeployContract(client, w, bytecode)
 			if err != nil {
 				t.Error(err)
 			}
 
 			// run the test using the new contract, but same wallet
 			test(t,
-				newDebugMgmtContractLib(*contractAddr, client.EthClient(), mgmtcontractlib.NewMgmtContractLib(contractAddr, testlog.Logger())),
+				newDebugMgmtContractLib(receipt.ContractAddress, client.EthClient(),
+					mgmtcontractlib.NewMgmtContractLib(&receipt.ContractAddress, testlog.Logger())),
 				w,
 				client,
 			)

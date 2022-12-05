@@ -23,7 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/common"
-	obscurocore "github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
@@ -158,8 +158,8 @@ func (bridge *Bridge) GetMapping(l1ContractAddress *gethcommon.Address) *ERC20Ma
 }
 
 // ExtractRollups - returns a list of the rollups published in this block
-func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*obscurocore.Rollup {
-	rollups := make([]*obscurocore.Rollup, 0)
+func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
+	rollups := make([]*core.Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
 		t := bridge.MgmtContractLib.DecodeTx(tx)
@@ -177,7 +177,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-				rollups = append(rollups, obscurocore.ToEnclaveRollup(r, bridge.TransactionBlobCrypto))
+				rollups = append(rollups, core.ToEnclaveRollup(r, bridge.TransactionBlobCrypto))
 				bridge.logger.Trace(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
 					common.ShortHash(r.Hash()),
 					common.ShortHash(b.Hash()),
@@ -229,15 +229,11 @@ func (bridge *Bridge) ExtractDeposits(
 	blockResolver db.BlockResolver,
 	rollupState *state.StateDB,
 ) []*common.L2Tx {
-	from := common.GenesisBlock.Hash()
-	height := common.L1GenesisHeight
-	if fromBlock != nil {
-		from = fromBlock.Hash()
-		height = fromBlock.NumberU64()
-		if !blockResolver.IsAncestor(toBlock, fromBlock) {
-			bridge.logger.Crit("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
-			return nil
-		}
+	from := fromBlock.Hash()
+	height := fromBlock.NumberU64()
+	if !blockResolver.IsAncestor(toBlock, fromBlock) {
+		bridge.logger.Crit("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
+		return nil
 	}
 
 	allDeposits := make([]*common.L2Tx, 0)
@@ -278,7 +274,7 @@ func (bridge *Bridge) ExtractDeposits(
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *obscurocore.Rollup, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
+func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
 	w := make([]common.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
 	for _, t := range newHeadRollup.Transactions {

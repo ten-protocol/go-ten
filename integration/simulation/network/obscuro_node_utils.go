@@ -38,7 +38,7 @@ const (
 
 func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
 	// Create the in memory obscuro nodes, each connect each to a geth node
-	obscuroNodes := make([]host.MockHost, params.NumberOfNodes)
+	obscuroNodes := make([]host.Host, params.NumberOfNodes)
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
@@ -50,14 +50,14 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			GetNodeType(i),
 			params.MgmtContractLib,
 			params.ERC20ContractLib,
-			params.AvgGossipPeriod,
 			true,
 			genesisJSON,
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
 			params.Wallets,
 			p2pLayers[i],
-			params.MessageBusAddr,
+			params.L1SetupData.MessageBusAddr,
+			params.L1SetupData.ObscuroStartBlock,
 		)
 	}
 	// make sure the aggregators can talk to each other
@@ -99,7 +99,6 @@ func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
-			params.AvgGossipPeriod,
 			fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i),
 			enclaveAddresses[i],
 			Localhost,
@@ -108,6 +107,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 			params.Wallets.NodeWallets[i],
 			params.MgmtContractLib,
 			gethClients[i],
+			params.L1SetupData.ObscuroStartBlock,
 		)
 
 		nodeRPCAddresses[i] = fmt.Sprintf("ws://%s:%d", Localhost, nodeRPCPortWS)
@@ -179,6 +179,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 
 		enclaveConfig := config.EnclaveConfig{
 			HostID:                 gethcommon.BigToAddress(big.NewInt(int64(i))),
+			IsSequencerEnclave:     i == 0,
 			HostAddress:            hostAddr,
 			Address:                enclaveAddr,
 			NodeType:               GetNodeType(i),
@@ -190,7 +191,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 			UseInMemoryDB:          false,
 			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
 			MinGasPrice:            big.NewInt(1),
-			MessageBusAddress:      *params.MessageBusAddr,
+			MessageBusAddress:      *params.L1SetupData.MessageBusAddr,
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
 		_, err := rpc2.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
