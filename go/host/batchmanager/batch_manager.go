@@ -27,26 +27,11 @@ func NewBatchManager(db *db.DB) *BatchManager {
 
 // StoreBatches stores the provided batches. If there are missing batches in the chain, it returns a
 // `ErrBatchesMissing`.
-func (b *BatchManager) StoreBatches(batches []*common.ExtBatch, nodeId uint64) error {
-	// todo - joel - there's a big bug - sequential batches aren't linked by hash. try readding the L1 block catch-up,
-	//  and generating storing a rollup in the enclave as soon as the block is processed
-	//if nodeId == 2 {
-	//	println()
-	//	print(fmt.Sprintf("jjj node %d received batches: ", nodeId))
-	//	for _, batch := range batches {
-	//		print(fmt.Sprintf("%d, ", batch.Header.Number))
-	//	}
-	//	print("\n")
-	//}
-
+func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
 	for _, batch := range batches {
 		// If we have stored the batch's parent, or this batch is the genesis batch, we store the batch.
 		_, err := b.db.GetBatch(batch.Header.ParentHash)
 		if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
-			//if nodeId == 2 {
-			//	println(fmt.Sprintf("jjj node %d storing batch %d (hash: %s, parent hash: %s)",
-			//		nodeId, batch.Header.Number, batch.Hash().Hex(), batch.Header.ParentHash.Hex()))
-			//}
 			err = b.db.AddBatchHeader(batch)
 			if err != nil {
 				return fmt.Errorf("could not store batch header. Cause: %w", err)
@@ -56,10 +41,6 @@ func (b *BatchManager) StoreBatches(batches []*common.ExtBatch, nodeId uint64) e
 
 		// If we could not find the parent, we return an `ErrBatchesMissing`.
 		if errors.Is(err, errutil.ErrNotFound) {
-			//if nodeId == 2 {
-			//	println(fmt.Sprintf("jjj node %d requesting missing chain for batch %d (hash: %s, parent hash: %s)",
-			//		nodeId, batch.Header.Number, batch.Hash().Hex(), batch.Header.ParentHash.Hex()))
-			//}
 			return ErrBatchesMissing
 		}
 

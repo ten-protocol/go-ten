@@ -495,10 +495,6 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
-	if h.shortID == 0 {
-		println(fmt.Sprintf("jjj back at node. Is updated? %t; new rollup? %t; isLatestBlock? %t",
-			result.IngestedRollupHeader != nil, result.ProducedRollup != nil, isLatestBlock))
-	}
 	err = h.storeBlockProcessingResult(result, block.Header())
 	if err != nil {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
@@ -524,7 +520,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		return nil // nothing further to process since network had no genesis
 	}
 
-	if result.ProducedRollup.Header != nil {
+	if result.ProducedRollup != nil && result.ProducedRollup.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
@@ -868,7 +864,7 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	}
 
 	// We store the batches.
-	err = h.batchManager.StoreBatches(batches, h.shortID)
+	err = h.batchManager.StoreBatches(batches)
 	if err != nil {
 		if !errors.Is(err, batchmanager.ErrBatchesMissing) {
 			return fmt.Errorf("could not store batches. Cause: %w", err)
