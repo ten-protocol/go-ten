@@ -13,12 +13,10 @@ help_and_exit() {
     echo ""
     echo "Usage: "
     echo "   ex: (run locally to internal l1 on local SGX NON capable hardware)"
-    echo "      -  $(basename "${0}") --sgx_enabled=false --host_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true --node_type=aggregator"
+    echo "      -  $(basename "${0}") --sgx_enabled=false --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true --node_type=aggregator"
     echo ""
     echo "   ex: (run connected to an external l1 on local SGX capable hardware)"
-    echo "      -  $(basename "${0}") --sgx_enabled=true --host_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --node_type=aggregator"
-    echo ""
-    echo "  host_id            *Required* Set the host ID used by the enclave"
+    echo "      -  $(basename "${0}") --sgx_enabled=true --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --node_type=aggregator"
     echo ""
     echo "  l1host             *Required* Set the l1 host address"
     echo ""
@@ -29,6 +27,8 @@ help_and_exit() {
     echo "  pocerc20addr       *Required* Set the erc20 contract address for POC"
     echo ""
     echo "  sgx_enabled        *Required* Set the execution to run with sgx enabled"
+    echo ""
+    echo "  host_id            *Optional* Set the host ID used by the enclave. Defaults to 0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
     echo ""
     echo "  l1port             *Optional* Set the l1 port. Defaults to 9000"
     echo ""
@@ -67,7 +67,7 @@ profiler_enabled=false
 p2p_public_address="127.0.0.1:10000"
 debug_enclave=false
 dev_testnet=false
-pk_address=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
+host_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
 log_level=4
 
@@ -100,7 +100,7 @@ do
     esac
 done
 
-if [[ -z ${l1_host:-} || -z ${host_id:-} || -z ${mgmt_contract_addr:-} || -z ${hoc_erc20_addr:-} || -z ${poc_erc20_addr:-} || -z ${sgx_enabled:-} ]];
+if [[ -z ${l1_host:-} || -z ${mgmt_contract_addr:-} || -z ${hoc_erc20_addr:-} || -z ${poc_erc20_addr:-} || -z ${sgx_enabled:-} ]];
 then
     help_and_exit
 fi

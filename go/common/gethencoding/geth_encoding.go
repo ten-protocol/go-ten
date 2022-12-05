@@ -117,6 +117,7 @@ func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumber, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse requested rollup number - %w", err)
 	}
+
 	return &blockNumber, err
 }
 
