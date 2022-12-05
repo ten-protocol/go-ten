@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"math/big"
 	"math/rand"
 	"sync"
@@ -35,27 +36,16 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 // AwaitReceipt blocks until the receipt for the transaction with the given hash has been received. Errors if the
 // transaction is unsuccessful or times out.
 func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash gethcommon.Hash, timeout time.Duration) error {
-	startTime := time.Now()
-	for {
+	return retry.Do(func() error {
 		receipt, err := client.TransactionReceipt(ctx, txHash)
-		if err != nil {
-			if !errors.Is(err, rpc.ErrNilResponse) {
-				return err
-			}
-
-			if time.Now().After(startTime.Add(timeout)) {
-				return fmt.Errorf("could not retrieve transaction %s after timeout", txHash.Hex())
-			}
-			time.Sleep(100 * time.Millisecond)
-			continue
+		if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
+			return err
 		}
-
 		if receipt.Status == types.ReceiptStatusFailed {
 			return fmt.Errorf("receipt had status failed")
 		}
-
 		return nil
-	}
+	}, retry.NewTimeoutStrategy(timeout, 100*time.Millisecond))
 }
 
 // PrefundWallets sends an amount `alloc` from the faucet wallet to each listed wallet.
