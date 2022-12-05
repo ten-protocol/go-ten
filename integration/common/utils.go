@@ -34,8 +34,8 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 
 // AwaitReceipt blocks until the receipt for the transaction with the given hash has been received. Errors if the
 // transaction is unsuccessful or times out.
-func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash gethcommon.Hash, timeout int) error {
-	counter := 0
+func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash gethcommon.Hash, timeout time.Duration) error {
+	startTime := time.Now()
 	for {
 		receipt, err := client.TransactionReceipt(ctx, txHash)
 		if err != nil {
@@ -43,8 +43,7 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 				return err
 			}
 
-			counter += 100
-			if counter > timeout {
+			if time.Now().After(startTime.Add(timeout)) {
 				return fmt.Errorf("could not retrieve transaction %s after timeout", txHash.Hex())
 			}
 			time.Sleep(100 * time.Millisecond)
@@ -61,7 +60,7 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 
 // PrefundWallets sends an amount `alloc` from the faucet wallet to each listed wallet.
 // The transactions are sent with sequential nonces, starting with `startingNonce`.
-func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClient *obsclient.AuthObsClient, startingNonce uint64, wallets []wallet.Wallet, alloc *big.Int, timeout int) {
+func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClient *obsclient.AuthObsClient, startingNonce uint64, wallets []wallet.Wallet, alloc *big.Int, timeout time.Duration) {
 	// We send the transactions serially, so that we can precompute the nonces.
 	txHashes := make([]gethcommon.Hash, len(wallets))
 	for idx, w := range wallets {

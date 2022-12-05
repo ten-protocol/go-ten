@@ -35,7 +35,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		StartPort:                 integration.StartPortSimulationInMem,
 		IsInMem:                   true,
 		L1SetupData:               &params.L1SetupData{},
-		Timeout:                   5000,
+		ReceiptTimeout:            5 * time.Second,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
