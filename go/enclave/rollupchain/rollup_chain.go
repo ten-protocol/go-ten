@@ -348,7 +348,7 @@ func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
 
 // This is where transactions are executed and the state is calculated.
-// Obscuro includes a message bus embedded in the platform, and this method is responsible for transfering messages as well.
+// Obscuro includes a message bus embedded in the platform, and this method is responsible for transferring messages as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
 // TODO: Surface errors.
 func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {

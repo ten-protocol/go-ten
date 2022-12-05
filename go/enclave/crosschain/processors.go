@@ -11,7 +11,7 @@ import (
 
 // Processors - contains the cross chain related structures.
 type Processors struct {
-	Local  CrossChainManager
+	Local  Manager
 	Remote BlockMessageExtractor
 }
 

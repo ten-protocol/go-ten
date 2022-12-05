@@ -34,7 +34,7 @@ func NewObscuroMessageBusManager(
 	storage db.Storage, /*key *ecdsa.PrivateKey,*/
 	chainID *big.Int,
 	logger gethlog.Logger,
-) CrossChainManager {
+) Manager {
 	// TODO: Cryptography epic remove this key and use the DeriveKey
 	key, _ := crypto.HexToECDSA(ownerKeyHex)
 	wallet := wallet.NewInMemoryWalletFromPK(chainID, key, logger)

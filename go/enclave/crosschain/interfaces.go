@@ -24,7 +24,7 @@ type BlockMessageExtractor interface {
 	Enabled() bool
 }
 
-type CrossChainManager interface {
+type Manager interface {
 	// IsSyntheticTransaction - Determines if a given L2 transaction is coming from the synthetic owner address.
 	IsSyntheticTransaction(transaction common.L2Tx) bool
 
