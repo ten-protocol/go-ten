@@ -524,7 +524,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		return nil // nothing further to process since network had no genesis
 	}
 
-	if result.ProducedRollup != nil {
+	if result.ProducedRollup.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
