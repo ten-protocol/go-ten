@@ -96,8 +96,8 @@ type AttestationStorage interface {
 }
 
 type CrossChainMessagesStorage interface {
-	StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) bool
-	ReadL1Messages(blockHash gethcommon.Hash) common.CrossChainMessages
+	StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) error
+	GetL1Messages(blockHash gethcommon.Hash) (common.CrossChainMessages, error)
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore

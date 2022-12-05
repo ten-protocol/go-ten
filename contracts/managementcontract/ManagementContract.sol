@@ -139,10 +139,12 @@ contract ManagementContract {
     //
     //  -- End of Tree element list Library
     //
+
+// TODO: ensure challenge period is added on top of block timestamp.
     function pushCrossChainMessages(Structs.HeaderCrossChainData calldata crossChainData) internal {
         uint256 messagesLength = crossChainData.messages.length;
         for (uint256 i = 0; i < messagesLength; ++i) {
-            messageBus.submitOutOfNetworkMessage(crossChainData.messages[i], block.timestamp); //instantly finalize
+            messageBus.storeCrossChainMessage(crossChainData.messages[i], block.timestamp); //instantly finalize
         }
     }
 

@@ -1,5 +1,7 @@
 package bridge
 
+// TODO: once the cross chain messages based bridge is implemented remove this completely.
+
 import (
 	"bytes"
 	"errors"

@@ -295,7 +295,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
 
-	isSyntheticTx := e.crossChainProcessors.LocalManager.IsSyntheticTransaction(*decryptedTx)
+	isSyntheticTx := e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx)
 	if isSyntheticTx {
 		return nil, fmt.Errorf("synthetic transaction coming from external rpc")
 	}

@@ -806,6 +806,8 @@ func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 	return nil
 }
 
+// TODO: Perhaps extract only relevant logs. There were missing ones when requesting
+// the logs filtered from geth.
 func (h *host) extractReceipts(block *types.Block) types.Receipts {
 	receipts := make(types.Receipts, 0)
 
@@ -813,13 +815,14 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 		receipt, err := h.ethClient.TransactionReceipt(transaction.Hash())
 
 		if err != nil || receipt == nil {
-			h.logger.Error("[CrossChain] Problem with retrieving the receipt on the host!", "Error", err)
+			h.logger.Error("Problem with retrieving the receipt on the host!", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 			continue
 		}
 
-		h.logger.Trace(fmt.Sprintf("[CrossChain] Adding receipt for block %d, TX: %d",
+		h.logger.Trace(fmt.Sprintf("Adding receipt for block %d, TX: %d",
 			common.ShortHash(block.Hash()),
-			common.ShortHash(transaction.Hash())))
+			common.ShortHash(transaction.Hash())),
+			log.CmpKey, log.CrossChainCmp)
 
 		receipts = append(receipts, receipt)
 	}

@@ -1,40 +1,48 @@
 package rawdb
 
 import (
+	"errors"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 )
 
-func StoreL1Messages(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, messages common.CrossChainMessages, logger gethlog.Logger) bool {
+func StoreL1Messages(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, messages common.CrossChainMessages, logger gethlog.Logger) error {
 	data, err := rlp.EncodeToBytes(messages)
 	if err != nil {
 		logger.Crit("Failed to encode the synthetic transactions...", log.ErrKey, err)
-		return false
+		return err
 	}
 
 	if err := db.Put(crossChainMessagesKey(blockHash), data); err != nil {
 		logger.Crit("Failed to store the synthetic transactions...", log.ErrKey, err)
-		return false
+		return err
 	}
-	return true
+	return nil
 }
 
-func ReadL1Messages(db ethdb.KeyValueReader, blockHash gethcommon.Hash, logger gethlog.Logger) common.CrossChainMessages {
+func GetL1Messages(db ethdb.KeyValueReader, blockHash gethcommon.Hash, logger gethlog.Logger) (common.CrossChainMessages, error) {
 	var messages common.CrossChainMessages
 
 	data, err := db.Get(crossChainMessagesKey(blockHash))
 	if err != nil {
-		logger.Info("Could not read key from db. ", log.ErrKey, err)
-		return messages
+		logger.Trace("Could not read key from db. ", log.ErrKey, err)
+		// It is expected that not every block will have messages, thus do not surface it.
+		if errors.Is(err, errutil.ErrNotFound) {
+			return messages, nil
+		}
+		return nil, err
 	}
 
 	err = rlp.DecodeBytes(data, &messages)
 	if err != nil {
-		logger.Info("Could not parse synthetic transactions from db.", log.ErrKey, err)
+		logger.Error("Could not parse synthetic transactions from db.", log.ErrKey, err)
+		return nil, err
 	}
-	return messages
+	return messages, nil
 }

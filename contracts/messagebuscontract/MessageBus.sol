@@ -10,16 +10,6 @@ contract MessageBus is IMessageBus, Ownable {
 
     function messageFee() virtual internal returns (uint256) { return 0; }
 
-    event LogMessagePublished
-    (
-        address sender, 
-        uint64 sequence, 
-        uint32 nonce, 
-        uint32 topic, 
-        bytes payload, 
-        uint8 consistencyLevel
-    );
-
     // This mapping contains the block timestamps where messages become valid
     // It is used in order to have challenge period.
     mapping (bytes32 => uint256) messageFinalityTimestamps;
@@ -79,7 +69,7 @@ contract MessageBus is IMessageBus, Ownable {
     // This is the smart contract function which is used to store messages sent from the other linked layer. 
     // The function will be called by the ManagementContract on L1 and the enclave on L2. 
     // It should be access controlled and called according to the consistencyLevel and Obscuro platform rules.
-    function submitOutOfNetworkMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) 
+    function storeCrossChainMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) 
     external override onlyOwner
     {
         //Consider the message as verified after this period. Useful for having a challenge period.

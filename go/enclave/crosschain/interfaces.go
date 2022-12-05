@@ -14,8 +14,8 @@ type (
 )
 
 type BlockMessageExtractor interface {
-	// ProcessCrossChainMessages - Verifies receipts belong to block and saves the relevant cross chain messages from the receipts
-	ProcessCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error
+	// StoreCrossChainMessages - Verifies receipts belong to block and saves the relevant cross chain messages from the receipts
+	StoreCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error
 
 	// GetBusAddress - Returns the L1 message bus address.
 	GetBusAddress() *common.L1Address
@@ -24,7 +24,7 @@ type BlockMessageExtractor interface {
 	Enabled() bool
 }
 
-type ObscuroCrossChainManager interface {
+type CrossChainManager interface {
 	// IsSyntheticTransaction - Determines if a given L2 transaction is coming from the synthetic owner address.
 	IsSyntheticTransaction(transaction common.L2Tx) bool
 
@@ -41,9 +41,10 @@ type ObscuroCrossChainManager interface {
 	// GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
 	GenerateMessageBusDeployTx() (*common.L2Tx, error)
 
-	// ExtractLocalMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
-	ExtractLocalMessages(receipts common.L2Receipts) (common.CrossChainMessages, error)
+	// ExtractOutboundMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
+	ExtractOutboundMessages(receipts common.L2Receipts) (common.CrossChainMessages, error)
 
-	// SubmitRemoteMessagesLocally - Submits messages saved between the from and to blocks on chain using the provided function bindings.
-	SubmitRemoteMessagesLocally(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB, processTxCall OnChainEVMExecutorFunc, processOffChainMessage OffChainEVMCallFunc) error
+	CreateSyntheticTransactions(messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions
+
+	RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.CrossChainMessages
 }

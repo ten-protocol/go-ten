@@ -4,7 +4,22 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "./Structs.sol";
 
+// This represents the smart contract API that allows dApps and accounts to send and verify received messages 
+// between layer 1 and layer 2.
 interface IMessageBus {
+
+    // The event emitted whenever a message is published. 
+    // The enclave listens for it on the deployed message bus addreses.
+    event LogMessagePublished
+    (
+        address sender, 
+        uint64 sequence, 
+        uint32 nonce, 
+        uint32 topic, 
+        bytes payload, 
+        uint8 consistencyLevel
+    );
+
     // This method is called from contracts to publish messages to the other linked message bus.
     // nonce - This is provided and serves as deduplication nonce. It can also be used to group a batch of messages together.
     // topic - This is the topic for which the payload is published. 
@@ -30,12 +45,5 @@ interface IMessageBus {
     // This is the smart contract function which is used to store messages sent from the other linked layer. 
     // The function will be called by the ManagementContract on L1 and the enclave on L2. 
     // It should be access controlled and called according to the consistencyLevel and Obscuro platform rules.
-    function submitOutOfNetworkMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) external;
-
-   /* function queryMessages(
-        address      sender,
-        bytes memory topic,
-        uint256      fromIndex,
-        uint256      toIndex
-    ) external returns (bytes [] memory); */
+    function storeCrossChainMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) external;
 }

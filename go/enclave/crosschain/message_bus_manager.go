@@ -2,7 +2,6 @@ package crosschain
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -24,7 +23,7 @@ const (
 	ownerKeyHex = "6e384a07a01263518a18a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 )
 
-type obscuroMessageBusManager struct {
+type MessageBusManager struct {
 	messageBusAddress *gethcommon.Address
 	storage           db.Storage
 	logger            gethlog.Logger
@@ -35,17 +34,17 @@ func NewObscuroMessageBusManager(
 	storage db.Storage, /*key *ecdsa.PrivateKey,*/
 	chainID *big.Int,
 	logger gethlog.Logger,
-) ObscuroCrossChainManager {
+) CrossChainManager {
 	// TODO: Cryptography epic remove this key and use the DeriveKey
 	key, _ := crypto.HexToECDSA(ownerKeyHex)
 	wallet := wallet.NewInMemoryWalletFromPK(chainID, key, logger)
 
-	logger.Info(fmt.Sprintf("[CrossChain] L2 Cross Chain Owner Address: %s", wallet.Address().Hex()))
+	logger.Info(fmt.Sprintf("L2 Cross Chain Owner Address: %s", wallet.Address().Hex()), log.CmpKey, log.CrossChainCmp)
 
 	// Key is derived, address is predictable, thus address of contract is predictable across all enclaves
 	l2MessageBus := crypto.CreateAddress(wallet.Address(), 0)
 
-	return &obscuroMessageBusManager{
+	return &MessageBusManager{
 		messageBusAddress: &l2MessageBus,
 		storage:           storage,
 		logger:            logger,
@@ -53,7 +52,7 @@ func NewObscuroMessageBusManager(
 	}
 }
 
-func (m *obscuroMessageBusManager) IsSyntheticTransaction(transaction common.L2Tx) bool {
+func (m *MessageBusManager) IsSyntheticTransaction(transaction common.L2Tx) bool {
 	sender, err := rpc.GetSender(&transaction)
 	if err != nil {
 		return false
@@ -64,24 +63,24 @@ func (m *obscuroMessageBusManager) IsSyntheticTransaction(transaction common.L2T
 }
 
 // GetOwner - Returns the address of the identity owning the message bus.
-func (m *obscuroMessageBusManager) GetOwner() common.L2Address {
+func (m *MessageBusManager) GetOwner() common.L2Address {
 	return m.wallet.Address()
 }
 
 // GetBusAddress - Returns the L2 address of the message bus contract.
 // TODO: Figure out how to expose the deployed contract to the external world. Perhaps extract event from contract construction?
-func (m *obscuroMessageBusManager) GetBusAddress() *common.L2Address {
+func (m *MessageBusManager) GetBusAddress() *common.L2Address {
 	return m.messageBusAddress
 }
 
 // DeriveOwner - Generates the key pair that will be used to transact with the L2 message bus.
-func (m *obscuroMessageBusManager) DeriveOwner(seed []byte) (*common.L2Address, error) {
+func (m *MessageBusManager) DeriveOwner(seed []byte) (*common.L2Address, error) {
 	// TODO: Implement with cryptography epic!
 	return m.messageBusAddress, nil
 }
 
 // GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
-func (m *obscuroMessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
+func (m *MessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
 	tx := &types.LegacyTx{
 		Nonce:    0, // The first transaction of the owner identity should always be deploying the contract
 		Value:    gethcommon.Big0,
@@ -96,95 +95,34 @@ func (m *obscuroMessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, e
 		return nil, err
 	}
 
-	m.logger.Trace(fmt.Sprintf("[CrossChain] Generated synthetic deployment transaction for the MessageBus contract %s - TX HASH: %s", m.messageBusAddress.Hex(), stx.Hash().Hex()))
+	m.logger.Trace(fmt.Sprintf("Generated synthetic deployment transaction for the MessageBus contract %s - TX HASH: %s", m.messageBusAddress.Hex(), stx.Hash().Hex()),
+		log.CmpKey, log.CrossChainCmp)
 
 	return stx, nil
 }
 
 // ExtractLocalMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
-func (m *obscuroMessageBusManager) ExtractLocalMessages(receipts common.L2Receipts) (common.CrossChainMessages, error) {
+func (m *MessageBusManager) ExtractOutboundMessages(receipts common.L2Receipts) (common.CrossChainMessages, error) {
 	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventID)
 	if err != nil {
-		m.logger.Error("[CrossChain] Error extracting logs from L2 message bus!", "Error", err)
+		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return make(common.CrossChainMessages, 0), err
 	}
 
 	messages, err := convertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
 	if err != nil {
-		m.logger.Error("[CrossChain] Error converting messages from L2 message bus!", "Error", err)
+		m.logger.Error("Error converting messages from L2 message bus!", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return make(common.CrossChainMessages, 0), err
 	}
 
 	return messages, nil
 }
 
-// SubmitRemoteMessagesLocally - Submits messages saved between the from and to blocks on chain using the provided function bindings.
-func (m *obscuroMessageBusManager) SubmitRemoteMessagesLocally(
-	fromBlock *common.L1Block,
-	toBlock *common.L1Block,
-	rollupState *state.StateDB,
-	processTxCall OnChainEVMExecutorFunc,
-	processOffChainMessage OffChainEVMCallFunc,
-) error {
-	transactions := m.retrieveSyntheticTransactionsBetween(fromBlock, toBlock, rollupState)
-	m.logger.Trace("[CrossChain] Retrieved synthetic transactions",
-		"Count", len(transactions),
-		"FromBlock", common.ShortHash(fromBlock.Hash()),
-		"ToBlock", common.ShortHash(toBlock.Hash()))
-
-	if len(transactions) == 0 {
-		return nil
-	}
-
-	// Process the transactions
-	syntheticTransactionsResponses := processTxCall(transactions)
-	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
-	if len(syntheticTransactionsResponses) != len(transactions) {
-		m.logger.Crit("Sanity check. Some synthetic transactions failed.")
-		return errors.New("evm failed to generate responses for every transaction")
-	}
-
-	i := 0
-	for _, resp := range syntheticTransactionsResponses {
-		rec, ok := resp.(*types.Receipt)
-		if !ok { // Еxtract reason for failing deposit.
-			// TODO - Handle the case of an error (e.g. insufficient funds).
-			m.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
-			return errors.New("receipt missing for a guaranteed synthetic transaction")
-		}
-
-		if rec.Status == 0 { // Synthetic transactions should not fail. In case of failure get the revert reason.
-			failingTx := transactions[i]
-			txCallMessage := types.NewMessage(
-				m.GetOwner(),
-				failingTx.To(),
-				rollupState.GetNonce(m.GetOwner()),
-				failingTx.Value(),
-				failingTx.Gas(),
-				gethcommon.Big0,
-				gethcommon.Big0,
-				gethcommon.Big0,
-				failingTx.Data(),
-				failingTx.AccessList(),
-				false)
-
-			res, err := processOffChainMessage(txCallMessage)
-			m.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
-			return fmt.Errorf("synthetic transaction failed. error: %w result: %+v", err, res)
-		}
-
-		synthReceipts[i] = rec
-		i++
-	}
-
-	return nil
-}
-
-// retrieveSyntheticTransactionsBetween - Iterates the blocks backwards and returns the synthetic transaction
-// TODO: Fix ordering of transactions, currently it is irrelevant.
+// RetrieveInboundMessages - Retrieves the cross chain messages between two blocks.
+// TODO: Fix ordering of messages, currently it is irrelevant.
 // TODO: Do not extract messages below their consistency level. Irrelevant security wise.
 // TODO: Surface errors
-func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.L2Transactions {
+func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.CrossChainMessages {
 	messages := make(common.CrossChainMessages, 0)
 
 	from := common.GenesisBlock.Hash()
@@ -203,8 +141,12 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 			break
 		}
 
-		m.logger.Trace(fmt.Sprintf("[CrossChain] Looking for transactions at block %s", b.Hash().Hex()))
-		messagesForBlock := m.storage.ReadL1Messages(b.Hash())
+		m.logger.Trace(fmt.Sprintf("Looking for transactions at block %s", b.Hash().Hex()), log.CmpKey, log.CrossChainCmp)
+		messagesForBlock, err := m.storage.GetL1Messages(b.Hash())
+		if err != nil {
+			m.logger.Crit("Reading the key for the block failed with uncommon reason.", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		}
+
 		messages = append(messages, messagesForBlock...) // Ordering here might work in POBI, but might be weird for fast finality
 
 		// No deposits before genesis.
@@ -218,6 +160,11 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 		b = p
 	}
 
+	return messages
+}
+
+// CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.
+func (m *MessageBusManager) CreateSyntheticTransactions(messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions {
 	// Get current nonce for this stateDB.
 	// There can be forks thus we cannot trust the wallet.
 	startingNonce := rollupState.GetNonce(m.GetOwner())
@@ -225,9 +172,9 @@ func (m *obscuroMessageBusManager) retrieveSyntheticTransactionsBetween(fromBloc
 	signedTransactions := make(types.Transactions, 0)
 	for idx, message := range messages {
 		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
-		data, err := MessageBusABI.Pack("submitOutOfNetworkMessage", message, delayInBlocks)
+		data, err := MessageBusABI.Pack("storeCrossChainMessage", message, delayInBlocks)
 		if err != nil {
-			m.logger.Crit("[CrossChain] Failed packing submitOutOfNetwork message!")
+			m.logger.Crit("Failed packing submitOutOfNetwork message!", log.CmpKey, log.CrossChainCmp)
 			return signedTransactions
 
 			// TODO: return error

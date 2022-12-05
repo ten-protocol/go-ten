@@ -402,10 +402,10 @@ func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, rec
 	return nil
 }
 
-func (s *storageImpl) StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) bool {
+func (s *storageImpl) StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) error {
 	return obscurorawdb.StoreL1Messages(s.db, blockHash, messages, s.logger)
 }
 
-func (s *storageImpl) ReadL1Messages(blockHash gethcommon.Hash) common.CrossChainMessages {
-	return obscurorawdb.ReadL1Messages(s.db, blockHash, s.logger)
+func (s *storageImpl) GetL1Messages(blockHash gethcommon.Hash) (common.CrossChainMessages, error) {
+	return obscurorawdb.GetL1Messages(s.db, blockHash, s.logger)
 }

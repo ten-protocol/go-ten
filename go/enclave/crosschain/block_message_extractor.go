@@ -6,6 +6,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
@@ -38,11 +39,11 @@ func (m *blockMessageExtractor) Enabled() bool {
 // The messages will be stored in DB storage for later usage.
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
-func (m *blockMessageExtractor) ProcessCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error {
+func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error {
 	areReceiptsValid := VerifyReceiptHash(block, receipts)
 
 	if !areReceiptsValid && m.Enabled() {
-		m.logger.Error("[CrossChain] Invalid receipts submitted", "block", common.ShortHash(block.Hash()))
+		m.logger.Error("Invalid receipts submitted", "block", common.ShortHash(block.Hash()), log.CmpKey, log.CrossChainCmp)
 		return fmt.Errorf("receipts do not match the receipt root for the block")
 	}
 
@@ -52,15 +53,19 @@ func (m *blockMessageExtractor) ProcessCrossChainMessages(block *common.L1Block,
 		return nil
 	}
 
-	lazilyLogReceiptChecksum(fmt.Sprintf("[CrossChain] Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)), receipts, m.logger)
+	lazilyLogReceiptChecksum(fmt.Sprintf("Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)), receipts, m.logger)
 	messages, err := m.getSyntheticTransactions(block, receipts)
 	if err != nil {
 		return err
 	}
 
 	if len(messages) > 0 {
-		m.logger.Trace(fmt.Sprintf("[CrossChain] Storing %d messages for block %s", len(messages), block.Hash().Hex()))
-		m.storage.StoreL1Messages(block.Hash(), messages)
+		m.logger.Trace(fmt.Sprintf("Storing %d messages for block %s", len(messages), block.Hash().Hex()), log.CmpKey, log.CrossChainCmp)
+		err = m.storage.StoreL1Messages(block.Hash(), messages)
+		if err != nil {
+			m.logger.Crit("Unable to store the messages", log.CmpKey, log.CrossChainCmp)
+			return err
+		}
 	}
 
 	return nil
@@ -80,19 +85,20 @@ func (m *blockMessageExtractor) getSyntheticTransactions(block *common.L1Block, 
 	// Retrieves the relevant logs from the message bus.
 	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &CrossChainEventID)
 	if err != nil {
-		m.logger.Error("[CrossChain]", "Error", err)
+		m.logger.Error("Error encountered when filtering receipt logs.", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return make(common.CrossChainMessages, 0), err
 	}
-	m.logger.Trace("[CrossChain] extracted logs", "logCount", len(logs))
+	m.logger.Trace("extracted logs", "logCount", len(logs), log.CmpKey, log.CrossChainCmp)
 
 	messages, err := convertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
 	if err != nil {
-		m.logger.Error("[CrossChain]", "Error", err)
+		m.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return make(common.CrossChainMessages, 0), err
 	}
 
-	m.logger.Trace(fmt.Sprintf("[CrossChain] Found %d cross chain messages that will be submitted to L2!", len(messages)),
-		"Block", block.Hash().Hex())
+	m.logger.Trace(fmt.Sprintf("Found %d cross chain messages that will be submitted to L2!", len(messages)),
+		"Block", block.Hash().Hex(),
+		log.CmpKey, log.CrossChainCmp)
 
 	return messages, nil
 }

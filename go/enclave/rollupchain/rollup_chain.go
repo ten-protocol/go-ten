@@ -124,7 +124,7 @@ func (rc *RollupChain) ProduceGenesis(blkHash gethcommon.Hash) (*obscurocore.Rol
 	)
 
 	// TODO: Figure out a better way to bootstrap the system contracts.
-	deployTx, err := rc.crossChainProcessors.LocalManager.GenerateMessageBusDeployTx()
+	deployTx, err := rc.crossChainProcessors.Local.GenerateMessageBusDeployTx()
 	if err != nil {
 		rc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
 	}
@@ -348,8 +348,9 @@ func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
 
 // This is where transactions are executed and the state is calculated.
-// Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
+// Obscuro includes a message bus embedded in the platform, and this method is responsible for transfering messages as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
+// TODO: Surface errors.
 func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (gethcommon.Hash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
@@ -386,6 +387,7 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
 	}
 
+	// TODO: Remove this depositing logic once the new bridge is added.
 	depositTxs := rc.bridge.ExtractDeposits(
 		parentProof,
 		rollupProof,
@@ -409,28 +411,44 @@ func (rc *RollupChain) processState(rollup *obscurocore.Rollup, txs []*common.L2
 		i++
 	}
 
-	// Create a wrapped function call to the evm that the local cross chain manager will use to submit
-	// the synthetic transactions
-	onChainCallFunc := func(transactions common.L2Transactions) crosschain.OnChainEVMExecutorResponse {
-		return evm.ExecuteTransactions(transactions, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	messages := rc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, rollupProof, stateDB)
+	transactions := rc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
+	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
+	if len(syntheticTransactionsResponses) != len(transactions) {
+		rc.logger.Crit("Sanity check. Some synthetic transactions failed.")
 	}
 
-	// Create a wrapped function call that the local cross chain manager will use to determine revert reason if necessary.
-	offChainCallFunc := func(msg types.Message) (*core.ExecutionResult, error) {
-		// TODO: Should this be deleted somehow?
-		clonedDB := stateDB.Copy()
-		return evm.ExecuteOffChainCall(&msg, clonedDB, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
-	}
+	i = 0
+	for _, resp := range syntheticTransactionsResponses {
+		rec, ok := resp.(*types.Receipt)
+		if !ok { // Еxtract reason for failing deposit.
+			// TODO - Handle the case of an error (e.g. insufficient funds).
+			rc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
+		}
 
-	err = rc.crossChainProcessors.LocalManager.SubmitRemoteMessagesLocally(
-		parentProof,
-		rollupProof,
-		stateDB,
-		onChainCallFunc,
-		offChainCallFunc,
-	)
-	if err != nil {
-		rc.logger.Crit("[CrossChain] SubmitRemoteMessagesLocally failed!", log.ErrKey, err)
+		if rec.Status == 0 { // Synthetic transactions should not fail. In case of failure get the revert reason.
+			failingTx := transactions[i]
+			txCallMessage := types.NewMessage(
+				rc.crossChainProcessors.Local.GetOwner(),
+				failingTx.To(),
+				stateDB.GetNonce(rc.crossChainProcessors.Local.GetOwner()),
+				failingTx.Value(),
+				failingTx.Gas(),
+				gethcommon.Big0,
+				gethcommon.Big0,
+				gethcommon.Big0,
+				failingTx.Data(),
+				failingTx.AccessList(),
+				false)
+
+			clonedDB := stateDB.Copy()
+			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
+			rc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
+		}
+
+		synthReceipts[i] = rec
+		i++
 	}
 
 	rootHash, err := stateDB.Commit(true)
@@ -585,7 +603,7 @@ func (rc *RollupChain) UpdateStateFromL1Block(block types.Block, receipts types.
 	rc.storage.StoreBlock(&block)
 
 	// This requires block to be stored first ... but can permanently fail a block
-	err = rc.crossChainProcessors.RemoteManager.ProcessCrossChainMessages(&block, receipts)
+	err = rc.crossChainProcessors.Remote.StoreCrossChainMessages(&block, receipts)
 	if err != nil {
 		return nil, rc.rejectBlockErr(errors.New("failed to process cross chain messages"))
 	}
@@ -894,14 +912,14 @@ func (rc *RollupChain) produceRollup(b *types.Block, bs *obscurocore.HeadsAfterL
 	// Postprocessing - withdrawals
 	txReceiptsMap := toReceiptMap(txReceipts)
 	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
-	crossChainMessages, err := rc.crossChainProcessors.LocalManager.ExtractLocalMessages(txReceipts)
+	crossChainMessages, err := rc.crossChainProcessors.Local.ExtractOutboundMessages(txReceipts)
 	if err != nil {
-		rc.logger.Crit("[CrossChain] Extracting messages L2->L1 failed", err)
+		rc.logger.Crit("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
 	}
 
 	r.Header.CrossChainMessages = crossChainMessages
 
-	rc.logger.Trace(fmt.Sprintf("[CrossChain] Added %d cross chain messages to rollup. Equivalent withdrawals in header - %d", len(r.Header.CrossChainMessages), len(r.Header.Withdrawals)))
+	rc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to rollup. Equivalent withdrawals in header - %d", len(r.Header.CrossChainMessages), len(r.Header.Withdrawals)), log.CmpKey, log.CrossChainCmp)
 
 	crossChainBind, err := rc.storage.Proof(r)
 	if err != nil {
