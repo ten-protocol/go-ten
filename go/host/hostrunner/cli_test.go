@@ -46,7 +46,7 @@ func TestConfigIsParsedFromCmdLineFlagsIfConfigFlagIsNotPresent(t *testing.T) {
 
 func TestConfigFieldsMatchTomlConfigFields(t *testing.T) {
 	// We get all the config fields.
-	cfgReflection := reflect.TypeOf(config.HostConfig{})
+	cfgReflection := reflect.TypeOf(config.HostParsedConfig{})
 	cfgFields := make([]string, cfgReflection.NumField())
 	for i := 0; i < cfgReflection.NumField(); i++ {
 		cfgFields[i] = cfgReflection.Field(i).Name

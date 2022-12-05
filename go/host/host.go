@@ -61,7 +61,7 @@ const (
 
 // Implementation of host.Host.
 type host struct {
-	config          config.HostConfig
+	config          *config.HostConfig
 	shortID         uint64
 	isSequencer     bool
 	genesisRequired bool
@@ -92,7 +92,7 @@ type host struct {
 }
 
 func NewHost(
-	config config.HostConfig,
+	config *config.HostConfig,
 	p2p hostcommon.P2P,
 	ethClient ethadapter.EthClient,
 	enclaveClient common.Enclave,
@@ -203,6 +203,8 @@ func (h *host) Start() {
 	// wait for the Enclave to be available
 	h.waitForEnclave()
 
+	// TODO the host should only connect to enclaves with the same ID as the host.ID
+
 	// todo: we should try to recover the key from a previous run of the node here? Before generating or requesting the key.
 	if h.config.IsGenesis {
 		err = h.broadcastSecret()
@@ -268,7 +270,7 @@ func (h *host) broadcastSecret() error {
 }
 
 func (h *host) Config() *config.HostConfig {
-	return &h.config
+	return h.config
 }
 
 func (h *host) DB() *db.DB {

@@ -15,10 +15,8 @@ const (
 	defaultP2PTimeoutSecs   = 10
 )
 
-// HostConfig contains the full configuration for an Obscuro host.
-type HostConfig struct {
-	// The host's identity
-	ID gethcommon.Address
+// HostParsedConfig contains the configuration that was parsed from a config file / command line to start the Obscuro host.
+type HostParsedConfig struct {
 	// Whether the host is the genesis Obscuro node
 	IsGenesis bool
 	// The type of the node.
@@ -71,10 +69,25 @@ type HostConfig struct {
 	L1StartHash gethcommon.Hash
 }
 
-// DefaultHostConfig returns a HostConfig with default values.
-func DefaultHostConfig() HostConfig {
-	return HostConfig{
-		ID:                     gethcommon.BytesToAddress([]byte("")),
+// ToHostConfig returns a HostConfig given a HostParsedConfig
+func (p HostParsedConfig) ToHostConfig() *HostConfig {
+	return &HostConfig{
+		HostParsedConfig: p,
+		ID:               gethcommon.Address{},
+	}
+}
+
+// HostConfig contains the configuration used in the Obscuro host execution. Some fields are derived from the HostParsedConfig.
+type HostConfig struct {
+	HostParsedConfig
+
+	// The host's identity derived from the L1 Private Key
+	ID gethcommon.Address
+}
+
+// DefaultHostParsedConfig returns a HostConfig with default values.
+func DefaultHostParsedConfig() *HostParsedConfig {
+	return &HostParsedConfig{
 		IsGenesis:              true,
 		NodeType:               common.Aggregator,
 		GossipRoundDuration:    8333,

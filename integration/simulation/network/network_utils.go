@@ -73,14 +73,16 @@ func createInMemObscuroNode(
 	mockP2P *simp2p.MockP2P,
 	l1StartBlk gethcommon.Hash,
 ) commonhost.Host {
-	hostConfig := config.HostConfig{
-		ID:                  gethcommon.BigToAddress(big.NewInt(id)),
-		IsGenesis:           isGenesis,
-		NodeType:            nodeType,
-		GossipRoundDuration: avgGossipPeriod,
-		HasClientRPCHTTP:    false,
-		P2PPublicAddress:    "dummy_address", // Required because the node sanity-checks that this field is not empty at start-up.
-		L1StartHash:         l1StartBlk,
+	hostConfig := &config.HostConfig{
+		ID: gethcommon.BigToAddress(big.NewInt(id)),
+		HostParsedConfig: config.HostParsedConfig{
+			IsGenesis:           isGenesis,
+			NodeType:            nodeType,
+			GossipRoundDuration: avgGossipPeriod,
+			HasClientRPCHTTP:    false,
+			P2PPublicAddress:    "dummy_address", // Required because the node sanity-checks that this field is not empty at start-up.
+			L1StartHash:         l1StartBlk,
+		},
 	}
 
 	enclaveConfig := config.EnclaveConfig{
@@ -120,24 +122,26 @@ func createSocketObscuroNode(
 	ethClient ethadapter.EthClient,
 	l1StartBlk gethcommon.Hash,
 ) commonhost.Host {
-	hostConfig := config.HostConfig{
-		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
-		IsGenesis:              isGenesis,
-		NodeType:               nodeType,
-		GossipRoundDuration:    avgGossipPeriod,
-		HasClientRPCHTTP:       true,
-		ClientRPCPortHTTP:      clientRPCPortHTTP,
-		HasClientRPCWebsockets: true,
-		ClientRPCPortWS:        clientRPCPortWS,
-		ClientRPCHost:          clientRPCHost,
-		ClientRPCTimeout:       ClientRPCTimeout,
-		EnclaveRPCTimeout:      ClientRPCTimeout,
-		EnclaveRPCAddress:      enclaveAddr,
-		P2PBindAddress:         p2pAddr,
-		P2PPublicAddress:       p2pAddr,
-		L1ChainID:              integration.EthereumChainID,
-		ObscuroChainID:         integration.ObscuroChainID,
-		L1StartHash:            l1StartBlk,
+	hostConfig := &config.HostConfig{
+		ID: gethcommon.BigToAddress(big.NewInt(id)),
+		HostParsedConfig: config.HostParsedConfig{
+			IsGenesis:              isGenesis,
+			NodeType:               nodeType,
+			GossipRoundDuration:    avgGossipPeriod,
+			HasClientRPCHTTP:       true,
+			ClientRPCPortHTTP:      clientRPCPortHTTP,
+			HasClientRPCWebsockets: true,
+			ClientRPCPortWS:        clientRPCPortWS,
+			ClientRPCHost:          clientRPCHost,
+			ClientRPCTimeout:       ClientRPCTimeout,
+			EnclaveRPCTimeout:      ClientRPCTimeout,
+			EnclaveRPCAddress:      enclaveAddr,
+			P2PBindAddress:         p2pAddr,
+			P2PPublicAddress:       p2pAddr,
+			L1ChainID:              integration.EthereumChainID,
+			ObscuroChainID:         integration.ObscuroChainID,
+			L1StartHash:            l1StartBlk,
+		},
 	}
 
 	// create an enclave client
