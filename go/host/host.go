@@ -503,7 +503,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		h.logger.Error("failed to publish response to secret request", log.ErrKey, err)
 	}
 
-	// If we're the sequencer, and we're processing the latest block, we produce, publish and distribute a new rollup.
+	// If we're not the sequencer, we do not need to produce the genesis or publish and distribute rollups.
 	if !h.isSequencer {
 		return nil
 	}
