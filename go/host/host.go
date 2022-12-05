@@ -574,8 +574,6 @@ func (h *host) storeAndDistributeBatch(producedRollup *common.ExtRollup) {
 		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
 	}
 
-	println(fmt.Sprintf("jjj sequencer distributing batch %d (hash: %s, parent hash: %s, block: %s)", batch.Header.Number, batch.Hash(), batch.Header.ParentHash, batch.Header.L1Proof))
-
 	err := h.db.AddBatchHeader(&batch)
 	if err != nil {
 		h.logger.Error("could not store batch", log.ErrKey, err)

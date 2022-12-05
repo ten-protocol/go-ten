@@ -126,10 +126,6 @@ func (rc *RollupChain) ProduceNewRollup() (*common.ExtRollup, error) {
 
 // ProduceGenesisRollup creates a genesis rollup linked to the provided L1 block and signs it.
 func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Rollup, error) {
-	// todo - joel - are these mutexes required?
-	rc.blockProcessingMutex.Lock()
-	defer rc.blockProcessingMutex.Unlock()
-
 	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
 	if err != nil {
 		return nil, err
@@ -595,10 +591,6 @@ func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBl
 
 	// todo - joel - rename isNewRollup to isNewRollupHead or similar
 	latestRollup, isNewRollup := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
-
-	if rc.hostID.Hex() == "0x0000000000000000000000000000000000000000" {
-		println(fmt.Sprintf("jjj rollup from chain. Is updated? %t. New head: %d, %s; Old head: %d, %s", isNewRollup, latestRollup.Number(), latestRollup.Hash(), currentHeadRollup.Number(), currentHeadRollup.Hash()))
-	}
 
 	// TODO - #718 - Instead of updating the rollup head, we should validate the stored batches against the winning
 	//  rollup. We should still update the block head.
