@@ -175,10 +175,10 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool, isSequen
 	}
 
 	var rollup *common.ExtRollup
-	if isSequencer {
+	if isSequencer && isNewRollup {
 		rollup, err = rc.ProduceNewRollup()
 		if err != nil {
-			// todo - joel - think about what to do. this is due to a pre-genesis situation
+			panic(err)
 		}
 	}
 
@@ -401,9 +401,13 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, bool
 	// Handles the case of the block containing the genesis being processed multiple times.
 	genesisRollup, err := rc.handleGenesisRollup(block, rollupsInBlock)
 	if err != nil {
-		if errors.Is(err, errIsPreGenesis) || errors.Is(err, errIsGenesisRollupInBlock) {
-			// Either we're still waiting for the genesis rollup, or it's already stored and we can return it immediately.
-			return genesisRollup, false, nil
+		if errors.Is(err, errIsPreGenesis) {
+			// We're still waiting for the genesis rollup.
+			return nil, false, nil
+		}
+		if errors.Is(err, errIsGenesisRollupInBlock) {
+			// The genesis rollup is already stored and we can return it immediately.
+			return genesisRollup, true, nil
 		}
 		return nil, false, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
 	}

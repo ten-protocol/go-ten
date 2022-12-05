@@ -495,6 +495,10 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
+	if h.shortID == 0 {
+		println(fmt.Sprintf("jjj back at node. Is updated? %t; new rollup? %t; isLatestBlock? %t",
+			result.IngestedRollupHeader != nil, result.ProducedRollup != nil, isLatestBlock))
+	}
 	err = h.storeBlockProcessingResult(result, block.Header())
 	if err != nil {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
@@ -508,7 +512,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	}
 
 	// If we're the sequencer, and we're processing the latest block, we produce, publish and distribute a new rollup.
-	if !h.isSequencer || !isLatestBlock {
+	if !h.isSequencer {
 		return nil
 	}
 
@@ -520,7 +524,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		return nil // nothing further to process since network had no genesis
 	}
 
-	if result.ProducedRollup.Header != nil {
+	if result.ProducedRollup != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
