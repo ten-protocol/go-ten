@@ -9,8 +9,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	"github.com/obscuronet/go-obscuro/go/config"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -57,12 +55,13 @@ func NewInMemoryWalletFromPK(chainID *big.Int, pk *ecdsa.PrivateKey, logger geth
 	}
 }
 
-func NewInMemoryWalletFromConfig(config config.HostConfig, logger gethlog.Logger) Wallet {
-	privateKey, err := crypto.HexToECDSA(config.PrivateKeyString)
+func NewInMemoryWalletFromConfig(pkStr string, l1ChainID int64, logger gethlog.Logger) Wallet {
+	privateKey, err := crypto.HexToECDSA(pkStr)
 	if err != nil {
 		logger.Crit("could not recover private key from hex. ", log.ErrKey, err)
 	}
-	return NewInMemoryWalletFromPK(big.NewInt(config.L1ChainID), privateKey, logger)
+
+	return NewInMemoryWalletFromPK(big.NewInt(l1ChainID), privateKey, logger)
 }
 
 // SignTransaction returns a signed transaction

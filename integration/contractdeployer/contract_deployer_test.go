@@ -135,7 +135,6 @@ func createObscuroNetwork(t *testing.T) {
 	simParams := params.SimParams{
 		NumberOfNodes:    numberOfNodes,
 		AvgBlockDuration: 1 * time.Second,
-		AvgGossipPeriod:  1 * time.Second / 3,
 		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,

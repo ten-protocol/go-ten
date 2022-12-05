@@ -24,7 +24,7 @@ type serverImpl struct {
 	logger gethlog.Logger
 }
 
-func NewServer(config config.HostConfig, rpcAPIs []rpc.API, logger gethlog.Logger) Server {
+func NewServer(config *config.HostConfig, rpcAPIs []rpc.API, logger gethlog.Logger) Server {
 	rpcConfig := node.Config{
 		Logger: logger.New(log.CmpKey, log.HostRPCCmp),
 	}

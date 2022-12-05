@@ -9,7 +9,6 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/ethereum/go-ethereum/common"
-	obscuroconfig "github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
@@ -31,17 +30,16 @@ func DeployContract(config Config, logger gethlog.Logger) {
 		panic("unrecognised command type")
 	}
 
-	hostConfig := obscuroconfig.HostConfig{
-		PrivateKeyString: config.privateKeys[0], // We deploy the contract using the first private key.
-		L1ChainID:        config.l1ChainID,
-	}
-
 	l1Client, err := ethadapter.NewEthClient(config.l1NodeHost, config.l1NodeWebsocketPort, config.l1RPCTimeout, common.HexToAddress("0x0"), logger)
 	if err != nil {
 		panic(err)
 	}
 
-	l1Wallet := wallet.NewInMemoryWalletFromConfig(hostConfig, logger)
+	l1Wallet := wallet.NewInMemoryWalletFromConfig(
+		config.privateKeys[0], // We deploy the contract using the first private key.
+		config.l1ChainID,
+		logger,
+	)
 	nonce, err := l1Client.Nonce(l1Wallet.Address())
 	if err != nil {
 		panic(err)
