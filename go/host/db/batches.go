@@ -41,7 +41,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 	if err := db.writeBatch(batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
-	if err := db.writeBatchTxHashes(b, batch.Header.Hash(), batch.TxHashes); err != nil {
+	if err := db.writeBatchTxHashes(b, batch.Hash(), batch.TxHashes); err != nil {
 		return fmt.Errorf("could not write batch transaction hashes. Cause: %w", err)
 	}
 	if err := db.writeBatchHash(b, batch.Header); err != nil {
@@ -71,7 +71,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 		return fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
 	}
 	if errors.Is(err, errutil.ErrNotFound) || headBatchHeader.Number.Cmp(batch.Header.Number) == -1 {
-		err = db.writeHeadBatchHash(batch.Header.Hash())
+		err = db.writeHeadBatchHash(batch.Hash())
 		if err != nil {
 			return fmt.Errorf("could not write new head batch hash. Cause: %w", err)
 		}
@@ -288,7 +288,7 @@ func (db *DB) writeBatch(batch *common.ExtBatch) error {
 	if err != nil {
 		return err
 	}
-	key := batchKey(batch.Header.Hash())
+	key := batchKey(batch.Hash())
 	if err := db.kvStore.Put(key, data); err != nil {
 		return err
 	}

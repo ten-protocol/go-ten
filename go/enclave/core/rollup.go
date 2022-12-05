@@ -68,7 +68,7 @@ func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcomm
 		Agg:        agg,
 		ParentHash: parent.Hash(),
 		L1Proof:    blkHash,
-		Number:     big.NewInt(int64(parent.Number.Uint64() + 1)),
+		Number:     big.NewInt(0).Add(parent.Number, big.NewInt(1)),
 		// TODO - Consider how this time should align with the time of the L1 block used as proof.
 		Time: uint64(time.Now().Unix()),
 		// generate true randomness inside the enclave.

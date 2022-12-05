@@ -138,7 +138,7 @@ func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup, err
 	}
 
 	genesisRollup := rpc.FromExtRollupMsg(response.GenesisRollup)
-	return &genesisRollup, nil
+	return genesisRollup, nil
 }
 
 func (c *Client) Start(block types.Block) error {
@@ -189,7 +189,7 @@ func (c *Client) ProduceRollup() (*common.ExtRollup, error) {
 	}
 
 	rollup := rpc.FromExtRollupMsg(response.ProducedRollup)
-	return &rollup, nil
+	return rollup, nil
 }
 
 func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {

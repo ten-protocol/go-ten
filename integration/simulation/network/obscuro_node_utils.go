@@ -178,6 +178,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 
 		enclaveConfig := config.EnclaveConfig{
 			HostID:                 gethcommon.BigToAddress(big.NewInt(int64(i))),
+			IsSequencerEnclave:     i == 0,
 			HostAddress:            hostAddr,
 			Address:                enclaveAddr,
 			NodeType:               GetNodeType(i),

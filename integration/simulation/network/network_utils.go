@@ -1,6 +1,7 @@
 package network
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"time"
@@ -77,12 +78,13 @@ func createInMemObscuroNode(
 		IsGenesis:        isGenesis,
 		NodeType:         nodeType,
 		HasClientRPCHTTP: false,
-		P2PPublicAddress: "dummy_address", // Required because the node sanity-checks that this field is not empty at start-up.
+		P2PPublicAddress: fmt.Sprintf("%d", id),
 		L1StartHash:      l1StartBlk,
 	}
 
 	enclaveConfig := config.EnclaveConfig{
 		HostID:                 hostConfig.ID,
+		IsSequencerEnclave:     id == 0,
 		NodeType:               nodeType,
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,

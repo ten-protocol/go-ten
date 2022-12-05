@@ -44,9 +44,10 @@ var (
 
 // RollupChain represents the canonical chain, and manages the state.
 type RollupChain struct {
-	hostID      gethcommon.Address
-	nodeType    common.NodeType
-	chainConfig *params.ChainConfig
+	hostID             gethcommon.Address
+	isSequencerEnclave bool
+	nodeType           common.NodeType
+	chainConfig        *params.ChainConfig
 
 	storage               db.Storage
 	l1Blockchain          *gethcore.BlockChain
@@ -68,6 +69,7 @@ type RollupChain struct {
 
 func New(
 	hostID gethcommon.Address,
+	isSequencerEnclave bool,
 	nodeType common.NodeType,
 	storage db.Storage,
 	l1Blockchain *gethcore.BlockChain,
@@ -81,6 +83,7 @@ func New(
 ) *RollupChain {
 	return &RollupChain{
 		hostID:                hostID,
+		isSequencerEnclave:    isSequencerEnclave,
 		nodeType:              nodeType,
 		storage:               storage,
 		l1Blockchain:          l1Blockchain,
@@ -98,33 +101,6 @@ func New(
 	}
 }
 
-// ProduceNewRollup creates a new rollup, building on the latest chain heads.
-func (rc *RollupChain) ProduceNewRollup() (*common.ExtRollup, error) {
-	rollup, err := rc.produceRollup()
-	if err != nil {
-		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
-	}
-	err = rc.signRollup(rollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
-	}
-	_, err = rc.checkRollup(rollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
-	}
-
-	err = rc.storage.StoreRollup(rollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
-	}
-
-	// TODO - #718 - This rollup should be stored as the new head.
-
-	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
-	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(extRollup.Hash())))
-	return &extRollup, nil
-}
-
 // ProduceGenesisRollup creates a genesis rollup linked to the provided L1 block and signs it.
 func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Rollup, error) {
 	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
@@ -134,7 +110,7 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 
 	h := common.Header{
 		Agg:         gethcommon.HexToAddress("0x0"),
-		ParentHash:  common.L1RootHash{},
+		ParentHash:  common.L2RootHash{},
 		L1Proof:     blkHash,
 		Root:        *preFundGenesisState,
 		TxHash:      types.EmptyRootHash,
@@ -161,17 +137,28 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
+	// We update the L1 chain state.
 	err := rc.insertAndStoreL1Block(block, isLatest)
-	if err != nil {
-		return nil, err
-	}
-
-	l2Head, err := rc.updateHeads(&block)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
 
-	return rc.produceBlockSubmissionResponse(&block, l2Head)
+	// We update the L1 and L2 chain heads.
+	l2Head, isUpdatedRollupHead, err := rc.updateHeads(&block)
+	if err != nil {
+		return nil, rc.rejectBlockErr(err)
+	}
+
+	// If we're the sequencer and we've ingested a rollup, we produce a new one.
+	var rollup *common.ExtRollup
+	if rc.isSequencerEnclave && isUpdatedRollupHead {
+		rollup, err = rc.produceNewRollup()
+		if err != nil {
+			return nil, rc.rejectBlockErr(err)
+		}
+	}
+
+	return rc.produceBlockSubmissionResponse(&block, l2Head, isUpdatedRollupHead, rollup)
 }
 
 func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
@@ -359,51 +346,81 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash) (*common.BlockSubmissionResponse, error) {
+// Creates a new rollup, building on the latest chain heads.
+func (rc *RollupChain) produceNewRollup() (*common.ExtRollup, error) {
+	rollup, err := rc.produceRollup()
+	if err != nil {
+		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
+	}
+	err = rc.signRollup(rollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
+	}
+	_, err = rc.checkRollup(rollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
+	}
+
+	err = rc.storage.StoreRollup(rollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
+	}
+
+	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
+	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(extRollup.Hash())))
+	return &extRollup, nil
+}
+
+func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, isUpdatedRollupHead bool, producedRollup *common.ExtRollup) (*common.BlockSubmissionResponse, error) {
 	if l2Head == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return &common.BlockSubmissionResponse{}, nil
 	}
 
-	headRollup, err := rc.storage.FetchRollup(*l2Head)
-	if err != nil {
-		rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
-	}
 	var ingestedRollupHeader *common.Header
-	if headRollup != nil {
+	if isUpdatedRollupHead {
+		headRollup, err := rc.storage.FetchRollup(*l2Head)
+		if err != nil {
+			rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
+		}
 		ingestedRollupHeader = headRollup.Header
 	}
 
 	return &common.BlockSubmissionResponse{
+		ProducedRollup:       producedRollup,
 		IngestedRollupHeader: ingestedRollupHeader,
 		SubscribedLogs:       rc.getEncryptedLogs(*block, l2Head),
 	}, nil
 }
 
 // Calculates and stores the block state, receipts and logs for the given block.
-func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, error) {
+func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, bool, error) {
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handles the case of the block containing the genesis being processed multiple times.
 	genesisRollup, err := rc.handleGenesisRollup(block, rollupsInBlock)
 	if err != nil {
-		if errors.Is(err, errIsPreGenesis) || errors.Is(err, errIsGenesisRollupInBlock) {
-			// Either we're still waiting for the genesis rollup, or it's already stored and we can return it immediately.
-			return genesisRollup, nil
+		if errors.Is(err, errIsPreGenesis) {
+			// We're still waiting for the genesis rollup.
+			return nil, false, nil
 		}
-		return nil, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
+		if errors.Is(err, errIsGenesisRollupInBlock) {
+			// The genesis rollup is already stored and we can return it immediately.
+			return genesisRollup, true, nil
+		}
+		return nil, false, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
 	}
 
-	l2Head, err := rc.calculateAndStoreNewHeads(block, rollupsInBlock)
+	l2Head, isUpdatedRollupHead, err := rc.calculateAndStoreNewHeads(block, rollupsInBlock)
 	if err != nil {
-		return nil, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
+		return nil, false, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
 	}
 
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: r_%d, ",
 		common.ShortHash(block.Hash()), common.ShortHash(*l2Head)))
 
-	return l2Head, nil
+	return l2Head, isUpdatedRollupHead, nil
 }
 
 func (rc *RollupChain) handleGenesisRollup(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
@@ -564,38 +581,38 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 }
 
 // given an L1 block, and the State as it was in the Parent block, calculates the State after the current block.
-func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
+func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, bool, error) {
 	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
 	currentHeadRollupHash, err := rc.storage.FetchHeadRollupForL1Block(block.ParentHash())
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve current head rollup hash. Cause: %w", err)
+		return nil, false, fmt.Errorf("could not retrieve current head rollup hash. Cause: %w", err)
 	}
 
 	currentHeadRollup, err := rc.storage.FetchRollup(*currentHeadRollupHash)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
+		return nil, false, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
 
-	latestRollup, isUpdated := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
+	latestRollup, isUpdatedRollupHead := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
 
 	// TODO - #718 - Instead of updating the rollup head, we should validate the stored batches against the winning
 	//  rollup. We should still update the block head.
 
 	l1Head := block.Hash()
 	var rollupTxReceipts []*types.Receipt
-	if isUpdated {
+	if isUpdatedRollupHead {
 		rollupTxReceipts, err = rc.checkRollup(latestRollup)
 		if err != nil {
-			return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
+			panic(fmt.Errorf("failed to check rollup. Cause: %w", err))
 		}
 	}
-	err = rc.storage.StoreNewHeads(l1Head, latestRollup, rollupTxReceipts, isUpdated)
+	err = rc.storage.StoreNewHeads(l1Head, latestRollup, rollupTxReceipts, isUpdatedRollupHead)
 	if err != nil {
-		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
+		panic(fmt.Errorf("could not store new head. Cause: %w", err))
 	}
 
 	l2Head := latestRollup.Hash()
-	return &l2Head, nil
+	return &l2Head, isUpdatedRollupHead, nil
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions

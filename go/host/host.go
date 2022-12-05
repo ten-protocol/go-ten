@@ -506,30 +506,24 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		h.logger.Error("failed to publish response to secret request", log.ErrKey, err)
 	}
 
-	// If we're the sequencer, and we're processing the latest block, we produce, publish and distribute a new rollup.
-	if !h.isSequencer || !isLatestBlock {
+	// If we're not the sequencer, we do not need to produce the genesis or publish and distribute rollups.
+	if !h.isSequencer {
 		return nil
 	}
 
 	if h.genesisRequired {
-		err := h.initialiseProtocol(block)
-		if err != nil {
+		if err = h.initialiseProtocol(block); err != nil {
 			h.logger.Crit("Could not initialise protocol.", log.ErrKey, err)
 		}
 		h.genesisRequired = false
 		return nil // nothing further to process since network had no genesis
 	}
 
-	rollup, err := h.enclaveClient.ProduceRollup()
-	if err != nil {
-		return fmt.Errorf("could not produce rollup. Cause: %w", err)
-	}
-
-	if rollup.Header != nil {
+	if result.ProducedRollup != nil && result.ProducedRollup.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
-		h.publishRollup(rollup)
+		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.storeAndDistributeBatch(rollup)
+		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
 
 	return nil
@@ -866,26 +860,28 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		return nil
 	}
 
-	// We store the batches. If we encounter any missing batches, we abort and request the missing batches instead.
+	// We store the batches.
 	err = h.batchManager.StoreBatches(batches)
 	if err != nil {
-		batchesMissingError, ok := err.(*batchmanager.BatchesMissingError) //nolint:errorlint
-		if !ok {
+		if !errors.Is(err, batchmanager.ErrBatchesMissing) {
 			return fmt.Errorf("could not store batches. Cause: %w", err)
 		}
 
-		batchRequest := common.BatchRequest{
-			Requester:            h.config.P2PPublicAddress,
-			EarliestMissingBatch: batchesMissingError.EarliestMissingBatch,
-		}
-		err = h.p2p.RequestBatches(&batchRequest)
+		// We have encountered missing batches. We abort the storage operation and request the missing batches.
+		batchRequest, err := h.batchManager.CreateBatchRequest(h.config.P2PPublicAddress)
 		if err != nil {
+			return fmt.Errorf("could not create batch request. Cause: %w", err)
+		}
+		if err = h.p2p.RequestBatches(batchRequest); err != nil {
 			return fmt.Errorf("could not request historical batches. Cause: %w", err)
 		}
+
 		// If we requested any batches, we return early and wait for the missing batches to arrive.
 		return nil
 	}
 
+	// TODO - #718 - We should probably submit each batch after storing it, and not submitting each one only if *every*
+	//  batch was stored correctly.
 	for _, batch := range batches {
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)

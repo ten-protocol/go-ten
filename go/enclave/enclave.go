@@ -176,6 +176,7 @@ func NewEnclave(
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 	chain := rollupchain.New(
 		config.HostID,
+		config.IsSequencerEnclave,
 		config.NodeType,
 		storage,
 		l1Blockchain,
@@ -273,7 +274,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.B
 }
 
 func (e *enclaveImpl) ProduceRollup() (*common.ExtRollup, error) {
-	return e.chain.ProduceNewRollup()
+	return nil, errutil.ErrNoImpl
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
