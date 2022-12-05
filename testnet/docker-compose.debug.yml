@@ -16,7 +16,6 @@ services:
       PKSTRING: some_string
       L1HOST: some_host
       L1PORT: some_port
-      HOSTID: some_address
       ISGENESIS: some_bool
       NODETYPE: some_string
       PROFILERENABLED: some_bool
@@ -27,7 +26,6 @@ services:
       "/home/go-obscuro/go/host/main/main",
       "--l1NodeHost=$L1HOST",
       "--l1NodePort=$L1PORT",
-      "--id=$HOSTID",
       "--enclaveRPCAddress=enclave:11000",
       "--rollupContractAddress=$MGMTCONTRACTADDR",
       "--privateKey=$PKSTRING",
