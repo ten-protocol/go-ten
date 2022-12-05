@@ -149,9 +149,9 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool, isSequen
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
 	var rollup *common.ExtRollup
 	if isSequencer && isUpdatedRollupHead {
-		rollup, err = rc.ProduceNewRollup()
+		rollup, err = rc.produceNewRollup()
 		if err != nil {
-			panic(err)
+			return nil, rc.rejectBlockErr(err)
 		}
 	}
 
