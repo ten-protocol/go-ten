@@ -23,7 +23,6 @@ const (
 	logLevelName                 = "logLevel"
 	logPathName                  = "logPath"
 	privateKeyName               = "privateKey"
-	pkAddressName                = "pkAddress"
 	l1ChainIDName                = "l1ChainID"
 	obscuroChainIDName           = "obscuroChainID"
 	profilerEnabledName          = "profilerEnabled"
@@ -55,7 +54,6 @@ func getFlagUsageMap() map[string]string {
 		logLevelName:                 "The verbosity level of logs. (Defaults to Info)",
 		logPathName:                  "The path to use for the host's log file",
 		privateKeyName:               "The private key for the L1 host account",
-		pkAddressName:                "The address of the L1 host account",
 		l1ChainIDName:                "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)",
 		obscuroChainIDName:           "An integer representing the unique chain id of the Obscuro chain (default 777)",
 		profilerEnabledName:          "Runs a profiler instance (Defaults to false)",
