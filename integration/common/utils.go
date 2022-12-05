@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"math/big"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
