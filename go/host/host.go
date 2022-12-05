@@ -60,7 +60,7 @@ const (
 )
 
 var (
-	batchRequests = 0
+	latestRollup *common.ExtRollup = nil
 )
 
 // Implementation of host.Host.
@@ -491,7 +491,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	h.processL1BlockTransactions(block)
 
 	// submit each block to the enclave for ingestion plus validation
-	result, err := h.enclaveClient.SubmitL1Block(*block, isLatestBlock)
+	result, err := h.enclaveClient.SubmitL1Block(*block, isLatestBlock, h.isSequencer)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
@@ -513,24 +513,18 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	}
 
 	if h.genesisRequired {
-		err := h.initialiseProtocol(block)
-		if err != nil {
+		if err = h.initialiseProtocol(block); err != nil {
 			h.logger.Crit("Could not initialise protocol.", log.ErrKey, err)
 		}
 		h.genesisRequired = false
 		return nil // nothing further to process since network had no genesis
 	}
 
-	rollup, err := h.enclaveClient.ProduceRollup()
-	if err != nil {
-		return fmt.Errorf("could not produce rollup. Cause: %w", err)
-	}
-
-	if rollup.Header != nil {
+	if result.ProducedRollup.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
-		h.publishRollup(rollup)
+		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.storeAndDistributeBatch(rollup)
+		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
 
 	return nil
@@ -580,7 +574,7 @@ func (h *host) storeAndDistributeBatch(producedRollup *common.ExtRollup) {
 		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
 	}
 
-	println(fmt.Sprintf("jjj sequencer creating batch %d (hash: %s, parent hash: %s, block: %s)", batch.Header.Number, batch.Hash(), batch.Header.ParentHash, batch.Header.L1Proof))
+	println(fmt.Sprintf("jjj sequencer distributing batch %d (hash: %s, parent hash: %s, block: %s)", batch.Header.Number, batch.Hash(), batch.Header.ParentHash, batch.Header.L1Proof))
 
 	err := h.db.AddBatchHeader(&batch)
 	if err != nil {

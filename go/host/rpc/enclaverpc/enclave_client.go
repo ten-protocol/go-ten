@@ -138,7 +138,7 @@ func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup, err
 	}
 
 	genesisRollup := rpc.FromExtRollupMsg(response.GenesisRollup)
-	return &genesisRollup, nil
+	return genesisRollup, nil
 }
 
 func (c *Client) Start(block types.Block) error {
@@ -158,7 +158,7 @@ func (c *Client) Start(block types.Block) error {
 	return nil
 }
 
-func (c *Client) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (c *Client) SubmitL1Block(block types.Block, isLatest bool, isSequencer bool) (*common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -167,7 +167,7 @@ func (c *Client) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockS
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
-	response, err := c.protoClient.SubmitL1Block(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), IsLatest: isLatest})
+	response, err := c.protoClient.SubmitL1Block(timeoutCtx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), IsLatest: isLatest, IsSequencer: isSequencer})
 	if err != nil {
 		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
@@ -189,7 +189,7 @@ func (c *Client) ProduceRollup() (*common.ExtRollup, error) {
 	}
 
 	rollup := rpc.FromExtRollupMsg(response.ProducedRollup)
-	return &rollup, nil
+	return rollup, nil
 }
 
 func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {

@@ -36,7 +36,10 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 		return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
 	}
 
+	producedRollupMsg := ToExtRollupMsg(response.ProducedRollup)
+
 	return generated.BlockSubmissionResponseMsg{
+		ProducedRollup:          &producedRollupMsg,
 		RollupHead:              ToRollupHeaderMsg(response.IngestedRollupHeader),
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
@@ -94,6 +97,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 		return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
 	}
 	return &common.BlockSubmissionResponse{
+		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
 		IngestedRollupHeader:    FromRollupHeaderMsg(msg.RollupHead),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
@@ -173,9 +177,9 @@ func ToRollupHeaderMsg(header *common.Header) *generated.HeaderMsg {
 	return &headerMsg
 }
 
-func FromExtRollupMsg(msg *generated.ExtRollupMsg) common.ExtRollup {
+func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 	if msg.Header == nil {
-		return common.ExtRollup{
+		return &common.ExtRollup{
 			Header: nil,
 		}
 	}
@@ -186,7 +190,7 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) common.ExtRollup {
 		txHashes[idx] = gethcommon.BytesToHash(bytes)
 	}
 
-	return common.ExtRollup{
+	return &common.ExtRollup{
 		Header:          FromRollupHeaderMsg(msg.Header),
 		TxHashes:        txHashes,
 		EncryptedTxBlob: msg.Txs,

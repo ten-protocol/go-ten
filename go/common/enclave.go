@@ -45,7 +45,7 @@ type Enclave interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitL1Block(block types.Block, isLatest bool) (*BlockSubmissionResponse, error)
+	SubmitL1Block(block types.Block, isLatest bool, isSequencer bool) (*BlockSubmissionResponse, error)
 
 	// ProduceRollup creates a new rollup.
 	ProduceRollup() (*ExtRollup, error)
@@ -115,6 +115,7 @@ type Enclave interface {
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
 	IngestedRollupHeader    *Header                   // The header of the winning rollup contained in the ingested block, if any.
+	ProducedRollup          *ExtRollup                // todo - joel - describe
 	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
 	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the block and all its ancestors for each subscription ID.
 	RejectError             *BlockRejectError         // this is set if block was rejected, contains information about what block to submit next
