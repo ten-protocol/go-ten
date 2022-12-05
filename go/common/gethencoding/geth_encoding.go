@@ -113,10 +113,17 @@ func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumber, error) {
 		return nil, errutil.ErrNotFound
 	}
 
+	// some providers (remix) send max uint instead of latest
+	if strVal, ok := param.(string); ok && strVal == "0xffffffffffffffff" {
+		blockNumber = gethrpc.LatestBlockNumber
+		return &blockNumber, nil
+	}
+
 	err := blockNumber.UnmarshalJSON([]byte(param.(string)))
 	if err != nil {
 		return nil, fmt.Errorf("could not parse requested rollup number - %w", err)
 	}
+
 	return &blockNumber, err
 }
 
