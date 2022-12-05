@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/retry"
+
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -16,10 +18,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/rpc"
-)
-
-const (
-	receiptTimeoutMillis = 30000 // The timeout in millis to wait for a receipt for a transaction.
 )
 
 func RndBtw(min uint64, max uint64) uint64 {
@@ -38,34 +36,22 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 
 // AwaitReceipt blocks until the receipt for the transaction with the given hash has been received. Errors if the
 // transaction is unsuccessful or times out.
-func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash gethcommon.Hash) error {
-	counter := 0
-	for {
+func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash gethcommon.Hash, timeout time.Duration) error {
+	return retry.Do(func() error {
 		receipt, err := client.TransactionReceipt(ctx, txHash)
-		if err != nil {
-			if !errors.Is(err, rpc.ErrNilResponse) {
-				return err
-			}
-
-			counter += 100
-			if counter > receiptTimeoutMillis {
-				return fmt.Errorf("could not retrieve transaction %s after timeout", txHash.Hex())
-			}
-			time.Sleep(100 * time.Millisecond)
-			continue
+		if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
+			return err
 		}
-
 		if receipt.Status == types.ReceiptStatusFailed {
 			return fmt.Errorf("receipt had status failed")
 		}
-
 		return nil
-	}
+	}, retry.NewTimeoutStrategy(timeout, 100*time.Millisecond))
 }
 
 // PrefundWallets sends an amount `alloc` from the faucet wallet to each listed wallet.
 // The transactions are sent with sequential nonces, starting with `startingNonce`.
-func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClient *obsclient.AuthObsClient, startingNonce uint64, wallets []wallet.Wallet, alloc *big.Int) {
+func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClient *obsclient.AuthObsClient, startingNonce uint64, wallets []wallet.Wallet, alloc *big.Int, timeout time.Duration) {
 	// We send the transactions serially, so that we can precompute the nonces.
 	txHashes := make([]gethcommon.Hash, len(wallets))
 	for idx, w := range wallets {
@@ -96,7 +82,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 		wg.Add(1)
 		go func(txHash gethcommon.Hash) {
 			defer wg.Done()
-			err := AwaitReceipt(ctx, faucetClient, txHash)
+			err := AwaitReceipt(ctx, faucetClient, txHash, timeout)
 			if err != nil {
 				panic(fmt.Sprintf("faucet transfer transaction unsuccessful. Cause: %s", err))
 			}
