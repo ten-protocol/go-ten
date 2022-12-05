@@ -204,6 +204,7 @@ func (h *host) Start() {
 	h.waitForEnclave()
 
 	// TODO the host should only connect to enclaves with the same ID as the host.ID
+	// TODO Issue: https://github.com/obscuronet/obscuro-internal/issues/1265
 
 	// todo: we should try to recover the key from a previous run of the node here? Before generating or requesting the key.
 	if h.config.IsGenesis {

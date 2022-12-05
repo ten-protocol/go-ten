@@ -16,7 +16,6 @@ type SimParams struct {
 	// A critical parameter of the simulation. The value should be as low as possible, as long as the test is still meaningful
 	AvgBlockDuration  time.Duration
 	AvgNetworkLatency time.Duration // artificial latency injected between sending and receiving messages on the mock network
-	AvgGossipPeriod   time.Duration // POBI protocol setting
 
 	SimulationTime time.Duration // how long the simulations should run for
 

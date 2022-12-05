@@ -44,9 +44,9 @@ type HostConfigToml struct {
 	L1StartHash            string
 }
 
-// ParseConfig returns a config.HostParsedConfig based on either the file identified by the `config` flag, or the flags with
+// ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
 // specific defaults (if the `config` flag isn't specified).
-func ParseConfig() (*config.HostParsedConfig, error) {
+func ParseConfig() (*config.HostInputConfig, error) {
 	cfg := config.DefaultHostParsedConfig()
 	flagUsageMap := getFlagUsageMap()
 
@@ -83,7 +83,7 @@ func ParseConfig() (*config.HostParsedConfig, error) {
 
 	nodeType, err := common.ToNodeType(*nodeTypeStr)
 	if err != nil {
-		return &config.HostParsedConfig{}, fmt.Errorf("unrecognised node type '%s'", *nodeTypeStr)
+		return &config.HostInputConfig{}, fmt.Errorf("unrecognised node type '%s'", *nodeTypeStr)
 	}
 
 	cfg.IsGenesis = *isGenesis
@@ -116,7 +116,7 @@ func ParseConfig() (*config.HostParsedConfig, error) {
 }
 
 // Parses the config from the .toml file at configPath.
-func fileBasedConfig(configPath string) (*config.HostParsedConfig, error) {
+func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 	bytes, err := os.ReadFile(configPath)
 	if err != nil {
 		panic(fmt.Sprintf("could not read config file at %s. Cause: %s", configPath, err))
@@ -130,10 +130,10 @@ func fileBasedConfig(configPath string) (*config.HostParsedConfig, error) {
 
 	nodeType, err := common.ToNodeType(tomlConfig.NodeType)
 	if err != nil {
-		return &config.HostParsedConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
+		return &config.HostInputConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
 	}
 
-	return &config.HostParsedConfig{
+	return &config.HostInputConfig{
 		IsGenesis:              tomlConfig.IsGenesis,
 		NodeType:               nodeType,
 		GossipRoundDuration:    time.Duration(tomlConfig.GossipRoundDuration),

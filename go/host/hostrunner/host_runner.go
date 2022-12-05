@@ -24,7 +24,7 @@ import (
 )
 
 // RunHost runs an Obscuro host as a standalone process.
-func RunHost(parsedConfig *config.HostParsedConfig) {
+func RunHost(parsedConfig *config.HostInputConfig) {
 	config := parsedConfig.ToHostConfig()
 	logger := log.New(log.HostCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.ID)
 
