@@ -98,32 +98,6 @@ func New(
 	}
 }
 
-// ProduceNewRollup creates a new rollup, building on the latest chain heads.
-func (rc *RollupChain) ProduceNewRollup() (*common.ExtRollup, error) {
-	// TODO - #718 - Consider what mutexes are required here.
-	rollup, err := rc.produceRollup()
-	if err != nil {
-		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
-	}
-	err = rc.signRollup(rollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
-	}
-	_, err = rc.checkRollup(rollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
-	}
-
-	err = rc.storage.StoreRollup(rollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
-	}
-
-	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
-	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(extRollup.Hash())))
-	return &extRollup, nil
-}
-
 // ProduceGenesisRollup creates a genesis rollup linked to the provided L1 block and signs it.
 func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Rollup, error) {
 	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
@@ -367,6 +341,31 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 
 	// this is the typical, happy-path case. The ingested block's parent was the previously ingested block.
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
+}
+
+// Creates a new rollup, building on the latest chain heads.
+func (rc *RollupChain) produceNewRollup() (*common.ExtRollup, error) {
+	rollup, err := rc.produceRollup()
+	if err != nil {
+		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
+	}
+	err = rc.signRollup(rollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
+	}
+	_, err = rc.checkRollup(rollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
+	}
+
+	err = rc.storage.StoreRollup(rollup)
+	if err != nil {
+		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
+	}
+
+	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
+	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(extRollup.Hash())))
+	return &extRollup, nil
 }
 
 func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, isUpdatedRollupHead bool, producedRollup *common.ExtRollup) (*common.BlockSubmissionResponse, error) {

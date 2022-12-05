@@ -268,7 +268,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool, isSequence
 }
 
 func (e *enclaveImpl) ProduceRollup() (*common.ExtRollup, error) {
-	return e.chain.ProduceNewRollup()
+	return nil, errutil.ErrNoImpl
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
