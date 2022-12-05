@@ -32,8 +32,6 @@ help_and_exit() {
     echo ""
     echo "  l1port             *Optional* Set the l1 port. Defaults to 9000"
     echo ""
-    echo "  pkaddress          *Optional* Set the pk address. Defaults to 0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
-    echo ""
     echo "  pkstring           *Optional* Set the pk string. Defaults to 8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"
     echo ""
     echo "  is_genesis         *Optional* Set the node as genesis node. Defaults to false"
@@ -87,7 +85,6 @@ do
             --mgmtcontractaddr)         mgmt_contract_addr=${value} ;;
             --hocerc20addr)             hoc_erc20_addr=${value} ;;
             --pocerc20addr)             poc_erc20_addr=${value} ;;
-            --pkaddress)                pk_address=${value} ;;
             --pkstring)                 pk_string=${value} ;;
             --sgx_enabled)              sgx_enabled=${value} ;;
             --is_genesis)               is_genesis=${value} ;;
@@ -111,7 +108,6 @@ fi
 
 # set the data in the env file
 echo "PKSTRING=${pk_string}" >> "${testnet_path}/.env"
-echo "PKADDR=${pk_address}" >> "${testnet_path}/.env"
 echo "HOSTID=${host_id}"  >> "${testnet_path}/.env"
 echo "MGMTCONTRACTADDR=${mgmt_contract_addr}"  >> "${testnet_path}/.env"
 echo "HOCERC20ADDR=${hoc_erc20_addr}"  >> "${testnet_path}/.env"
