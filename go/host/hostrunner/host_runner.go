@@ -26,7 +26,7 @@ import (
 // RunHost runs an Obscuro host as a standalone process.
 func RunHost(parsedConfig *config.HostInputConfig) {
 	config := parsedConfig.ToHostConfig()
-	
+
 	// set the Host ID as the Public Key Address
 	ethWallet := wallet.NewInMemoryWalletFromConfig(config.PrivateKeyString, config.L1ChainID, log.New(log.HostCmp, config.LogLevel, config.LogPath))
 	config.ID = ethWallet.Address()
