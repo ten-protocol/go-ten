@@ -165,20 +165,20 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool, isSequen
 		return nil, rc.rejectBlockErr(err)
 	}
 
-	l2Head, isNewRollup, err := rc.updateHeads(&block)
+	l2Head, isUpdatedRollupHead, err := rc.updateHeads(&block)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
 
 	var rollup *common.ExtRollup
-	if isSequencer && isNewRollup {
+	if isSequencer && isUpdatedRollupHead {
 		rollup, err = rc.ProduceNewRollup()
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	return rc.produceBlockSubmissionResponse(&block, l2Head, isNewRollup, rollup)
+	return rc.produceBlockSubmissionResponse(&block, l2Head, isUpdatedRollupHead, rollup)
 }
 
 func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
@@ -366,19 +366,18 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, isNewRollup bool, producedRollup *common.ExtRollup) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, isUpdatedRollupHead bool, producedRollup *common.ExtRollup) (*common.BlockSubmissionResponse, error) {
 	if l2Head == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return &common.BlockSubmissionResponse{}, nil
 	}
 
-	headRollup, err := rc.storage.FetchRollup(*l2Head)
-	if err != nil {
-		rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
-	}
 	var ingestedRollupHeader *common.Header
-	// todo - joel - special hack for the genesis. Understand why needed.
-	if isNewRollup || headRollup.Number().Int64() == 0 {
+	if isUpdatedRollupHead {
+		headRollup, err := rc.storage.FetchRollup(*l2Head)
+		if err != nil {
+			rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
+		}
 		ingestedRollupHeader = headRollup.Header
 	}
 
@@ -408,7 +407,7 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, bool
 		return nil, false, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
 	}
 
-	l2Head, isNewRollup, err := rc.calculateAndStoreNewHeads(block, rollupsInBlock)
+	l2Head, isUpdatedRollupHead, err := rc.calculateAndStoreNewHeads(block, rollupsInBlock)
 	if err != nil {
 		return nil, false, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
 	}
@@ -416,7 +415,7 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, bool
 	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: r_%d, ",
 		common.ShortHash(block.Hash()), common.ShortHash(*l2Head)))
 
-	return l2Head, isNewRollup, nil
+	return l2Head, isUpdatedRollupHead, nil
 }
 
 func (rc *RollupChain) handleGenesisRollup(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
@@ -589,27 +588,26 @@ func (rc *RollupChain) calculateAndStoreNewHeads(block *types.Block, rollupsInBl
 		return nil, false, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
 
-	// todo - joel - rename isNewRollup to isNewRollupHead or similar
-	latestRollup, isNewRollup := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
+	latestRollup, isUpdatedRollupHead := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
 
 	// TODO - #718 - Instead of updating the rollup head, we should validate the stored batches against the winning
 	//  rollup. We should still update the block head.
 
 	l1Head := block.Hash()
 	var rollupTxReceipts []*types.Receipt
-	if isNewRollup {
+	if isUpdatedRollupHead {
 		rollupTxReceipts, err = rc.checkRollup(latestRollup)
 		if err != nil {
 			panic(fmt.Errorf("failed to check rollup. Cause: %w", err))
 		}
 	}
-	err = rc.storage.StoreNewHeads(l1Head, latestRollup, rollupTxReceipts, isNewRollup)
+	err = rc.storage.StoreNewHeads(l1Head, latestRollup, rollupTxReceipts, isUpdatedRollupHead)
 	if err != nil {
 		panic(fmt.Errorf("could not store new head. Cause: %w", err))
 	}
 
 	l2Head := latestRollup.Hash()
-	return &l2Head, isNewRollup, nil
+	return &l2Head, isUpdatedRollupHead, nil
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions

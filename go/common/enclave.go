@@ -114,11 +114,11 @@ type Enclave interface {
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
-	IngestedRollupHeader    *Header                   // The header of the winning rollup contained in the ingested block, if any.
-	ProducedRollup          *ExtRollup                // todo - joel - describe
-	ProducedSecretResponses []*ProducedSecretResponse // if L1 block contained secret requests then there may be responses to publish
-	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the block and all its ancestors for each subscription ID.
-	RejectError             *BlockRejectError         // this is set if block was rejected, contains information about what block to submit next
+	ProducedRollup          *ExtRollup                // If the node is the sequencer, the rollup produced if the ingested L1 block contained a new rollup.
+	IngestedRollupHeader    *Header                   // The header of the winning rollup contained in the ingested L1 block, if any.
+	ProducedSecretResponses []*ProducedSecretResponse // The responses to any secret requests in the ingested L1 block.
+	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the L1 block and all its ancestors for each subscription ID.
+	RejectError             *BlockRejectError         // If block was rejected, contains information about what block to submit next.
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block
