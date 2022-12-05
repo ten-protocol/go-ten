@@ -487,7 +487,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	h.processL1BlockTransactions(block)
 
 	// submit each block to the enclave for ingestion plus validation
-	result, err := h.enclaveClient.SubmitL1Block(*block, isLatestBlock, h.isSequencer)
+	result, err := h.enclaveClient.SubmitL1Block(*block, isLatestBlock)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}

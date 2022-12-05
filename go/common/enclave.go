@@ -45,7 +45,7 @@ type Enclave interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitL1Block(block types.Block, isLatest bool, isSequencer bool) (*BlockSubmissionResponse, error)
+	SubmitL1Block(block types.Block, isLatest bool) (*BlockSubmissionResponse, error)
 
 	// ProduceRollup creates a new rollup.
 	ProduceRollup() (*ExtRollup, error)

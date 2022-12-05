@@ -118,7 +118,7 @@ func (s *server) Start(_ context.Context, request *generated.StartRequest) (*gen
 
 func (s *server) SubmitL1Block(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl := s.decodeBlock(request.EncodedBlock)
-	blockSubmissionResponse, err := s.enclave.SubmitL1Block(bl, request.IsLatest, request.IsSequencer)
+	blockSubmissionResponse, err := s.enclave.SubmitL1Block(bl, request.IsLatest)
 	if err != nil {
 		var rejErr *common.BlockRejectError
 		isReject := errors.As(err, &rejErr)

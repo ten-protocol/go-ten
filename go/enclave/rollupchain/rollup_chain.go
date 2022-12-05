@@ -44,9 +44,10 @@ var (
 
 // RollupChain represents the canonical chain, and manages the state.
 type RollupChain struct {
-	hostID      gethcommon.Address
-	nodeType    common.NodeType
-	chainConfig *params.ChainConfig
+	hostID             gethcommon.Address
+	isSequencerEnclave bool
+	nodeType           common.NodeType
+	chainConfig        *params.ChainConfig
 
 	storage               db.Storage
 	l1Blockchain          *gethcore.BlockChain
@@ -68,6 +69,7 @@ type RollupChain struct {
 
 func New(
 	hostID gethcommon.Address,
+	isSequencerEnclave bool,
 	nodeType common.NodeType,
 	storage db.Storage,
 	l1Blockchain *gethcore.BlockChain,
@@ -81,6 +83,7 @@ func New(
 ) *RollupChain {
 	return &RollupChain{
 		hostID:                hostID,
+		isSequencerEnclave:    isSequencerEnclave,
 		nodeType:              nodeType,
 		storage:               storage,
 		l1Blockchain:          l1Blockchain,
@@ -130,7 +133,7 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool, isSequencer bool) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
@@ -148,7 +151,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool, isSequen
 
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
 	var rollup *common.ExtRollup
-	if isSequencer && isUpdatedRollupHead {
+	if rc.isSequencerEnclave && isUpdatedRollupHead {
 		rollup, err = rc.produceNewRollup()
 		if err != nil {
 			return nil, rc.rejectBlockErr(err)

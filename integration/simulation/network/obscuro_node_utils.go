@@ -180,6 +180,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 
 		enclaveConfig := config.EnclaveConfig{
 			HostID:                 gethcommon.BigToAddress(big.NewInt(int64(i))),
+			IsSequencerEnclave:     i == 0,
 			HostAddress:            hostAddr,
 			Address:                enclaveAddr,
 			NodeType:               GetNodeType(i),
@@ -215,8 +216,8 @@ func StopObscuroNodes(clients []rpc.Client) {
 		}(client)
 	}
 
-	if waitTimeout(&wg, 5*time.Second) {
-		testlog.Logger().Warn("Timed out waiting for the Obscuro nodes to stop")
+	if waitTimeout(&wg, 10*time.Second) {
+		panic("Timed out waiting for the Obscuro nodes to stop")
 	} else {
 		testlog.Logger().Info("Obscuro nodes stopped")
 	}
