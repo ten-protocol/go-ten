@@ -21,8 +21,6 @@ type HostInputConfig struct {
 	IsGenesis bool
 	// The type of the node.
 	NodeType common.NodeType
-	// Duration of the gossip round
-	GossipRoundDuration time.Duration
 	// Whether to serve client RPC requests over HTTP
 	HasClientRPCHTTP bool
 	// Port on which to handle HTTP client RPC requests
@@ -43,8 +41,6 @@ type HostInputConfig struct {
 	L1NodeHost string
 	// The websocket port of the connected L1 node
 	L1NodeWebsocketPort uint
-	// Timeout duration for RPC requests from client applications
-	ClientRPCTimeout time.Duration
 	// Timeout duration for RPC requests to the enclave service
 	EnclaveRPCTimeout time.Duration
 	// Timeout duration for connecting to, and communicating with, the L1 node
@@ -157,7 +153,6 @@ func DefaultHostParsedConfig() *HostInputConfig {
 	return &HostInputConfig{
 		IsGenesis:              true,
 		NodeType:               common.Aggregator,
-		GossipRoundDuration:    8333,
 		HasClientRPCHTTP:       true,
 		ClientRPCPortHTTP:      13000,
 		HasClientRPCWebsockets: true,
@@ -168,7 +163,6 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		P2PPublicAddress:       "127.0.0.1:10000",
 		L1NodeHost:             "127.0.0.1",
 		L1NodeWebsocketPort:    8546,
-		ClientRPCTimeout:       time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		EnclaveRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		L1RPCTimeout:           time.Duration(defaultL1RPCTimeoutSecs) * time.Second,
 		P2PConnectionTimeout:   time.Duration(defaultP2PTimeoutSecs) * time.Second,

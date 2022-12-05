@@ -6,7 +6,6 @@ const (
 	nodeIDName                   = "id"
 	isGenesisName                = "isGenesis"
 	nodeTypeName                 = "nodeType"
-	gossipRoundNanosName         = "gossipRoundNanos"
 	clientRPCPortHTTPName        = "clientRPCPortHttp"
 	clientRPCPortWSName          = "clientRPCPortWs"
 	clientRPCHostName            = "clientRPCHost"
@@ -15,7 +14,6 @@ const (
 	p2pPublicAddressName         = "p2pPublicAddress"
 	l1NodeHostName               = "l1NodeHost"
 	l1NodePortName               = "l1NodePort"
-	clientRPCTimeoutSecsName     = "clientRPCTimeoutSecs"
 	enclaveRPCTimeoutSecsName    = "enclaveRPCTimeoutSecs"
 	l1RPCTimeoutSecsName         = "l1RPCTimeoutSecs"
 	p2pConnectionTimeoutSecsName = "p2pConnectionTimeoutSecs"
@@ -37,7 +35,6 @@ func getFlagUsageMap() map[string]string {
 		nodeIDName:                   "The 20 bytes of the host's address",
 		isGenesisName:                "Whether the host is the first host to join the network",
 		nodeTypeName:                 "The node's type (e.g. aggregator, validator)",
-		gossipRoundNanosName:         "The duration of the gossip round",
 		clientRPCPortHTTPName:        "The port on which to listen for client application RPC requests over HTTP",
 		clientRPCPortWSName:          "The port on which to listen for client application RPC requests over websockets",
 		clientRPCHostName:            "The host on which to handle client application RPC requests",
@@ -46,7 +43,6 @@ func getFlagUsageMap() map[string]string {
 		p2pPublicAddressName:         "The P2P address where the other servers should connect to. Defaults to 127.0.0.1:10000",
 		l1NodeHostName:               "The network host on which to connect to the Ethereum client",
 		l1NodePortName:               "The port on which to connect to the Ethereum client",
-		clientRPCTimeoutSecsName:     "The timeout for client <-> host RPC communication",
 		enclaveRPCTimeoutSecsName:    "The timeout for host <-> enclave RPC communication",
 		l1RPCTimeoutSecsName:         "The timeout for connecting to, and communicating with, the Ethereum client",
 		p2pConnectionTimeoutSecsName: "The timeout for host <-> host P2P messaging",
