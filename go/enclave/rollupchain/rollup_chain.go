@@ -152,7 +152,8 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
 	var rollup *common.ExtRollup
 	if rc.isSequencerEnclave && isUpdatedRollupHead {
-		rollup, err = rc.produceNewRollup()
+		l1Head := block.Hash()
+		rollup, err = rc.produceNewRollup(&l1Head, l2Head)
 		if err != nil {
 			return nil, rc.rejectBlockErr(err)
 		}
@@ -347,8 +348,8 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 }
 
 // Creates a new rollup, building on the latest chain heads.
-func (rc *RollupChain) produceNewRollup() (*common.ExtRollup, error) {
-	rollup, err := rc.produceRollup()
+func (rc *RollupChain) produceNewRollup(l1Head *common.L1RootHash, l2Head *common.L2RootHash) (*common.ExtRollup, error) {
+	rollup, err := rc.produceRollup(l1Head, l2Head)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
@@ -687,7 +688,7 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
-		_, l2Head, err := rc.storage.FetchHeads()
+		l2Head, err := rc.storage.FetchL2Head()
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve head state. Cause: %w", err)
 		}
@@ -722,12 +723,7 @@ func (rc *RollupChain) getEncryptedLogs(block types.Block, l2Head *common.L2Root
 }
 
 // Creates a rollup.
-func (rc *RollupChain) produceRollup() (*core.Rollup, error) {
-	l1Head, l2Head, err := rc.storage.FetchHeads()
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch current L1 and L2 heads. Cause: %w", err)
-	}
-
+func (rc *RollupChain) produceRollup(l1Head *common.L1RootHash, l2Head *common.L2RootHash) (*core.Rollup, error) {
 	headRollup, err := rc.storage.FetchRollup(*l2Head)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
