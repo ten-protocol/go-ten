@@ -3,6 +3,7 @@ package ethereummock
 import (
 	"bytes"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
@@ -24,11 +25,9 @@ func (c *contractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 
 		// Mock deposits towards the L1 bridge target nil as the management contract address
 		// is not set.
-		if depositTx.To != nil {
-			return nil
+		if bytes.Equal(depositTx.To.Bytes(), common.BigToAddress(common.Big0).Bytes()) {
+			return depositTx
 		}
-
-		return depositTx
 	}
 
 	return nil
