@@ -393,68 +393,94 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head
 func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, bool, error) {
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 
-	// Handles the case where the block contains the genesis rollup, or where the genesis rollup hasn't arrived yet.
-	l2Head, isUpdatedRollupHead, isGenesisBlockOrBefore, err := rc.handleGenesisBlockOrEarlier(block, rollupsInBlock)
+	blockType, err := rc.getBlockType(rollupsInBlock)
 	if err != nil {
-		return nil, false, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
+		return nil, false, fmt.Errorf("could not determine block type. Cause: %w", err)
 	}
-	if isGenesisBlockOrBefore {
-		// If this is the genesis block or earlier, we are done processing.
+
+	switch *blockType {
+	case PreGenesis:
+		return nil, false, nil
+	case Genesis:
+		l2Head, isUpdatedRollupHead, err := rc.handleGenesisBlock(block, rollupsInBlock)
+		if err != nil {
+			return nil, false, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
+		}
+		return l2Head, isUpdatedRollupHead, nil
+	case PostGenesis:
+		l2Head, isUpdatedRollupHead, err := rc.handlePostGenesisBlock(block, rollupsInBlock)
+		if err != nil {
+			return nil, false, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
+		}
 		return l2Head, isUpdatedRollupHead, nil
 	}
 
-	// Handles the case where we are beyond the genesis rollup.
-	l2Head, isUpdatedRollupHead, err = rc.handlePostGenesisBlock(block, rollupsInBlock)
+	// Cannot be reached.
+	return nil, false, fmt.Errorf("unreachable code")
+}
+
+// todo - joel - move up
+type BlockType int64
+
+const (
+	PreGenesis BlockType = iota
+	Genesis
+	PostGenesis
+)
+
+// todo - joel - describe
+func (rc *RollupChain) getBlockType(rollupsInBlock []*core.Rollup) (*BlockType, error) {
+	_, err := rc.storage.FetchGenesisRollup()
 	if err != nil {
-		return nil, false, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
+		if errors.Is(err, errutil.ErrNotFound) {
+			if len(rollupsInBlock) == 0 {
+				preGenesis := PreGenesis
+				return &preGenesis, nil
+			}
+			genesis := Genesis
+			return &genesis, nil
+		}
+		return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 	}
-
-	rc.logger.Trace(fmt.Sprintf("Calc block state b_%d: Found: r_%d, ",
-		common.ShortHash(block.Hash()), common.ShortHash(*l2Head)))
-
-	return l2Head, isUpdatedRollupHead, nil
+	postGenesis := PostGenesis
+	return &postGenesis, nil
 }
 
 // Checks if this is the genesis rollup, and updates the state if it is. Returns the genesis rollup hash (if found),
-// whether the genesis rollup was processed for the first time, and whether this block is the genesis block or earlier.
-func (rc *RollupChain) handleGenesisBlockOrEarlier(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, bool, bool, error) {
+// and whether the genesis rollup was processed for the first time.
+func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, bool, error) {
 	genesisRollup, err := rc.storage.FetchGenesisRollup()
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return nil, false, false, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
+		return nil, false, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 	}
 
 	// We have not stored the genesis rollup yet.
 	if err != nil && errors.Is(err, errutil.ErrNotFound) {
-		// If there is no genesis yet and no rollups have arrived, there is nothing to do.
-		if len(rollupsInBlock) == 0 {
-			return nil, false, true, nil
-		}
-
 		// We process the genesis and return the new block state.
 		// todo change this to a hardcoded hash on testnet/mainnet
 		genesisRollup = rollupsInBlock[0]
 		rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
 		if err = rc.storage.StoreGenesisRollup(genesisRollup); err != nil {
-			return nil, false, false, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
+			return nil, false, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
 		}
 		if err = rc.storage.StoreNewHeads(block.Hash(), genesisRollup, nil, true); err != nil {
-			return nil, false, false, fmt.Errorf("could not store new chain heads. Cause: %w", err)
+			return nil, false, fmt.Errorf("could not store new chain heads. Cause: %w", err)
 		}
 		if err = rc.faucet.CommitGenesisState(rc.storage); err != nil {
-			return nil, false, false, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
+			return nil, false, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
 		}
 
 		l2Head := genesisRollup.Hash()
-		return &l2Head, true, true, nil
+		return &l2Head, true, nil
 	}
 
 	// We've stored the genesis rollup before.
 	genesisRollupHash := genesisRollup.Hash()
 	if len(rollupsInBlock) == 1 && bytes.Equal(rollupsInBlock[0].Header.Hash().Bytes(), genesisRollup.Hash().Bytes()) {
 		// We're reprocessing the genesis block.
-		return &genesisRollupHash, true, true, nil
+		return &genesisRollupHash, true, nil
 	}
-	return &genesisRollupHash, false, false, nil
+	return &genesisRollupHash, false, nil
 }
 
 // This is where transactions are executed and the state is calculated.
