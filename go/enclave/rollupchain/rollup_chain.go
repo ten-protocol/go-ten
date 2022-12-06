@@ -37,6 +37,15 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
+const (
+	PreGenesis BlockType = iota
+	Genesis
+	PostGenesis
+)
+
+// BlockType represents the type of a block - whether it's a pre-genesis, genesis or post-genesis L2 block.
+type BlockType int64
+
 // RollupChain represents the canonical chain, and manages the state.
 type RollupChain struct {
 	hostID             gethcommon.Address
@@ -398,35 +407,22 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, bool
 		return nil, false, fmt.Errorf("could not determine block type. Cause: %w", err)
 	}
 
+	var l2Head *common.L2RootHash
+	var isUpdatedRollupHead bool
 	switch *blockType {
 	case PreGenesis:
-		return nil, false, nil
+		l2Head, isUpdatedRollupHead = nil, false
 	case Genesis:
-		l2Head, isUpdatedRollupHead, err := rc.handleGenesisBlock(block, rollupsInBlock)
-		if err != nil {
-			return nil, false, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
-		}
-		return l2Head, isUpdatedRollupHead, nil
+		l2Head, isUpdatedRollupHead, err = rc.handleGenesisBlock(block, rollupsInBlock)
 	case PostGenesis:
-		l2Head, isUpdatedRollupHead, err := rc.handlePostGenesisBlock(block, rollupsInBlock)
-		if err != nil {
-			return nil, false, fmt.Errorf("could not calculate heads after L1 block. Cause: %w", err)
-		}
-		return l2Head, isUpdatedRollupHead, nil
+		l2Head, isUpdatedRollupHead, err = rc.handlePostGenesisBlock(block, rollupsInBlock)
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("could not handle block. Cause: %w", err)
 	}
 
-	// Cannot be reached.
-	return nil, false, fmt.Errorf("unreachable code")
+	return l2Head, isUpdatedRollupHead, nil
 }
-
-// todo - joel - move up
-type BlockType int64
-
-const (
-	PreGenesis BlockType = iota
-	Genesis
-	PostGenesis
-)
 
 // todo - joel - describe
 func (rc *RollupChain) getBlockType(rollupsInBlock []*core.Rollup) (*BlockType, error) {
