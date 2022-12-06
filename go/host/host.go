@@ -63,7 +63,6 @@ const (
 type host struct {
 	config          *config.HostConfig
 	shortID         uint64
-	isSequencer     bool
 	genesisRequired bool
 
 	p2p           hostcommon.P2P       // For communication with other Obscuro nodes
@@ -103,9 +102,8 @@ func NewHost(
 	database := db.NewInMemoryDB() // todo - make this config driven
 	host := &host{
 		// config
-		config:      config,
-		shortID:     common.ShortAddress(config.ID),
-		isSequencer: config.IsGenesis && config.NodeType == common.Aggregator,
+		config:  config,
+		shortID: common.ShortAddress(config.ID),
 
 		// Communication layers.
 		p2p:           p2p,
@@ -507,7 +505,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	}
 
 	// If we're not the sequencer, we do not need to produce the genesis or publish and distribute rollups.
-	if !h.isSequencer {
+	if h.config.NodeType != common.Sequencer {
 		return nil
 	}
 
@@ -895,11 +893,11 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 
 // Checks the host config is valid.
 func (h *host) validateConfig() {
-	if h.config.IsGenesis && h.config.NodeType != common.Aggregator {
-		h.logger.Crit("genesis node must be an aggregator")
+	if h.config.IsGenesis && h.config.NodeType != common.Sequencer {
+		h.logger.Crit("genesis node must be the sequencer")
 	}
-	if !h.config.IsGenesis && h.config.NodeType == common.Aggregator {
-		h.logger.Crit("only the genesis node can be an aggregator")
+	if !h.config.IsGenesis && h.config.NodeType == common.Sequencer {
+		h.logger.Crit("only the genesis node can be a sequencer")
 	}
 
 	if h.config.P2PPublicAddress == "" {

@@ -49,10 +49,9 @@ type BlockStage int64
 
 // RollupChain represents the canonical chain, and manages the state.
 type RollupChain struct {
-	hostID             gethcommon.Address
-	isSequencerEnclave bool
-	nodeType           common.NodeType
-	chainConfig        *params.ChainConfig
+	hostID      gethcommon.Address
+	nodeType    common.NodeType
+	chainConfig *params.ChainConfig
 
 	storage               db.Storage
 	l1Blockchain          *gethcore.BlockChain
@@ -74,7 +73,6 @@ type RollupChain struct {
 
 func New(
 	hostID gethcommon.Address,
-	isSequencerEnclave bool,
 	nodeType common.NodeType,
 	storage db.Storage,
 	l1Blockchain *gethcore.BlockChain,
@@ -88,7 +86,6 @@ func New(
 ) *RollupChain {
 	return &RollupChain{
 		hostID:                hostID,
-		isSequencerEnclave:    isSequencerEnclave,
 		nodeType:              nodeType,
 		storage:               storage,
 		l1Blockchain:          l1Blockchain,
@@ -165,7 +162,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
 	var rollup *common.ExtRollup
-	if rc.isSequencerEnclave && isUpdatedRollupHead {
+	if rc.nodeType == common.Sequencer && isUpdatedRollupHead {
 		l1Head := block.Hash()
 		rollup, err = rc.produceNewRollup(&l1Head)
 		if err != nil {
