@@ -343,7 +343,7 @@ The above will perform all the relevant builds and ensure the images are ready f
 testnetobscuronet.azurecr.io/obscuronet/enclave            # the enclave 
 testnetobscuronet.azurecr.io/obscuronet/gethnetwork        # the L1 network 
 testnetobscuronet.azurecr.io/obscuronet/host               # the host
-testnetobscuronet.azurecr.io/obscuronet/obscuroscan                # the obscuroscan server
+testnetobscuronet.azurecr.io/obscuronet/obscuroscan        # the obscuroscan server
 testnetobscuronet.azurecr.io/obscuronet/contractdeployer   # deploys the management contract to the host
 ```
 
