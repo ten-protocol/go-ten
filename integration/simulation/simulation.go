@@ -195,15 +195,17 @@ func (s *Simulation) deployObscuroERC20s() {
 // Sends an amount from the faucet to each L1 account, to pay for transactions.
 func (s *Simulation) prefundL1Accounts() {
 	for _, w := range s.Params.Wallets.SimEthWallets {
-		addr := w.Address()
+		receiver := w.Address()
+		tokenOwner := s.Params.Wallets.Tokens[bridge.HOC].L1Owner
+		ownerAddr := tokenOwner.Address()
 		txData := &ethadapter.L1DepositTx{
 			Amount:        initialBalance,
-			To:            &s.Params.L1SetupData.MgmtContractAddress,
+			To:            &receiver,
 			TokenContract: s.Params.Wallets.Tokens[bridge.HOC].L1ContractAddress,
-			Sender:        &addr,
+			Sender:        &ownerAddr,
 		}
-		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
-		signedTx, err := w.SignTransaction(tx)
+		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData, tokenOwner.GetNonceAndIncrement())
+		signedTx, err := tokenOwner.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
@@ -212,7 +214,7 @@ func (s *Simulation) prefundL1Accounts() {
 			panic(err)
 		}
 
-		s.Stats.Deposit(initialBalance)
+		//s.Stats.Deposit(initialBalance)
 		go s.TxInjector.TxTracker.trackL1Tx(txData)
 	}
 }

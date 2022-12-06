@@ -141,6 +141,10 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: Found Rollup duplicates: %v", nodeIdx, dups)
 	}
 
+	if s.Stats.TotalDepositedAmount.Cmp(gethcommon.Big0) == 0 {
+		t.Errorf("Node %d: No deposits", nodeIdx)
+	}
+
 	if s.Stats.TotalDepositedAmount.Cmp(totalDeposited) != 0 {
 		t.Errorf("Node %d: Deposit amounts don't match. Found %d , expected %d", nodeIdx, totalDeposited, s.Stats.TotalDepositedAmount)
 	}
