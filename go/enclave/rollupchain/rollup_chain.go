@@ -148,10 +148,15 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	}
 
 	// We update the L1 and L2 chain heads.
+	oldL2Head, err := rc.storage.FetchHeadRollupForL1Block(block.ParentHash())
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return nil, rc.rejectBlockErr(err)
+	}
 	newL2Head, isUpdatedRollupHead, err := rc.updateHeads(&block)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
+	isUpdatedRollupHead = newL2Head != nil && (oldL2Head == nil || oldL2Head.Hex() != newL2Head.Hex())
 
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
 	var rollup *common.ExtRollup
