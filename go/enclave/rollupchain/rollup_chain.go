@@ -426,7 +426,11 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, bool
 
 // Determines if this is a pre-genesis L2 block, the genesis L2 block, or a post-genesis L2 block.
 func (rc *RollupChain) getBlockType(rollupsInBlock []*core.Rollup) (*BlockType, error) {
-	_, err := rc.storage.FetchGenesisRollup()
+	preGenesis := PreGenesis
+	genesis := Genesis
+	postGenesis := PostGenesis
+
+	genesisRollup, err := rc.storage.FetchGenesisRollup()
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
@@ -435,16 +439,19 @@ func (rc *RollupChain) getBlockType(rollupsInBlock []*core.Rollup) (*BlockType, 
 		// If we haven't stored the genesis rollup and there are no rollups in this block, it cannot be the L2
 		// genesis block.
 		if len(rollupsInBlock) == 0 {
-			preGenesis := PreGenesis
 			return &preGenesis, nil
 		}
+
 		// If we haven't stored the genesis rollup before and this block contains rollups, it must be the L2 genesis
 		// block.
-		genesis := Genesis
 		return &genesis, nil
 	}
 
-	postGenesis := PostGenesis
+	// We check if we're reprocessing the genesis block.
+	if len(rollupsInBlock) == 1 && bytes.Equal(rollupsInBlock[0].Header.Hash().Bytes(), genesisRollup.Hash().Bytes()) {
+		return &genesis, nil
+	}
+
 	return &postGenesis, nil
 }
 
