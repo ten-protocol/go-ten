@@ -153,7 +153,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	var rollup *common.ExtRollup
 	if rc.isSequencerEnclave && isUpdatedRollupHead {
 		l1Head := block.Hash()
-		rollup, err = rc.produceNewRollup(&l1Head, l2Head)
+		rollup, err = rc.produceNewRollup(&l1Head)
 		if err != nil {
 			return nil, rc.rejectBlockErr(err)
 		}
@@ -348,8 +348,8 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 }
 
 // Creates a new rollup, building on the latest chain heads.
-func (rc *RollupChain) produceNewRollup(l1Head *common.L1RootHash, l2Head *common.L2RootHash) (*common.ExtRollup, error) {
-	rollup, err := rc.produceRollup(l1Head, l2Head)
+func (rc *RollupChain) produceNewRollup(l1Head *common.L1RootHash) (*common.ExtRollup, error) {
+	rollup, err := rc.produceRollup(l1Head)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
@@ -723,8 +723,8 @@ func (rc *RollupChain) getEncryptedLogs(block types.Block, l2Head *common.L2Root
 }
 
 // Creates a rollup.
-func (rc *RollupChain) produceRollup(l1Head *common.L1RootHash, l2Head *common.L2RootHash) (*core.Rollup, error) {
-	headRollup, err := rc.storage.FetchRollup(*l2Head)
+func (rc *RollupChain) produceRollup(l1Head *common.L1RootHash) (*core.Rollup, error) {
+	headRollup, err := rc.storage.FetchHeadRollup()
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
 	}
