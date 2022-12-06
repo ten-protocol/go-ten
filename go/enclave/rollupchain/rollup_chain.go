@@ -142,17 +142,20 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	defer rc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
-	err := rc.insertAndStoreL1Block(block, isLatest)
+	err := rc.updateL1State(block, isLatest)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
+
+	// We extract the rollups from the block.
+	rollupsInBlock := rc.bridge.ExtractRollups(&block, rc.storage)
 
 	// We update the L1 and L2 chain heads.
 	oldL2Head, err := rc.storage.FetchHeadRollupForL1Block(block.ParentHash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return nil, rc.rejectBlockErr(err)
 	}
-	newL2Head, err := rc.updateHeads(&block)
+	newL2Head, err := rc.updateL1AndL2Heads(&block, rollupsInBlock)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
@@ -280,7 +283,7 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 	return result, nil
 }
 
-func (rc *RollupChain) insertAndStoreL1Block(block types.Block, isLatest bool) error {
+func (rc *RollupChain) updateL1State(block types.Block, isLatest bool) error {
 	// We check whether we've already processed the block.
 	_, err := rc.storage.FetchBlock(block.Hash())
 	if err == nil {
@@ -404,9 +407,7 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head
 }
 
 // Updates the heads of the L1 and L2 chains.
-func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, error) {
-	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
-
+func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
 	blockType, err := rc.getBlockType(rollupsInBlock)
 	if err != nil {
 		return nil, fmt.Errorf("could not determine block type. Cause: %w", err)
