@@ -400,18 +400,19 @@ func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, bool
 
 	// Detect if the incoming block contains the genesis rollup, and generate an updated state.
 	// Handles the case of the block containing the genesis being processed multiple times.
-	genesisRollup, genesisInBlock, err := rc.handleGenesisRollup(block, rollupsInBlock)
+	genesisRollup, isGenesisBlock, err := rc.handleGenesisRollup(block, rollupsInBlock)
 	if err != nil {
 		// We're still waiting for the genesis rollup.
 		if errors.Is(err, errIsPreGenesis) {
 			return nil, false, nil
 		}
+		// We're reprocessing the genesis rollup block.
 		if errors.Is(err, errIsReprocessingGenesis) {
 			return genesisRollup, false, nil
 		}
 		return nil, false, fmt.Errorf("could not handle genesis rollup. Cause: %w", err)
 	}
-	if genesisInBlock {
+	if isGenesisBlock {
 		return genesisRollup, true, nil
 	}
 
