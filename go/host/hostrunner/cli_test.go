@@ -16,7 +16,7 @@ import (
 const testToml = "/test.toml"
 
 func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
-	expectedGossipRoundNanos := time.Duration(777)
+	p2pConnectionTimeout := time.Duration(777000000000)
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -26,21 +26,21 @@ func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not parse config. Cause: %s", err)
 	}
-	if cfg.GossipRoundDuration != expectedGossipRoundNanos {
-		t.Fatalf("config file was not parsed from TOML. Expected GossipRoundNanos of %d, got %d", expectedGossipRoundNanos, cfg.GossipRoundDuration)
+	if cfg.P2PConnectionTimeout != p2pConnectionTimeout {
+		t.Fatalf("config file was not parsed from TOML. Expected P2PConnectionTimeout of %d, got %d", p2pConnectionTimeout, cfg.P2PConnectionTimeout)
 	}
 }
 
 func TestConfigIsParsedFromCmdLineFlagsIfConfigFlagIsNotPresent(t *testing.T) {
-	expectedGossipRoundNanos := time.Duration(666)
-	os.Args = append(os.Args, "--"+gossipRoundNanosName, strconv.FormatInt(expectedGossipRoundNanos.Nanoseconds(), 10))
+	p2pConnectionTimeout := 6 * time.Second
+	os.Args = append(os.Args, "--"+p2pConnectionTimeoutSecsName, strconv.FormatInt(int64(p2pConnectionTimeout.Seconds()), 10))
 
 	cfg, err := ParseConfig()
 	if err != nil {
 		t.Fatalf("could not parse config. Cause: %s", err)
 	}
-	if cfg.GossipRoundDuration != expectedGossipRoundNanos {
-		t.Fatalf("config file was not parsed from flags. Expected GossipRoundNanos of %d, got %d", expectedGossipRoundNanos, cfg.GossipRoundDuration)
+	if cfg.P2PConnectionTimeout != p2pConnectionTimeout {
+		t.Fatalf("config file was not parsed from flags. Expected p2pConnectionTimeout of %d, got %d", p2pConnectionTimeout, cfg.P2PConnectionTimeout)
 	}
 }
 
