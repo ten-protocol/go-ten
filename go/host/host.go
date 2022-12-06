@@ -606,27 +606,14 @@ func (h *host) initialiseProtocol(block *types.Block) error {
 	if err != nil {
 		return fmt.Errorf("could not produce genesis. Cause: %w", err)
 	}
-	h.logger.Info(
-		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
-			common.ShortHash(genesisRollup.Header.Hash()),
-		))
+	h.logger.Info(fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
+		common.ShortHash(genesisRollup.Header.Hash())))
 
-	// Distribute the corresponding batch.
+	// Publish the genesis rollup.
+	h.publishRollup(genesisRollup)
+
+	// Distribute the corresponding genesis batch.
 	h.storeAndDistributeBatch(genesisRollup)
-
-	// Submit the rollup to the management contract.
-	encodedRollup, err := common.EncodeRollup(genesisRollup)
-	if err != nil {
-		return fmt.Errorf("could not encode rollup. Cause: %w", err)
-	}
-	l1tx := &ethadapter.L1RollupTx{
-		Rollup: encodedRollup,
-	}
-	rollupTx := h.mgmtContractLib.CreateRollup(l1tx, h.ethWallet.GetNonceAndIncrement())
-	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
-	if err != nil {
-		return fmt.Errorf("could not initialise protocol. Cause: %w", err)
-	}
 
 	return nil
 }

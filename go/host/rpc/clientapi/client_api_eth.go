@@ -46,10 +46,7 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 		api.logger.Error("could not retrieve head rollup header", log.ErrKey, err)
 		return 0
 	}
-
-	// TODO - #718 - Temp fix due to off-by-one error in `writeRollupNumber`.
-	number := header.Number.Uint64() - 1
-	return hexutil.Uint64(number)
+	return hexutil.Uint64(header.Number.Uint64())
 }
 
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the

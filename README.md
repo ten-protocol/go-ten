@@ -374,7 +374,7 @@ account on the L1 network used to deploy the Obscuro Management and the ERC20 co
 - `0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9` is the address of the ERC20 contract which represents OBX and is known a-priori as a nonce of 1 is used
 - `0x51D43a3Ca257584E770B6188232b199E76B022A2` is the address of the ERC20 contract which represents ETH and is known a-priori as a nonce of 2 is used
 
-Once started Obscurscan is available on `http://0.0.0.0:8098`.
+Once started Obscuroscan is available on `http://0.0.0.0:8098`.
 
 
 ### Building and running a local faucet

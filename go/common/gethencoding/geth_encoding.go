@@ -108,14 +108,14 @@ func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNu
 
 // ExtractBlockNumber returns a gethrpc.BlockNumber given an interface{}, errors if unexpected values are used
 func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumber, error) {
-	blockNumber := gethrpc.BlockNumber(0)
 	if param == nil {
 		return nil, errutil.ErrNotFound
 	}
 
+	blockNumber := gethrpc.BlockNumber(0)
 	err := blockNumber.UnmarshalJSON([]byte(param.(string)))
 	if err != nil {
-		return nil, fmt.Errorf("could not parse requested rollup number - %w", err)
+		return nil, fmt.Errorf("could not parse requested rollup number %s - %w", param.(string), err)
 	}
 
 	return &blockNumber, err
