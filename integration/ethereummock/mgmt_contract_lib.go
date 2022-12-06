@@ -34,6 +34,12 @@ func NewMgmtContractLibMock() mgmtcontractlib.MgmtContractLib {
 }
 
 func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+	// Do not decode erc20 transactions, this is the responsibility
+	// of the erc20 contract lib.
+	if tx.To().Hex() == depositTxAddr.Hex() {
+		return nil
+	}
+
 	return decodeTx(tx)
 }
 
