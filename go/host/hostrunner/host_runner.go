@@ -33,7 +33,7 @@ func RunHost(parsedConfig *config.HostInputConfig) {
 
 	logger := log.New(log.HostCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.ID)
 
-	fmt.Printf("Starting host with config: %+v", config)
+	fmt.Printf("Starting host with config: %+v\n", config)
 	logger.Info(fmt.Sprintf("Starting node with config: %+v", config))
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.RollupContractAddress, logger)
 
