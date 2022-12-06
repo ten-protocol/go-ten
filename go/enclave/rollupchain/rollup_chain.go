@@ -38,13 +38,14 @@ import (
 )
 
 const (
-	PreGenesis BlockType = iota
+	PreGenesis BlockStage = iota
 	Genesis
 	PostGenesis
 )
 
-// BlockType represents the type of a block - whether it's a pre-genesis, genesis or post-genesis L2 block.
-type BlockType int64
+// BlockStage represents where the block falls in the L2 chain's lifecycle - whether it's a pre-genesis, genesis or
+// post-genesis L2 block.
+type BlockStage int64
 
 // RollupChain represents the canonical chain, and manages the state.
 type RollupChain struct {
@@ -159,6 +160,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
+	// The pre-genesis L2 head is nil.
 	isUpdatedRollupHead := newL2Head != nil && (oldL2Head == nil || oldL2Head.Hex() != newL2Head.Hex())
 
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
@@ -430,7 +432,7 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, rollupsInBlock []*
 }
 
 // Determines if this is a pre-genesis L2 block, the genesis L2 block, or a post-genesis L2 block.
-func (rc *RollupChain) getBlockType(rollupsInBlock []*core.Rollup) (*BlockType, error) {
+func (rc *RollupChain) getBlockType(rollupsInBlock []*core.Rollup) (*BlockStage, error) {
 	_, err := rc.storage.FetchGenesisRollup()
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
