@@ -262,8 +262,8 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 // TestGetBalance runs the GetBalance tests
 func TestGetBalance(t *testing.T) {
 	tests := map[string]func(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey){
-		"getBalanceSuccess":     getBalanceSuccess,
-		"getBalanceRequestFail": getBalanceRequestUnsuccessful,
+		"getBalanceSuccess":             getBalanceSuccess,
+		"getBalanceRequestUnsuccessful": getBalanceRequestUnsuccessful,
 	}
 
 	for name, test := range tests {

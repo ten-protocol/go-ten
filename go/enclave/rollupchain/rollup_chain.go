@@ -165,6 +165,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 
 	var producedRollup *common.ExtRollup
 	// todo - joel - update comment to reflect new conditions
+	// todo - joel - don't have this ugly chunk up here
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
 	if rc.nodeType == common.Sequencer && !wasPreGenesisBlock && !wasGenesisBlock {
 		l1Head := block.Hash()
