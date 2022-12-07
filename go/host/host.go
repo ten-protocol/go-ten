@@ -866,7 +866,8 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 			return nil
 		}
 
-		// TODO - #718 - What happens if this op fails? We'll think we have the batch, so we'll never catch it up.
+		// TODO - #718 - What happens if this op fails? We'll think we have the batch, so we'll never catch it up and
+		//  attempt resubmission to the enclave.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
