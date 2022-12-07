@@ -176,7 +176,6 @@ func NewEnclave(
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 	chain := rollupchain.New(
 		config.HostID,
-		config.IsSequencerEnclave,
 		config.NodeType,
 		storage,
 		l1Blockchain,

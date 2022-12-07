@@ -4,19 +4,19 @@
 # This script downloads and builds the Obscuro node.
 #
 # Note: Be aware that a network MUST always have EXACTLY ONE genesis node (i.e. with flag `is_genesis=true`);
-# otherwise, your node wil spin forever waiting for the network secret. In addition, a network MUST always have AT
-# LEAST ONE aggregator (i.e. with flag `node_type=aggregator`); otherwise no rollups will be produced. In addition, the
-# genesis node MUST be one of the aggregators.
+# otherwise, your node wil spin forever waiting for the network secret. In addition, a network MUST always have ONE
+# sequencer (i.e. with flag `node_type=sequencer`); otherwise no rollups will be produced. In addition, the genesis
+# node MUST be the sequencer.
 #
 
 help_and_exit() {
     echo ""
     echo "Usage: "
     echo "   ex: (run locally to internal l1 on local SGX NON capable hardware)"
-    echo "      -  $(basename "${0}") --sgx_enabled=false --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true --node_type=aggregator"
+    echo "      -  $(basename "${0}") --sgx_enabled=false --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true --node_type=sequencer"
     echo ""
     echo "   ex: (run connected to an external l1 on local SGX capable hardware)"
-    echo "      -  $(basename "${0}") --sgx_enabled=true --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --node_type=aggregator"
+    echo "      -  $(basename "${0}") --sgx_enabled=true --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --node_type=sequencer"
     echo ""
     echo "  l1host             *Required* Set the l1 host address"
     echo ""

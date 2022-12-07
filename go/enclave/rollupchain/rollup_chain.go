@@ -49,10 +49,9 @@ type BlockStage int64
 
 // RollupChain represents the canonical chain, and manages the state.
 type RollupChain struct {
-	hostID             gethcommon.Address
-	isSequencerEnclave bool
-	nodeType           common.NodeType
-	chainConfig        *params.ChainConfig
+	hostID      gethcommon.Address
+	nodeType    common.NodeType
+	chainConfig *params.ChainConfig
 
 	storage               db.Storage
 	l1Blockchain          *gethcore.BlockChain
@@ -74,7 +73,6 @@ type RollupChain struct {
 
 func New(
 	hostID gethcommon.Address,
-	isSequencerEnclave bool,
 	nodeType common.NodeType,
 	storage db.Storage,
 	l1Blockchain *gethcore.BlockChain,
@@ -88,7 +86,6 @@ func New(
 ) *RollupChain {
 	return &RollupChain{
 		hostID:                hostID,
-		isSequencerEnclave:    isSequencerEnclave,
 		nodeType:              nodeType,
 		storage:               storage,
 		l1Blockchain:          l1Blockchain,
@@ -168,7 +165,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
 	var rollup *common.ExtRollup
-	if rc.isSequencerEnclave && !wasPreGenesisBlock && !wasGenesisBlock {
+	if rc.nodeType == common.Sequencer && !wasPreGenesisBlock && !wasGenesisBlock {
 		l1Head := block.Hash()
 		rollup, err = rc.produceNewRollup(&l1Head)
 		if err != nil {
@@ -430,13 +427,13 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head
 
 // Updates the heads of the L1 and L2 chains.
 func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
-	blockType, err := rc.getBlockType(rollupsInBlock)
+	blockStage, err := rc.getBlockStage(rollupsInBlock)
 	if err != nil {
 		return nil, fmt.Errorf("could not determine block type. Cause: %w", err)
 	}
 
 	var l2Head *common.L2RootHash
-	switch blockType {
+	switch blockStage {
 	case PreGenesis:
 		l2Head = nil
 	case Genesis:
@@ -452,7 +449,7 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, rollupsInBlock []*
 }
 
 // Determines if this is a pre-genesis L2 block, the genesis L2 block, or a post-genesis L2 block.
-func (rc *RollupChain) getBlockType(rollupsInBlock []*core.Rollup) (BlockStage, error) {
+func (rc *RollupChain) getBlockStage(rollupsInBlock []*core.Rollup) (BlockStage, error) {
 	_, err := rc.storage.FetchGenesisRollup()
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {

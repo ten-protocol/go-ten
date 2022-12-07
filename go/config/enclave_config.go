@@ -15,8 +15,6 @@ import (
 type EnclaveConfig struct {
 	// The identity of the host the enclave service is tied to
 	HostID gethcommon.Address
-	// Whether the enclave is the enclave of the network's sequencer.
-	IsSequencerEnclave bool
 	// The peer-to-peer IP address of the host the enclave service is tied to
 	HostAddress string
 	// The address on which to serve requests
@@ -60,10 +58,9 @@ type EnclaveConfig struct {
 func DefaultEnclaveConfig() EnclaveConfig {
 	return EnclaveConfig{
 		HostID:                    gethcommon.BytesToAddress([]byte("")),
-		IsSequencerEnclave:        false,
 		HostAddress:               "127.0.0.1:10000",
 		Address:                   "127.0.0.1:11000",
-		NodeType:                  common.Aggregator,
+		NodeType:                  common.Sequencer,
 		L1ChainID:                 1337,
 		ObscuroChainID:            777,
 		WillAttest:                false, // todo: attestation should be on by default before production release
