@@ -848,11 +848,7 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 	for _, batch := range batches {
 		// TODO - #718 - Think carefully about the risk of inconsistency between the enclave and the host in terms of
-		//  batches stored.
-		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
-			return fmt.Errorf("could not submit batch. Cause: %w", err)
-		}
-
+		//  batches stored. It may be better to have the enclave manage the entire state.
 		err = h.batchManager.StoreBatch(batch)
 		if err != nil {
 			if !errors.Is(err, batchmanager.ErrBatchesMissing) {
@@ -868,6 +864,11 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 				return fmt.Errorf("could not request historical batches. Cause: %w", err)
 			}
 			return nil
+		}
+
+		// TODO - #718 - Think about what happens if the corresponding L1 block hasn't been stored yet.
+		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
+			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
 	}
 

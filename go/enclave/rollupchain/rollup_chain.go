@@ -195,6 +195,11 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
 func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
+	println(fmt.Sprintf("node %s received batch %d", rc.hostID.Hex(), batch.Header.Number))
+	_, err := rc.storage.FetchBlock(batch.Header.L1Proof)
+	if err != nil {
+		panic(fmt.Errorf("node %s should have L1 block", rc.hostID.Hex()))
+	}
 	return nil
 }
 
