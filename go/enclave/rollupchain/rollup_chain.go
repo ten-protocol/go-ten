@@ -196,10 +196,12 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
 func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
-	_, err := rc.storage.FetchBlock(batch.Header.L1Proof)
-	if err != nil {
-		panic(fmt.Errorf("node %s should have L1 block", rc.hostID.Hex()))
-	}
+	rc.blockProcessingMutex.Lock()
+	defer rc.blockProcessingMutex.Unlock()
+
+	// todo - joel - avoid readding stored batches?
+
+	// println(fmt.Sprintf("node %s received batch %d with parent %s", rc.hostID.Hex(), batch.Header.Number, batch.Header.ParentHash.Hex()))
 
 	extRollup := common.ExtRollup{
 		Header:          batch.Header,
@@ -209,7 +211,7 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
 	rollup := core.ToEnclaveRollup(&extRollup, rc.transactionBlobCrypto)
 
 	var rollupTxReceipts []*types.Receipt
-	rollupTxReceipts, err = rc.checkRollup(rollup)
+	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
 		panic(fmt.Errorf("failed to check rollup. Cause: %w", err))
 	}
