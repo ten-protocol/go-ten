@@ -163,16 +163,17 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	wasPreGenesisBlock := newL2Head == nil
 	wasGenesisBlock := (newL2Head != nil) && (oldL2Head == nil)
 
+	var producedRollup *common.ExtRollup
+	// todo - joel - update comment to reflect new conditions
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
-	var rollup *common.ExtRollup
 	if rc.nodeType == common.Sequencer && !wasPreGenesisBlock && !wasGenesisBlock {
 		l1Head := block.Hash()
-		rollup, err = rc.produceNewRollup(&l1Head)
+		producedRollup, err = rc.produceNewRollup(&l1Head)
 		if err != nil {
 			return nil, rc.rejectBlockErr(err)
 		}
 
-		enclaveRollup := core.ToEnclaveRollup(rollup, rc.transactionBlobCrypto)
+		enclaveRollup := core.ToEnclaveRollup(producedRollup, rc.transactionBlobCrypto)
 
 		var rollupTxReceipts []*types.Receipt
 		rollupTxReceipts, err = rc.checkRollup(enclaveRollup)
@@ -190,16 +191,34 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 		isUpdatedRollupHead = true
 	}
 
-	return rc.produceBlockSubmissionResponse(&block, newL2Head, isUpdatedRollupHead, rollup)
+	return rc.produceBlockSubmissionResponse(&block, newL2Head, isUpdatedRollupHead, producedRollup)
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
 func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
-	println(fmt.Sprintf("node %s received batch %d", rc.hostID.Hex(), batch.Header.Number))
 	_, err := rc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {
 		panic(fmt.Errorf("node %s should have L1 block", rc.hostID.Hex()))
 	}
+
+	extRollup := common.ExtRollup{
+		Header:          batch.Header,
+		TxHashes:        batch.TxHashes,
+		EncryptedTxBlob: batch.EncryptedTxBlob,
+	}
+	rollup := core.ToEnclaveRollup(&extRollup, rc.transactionBlobCrypto)
+
+	var rollupTxReceipts []*types.Receipt
+	rollupTxReceipts, err = rc.checkRollup(rollup)
+	if err != nil {
+		panic(fmt.Errorf("failed to check rollup. Cause: %w", err))
+	}
+
+	err = rc.storage.StoreNewHeads(batch.Header.L1Proof, rollup, rollupTxReceipts, true)
+	if err != nil {
+		panic(fmt.Errorf("could not store new head. Cause: %w", err))
+	}
+
 	return nil
 }
 

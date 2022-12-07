@@ -521,7 +521,6 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
-		println("jjj distributing rollup", result.ProducedRollup.Header.Number.Int64())
 		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
 
@@ -866,6 +865,10 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 			return nil
 		}
 
+		if batch.Header.Number.Uint64() == common.L2GenesisHeight {
+			// todo - joel - explain this - it's because we get the genesis from the L1 block (for now, at least)
+			continue
+		}
 		// TODO - #718 - Think about what happens if the corresponding L1 block hasn't been stored yet.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
