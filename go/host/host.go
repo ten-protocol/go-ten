@@ -874,6 +874,7 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	for _, batch := range batches {
 		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
 		// up later, once we've received the L1 block.
+		// TODO - #718 - This should be a special error type returned by `StoreBatch`.
 		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
