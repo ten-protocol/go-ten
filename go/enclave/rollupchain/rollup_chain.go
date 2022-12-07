@@ -158,27 +158,19 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 		return nil, rc.rejectBlockErr(err)
 	}
 
-	// The pre-genesis L2 head is nil.
-	isUpdatedRollupHead := newL2Head != nil && (oldL2Head == nil || oldL2Head.Hex() != newL2Head.Hex())
+	isUpdatedRollupHead := newL2Head != nil && (oldL2Head == nil || oldL2Head.Hex() != newL2Head.Hex()) // The pre-genesis L2 head is nil.
 	isPostGenesisBlock := (newL2Head != nil) && (oldL2Head != nil)
 
+	// If we're the sequencer and we're beyond the genesis block, we produce and store the new L2 chain head.
 	var producedRollup *core.Rollup
-	// If we're the sequencer and we're post-genesis, we produce and store the new L2 chain head.
 	if rc.nodeType == common.Sequencer && isPostGenesisBlock {
-		l1Head := block.Hash()
-		var rollupTxReceipts []*types.Receipt
-		producedRollup, rollupTxReceipts, err = rc.produceNewRollup(&l1Head)
+		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(block.Hash())
 		if err != nil {
 			return nil, rc.rejectBlockErr(err)
 		}
 
-		err = rc.storage.StoreNewHeads(block.Hash(), producedRollup, rollupTxReceipts, true)
-		if err != nil {
-			panic(fmt.Errorf("could not store new head. Cause: %w", err))
-		}
-
-		rollupHash := producedRollup.Hash()
-		newL2Head = &rollupHash
+		producedRollupHash := producedRollup.Hash()
+		newL2Head = &producedRollupHash
 		isUpdatedRollupHead = true
 	}
 
@@ -404,26 +396,32 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-// Creates a new rollup, building on the latest chain heads.
-func (rc *RollupChain) produceNewRollup(l1Head *common.L1RootHash) (*core.Rollup, []*types.Receipt, error) {
-	rollup, err := rc.produceRollup(l1Head)
+// Creates a new rollup, building on the latest chain heads, and updates the current L2 head.
+func (rc *RollupChain) produceNewRollupAndUpdateL2Head(l1Head common.L1RootHash) (*core.Rollup, error) {
+	rollup, err := rc.produceRollup(&l1Head)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
 	if err = rc.signRollup(rollup); err != nil {
-		return nil, nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
 	}
 	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not check rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
 	}
 
+	// todo - joel - is this store redundant now?
 	if err = rc.storage.StoreRollup(rollup); err != nil {
-		return nil, nil, fmt.Errorf("could not store rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
+	}
+
+	err = rc.storage.StoreNewHeads(l1Head, rollup, rollupTxReceipts, true)
+	if err != nil {
+		panic(fmt.Errorf("could not store new head. Cause: %w", err))
 	}
 
 	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(rollup.Hash())))
-	return rollup, rollupTxReceipts, nil
+	return rollup, nil
 }
 
 func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, isUpdatedRollupHead bool, producedRollup *core.Rollup) (*common.BlockSubmissionResponse, error) {
