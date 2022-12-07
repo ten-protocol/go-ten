@@ -14,17 +14,21 @@ import (
 func RandomRollup(block *types.Block) common.ExtRollup {
 	extRollup := common.ExtRollup{
 		Header: &common.Header{
-			ParentHash:                    randomHash(),
-			Agg:                           RandomAddress(),
-			L1Proof:                       randomHash(),
-			Root:                          randomHash(),
-			Number:                        big.NewInt(int64(RandomUInt64())),
-			Withdrawals:                   randomWithdrawals(10),
-			LatestInboundCrossChainHeight: block.Number(),
-			LatestInboudCrossChainHash:    block.Hash(),
+			ParentHash:  randomHash(),
+			Agg:         RandomAddress(),
+			L1Proof:     randomHash(),
+			Root:        randomHash(),
+			Number:      big.NewInt(int64(RandomUInt64())),
+			Withdrawals: randomWithdrawals(10),
 		},
 		TxHashes:        []gethcommon.Hash{randomHash()},
 		EncryptedTxBlob: RandomBytes(10),
 	}
+
+	if block != nil {
+		extRollup.Header.LatestInboundCrossChainHeight = block.Number()
+		extRollup.Header.LatestInboudCrossChainHash = block.Hash()
+	}
+
 	return extRollup
 }
