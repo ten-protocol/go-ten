@@ -214,7 +214,7 @@ func (s *Simulation) prefundL1Accounts() {
 			panic(err)
 		}
 
-		//s.Stats.Deposit(initialBalance)
+		// s.Stats.Deposit(initialBalance)
 		go s.TxInjector.TxTracker.trackL1Tx(txData)
 	}
 }
