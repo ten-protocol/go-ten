@@ -845,31 +845,29 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		return nil
 	}
 
-	// We store the batches.
-	err = h.batchManager.StoreBatches(batches)
-	if err != nil {
-		if !errors.Is(err, batchmanager.ErrBatchesMissing) {
-			return fmt.Errorf("could not store batches. Cause: %w", err)
-		}
-
-		// We have encountered missing batches. We abort the storage operation and request the missing batches.
-		batchRequest, err := h.batchManager.CreateBatchRequest(h.config.P2PPublicAddress)
-		if err != nil {
-			return fmt.Errorf("could not create batch request. Cause: %w", err)
-		}
-		if err = h.p2p.RequestBatches(batchRequest); err != nil {
-			return fmt.Errorf("could not request historical batches. Cause: %w", err)
-		}
-
-		// If we requested any batches, we return early and wait for the missing batches to arrive.
-		return nil
-	}
-
-	// TODO - #718 - We should probably submit each batch after storing it, and not submitting each one only if *every*
-	//  batch was stored correctly.
+	// We store the batches and submit them to the enclave.
 	for _, batch := range batches {
+		// TODO - #718 - Think carefully about the risk of inconsistency between the enclave and the host in terms of
+		//  batches stored.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
+		}
+
+		err = h.batchManager.StoreBatch(batch)
+		if err != nil {
+			if !errors.Is(err, batchmanager.ErrBatchesMissing) {
+				return fmt.Errorf("could not store batches. Cause: %w", err)
+			}
+
+			// We have encountered missing batches. We abort the storage operation and request the missing batches.
+			batchRequest, err := h.batchManager.CreateBatchRequest(h.config.P2PPublicAddress)
+			if err != nil {
+				return fmt.Errorf("could not create batch request. Cause: %w", err)
+			}
+			if err = h.p2p.RequestBatches(batchRequest); err != nil {
+				return fmt.Errorf("could not request historical batches. Cause: %w", err)
+			}
+			return nil
 		}
 	}
 
