@@ -442,10 +442,7 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 		sender := getSender(tx)
 		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
 		l2tx, _, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
-		if err != nil {
-			panic(fmt.Errorf("node %d: could not retrieve transaction %s. Cause: %w", nodeIdx, tx.Hash(), err))
-		}
-		if l2tx == nil {
+		if err != nil || l2tx == nil {
 			notFoundTransfers++
 		}
 	}
@@ -455,10 +452,7 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 		sender := getSender(tx)
 		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
 		l2tx, _, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
-		if err != nil {
-			panic(err)
-		}
-		if l2tx == nil {
+		if err != nil || l2tx == nil {
 			notFoundWithdrawals++
 		}
 	}
@@ -484,7 +478,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		// We check that there is a receipt available for each transaction
 		receipt, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
-			t.Errorf("could not retrieve receipt for transaction %s. Cause: %s", tx.Hash().Hex(), err)
+			t.Errorf("node %d: could not retrieve receipt for transaction %s. Cause: %s", nodeIdx, tx.Hash().Hex(), err)
 			continue
 		}
 

@@ -69,7 +69,7 @@ func (s *Simulation) Start() {
 	testlog.Logger().Info("Starting injection")
 	go s.TxInjector.Start()
 
-	stoppingDelay := 7 * time.Second
+	stoppingDelay := s.Params.AvgBlockDuration * 7
 
 	// Wait for the simulation time
 	time.Sleep(s.SimulationTime - stoppingDelay)
