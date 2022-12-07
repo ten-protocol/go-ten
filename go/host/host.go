@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/container"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -351,6 +352,15 @@ func (h *host) Stop() {
 	h.exitHostCh <- true
 
 	h.logger.Info("Host shut down successfully.")
+}
+
+func (h *host) Status() container.Status {
+	// todo: return container.Recovering when dependencies are unavailable (enclave, l1 client, DB)
+	if *h.stopHostInterrupt == 0 {
+		return container.Running
+	} else {
+		return container.Stopped
+	}
 }
 
 // HealthCheck returns whether the host, enclave and DB are healthy

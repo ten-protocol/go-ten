@@ -1,4 +1,4 @@
-package hostrunner
+package hostcontainer
 
 import (
 	"os"
