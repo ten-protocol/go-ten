@@ -849,6 +849,8 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 	// We store the batches and submit them to the enclave.
 	for _, batch := range batches {
+		// TODO - #718 - Think carefully about the risk of inconsistency between the enclave and the host in terms of
+		//  batches stored.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
