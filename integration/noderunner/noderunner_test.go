@@ -48,6 +48,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		LogDir:      testLogs,
 		TestType:    "noderunner",
 		TestSubtype: "test",
+		LogLevel:    gethlog.LvlInfo,
 	})
 
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, integration.StartPortNodeRunnerTest)
@@ -70,7 +71,6 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.HostID = hostAddress
-	enclaveConfig.IsSequencerEnclave = true
 	enclaveConfig.Address = enclaveAddr
 	dummyContractAddress := common.BytesToAddress([]byte("AA"))
 	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}

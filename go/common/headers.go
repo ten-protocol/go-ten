@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -39,10 +40,18 @@ type Header struct {
 	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
-	Agg         common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
-	L1Proof     L1RootHash     // the L1 block used by the enclave to generate the current rollup
-	R, S        *big.Int       // signature values
-	Withdrawals []Withdrawal
+	Agg     common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
+	L1Proof L1RootHash     // the L1 block used by the enclave to generate the current rollup
+	R, S    *big.Int       // signature values
+	// TODO: mark as deprecated Withdrawals are now contained within cross chain messages.
+	Withdrawals        []Withdrawal
+	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
+
+	// The block hash of the latest block that has been scanned for cross chain messages.
+	LatestInboudCrossChainHash common.Hash `json:"inboundCrossChainHash"`
+
+	// The block height of the latest block that has been scanned for cross chain messages.
+	LatestInboundCrossChainHeight *big.Int `json:"inboundCrossChainHeight"`
 }
 
 // Withdrawal - this is the withdrawal instruction that is included in the rollup header.

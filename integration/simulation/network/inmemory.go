@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
@@ -48,6 +47,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	params.Wallets.Tokens[bridge.HOC].L1ContractAddress = &dummyOBXAddress
 	dummyETHAddress := datagenerator.RandomAddress()
 	params.Wallets.Tokens[bridge.POC].L1ContractAddress = &dummyETHAddress
+	disabledBus := common.BigToAddress(common.Big0)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
@@ -68,6 +68,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			miner,
 			params.Wallets,
 			p2pLayers[i],
+			&disabledBus,
 			common.Hash{},
 		)
 		obscuroClient := p2p.NewInMemObscuroClient(agg)

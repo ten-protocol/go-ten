@@ -58,6 +58,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			l1Clients[i],
 			params.Wallets,
 			p2pLayers[i],
+			params.L1SetupData.MessageBusAddr,
 			params.L1SetupData.ObscuroStartBlock,
 		)
 	}
@@ -180,7 +181,6 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 
 		enclaveConfig := config.EnclaveConfig{
 			HostID:                 gethcommon.BigToAddress(big.NewInt(int64(i))),
-			IsSequencerEnclave:     i == 0,
 			HostAddress:            hostAddr,
 			Address:                enclaveAddr,
 			NodeType:               GetNodeType(i),
@@ -192,6 +192,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 			UseInMemoryDB:          false,
 			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
 			MinGasPrice:            big.NewInt(1),
+			MessageBusAddress:      *params.L1SetupData.MessageBusAddr,
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
 		encl := enclave.NewEnclave(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
@@ -294,9 +295,9 @@ func isAddressAvailable(address string) bool {
 
 // GetNodeType returns the type of the node based on its ID.
 func GetNodeType(i int) common.NodeType {
-	// Only the genesis node is assigned the role of aggregator.
+	// Only the genesis node is assigned the role of sequencer.
 	if i == 0 {
-		return common.Aggregator
+		return common.Sequencer
 	}
 	return common.Validator
 }

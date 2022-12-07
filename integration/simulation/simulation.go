@@ -165,7 +165,8 @@ func (s *Simulation) deployObscuroERC20s() {
 		go func(token bridge.ERC20) {
 			defer wg.Done()
 			owner := s.Params.Wallets.Tokens[token].L2Owner
-			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token))
+			// 0x526c84529b2b8c11f57d93d3f5537aca3aecef9b - this is the address of the L2 contract which is currently hardcoded.
+			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), gethcommon.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b"))
 
 			deployContractTx := types.DynamicFeeTx{
 				Nonce:     NextNonce(s.ctx, s.RPCHandles, owner),
@@ -195,15 +196,17 @@ func (s *Simulation) deployObscuroERC20s() {
 // Sends an amount from the faucet to each L1 account, to pay for transactions.
 func (s *Simulation) prefundL1Accounts() {
 	for _, w := range s.Params.Wallets.SimEthWallets {
-		addr := w.Address()
+		receiver := w.Address()
+		tokenOwner := s.Params.Wallets.Tokens[bridge.HOC].L1Owner
+		ownerAddr := tokenOwner.Address()
 		txData := &ethadapter.L1DepositTx{
 			Amount:        initialBalance,
-			To:            &s.Params.L1SetupData.MgmtContractAddress,
+			To:            &receiver,
 			TokenContract: s.Params.Wallets.Tokens[bridge.HOC].L1ContractAddress,
-			Sender:        &addr,
+			Sender:        &ownerAddr,
 		}
-		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData, w.GetNonceAndIncrement())
-		signedTx, err := w.SignTransaction(tx)
+		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData, tokenOwner.GetNonceAndIncrement())
+		signedTx, err := tokenOwner.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}
@@ -212,7 +215,11 @@ func (s *Simulation) prefundL1Accounts() {
 			panic(err)
 		}
 
-		s.Stats.Deposit(initialBalance)
+		// TODO:: Add better tracking for failed transactions and display revert reasons
+
+		// Not sure why this is tracked as deposit; This is a prefunding transfer. Needs different logic.
+		// s.Stats.Deposit(initialBalance)
+
 		go s.TxInjector.TxTracker.trackL1Tx(txData)
 	}
 }

@@ -71,6 +71,7 @@ func createInMemObscuroNode(
 	ethClient ethadapter.EthClient,
 	wallets *params.SimWallets,
 	mockP2P *simp2p.MockP2P,
+	l1BusAddress *gethcommon.Address,
 	l1StartBlk gethcommon.Hash,
 ) commonhost.Host {
 	hostConfig := &config.HostConfig{
@@ -84,7 +85,6 @@ func createInMemObscuroNode(
 
 	enclaveConfig := config.EnclaveConfig{
 		HostID:                 hostConfig.ID,
-		IsSequencerEnclave:     id == 0,
 		NodeType:               nodeType,
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,
@@ -94,7 +94,9 @@ func createInMemObscuroNode(
 		UseInMemoryDB:          true,
 		ERC20ContractAddresses: wallets.AllEthAddresses(),
 		MinGasPrice:            big.NewInt(1),
+		MessageBusAddress:      *l1BusAddress,
 	}
+
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
 	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, enclaveLogger)
 

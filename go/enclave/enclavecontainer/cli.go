@@ -17,7 +17,6 @@ import (
 // EnclaveConfigToml is the structure that an enclave's .toml config is parsed into.
 type EnclaveConfigToml struct {
 	HostID                    string
-	IsSequencerEnclave        bool
 	HostAddress               string
 	Address                   string
 	NodeType                  string
@@ -36,6 +35,7 @@ type EnclaveConfigToml struct {
 	SqliteDBPath              string
 	ProfilerEnabled           bool
 	MinGasPrice               int64
+	MessageBusAddress         string
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
@@ -46,7 +46,6 @@ func ParseConfig() (config.EnclaveConfig, error) {
 
 	configPath := flag.String(configName, "", flagUsageMap[configName])
 	hostID := flag.String(hostIDName, cfg.HostID.Hex(), flagUsageMap[hostIDName])
-	isSequencerEnclave := flag.Bool(isSequencerEnclaveName, cfg.IsSequencerEnclave, flagUsageMap[isSequencerEnclaveName])
 	hostAddress := flag.String(hostAddressName, cfg.HostAddress, flagUsageMap[hostAddressName])
 	address := flag.String(addressName, cfg.Address, flagUsageMap[addressName])
 	nodeTypeStr := flag.String(nodeTypeName, cfg.NodeType.String(), flagUsageMap[nodeTypeName])
@@ -64,6 +63,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	sqliteDBPath := flag.String(sqliteDBPathName, cfg.SqliteDBPath, flagUsageMap[sqliteDBPathName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
 	minGasPrice := flag.Int64(minGasPriceName, cfg.MinGasPrice.Int64(), flagUsageMap[minGasPriceName])
+	messageBusAddress := flag.String(messageBusAddressName, cfg.MessageBusAddress.Hex(), flagUsageMap[messageBusAddressName])
 
 	flag.Parse()
 
@@ -89,7 +89,6 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	}
 
 	cfg.HostID = gethcommon.HexToAddress(*hostID)
-	cfg.IsSequencerEnclave = *isSequencerEnclave
 	cfg.HostAddress = *hostAddress
 	cfg.Address = *address
 	cfg.NodeType = nodeType
@@ -107,6 +106,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	cfg.SqliteDBPath = *sqliteDBPath
 	cfg.ProfilerEnabled = *profilerEnabled
 	cfg.MinGasPrice = big.NewInt(*minGasPrice)
+	cfg.MessageBusAddress = gethcommon.HexToAddress(*messageBusAddress)
 
 	return cfg, nil
 }

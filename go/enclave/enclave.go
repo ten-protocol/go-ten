@@ -28,6 +28,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
@@ -53,6 +54,7 @@ type enclaveImpl struct {
 	rpcEncryptionManager rpc.EncryptionManager
 	bridge               *bridge.Bridge
 	subscriptionManager  *events.SubscriptionManager
+	crossChainProcessors *crosschain.Processors
 
 	chain *rollupchain.RollupChain
 
@@ -173,15 +175,17 @@ func NewEnclave(
 	)
 	memp := mempool.New(config.ObscuroChainID)
 
+	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
+
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 	chain := rollupchain.New(
 		config.HostID,
-		config.IsSequencerEnclave,
 		config.NodeType,
 		storage,
 		l1Blockchain,
 		obscuroBridge,
 		subscriptionManager,
+		crossChainProcessors,
 		transactionBlobCrypto,
 		memp,
 		enclaveKey,
@@ -200,6 +204,7 @@ func NewEnclave(
 		rpcEncryptionManager:  rpcEncryptionManager,
 		bridge:                obscuroBridge,
 		subscriptionManager:   subscriptionManager,
+		crossChainProcessors:  crossChainProcessors,
 		chain:                 chain,
 		txCh:                  make(chan *common.L2Tx),
 		exitCh:                make(chan bool),
@@ -251,10 +256,10 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup
 	return &genesisExtRollup, nil
 }
 
-// SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+// SubmitBlock is used to update the enclave with an additional L1 block.
+func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	blockSubmissionResponse, err := e.chain.ProcessL1Block(block, isLatest)
+	blockSubmissionResponse, err := e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
@@ -287,6 +292,11 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	if err != nil {
 		e.logger.Info("could not decrypt transaction. ", log.ErrKey, err)
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
+	}
+
+	isSyntheticTx := e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx)
+	if isSyntheticTx {
+		return nil, fmt.Errorf("synthetic transaction coming from external rpc")
 	}
 
 	err = e.checkGas(decryptedTx)
