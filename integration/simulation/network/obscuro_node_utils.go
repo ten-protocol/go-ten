@@ -8,7 +8,9 @@ import (
 	"sync"
 	"time"
 
-	rpc2 "github.com/obscuronet/go-obscuro/go/enclave"
+	"github.com/obscuronet/go-obscuro/go/enclave/container"
+
+	"github.com/obscuronet/go-obscuro/go/enclave"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
@@ -193,9 +195,15 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 			MessageBusAddress:      *params.L1SetupData.MessageBusAddr,
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
-		_, err := rpc2.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
+		encl := enclave.NewEnclave(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
+		enclaveContainer := container.EnclaveContainer{
+			Enclave:   encl,
+			RPCServer: enclave.NewEnclaveRPCServer(enclaveConfig.Address, encl, enclaveLogger),
+			Logger:    enclaveLogger,
+		}
+		err := enclaveContainer.Start()
 		if err != nil {
-			panic(fmt.Sprintf("could not create enclave server: %v", err))
+			panic(fmt.Sprintf("could not start enclave server: %s", err))
 		}
 	}
 }
