@@ -157,16 +157,14 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
+
 	// The pre-genesis L2 head is nil.
 	isUpdatedRollupHead := newL2Head != nil && (oldL2Head == nil || oldL2Head.Hex() != newL2Head.Hex())
-
-	wasPreGenesisBlock := newL2Head == nil
-	wasGenesisBlock := (newL2Head != nil) && (oldL2Head == nil)
+	isPostGenesisBlock := (newL2Head != nil) && (oldL2Head != nil)
 
 	var producedRollup *core.Rollup
-	// todo - joel - don't have this ugly chunk up here
 	// If we're the sequencer and we're post-genesis, we produce and store the new L2 chain head.
-	if rc.nodeType == common.Sequencer && !wasPreGenesisBlock && !wasGenesisBlock {
+	if rc.nodeType == common.Sequencer && isPostGenesisBlock {
 		l1Head := block.Hash()
 		var rollupTxReceipts []*types.Receipt
 		producedRollup, rollupTxReceipts, err = rc.produceNewRollup(&l1Head)
