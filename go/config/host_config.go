@@ -152,7 +152,7 @@ type HostConfig struct {
 func DefaultHostParsedConfig() *HostInputConfig {
 	return &HostInputConfig{
 		IsGenesis:              true,
-		NodeType:               common.Aggregator,
+		NodeType:               common.Sequencer,
 		HasClientRPCHTTP:       true,
 		ClientRPCPortHTTP:      13000,
 		HasClientRPCWebsockets: true,
