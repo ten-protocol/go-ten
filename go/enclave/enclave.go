@@ -318,8 +318,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 }
 
 func (e *enclaveImpl) SubmitBatch(batch *common.ExtBatch) error {
-	// TODO - #718 - Store the received batch, once it's no longer stored when processing the L1 block.
-	return nil
+	return e.chain.UpdateL2Chain(batch)
 }
 
 // ExecuteOffChainTransaction handles param decryption, validation and encryption

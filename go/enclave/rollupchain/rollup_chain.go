@@ -193,6 +193,11 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	return rc.produceBlockSubmissionResponse(&block, newL2Head, isUpdatedRollupHead, rollup)
 }
 
+// UpdateL2Chain updates the L2 chain based on the received batch.
+func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
+	return nil
+}
+
 func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
 	// get account balance at certain block/height
 	balance, err := rc.GetBalanceAtBlock(accountAddress, blockNumber)
