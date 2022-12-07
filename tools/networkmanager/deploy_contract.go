@@ -18,7 +18,6 @@ import (
 
 // DeployContract deploys a management contract or ERC20 contract to the L1 network, and prints its address.
 func DeployContract(config Config, logger gethlog.Logger) {
-
 	l1Client, err := ethadapter.NewEthClient(config.l1NodeHost, config.l1NodeWebsocketPort, config.l1RPCTimeout, common.HexToAddress("0x0"), logger)
 	if err != nil {
 		panic(err)

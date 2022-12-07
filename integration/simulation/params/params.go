@@ -51,6 +51,6 @@ type L1SetupData struct {
 	ObxErc20Address common.Address
 	// EthErc20Address - the address of the "ETH" ERC20
 	EthErc20Address common.Address
-	//MessageBusAddr - the address of the L1 message bus.
+	// MessageBusAddr - the address of the L1 message bus.
 	MessageBusAddr *common.Address
 }

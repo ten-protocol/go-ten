@@ -149,6 +149,7 @@ func FromCrossChainMsgs(messages []*generated.CrossChainMsg) []MessageBus.Struct
 
 	return outMessages
 }
+
 func ToExtBatchMsg(batch *common.ExtBatch) generated.ExtBatchMsg {
 	if batch == nil || batch.Header == nil {
 		return generated.ExtBatchMsg{}
