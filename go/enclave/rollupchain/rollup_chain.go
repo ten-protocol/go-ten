@@ -199,8 +199,6 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	// todo - joel - avoid readding stored batches?
-
 	// println(fmt.Sprintf("node %s received batch %d with parent %s", rc.hostID.Hex(), batch.Header.Number, batch.Header.ParentHash.Hex()))
 
 	extRollup := common.ExtRollup{
@@ -210,7 +208,14 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
 	}
 	rollup := core.ToEnclaveRollup(&extRollup, rc.transactionBlobCrypto)
 
-	var rollupTxReceipts []*types.Receipt
+	_, err := rc.storage.FetchRollup(rollup.Hash())
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		panic("todo joel bad")
+	}
+	if err == nil {
+		return nil // todo - joel - describe - because we've processed it before
+	}
+
 	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
 		panic(fmt.Errorf("failed to check rollup. Cause: %w", err))
