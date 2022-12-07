@@ -21,18 +21,19 @@ sudo apt-get update \
 
 #### - Download Obscuro Start script
 
-Make sure to use the latest version at https://github.com/obscuronet/go-obscuro/tags
+
+Make sure to use the latest `<version>` at https://github.com/obscuronet/go-obscuro/tags.
 
 ```
-  wget https://raw.githubusercontent.com/obscuronet/go-obscuro/v0.7.1/testnet/start-obscuro-node.sh && \
-  wget https://raw.githubusercontent.com/obscuronet/go-obscuro/v0.7.1/testnet/docker-compose.yml
+  wget https://raw.githubusercontent.com/obscuronet/go-obscuro/<version>/testnet/start-obscuro-node.sh && \
+  wget https://raw.githubusercontent.com/obscuronet/go-obscuro/<version>/testnet/docker-compose.yml
 ```
 
 #### - Start Obscuro Node
 
 To start the obscuro node some information is required to populate the starting script.
 
-- (p2p_public_address) Local address for the Peer to Peer connections. Must be open to outside connections.
+- (p2p_public_address) The external facing address of the network. Where outside peers will connect to. Must be open to outside connections.`curl https://ipinfo.io/ip` provides the external IP.
 - (pkstring) Private Key to issue transactions into the Layer 1
 - (host_id) Public Key derived from the Private Key
 
