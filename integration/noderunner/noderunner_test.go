@@ -47,6 +47,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		LogDir:      testLogs,
 		TestType:    "noderunner",
 		TestSubtype: "test",
+		LogLevel:    gethlog.LvlInfo,
 	})
 
 	enclaveAddr := fmt.Sprintf("%s:%d", localhost, integration.StartPortNodeRunnerTest)

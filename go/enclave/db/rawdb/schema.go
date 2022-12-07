@@ -9,7 +9,8 @@ import (
 var (
 	sharedSecret = []byte("SharedSecret")
 
-	attestationKeyPrefix = []byte("oAK") // attestationKeyPrefix + address -> key
+	attestationKeyPrefix           = []byte("oAK")  // attestationKeyPrefix + address -> key
+	syntheticTransactionsKeyPrefix = []byte("oSTX") // attestationKeyPrefix + address -> key
 
 	genesisRollupHash        = []byte("GenesisRollupHash")
 	rollupHeaderPrefix       = []byte("oh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
@@ -92,4 +93,8 @@ func headerHashKey(number uint64) []byte {
 
 func attestationPkKey(aggregator common.Address) []byte {
 	return append(attestationKeyPrefix, aggregator.Bytes()...)
+}
+
+func crossChainMessagesKey(blockHash common.Hash) []byte {
+	return append(syntheticTransactionsKeyPrefix, blockHash.Bytes()...)
 }

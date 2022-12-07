@@ -118,7 +118,9 @@ message StartResponse {}
 
 message SubmitBlockRequest {
   bytes encodedBlock = 1;
-  bool isLatest = 2;
+  bytes encodedReceipts = 2;
+  bool isLatest = 3;
+
 }
 message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
@@ -264,6 +266,13 @@ message ExtRollupMsg {
   bytes txs = 3;
 }
 
+message CrossChainMsg {
+  bytes Sender = 1;
+  uint64 Sequence = 2;
+  uint32 Nonce = 3;
+  uint32 Topic = 4;
+  bytes Payload = 5;
+}
 message ExtBatchMsg {
   HeaderMsg header = 1;
   repeated bytes txHashes = 2;
@@ -293,6 +302,9 @@ message HeaderMsg {
   bytes MixDigest = 20;
   uint64 BaseFee = 21;
   uint64 RollupNonce = 22;
+  bytes LatestInboundCrossChainHeight = 23;
+  bytes LatestInboundCrossChainHash = 24;
+  repeated CrossChainMsg CrossChainMessages = 25; 
 }
 
 message SecretResponseMsg {

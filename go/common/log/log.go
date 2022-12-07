@@ -32,6 +32,7 @@ const (
 	TestGethNetwCmp = "test_geth_network"
 	EthereumL1Cmp   = "l1_host"
 	ObscuroscanCmp  = "obscuroscan"
+	CrossChainCmp   = "cross_chain"
 )
 
 // Used when the logger has to write to Sys.out

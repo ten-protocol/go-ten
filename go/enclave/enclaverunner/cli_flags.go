@@ -21,6 +21,7 @@ const (
 	sqliteDBPathName              = "sqliteDBPath"
 	profilerEnabledName           = "profilerEnabled"
 	minGasPriceName               = "minGasPrice"
+	messageBusAddressName         = "messageBusAddress"
 )
 
 // Returns a map of the flag usages.
@@ -46,5 +47,6 @@ func getFlagUsageMap() map[string]string {
 		sqliteDBPathName:              "Filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or if using InMemory DB or if using attestation/EdgelessDB)",
 		profilerEnabledName:           "Runs a profiler instance (Defaults to false)",
 		minGasPriceName:               "The minimum gas price for mining a transaction",
+		messageBusAddressName:         "The address of the L1 message bus contract owned by the management contract.",
 	}
 }

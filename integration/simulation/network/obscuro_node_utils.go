@@ -56,6 +56,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			l1Clients[i],
 			params.Wallets,
 			p2pLayers[i],
+			params.L1SetupData.MessageBusAddr,
 			params.L1SetupData.ObscuroStartBlock,
 		)
 	}
@@ -189,6 +190,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 			UseInMemoryDB:          false,
 			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
 			MinGasPrice:            big.NewInt(1),
+			MessageBusAddress:      *params.L1SetupData.MessageBusAddr,
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
 		_, err := rpc2.StartServer(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)

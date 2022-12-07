@@ -5,7 +5,7 @@
 The design for the Obscuro block explorers, tools to allow users to make sense of the contents of the Obscuro chain. 
 There will be two tools - a public block explorer that only displays public information, and a private block explorer 
 that also displays private information belonging to that user.
-
+ 
 ## Requirements
 
 * Public block explorer

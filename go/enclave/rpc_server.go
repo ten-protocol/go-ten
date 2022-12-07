@@ -118,7 +118,8 @@ func (s *server) Start(_ context.Context, request *generated.StartRequest) (*gen
 
 func (s *server) SubmitL1Block(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl := s.decodeBlock(request.EncodedBlock)
-	blockSubmissionResponse, err := s.enclave.SubmitL1Block(bl, request.IsLatest)
+	receipts := s.decodeReceipts(request.EncodedReceipts)
+	blockSubmissionResponse, err := s.enclave.SubmitL1Block(bl, receipts, request.IsLatest)
 	if err != nil {
 		var rejErr *common.BlockRejectError
 		isReject := errors.As(err, &rejErr)
@@ -278,6 +279,18 @@ func (s *server) decodeBlock(encodedBlock []byte) types.Block {
 		s.logger.Info("failed to decode block sent to enclave", log.ErrKey, err)
 	}
 	return block
+}
+
+// decodeReceipts - converts the rlp encoded bytes to receipts if possible.
+func (s *server) decodeReceipts(encodedReceipts []byte) types.Receipts {
+	receipts := make(types.Receipts, 0)
+
+	err := rlp.DecodeBytes(encodedReceipts, &receipts)
+	if err != nil {
+		s.logger.Crit("failed to decode receipts sent to enclave", log.ErrKey, err)
+	}
+
+	return receipts
 }
 
 // serializeEVMError serialises EVM errors into the RPC response

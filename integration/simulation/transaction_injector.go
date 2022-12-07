@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -212,7 +213,9 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			panic(err)
 		}
 
+		// TODO: Add better tx tracking and display revert reasons
 		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
+
 		go ti.TxTracker.trackL1Tx(txData)
 		sleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
 	}
@@ -239,6 +242,32 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			ti.logger.Warn("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
 			continue
 		}
+
+		go func() {
+			time.Sleep(5 * time.Second)
+			receipt, err := ti.rpcHandles.ObscuroWalletRndClient(obsWallet).TransactionReceipt(ti.ctx, signedTx.Hash())
+			if err != nil {
+				ti.logger.Error(fmt.Sprintf("Withdrawal %s ERROR - %+v", signedTx.Hash(), err))
+			}
+			if receipt.Status == 1 {
+				return
+			}
+
+			rpc := ti.rpcHandles.ObscuroWalletRndClient(obsWallet)
+			_, err = rpc.CallContract(ti.ctx, ethereum.CallMsg{
+				From:       obsWallet.Address(),
+				To:         signedTx.To(),
+				Gas:        signedTx.Gas(),
+				GasPrice:   big.NewInt(20000000000),
+				GasTipCap:  big.NewInt(0),
+				Value:      signedTx.Value(),
+				Data:       signedTx.Data(),
+				AccessList: signedTx.AccessList(),
+			}, receipt.BlockNumber)
+			if err != nil {
+				ti.logger.Error(fmt.Sprintf("Withdrawal %s ERROR - %+v", signedTx.Hash(), err))
+			}
+		}()
 
 		ti.stats.Withdrawal(common.ValueInWei(big.NewInt(int64(v))))
 		go ti.TxTracker.trackWithdrawalL2Tx(signedTx)

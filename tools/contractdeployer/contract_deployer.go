@@ -164,13 +164,16 @@ func getContractCode(cfg *Config) ([]byte, error) {
 		tokenName := cfg.ConstructorParams[0]
 		tokenSymbol := cfg.ConstructorParams[1]
 		supply := cfg.ConstructorParams[2]
-		return erc20contract.L2Bytecode(tokenName, tokenSymbol, supply), nil
+		// 0x526c84529b2b8c11f57d93d3f5537aca3aecef9b - address of the L2 message bus contract. TODO: remove once there is a proper way to extract it.
+		return erc20contract.L2Bytecode(tokenName, tokenSymbol, supply, common.HexToAddress("0x526c84529b2b8c11f57d93d3f5537aca3aecef9b")), nil
 
 	case layer1Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]
 		tokenSymbol := cfg.ConstructorParams[1]
 		supply := cfg.ConstructorParams[2]
-		return erc20contract.L1Bytecode(tokenName, tokenSymbol, supply), nil
+		busAddr := common.HexToAddress(cfg.ConstructorParams[3])
+		mgmtAddr := common.HexToAddress(cfg.ConstructorParams[4])
+		return erc20contract.L1Bytecode(tokenName, tokenSymbol, supply, busAddr, mgmtAddr), nil
 
 	default:
 		return nil, fmt.Errorf("unrecognised contract %s - no bytecode configured for that contract name", cfg.ContractName)

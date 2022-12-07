@@ -45,6 +45,7 @@ func init() { //nolint:gochecknoinits
 		LogDir:      testLogs,
 		TestType:    "noderunner",
 		TestSubtype: "test",
+		LogLevel:    gethlog.LvlInfo,
 	})
 }
 
