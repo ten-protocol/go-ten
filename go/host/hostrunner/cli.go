@@ -19,7 +19,6 @@ import (
 type HostConfigToml struct {
 	IsGenesis              bool
 	NodeType               string
-	GossipRoundDuration    int
 	HasClientRPCHTTP       bool
 	ClientRPCPortHTTP      uint
 	HasClientRPCWebsockets bool
@@ -30,7 +29,6 @@ type HostConfigToml struct {
 	P2PPublicAddress       string
 	L1NodeHost             string
 	L1NodeWebsocketPort    uint
-	ClientRPCTimeout       int
 	EnclaveRPCTimeout      int
 	L1RPCTimeout           int
 	P2PConnectionTimeout   int
@@ -53,7 +51,6 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	configPath := flag.String(configName, "", flagUsageMap[configName])
 	isGenesis := flag.Bool(isGenesisName, cfg.IsGenesis, flagUsageMap[isGenesisName])
 	nodeTypeStr := flag.String(nodeTypeName, cfg.NodeType.String(), flagUsageMap[nodeTypeName])
-	gossipRoundNanos := flag.Uint64(gossipRoundNanosName, uint64(cfg.GossipRoundDuration), flagUsageMap[gossipRoundNanosName])
 	clientRPCPortHTTP := flag.Uint64(clientRPCPortHTTPName, cfg.ClientRPCPortHTTP, flagUsageMap[clientRPCPortHTTPName])
 	clientRPCPortWS := flag.Uint64(clientRPCPortWSName, cfg.ClientRPCPortWS, flagUsageMap[clientRPCPortWSName])
 	clientRPCHost := flag.String(clientRPCHostName, cfg.ClientRPCHost, flagUsageMap[clientRPCHostName])
@@ -62,7 +59,6 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	p2pPublicAddress := flag.String(p2pPublicAddressName, cfg.P2PPublicAddress, flagUsageMap[p2pPublicAddressName])
 	l1NodeHost := flag.String(l1NodeHostName, cfg.L1NodeHost, flagUsageMap[l1NodeHostName])
 	l1NodePort := flag.Uint64(l1NodePortName, uint64(cfg.L1NodeWebsocketPort), flagUsageMap[l1NodePortName])
-	clientRPCTimeoutSecs := flag.Uint64(clientRPCTimeoutSecsName, uint64(cfg.ClientRPCTimeout.Seconds()), flagUsageMap[clientRPCTimeoutSecsName])
 	enclaveRPCTimeoutSecs := flag.Uint64(enclaveRPCTimeoutSecsName, uint64(cfg.EnclaveRPCTimeout.Seconds()), flagUsageMap[enclaveRPCTimeoutSecsName])
 	l1RPCTimeoutSecs := flag.Uint64(l1RPCTimeoutSecsName, uint64(cfg.L1RPCTimeout.Seconds()), flagUsageMap[l1RPCTimeoutSecsName])
 	p2pConnectionTimeoutSecs := flag.Uint64(p2pConnectionTimeoutSecsName, uint64(cfg.P2PConnectionTimeout.Seconds()), flagUsageMap[p2pConnectionTimeoutSecsName])
@@ -88,7 +84,6 @@ func ParseConfig() (*config.HostInputConfig, error) {
 
 	cfg.IsGenesis = *isGenesis
 	cfg.NodeType = nodeType
-	cfg.GossipRoundDuration = time.Duration(*gossipRoundNanos)
 	cfg.HasClientRPCHTTP = true
 	cfg.ClientRPCPortHTTP = *clientRPCPortHTTP
 	cfg.HasClientRPCWebsockets = true
@@ -99,7 +94,6 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.P2PPublicAddress = *p2pPublicAddress
 	cfg.L1NodeHost = *l1NodeHost
 	cfg.L1NodeWebsocketPort = uint(*l1NodePort)
-	cfg.ClientRPCTimeout = time.Duration(*clientRPCTimeoutSecs) * time.Second
 	cfg.EnclaveRPCTimeout = time.Duration(*enclaveRPCTimeoutSecs) * time.Second
 	cfg.L1RPCTimeout = time.Duration(*l1RPCTimeoutSecs) * time.Second
 	cfg.P2PConnectionTimeout = time.Duration(*p2pConnectionTimeoutSecs) * time.Second
@@ -136,7 +130,6 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 	return &config.HostInputConfig{
 		IsGenesis:              tomlConfig.IsGenesis,
 		NodeType:               nodeType,
-		GossipRoundDuration:    time.Duration(tomlConfig.GossipRoundDuration),
 		HasClientRPCHTTP:       tomlConfig.HasClientRPCHTTP,
 		ClientRPCPortHTTP:      uint64(tomlConfig.ClientRPCPortHTTP),
 		HasClientRPCWebsockets: tomlConfig.HasClientRPCWebsockets,
@@ -147,7 +140,6 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		P2PPublicAddress:       tomlConfig.P2PPublicAddress,
 		L1NodeHost:             tomlConfig.L1NodeHost,
 		L1NodeWebsocketPort:    tomlConfig.L1NodeWebsocketPort,
-		ClientRPCTimeout:       time.Duration(tomlConfig.ClientRPCTimeout) * time.Second,
 		EnclaveRPCTimeout:      time.Duration(tomlConfig.EnclaveRPCTimeout) * time.Second,
 		L1RPCTimeout:           time.Duration(tomlConfig.L1RPCTimeout) * time.Second,
 		P2PConnectionTimeout:   time.Duration(tomlConfig.P2PConnectionTimeout) * time.Second,

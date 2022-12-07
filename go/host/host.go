@@ -63,7 +63,6 @@ const (
 type host struct {
 	config          *config.HostConfig
 	shortID         uint64
-	isSequencer     bool
 	genesisRequired bool
 
 	p2p           hostcommon.P2P       // For communication with other Obscuro nodes
@@ -103,9 +102,8 @@ func NewHost(
 	database := db.NewInMemoryDB() // todo - make this config driven
 	host := &host{
 		// config
-		config:      config,
-		shortID:     common.ShortAddress(config.ID),
-		isSequencer: config.IsGenesis && config.NodeType == common.Aggregator,
+		config:  config,
+		shortID: common.ShortAddress(config.ID),
 
 		// Communication layers.
 		p2p:           p2p,
@@ -507,7 +505,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	}
 
 	// If we're not the sequencer, we do not need to produce the genesis or publish and distribute rollups.
-	if !h.isSequencer {
+	if h.config.NodeType != common.Sequencer {
 		return nil
 	}
 
@@ -606,27 +604,14 @@ func (h *host) initialiseProtocol(block *types.Block) error {
 	if err != nil {
 		return fmt.Errorf("could not produce genesis. Cause: %w", err)
 	}
-	h.logger.Info(
-		fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
-			common.ShortHash(genesisRollup.Header.Hash()),
-		))
+	h.logger.Info(fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
+		common.ShortHash(genesisRollup.Header.Hash())))
 
-	// Distribute the corresponding batch.
+	// Publish the genesis rollup.
+	h.publishRollup(genesisRollup)
+
+	// Distribute the corresponding genesis batch.
 	h.storeAndDistributeBatch(genesisRollup)
-
-	// Submit the rollup to the management contract.
-	encodedRollup, err := common.EncodeRollup(genesisRollup)
-	if err != nil {
-		return fmt.Errorf("could not encode rollup. Cause: %w", err)
-	}
-	l1tx := &ethadapter.L1RollupTx{
-		Rollup: encodedRollup,
-	}
-	rollupTx := h.mgmtContractLib.CreateRollup(l1tx, h.ethWallet.GetNonceAndIncrement())
-	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
-	if err != nil {
-		return fmt.Errorf("could not initialise protocol. Cause: %w", err)
-	}
 
 	return nil
 }
@@ -884,31 +869,29 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 		return nil
 	}
 
-	// We store the batches.
-	err = h.batchManager.StoreBatches(batches)
-	if err != nil {
-		if !errors.Is(err, batchmanager.ErrBatchesMissing) {
-			return fmt.Errorf("could not store batches. Cause: %w", err)
-		}
-
-		// We have encountered missing batches. We abort the storage operation and request the missing batches.
-		batchRequest, err := h.batchManager.CreateBatchRequest(h.config.P2PPublicAddress)
-		if err != nil {
-			return fmt.Errorf("could not create batch request. Cause: %w", err)
-		}
-		if err = h.p2p.RequestBatches(batchRequest); err != nil {
-			return fmt.Errorf("could not request historical batches. Cause: %w", err)
-		}
-
-		// If we requested any batches, we return early and wait for the missing batches to arrive.
-		return nil
-	}
-
-	// TODO - #718 - We should probably submit each batch after storing it, and not submitting each one only if *every*
-	//  batch was stored correctly.
+	// We store the batches and submit them to the enclave.
 	for _, batch := range batches {
+		// TODO - #718 - Think carefully about the risk of inconsistency between the enclave and the host in terms of
+		//  batches stored.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
+		}
+
+		err = h.batchManager.StoreBatch(batch)
+		if err != nil {
+			if !errors.Is(err, batchmanager.ErrBatchesMissing) {
+				return fmt.Errorf("could not store batches. Cause: %w", err)
+			}
+
+			// We have encountered missing batches. We abort the storage operation and request the missing batches.
+			batchRequest, err := h.batchManager.CreateBatchRequest(h.config.P2PPublicAddress)
+			if err != nil {
+				return fmt.Errorf("could not create batch request. Cause: %w", err)
+			}
+			if err = h.p2p.RequestBatches(batchRequest); err != nil {
+				return fmt.Errorf("could not request historical batches. Cause: %w", err)
+			}
+			return nil
 		}
 	}
 
@@ -932,11 +915,11 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 
 // Checks the host config is valid.
 func (h *host) validateConfig() {
-	if h.config.IsGenesis && h.config.NodeType != common.Aggregator {
-		h.logger.Crit("genesis node must be an aggregator")
+	if h.config.IsGenesis && h.config.NodeType != common.Sequencer {
+		h.logger.Crit("genesis node must be the sequencer")
 	}
-	if !h.config.IsGenesis && h.config.NodeType == common.Aggregator {
-		h.logger.Crit("only the genesis node can be an aggregator")
+	if !h.config.IsGenesis && h.config.NodeType == common.Sequencer {
+		h.logger.Crit("only the genesis node can be a sequencer")
 	}
 
 	if h.config.P2PPublicAddress == "" {

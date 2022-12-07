@@ -175,13 +175,13 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 
 	// Check that all the rollups are produced by aggregators.
 	for _, rollup := range rollups {
-		aggregatorID, err := strconv.ParseInt(rollup.Header.Agg.Hex()[2:], 16, 64)
+		nodeID, err := strconv.ParseInt(rollup.Header.Agg.Hex()[2:], 16, 64)
 		if err != nil {
 			t.Errorf("Node %d: Could not parse node's integer ID. Cause: %s", nodeIdx, err)
 			continue
 		}
-		if network.GetNodeType(int(aggregatorID)) != common.Aggregator {
-			t.Errorf("Node %d: Found rollup produced by non-aggregator %d", nodeIdx, aggregatorID)
+		if network.GetNodeType(int(nodeID)) != common.Sequencer {
+			t.Errorf("Node %d: Found rollup produced by non-sequencer %d", nodeIdx, nodeID)
 		}
 	}
 

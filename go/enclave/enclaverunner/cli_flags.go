@@ -4,7 +4,6 @@ package enclaverunner
 const (
 	configName                    = "config"
 	hostIDName                    = "hostID"
-	isSequencerEnclaveName        = "isSequencerEnclave"
 	hostAddressName               = "hostAddress"
 	addressName                   = "address"
 	nodeTypeName                  = "nodeType"
@@ -31,10 +30,9 @@ func getFlagUsageMap() map[string]string {
 	return map[string]string{
 		configName:                    "The path to the node's config file. Overrides all other flags",
 		hostIDName:                    "The 20 bytes of the address of the Obscuro host this enclave serves",
-		isSequencerEnclaveName:        "Whether the enclave is the enclave of the network's sequencer.",
 		hostAddressName:               "The peer-to-peer IP address of the Obscuro host this enclave serves",
 		addressName:                   "The address on which to serve the Obscuro enclave service",
-		nodeTypeName:                  "The node's type (e.g. aggregator, validator)",
+		nodeTypeName:                  "The node's type (e.g. sequencer, validator)",
 		l1ChainIDName:                 "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)",
 		obscuroChainIDName:            "An integer representing the unique chain id of the Obscuro chain (default 777)",
 		willAttestName:                "Whether the enclave will produce a verified attestation report",

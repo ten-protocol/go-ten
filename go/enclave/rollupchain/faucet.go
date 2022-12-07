@@ -44,16 +44,16 @@ func (f *Faucet) GetGenesisRoot(storage db.Storage) (*gethcommon.Hash, error) {
 }
 
 // CommitGenesisState applies the faucet preallocation on top of an empty state DB and commits the result.
-func (f *Faucet) CommitGenesisState(storage db.Storage) (*state.StateDB, error) {
+func (f *Faucet) CommitGenesisState(storage db.Storage) error {
 	stateDB, err := f.applyFaucetPrealloc(storage)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	_, err = stateDB.Commit(true)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return stateDB, nil
+	return nil
 }
 
 // Applies the faucet preallocation on top of an empty state DB.

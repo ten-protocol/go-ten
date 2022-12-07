@@ -25,29 +25,26 @@ func NewBatchManager(db *db.DB) *BatchManager {
 	}
 }
 
-// StoreBatches stores the provided batches. If there are missing batches in the chain, it returns a
-// `ErrBatchesMissing`.
-func (b *BatchManager) StoreBatches(batches []*common.ExtBatch) error {
-	for _, batch := range batches {
-		// If we have stored the batch's parent, or this batch is the genesis batch, we store the batch.
-		_, err := b.db.GetBatch(batch.Header.ParentHash)
-		if err == nil || batch.Header.Number.Uint64() == common.L2GenesisHeight {
-			err = b.db.AddBatchHeader(batch)
-			if err != nil {
-				return fmt.Errorf("could not store batch header. Cause: %w", err)
-			}
-			continue
-		}
+// StoreBatch stores the provided batch. If we cannot find the batch's parent, we return an `ErrBatchesMissing`.
+func (b *BatchManager) StoreBatch(batch *common.ExtBatch) error {
+	isGenesisBatch := batch.Header.Number.Uint64() == common.L2GenesisHeight
 
-		// If we could not find the parent, we return an `ErrBatchesMissing`.
-		if errors.Is(err, errutil.ErrNotFound) {
-			return ErrBatchesMissing
+	// If we have stored the batch's parent, or this batch is the genesis batch, we store the batch.
+	_, err := b.db.GetBatch(batch.Header.ParentHash)
+	if isGenesisBatch || err == nil {
+		err = b.db.AddBatchHeader(batch)
+		if err != nil {
+			return fmt.Errorf("could not store batch header. Cause: %w", err)
 		}
-
-		return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+		return nil
 	}
 
-	return nil
+	// If we could not find the parent, we return an `ErrBatchesMissing`.
+	if errors.Is(err, errutil.ErrNotFound) {
+		return ErrBatchesMissing
+	}
+
+	return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 }
 
 // CreateBatchRequest creates a request for missing batches, which contains our address and our view of the canonical

@@ -179,7 +179,6 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 
 		enclaveConfig := config.EnclaveConfig{
 			HostID:                 gethcommon.BigToAddress(big.NewInt(int64(i))),
-			IsSequencerEnclave:     i == 0,
 			HostAddress:            hostAddr,
 			Address:                enclaveAddr,
 			NodeType:               GetNodeType(i),
@@ -288,9 +287,9 @@ func isAddressAvailable(address string) bool {
 
 // GetNodeType returns the type of the node based on its ID.
 func GetNodeType(i int) common.NodeType {
-	// Only the genesis node is assigned the role of aggregator.
+	// Only the genesis node is assigned the role of sequencer.
 	if i == 0 {
-		return common.Aggregator
+		return common.Sequencer
 	}
 	return common.Validator
 }

@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/profiler"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -37,6 +38,7 @@ const (
 	gethWebsocketPort    = gethPort + defaultWsPortOffset
 	localhost            = "127.0.0.1"
 	obscuroWebsocketPort = integration.StartPortNodeRunnerTest + 1
+	p2pBindAddress       = integration.StartPortNodeRunnerTest + 3
 )
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
@@ -63,6 +65,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig.ClientRPCPortWS = obscuroWebsocketPort
 	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
 	hostConfig.ProfilerEnabled = true
+	hostConfig.P2PBindAddress = fmt.Sprintf("0.0.0.0:%d", p2pBindAddress)
 	hostConfig.LogPath = testlog.LogFile()
 
 	enclaveConfig := config.DefaultEnclaveConfig()

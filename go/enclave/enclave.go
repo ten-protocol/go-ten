@@ -180,7 +180,6 @@ func NewEnclave(
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 	chain := rollupchain.New(
 		config.HostID,
-		config.IsSequencerEnclave,
 		config.NodeType,
 		storage,
 		l1Blockchain,
@@ -400,7 +399,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err != nil {
 		return nil, err
 	}
-	_, l2Head, err := e.storage.FetchHeads()
+	l2Head, err := e.storage.FetchL2Head()
 	if err == nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
