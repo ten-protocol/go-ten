@@ -79,7 +79,7 @@ func printBlock(b *types.Block, m *Node) string {
 	// This is just for printing
 	var txs []string
 	for _, tx := range b.Transactions() {
-		t := m.erc20ContractLib.DecodeTx(tx)
+		t := m.erc20ContractLib.DecodeDepositTx(tx)
 		if t == nil {
 			t = m.mgmtContractLib.DecodeTx(tx)
 		}

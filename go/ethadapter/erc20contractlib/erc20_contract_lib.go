@@ -26,7 +26,7 @@ var (
 type ERC20ContractLib interface {
 	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
 	// returns nil if the transaction is not convertible
-	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
+	DecodeDepositTx(tx *types.Transaction) ethadapter.L1Transaction
 
 	// CreateDepositTx receives an common.L1Transaction and converts it to an eth transaction
 	CreateDepositTx(tx *ethadapter.L1DepositTx, nonce uint64) types.TxData
@@ -68,7 +68,7 @@ func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethadapter.L1DepositTx, nonce
 	}
 }
 
-func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+func (c *erc20ContractLibImpl) DecodeDepositTx(tx *types.Transaction) ethadapter.L1Transaction {
 	if !c.isRelevant(tx) {
 		return nil
 	}

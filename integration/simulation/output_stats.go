@@ -74,7 +74,7 @@ func (o *OutputStats) countBlockChain() {
 		for _, tx := range headBlock.Transactions() {
 			t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
 			if t == nil {
-				t = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
+				t = o.simulation.Params.ERC20ContractLib.DecodeDepositTx(tx)
 			}
 
 			if t == nil {

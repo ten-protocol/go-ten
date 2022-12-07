@@ -15,7 +15,7 @@ func (c *contractLib) CreateDepositTx(tx *ethadapter.L1DepositTx, nonce uint64) 
 	return encodeTx(tx, nonce, depositTxAddr)
 }
 
-func (c *contractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+func (c *contractLib) DecodeDepositTx(tx *types.Transaction) ethadapter.L1Transaction {
 	if bytes.Equal(tx.To().Bytes(), depositTxAddr.Bytes()) {
 		depositTx, ok := decodeTx(tx).(*ethadapter.L1DepositTx)
 		if !ok {

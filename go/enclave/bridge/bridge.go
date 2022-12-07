@@ -241,7 +241,7 @@ func (bridge *Bridge) ExtractDeposits(
 			break
 		}
 		for _, tx := range b.Transactions() {
-			t := bridge.Erc20ContractLib.DecodeTx(tx)
+			t := bridge.Erc20ContractLib.DecodeDepositTx(tx)
 			if t == nil {
 				continue
 			}

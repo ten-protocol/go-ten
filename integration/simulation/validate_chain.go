@@ -186,7 +186,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 	blockchain := node.BlocksBetween(startBlock, endBlock)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {
-			t := s.Params.ERC20ContractLib.DecodeTx(tx)
+			t := s.Params.ERC20ContractLib.DecodeDepositTx(tx)
 			if t == nil {
 				t = s.Params.MgmtContractLib.DecodeTx(tx)
 			}
