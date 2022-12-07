@@ -849,6 +849,10 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 	// We store the batches and submit them to the enclave.
 	for _, batch := range batches {
+		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
+			return fmt.Errorf("could not submit batch. Cause: %w", err)
+		}
+
 		err = h.batchManager.StoreBatch(batch)
 		if err != nil {
 			if !errors.Is(err, batchmanager.ErrBatchesMissing) {
@@ -864,12 +868,6 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 				return fmt.Errorf("could not request historical batches. Cause: %w", err)
 			}
 			return nil
-		}
-
-		// TODO - #718 - What happens if this op fails? We'll think we have the batch, so we'll never catch it up and
-		//  attempt resubmission to the enclave.
-		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
-			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
 	}
 
