@@ -24,6 +24,10 @@ interface IMessageBus {
     ) external payable returns (uint64 sequence);
 }
 
+interface IManagementContract {
+    function messageBus() external view returns (IMessageBus);
+}
+
 contract EthERC20 is ERC20 {
 
     event Something(string hm);
@@ -43,10 +47,13 @@ contract EthERC20 is ERC20 {
         string memory name,
         string memory symbol,
         uint256 initialSupply,
-        address l1MessageBus,
         address managementContract
     )  ERC20(name, symbol) {
-        bus = IMessageBus(l1MessageBus);
+
+        if (managementContract != address(0x0)) {
+            bus = IManagementContract(managementContract).messageBus();
+        }
+
         target = managementContract;
         _mint(msg.sender, initialSupply);
     }
@@ -61,7 +68,7 @@ contract EthERC20 is ERC20 {
         //Only deposit messages.
         if (to == target) { 
             AssetTransferMessage memory message = AssetTransferMessage(from, to, amount);
-            uint64 sequence = bus.publishMessage(uint32(block.number), uint32(Topics.TRANSFER), abi.encode(message), 0);
+            bus.publishMessage(uint32(block.number), uint32(Topics.TRANSFER), abi.encode(message), 0);
         }
     }
 }
