@@ -279,7 +279,7 @@ func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
 }
 
 // decodeReceipts - converts the rlp encoded bytes to receipts if possible.
-func (s *server) decodeReceipts(encodedReceipts []byte) types.Receipts {
+func (s *RPCServer) decodeReceipts(encodedReceipts []byte) types.Receipts {
 	receipts := make(types.Receipts, 0)
 
 	err := rlp.DecodeBytes(encodedReceipts, &receipts)
