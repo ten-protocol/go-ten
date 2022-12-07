@@ -4,12 +4,12 @@
 How to start a node in the Evan's Cat testnet.
 
 ## Requirements
-- SGX enable VM
+- SGX enabled VM
 - Docker
 
 ## Steps
 #### - Create an SGX enabled VM
-Recommended Standard DC4s v2 (4 vcpus, 16 GiB memory) in azure.
+Recommended Standard DC4s v2 (4 vcpus, 16 GiB memory) in Azure.
 
 #### - Install Docker
 
@@ -20,6 +20,8 @@ sudo apt-get update \
 ```
 
 #### - Download Obscuro Start script
+
+Make sure to use the latest version at https://github.com/obscuronet/go-obscuro/tags
 
 ```
   wget https://raw.githubusercontent.com/obscuronet/go-obscuro/v0.7.1/testnet/start-obscuro-node.sh && \
