@@ -2,6 +2,7 @@ package hostcontainer
 
 import (
 	"fmt"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/container"
 	commonhost "github.com/obscuronet/go-obscuro/go/common/host"

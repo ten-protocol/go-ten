@@ -2,12 +2,13 @@ package network
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/enclavecontainer"
 	"math/big"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/enclavecontainer"
 
 	"github.com/obscuronet/go-obscuro/go/enclave"
 
@@ -196,7 +197,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 		encl := enclave.NewEnclave(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
 		enclaveContainer := enclavecontainer.EnclaveContainer{
 			Enclave:   encl,
-			RpcServer: enclave.NewEnclaveRPCServer(enclaveConfig.Address, encl, enclaveLogger),
+			RPCServer: enclave.NewEnclaveRPCServer(enclaveConfig.Address, encl, enclaveLogger),
 			Logger:    enclaveLogger,
 		}
 		err := enclaveContainer.Start()

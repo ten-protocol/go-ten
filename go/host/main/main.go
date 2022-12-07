@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/common/container"
 	"github.com/obscuronet/go-obscuro/go/host/hostcontainer"
 )

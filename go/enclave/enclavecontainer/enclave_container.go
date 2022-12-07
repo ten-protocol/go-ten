@@ -2,6 +2,7 @@ package enclavecontainer
 
 import (
 	"context"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/container"
@@ -19,7 +20,7 @@ const hardcodedGenesisJSON = "TODO - REPLACE ME"
 
 type EnclaveContainer struct {
 	Enclave   common.Enclave
-	RpcServer *enclave.EnclaveRpcServer
+	RPCServer *enclave.RPCServer
 	Logger    gethlog.Logger
 }
 
@@ -40,13 +41,13 @@ func NewEnclaveContainer(config config.EnclaveConfig) *EnclaveContainer {
 
 	return &EnclaveContainer{
 		Enclave:   encl,
-		RpcServer: rpcServer,
+		RPCServer: rpcServer,
 		Logger:    logger,
 	}
 }
 
 func (e *EnclaveContainer) Start() error {
-	err := e.RpcServer.StartServer()
+	err := e.RPCServer.StartServer()
 	if err != nil {
 		return err
 	}
@@ -55,7 +56,7 @@ func (e *EnclaveContainer) Start() error {
 }
 
 func (e *EnclaveContainer) Stop() error {
-	_, err := e.RpcServer.Stop(context.Background(), nil)
+	_, err := e.RPCServer.Stop(context.Background(), nil)
 	if err != nil {
 		e.Logger.Warn("unable to cleanly stop enclave", log.ErrKey, err)
 		return err
