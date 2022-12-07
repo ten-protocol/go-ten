@@ -12,6 +12,8 @@ import (
 type Status int
 
 const (
+	// todo: these status values are a WIP.
+	// 	But something like this (a traffic lights approach) rather than being service specific keeps the interface clean
 	Running Status = iota
 	Recovering
 	Stopped
@@ -29,7 +31,7 @@ type Container interface {
 
 // Serve is a convenience method to be called from the `main` runner for a container. It will attempt to cleanly shutdown
 // the container on OS signal
-// todo: expose the status to the operator from here (admin http service or a monitoring service)
+// todo: maybe expose the status to the operator from here (admin http service or a monitoring service)
 func Serve(container Container) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt)
@@ -48,7 +50,9 @@ func Serve(container Container) {
 		os.Exit(1)
 	}
 	fmt.Println("Server started.")
+
 	<-ctx.Done()
+
 	fmt.Println("Stopping server...")
 	go func() {
 		time.Sleep(5 * time.Second)
@@ -58,6 +62,7 @@ func Serve(container Container) {
 	err = container.Stop()
 	if err != nil {
 		fmt.Printf("failed to stop gracefully - %s\n", err)
+		os.Exit(1)
 	}
 
 	// Graceful shutdown complete
