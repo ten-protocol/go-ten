@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
 
@@ -846,6 +848,14 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	}
 
 	for _, batch := range batches {
+		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				return nil // todo - joel - describe - waiting for block to be ready
+			}
+			panic("todo - joel")
+		}
+
 		// TODO - #718 - Think carefully about the risk of inconsistency between the enclave and the host in terms of
 		//  batches stored. It may be better to have the enclave manage the entire state.
 		err = h.batchManager.StoreBatch(batch)
