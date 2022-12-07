@@ -1,4 +1,4 @@
-package enclavecontainer
+package container
 
 import (
 	"flag"

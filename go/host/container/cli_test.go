@@ -1,4 +1,4 @@
-package enclavecontainer
+package container
 
 import (
 	"os"
@@ -8,16 +8,15 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/config"
 )
 
-const (
-	testToml        = "/test.toml"
-	expectedChainID = int64(1377)
-)
+const testToml = "/test.toml"
 
 func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
+	p2pConnectionTimeout := time.Duration(777000000000)
 	wd, err := os.Getwd()
 	if err != nil {
 		panic(err)
@@ -27,33 +26,34 @@ func TestConfigIsParsedFromTomlFileIfConfigFlagIsPresent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not parse config. Cause: %s", err)
 	}
-	if cfg.L1ChainID != expectedChainID {
-		t.Fatalf("config file was not parsed from TOML. Expected L1ChainID of %d, got %d", expectedChainID, cfg.L1ChainID)
+	if cfg.P2PConnectionTimeout != p2pConnectionTimeout {
+		t.Fatalf("config file was not parsed from TOML. Expected P2PConnectionTimeout of %d, got %d", p2pConnectionTimeout, cfg.P2PConnectionTimeout)
 	}
 }
 
 func TestConfigIsParsedFromCmdLineFlagsIfConfigFlagIsNotPresent(t *testing.T) {
-	os.Args = append(os.Args, "--"+l1ChainIDName, strconv.FormatInt(expectedChainID, 10))
+	p2pConnectionTimeout := 6 * time.Second
+	os.Args = append(os.Args, "--"+p2pConnectionTimeoutSecsName, strconv.FormatInt(int64(p2pConnectionTimeout.Seconds()), 10))
 
 	cfg, err := ParseConfig()
 	if err != nil {
 		t.Fatalf("could not parse config. Cause: %s", err)
 	}
-	if cfg.L1ChainID != expectedChainID {
-		t.Fatalf("config file was not parsed from flags. Expected L1ChainID of %d, got %d", expectedChainID, cfg.L1ChainID)
+	if cfg.P2PConnectionTimeout != p2pConnectionTimeout {
+		t.Fatalf("config file was not parsed from flags. Expected p2pConnectionTimeout of %d, got %d", p2pConnectionTimeout, cfg.P2PConnectionTimeout)
 	}
 }
 
 func TestConfigFieldsMatchTomlConfigFields(t *testing.T) {
 	// We get all the config fields.
-	cfgReflection := reflect.TypeOf(config.EnclaveConfig{})
+	cfgReflection := reflect.TypeOf(config.HostInputConfig{})
 	cfgFields := make([]string, cfgReflection.NumField())
 	for i := 0; i < cfgReflection.NumField(); i++ {
 		cfgFields[i] = cfgReflection.Field(i).Name
 	}
 
 	// We get all the .toml config fields.
-	cfgTomlReflection := reflect.TypeOf(EnclaveConfigToml{})
+	cfgTomlReflection := reflect.TypeOf(HostConfigToml{})
 	cfgTomlFields := make([]string, cfgTomlReflection.NumField())
 	for i := 0; i < cfgTomlReflection.NumField(); i++ {
 		cfgTomlFields[i] = cfgTomlReflection.Field(i).Name

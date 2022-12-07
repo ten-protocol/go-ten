@@ -1,4 +1,4 @@
-package enclavecontainer
+package container
 
 // Flag names.
 const (

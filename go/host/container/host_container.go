@@ -1,10 +1,9 @@
-package hostcontainer
+package container
 
 import (
 	"fmt"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/container"
 	commonhost "github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -73,9 +72,4 @@ func (h *HostContainer) Start() error {
 func (h *HostContainer) Stop() error {
 	h.host.Stop()
 	return nil
-}
-
-func (h *HostContainer) Status() container.Status {
-	// todo: return recovery if dependencies are unavailable (enclave, L1 client, DB)
-	return container.Running
 }

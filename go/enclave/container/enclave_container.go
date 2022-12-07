@@ -1,11 +1,10 @@
-package enclavecontainer
+package container
 
 import (
 	"context"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/container"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave"
 
@@ -62,9 +61,4 @@ func (e *EnclaveContainer) Stop() error {
 		return err
 	}
 	return nil
-}
-
-func (e *EnclaveContainer) Status() container.Status {
-	// todo: return recovery if DB is unavailable or if host is not keeping up with its responsibilities
-	return container.Running
 }

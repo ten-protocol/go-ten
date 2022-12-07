@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/enclavecontainer"
-	"github.com/obscuronet/go-obscuro/go/host/hostcontainer"
+	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
+	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 

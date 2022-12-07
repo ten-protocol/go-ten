@@ -1,4 +1,4 @@
-package hostcontainer
+package container
 
 import (
 	"flag"

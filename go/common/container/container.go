@@ -9,24 +9,15 @@ import (
 	"time"
 )
 
-type Status int
-
-const (
-	// todo: these status values are a WIP.
-	// 	But something like this (a traffic lights approach) rather than being service specific keeps the interface clean
-	Running Status = iota
-	Recovering
-	Stopped
-)
-
 // Container is a Start-able server process that is expected to self-recover from any issues until Stop is called.
-// Its exposes a Status method for monitoring. Both Enclave and Host implement Container.
+// In future it might expose methods like `Status()` for monitoring/interacting with the process.
+//
+// Both EnclaveContainer and HostContainer implement Container.
 //
 // This abstraction can be started from a main() or controlled from another go process (allowing us to puppet the node components in simulations)
 type Container interface {
 	Start() error
 	Stop() error
-	Status() Status
 }
 
 // Serve is a convenience method to be called from the `main` runner for a container. It will attempt to cleanly shutdown

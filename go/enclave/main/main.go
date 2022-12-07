@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common/container"
-	"github.com/obscuronet/go-obscuro/go/enclave/enclavecontainer"
+	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
 )
 
 // Runs an Obscuro enclave as a standalone process.

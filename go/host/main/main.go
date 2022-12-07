@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common/container"
-	"github.com/obscuronet/go-obscuro/go/host/hostcontainer"
+	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
 // Runs an Obscuro host as a standalone process.
