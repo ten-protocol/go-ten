@@ -631,8 +631,7 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
 
-	// TODO - #718 - Validate the stored batches against the incoming rollups.
-	// latestRollup, isUpdatedRollupHead := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
+	// TODO - #718 - Validate any rollups in the block against the stored batches.
 
 	err = rc.storage.StoreNewHeads(block.Hash(), currentHeadRollup, nil, false)
 	if err != nil {
