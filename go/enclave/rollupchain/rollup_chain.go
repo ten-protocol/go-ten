@@ -163,14 +163,34 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	// The pre-genesis L2 head is nil.
 	isUpdatedRollupHead := newL2Head != nil && (oldL2Head == nil || oldL2Head.Hex() != newL2Head.Hex())
 
+	wasPreGenesisBlock := newL2Head == nil
+	wasGenesisBlock := (newL2Head != nil) && (oldL2Head == nil)
+
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
 	var rollup *common.ExtRollup
-	if rc.isSequencerEnclave && isUpdatedRollupHead {
+	if rc.isSequencerEnclave && !wasPreGenesisBlock && !wasGenesisBlock {
 		l1Head := block.Hash()
 		rollup, err = rc.produceNewRollup(&l1Head)
 		if err != nil {
 			return nil, rc.rejectBlockErr(err)
 		}
+
+		enclaveRollup := core.ToEnclaveRollup(rollup, rc.transactionBlobCrypto)
+
+		var rollupTxReceipts []*types.Receipt
+		rollupTxReceipts, err = rc.checkRollup(enclaveRollup)
+		if err != nil {
+			panic(fmt.Errorf("failed to check rollup. Cause: %w", err))
+		}
+
+		err = rc.storage.StoreNewHeads(block.Hash(), enclaveRollup, rollupTxReceipts, true)
+		if err != nil {
+			panic(fmt.Errorf("could not store new head. Cause: %w", err))
+		}
+
+		rollupHash := enclaveRollup.Hash()
+		newL2Head = &rollupHash
+		isUpdatedRollupHead = true
 	}
 
 	return rc.produceBlockSubmissionResponse(&block, newL2Head, isUpdatedRollupHead, rollup)
@@ -593,25 +613,15 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block, rollupsInBlock
 		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
 
-	latestRollup, isUpdatedRollupHead := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
+	// TODO - #718 - Validate the stored batches against the incoming rollups.
+	//latestRollup, isUpdatedRollupHead := selectNextRollup(currentHeadRollup, rollupsInBlock, rc.storage)
 
-	// TODO - #718 - Instead of updating the rollup head, we should validate the stored batches against the winning
-	//  rollup. We should still update the block head.
-
-	l1Head := block.Hash()
-	var rollupTxReceipts []*types.Receipt
-	if isUpdatedRollupHead {
-		rollupTxReceipts, err = rc.checkRollup(latestRollup)
-		if err != nil {
-			panic(fmt.Errorf("failed to check rollup. Cause: %w", err))
-		}
-	}
-	err = rc.storage.StoreNewHeads(l1Head, latestRollup, rollupTxReceipts, isUpdatedRollupHead)
+	err = rc.storage.StoreNewHeads(block.Hash(), currentHeadRollup, nil, false)
 	if err != nil {
 		panic(fmt.Errorf("could not store new head. Cause: %w", err))
 	}
 
-	l2Head := latestRollup.Hash()
+	l2Head := currentHeadRollup.Hash()
 	return &l2Head, nil
 }
 

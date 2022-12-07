@@ -523,6 +523,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
+		println("jjj distributing rollup", result.ProducedRollup.Header.Number.Int64())
 		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
 
@@ -869,6 +870,7 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 	// TODO - #718 - We should probably submit each batch after storing it, and not submitting each one only if *every*
 	//  batch was stored correctly.
+	// todo - joel - this may screw me up
 	for _, batch := range batches {
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
