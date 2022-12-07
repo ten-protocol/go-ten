@@ -67,7 +67,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 
 	erc20ContractAddr := make([]common.Address, 0)
 	for _, token := range wallets.Tokens {
-		erc20receipt, err := DeployContract(tmpEthClient, token.L1Owner, erc20contract.L1BytecodeWithDefaultSupply(string(token.Name), l1BusAddress, mgmtContractReceipt.ContractAddress))
+		erc20receipt, err := DeployContract(tmpEthClient, token.L1Owner, erc20contract.L1BytecodeWithDefaultSupply(string(token.Name), mgmtContractReceipt.ContractAddress))
 		if err != nil {
 			panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
 		}

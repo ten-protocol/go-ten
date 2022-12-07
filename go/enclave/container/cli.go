@@ -1,4 +1,4 @@
-package enclaverunner
+package container
 
 import (
 	"flag"

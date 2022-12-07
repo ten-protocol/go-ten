@@ -7,7 +7,7 @@ import (
 	"github.com/edgelesssys/ego/ecrypto"
 )
 
-// SealAndPersist uses SGX's ProductKey to encrypt contents string to filepath string
+// SealAndPersist uses SGX's Unique measurement key to encrypt the contents string to filepath string
 // (note: filepath location must be accessible via ego mounts config in enclave.json)
 func SealAndPersist(contents string, filepath string) error {
 	f, err := os.Create(filepath)
@@ -18,8 +18,8 @@ func SealAndPersist(contents string, filepath string) error {
 		_ = f.Close()
 	}()
 
-	// todo: do we prefer to seal with product key for upgradability or unique key to require fresh db with every code change
-	enc, err := ecrypto.SealWithProductKey([]byte(contents), nil)
+	// We need to seal with a key derived from the measurement of the enclave to prevent the signer from decrypting the secret.
+	enc, err := ecrypto.SealWithUniqueKey([]byte(contents), nil)
 	if err != nil {
 		return fmt.Errorf("failed to seal contents bytes with enclave key to persist in %s - %w", filepath, err)
 	}

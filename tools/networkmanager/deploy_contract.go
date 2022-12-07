@@ -3,11 +3,9 @@ package networkmanager
 import (
 	"os"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
-	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -23,9 +21,6 @@ func DeployContract(config Config, logger gethlog.Logger) {
 		panic(err)
 	}
 
-	managementContract, _ := ManagementContract.NewManagementContract(config.mgmtContractAddress, l1Client.EthClient())
-	l1BusAddress, _ := managementContract.MessageBus(&bind.CallOpts{})
-
 	var contractBytes []byte
 	switch config.Command { //nolint:exhaustive
 	case DeployMgmtContract:
@@ -35,7 +30,7 @@ func DeployContract(config Config, logger gethlog.Logger) {
 		}
 		contractBytes = bytecode
 	case DeployERC20Contract:
-		contractBytes = erc20contract.L1BytecodeWithDefaultSupply(config.erc20Token, l1BusAddress, config.mgmtContractAddress)
+		contractBytes = erc20contract.L1BytecodeWithDefaultSupply(config.erc20Token, config.mgmtContractAddress)
 	default:
 		panic("unrecognised command type")
 	}

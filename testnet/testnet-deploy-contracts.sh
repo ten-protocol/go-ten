@@ -84,7 +84,7 @@ docker run --name=hocerc20deployer \
     --l1Deployment \
     --contractName="Layer1ERC20" \
     --privateKey=${pkstring}\
-    --constructorParams="Hocus,HOC,1000000000000000000000000000000"
+    --constructorParams="Hocus,HOC,1000000000000000000000000000000,${mgmtContractAddr}"
 # storing the contract address to the .env file
 hocErc20Addr=$(docker logs --tail 1 hocerc20deployer)
 echo "HOCERC20ADDR=${hocErc20Addr}" >> "${testnet_path}/.env"
@@ -101,7 +101,7 @@ docker run --name=pocerc20deployer \
     --l1Deployment \
     --contractName="Layer1ERC20" \
     --privateKey=${pkstring}\
-    --constructorParams="Pocus,POC,1000000000000000000000000000000"
+    --constructorParams="Pocus,POC,1000000000000000000000000000000,${mgmtContractAddr}"
 # storing the contract address to the .env file
 pocErc20Addr=$(docker logs --tail 1 pocerc20deployer)
 echo "POCERC20ADDR=${pocErc20Addr}" >> "${testnet_path}/.env"

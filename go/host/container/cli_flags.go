@@ -1,4 +1,4 @@
-package hostrunner
+package container
 
 // Flag names.
 const (
