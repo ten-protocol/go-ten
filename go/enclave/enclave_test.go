@@ -556,11 +556,6 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	// make sure the rollup is stored the rollup storage
 	rollup := dummyRollup(blk.Hash(), headRollup.NumberU64()+1, stateDB)
 
-	err = enclave.(*enclaveImpl).storage.StoreRollup(rollup)
-	if err != nil {
-		return err
-	}
-
 	// make sure the genesis is stored as the new Head of the rollup chain
 	err = enclave.(*enclaveImpl).storage.StoreNewHeads(blk.Hash(), rollup, nil, true)
 	if err != nil {
