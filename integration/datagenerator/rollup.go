@@ -4,11 +4,14 @@ import (
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
-func RandomRollup() common.ExtRollup {
+// RandomRollup - block is needed in order to pass the smart contract check
+// when submitting cross chain messages.
+func RandomRollup(block *types.Block) common.ExtRollup {
 	extRollup := common.ExtRollup{
 		Header: &common.Header{
 			ParentHash:  randomHash(),
@@ -21,5 +24,11 @@ func RandomRollup() common.ExtRollup {
 		TxHashes:        []gethcommon.Hash{randomHash()},
 		EncryptedTxBlob: RandomBytes(10),
 	}
+
+	if block != nil {
+		extRollup.Header.LatestInboundCrossChainHeight = block.Number()
+		extRollup.Header.LatestInboudCrossChainHash = block.Hash()
+	}
+
 	return extRollup
 }

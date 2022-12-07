@@ -95,6 +95,11 @@ type AttestationStorage interface {
 	StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error
 }
 
+type CrossChainMessagesStorage interface {
+	StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) error
+	GetL1Messages(blockHash gethcommon.Hash) (common.CrossChainMessages, error)
+}
+
 // Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
@@ -103,6 +108,7 @@ type Storage interface {
 	HeadsAfterL1BlockStorage
 	TransactionStorage
 	AttestationStorage
+	CrossChainMessagesStorage
 
 	// HealthCheck returns whether the storage is deemed healthy or not
 	HealthCheck() (bool, error)

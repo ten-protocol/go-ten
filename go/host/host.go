@@ -488,7 +488,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	h.processL1BlockTransactions(block)
 
 	// submit each block to the enclave for ingestion plus validation
-	result, err := h.enclaveClient.SubmitL1Block(*block, isLatestBlock)
+	result, err := h.enclaveClient.SubmitL1Block(*block, h.extractReceipts(block), isLatestBlock)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
@@ -785,6 +785,30 @@ func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 
 	h.p2p.UpdatePeerList(filteredHostAddresses)
 	return nil
+}
+
+// TODO: Perhaps extract only relevant logs. There were missing ones when requesting
+// the logs filtered from geth.
+func (h *host) extractReceipts(block *types.Block) types.Receipts {
+	receipts := make(types.Receipts, 0)
+
+	for _, transaction := range block.Transactions() {
+		receipt, err := h.ethClient.TransactionReceipt(transaction.Hash())
+
+		if err != nil || receipt == nil {
+			h.logger.Error("Problem with retrieving the receipt on the host!", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+			continue
+		}
+
+		h.logger.Trace(fmt.Sprintf("Adding receipt for block %d, TX: %d",
+			common.ShortHash(block.Hash()),
+			common.ShortHash(transaction.Hash())),
+			log.CmpKey, log.CrossChainCmp)
+
+		receipts = append(receipts, receipt)
+	}
+
+	return receipts
 }
 
 func (h *host) awaitSecret(fromHeight *big.Int) error {

@@ -121,7 +121,7 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 		t.Fatal(err)
 	}
 
-	if decodeUint64 != 393608 {
+	if decodeUint64 != 675624 {
 		t.Fatal("unexpected gas price")
 	}
 }
@@ -481,7 +481,7 @@ func createTestEnclave(prefundedAddresses []prefundedAddress) (common.Enclave, e
 func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) error {
 	// Random Layer 1 block where the genesis rollup is set
 	blk := types.NewBlock(&types.Header{}, nil, nil, nil, &trie.StackTrie{})
-	_, err := enclave.SubmitL1Block(*blk, true)
+	_, err := enclave.SubmitL1Block(*blk, make(types.Receipts, 0), true)
 	if err != nil {
 		return err
 	}
@@ -529,7 +529,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 			Number:     big.NewInt(0).Add(headBlock.Number(), big.NewInt(1)),
 			ParentHash: headBlock.Hash(),
 		}, nil, nil, nil, &trie.StackTrie{})
-	_, err = enclave.SubmitL1Block(*blk, true)
+	_, err = enclave.SubmitL1Block(*blk, make(types.Receipts, 0), true)
 	if err != nil {
 		return err
 	}

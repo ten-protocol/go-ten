@@ -35,6 +35,7 @@ type EnclaveConfigToml struct {
 	SqliteDBPath              string
 	ProfilerEnabled           bool
 	MinGasPrice               int64
+	MessageBusAddress         string
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
@@ -62,6 +63,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	sqliteDBPath := flag.String(sqliteDBPathName, cfg.SqliteDBPath, flagUsageMap[sqliteDBPathName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
 	minGasPrice := flag.Int64(minGasPriceName, cfg.MinGasPrice.Int64(), flagUsageMap[minGasPriceName])
+	messageBusAddress := flag.String(messageBusAddressName, cfg.MessageBusAddress.Hex(), flagUsageMap[messageBusAddressName])
 
 	flag.Parse()
 
@@ -104,6 +106,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	cfg.SqliteDBPath = *sqliteDBPath
 	cfg.ProfilerEnabled = *profilerEnabled
 	cfg.MinGasPrice = big.NewInt(*minGasPrice)
+	cfg.MessageBusAddress = gethcommon.HexToAddress(*messageBusAddress)
 
 	return cfg, nil
 }

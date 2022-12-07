@@ -11,6 +11,8 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
+	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -48,6 +50,7 @@ type MgmtContractLib interface {
 	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
 	// DecodeCallResponse unpacks a call response into a slice of strings.
 	DecodeCallResponse(callResponse []byte) ([][]string, error)
+	GetContractAddr() *gethcommon.Address
 }
 
 type contractLibImpl struct {
@@ -67,6 +70,10 @@ func NewMgmtContractLib(addr *gethcommon.Address, logger gethlog.Logger) MgmtCon
 		contractABI: contractABI,
 		logger:      logger,
 	}
+}
+
+func (c *contractLibImpl) GetContractAddr() *gethcommon.Address {
+	return c.addr
 }
 
 func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
@@ -123,14 +130,25 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 	}
 	encRollupData := base64EncodeToString(zipped)
 
+	metaRollup := ManagementContract.StructsMetaRollup{
+		ParentHash:   decodedRollup.Header.ParentHash,
+		Hash:         decodedRollup.Hash(),
+		AggregatorID: decodedRollup.Header.Agg,
+		L1Block:      decodedRollup.Header.L1Proof,
+		Number:       decodedRollup.Header.Number,
+	}
+
+	crossChain := ManagementContract.StructsHeaderCrossChainData{
+		BlockNumber: decodedRollup.Header.LatestInboundCrossChainHeight,
+		BlockHash:   decodedRollup.Header.LatestInboudCrossChainHash,
+		Messages:    convertCrossChainMessages(decodedRollup.Header.CrossChainMessages),
+	}
+
 	data, err := c.contractABI.Pack(
 		AddRollupMethod,
-		decodedRollup.Header.ParentHash,
-		decodedRollup.Hash(),
-		decodedRollup.Header.Agg,
-		decodedRollup.Header.L1Proof,
-		decodedRollup.Header.Number,
+		metaRollup,
 		encRollupData,
+		crossChain,
 	)
 	if err != nil {
 		panic(err)
@@ -356,4 +374,20 @@ func Decompress(in []byte) ([]byte, error) {
 	defer gz.Close()
 
 	return io.ReadAll(gz)
+}
+
+func convertCrossChainMessages(messages []MessageBus.StructsCrossChainMessage) []ManagementContract.StructsCrossChainMessage {
+	msgs := make([]ManagementContract.StructsCrossChainMessage, 0)
+
+	for _, message := range messages {
+		msgs = append(msgs, ManagementContract.StructsCrossChainMessage{
+			Sender:   message.Sender,
+			Sequence: message.Sequence,
+			Nonce:    message.Nonce,
+			Topic:    message.Topic,
+			Payload:  message.Payload,
+		})
+	}
+
+	return msgs
 }

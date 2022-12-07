@@ -14,7 +14,7 @@ script_path="$(cd "$(dirname "${0}")" && pwd)"
 contract_path="${script_path}/${contract_name}.sol"
 abi_path="${script_path}/abi"
 bin_path="${script_path}/bin"
-libs_path="${script_path}/libs"
+libs_path="${script_path}/.."
 generated_path="${script_path}/generated/${contract_name}"
 
 # ensure folder exists

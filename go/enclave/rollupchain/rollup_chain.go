@@ -24,6 +24,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
@@ -60,6 +61,7 @@ type RollupChain struct {
 	mempool               mempool.Manager
 	faucet                Faucet
 	subscriptionManager   *events.SubscriptionManager
+	crossChainProcessors  *crosschain.Processors
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
@@ -78,6 +80,7 @@ func New(
 	l1Blockchain *gethcore.BlockChain,
 	bridge *bridge.Bridge,
 	subscriptionManager *events.SubscriptionManager,
+	crossChainProcessors *crosschain.Processors,
 	txCrypto crypto.TransactionBlobCrypto,
 	mempool mempool.Manager,
 	privateKey *ecdsa.PrivateKey,
@@ -94,6 +97,7 @@ func New(
 		mempool:               mempool,
 		faucet:                NewFaucet(),
 		subscriptionManager:   subscriptionManager,
+		crossChainProcessors:  crossChainProcessors,
 		enclavePrivateKey:     privateKey,
 		chainConfig:           chainConfig,
 		blockProcessingMutex:  sync.Mutex{},
@@ -126,6 +130,18 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 		Transactions: []*common.L2Tx{},
 	}
 
+	// TODO: Figure out a better way to bootstrap the system contracts.
+	deployTx, err := rc.crossChainProcessors.Local.GenerateMessageBusDeployTx()
+	if err != nil {
+		rc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
+	}
+
+	// Add transaction to mempool so it gets processed when it can.
+	// Should be the first transaction to be processed.
+	if err := rc.mempool.AddMempoolTx(deployTx); err != nil {
+		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
+	}
+
 	err = rc.signRollup(rolGenesis)
 	if err != nil {
 		return nil, fmt.Errorf("could not sign genesis rollup. Cause: %w", err)
@@ -135,12 +151,12 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
-	err := rc.updateL1State(block, isLatest)
+	err := rc.updateL1State(block, receipts, isLatest)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
@@ -282,7 +298,7 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 	return result, nil
 }
 
-func (rc *RollupChain) updateL1State(block types.Block, isLatest bool) error {
+func (rc *RollupChain) updateL1State(block types.Block, receipts types.Receipts, isLatest bool) error {
 	// We check whether we've already processed the block.
 	_, err := rc.storage.FetchBlock(block.Hash())
 	if err == nil {
@@ -290,6 +306,12 @@ func (rc *RollupChain) updateL1State(block types.Block, isLatest bool) error {
 	}
 	if !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not retrieve block. Cause: %w", err)
+	}
+
+	// Reject block if not provided with matching receipts.
+	// This needs to happen before saving the block as otherwise it will be considered as processed.
+	if rc.crossChainProcessors.Enabled() && !crosschain.VerifyReceiptHash(&block, receipts) {
+		return rc.rejectBlockErr(errors.New("receipts do not match receipt_root in block"))
 	}
 
 	// We insert the block into the L1 chain and store it.
@@ -302,6 +324,13 @@ func (rc *RollupChain) updateL1State(block types.Block, isLatest bool) error {
 		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
 
 	rc.storage.StoreBlock(&block)
+
+	// This requires block to be stored first ... but can permanently fail a block
+	err = rc.crossChainProcessors.Remote.StoreCrossChainMessages(&block, receipts)
+	if err != nil {
+		return rc.rejectBlockErr(errors.New("failed to process cross chain messages"))
+	}
+
 	return nil
 }
 
@@ -470,7 +499,7 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 }
 
 // This is where transactions are executed and the state is calculated.
-// Obscuro includes a bridge embedded in the platform, and this method is responsible for processing deposits as well.
+// Obscuro includes a message bus embedded in the platform, and this method is responsible for transferring messages as well.
 // The rollup can be a final rollup as received from peers or the rollup under construction.
 func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
@@ -508,6 +537,7 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
 	}
 
+	// TODO: Remove this depositing logic once the new bridge is added.
 	depositTxs := rc.bridge.ExtractDeposits(
 		parentProof,
 		rollupProof,
@@ -531,6 +561,46 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 		i++
 	}
 
+	messages := rc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, rollupProof, stateDB)
+	transactions := rc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
+	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
+	if len(syntheticTransactionsResponses) != len(transactions) {
+		rc.logger.Crit("Sanity check. Some synthetic transactions failed.")
+	}
+
+	i = 0
+	for _, resp := range syntheticTransactionsResponses {
+		rec, ok := resp.(*types.Receipt)
+		if !ok { // Еxtract reason for failing deposit.
+			// TODO - Handle the case of an error (e.g. insufficient funds).
+			rc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
+		}
+
+		if rec.Status == 0 { // Synthetic transactions should not fail. In case of failure get the revert reason.
+			failingTx := transactions[i]
+			txCallMessage := types.NewMessage(
+				rc.crossChainProcessors.Local.GetOwner(),
+				failingTx.To(),
+				stateDB.GetNonce(rc.crossChainProcessors.Local.GetOwner()),
+				failingTx.Value(),
+				failingTx.Gas(),
+				gethcommon.Big0,
+				gethcommon.Big0,
+				gethcommon.Big0,
+				failingTx.Data(),
+				failingTx.AccessList(),
+				false)
+
+			clonedDB := stateDB.Copy()
+			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
+			rc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
+		}
+
+		synthReceipts[i] = rec
+		i++
+	}
+
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
 		rc.logger.Crit("could not commit to state DB. ", log.ErrKey, err)
@@ -547,6 +617,7 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 	h := rollup.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
+
 		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
 			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, core.PrintTxs(rollup.Transactions), dump, depositReceipts))
 		return false
@@ -754,6 +825,22 @@ func (rc *RollupChain) produceRollup(l1Head *common.L1RootHash) (*core.Rollup, e
 	// Postprocessing - withdrawals
 	txReceiptsMap := toReceiptMap(txReceipts)
 	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
+	crossChainMessages, err := rc.crossChainProcessors.Local.ExtractOutboundMessages(txReceipts)
+	if err != nil {
+		rc.logger.Crit("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
+	}
+
+	r.Header.CrossChainMessages = crossChainMessages
+
+	rc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to rollup. Equivalent withdrawals in header - %d", len(r.Header.CrossChainMessages), len(r.Header.Withdrawals)), log.CmpKey, log.CrossChainCmp)
+
+	crossChainBind, err := rc.storage.Proof(r)
+	if err != nil {
+		rc.logger.Crit("Failed to extract rollup proof that should exist!")
+	}
+
+	r.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
+	r.Header.LatestInboundCrossChainHeight = crossChainBind.Number()
 
 	receipts := allReceipts(txReceipts, depositReceipts)
 	if len(receipts) == 0 {
