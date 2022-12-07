@@ -23,7 +23,6 @@ import (
 	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/enclaverunner"
 	"github.com/obscuronet/go-obscuro/go/host/hostrunner"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
@@ -83,7 +82,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{hostAddress.String()}, "", int(gethlog.LvlDebug))
 	defer network.StopNodes()
 
-	go enclaverunner.RunEnclave(enclaveConfig)
+	go enclavecontainer.RunEnclave(enclaveConfig)
 	go hostrunner.RunHost(hostConfig)
 
 	// we create the node RPC client
