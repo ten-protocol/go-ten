@@ -199,8 +199,6 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	// println(fmt.Sprintf("node %s received batch %d with parent %s", rc.hostID.Hex(), batch.Header.Number, batch.Header.ParentHash.Hex()))
-
 	extRollup := common.ExtRollup{
 		Header:          batch.Header,
 		TxHashes:        batch.TxHashes,
@@ -208,12 +206,13 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
 	}
 	rollup := core.ToEnclaveRollup(&extRollup, rc.transactionBlobCrypto)
 
+	// We return early if we've processed the batch before.
 	_, err := rc.storage.FetchRollup(rollup.Hash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		panic(fmt.Errorf("todo joel bad. Cause: %w", err))
+		return fmt.Errorf("could not fetch rollup. Cause: %w", err)
 	}
 	if err == nil {
-		return nil // todo - joel - describe - because we've processed it before
+		return nil
 	}
 
 	rollupTxReceipts, err := rc.checkRollup(rollup)

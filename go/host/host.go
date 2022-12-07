@@ -848,12 +848,14 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	}
 
 	for _, batch := range batches {
+		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
+		// up later, once we've received the L1 block.
 		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
-				return nil // todo - joel - describe - waiting for block to be ready
+				return nil
 			}
-			panic("todo - joel")
+			return fmt.Errorf("could not retrieve block. Cause: %w", err)
 		}
 
 		// TODO - #718 - Think carefully about the risk of inconsistency between the enclave and the host in terms of
@@ -875,11 +877,6 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 			return nil
 		}
 
-		if batch.Header.Number.Uint64() == common.L2GenesisHeight {
-			// todo - joel - explain this - it's because we get the genesis from the L1 block (for now, at least)
-			continue
-		}
-		// TODO - #718 - Think about what happens if the corresponding L1 block hasn't been stored yet.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
