@@ -166,17 +166,15 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return nil, rc.rejectBlockErr(err)
 	}
-	newL2Head, err := rc.updateL1AndL2Heads(&block)
+	newL2Head, blockStage, err := rc.updateL1AndL2Heads(&block)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
 	}
 
-	isUpdatedRollupHead := newL2Head != nil && (oldL2Head == nil || oldL2Head.Hex() != newL2Head.Hex()) // The pre-genesis L2 head is nil.
-	isPostGenesisBlock := (newL2Head != nil) && (oldL2Head != nil)
-
 	// If we're the sequencer and we're beyond the genesis block, we produce and store the new L2 chain head.
 	var producedRollup *core.Rollup
-	if rc.nodeType == common.Sequencer && isPostGenesisBlock {
+	var isUpdatedRollupHead bool
+	if rc.nodeType == common.Sequencer && blockStage == PostGenesis {
 		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(block.Hash())
 		if err != nil {
 			return nil, rc.rejectBlockErr(err)
@@ -185,6 +183,9 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 		producedRollupHash := producedRollup.Hash()
 		newL2Head = &producedRollupHash
 		isUpdatedRollupHead = true
+	} else {
+		// The pre-genesis L2 head is nil.
+		isUpdatedRollupHead = newL2Head != nil && (oldL2Head == nil || oldL2Head.Hex() != newL2Head.Hex())
 	}
 
 	return rc.produceBlockSubmissionResponse(&block, newL2Head, isUpdatedRollupHead, producedRollup)
@@ -472,14 +473,14 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head
 }
 
 // Updates the heads of the L1 and L2 chains.
-func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, error) {
+func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, BlockStage, error) {
 	// We extract the rollups from the block.
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 
 	// We determine whether this is a pre-genesis, genesis, or post-genesis block.
 	blockStage, err := rc.getBlockStage(rollupsInBlock)
 	if err != nil {
-		return nil, fmt.Errorf("could not determine block type. Cause: %w", err)
+		return nil, -1, fmt.Errorf("could not determine block type. Cause: %w", err)
 	}
 
 	var l2Head *common.L2RootHash
@@ -492,10 +493,10 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 		l2Head, err = rc.handlePostGenesisBlock(block)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("could not handle block. Cause: %w", err)
+		return nil, -1, fmt.Errorf("could not handle block. Cause: %w", err)
 	}
 
-	return l2Head, nil
+	return l2Head, blockStage, nil
 }
 
 // Determines if this is a pre-genesis L2 block, the genesis L2 block, or a post-genesis L2 block.
