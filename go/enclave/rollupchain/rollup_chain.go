@@ -163,7 +163,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 	wasPreGenesisBlock := newL2Head == nil
 	wasGenesisBlock := (newL2Head != nil) && (oldL2Head == nil)
 
-	var producedRollup *common.ExtRollup
+	var producedRollup *core.Rollup
 	// todo - joel - update comment to reflect new conditions
 	// todo - joel - don't have this ugly chunk up here
 	// If we're the sequencer and we've ingested a rollup, we produce a new one.
@@ -174,20 +174,18 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, isLatest bool) (*common
 			return nil, rc.rejectBlockErr(err)
 		}
 
-		enclaveRollup := core.ToEnclaveRollup(producedRollup, rc.transactionBlobCrypto)
-
 		var rollupTxReceipts []*types.Receipt
-		rollupTxReceipts, err = rc.checkRollup(enclaveRollup)
+		rollupTxReceipts, err = rc.checkRollup(producedRollup)
 		if err != nil {
 			panic(fmt.Errorf("failed to check rollup. Cause: %w", err))
 		}
 
-		err = rc.storage.StoreNewHeads(block.Hash(), enclaveRollup, rollupTxReceipts, true)
+		err = rc.storage.StoreNewHeads(block.Hash(), producedRollup, rollupTxReceipts, true)
 		if err != nil {
 			panic(fmt.Errorf("could not store new head. Cause: %w", err))
 		}
 
-		rollupHash := enclaveRollup.Hash()
+		rollupHash := producedRollup.Hash()
 		newL2Head = &rollupHash
 		isUpdatedRollupHead = true
 	}
@@ -415,7 +413,7 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 }
 
 // Creates a new rollup, building on the latest chain heads.
-func (rc *RollupChain) produceNewRollup(l1Head *common.L1RootHash) (*common.ExtRollup, error) {
+func (rc *RollupChain) produceNewRollup(l1Head *common.L1RootHash) (*core.Rollup, error) {
 	rollup, err := rc.produceRollup(l1Head)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
@@ -434,12 +432,11 @@ func (rc *RollupChain) produceNewRollup(l1Head *common.L1RootHash) (*common.ExtR
 		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
 	}
 
-	extRollup := rollup.ToExtRollup(rc.transactionBlobCrypto)
-	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(extRollup.Hash())))
-	return &extRollup, nil
+	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(rollup.Hash())))
+	return rollup, nil
 }
 
-func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, isUpdatedRollupHead bool, producedRollup *common.ExtRollup) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, isUpdatedRollupHead bool, producedRollup *core.Rollup) (*common.BlockSubmissionResponse, error) {
 	if l2Head == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return &common.BlockSubmissionResponse{}, nil
@@ -454,8 +451,13 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head
 		ingestedRollupHeader = headRollup.Header
 	}
 
+	var producedExtRollup common.ExtRollup
+	if producedRollup != nil {
+		producedExtRollup = producedRollup.ToExtRollup(rc.transactionBlobCrypto)
+	}
+
 	return &common.BlockSubmissionResponse{
-		ProducedRollup:       producedRollup,
+		ProducedRollup:       &producedExtRollup,
 		IngestedRollupHeader: ingestedRollupHeader,
 		SubscribedLogs:       rc.getEncryptedLogs(*block, l2Head),
 	}, nil
