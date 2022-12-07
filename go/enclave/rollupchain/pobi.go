@@ -9,7 +9,7 @@ import (
 
 // Returns the new head rollup, and a boolean indicating whether this is a new rollup or the existing head rollup.
 // todo - add statistics to determine why there are conflicts.
-func selectNextRollup(currentHeadRollup *core.Rollup, rollups []*core.Rollup, blockResolver db.BlockResolver) (*core.Rollup, bool) {
+func selectNextRollup(currentHeadRollup *core.Rollup, rollups []*core.Rollup, blockResolver db.BlockResolver) (*core.Rollup, bool) { //nolint:unused
 	var newHeadRollup *core.Rollup
 
 	// We iterate over the proposed rollups to select the best new head rollup.
