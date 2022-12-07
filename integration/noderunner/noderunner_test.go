@@ -84,16 +84,14 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{hostAddress.String()}, "", int(gethlog.LvlDebug))
 	defer network.StopNodes()
 
-	enclCont := enclavecontainer.NewEnclaveContainer(enclaveConfig)
 	go func() {
-		err := enclCont.Start()
+		err := enclavecontainer.NewEnclaveContainer(enclaveConfig).Start()
 		if err != nil {
 			panic(err)
 		}
 	}()
-	hostCont := hostcontainer.NewHostContainer(hostConfig)
 	go func() {
-		err := hostCont.Start()
+		err := hostcontainer.NewHostContainer(hostConfig).Start()
 		if err != nil {
 			panic(err)
 		}
