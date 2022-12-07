@@ -210,7 +210,7 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
 
 	_, err := rc.storage.FetchRollup(rollup.Hash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		panic("todo joel bad")
+		panic(fmt.Errorf("todo joel bad. Cause: %w", err))
 	}
 	if err == nil {
 		return nil // todo - joel - describe - because we've processed it before
