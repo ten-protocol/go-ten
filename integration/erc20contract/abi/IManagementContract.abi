@@ -1,0 +1,1 @@
+[{"inputs":[],"name":"messageBus","outputs":[{"internalType":"contract IMessageBus","name":"","type":"address"}],"stateMutability":"view","type":"function"}]
