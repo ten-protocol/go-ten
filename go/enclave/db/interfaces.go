@@ -39,8 +39,6 @@ type RollupResolver interface {
 	FetchRollup(hash common.L2RootHash) (*core.Rollup, error)
 	// FetchRollupByHeight returns the rollup with the given height.
 	FetchRollupByHeight(height uint64) (*core.Rollup, error)
-	// FetchRollups returns all the proposed rollups with the given height
-	FetchRollups(height uint64) ([]*core.Rollup, error)
 	// StoreRollup persists the rollup
 	StoreRollup(rollup *core.Rollup) error
 	// ParentRollup returns the rollup's parent rollup.

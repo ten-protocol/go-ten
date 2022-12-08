@@ -107,11 +107,6 @@ func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, error) {
 	return s.FetchRollup(*hash)
 }
 
-func (s *storageImpl) FetchRollups(height uint64) ([]*core.Rollup, error) {
-	s.assertSecretAvailable()
-	return obscurorawdb.ReadRollupsForHeight(s.db, height)
-}
-
 func (s *storageImpl) StoreBlock(b *types.Block) {
 	s.assertSecretAvailable()
 	rawdb.WriteBlock(s.db, b)
