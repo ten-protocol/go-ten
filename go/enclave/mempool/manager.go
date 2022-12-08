@@ -65,7 +65,7 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *core.Rollup, resolver db.Roll
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 
-	toRemove, err := historicTxs(rollup, resolver)
+	toRemove, err := txsXRollupsAgo(rollup, resolver)
 	if err != nil {
 		return fmt.Errorf("error retrieiving historic transactions. Cause: %w", err)
 	}
@@ -82,8 +82,8 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *core.Rollup, resolver db.Roll
 	return nil
 }
 
-// Returns all transactions in the past `HeightCommittedBlocks` rollups.
-func historicTxs(initialRollup *core.Rollup, resolver db.RollupResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
+// Returns all transactions in the rollup `HeightCommittedBlocks` rollups ago.
+func txsXRollupsAgo(initialRollup *core.Rollup, resolver db.RollupResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
 	i := common.HeightCommittedBlocks
 	currentRollup := initialRollup
 	found := true
