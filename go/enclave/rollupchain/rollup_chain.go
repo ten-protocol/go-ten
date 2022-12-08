@@ -415,9 +415,6 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 		}
 
 		// ingested block is on a different branch to the previously ingested block - we may have to rewind L2 state
-		if common.ShortAddress(rc.hostID) == 0 {
-			println("jjj L1 forking for sequencer")
-		}
 		return &blockIngestionType{latest: isLatest, fork: true, preGenesis: false}, nil
 	}
 
