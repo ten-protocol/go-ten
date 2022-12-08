@@ -800,7 +800,8 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 			continue
 		}
 
-		h.logger.Trace(fmt.Sprintf("Adding receipt for block %d, TX: %d",
+		h.logger.Trace(fmt.Sprintf("Adding receipt[%d] for block %d, TX: %d",
+			receipt.Status,
 			common.ShortHash(block.Hash()),
 			common.ShortHash(transaction.Hash())),
 			log.CmpKey, log.CrossChainCmp)

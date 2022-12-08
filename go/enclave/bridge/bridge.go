@@ -236,6 +236,7 @@ func (bridge *Bridge) ExtractDeposits(
 		return nil
 	}
 
+	fromL1Deposits := make([]uint64, 0)
 	allDeposits := make([]*common.L2Tx, 0)
 	b := toBlock
 	for {
@@ -252,6 +253,7 @@ func (bridge *Bridge) ExtractDeposits(
 				// todo - the adjust has to be per token
 				depL2Tx := bridge.NewDepositTx(depositTx.TokenContract, *depositTx.Sender, depositTx.Amount, rollupState, uint64(len(allDeposits)))
 				allDeposits = append(allDeposits, depL2Tx)
+				fromL1Deposits = append(fromL1Deposits, common.ShortHash(tx.Hash()))
 			}
 		}
 		if b.NumberU64() < height {
@@ -269,7 +271,7 @@ func (bridge *Bridge) ExtractDeposits(
 		b = p
 	}
 
-	bridge.logger.Trace(fmt.Sprintf("Extracted deposits %d ->%d: %v.", fromBlock.NumberU64(), toBlock.NumberU64(), allDeposits))
+	bridge.logger.Trace(fmt.Sprintf("Extracted deposits %d ->%d: %v -> %v", fromBlock.NumberU64(), toBlock.NumberU64(), fromL1Deposits, allDeposits))
 	return allDeposits
 }
 
