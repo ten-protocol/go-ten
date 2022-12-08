@@ -229,10 +229,12 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 	return logs, nil
 }
 
-func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
+func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool, updateL1 bool) error {
 	batch := s.db.NewBatch()
 
-	rawdb.WriteHeadHeaderHash(batch, l1Head)
+	if updateL1 {
+		rawdb.WriteHeadHeaderHash(batch, l1Head)
+	}
 	if err := obscurorawdb.WriteL2Head(batch, l1Head, rollup.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
