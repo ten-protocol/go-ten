@@ -134,7 +134,7 @@ func findTxsNotIncluded(head *core.Rollup, txs []*common.L2Tx, s db.RollupResolv
 	if err != nil {
 		return nil, err
 	}
-	return removeExisting(txs, included), nil
+	return filterOutTransactions(txs, included), nil
 }
 
 // Recursively finds all transactions included in the past stopAtHeight rollups.
@@ -167,11 +167,11 @@ func allIncludedTransactions(rollup *core.Rollup, s db.RollupResolver, stopAtHei
 	return newMap, nil
 }
 
-func removeExisting(base []*common.L2Tx, toRemove map[gethcommon.Hash]*common.L2Tx) (r []*common.L2Tx) {
-	for _, t := range base {
-		_, f := toRemove[t.Hash()]
+func filterOutTransactions(txs []*common.L2Tx, txsToRemove map[gethcommon.Hash]*common.L2Tx) (r []*common.L2Tx) {
+	for _, tx := range txs {
+		_, f := txsToRemove[tx.Hash()]
 		if !f {
-			r = append(r, t)
+			r = append(r, tx)
 		}
 	}
 	return
