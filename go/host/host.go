@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -421,7 +422,7 @@ func (h *host) startProcessing() {
 		case tx := <-h.txP2PCh:
 			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
 			if _, err := h.enclaveClient.SubmitTx(tx); err != nil {
-				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
+				panic(fmt.Errorf("could not submit transaction. Cause: %w", err))
 			}
 
 		case batches := <-h.batchP2PCh:
@@ -482,6 +483,9 @@ func triggerInterrupt(interrupt *int32) *int32 {
 }
 
 func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
+	//if h.shortID == 0 {
+	//	println(fmt.Sprintf("jjj node %d: processing l1 block", h.shortID))
+	//}
 	// For the genesis block the parent is nil
 	if block == nil {
 		return nil
@@ -523,6 +527,12 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
+		var txs []string
+		for _, tx := range result.ProducedRollup.TxHashes {
+			txs = append(txs, tx.Hex())
+		}
+		println(fmt.Sprintf("jjj node %d: distributing batch %d with L1 proof %s and txs %s",
+			h.shortID, result.ProducedRollup.Header.Number.Int64(), result.ProducedRollup.Header.L1Proof, strings.Join(txs, ", ")))
 		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
 
@@ -872,6 +882,12 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	}
 
 	for _, batch := range batches {
+		var txs []string
+		for _, tx := range batch.TxHashes {
+			txs = append(txs, tx.Hex())
+		}
+		println(fmt.Sprintf("jjj node %d: received batch %d, with txs %s", h.shortID, batch.Header.Number.Int64(), strings.Join(txs, ", ")))
+
 		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
 		// up later, once we've received the L1 block.
 		// TODO - #718 - This should be a special error type returned by `StoreBatch`.
@@ -902,8 +918,9 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 			return nil
 		}
 
+		//println(fmt.Sprintf("jjj node %d: submitting batch %d to the enclave, with txs %s", h.shortID, batch.Header.Number.Int64(), strings.Join(txs, ", ")))
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
-			return fmt.Errorf("could not submit batch. Cause: %w", err)
+			panic(fmt.Errorf("could not submit batch. Cause: %w", err))
 		}
 	}
 

@@ -478,7 +478,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		// We check that there is a receipt available for each transaction
 		receipt, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
-			t.Errorf("node %d: could not retrieve receipt for transaction %s. Cause: %s", nodeIdx, tx.Hash().Hex(), err)
+			panic(fmt.Errorf("node %d: could not retrieve receipt for transaction %s. Cause: %w", nodeIdx, tx.Hash().Hex(), err))
 			continue
 		}
 
