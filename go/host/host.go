@@ -556,6 +556,16 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 		Rollup: encodedRollup,
 	}
 
+	h.logger.Trace("Sending transaction to publish rollup", "rollup_header",
+		gethlog.Lazy{Fn: func() string {
+			header, err := json.MarshalIndent(producedRollup.Header, "", "   ")
+			if err != nil {
+				return err.Error()
+			}
+
+			return string(header[:])
+		}})
+
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 	if err != nil {
