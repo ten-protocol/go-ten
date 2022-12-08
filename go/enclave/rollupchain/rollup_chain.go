@@ -175,7 +175,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 	var producedRollup *core.Rollup
 	var isUpdatedRollupHead bool
 	if rc.nodeType == common.Sequencer && blockStage == PostGenesis {
-		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(block.Hash())
+		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(&block)
 		if err != nil {
 			return nil, rc.rejectBlockErr(err)
 		}
@@ -423,8 +423,8 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 }
 
 // Creates a new rollup, building on the latest chain heads, and updates the current L2 head.
-func (rc *RollupChain) produceNewRollupAndUpdateL2Head(l1Head common.L1RootHash) (*core.Rollup, error) {
-	rollup, err := rc.produceRollup(&l1Head)
+func (rc *RollupChain) produceNewRollupAndUpdateL2Head(block *types.Block) (*core.Rollup, error) {
+	rollup, err := rc.produceRollup(block)
 	if err != nil {
 		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
 	}
@@ -436,7 +436,7 @@ func (rc *RollupChain) produceNewRollupAndUpdateL2Head(l1Head common.L1RootHash)
 		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
 	}
 
-	err = rc.storage.StoreNewHeads(l1Head, rollup, rollupTxReceipts, true, true)
+	err = rc.storage.StoreNewHeads(block.Hash(), rollup, rollupTxReceipts, true, true)
 	if err != nil {
 		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
@@ -821,10 +821,15 @@ func (rc *RollupChain) getEncryptedLogs(block types.Block, l2Head *common.L2Root
 }
 
 // Creates a rollup.
-func (rc *RollupChain) produceRollup(l1Head *common.L1RootHash) (*core.Rollup, error) {
-	headRollup, err := rc.storage.FetchHeadRollup()
+func (rc *RollupChain) produceRollup(block *types.Block) (*core.Rollup, error) {
+	headRollupHash, err := rc.storage.FetchHeadRollupForL1Block(block.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
+	}
+
+	headRollup, err := rc.storage.FetchRollup(*headRollupHash)
+	if err != nil {
+		panic("todo - joel - handle better")
 	}
 
 	// These variables will be used to create the new rollup
@@ -833,7 +838,7 @@ func (rc *RollupChain) produceRollup(l1Head *common.L1RootHash) (*core.Rollup, e
 
 	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
 	nonce := common.GenerateNonce()
-	r, err := core.EmptyRollup(rc.hostID, headRollup.Header, *l1Head, nonce)
+	r, err := core.EmptyRollup(rc.hostID, headRollup.Header, block.Hash(), nonce)
 	if err != nil {
 		return nil, fmt.Errorf("could not create rollup. Cause: %w", err)
 	}
