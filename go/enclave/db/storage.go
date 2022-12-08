@@ -222,16 +222,16 @@ func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollu
 	if isNewL1Block {
 		rawdb.WriteHeadHeaderHash(batch, l1Head)
 	}
-	// TODO - #718 - Is there a race condition whereby an old rollup arrives, displacing the more recent rollup as L2 head?
-	if err := obscurorawdb.WriteL2Head(batch, l1Head, rollup.Hash()); err != nil {
-		return fmt.Errorf("could not write block state. Cause: %w", err)
-	}
 
 	if isNewRollup {
 		err := s.storeNewRollup(batch, rollup, receipts)
 		if err != nil {
 			return err
 		}
+	}
+
+	if err := obscurorawdb.WriteL2Head(batch, l1Head, rollup.Hash()); err != nil {
+		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
 	var logs []*types.Log
