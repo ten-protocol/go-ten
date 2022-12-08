@@ -14,6 +14,6 @@ func main() {
 		panic(fmt.Errorf("could not parse config. Cause: %w", err))
 	}
 
-	enclaveContainer := enclavecontainer.NewEnclaveContainer(config)
+	enclaveContainer := enclavecontainer.NewEnclaveContainerFromConfig(config)
 	container.Serve(enclaveContainer)
 }
