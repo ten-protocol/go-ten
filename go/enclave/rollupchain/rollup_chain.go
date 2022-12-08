@@ -192,7 +192,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
-func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
+func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
@@ -206,31 +206,31 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) error {
 	// We return early if we've processed the batch before.
 	_, err := rc.storage.FetchRollup(rollup.Hash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not fetch rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not fetch rollup. Cause: %w", err)
 	}
 	if err == nil {
-		return nil
+		return nil, nil //nolint:nilnil
 	}
 
 	// We return early if the rollup is built on an L1 fork.
 	headBlock, err := rc.storage.FetchHeadBlock()
 	if err != nil {
-		return fmt.Errorf("could not retrieve head block. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
 	if !rc.storage.IsBlockAncestor(headBlock, batch.Header.L1Proof) {
-		return nil
+		return nil, nil //nolint:nilnil
 	}
 
 	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
-		return fmt.Errorf("failed to check rollup. Cause: %w", err)
+		return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
 	}
 	err = rc.storage.StoreNewHeads(batch.Header.L1Proof, rollup, rollupTxReceipts, true, false)
 	if err != nil {
-		return fmt.Errorf("could not store new L2 head. Cause: %w", err)
+		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
 
-	return nil
+	return rollup.Header, nil
 }
 
 func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
