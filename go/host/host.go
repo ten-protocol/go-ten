@@ -874,7 +874,7 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	for _, batch := range batches {
 		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
 		// up later, once we've received the L1 block.
-		// TODO - #718 - This should be a special error type returned by `StoreBatch`.
+		// TODO - #718 - Handle this in batch manager.
 		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
@@ -885,12 +885,14 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 		// TODO - #718 - Think carefully about the risk of inconsistency between the enclave and the host in terms of
 		//  batches stored. It may be better to have the enclave manage the entire state.
-		err = h.batchManager.StoreBatch(batch)
-		if err != nil {
-			if !errors.Is(err, batchmanager.ErrBatchesMissing) {
-				return fmt.Errorf("could not store batches. Cause: %w", err)
-			}
 
+		// TODO - #718 - Have batch request created directly, not as a separate call.
+		isParentStored, err := h.batchManager.IsParentStored(batch)
+		if err != nil {
+			return fmt.Errorf("could not determine whether batch parent was missing. Cause: %w", err)
+		}
+
+		if !isParentStored {
 			// We have encountered missing batches. We abort the storage operation and request the missing batches.
 			batchRequest, err := h.batchManager.CreateBatchRequest(h.config.P2PPublicAddress)
 			if err != nil {
@@ -904,6 +906,9 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
+		}
+		if err = h.db.AddBatchHeader(batch); err != nil {
+			return fmt.Errorf("could not store batch header. Cause: %w", err)
 		}
 	}
 
