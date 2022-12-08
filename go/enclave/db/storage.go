@@ -229,10 +229,11 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 	return logs, nil
 }
 
-func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool, updateL1 bool) error {
+// TODO - #718 - This method has behaviour that's too dependent on various flags. Decompose.
+func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool, isNewL1Block bool) error {
 	batch := s.db.NewBatch()
 
-	if updateL1 {
+	if isNewL1Block {
 		rawdb.WriteHeadHeaderHash(batch, l1Head)
 	}
 	// TODO - #718 - Is there a race condition whereby an old rollup arrives, displacing the more recent rollup as L2 head?
