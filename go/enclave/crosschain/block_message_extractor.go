@@ -35,7 +35,7 @@ func (m *blockMessageExtractor) Enabled() bool {
 	return m.GetBusAddress().Hash().Big().Cmp(gethcommon.Big0) != 0
 }
 
-// ProcessCrossChainMessages - extracts the cross chain messages for the corresponding block from the receipts.
+// StoreCrossChainMessages - extracts the cross chain messages for the corresponding block from the receipts.
 // The messages will be stored in DB storage for later usage.
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
