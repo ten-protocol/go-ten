@@ -86,6 +86,10 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 }
 
 func (netw *MockP2P) RequestBatches(batchRequest *common.BatchRequest) error {
+	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
+		return nil
+	}
+
 	encodedBatchRequest, err := rlp.EncodeToBytes(batchRequest)
 	if err != nil {
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
@@ -95,6 +99,10 @@ func (netw *MockP2P) RequestBatches(batchRequest *common.BatchRequest) error {
 }
 
 func (netw *MockP2P) SendBatches(batches []*common.ExtBatch, requesterAddress string) error {
+	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
+		return nil
+	}
+	
 	var requester host.Host
 	for _, node := range netw.Nodes {
 		if node.Config().P2PPublicAddress == requesterAddress {
