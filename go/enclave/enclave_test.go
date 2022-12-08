@@ -121,7 +121,7 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 		t.Fatal(err)
 	}
 
-	if decodeUint64 != 675624 {
+	if decodeUint64 != 676040 {
 		t.Fatal("unexpected gas price")
 	}
 }
