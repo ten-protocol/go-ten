@@ -162,10 +162,6 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 	}
 
 	// We update the L1 and L2 chain heads.
-	oldL2Head, err := rc.storage.FetchHeadRollupForL1Block(block.ParentHash())
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return nil, rc.rejectBlockErr(err)
-	}
 	newL2Head, blockStage, err := rc.updateL1AndL2Heads(&block)
 	if err != nil {
 		return nil, rc.rejectBlockErr(err)
@@ -184,8 +180,8 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 		newL2Head = &producedRollupHash
 		isUpdatedRollupHead = true
 	} else {
-		// The pre-genesis L2 head is nil.
-		isUpdatedRollupHead = newL2Head != nil && (oldL2Head == nil || oldL2Head.Hex() != newL2Head.Hex())
+		// For a validator, only processing the genesis block updates the L2 head.
+		isUpdatedRollupHead = blockStage == Genesis
 	}
 
 	return rc.produceBlockSubmissionResponse(&block, newL2Head, isUpdatedRollupHead, producedRollup)
