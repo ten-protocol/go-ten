@@ -824,12 +824,11 @@ func (rc *RollupChain) getEncryptedLogs(block types.Block, l2Head *common.L2Root
 func (rc *RollupChain) produceRollup(block *types.Block) (*core.Rollup, error) {
 	headRollupHash, err := rc.storage.FetchHeadRollupForL1Block(block.ParentHash())
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve head rollup hash. Cause: %w", err)
 	}
-
 	headRollup, err := rc.storage.FetchRollup(*headRollupHash)
 	if err != nil {
-		panic("todo - joel - handle better")
+		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
 	}
 
 	// These variables will be used to create the new rollup
