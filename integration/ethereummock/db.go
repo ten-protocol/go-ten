@@ -22,10 +22,6 @@ type blockResolverInMem struct {
 	m          sync.RWMutex
 }
 
-func (n *blockResolverInMem) ProofHeight(_ *core.Rollup) int64 {
-	panic("implement me")
-}
-
 func (n *blockResolverInMem) Proof(_ *core.Rollup) (*types.Block, error) {
 	panic("implement me")
 }

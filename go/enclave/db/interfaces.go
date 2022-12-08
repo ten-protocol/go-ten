@@ -28,8 +28,6 @@ type BlockResolver interface {
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
-	// ProofHeight - return the height of the L1 proof, or `-1` if the block is not known
-	ProofHeight(rollup *core.Rollup) int64
 	// Proof - returns the block used as proof for the rollup
 	Proof(rollup *core.Rollup) (*types.Block, error)
 }

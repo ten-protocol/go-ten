@@ -194,15 +194,6 @@ func (s *storageImpl) assertSecretAvailable() {
 	//}
 }
 
-// todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
-func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
-	v, err := s.FetchBlock(r.Header.L1Proof)
-	if err != nil {
-		return -1
-	}
-	return int64(v.NumberU64())
-}
-
 func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
 	block, err := s.FetchBlock(r.Header.L1Proof)
 	if err != nil {
