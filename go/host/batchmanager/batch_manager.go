@@ -88,7 +88,13 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 		return nil, fmt.Errorf("could not determine latest canonical ancestor. Cause: %w", err)
 	}
 	batchesToSend := []*common.ExtBatch{canonicalAncestor}
+
 	currentBatchNumber := canonicalAncestor.Header.Number
+	// Fetching the head batch upfront avoids a potential infinite loop if batches are produced very fast.
+	headBatchHeader, err := b.db.GetHeadBatchHeader()
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
+	}
 
 	// We gather the batches from the canonical chain.
 	for {
@@ -96,18 +102,18 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 
 		batchHash, err := b.db.GetBatchHash(currentBatchNumber)
 		if err != nil {
-			// We have reached the latest batch.
-			if errors.Is(err, errutil.ErrNotFound) {
-				break
-			}
 			return nil, fmt.Errorf("could not retrieve batch hash for batch number %d. Cause: %w", currentBatchNumber, err)
 		}
-
 		batch, err := b.db.GetBatch(*batchHash)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch for batch hash %s. Cause: %w", batchHash, err)
 		}
+
 		batchesToSend = append(batchesToSend, batch)
+
+		if currentBatchNumber.Cmp(headBatchHeader.Number) >= 0 {
+			break
+		}
 	}
 
 	return batchesToSend, nil

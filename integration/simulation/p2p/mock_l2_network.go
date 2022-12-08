@@ -90,7 +90,7 @@ func (netw *MockP2P) RequestBatches(batchRequest *common.BatchRequest) error {
 	if err != nil {
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
 	}
-	netw.Nodes[0].ReceiveBatchRequest(encodedBatchRequest)
+	common.Schedule(netw.delay()/2, func() { netw.Nodes[0].ReceiveBatchRequest(encodedBatchRequest) })
 	return nil
 }
 
@@ -107,7 +107,7 @@ func (netw *MockP2P) SendBatches(batches []*common.ExtBatch, requesterAddress st
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
 
-	requester.ReceiveBatches(encodedBatches)
+	common.Schedule(netw.delay()/2, func() { requester.ReceiveBatches(encodedBatches) })
 	return nil
 }
 
