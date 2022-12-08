@@ -102,7 +102,7 @@ func (netw *MockP2P) SendBatches(batches []*common.ExtBatch, requesterAddress st
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return nil
 	}
-	
+
 	var requester host.Host
 	for _, node := range netw.Nodes {
 		if node.Config().P2PPublicAddress == requesterAddress {
