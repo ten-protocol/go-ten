@@ -70,31 +70,31 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *core.Rollup, resolver db.Roll
 		return fmt.Errorf("error retrieiving historic transactions. Cause: %w", err)
 	}
 
-	r := make(map[gethcommon.Hash]*common.L2Tx)
-	for id, t := range db.mempool {
-		_, f := toRemove[id]
+	newMempool := make(map[gethcommon.Hash]*common.L2Tx)
+	for txHash, tx := range db.mempool {
+		_, f := toRemove[txHash]
 		if !f {
-			r[id] = t
+			newMempool[txHash] = tx
 		}
 	}
-	db.mempool = r
+	db.mempool = newMempool
 
 	return nil
 }
 
-// Returns all transactions found 20 levels below
-func historicTxs(r *core.Rollup, resolver db.RollupResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
+// Returns all transactions in the past `HeightCommittedBlocks` rollups.
+func historicTxs(initialRollup *core.Rollup, resolver db.RollupResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
 	i := common.HeightCommittedBlocks
-	c := r
+	currentRollup := initialRollup
 	found := true
 	var err error
 	// todo - create method to return the canonical rollup from height N
 	for {
-		if !found || i == 0 || c.Header.Number.Uint64() == common.L2GenesisHeight {
-			return core.ToMap(c.Transactions), nil
+		if !found || i == 0 || currentRollup.Header.Number.Uint64() == common.L2GenesisHeight {
+			return core.ToMap(currentRollup.Transactions), nil
 		}
 		i--
-		c, err = resolver.ParentRollup(c)
+		currentRollup, err = resolver.ParentRollup(currentRollup)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not retrieve parent rollup. Cause: %w", err)
 		}
