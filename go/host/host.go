@@ -129,7 +129,7 @@ func NewHost(
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
 		ethWallet:       ethWallet,       // the host's ethereum wallet
 		logEventManager: events.NewLogEventManager(logger),
-		batchManager:    batchmanager.NewBatchManager(database),
+		batchManager:    batchmanager.NewBatchManager(database, config.P2PPublicAddress),
 
 		logger: logger,
 	}
@@ -867,14 +867,12 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	if err != nil {
 		return fmt.Errorf("could not decode batches using RLP. Cause: %w", err)
 	}
-	if len(batches) == 0 {
-		return nil
-	}
 
 	for _, batch := range batches {
 		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
 		// up later, once we've received the L1 block.
-		// TODO - #718 - Handle this in batch manager.
+		// TODO - #718 - Handle this in batch manager, along with checking whether parent is stored, as part of a
+		//  `CheckBatch` method.
 		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
@@ -885,25 +883,20 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 
 		// TODO - #718 - Think carefully about the risk of inconsistency between the enclave and the host in terms of
 		//  batches stored. It may be better to have the enclave manage the entire state.
-
-		// TODO - #718 - Have batch request created directly, not as a separate call.
-		isParentStored, err := h.batchManager.IsParentStored(batch)
+		isParentStored, batchRequest, err := h.batchManager.IsParentStored(batch)
 		if err != nil {
 			return fmt.Errorf("could not determine whether batch parent was missing. Cause: %w", err)
 		}
 
 		if !isParentStored {
-			// We have encountered missing batches. We abort the storage operation and request the missing batches.
-			batchRequest, err := h.batchManager.CreateBatchRequest(h.config.P2PPublicAddress)
-			if err != nil {
-				return fmt.Errorf("could not create batch request. Cause: %w", err)
-			}
+			// We have encountered a missing parent batch. We abort the storage operation and request the missing batches.
 			if err = h.p2p.RequestBatches(batchRequest); err != nil {
 				return fmt.Errorf("could not request historical batches. Cause: %w", err)
 			}
 			return nil
 		}
 
+		// We only store the batch locally if it stores successfully on the enclave.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
