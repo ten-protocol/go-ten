@@ -82,23 +82,33 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *core.Rollup, resolver db.Roll
 	return nil
 }
 
-// Returns all transactions in the rollup `HeightCommittedBlocks` rollups ago.
+// Returns all transactions in the rollup `HeightCommittedBlocks` deep.
 func txsXRollupsAgo(initialRollup *core.Rollup, resolver db.RollupResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
-	i := common.HeightCommittedBlocks
+	blocksDeep := 0
 	currentRollup := initialRollup
-	found := true
 	var err error
+
 	// todo - create method to return the canonical rollup from height N
 	for {
-		if !found || i == 0 || currentRollup.Header.Number.Uint64() == common.L2GenesisHeight {
+		if blocksDeep == common.HeightCommittedBlocks {
+			// We've found the rollup `HeightCommittedBlocks` deep.
 			return core.ToMap(currentRollup.Transactions), nil
 		}
-		i--
+
+		if currentRollup.Header.Number.Uint64() == common.L2GenesisHeight {
+			// There's less than `HeightCommittedBlocks` rollups, so there's no transactions to remove yet.
+			return nil, nil //nolint:nilnil
+		}
+
 		currentRollup, err = resolver.ParentRollup(currentRollup)
-		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				return nil, fmt.Errorf("found a gap in the rollup chain")
+			}
 			return nil, fmt.Errorf("could not retrieve parent rollup. Cause: %w", err)
 		}
-		found = err != nil
+
+		blocksDeep++
 	}
 }
 
