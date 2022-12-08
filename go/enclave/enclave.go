@@ -1038,7 +1038,7 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 	return &filter, &forAddress, nil
 }
 
-// Removes the transactions in the provided header from the mempool.
+// Removes transactions from the mempool that are considered immune to re-orgs (i.e. over X rollups deep).
 func (e *enclaveImpl) removeMempoolTxs(rollupHeader *common.Header) error {
 	if rollupHeader == nil {
 		return nil
