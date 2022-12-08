@@ -97,7 +97,7 @@ func txsXRollupsAgo(initialRollup *core.Rollup, resolver db.RollupResolver) (map
 
 		if currentRollup.Header.Number.Uint64() == common.L2GenesisHeight {
 			// There's less than `HeightCommittedBlocks` rollups, so there's no transactions to remove yet.
-			return nil, nil //nolint:nilnil
+			return map[gethcommon.Hash]gethcommon.Hash{}, nil
 		}
 
 		currentRollup, err = resolver.ParentRollup(currentRollup)
@@ -137,26 +137,30 @@ func findTxsNotIncluded(head *core.Rollup, txs []*common.L2Tx, s db.RollupResolv
 	return removeExisting(txs, included), nil
 }
 
-func allIncludedTransactions(r *core.Rollup, s db.RollupResolver, stopAtHeight uint64) (map[gethcommon.Hash]*common.L2Tx, error) {
-	if r.Header.Number.Uint64() == stopAtHeight {
-		return core.MakeMap(r.Transactions), nil
+// Recursively finds all transactions included in the past stopAtHeight rollups.
+func allIncludedTransactions(rollup *core.Rollup, s db.RollupResolver, stopAtHeight uint64) (map[gethcommon.Hash]*common.L2Tx, error) {
+	if rollup.Header.Number.Uint64() == stopAtHeight {
+		return core.MakeMap(rollup.Transactions), nil
 	}
+
+	// We add this rollup's transactions to the included transactions.
 	newMap := make(map[gethcommon.Hash]*common.L2Tx)
-	parent, err := s.ParentRollup(r)
+	for _, tx := range rollup.Transactions {
+		newMap[tx.Hash()] = tx
+	}
+
+	// If the rollup has a parent (i.e. it is not the genesis block), we recurse.
+	parentRollup, err := s.ParentRollup(rollup)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return nil, err
 	}
-
 	if err == nil {
-		txsMap, err := allIncludedTransactions(parent, s, stopAtHeight)
+		txsMap, err := allIncludedTransactions(parentRollup, s, stopAtHeight)
 		if err != nil {
 			return nil, err
 		}
-		for k, v := range txsMap {
-			newMap[k] = v
-		}
-		for _, tx := range r.Transactions {
-			newMap[tx.Hash()] = tx
+		for hash, tx := range txsMap {
+			newMap[hash] = tx
 		}
 	}
 
