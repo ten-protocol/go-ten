@@ -106,9 +106,8 @@ func StopGethNetwork(clients []ethadapter.EthClient, netw *gethnetwork.GethNetwo
 // todo -this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
 	var err error
-	var deployContractTx types.TxData
 
-	deployContractTx = &types.LegacyTx{
+	deployContractTx := &types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
 		GasPrice: constants.DefaultGasPrice,
 		Gas:      constants.DefaultGasLimit,
