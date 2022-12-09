@@ -35,7 +35,7 @@ func (m *blockMessageExtractor) Enabled() bool {
 	return m.GetBusAddress().Hash().Big().Cmp(gethcommon.Big0) != 0
 }
 
-// ProcessCrossChainMessages - extracts the cross chain messages for the corresponding block from the receipts.
+// StoreCrossChainMessages - extracts the cross chain messages for the corresponding block from the receipts.
 // The messages will be stored in DB storage for later usage.
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
@@ -48,14 +48,15 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 	}
 
 	if len(receipts) == 0 {
-		// Error if block receipts root does not match receipts hash
+		// TODO: Error if block receipts root does not match receipts hash
 		// else nil
 		return nil
 	}
 
 	lazilyLogReceiptChecksum(fmt.Sprintf("Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)), receipts, m.logger)
-	messages, err := m.getSyntheticTransactions(block, receipts)
+	messages, err := m.getCrossChainMessages(block, receipts)
 	if err != nil {
+		m.logger.Error("Converting receipts to messages failed.", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return err
 	}
 
@@ -76,8 +77,8 @@ func (m *blockMessageExtractor) GetBusAddress() *common.L1Address {
 	return m.busAddress
 }
 
-// getSyntheticTransactions - Converts the relevant logs from the appropriate message bus address to synthetic transactions and returns them
-func (m *blockMessageExtractor) getSyntheticTransactions(block *common.L1Block, receipts common.L1Receipts) (common.CrossChainMessages, error) {
+// getCrossChainMessages - Converts the relevant logs from the appropriate message bus address to synthetic transactions and returns them
+func (m *blockMessageExtractor) getCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) (common.CrossChainMessages, error) {
 	if len(receipts) == 0 {
 		return make(common.CrossChainMessages, 0), nil
 	}
@@ -88,7 +89,7 @@ func (m *blockMessageExtractor) getSyntheticTransactions(block *common.L1Block, 
 		m.logger.Error("Error encountered when filtering receipt logs.", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return make(common.CrossChainMessages, 0), err
 	}
-	m.logger.Trace("extracted logs", "logCount", len(logs), log.CmpKey, log.CrossChainCmp)
+	m.logger.Trace("Extracted cross chain logs from receipts", "logCount", len(logs), log.CmpKey, log.CrossChainCmp)
 
 	messages, err := convertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
 	if err != nil {

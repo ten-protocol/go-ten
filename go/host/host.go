@@ -556,6 +556,16 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 		Rollup: encodedRollup,
 	}
 
+	h.logger.Trace("Sending transaction to publish rollup", "rollup_header",
+		gethlog.Lazy{Fn: func() string {
+			header, err := json.MarshalIndent(producedRollup.Header, "", "   ")
+			if err != nil {
+				return err.Error()
+			}
+
+			return string(header[:])
+		}})
+
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 	if err != nil {
@@ -800,7 +810,8 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 			continue
 		}
 
-		h.logger.Trace(fmt.Sprintf("Adding receipt for block %d, TX: %d",
+		h.logger.Trace(fmt.Sprintf("Adding receipt[%d] for block %d, TX: %d",
+			receipt.Status,
 			common.ShortHash(block.Hash()),
 			common.ShortHash(transaction.Hash())),
 			log.CmpKey, log.CrossChainCmp)

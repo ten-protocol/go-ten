@@ -137,7 +137,7 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 			break
 		}
 
-		m.logger.Trace(fmt.Sprintf("Looking for transactions at block %s", b.Hash().Hex()), log.CmpKey, log.CrossChainCmp)
+		m.logger.Trace(fmt.Sprintf("Looking for cross chain messages at block %s", b.Hash().Hex()), log.CmpKey, log.CrossChainCmp)
 		messagesForBlock, err := m.storage.GetL1Messages(b.Hash())
 		if err != nil {
 			m.logger.Crit("Reading the key for the block failed with uncommon reason.", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
@@ -155,6 +155,8 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 		}
 		b = p
 	}
+
+	m.logger.Trace(fmt.Sprintf("Extracted deposit logs %d ->%d: %d.", fromBlock.NumberU64(), toBlock.NumberU64(), len(messages)), log.CmpKey, log.CrossChainCmp)
 
 	return messages
 }

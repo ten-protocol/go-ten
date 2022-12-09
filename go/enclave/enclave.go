@@ -256,7 +256,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup
 	return &genesisExtRollup, nil
 }
 
-// SubmitBlock is used to update the enclave with an additional L1 block.
+// SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
 	blockSubmissionResponse, err := e.chain.ProcessL1Block(block, receipts, isLatest)

@@ -135,7 +135,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeIdx, height, minHeight)
 	}
 
-	deposits, rollups, totalDeposited, blockCount := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
+	deposits, rollups, totalDeposited, blockCount, succesfulDeposits := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
 	totalDepositedLogged, eventCount := ExtractCrossChainDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s)
@@ -157,7 +157,8 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: No deposits", nodeIdx)
 	}
 
-	if totalDepositedLogged != nil && totalDepositedLogged.Cmp(totalDeposited) != 0 {
+	// TODO: remove this "eventCount != succesfulDeposits" when the old bridge is removed.
+	if (totalDepositedLogged != nil && totalDepositedLogged.Cmp(totalDeposited) != 0) && eventCount != succesfulDeposits {
 		t.Errorf("Node %d: Logged deposits do not match extracted deposits from bridge. Events logged %d; Deposit count %d", nodeIdx, eventCount, len(deposits))
 	}
 
@@ -242,12 +243,19 @@ func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *t
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
 // between the start block and the end block.
-func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation, nodeIdx int) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int) {
+func ExtractDataFromEthereumChain(
+	startBlock *types.Block,
+	endBlock *types.Block,
+	node ethadapter.EthClient,
+	s *Simulation,
+	nodeIdx int,
+) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int, uint64) {
 	deposits := make([]gethcommon.Hash, 0)
 	rollups := make([]*common.ExtRollup, 0)
 	totalDeposited := big.NewInt(0)
 
 	blockchain := node.BlocksBetween(startBlock, endBlock)
+	succesfulDeposits := uint64(0)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {
 			t := s.Params.ERC20ContractLib.DecodeTx(tx)
@@ -262,6 +270,10 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 			case *ethadapter.L1DepositTx:
 				deposits = append(deposits, tx.Hash())
 				totalDeposited.Add(totalDeposited, l1tx.Amount)
+				// TODO: Remove this hack once the old integrated bridge is removed.
+				if receipt, err := node.TransactionReceipt(tx.Hash()); err == nil && receipt.Status == 1 {
+					succesfulDeposits++
+				}
 			case *ethadapter.L1RollupTx:
 				r, err := common.DecodeRollup(l1tx.Rollup)
 				if err != nil {
@@ -276,7 +288,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block
 			}
 		}
 	}
-	return deposits, rollups, totalDeposited, len(blockchain)
+	return deposits, rollups, totalDeposited, len(blockchain), succesfulDeposits
 }
 
 func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {
