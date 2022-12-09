@@ -483,6 +483,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	tx, txRollupHash, txRollupHeight, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
+			println(fmt.Sprintf("jjj could not find tx hash %s", txHash.Hex()))
 			return nil, nil
 		}
 		return nil, err
@@ -491,15 +492,18 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// Only return receipts for transactions included in the canonical chain.
 	r, err := e.storage.FetchRollupByHeight(txRollupHeight)
 	if err != nil {
+		println(fmt.Sprintf("jjj could not find rollup containing tx hash %s", txHash.Hex()))
 		return nil, fmt.Errorf("could not retrieve rollup containing transaction. Cause: %w", err)
 	}
 	if !bytes.Equal(r.Hash().Bytes(), txRollupHash.Bytes()) {
+		println(fmt.Sprintf("jjj tx hash %s not included in canonical chain", txHash.Hex()))
 		return nil, fmt.Errorf("transaction not included in the canonical chain")
 	}
 
 	// We retrieve the transaction receipt.
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
+		println(fmt.Sprintf("jjj could not find receipt for tx hash %s", txHash.Hex()))
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil
 		}

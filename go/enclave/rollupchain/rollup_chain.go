@@ -214,7 +214,7 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, er
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
 	if !rc.storage.IsBlockAncestor(headBlock, batch.Header.L1Proof) {
-		return nil, nil //nolint:nilnil
+		return nil, fmt.Errorf("batch is not on the canonical L1 chain")
 	}
 
 	rollupTxReceipts, err := rc.checkRollup(rollup)
