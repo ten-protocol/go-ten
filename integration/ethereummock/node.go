@@ -83,6 +83,10 @@ type Node struct {
 	logger gethlog.Logger
 }
 
+func (m *Node) EstimateGasAndGasPrice(txData types.TxData, from gethcommon.Address) (types.TxData, error) {
+	return txData, nil
+}
+
 func (m *Node) SendTransaction(tx *types.Transaction) error {
 	m.Network.BroadcastTx(tx)
 	return nil
