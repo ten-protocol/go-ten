@@ -208,6 +208,7 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, er
 		return nil, nil //nolint:nilnil
 	}
 
+	// TODO - #718 - Refactor this to reduce shared logic with `produceNewRollupAndUpdateL2Head`
 	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)

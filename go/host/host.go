@@ -409,12 +409,8 @@ func (h *host) startProcessing() {
 	// - Process new blocks from the L1 node
 	// - Process new Transactions gossiped from L2 Peers
 	for {
-		if h.shortID == 0 {
-			println(fmt.Sprintf("jjj node %d in main loop", h.shortID))
-		}
 		select {
 		case b := <-blockStream.Stream:
-			// println(fmt.Sprintf("jjj node %d processing block", h.shortID))
 			roundInterrupt = triggerInterrupt(roundInterrupt)
 			isLive := h.l1BlockProvider.IsLive(b.Hash()) // checks whether the block is the current head of the L1 (false if there is a newer block available)
 			err := h.processL1Block(b, isLive)
@@ -424,21 +420,18 @@ func (h *host) startProcessing() {
 			}
 
 		case tx := <-h.txP2PCh:
-			// println(fmt.Sprintf("jjj node %d processing tx", h.shortID))
 			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
 			if _, err := h.enclaveClient.SubmitTx(tx); err != nil {
 				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
 			}
 
 		case batchMsg := <-h.batchP2PCh:
-			// println(fmt.Sprintf("jjj node %d processing batch", h.shortID))
 			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
 			if err := h.handleBatches(&batchMsg); err != nil {
 				h.logger.Error("Could not handle batches. ", log.ErrKey, err)
 			}
 
 		case batchRequest := <-h.batchRequestCh:
-			// println(fmt.Sprintf("jjj node %d processing batch request", h.shortID))
 			if err := h.handleBatchRequest(&batchRequest); err != nil {
 				h.logger.Error("Could not handle batch request. ", log.ErrKey, err)
 			}
