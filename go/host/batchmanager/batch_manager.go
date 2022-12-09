@@ -92,7 +92,8 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 		}
 	}
 
-	var batchesBeingSent []string
+	// todo - joel - this is logging code
+	var batchesBeingSent []string //nolint:prealloc
 	for _, batch := range batchesToSend {
 		batchesBeingSent = append(batchesBeingSent, strconv.FormatInt(batch.Header.Number.Int64(), 10))
 	}
