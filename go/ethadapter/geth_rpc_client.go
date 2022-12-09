@@ -200,6 +200,35 @@ func (e *gethRPCClient) Stop() {
 	e.client.Close()
 }
 
+// EstimateGasAndGasPrice takes a txData type and overrides the Gas and Gas Price field with estimated values
+func (e *gethRPCClient) EstimateGasAndGasPrice(txData types.TxData, from gethcommon.Address) (types.TxData, error) {
+	unEstimatedTx := types.NewTx(txData)
+	gasPrice, err := e.EthClient().SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	gasLimit, err := e.EthClient().EstimateGas(context.Background(), ethereum.CallMsg{
+		From:  from,
+		To:    unEstimatedTx.To(),
+		Value: unEstimatedTx.Value(),
+		Data:  unEstimatedTx.Data(),
+	})
+	if err != nil {
+		e.logger.Warn("unable to estimate tx - skipping gas limit assignment ", log.ErrKey, err, "txData", txData)
+		gasLimit = unEstimatedTx.Gas()
+	}
+
+	return &types.LegacyTx{
+		Nonce:    unEstimatedTx.Nonce(),
+		GasPrice: gasPrice,
+		Gas:      gasLimit,
+		To:       unEstimatedTx.To(),
+		Value:    unEstimatedTx.Value(),
+		Data:     unEstimatedTx.Data(),
+	}, nil
+}
+
 func connect(ipaddress string, port uint, connectionTimeout time.Duration) (*ethclient.Client, error) {
 	var err error
 	var c *ethclient.Client

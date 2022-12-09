@@ -4,23 +4,15 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 )
 
 const methodBytesLen = 4
-
-var (
-	// TODO review gas estimation - these should not be static values
-	// Gas should be calculated so to not overpay what the operation requires
-	// The values are hardcoded at the moment to guarantee the txs will be minted
-	// It's using large gas values because rollups can be very expensive
-	defaultGasPrice = big.NewInt(20000000000)
-	defaultGas      = uint64(1024_000_000)
-)
 
 // ERC20ContractLib provides methods for handling erc20 contracts
 type ERC20ContractLib interface {
@@ -61,8 +53,8 @@ func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethadapter.L1DepositTx, nonce
 
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		GasPrice: defaultGasPrice,
-		Gas:      defaultGas,
+		GasPrice: constants.DefaultGasPrice,
+		Gas:      constants.DefaultGasLimit,
 		To:       tx.TokenContract,
 		Data:     data,
 	}

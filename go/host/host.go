@@ -618,6 +618,12 @@ func (h *host) initialiseProtocol(block *types.Block) error {
 
 // `tries` is the number of times to attempt broadcasting the transaction.
 func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
+	var err error
+	tx, err = h.ethClient.EstimateGasAndGasPrice(tx, h.ethWallet.Address())
+	if err != nil {
+		return fmt.Errorf("unable to estimate gas limit and gas price - %w", err)
+	}
+
 	signedTx, err := h.ethWallet.SignTransaction(tx)
 	if err != nil {
 		return err

@@ -7,21 +7,19 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
-	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
+	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -107,14 +105,22 @@ func StopGethNetwork(clients []ethadapter.EthClient, netw *gethnetwork.GethNetwo
 // DeployContract returns receipt of deployment
 // todo -this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
-	deployContractTx := types.LegacyTx{
+	var err error
+	var deployContractTx types.TxData
+
+	deployContractTx = &types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
-		GasPrice: big.NewInt(2000000000),
-		Gas:      1025_000_000,
+		GasPrice: constants.DefaultGasPrice,
+		Gas:      constants.DefaultGasLimit,
 		Data:     contractBytes,
 	}
 
-	signedTx, err := w.SignTransaction(&deployContractTx)
+	deployContractTx, err = workerClient.EstimateGasAndGasPrice(deployContractTx, w.Address())
+	if err != nil {
+		return nil, err
+	}
+
+	signedTx, err := w.SignTransaction(deployContractTx)
 	if err != nil {
 		return nil, err
 	}

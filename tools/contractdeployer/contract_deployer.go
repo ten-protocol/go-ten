@@ -4,20 +4,18 @@ package contractdeployer
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"time"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-
-	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
+	"github.com/obscuronet/go-obscuro/go/common/constants"
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 // The types of contracts supported by the deployer
@@ -93,8 +91,8 @@ func (cd *contractDeployer) run() (string, error) {
 
 	deployContractTx := types.LegacyTx{
 		Nonce:    cd.wallet.GetNonceAndIncrement(),
-		GasPrice: big.NewInt(2000000000),
-		Gas:      1025_000_000,
+		GasPrice: constants.DefaultGasPrice,
+		Gas:      constants.DefaultGasLimit,
 		Data:     cd.contractCode,
 	}
 
