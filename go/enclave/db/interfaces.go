@@ -28,8 +28,6 @@ type BlockResolver interface {
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
-	// ProofHeight - return the height of the L1 proof, or `-1` if the block is not known
-	ProofHeight(rollup *core.Rollup) int64
 	// Proof - returns the block used as proof for the rollup
 	Proof(rollup *core.Rollup) (*types.Block, error)
 }
@@ -39,9 +37,8 @@ type RollupResolver interface {
 	FetchRollup(hash common.L2RootHash) (*core.Rollup, error)
 	// FetchRollupByHeight returns the rollup with the given height.
 	FetchRollupByHeight(height uint64) (*core.Rollup, error)
-	// FetchRollups returns all the proposed rollups with the given height
-	FetchRollups(height uint64) ([]*core.Rollup, error)
 	// StoreRollup persists the rollup
+	// TODO - #718 - No longer needs to be public.
 	StoreRollup(rollup *core.Rollup) error
 	// ParentRollup returns the rollup's parent rollup.
 	ParentRollup(rollup *core.Rollup) (*core.Rollup, error)
@@ -61,7 +58,7 @@ type HeadsAfterL1BlockStorage interface {
 	// FetchL2Head returns the current L2 chain head.
 	FetchL2Head() (*common.L2RootHash, error)
 	// StoreNewHeads saves the new chain heads alongside its rollup, receipts and logs.
-	StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error
+	StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool, isNewL1Block bool) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB

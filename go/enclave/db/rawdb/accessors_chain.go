@@ -41,7 +41,7 @@ func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash) (*core.Rollup, er
 func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, error) {
 	data, err := db.Get(headerNumberKey(hash))
 	if err != nil {
-		return nil, err
+		return nil, errutil.ErrNotFound
 	}
 	if len(data) != 8 {
 		return nil, fmt.Errorf("header number bytes had wrong length")

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -11,63 +12,42 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/db"
 )
 
-// ErrBatchesMissing indicates that when processing new batches, one or more batches were missing from the database.
-var ErrBatchesMissing = errors.New("one or more batches in L2 chain were missing")
+const (
+	// A limit on the number of batches that can be served in a single catch-up request.
+	maxBatchesPerRequest = 10
+)
 
 // BatchManager handles the creation and processing of batches for the host.
 type BatchManager struct {
-	db *db.DB
+	db               *db.DB
+	p2pPublicAddress string
 }
 
-func NewBatchManager(db *db.DB) *BatchManager {
+func NewBatchManager(db *db.DB, p2pPublicAddress string) *BatchManager {
 	return &BatchManager{
-		db: db,
+		db:               db,
+		p2pPublicAddress: p2pPublicAddress,
 	}
 }
 
-// StoreBatch stores the provided batch. If we cannot find the batch's parent, we return an `ErrBatchesMissing`.
-func (b *BatchManager) StoreBatch(batch *common.ExtBatch) error {
-	isGenesisBatch := batch.Header.Number.Uint64() == common.L2GenesisHeight
+// IsParentStored indicates whether the batch has already been stored. If not, it returns the batch request to send to
+// the sequencer.
+func (b *BatchManager) IsParentStored(batch *common.ExtBatch) (bool, *common.BatchRequest, error) {
+	// If this is the genesis block, we don't need to request the parent.
+	if batch.Header.Number.Uint64() == common.L2GenesisHeight {
+		return true, nil, nil
+	}
 
-	// If we have stored the batch's parent, or this batch is the genesis batch, we store the batch.
 	_, err := b.db.GetBatch(batch.Header.ParentHash)
-	if isGenesisBatch || err == nil {
-		err = b.db.AddBatchHeader(batch)
-		if err != nil {
-			return fmt.Errorf("could not store batch header. Cause: %w", err)
-		}
-		return nil
-	}
-
-	// If we could not find the parent, we return an `ErrBatchesMissing`.
-	if errors.Is(err, errutil.ErrNotFound) {
-		return ErrBatchesMissing
-	}
-
-	return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
-}
-
-// CreateBatchRequest creates a request for missing batches, which contains our address and our view of the canonical
-// L2 head.
-func (b *BatchManager) CreateBatchRequest(nodeP2PAddress string) (*common.BatchRequest, error) {
-	var headBatchHash *gethcommon.Hash
-
-	// We retrieve our view of the canonical L2 head.
-	currentHeadBatch, err := b.db.GetHeadBatchHeader()
 	if err != nil {
-		if !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
+		// The parent is missing.
+		if errors.Is(err, errutil.ErrNotFound) {
+			batchRequest, err := b.createBatchRequest()
+			return false, batchRequest, err
 		}
-		headBatchHash = &gethcommon.Hash{}
-	} else {
-		hash := currentHeadBatch.Hash()
-		headBatchHash = &hash
+		return false, nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 	}
-
-	return &common.BatchRequest{
-		Requester:        nodeP2PAddress,
-		CurrentHeadBatch: headBatchHash,
-	}, nil
+	return true, nil, nil
 }
 
 // GetBatches retrieves the batches from the host's database matching the batch request.
@@ -83,34 +63,77 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 	}
 
 	// We determine the latest canonical ancestor to start sending batches from.
-	canonicalAncestor, err := b.latestCanonicalAncestor(requesterHeadBatch)
+	firstBatch, err := b.latestCanonicalAncestor(requesterHeadBatch)
 	if err != nil {
 		return nil, fmt.Errorf("could not determine latest canonical ancestor. Cause: %w", err)
 	}
-	batchesToSend := []*common.ExtBatch{canonicalAncestor}
-	currentBatchNumber := canonicalAncestor.Header.Number
+	batchesToSend := []*common.ExtBatch{firstBatch}
 
-	// We gather the batches from the canonical chain.
-	for {
-		currentBatchNumber = big.NewInt(0).Add(currentBatchNumber, big.NewInt(1))
-
-		batchHash, err := b.db.GetBatchHash(currentBatchNumber)
+	// We find the batch we want to send up to - either the head batch, or the max number of requested batches,
+	// whichever is lower.
+	lastBatch, err := b.db.GetHeadBatchHeader()
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
+	}
+	if lastBatch.Number.Int64()-firstBatch.Header.Number.Int64() > maxBatchesPerRequest {
+		lastBatchNumber := big.NewInt(0).Add(firstBatch.Header.Number, big.NewInt(maxBatchesPerRequest))
+		batchHash, err := b.db.GetBatchHash(lastBatchNumber)
 		if err != nil {
-			// We have reached the latest batch.
-			if errors.Is(err, errutil.ErrNotFound) {
-				break
-			}
-			return nil, fmt.Errorf("could not retrieve batch hash for batch number %d. Cause: %w", currentBatchNumber, err)
+			return nil, fmt.Errorf("could not retrieve batch hash. Cause: %w", err)
 		}
-
-		batch, err := b.db.GetBatch(*batchHash)
+		lastBatch, err = b.db.GetBatchHeader(*batchHash)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch for batch hash %s. Cause: %w", batchHash, err)
 		}
-		batchesToSend = append(batchesToSend, batch)
 	}
 
+	// We gather the batches by walking backwards from the final batch.
+	currentBatch := lastBatch
+	for {
+		if currentBatch.Hash().Hex() == firstBatch.Hash().Hex() {
+			break
+		}
+
+		batch, err := b.db.GetBatch(currentBatch.Hash())
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve batch. Cause: %w", err)
+		}
+
+		batchesToSend = append(batchesToSend, batch)
+
+		currentBatch, err = b.db.GetBatchHeader(currentBatch.ParentHash)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+		}
+	}
+
+	// We sort the batches so that the recipient can process them in order.
+	sort.Slice(batchesToSend, func(i, j int) bool {
+		return batchesToSend[i].Header.Number.Cmp(batchesToSend[j].Header.Number) < 0
+	})
+
 	return batchesToSend, nil
+}
+
+// Creates a request for missing batches, which contains our address and our view of the canonical L2 head.
+func (b *BatchManager) createBatchRequest() (*common.BatchRequest, error) {
+	var headBatchHash gethcommon.Hash
+
+	// We retrieve our view of the canonical L2 head.
+	currentHeadBatch, err := b.db.GetHeadBatchHeader()
+	if err != nil {
+		if !errors.Is(err, errutil.ErrNotFound) {
+			return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
+		}
+		headBatchHash = gethcommon.Hash{}
+	} else {
+		headBatchHash = currentHeadBatch.Hash()
+	}
+
+	return &common.BatchRequest{
+		Requester:        b.p2pPublicAddress,
+		CurrentHeadBatch: &headBatchHash,
+	}, nil
 }
 
 // Determines the latest canonical ancestor between the provided batch hash and the sequencer's canonical chain.

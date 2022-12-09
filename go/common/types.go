@@ -55,7 +55,7 @@ type (
 
 	Nonce               = uint64
 	EncodedRollup       []byte
-	EncodedBatches      []byte
+	EncodedBatchMsg     []byte
 	EncodedBatchRequest []byte
 )
 

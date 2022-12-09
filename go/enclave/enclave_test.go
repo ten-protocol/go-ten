@@ -267,8 +267,8 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 // TestGetBalance runs the GetBalance tests
 func TestGetBalance(t *testing.T) {
 	tests := map[string]func(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey){
-		"getBalanceSuccess":     getBalanceSuccess,
-		"getBalanceRequestFail": getBalanceRequestUnsuccessful,
+		"getBalanceSuccess":             getBalanceSuccess,
+		"getBalanceRequestUnsuccessful": getBalanceRequestUnsuccessful,
 	}
 
 	for name, test := range tests {
@@ -515,7 +515,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	}
 
 	// make sure the genesis is stored as the new Head of the rollup chain
-	return enclave.(*enclaveImpl).storage.StoreNewHeads(blk.Hash(), genRollup, nil, true)
+	return enclave.(*enclaveImpl).storage.StoreNewHeads(blk.Hash(), genRollup, nil, true, true)
 }
 
 func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAddress) error {
@@ -561,13 +561,8 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	// make sure the rollup is stored the rollup storage
 	rollup := dummyRollup(blk.Hash(), headRollup.NumberU64()+1, stateDB)
 
-	err = enclave.(*enclaveImpl).storage.StoreRollup(rollup)
-	if err != nil {
-		return err
-	}
-
 	// make sure the genesis is stored as the new Head of the rollup chain
-	err = enclave.(*enclaveImpl).storage.StoreNewHeads(blk.Hash(), rollup, nil, true)
+	err = enclave.(*enclaveImpl).storage.StoreNewHeads(blk.Hash(), rollup, nil, true, true)
 	if err != nil {
 		return err
 	}

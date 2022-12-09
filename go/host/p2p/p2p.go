@@ -95,13 +95,13 @@ func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
 	return p.broadcast(msg)
 }
 
-func (p *p2pImpl) BroadcastBatch(batch *common.ExtBatch) error {
-	encodedBatches, err := rlp.EncodeToBytes([]*common.ExtBatch{batch})
+func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
+	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
 	if err != nil {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
 
-	msg := message{Type: msgTypeBatches, Contents: encodedBatches}
+	msg := message{Type: msgTypeBatches, Contents: encodedBatchMsg}
 	return p.broadcast(msg)
 }
 
@@ -120,13 +120,13 @@ func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
 	return p.send(msg, p.peerAddresses[0])
 }
 
-func (p *p2pImpl) SendBatches(batches []*common.ExtBatch, to string) error {
-	encodedBatches, err := rlp.EncodeToBytes(batches)
+func (p *p2pImpl) SendBatches(batchMsg *host.BatchMsg, to string) error {
+	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
 	if err != nil {
 		return fmt.Errorf("could not encode batches using RLP. Cause: %w", err)
 	}
 
-	msg := message{Type: msgTypeBatches, Contents: encodedBatches}
+	msg := message{Type: msgTypeBatches, Contents: encodedBatchMsg}
 	return p.send(msg, to)
 }
 

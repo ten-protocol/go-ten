@@ -65,12 +65,12 @@ func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) error {
 	return nil
 }
 
-func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
+func (netw *MockP2P) BroadcastBatch(batchMsg *host.BatchMsg) error {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return nil
 	}
 
-	encodedBatches, err := rlp.EncodeToBytes([]*common.ExtBatch{batch})
+	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
 	if err != nil {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
@@ -78,7 +78,7 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 	for _, node := range netw.Nodes {
 		if node.Config().ID.Hex() != netw.CurrentNode.Config().ID.Hex() {
 			tempNode := node
-			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatches(encodedBatches) })
+			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatches(encodedBatchMsg) })
 		}
 	}
 
@@ -86,15 +86,23 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 }
 
 func (netw *MockP2P) RequestBatches(batchRequest *common.BatchRequest) error {
+	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
+		return nil
+	}
+
 	encodedBatchRequest, err := rlp.EncodeToBytes(batchRequest)
 	if err != nil {
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
 	}
-	netw.Nodes[0].ReceiveBatchRequest(encodedBatchRequest)
+	common.Schedule(netw.delay()/2, func() { netw.Nodes[0].ReceiveBatchRequest(encodedBatchRequest) })
 	return nil
 }
 
-func (netw *MockP2P) SendBatches(batches []*common.ExtBatch, requesterAddress string) error {
+func (netw *MockP2P) SendBatches(batchMsg *host.BatchMsg, requesterAddress string) error {
+	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
+		return nil
+	}
+
 	var requester host.Host
 	for _, node := range netw.Nodes {
 		if node.Config().P2PPublicAddress == requesterAddress {
@@ -102,12 +110,12 @@ func (netw *MockP2P) SendBatches(batches []*common.ExtBatch, requesterAddress st
 		}
 	}
 
-	encodedBatches, err := rlp.EncodeToBytes(batches)
+	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
 	if err != nil {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
 
-	requester.ReceiveBatches(encodedBatches)
+	common.Schedule(netw.delay()/2, func() { requester.ReceiveBatches(encodedBatchMsg) })
 	return nil
 }
 

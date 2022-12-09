@@ -269,8 +269,8 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	// We add any secret responses.
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
-	// We remove any rolled-up transactions from the mempool.
-	err = e.removeMempoolTxs(blockSubmissionResponse.IngestedRollupHeader)
+	// We remove any transactions considered immune to re-orgs from the mempool.
+	err = e.removeOldMempoolTxs(blockSubmissionResponse.IngestedRollupHeader)
 	if err != nil {
 		e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
 	}
@@ -329,7 +329,17 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 }
 
 func (e *enclaveImpl) SubmitBatch(batch *common.ExtBatch) error {
-	// TODO - #718 - Store the received batch, once it's no longer stored when processing the L1 block.
+	rollupHeader, err := e.chain.UpdateL2Chain(batch)
+	if err != nil {
+		return fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err)
+	}
+
+	// We remove any transactions considered immune to re-orgs from the mempool.
+	err = e.removeOldMempoolTxs(rollupHeader)
+	if err != nil {
+		e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
+	}
+
 	return nil
 }
 
@@ -1039,8 +1049,8 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 	return &filter, &forAddress, nil
 }
 
-// Removes the transactions in the provided header from the mempool.
-func (e *enclaveImpl) removeMempoolTxs(rollupHeader *common.Header) error {
+// Removes transactions from the mempool that are considered immune to re-orgs (i.e. over X rollups deep).
+func (e *enclaveImpl) removeOldMempoolTxs(rollupHeader *common.Header) error {
 	if rollupHeader == nil {
 		return nil
 	}

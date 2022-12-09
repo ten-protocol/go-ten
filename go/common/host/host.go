@@ -24,7 +24,7 @@ type Host interface {
 	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
 	// ReceiveBatches receives a set of batches from a peer host.
-	ReceiveBatches(batches common.EncodedBatches)
+	ReceiveBatches(batches common.EncodedBatchMsg)
 	// ReceiveBatchRequest receives a batch request from a peer host. Used during catch-up.
 	ReceiveBatchRequest(batchRequest common.EncodedBatchRequest)
 	// Subscribe feeds logs matching the encrypted log subscription to the matchedLogs channel.
@@ -46,11 +46,11 @@ type P2P interface {
 	// BroadcastTx sends the encrypted transaction to every other node on the network.
 	BroadcastTx(tx common.EncryptedTx) error
 	// BroadcastBatch sends the batch to every other node on the network.
-	BroadcastBatch(batch *common.ExtBatch) error
+	BroadcastBatch(batchMsg *BatchMsg) error
 	// RequestBatches requests batches from the sequencer.
 	RequestBatches(batchRequest *common.BatchRequest) error
 	// SendBatches sends batches to a specific node, in response to a batch request.
-	SendBatches(batches []*common.ExtBatch, to string) error
+	SendBatches(batchMsg *BatchMsg, to string) error
 }
 
 // ReconnectingBlockProvider interface allows host to monitor and await L1 blocks.
@@ -77,4 +77,9 @@ type ReconnectingBlockProvider interface {
 type BlockStream struct {
 	Stream <-chan *types.Block // the channel which will receive the consecutive, canonical blocks
 	Stop   func()              // function to permanently stop the stream and clean up any associated processes/resources
+}
+
+type BatchMsg struct {
+	Batches   []*common.ExtBatch // The batches being sent.
+	IsCatchUp bool               // Whether these batches are being sent as part of a catch-up request.
 }

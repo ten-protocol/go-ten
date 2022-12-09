@@ -65,40 +65,50 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *core.Rollup, resolver db.Roll
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 
-	toRemove, err := historicTxs(rollup, resolver)
+	toRemove, err := txsXRollupsAgo(rollup, resolver)
 	if err != nil {
 		return fmt.Errorf("error retrieiving historic transactions. Cause: %w", err)
 	}
 
-	r := make(map[gethcommon.Hash]*common.L2Tx)
-	for id, t := range db.mempool {
-		_, f := toRemove[id]
+	newMempool := make(map[gethcommon.Hash]*common.L2Tx)
+	for txHash, tx := range db.mempool {
+		_, f := toRemove[txHash]
 		if !f {
-			r[id] = t
+			newMempool[txHash] = tx
 		}
 	}
-	db.mempool = r
+	db.mempool = newMempool
 
 	return nil
 }
 
-// Returns all transactions found 20 levels below
-func historicTxs(r *core.Rollup, resolver db.RollupResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
-	i := common.HeightCommittedBlocks
-	c := r
-	found := true
+// Returns all transactions in the rollup `HeightCommittedBlocks` deep.
+func txsXRollupsAgo(initialRollup *core.Rollup, resolver db.RollupResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
+	blocksDeep := 0
+	currentRollup := initialRollup
 	var err error
+
 	// todo - create method to return the canonical rollup from height N
 	for {
-		if !found || i == 0 || c.Header.Number.Uint64() == common.L2GenesisHeight {
-			return core.ToMap(c.Transactions), nil
+		if blocksDeep == common.HeightCommittedBlocks {
+			// We've found the rollup `HeightCommittedBlocks` deep.
+			return core.ToMap(currentRollup.Transactions), nil
 		}
-		i--
-		c, err = resolver.ParentRollup(c)
-		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+
+		if currentRollup.Header.Number.Uint64() == common.L2GenesisHeight {
+			// There's less than `HeightCommittedBlocks` rollups, so there's no transactions to remove yet.
+			return map[gethcommon.Hash]gethcommon.Hash{}, nil
+		}
+
+		currentRollup, err = resolver.ParentRollup(currentRollup)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				return nil, fmt.Errorf("found a gap in the rollup chain")
+			}
 			return nil, fmt.Errorf("could not retrieve parent rollup. Cause: %w", err)
 		}
-		found = err != nil
+
+		blocksDeep++
 	}
 }
 
@@ -124,40 +134,44 @@ func findTxsNotIncluded(head *core.Rollup, txs []*common.L2Tx, s db.RollupResolv
 	if err != nil {
 		return nil, err
 	}
-	return removeExisting(txs, included), nil
+	return filterOutTransactions(txs, included), nil
 }
 
-func allIncludedTransactions(r *core.Rollup, s db.RollupResolver, stopAtHeight uint64) (map[gethcommon.Hash]*common.L2Tx, error) {
-	if r.Header.Number.Uint64() == stopAtHeight {
-		return core.MakeMap(r.Transactions), nil
+// Recursively finds all transactions included in the past stopAtHeight rollups.
+func allIncludedTransactions(rollup *core.Rollup, s db.RollupResolver, stopAtHeight uint64) (map[gethcommon.Hash]*common.L2Tx, error) {
+	if rollup.Header.Number.Uint64() == stopAtHeight {
+		return core.MakeMap(rollup.Transactions), nil
 	}
+
+	// We add this rollup's transactions to the included transactions.
 	newMap := make(map[gethcommon.Hash]*common.L2Tx)
-	parent, err := s.ParentRollup(r)
+	for _, tx := range rollup.Transactions {
+		newMap[tx.Hash()] = tx
+	}
+
+	// If the rollup has a parent (i.e. it is not the genesis block), we recurse.
+	parentRollup, err := s.ParentRollup(rollup)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return nil, err
 	}
-
 	if err == nil {
-		txsMap, err := allIncludedTransactions(parent, s, stopAtHeight)
+		txsMap, err := allIncludedTransactions(parentRollup, s, stopAtHeight)
 		if err != nil {
 			return nil, err
 		}
-		for k, v := range txsMap {
-			newMap[k] = v
-		}
-		for _, tx := range r.Transactions {
-			newMap[tx.Hash()] = tx
+		for hash, tx := range txsMap {
+			newMap[hash] = tx
 		}
 	}
 
 	return newMap, nil
 }
 
-func removeExisting(base []*common.L2Tx, toRemove map[gethcommon.Hash]*common.L2Tx) (r []*common.L2Tx) {
-	for _, t := range base {
-		_, f := toRemove[t.Hash()]
+func filterOutTransactions(txs []*common.L2Tx, txsToRemove map[gethcommon.Hash]*common.L2Tx) (r []*common.L2Tx) {
+	for _, tx := range txs {
+		_, f := txsToRemove[tx.Hash()]
 		if !f {
-			r = append(r, t)
+			r = append(r, tx)
 		}
 	}
 	return

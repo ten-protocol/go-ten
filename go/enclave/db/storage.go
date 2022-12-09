@@ -107,11 +107,6 @@ func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, error) {
 	return s.FetchRollup(*hash)
 }
 
-func (s *storageImpl) FetchRollups(height uint64) ([]*core.Rollup, error) {
-	s.assertSecretAvailable()
-	return obscurorawdb.ReadRollupsForHeight(s.db, height)
-}
-
 func (s *storageImpl) StoreBlock(b *types.Block) {
 	s.assertSecretAvailable()
 	rawdb.WriteBlock(s.db, b)
@@ -199,15 +194,6 @@ func (s *storageImpl) assertSecretAvailable() {
 	//}
 }
 
-// todo - find a better way. This is a workaround to handle rollups created with proofs that haven't propagated yet
-func (s *storageImpl) ProofHeight(r *core.Rollup) int64 {
-	v, err := s.FetchBlock(r.Header.L1Proof)
-	if err != nil {
-		return -1
-	}
-	return int64(v.NumberU64())
-}
-
 func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
 	block, err := s.FetchBlock(r.Header.L1Proof)
 	if err != nil {
@@ -229,12 +215,12 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 	return logs, nil
 }
 
-func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
+// TODO - #718 - This method has behaviour that's too dependent on various flags. Decompose.
+func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollup, receipts []*types.Receipt, isNewRollup bool, isNewL1Block bool) error {
 	batch := s.db.NewBatch()
 
-	rawdb.WriteHeadHeaderHash(batch, l1Head)
-	if err := obscurorawdb.WriteL2Head(batch, l1Head, rollup.Hash()); err != nil {
-		return fmt.Errorf("could not write block state. Cause: %w", err)
+	if isNewL1Block {
+		rawdb.WriteHeadHeaderHash(batch, l1Head)
 	}
 
 	if isNewRollup {
@@ -242,6 +228,10 @@ func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollu
 		if err != nil {
 			return err
 		}
+	}
+
+	if err := obscurorawdb.WriteL2Head(batch, l1Head, rollup.Hash()); err != nil {
+		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
 	var logs []*types.Log
