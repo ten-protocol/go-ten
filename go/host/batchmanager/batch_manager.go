@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
-	"strconv"
-	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -113,13 +111,6 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 	sort.Slice(batchesToSend, func(i, j int) bool {
 		return batchesToSend[i].Header.Number.Cmp(batchesToSend[j].Header.Number) < 0
 	})
-
-	// todo - joel - this is logging code
-	var batchesBeingSent []string //nolint:prealloc
-	for _, batch := range batchesToSend {
-		batchesBeingSent = append(batchesBeingSent, strconv.FormatInt(batch.Header.Number.Int64(), 10))
-	}
-	println(fmt.Sprintf("jjj sending catch-up batches to node %s; batches are %s", batchRequest.Requester, strings.Join(batchesBeingSent, ", ")))
 
 	return batchesToSend, nil
 }

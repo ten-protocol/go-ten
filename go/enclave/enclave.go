@@ -500,7 +500,6 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// We retrieve the transaction receipt.
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
-		println(fmt.Sprintf("jjj could not find receipt for tx hash %s", txHash.Hex()))
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil
 		}
