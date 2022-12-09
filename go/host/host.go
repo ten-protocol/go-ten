@@ -900,22 +900,14 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	}
 
 	for _, batch := range batches {
-		// TODO - #718 - Move more of this checking into the `BatchManager`, where possible.
+		// TODO - #718 - Move to a model where the enclave manages the entire state, to avoid inconsistency.
 
-		// We check if we've stored the batch before.
-		_, err = h.db.GetBatch(batch.Hash())
-		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-			return fmt.Errorf("could not retrieve batch. Cause: %w", err)
-		}
-		if err == nil {
-			// The batch is already stored, so we don't process it again.
-			continue
-		}
-
+		// todo - joel - this is logging code
 		var txs []string
 		for _, tx := range batch.TxHashes {
 			txs = append(txs, tx.Hex())
 		}
+
 		println(fmt.Sprintf("jjj node %d receiving batch %d with txs %s",
 			h.shortID, batch.Header.Number, strings.Join(txs, ",")))
 
@@ -933,8 +925,6 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 			return fmt.Errorf("could not retrieve block. Cause: %w", err)
 		}
 
-		// TODO - #718 - Think carefully about the risk of inconsistency between the enclave and the host in terms of
-		//  batches stored. It may be better to have the enclave manage the entire state.
 		isParentStored, batchRequest, err := h.batchManager.IsParentStored(batch)
 		if err != nil {
 			println(fmt.Sprintf("jjj node %d could not determine whether the parent of batch %d was stored. Cause: %s",
@@ -949,8 +939,15 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 					h.shortID, batch.Header.Number, err))
 				return fmt.Errorf("could not request historical batches. Cause: %w", err)
 			}
-			println(fmt.Sprintf("jjj node %d requested batches for batch %d",
-				h.shortID, batch.Header.Number))
+			// todo - joel - this is all logging code
+			if *batchRequest.CurrentHeadBatch != (gethcommon.Hash{}) {
+				currentHead, err := h.db.GetBatch(*batchRequest.CurrentHeadBatch)
+				if err != nil {
+					panic("todo - joel")
+				}
+				println(fmt.Sprintf("jjj node %d requested batches based on batch %d; requesting batches from batch %d",
+					h.shortID, batch.Header.Number, currentHead.Header.Number))
+			}
 			return nil
 		}
 

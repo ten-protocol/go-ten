@@ -208,15 +208,6 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, er
 		return nil, nil //nolint:nilnil
 	}
 
-	// We return early if the rollup is built on an L1 fork.
-	headBlock, err := rc.storage.FetchHeadBlock()
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
-	}
-	if !rc.storage.IsBlockAncestor(headBlock, batch.Header.L1Proof) {
-		return nil, fmt.Errorf("batch is not on the canonical L1 chain")
-	}
-
 	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
