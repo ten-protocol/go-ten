@@ -212,8 +212,10 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
 	}
-	err = rc.storage.StoreNewHeads(batch.Header.L1Proof, rollup, rollupTxReceipts, true, false)
-	if err != nil {
+	if err = rc.storage.StoreRollup(rollup); err != nil {
+		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
+	}
+	if err = rc.storage.StoreNewHeads(batch.Header.L1Proof, rollup, rollupTxReceipts, true, false); err != nil {
 		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
 

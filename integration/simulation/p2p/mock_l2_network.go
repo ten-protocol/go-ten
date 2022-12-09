@@ -65,12 +65,12 @@ func (netw *MockP2P) BroadcastTx(tx common.EncryptedTx) error {
 	return nil
 }
 
-func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
+func (netw *MockP2P) BroadcastBatch(batchMsg *host.BatchMsg) error {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return nil
 	}
 
-	encodedBatches, err := rlp.EncodeToBytes([]*common.ExtBatch{batch})
+	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
 	if err != nil {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
@@ -78,7 +78,7 @@ func (netw *MockP2P) BroadcastBatch(batch *common.ExtBatch) error {
 	for _, node := range netw.Nodes {
 		if node.Config().ID.Hex() != netw.CurrentNode.Config().ID.Hex() {
 			tempNode := node
-			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatches(encodedBatches) })
+			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatches(encodedBatchMsg) })
 		}
 	}
 
@@ -98,7 +98,7 @@ func (netw *MockP2P) RequestBatches(batchRequest *common.BatchRequest) error {
 	return nil
 }
 
-func (netw *MockP2P) SendBatches(batches []*common.ExtBatch, requesterAddress string) error {
+func (netw *MockP2P) SendBatches(batchMsg *host.BatchMsg, requesterAddress string) error {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return nil
 	}
@@ -110,12 +110,12 @@ func (netw *MockP2P) SendBatches(batches []*common.ExtBatch, requesterAddress st
 		}
 	}
 
-	encodedBatches, err := rlp.EncodeToBytes(batches)
+	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
 	if err != nil {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
 
-	common.Schedule(netw.delay()/2, func() { requester.ReceiveBatches(encodedBatches) })
+	common.Schedule(netw.delay()/2, func() { requester.ReceiveBatches(encodedBatchMsg) })
 	return nil
 }
 
