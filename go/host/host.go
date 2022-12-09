@@ -951,8 +951,8 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 
 		// We only store the batch locally if it stores successfully on the enclave.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
-			println(fmt.Sprintf("jjj node %d could not submit batch %d to enclave. Cause: %s",
-				h.shortID, batch.Header.Number, err))
+			println(fmt.Sprintf("jjj node %d could not submit batch %d with parent %s to enclave. Cause: %s",
+				h.shortID, batch.Header.Number, batch.Header.ParentHash, err))
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
 		if err = h.db.AddBatchHeader(batch); err != nil {
@@ -961,8 +961,8 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 			return fmt.Errorf("could not store batch header. Cause: %w", err)
 		}
 
-		println(fmt.Sprintf("jjj node %d storing batch %d with txs %s",
-			h.shortID, batch.Header.Number, strings.Join(txs, ",")))
+		println(fmt.Sprintf("jjj node %d storing batch %d with hash %s",
+			h.shortID, batch.Header.Number, batch.Hash().Hex()))
 	}
 
 	return nil

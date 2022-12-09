@@ -199,12 +199,8 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, er
 	}
 	rollup := core.ToEnclaveRollup(&extRollup, rc.transactionBlobCrypto)
 
-	// We return early if we've processed the batch before.
-	_, err := rc.storage.FetchRollup(rollup.Hash())
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return nil, fmt.Errorf("could not fetch rollup. Cause: %w", err)
-	}
-	if err == nil {
+	// We retrieve the genesis batch from the L1 chain instead.
+	if rollup.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0 {
 		return nil, nil //nolint:nilnil
 	}
 
