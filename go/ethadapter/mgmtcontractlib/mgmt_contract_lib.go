@@ -6,36 +6,23 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"math/big"
 	"strings"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	"github.com/ethereum/go-ethereum"
-
-	"github.com/obscuronet/go-obscuro/go/common"
-
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const methodBytesLen = 4
-
-var (
-	// TODO review gas estimation - these should not be static values
-	// Gas should be calculated so to not overpay what the operation requires
-	// The values are hardcoded at the moment to guarantee the txs will be minted
-	// It's using large gas values because rollups can be very expensive
-	defaultGasPrice = big.NewInt(20000000000)
-	defaultGas      = uint64(1024_000_000)
-)
 
 // MgmtContractLib provides methods for creating ethereum transactions by providing an L1Transaction, creating call
 // messages for call requests, and converting ethereum transactions into L1Transactions.
@@ -156,8 +143,8 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		GasPrice: defaultGasPrice,
-		Gas:      defaultGas,
+		GasPrice: constants.DefaultGasPrice,
+		Gas:      constants.DefaultGasLimit,
 		To:       c.addr,
 		Data:     data,
 	}
@@ -171,8 +158,8 @@ func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx, 
 
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		GasPrice: defaultGasPrice,
-		Gas:      defaultGas,
+		GasPrice: constants.DefaultGasPrice,
+		Gas:      constants.DefaultGasLimit,
 		To:       c.addr,
 		Data:     data,
 	}
@@ -193,8 +180,8 @@ func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, 
 	}
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		GasPrice: defaultGasPrice,
-		Gas:      defaultGas,
+		GasPrice: constants.DefaultGasPrice,
+		Gas:      constants.DefaultGasLimit,
 		To:       c.addr,
 		Data:     data,
 	}
@@ -213,8 +200,8 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecr
 	}
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		GasPrice: defaultGasPrice,
-		Gas:      defaultGas,
+		GasPrice: constants.DefaultGasPrice,
+		Gas:      constants.DefaultGasLimit,
 		To:       c.addr,
 		Data:     data,
 	}

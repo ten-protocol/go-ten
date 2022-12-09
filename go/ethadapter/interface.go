@@ -35,6 +35,8 @@ type EthClient interface {
 
 	CallContract(msg ethereum.CallMsg) ([]byte, error) // Runs the provided call message on the latest block.
 
+	EstimateGasAndGasPrice(txData types.TxData, from gethcommon.Address) (types.TxData, error) // Estimates the gas and the gas price for a given tx payload
+
 	Stop() // tries to cleanly stop the client and release any resources
 
 	EthClient() *ethclient.Client // returns the underlying eth client

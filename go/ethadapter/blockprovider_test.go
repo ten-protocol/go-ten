@@ -229,6 +229,10 @@ func (e *ethClientMock) EthClient() *ethclient.Client {
 	panic("implement me")
 }
 
+func (e *ethClientMock) EstimateGasAndGasPrice(txData types.TxData, from gethcommon.Address) (types.TxData, error) {
+	return txData, nil
+}
+
 type ethSubscriptionMock struct {
 	mock.Mock
 	cancel context.CancelFunc

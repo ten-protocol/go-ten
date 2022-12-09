@@ -572,6 +572,16 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 		Rollup: encodedRollup,
 	}
 
+	h.logger.Trace("Sending transaction to publish rollup", "rollup_header",
+		gethlog.Lazy{Fn: func() string {
+			header, err := json.MarshalIndent(producedRollup.Header, "", "   ")
+			if err != nil {
+				return err.Error()
+			}
+
+			return string(header[:])
+		}})
+
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
 	if err != nil {
@@ -634,6 +644,12 @@ func (h *host) initialiseProtocol(block *types.Block) error {
 
 // `tries` is the number of times to attempt broadcasting the transaction.
 func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
+	var err error
+	tx, err = h.ethClient.EstimateGasAndGasPrice(tx, h.ethWallet.Address())
+	if err != nil {
+		return fmt.Errorf("unable to estimate gas limit and gas price - %w", err)
+	}
+
 	signedTx, err := h.ethWallet.SignTransaction(tx)
 	if err != nil {
 		return err
@@ -816,7 +832,8 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 			continue
 		}
 
-		h.logger.Trace(fmt.Sprintf("Adding receipt for block %d, TX: %d",
+		h.logger.Trace(fmt.Sprintf("Adding receipt[%d] for block %d, TX: %d",
+			receipt.Status,
 			common.ShortHash(block.Hash()),
 			common.ShortHash(transaction.Hash())),
 			log.CmpKey, log.CrossChainCmp)

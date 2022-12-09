@@ -189,7 +189,7 @@ func checkDepositsSuccessful(txInjector *simulation.TransactionInjector, l1Clien
 			MgmtContractLib:  mgmtContractLib,
 		},
 	}
-	deposits, _, _, _ := simulation.ExtractDataFromEthereumChain(startBlock, currentBlock, l1Client, &dummySim, 0) //nolint:dogsled
+	deposits, _, _, _, _ := simulation.ExtractDataFromEthereumChain(startBlock, currentBlock, l1Client, &dummySim, 0) //nolint:dogsled
 
 	if len(deposits) != len(txInjector.TxTracker.L1Transactions) {
 		println(fmt.Sprintf("Injected %d deposits into the L1 but %d were missing.",
