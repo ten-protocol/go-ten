@@ -38,6 +38,7 @@ type RollupResolver interface {
 	// FetchRollupByHeight returns the rollup with the given height.
 	FetchRollupByHeight(height uint64) (*core.Rollup, error)
 	// StoreRollup persists the rollup
+	// TODO - #718 - No longer needs to be public.
 	StoreRollup(rollup *core.Rollup) error
 	// ParentRollup returns the rollup's parent rollup.
 	ParentRollup(rollup *core.Rollup) (*core.Rollup, error)

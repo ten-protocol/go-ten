@@ -90,6 +90,10 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 		if currentBatchNumber.Cmp(headBatchHeader.Number) >= 0 {
 			break
 		}
+		// We only send at most 10 catch-up batches at once, to avoid pressure on the messaging system.
+		if len(batchesToSend) >= 10 {
+			break
+		}
 	}
 
 	// todo - joel - this is logging code
@@ -97,7 +101,7 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 	for _, batch := range batchesToSend {
 		batchesBeingSent = append(batchesBeingSent, strconv.FormatInt(batch.Header.Number.Int64(), 10))
 	}
-	println(fmt.Sprintf("jjj sending catch-up batches to %s; batches are %s", batchRequest.Requester, strings.Join(batchesBeingSent, ", ")))
+	println(fmt.Sprintf("jjj sending catch-up batches to node %s; batches are %s", batchRequest.Requester, strings.Join(batchesBeingSent, ", ")))
 
 	return batchesToSend, nil
 }
