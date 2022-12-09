@@ -115,11 +115,6 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 		Data:     contractBytes,
 	}
 
-	deployContractTx, err = workerClient.EstimateGasAndGasPrice(deployContractTx, w.Address())
-	if err != nil {
-		return nil, err
-	}
-
 	signedTx, err := w.SignTransaction(deployContractTx)
 	if err != nil {
 		return nil, err
