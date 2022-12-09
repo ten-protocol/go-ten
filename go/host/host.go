@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -891,15 +890,6 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	}
 
 	for _, batch := range batchMsg.Batches {
-		// todo - joel - this is logging code
-		var txs []string
-		for _, tx := range batch.TxHashes {
-			txs = append(txs, tx.Hex())
-		}
-
-		println(fmt.Sprintf("jjj node %d receiving batch %d with txs %s",
-			h.shortID, batch.Header.Number, strings.Join(txs, ",")))
-
 		// TODO - #718 - Consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
 
 		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
@@ -907,19 +897,13 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
-				println(fmt.Sprintf("jjj err node %d has not yet processed block for batch %d. Cause: %s",
-					h.shortID, batch.Header.Number, err))
 				return nil
 			}
-			println(fmt.Sprintf("jjj err node %d could not retrieve block for batch %d. Cause: %s",
-				h.shortID, batch.Header.Number, err))
 			return fmt.Errorf("could not retrieve block. Cause: %w", err)
 		}
 
 		isParentStored, batchRequest, err := h.batchManager.IsParentStored(batch)
 		if err != nil {
-			println(fmt.Sprintf("jjj err node %d could not determine whether the parent of batch %d was stored. Cause: %s",
-				h.shortID, batch.Header.Number, err))
 			return fmt.Errorf("could not determine whether batch parent was missing. Cause: %w", err)
 		}
 
@@ -927,36 +911,18 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 		// We only do this if the batches did not themselves arrive as part of catch-up, to avoid excessive P2P pressure.
 		if !isParentStored && !batchMsg.IsCatchUp {
 			if err = h.p2p.RequestBatches(batchRequest); err != nil {
-				println(fmt.Sprintf("jjj err node %d could not request batches for batch %d. Cause: %s",
-					h.shortID, batch.Header.Number, err))
 				return fmt.Errorf("could not request historical batches. Cause: %w", err)
-			}
-			// todo - joel - this is all logging code
-			if *batchRequest.CurrentHeadBatch != (gethcommon.Hash{}) {
-				currentHead, err := h.db.GetBatch(*batchRequest.CurrentHeadBatch)
-				if err != nil {
-					panic("todo - joel")
-				}
-				println(fmt.Sprintf("jjj node %d requested batches based on batch %d; requesting batches from batch %d",
-					h.shortID, batch.Header.Number, currentHead.Header.Number))
 			}
 			return nil
 		}
 
 		// We only store the batch locally if it stores successfully on the enclave.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
-			println(fmt.Sprintf("jjj err node %d could not submit batch %d with parent %s to enclave. Cause: %s",
-				h.shortID, batch.Header.Number, batch.Header.ParentHash, err))
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
 		if err = h.db.AddBatchHeader(batch); err != nil {
-			println(fmt.Sprintf("jjj err node %d could not store batch %d. Cause: %s",
-				h.shortID, batch.Header.Number, err))
 			return fmt.Errorf("could not store batch header. Cause: %w", err)
 		}
-
-		println(fmt.Sprintf("jjj node %d storing batch %d with hash %s",
-			h.shortID, batch.Header.Number, batch.Hash().Hex()))
 	}
 
 	return nil
