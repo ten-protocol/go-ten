@@ -908,12 +908,15 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 		}
 
 		// We have encountered a missing parent batch. We abort the storage operation and request the missing batches.
-		// We only do this if the batches did not themselves arrive as part of catch-up, to avoid excessive P2P pressure.
-		if !isParentStored && !batchMsg.IsCatchUp {
-			if err = h.p2p.RequestBatches(batchRequest); err != nil {
-				return fmt.Errorf("could not request historical batches. Cause: %w", err)
+		if !isParentStored {
+			// We only request the missing batches if the batches did not themselves arrive as part of catch-up, to
+			// avoid excessive P2P pressure.
+			if !batchMsg.IsCatchUp {
+				if err = h.p2p.RequestBatches(batchRequest); err != nil {
+					return fmt.Errorf("could not request historical batches. Cause: %w", err)
+				}
+				return nil
 			}
-			return nil
 		}
 
 		// We only store the batch locally if it stores successfully on the enclave.
