@@ -869,10 +869,20 @@ func (h *host) handleBatches(encodedBatches *common.EncodedBatches) error {
 	}
 
 	for _, batch := range batches {
+		// TODO - #718 - Move more of this checking into the `BatchManager`, where possible.
+
+		// We check if we've stored the batch before.
+		_, err = h.db.GetBatch(batch.Hash())
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			return fmt.Errorf("could not retrieve batch. Cause: %w", err)
+		}
+		if err == nil {
+			// The batch is already stored, so we don't process it again.
+			continue
+		}
+
 		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
 		// up later, once we've received the L1 block.
-		// TODO - #718 - Handle this in batch manager, along with checking whether parent is stored, as part of a
-		//  `CheckBatch` method.
 		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
