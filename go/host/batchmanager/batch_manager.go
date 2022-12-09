@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -11,6 +12,11 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/host/db"
+)
+
+const (
+	// A limit on the number of batches that can be served in a single catch-up request.
+	maxBatchesPerRequest = 10
 )
 
 // BatchManager handles the creation and processing of batches for the host.
@@ -59,42 +65,54 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 	}
 
 	// We determine the latest canonical ancestor to start sending batches from.
-	canonicalAncestor, err := b.latestCanonicalAncestor(requesterHeadBatch)
+	firstBatch, err := b.latestCanonicalAncestor(requesterHeadBatch)
 	if err != nil {
 		return nil, fmt.Errorf("could not determine latest canonical ancestor. Cause: %w", err)
 	}
-	batchesToSend := []*common.ExtBatch{canonicalAncestor}
+	batchesToSend := []*common.ExtBatch{firstBatch}
 
-	currentBatchNumber := canonicalAncestor.Header.Number
-	// Fetching the head batch upfront avoids a potential infinite loop if batches are produced very fast.
-	headBatchHeader, err := b.db.GetHeadBatchHeader()
+	// We find the batch we want to send up to - either the head batch, or the max number of requested batches,
+	// whichever is lower.
+	lastBatch, err := b.db.GetHeadBatchHeader()
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
 	}
-
-	// We gather the batches from the canonical chain.
-	for {
-		currentBatchNumber = big.NewInt(0).Add(currentBatchNumber, big.NewInt(1))
-
-		batchHash, err := b.db.GetBatchHash(currentBatchNumber)
+	if lastBatch.Number.Int64()-firstBatch.Header.Number.Int64() > maxBatchesPerRequest {
+		lastBatchNumber := big.NewInt(0).Add(firstBatch.Header.Number, big.NewInt(maxBatchesPerRequest))
+		batchHash, err := b.db.GetBatchHash(lastBatchNumber)
 		if err != nil {
-			return nil, fmt.Errorf("could not retrieve batch hash for batch number %d. Cause: %w", currentBatchNumber, err)
+			return nil, fmt.Errorf("could not retrieve batch hash. Cause: %w", err)
 		}
-		batch, err := b.db.GetBatch(*batchHash)
+		lastBatch, err = b.db.GetBatchHeader(*batchHash)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch for batch hash %s. Cause: %w", batchHash, err)
+		}
+	}
+
+	// We gather the batches by walking backwards from the final batch.
+	currentBatch := lastBatch
+	for {
+		if currentBatch.Hash().Hex() == firstBatch.Hash().Hex() {
+			break
+		}
+
+		batch, err := b.db.GetBatch(currentBatch.Hash())
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve batch. Cause: %w", err)
 		}
 
 		batchesToSend = append(batchesToSend, batch)
 
-		if currentBatchNumber.Cmp(headBatchHeader.Number) >= 0 {
-			break
-		}
-		// We only send at most 10 catch-up batches at once, to avoid pressure on the messaging system.
-		if len(batchesToSend) >= 10 {
-			break
+		currentBatch, err = b.db.GetBatchHeader(currentBatch.ParentHash)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 		}
 	}
+
+	// We sort the batches so that the recipient can process them in order.
+	sort.Slice(batchesToSend, func(i, j int) bool {
+		return batchesToSend[i].Header.Number.Cmp(batchesToSend[j].Header.Number) < 0
+	})
 
 	// todo - joel - this is logging code
 	var batchesBeingSent []string //nolint:prealloc
