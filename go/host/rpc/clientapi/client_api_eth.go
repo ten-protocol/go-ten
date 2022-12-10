@@ -43,7 +43,7 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 	header, err := api.host.DB().GetHeadBatchHeader()
 	if err != nil {
 		// This error may be nefarious, but unfortunately the Eth API doesn't allow us to return an error.
-		api.logger.Error("could not retrieve head rollup header", log.ErrKey, err)
+		api.logger.Error("could not retrieve head batch header", log.ErrKey, err)
 		return 0
 	}
 	return hexutil.Uint64(header.Number.Uint64())
@@ -63,7 +63,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
 	batchHash, err := api.batchNumberToBatchHash(number)
 	if err != nil {
-		return nil, fmt.Errorf("could not find rollup with height %d. Cause: %w", number, err)
+		return nil, fmt.Errorf("could not find batch with height %d. Cause: %w", number, err)
 	}
 	return api.GetBlockByHash(ctx, *batchHash, true)
 }
@@ -126,24 +126,25 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 	return gethcommon.Bytes2Hex(encryptedResponse), nil
 }
 
-// GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash.
+// GetCode returns the code stored at the given address in the state for the given batch height or batch hash.
+// TODO - Instead of converting the block number of hash client-side, do it on the enclave.
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// requested a number
-	if rollupNumber, ok := blockNrOrHash.Number(); ok {
-		rollupHash, err := api.rollupNumberToRollupHash(rollupNumber)
+	if batchNumber, ok := blockNrOrHash.Number(); ok {
+		batchHash, err := api.batchNumberToBatchHash(batchNumber)
 		if err != nil {
-			return nil, fmt.Errorf("could not retrieve rollup with height %d. Cause: %w", rollupNumber, err)
+			return nil, fmt.Errorf("could not retrieve batch with height %d. Cause: %w", batchNumber, err)
 		}
 
-		return api.host.EnclaveClient().GetCode(address, rollupHash)
+		return api.host.EnclaveClient().GetCode(address, batchHash)
 	}
 
 	// requested a hash
-	if rollupHash, ok := blockNrOrHash.Hash(); ok {
-		return api.host.EnclaveClient().GetCode(address, &rollupHash)
+	if batchHash, ok := blockNrOrHash.Hash(); ok {
+		return api.host.EnclaveClient().GetCode(address, &batchHash)
 	}
 
-	return nil, errors.New("invalid arguments; neither rollup height nor rollup hash specified")
+	return nil, errors.New("invalid arguments; neither batch height nor batch hash specified")
 }
 
 func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (string, error) {
@@ -245,30 +246,4 @@ func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*ge
 		return nil, err
 	}
 	return batchHash, nil
-}
-
-// Given a rollup number, returns the hash of the rollup with that number.
-// TODO - #718 - Remove this once RPC methods are based on batches.
-func (api *EthereumAPI) rollupNumberToRollupHash(blockNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
-	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
-	if blockNumber == rpc.LatestBlockNumber {
-		header, err := api.host.DB().GetHeadRollupHeader()
-		if err != nil {
-			return nil, err
-		}
-		hash := header.Hash()
-		return &hash, nil
-	}
-
-	if blockNumber == rpc.PendingBlockNumber {
-		// todo Dependent on the current pending rollup - leaving it for a different iteration as it will need more thought
-		return nil, errutil.ErrNoImpl
-	}
-
-	blockNumberBig := big.NewInt(blockNumber.Int64())
-	rollupHash, err := api.host.DB().GetRollupHash(blockNumberBig)
-	if err != nil {
-		return nil, err
-	}
-	return rollupHash, nil
 }

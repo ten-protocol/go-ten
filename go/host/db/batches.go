@@ -215,7 +215,7 @@ func (db *DB) readBatchTxHashes(batchHash common.L2RootHash) ([]gethcommon.Hash,
 		return nil, errutil.ErrNotFound
 	}
 
-	txHashes := []gethcommon.Hash{}
+	var txHashes []gethcommon.Hash
 	if err = rlp.Decode(bytes.NewReader(data), &txHashes); err != nil {
 		return nil, err
 	}
