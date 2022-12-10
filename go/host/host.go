@@ -494,7 +494,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
-	err = h.storeBlockProcessingResult(result, block.Header())
+	err = h.db.AddBlockHeader(block.Header())
 	if err != nil {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
@@ -596,20 +596,6 @@ func (h *host) storeAndDistributeBatch(producedRollup *common.ExtRollup) {
 	if err != nil {
 		h.logger.Error("could not broadcast batch", log.ErrKey, err)
 	}
-}
-
-func (h *host) storeBlockProcessingResult(result *common.BlockSubmissionResponse, blockHeader *types.Header) error {
-	// only update the host rollup headers if the enclave has found a new rollup head
-	if result.IngestedRollupHeader != nil {
-		// adding a header will update the head if it has a higher height
-		err := h.db.AddRollupHeader(result.IngestedRollupHeader)
-		if err != nil {
-			return err
-		}
-	}
-
-	// adding a header will update the head if it has a higher height
-	return h.db.AddBlockHeader(blockHeader)
 }
 
 // Called only by the first enclave to bootstrap the network
