@@ -357,16 +357,10 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 
 	totalSuccessfullyWithdrawn, numberOfWithdrawalRequests := extractWithdrawals(t, obscuroClient, nodeIdx)
 
-	// TODO - #718 - Renable this check once we've implemented catch-up for batches.
-	/*
-		totalAmountLogged := getLoggedWithdrawals(minObscuroHeight, obscuroClient, headRollupHeader)
-
-		if totalAmountLogged.Cmp(totalSuccessfullyWithdrawn) != 0 {
-			t.Errorf("Node %d: Logged withdrawals do not match!", nodeIdx)
-		} */
-
-	// rpc.GetRollupHeaderByNumber
-	// nodeClient
+	totalAmountLogged := getLoggedWithdrawals(minObscuroHeight, obscuroClient, headRollupHeader)
+	if totalAmountLogged.Cmp(totalSuccessfullyWithdrawn) != 0 {
+		t.Errorf("Node %d: Logged withdrawals do not match!", nodeIdx)
+	}
 
 	// sanity check number of withdrawal transaction
 	if numberOfWithdrawalRequests > len(s.TxInjector.TxTracker.GetL2WithdrawalRequests()) {
@@ -419,7 +413,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 }
 
-/*func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsClient, currentHeader *common.Header) *big.Int {
+func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsClient, currentHeader *common.Header) *big.Int {
 	totalAmountLogged := big.NewInt(0)
 	for i := minObscuroHeight; i < currentHeader.Number.Uint64(); i++ {
 		header, err := obscuroClient.RollupHeaderByNumber(big.NewInt(int64(i)))
@@ -444,7 +438,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		}
 	}
 	return totalAmountLogged
-} */
+}
 
 // FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.
 func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int) {
