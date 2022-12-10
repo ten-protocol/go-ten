@@ -151,20 +151,20 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, *common.Header, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
 	err := rc.updateL1State(block, receipts, isLatest)
 	if err != nil {
-		return nil, rc.rejectBlockErr(err)
+		return nil, nil, rc.rejectBlockErr(err)
 	}
 
 	// We update the L1 and L2 chain heads.
 	newL2Head, blockStage, err := rc.updateL1AndL2Heads(&block)
 	if err != nil {
-		return nil, rc.rejectBlockErr(err)
+		return nil, nil, rc.rejectBlockErr(err)
 	}
 
 	// If we're the sequencer and we're beyond the genesis block, we produce and store the new L2 chain head.
@@ -173,7 +173,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 	if rc.nodeType == common.Sequencer && blockStage == PostGenesis {
 		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(&block)
 		if err != nil {
-			return nil, rc.rejectBlockErr(err)
+			return nil, nil, rc.rejectBlockErr(err)
 		}
 
 		producedRollupHash := producedRollup.Hash()
@@ -184,7 +184,17 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 		isUpdatedRollupHead = blockStage == Genesis
 	}
 
-	return rc.produceBlockSubmissionResponse(&block, newL2Head, isUpdatedRollupHead, producedRollup)
+	var ingestedRollupHeader *common.Header
+	if isUpdatedRollupHead {
+		headRollup, err := rc.storage.FetchRollup(*newL2Head)
+		if err != nil {
+			return nil, nil, rc.rejectBlockErr(err)
+		}
+		ingestedRollupHeader = headRollup.Header
+	}
+
+	// TODO - #718 - We should produce the block submission response in `enclave.go`, not here.
+	return rc.produceBlockSubmissionResponse(&block, newL2Head, producedRollup), ingestedRollupHeader, nil
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
@@ -437,19 +447,10 @@ func (rc *RollupChain) produceNewRollupAndUpdateL2Head(block *types.Block) (*cor
 	return rollup, nil
 }
 
-func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, isUpdatedRollupHead bool, producedRollup *core.Rollup) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, producedRollup *core.Rollup) *common.BlockSubmissionResponse {
 	if l2Head == nil {
 		// not an error state, we ingested a block but no rollup head found
-		return &common.BlockSubmissionResponse{}, nil
-	}
-
-	var ingestedRollupHeader *common.Header
-	if isUpdatedRollupHead {
-		headRollup, err := rc.storage.FetchRollup(*l2Head)
-		if err != nil {
-			rc.logger.Crit("Could not fetch rollup", log.ErrKey, err)
-		}
-		ingestedRollupHeader = headRollup.Header
+		return &common.BlockSubmissionResponse{}
 	}
 
 	var producedExtRollup common.ExtRollup
@@ -458,10 +459,9 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head
 	}
 
 	return &common.BlockSubmissionResponse{
-		ProducedRollup:       &producedExtRollup,
-		IngestedRollupHeader: ingestedRollupHeader,
-		SubscribedLogs:       rc.getEncryptedLogs(*block, l2Head),
-	}, nil
+		ProducedRollup: &producedExtRollup,
+		SubscribedLogs: rc.getEncryptedLogs(*block, l2Head),
+	}
 }
 
 // Updates the heads of the L1 and L2 chains.

@@ -259,7 +259,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	blockSubmissionResponse, err := e.chain.ProcessL1Block(block, receipts, isLatest)
+	blockSubmissionResponse, ingestedRollupHeader, err := e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
@@ -270,7 +270,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	// We remove any transactions considered immune to re-orgs from the mempool.
-	err = e.removeOldMempoolTxs(blockSubmissionResponse.IngestedRollupHeader)
+	err = e.removeOldMempoolTxs(ingestedRollupHeader)
 	if err != nil {
 		e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
 	}
@@ -1050,6 +1050,7 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 }
 
 // Removes transactions from the mempool that are considered immune to re-orgs (i.e. over X rollups deep).
+// TODO - #718 - Only pass in header number, not full rollup.
 func (e *enclaveImpl) removeOldMempoolTxs(rollupHeader *common.Header) error {
 	if rollupHeader == nil {
 		return nil
