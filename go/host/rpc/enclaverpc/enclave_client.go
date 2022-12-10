@@ -317,13 +317,13 @@ func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (c
 	return resp.EncryptedBalance, nil
 }
 
-func (c *Client) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
+func (c *Client) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	resp, err := c.protoClient.GetCode(timeoutCtx, &generated.GetCodeRequest{
 		Address:    address.Bytes(),
-		RollupHash: rollupHash.Bytes(),
+		RollupHash: batchHash.Bytes(),
 	})
 	if err != nil {
 		return nil, err
