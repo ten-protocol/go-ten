@@ -25,6 +25,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
+// TODO - Consistency around whether we assert the secret is available or not.
+
 type storageImpl struct {
 	db          ethdb.Database
 	stateDB     state.Database
@@ -42,11 +44,20 @@ func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logge
 }
 
 func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) error {
+	batch := s.db.NewBatch()
+
 	err := obscurorawdb.WriteGenesisHash(s.db, rol.Hash())
 	if err != nil {
 		return fmt.Errorf("could not write genesis hash. Cause: %w", err)
 	}
-	return s.StoreRollup(rol)
+	if err := obscurorawdb.WriteRollup(batch, rol); err != nil {
+		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
+	}
+
+	if err := batch.Write(); err != nil {
+		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
+	}
+	return nil
 }
 
 func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, error) {
@@ -67,19 +78,6 @@ func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
 		return nil, fmt.Errorf("could not fetch L2 head hash")
 	}
 	return s.FetchRollup(*l2Head)
-}
-
-func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
-	s.assertSecretAvailable()
-
-	batch := s.db.NewBatch()
-	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
-		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
-	}
-	if err := batch.Write(); err != nil {
-		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
-	}
-	return nil
 }
 
 func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, error) {
