@@ -153,9 +153,9 @@ contract ManagementContract {
         // bytes32 derp = keccak256(abi.encodePacked(ParentHash, AggregatorID, L1Block, Number, rollupData));
 
         //Cheapest to fail, thus always check first.
-        if (crossChainData.blockNumber != 0) {
+       /* if (crossChainData.blockNumber != 0) {
             require(crossChainData.blockHash == blockhash(crossChainData.blockNumber), "Rollup includes cross chain messages coming from a different fork!");
-        }
+        }  */
 
         // revert if the AggregatorID is not attested
         require(attested[r.AggregatorID], "aggregator not attested");
