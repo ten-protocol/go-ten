@@ -23,28 +23,6 @@ type EnclaveContainer struct {
 	Logger    gethlog.Logger
 }
 
-// NewEnclaveContainer wires up the components of the Enclave and its RPC server. Manages their lifecycle/monitors their status
-func NewEnclaveContainer(config config.EnclaveConfig) *EnclaveContainer {
-	// todo - improve this wiring, perhaps setup DB etc. at this level and inject into enclave
-	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.HostID)
-
-	contractAddr := config.ManagementContractAddress
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)
-	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddresses...)
-
-	if config.ValidateL1Blocks {
-		config.GenesisJSON = []byte(hardcodedGenesisJSON)
-	}
-	encl := enclave.NewEnclave(config, mgmtContractLib, erc20ContractLib, logger)
-	rpcServer := enclave.NewEnclaveRPCServer(config.Address, encl, logger)
-
-	return &EnclaveContainer{
-		Enclave:   encl,
-		RPCServer: rpcServer,
-		Logger:    logger,
-	}
-}
-
 func (e *EnclaveContainer) Start() error {
 	err := e.RPCServer.StartServer()
 	if err != nil {
@@ -61,4 +39,32 @@ func (e *EnclaveContainer) Stop() error {
 		return err
 	}
 	return nil
+}
+
+// NewEnclaveContainerFromConfig wires up the components of the Enclave and its RPC server. Manages their lifecycle/monitors their status
+func NewEnclaveContainerFromConfig(config config.EnclaveConfig) *EnclaveContainer {
+	// todo - improve this wiring, perhaps setup DB etc. at this level and inject into enclave
+	//  (at that point the WithLogger constructor could be a full DI constructor like the HostContainer tries, for testability)
+	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.HostID)
+
+	return NewEnclaveContainerWithLogger(config, logger)
+}
+
+// NewEnclaveContainerWithLogger is useful for testing etc.
+func NewEnclaveContainerWithLogger(config config.EnclaveConfig, logger gethlog.Logger) *EnclaveContainer {
+	contractAddr := config.ManagementContractAddress
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)
+	erc20ContractLib := erc20contractlib.NewERC20ContractLib(&contractAddr, config.ERC20ContractAddresses...)
+
+	if config.ValidateL1Blocks {
+		config.GenesisJSON = []byte(hardcodedGenesisJSON)
+	}
+	encl := enclave.NewEnclave(config, mgmtContractLib, erc20ContractLib, logger)
+	rpcServer := enclave.NewEnclaveRPCServer(config.Address, encl, logger)
+
+	return &EnclaveContainer{
+		Enclave:   encl,
+		RPCServer: rpcServer,
+		Logger:    logger,
+	}
 }
