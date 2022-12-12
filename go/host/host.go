@@ -525,7 +525,6 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		// TODO - #718 - Unlink batch production from L1 cadence.
 		h.storeAndDistributeBatch(result.ProducedRollup)
 	}
-
 	return nil
 }
 

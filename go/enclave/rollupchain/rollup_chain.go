@@ -422,7 +422,7 @@ func (rc *RollupChain) produceNewRollupAndUpdateL2Head(block *types.Block) (*cor
 	return rollup, nil
 }
 
-// Updates the heads of the L1 and L2 chains.
+// Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced rollup, if there is one.
 func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, *core.Rollup, error) {
 	// We extract the rollups from the block.
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
@@ -432,30 +432,17 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not determine block type. Cause: %w", err)
 	}
-	var l2Head *common.L2RootHash
+
 	switch blockStage {
 	case PreGenesis:
-		l2Head = nil
+		return nil, nil, nil
 	case Genesis:
-		l2Head, err = rc.handleGenesisBlock(block, rollupsInBlock)
+		l2Head, err := rc.handleGenesisBlock(block, rollupsInBlock)
+		return l2Head, nil, err
 	case PostGenesis:
-		l2Head, err = rc.handlePostGenesisBlock(block)
+		return rc.handlePostGenesisBlock(block)
 	}
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not handle block. Cause: %w", err)
-	}
-
-	// If we're the sequencer and we're post-genesis, we produce the new head rollup.
-	var producedRollup *core.Rollup
-	if blockStage == PostGenesis && rc.nodeType == common.Sequencer {
-		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(block)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not produce new rollup. Cause: %w", err)
-		}
-		l2Head = producedRollup.Hash()
-	}
-
-	return l2Head, producedRollup, nil
+	return nil, nil, fmt.Errorf("unrecognised block stage")
 }
 
 // Determines if this is a pre-genesis L2 block, the genesis L2 block, or a post-genesis L2 block.
@@ -657,27 +644,37 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 }
 
 // Calculates the state after processing the provided block.
-func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2RootHash, error) {
+func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2RootHash, *core.Rollup, error) {
 	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
 	currentHeadRollupHash, err := rc.storage.FetchHeadRollupForL1Block(block.ParentHash())
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve current head rollup hash. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not retrieve current head rollup hash. Cause: %w", err)
 	}
 	currentHeadRollup, err := rc.storage.FetchRollup(*currentHeadRollupHash)
 	if err != nil {
-		return nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
 
 	// TODO - #718 - Validate any rollups in the block against the stored batches.
 
 	if err = rc.storage.UpdateL2HeadForL1Block(block.Hash(), currentHeadRollup, nil); err != nil {
-		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
 	if err = rc.storage.UpdateL1Head(block.Hash()); err != nil {
-		return nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 	}
 
-	return currentHeadRollup.Hash(), nil
+	// If we're the sequencer and we're post-genesis, we produce the new head rollup.
+	var producedRollup *core.Rollup
+	if rc.nodeType == common.Sequencer {
+		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(block)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not produce new rollup. Cause: %w", err)
+		}
+		currentHeadRollup = producedRollup
+	}
+
+	return currentHeadRollup.Hash(), producedRollup, nil
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
