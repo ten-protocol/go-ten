@@ -1,13 +1,24 @@
-# Sample Hardhat Project
+# Obscuro smart contracts
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+This hardhat project contains the relevant smart contracts for the Obscuro L2 platform.
 
-Try running some of the following tasks:
+## Dependencies
+
+NodeJS LTS (v18)
+NPM 
+
+## Installing
+
+Running the following command will pull all of the relevant dependencies for node and solidity.
 
 ```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.ts
+npm install
+``` 
+
+## Generating abi bindings for GO
+
+Running the following command will regenerate the bindings in the `generated` directory:
+
+```shell
+npx hardhat generate-abi-bindings --output-dir generated
 ```
