@@ -41,8 +41,8 @@ type RollupResolver interface {
 	ParentRollup(rollup *core.Rollup) (*core.Rollup, error)
 	// StoreGenesisRollupHash stores the hash of the genesis rollup.
 	StoreGenesisRollupHash(rollupHash common.L2RootHash) error
-	// StoreNewRollup stores a rollup.
-	StoreNewRollup(rollup *core.Rollup, receipts []*types.Receipt) error
+	// StoreRollup stores a rollup.
+	StoreRollup(rollup *core.Rollup, receipts []*types.Receipt) error
 	// FetchGenesisRollup returns the rollup genesis.
 	FetchGenesisRollup() (*core.Rollup, error)
 	// FetchHeadRollup returns the current head rollup

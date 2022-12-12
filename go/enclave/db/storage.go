@@ -341,7 +341,7 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
 }
 
-func (s *storageImpl) StoreNewRollup(rollup *core.Rollup, receipts []*types.Receipt) error {
+func (s *storageImpl) StoreRollup(rollup *core.Rollup, receipts []*types.Receipt) error {
 	batch := s.db.NewBatch()
 
 	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {

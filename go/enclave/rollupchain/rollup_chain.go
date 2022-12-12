@@ -219,7 +219,7 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
 	}
-	if err = rc.storage.StoreNewRollup(rollup, rollupTxReceipts); err != nil {
+	if err = rc.storage.StoreRollup(rollup, rollupTxReceipts); err != nil {
 		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
 	}
 	if err = rc.storage.UpdateL2HeadForL1Block(batch.Header.L1Proof, rollup, rollupTxReceipts); err != nil {
@@ -441,7 +441,7 @@ func (rc *RollupChain) produceNewRollupAndUpdateL2Head(block *types.Block) (*cor
 		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
 	}
 
-	if err = rc.storage.StoreNewRollup(rollup, rollupTxReceipts); err != nil {
+	if err = rc.storage.StoreRollup(rollup, rollupTxReceipts); err != nil {
 		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
 	}
 	if err = rc.storage.UpdateL2HeadForL1Block(block.Hash(), rollup, rollupTxReceipts); err != nil {
@@ -526,7 +526,7 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 	// todo change this to a hardcoded hash on testnet/mainnet
 	genesisRollup := rollupsInBlock[0]
 	rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
-	if err := rc.storage.StoreNewRollup(genesisRollup, nil); err != nil {
+	if err := rc.storage.StoreRollup(genesisRollup, nil); err != nil {
 		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
 	}
 	if err := rc.storage.StoreGenesisRollupHash(genesisRollup.Hash()); err != nil {
