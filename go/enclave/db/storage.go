@@ -49,7 +49,7 @@ func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) error {
 	if err := obscurorawdb.WriteGenesisHash(s.db, rol.Hash()); err != nil {
 		return fmt.Errorf("could not write genesis hash. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteRollup(batch, rol); err != nil {
+	if err := s.storeNewRollup(batch, rol, nil); err != nil {
 		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
 	}
 
