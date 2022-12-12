@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sort"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -88,30 +87,25 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 	}
 
 	// We gather the batches by walking backwards from the final batch.
-	currentBatch := lastBatch
+	currentBatch, err := b.db.GetBatch(lastBatch.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve batch. Cause: %w", err)
+	}
 	for {
 		if currentBatch.Hash().Hex() == firstBatch.Hash().Hex() {
 			break
 		}
-
-		batch, err := b.db.GetBatch(currentBatch.Hash())
-		if err != nil {
-			return nil, fmt.Errorf("could not retrieve batch. Cause: %w", err)
-		}
-
-		batchesToSend = append(batchesToSend, batch)
-
-		currentBatch, err = b.db.GetBatchHeader(currentBatch.ParentHash)
+		batchesToSend = append(batchesToSend, currentBatch)
+		currentBatch, err = b.db.GetBatch(currentBatch.Header.ParentHash)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 		}
 	}
 
-	// We sort the batches so that the recipient can process them in order.
-	sort.Slice(batchesToSend, func(i, j int) bool {
-		return batchesToSend[i].Header.Number.Cmp(batchesToSend[j].Header.Number) < 0
-	})
-
+	// We reverse the batches so that the recipient can process them in order.
+	for i, j := 0, len(batchesToSend)-1; i < j; i, j = i+1, j-1 {
+		batchesToSend[i], batchesToSend[j] = batchesToSend[j], batchesToSend[i]
+	}
 	return batchesToSend, nil
 }
 
