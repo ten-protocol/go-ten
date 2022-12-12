@@ -7,9 +7,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -90,7 +89,7 @@ func TestManagementContract(t *testing.T) {
 		"detectSimpleFork":                   detectSimpleFork,
 	} {
 		t.Run(name, func(t *testing.T) {
-			bytecode, err := managementcontract.Bytecode()
+			bytecode, err := ManagementContract.Bytecode()
 			if err != nil {
 				panic(err)
 			}

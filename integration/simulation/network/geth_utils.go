@@ -9,8 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
-	"github.com/obscuronet/go-obscuro/contracts/managementcontract/generated/ManagementContract"
+	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -51,7 +50,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		panic(err)
 	}
 
-	bytecode, err := managementcontract.Bytecode()
+	bytecode, err := ManagementContract.Bytecode()
 	if err != nil {
 		panic(err)
 	}
