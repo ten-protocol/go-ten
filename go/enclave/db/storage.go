@@ -213,16 +213,6 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 	return logs, nil
 }
 
-// todo - joel - move around, rename
-func (s *storageImpl) UpdateHeadHeaderHash(l1Head common.L1RootHash) error {
-	batch := s.db.NewBatch()
-	rawdb.WriteHeadHeaderHash(batch, l1Head)
-	if err := batch.Write(); err != nil {
-		return fmt.Errorf("could not save new L1 head. Cause: %w", err)
-	}
-	return nil
-}
-
 // TODO - #718 - This method has behaviour that's too dependent on various flags. Decompose.
 func (s *storageImpl) UpdateHeads(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
 	batch := s.db.NewBatch()
@@ -248,6 +238,15 @@ func (s *storageImpl) UpdateHeads(l1Head common.L1RootHash, l2Head *core.Rollup,
 
 	if err := batch.Write(); err != nil {
 		return fmt.Errorf("could not save new head. Cause: %w", err)
+	}
+	return nil
+}
+
+func (s *storageImpl) UpdateL1Head(l1Head common.L1RootHash) error {
+	batch := s.db.NewBatch()
+	rawdb.WriteHeadHeaderHash(batch, l1Head)
+	if err := batch.Write(); err != nil {
+		return fmt.Errorf("could not save new L1 head. Cause: %w", err)
 	}
 	return nil
 }
