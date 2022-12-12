@@ -213,7 +213,7 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 }
 
 // TODO - #718 - This method has behaviour that's too dependent on various flags. Decompose.
-func (s *storageImpl) UpdateHeads(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
+func (s *storageImpl) UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
 	batch := s.db.NewBatch()
 
 	if err := obscurorawdb.WriteL2Head(batch, l1Head, l2Head.Hash()); err != nil {
