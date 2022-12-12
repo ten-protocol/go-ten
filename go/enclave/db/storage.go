@@ -221,10 +221,21 @@ func (s *storageImpl) UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *c
 	}
 
 	if isNewRollup {
-		err := s.storeNewRollup(batch, l2Head, receipts, &l1Head)
+		err := s.storeNewRollup(batch, l2Head, receipts)
 		if err != nil {
 			return err
 		}
+	}
+
+	if err := obscurorawdb.WriteCanonicalHash(batch, l2Head.Hash(), l2Head.NumberU64()); err != nil {
+		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
+	}
+	var logs []*types.Log
+	for _, receipt := range receipts {
+		logs = append(logs, receipt.Logs...)
+	}
+	if err := obscurorawdb.WriteBlockLogs(batch, l1Head, logs); err != nil {
+		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
 
 	if err := batch.Write(); err != nil {
@@ -340,29 +351,18 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
 }
 
-func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, receipts []*types.Receipt, l1Head *common.L1RootHash) error {
+func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, receipts []*types.Receipt) error {
 	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
 		return fmt.Errorf("could not write rollup. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64()); err != nil {
-		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
-	}
-	if err := obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup); err != nil {
+	if err := obscurorawdb.WriteTxLookupEntriesByRollup(batch, rollup); err != nil {
 		return fmt.Errorf("could not write transaction lookup entries by block. Cause: %w", err)
 	}
 	if err := obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteContractCreationTx(batch, receipts); err != nil {
+	if err := obscurorawdb.WriteContractCreationTxs(batch, receipts); err != nil {
 		return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
-	}
-
-	var logs []*types.Log
-	for _, receipt := range receipts {
-		logs = append(logs, receipt.Logs...)
-	}
-	if err := obscurorawdb.WriteBlockLogs(batch, *l1Head, logs); err != nil {
-		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
 
 	return nil

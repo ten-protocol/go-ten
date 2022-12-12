@@ -97,8 +97,8 @@ func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rec
 	return nil
 }
 
-// WriteContractCreationTx stores a mapping between each contract and the tx that created it
-func WriteContractCreationTx(db ethdb.KeyValueWriter, receipts types.Receipts) error {
+// WriteContractCreationTxs stores a mapping between each contract and the tx that created it
+func WriteContractCreationTxs(db ethdb.KeyValueWriter, receipts types.Receipts) error {
 	for _, receipt := range receipts {
 		// determine receipts which create accounts and store the txHash
 		if !bytes.Equal(receipt.ContractAddress.Bytes(), (common.Address{}).Bytes()) {
