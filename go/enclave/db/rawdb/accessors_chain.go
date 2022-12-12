@@ -245,9 +245,9 @@ func ReadCanonicalHash(db ethdb.Reader, number uint64) (*gethcommon.Hash, error)
 	return &hash, nil
 }
 
-// WriteCanonicalHash stores the hash assigned to a canonical block number.
-func WriteCanonicalHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
-	if err := db.Put(headerHashKey(number), hash.Bytes()); err != nil {
+// WriteCanonicalHash stores the hash assigned to a canonical rollup number.
+func WriteCanonicalHash(db ethdb.KeyValueWriter, l2Head *core.Rollup) error {
+	if err := db.Put(headerHashKey(l2Head.NumberU64()), l2Head.Hash().Bytes()); err != nil {
 		return fmt.Errorf("failed to store number to hash mapping. Cause: %w", err)
 	}
 	return nil
