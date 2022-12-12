@@ -2,6 +2,7 @@ package db
 
 import (
 	"crypto/ecdsa"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
