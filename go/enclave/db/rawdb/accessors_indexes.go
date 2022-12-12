@@ -53,9 +53,9 @@ func WriteTxLookupEntries(db ethdb.KeyValueWriter, number uint64, hashes []commo
 	return nil
 }
 
-// WriteTxLookupEntriesByBlock stores a positional metadata for every transaction from
-// a block, enabling hash based transaction and receipt lookups.
-func WriteTxLookupEntriesByBlock(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
+// WriteTxLookupEntriesByRollup stores a positional metadata for every transaction from a rollup, enabling hash based
+// transaction and receipt lookups.
+func WriteTxLookupEntriesByRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 	for _, tx := range rollup.Transactions {
 		err := writeTxLookupEntry(db, tx.Hash(), rollup.Number().Bytes())
 		if err != nil {
@@ -97,7 +97,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, com
 		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve canonical hash for block number. Cause: %w", err)
 	}
 
-	transactions, err := ReadBody(db, *blockHash, *blockNumber)
+	transactions, err := ReadBody(db, *blockHash)
 	if err != nil {
 		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve block body. Cause: %w", err)
 	}

@@ -14,8 +14,8 @@ import (
 
 // HasReceipts verifies the existence of all the transaction receipts belonging
 // to a block.
-func HasReceipts(db ethdb.Reader, hash common.Hash, number uint64) (bool, error) {
-	has, err := db.Has(rollupReceiptsKey(number, hash))
+func HasReceipts(db ethdb.Reader, hash common.Hash) (bool, error) {
+	has, err := db.Has(rollupReceiptsKey(hash))
 	if err != nil {
 		return false, err
 	}
@@ -26,8 +26,8 @@ func HasReceipts(db ethdb.Reader, hash common.Hash, number uint64) (bool, error)
 }
 
 // ReadReceiptsRLP retrieves all the transaction receipts belonging to a block in RLP encoding.
-func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash, number uint64) (rlp.RawValue, error) {
-	data, err := db.Get(rollupReceiptsKey(number, hash))
+func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash) (rlp.RawValue, error) {
+	data, err := db.Get(rollupReceiptsKey(hash))
 	if err != nil {
 		return nil, fmt.Errorf("could not read receipts. Cause: %w", err)
 	}
@@ -37,9 +37,9 @@ func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash, number uint64) (rlp.RawV
 // ReadRawReceipts retrieves all the transaction receipts belonging to a block.
 // The receipt metadata fields are not guaranteed to be populated, so they
 // should not be used. Use ReadReceipts instead if the metadata is needed.
-func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64) (types.Receipts, error) {
+func ReadRawReceipts(db ethdb.Reader, hash common.Hash) (types.Receipts, error) {
 	// Retrieve the flattened receipt slice
-	data, err := ReadReceiptsRLP(db, hash, number)
+	data, err := ReadReceiptsRLP(db, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -64,23 +64,23 @@ func ReadRawReceipts(db ethdb.Reader, hash common.Hash, number uint64) (types.Re
 // if the receipt itself is stored.
 func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig) (types.Receipts, error) {
 	// We're deriving many fields from the block body, retrieve beside the receipt
-	receipts, err := ReadRawReceipts(db, hash, number)
+	receipts, err := ReadRawReceipts(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read receipt. Cause: %w", err)
 	}
-	body, err := ReadBody(db, hash, number)
+	body, err := ReadBody(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("missing body but have receipt. Cause: %w", err)
 	}
 
-	if err = receipts.DeriveFields(config, hash, number, types.Transactions(body)); err != nil {
+	if err = receipts.DeriveFields(config, hash, number, body); err != nil {
 		return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; err = %w", hash, number, err)
 	}
 	return receipts, nil
 }
 
 // WriteReceipts stores all the transaction receipts belonging to a block.
-func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, receipts types.Receipts) error {
+func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, receipts types.Receipts) error {
 	// Convert the receipts into their storage form and serialize them
 	storageReceipts := make([]*types.ReceiptForStorage, len(receipts))
 	for i, receipt := range receipts {
@@ -91,14 +91,14 @@ func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64, rec
 		return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 	}
 	// Store the flattened receipt slice
-	if err = db.Put(rollupReceiptsKey(number, hash), bytes); err != nil {
+	if err = db.Put(rollupReceiptsKey(hash), bytes); err != nil {
 		return fmt.Errorf("failed to store block receipts. Cause: %w", err)
 	}
 	return nil
 }
 
-// WriteContractCreationTx stores a mapping between each contract and the tx that created it
-func WriteContractCreationTx(db ethdb.KeyValueWriter, receipts types.Receipts) error {
+// WriteContractCreationTxs stores a mapping between each contract and the tx that created it
+func WriteContractCreationTxs(db ethdb.KeyValueWriter, receipts types.Receipts) error {
 	for _, receipt := range receipts {
 		// determine receipts which create accounts and store the txHash
 		if !bytes.Equal(receipt.ContractAddress.Bytes(), (common.Address{}).Bytes()) {
@@ -122,7 +122,7 @@ func ReadContractTransaction(db ethdb.Reader, address common.Address) (*common.H
 
 // DeleteReceipts removes all receipt data associated with a block hash.
 func DeleteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64) error {
-	if err := db.Delete(rollupReceiptsKey(number, hash)); err != nil {
+	if err := db.Delete(rollupReceiptsKey(hash)); err != nil {
 		return fmt.Errorf("failed to delete block receipts. Cause: %w", err)
 	}
 	return nil
@@ -182,7 +182,7 @@ func deriveLogFields(receipts []*receiptLogs, hash common.Hash, number uint64, t
 // are not found, a nil is returned.
 func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.ChainConfig) ([][]*types.Log, error) {
 	// Retrieve the flattened receipt slice
-	data, err := ReadReceiptsRLP(db, hash, number)
+	data, err := ReadReceiptsRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read RLP receipts.hash = %s. Cause: %w", hash, err)
 	}
@@ -196,7 +196,7 @@ func ReadLogs(db ethdb.Reader, hash common.Hash, number uint64, config *params.C
 		return nil, fmt.Errorf("invalid receipt array RLP.hash = %s. Cause: %w", hash, err)
 	}
 
-	body, err := ReadBody(db, hash, number)
+	body, err := ReadBody(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("have receipt but could not retrieve body. Cause: %w", err)
 	}
