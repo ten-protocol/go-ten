@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
@@ -266,9 +267,8 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	}
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
+	// We prepare the block submission response.
 	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedRollup)
-
-	// We add any secret responses.
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	// We remove any transactions considered immune to re-orgs from the mempool.
