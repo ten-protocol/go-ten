@@ -33,6 +33,15 @@ func (db *DB) GetBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
 
 // AddBatchHeader adds a batch's header to the known headers
 func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
+	// We check if the batch is already stored, to avoid incrementing the total transaction count twice for one batch.
+	_, err := db.GetBatchHeader(batch.Hash())
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+	}
+	if err == nil {
+		return nil
+	}
+
 	b := db.kvStore.NewBatch()
 
 	if err := db.writeBatchHeader(batch.Header); err != nil {
@@ -53,8 +62,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 		}
 	}
 
-	// TODO - #718 - Check that we are not re-adding an existing batch before updating the number.
-	// There's a potential race here, but absolute accuracy of the number of transactions is not required.
+	// Update the total number of transactions.
 	currentTotal, err := db.readTotalTransactions()
 	if err != nil {
 		return fmt.Errorf("could not retrieve total transactions. Cause: %w", err)
@@ -65,12 +73,12 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 		return fmt.Errorf("could not write total transactions. Cause: %w", err)
 	}
 
-	// update the head if the new height is greater than the existing one
+	// Update the head if the new height is greater than the existing one
 	headBatchHeader, err := db.GetHeadBatchHeader()
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
 	}
-	if errors.Is(err, errutil.ErrNotFound) || headBatchHeader.Number.Cmp(batch.Header.Number) == -1 {
+	if headBatchHeader == nil || headBatchHeader.Number.Cmp(batch.Header.Number) == -1 {
 		err = db.writeHeadBatchHash(batch.Hash())
 		if err != nil {
 			return fmt.Errorf("could not write new head batch hash. Cause: %w", err)
@@ -80,7 +88,6 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 	if err = b.Write(); err != nil {
 		return fmt.Errorf("could not write batch to DB. Cause: %w", err)
 	}
-
 	return nil
 }
 

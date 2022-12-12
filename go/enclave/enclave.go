@@ -1050,7 +1050,6 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 }
 
 // Removes transactions from the mempool that are considered immune to re-orgs (i.e. over X rollups deep).
-// TODO - #718 - Only pass in header number, not full rollup.
 func (e *enclaveImpl) removeOldMempoolTxs(rollupHeader *common.Header) error {
 	if rollupHeader == nil {
 		return nil
