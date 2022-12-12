@@ -39,6 +39,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 		return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 	}
 	if err == nil {
+		// The batch is already stored, so we return early.
 		return nil
 	}
 
