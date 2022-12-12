@@ -441,7 +441,7 @@ func (rc *RollupChain) produceNewRollupAndUpdateL2Head(block *types.Block) (*cor
 	if err = rc.storage.UpdateHeads(block.Hash(), rollup, rollupTxReceipts, true); err != nil {
 		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
-	if err = rc.storage.UpdateHeadHeaderHash(block.Hash()); err != nil {
+	if err = rc.storage.UpdateL1Head(block.Hash()); err != nil {
 		return nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 	}
 
@@ -526,7 +526,7 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 	if err := rc.storage.UpdateHeads(block.Hash(), genesisRollup, nil, true); err != nil {
 		return nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
 	}
-	if err := rc.storage.UpdateHeadHeaderHash(block.Hash()); err != nil {
+	if err := rc.storage.UpdateL1Head(block.Hash()); err != nil {
 		return nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 	}
 	if err := rc.faucet.CommitGenesisState(rc.storage); err != nil {
@@ -701,11 +701,10 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 	}
 
 	// TODO - #718 - Validate any rollups in the block against the stored batches.
-
 	if err = rc.storage.UpdateHeads(block.Hash(), currentHeadRollup, nil, false); err != nil {
 		return nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
-	if err = rc.storage.UpdateHeadHeaderHash(block.Hash()); err != nil {
+	if err = rc.storage.UpdateL1Head(block.Hash()); err != nil {
 		return nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 	}
 
