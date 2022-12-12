@@ -43,15 +43,13 @@ func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logge
 	}
 }
 
-func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) error {
+func (s *storageImpl) StoreGenesisRollupHash(rollupHash common.L2RootHash) error {
 	batch := s.db.NewBatch()
-
-	if err := obscurorawdb.WriteGenesisHash(s.db, rol.Hash()); err != nil {
-		return fmt.Errorf("could not write genesis hash. Cause: %w", err)
+	if err := obscurorawdb.WriteGenesisHash(s.db, rollupHash); err != nil {
+		return fmt.Errorf("could not write genesis rollup hash. Cause: %w", err)
 	}
-
 	if err := batch.Write(); err != nil {
-		return fmt.Errorf("could not write genesis rollup to storage. Cause: %w", err)
+		return fmt.Errorf("could not write genesis rollup hash to storage. Cause: %w", err)
 	}
 	return nil
 }
@@ -209,7 +207,6 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 	return logs, nil
 }
 
-// TODO - #718 - This method has behaviour that's too dependent on various flags. Decompose.
 func (s *storageImpl) UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt) error {
 	batch := s.db.NewBatch()
 
@@ -217,9 +214,12 @@ func (s *storageImpl) UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *c
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
+	// We update the canonical hash of the rollup at this height.
 	if err := obscurorawdb.WriteCanonicalHash(batch, l2Head); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
 	}
+
+	// We update the block's logs, based on the rollup's logs.
 	var logs []*types.Log
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)

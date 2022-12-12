@@ -38,10 +38,9 @@ type RollupResolver interface {
 	FetchRollupByHeight(height uint64) (*core.Rollup, error)
 	// ParentRollup returns the rollup's parent rollup.
 	ParentRollup(rollup *core.Rollup) (*core.Rollup, error)
-	// StoreGenesisRollup stores the rollup genesis
-	// todo - joel - rename
-	StoreGenesisRollup(rol *core.Rollup) error
-	// todo - joel - describe
+	// StoreGenesisRollupHash stores the hash of the genesis rollup.
+	StoreGenesisRollupHash(rollupHash common.L2RootHash) error
+	// StoreNewRollup stores a rollup.
 	StoreNewRollup(rollup *core.Rollup, receipts []*types.Receipt) error
 	// FetchGenesisRollup returns the rollup genesis.
 	FetchGenesisRollup() (*core.Rollup, error)
@@ -56,7 +55,7 @@ type HeadsAfterL1BlockStorage interface {
 	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 	// FetchL2Head returns the current L2 chain head.
 	FetchL2Head() (*common.L2RootHash, error)
-	// UpdateL2HeadForL1Block updates the mapping from each L1 block to its corresponding L2 head.
+	// UpdateL2HeadForL1Block updates the mapping from an L1 block to its corresponding L2 head.
 	UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt) error
 	// UpdateL1Head updates the L1 head.
 	UpdateL1Head(l1Head common.L1RootHash) error
