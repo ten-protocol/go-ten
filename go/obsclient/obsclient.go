@@ -3,13 +3,13 @@ package obsclient
 import (
 	"math/big"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum/go-ethereum"
-	"github.com/obscuronet/go-obscuro/go/common"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/rpc"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 // ObsClient provides access to general Obscuro functionality that doesn't require viewing keys.
@@ -76,7 +76,7 @@ func (oc *ObsClient) RollupHeaderByHash(hash gethcommon.Hash) (*common.Header, e
 
 // Health returns the health of the node.
 func (oc *ObsClient) Health() (bool, error) {
-	var healthy *bool
+	var healthy *map[string]interface{}
 	err := oc.rpcClient.Call(&healthy, rpc.Health)
-	return *healthy, err
+	return (*healthy)[hostcommon.HealthNode].(bool), err
 }

@@ -8,25 +8,19 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
-
-	"github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/ethereum/go-ethereum/crypto/ecies"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
-
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/rpc"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 const (
@@ -308,8 +302,9 @@ func (c *inMemObscuroClient) addViewingKey(args []interface{}) error {
 }
 
 func (c *inMemObscuroClient) health(result interface{}) error {
-	healty := true
-	*result.(**bool) = &healty
+	*result.(**map[string]interface{}) = &map[string]interface{}{
+		hostcommon.HealthNode: true,
+	}
 	return nil
 }
 

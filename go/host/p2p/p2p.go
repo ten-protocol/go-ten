@@ -48,6 +48,7 @@ func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger) host.P2
 		nodeID:        common.ShortAddress(config.ID),
 		p2pTimeout:    config.P2PConnectionTimeout,
 		logger:        logger,
+		status:        newStatus(),
 	}
 }
 
@@ -59,6 +60,7 @@ type p2pImpl struct {
 	nodeID            uint64
 	p2pTimeout        time.Duration
 	logger            gethlog.Logger
+	status            *status
 }
 
 func (p *p2pImpl) StartListening(callback host.Host) {
@@ -130,6 +132,28 @@ func (p *p2pImpl) SendBatches(batchMsg *host.BatchMsg, to string) error {
 	return p.send(msg, to)
 }
 
+// Status returns the current status of the lib
+func (p *p2pImpl) Status() map[string]map[string]int64 {
+	return p.status.status()
+}
+
+// HealthCheck returns whether the p2p is considered healthy
+// Currently it considers itself unhealthy if there's more than 100 failures on a given fail type
+func (p *p2pImpl) HealthCheck() bool {
+	const thresholdPerFailure = 100
+	for _, failures := range p.status.status() {
+		threshold := int64(0)
+		for _, failCount := range failures {
+			threshold += failCount
+		}
+		if threshold >= thresholdPerFailure {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Listens for connections and handles them in a separate goroutine.
 func (p *p2pImpl) handleConnections(callback host.Host) {
 	for {
@@ -153,6 +177,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	encodedMsg, err := io.ReadAll(conn)
 	if err != nil {
 		p.logger.Warn("failed to read message from peer", log.ErrKey, err)
+		p.status.increment(_failedMessageRead, conn.RemoteAddr().String())
 		return
 	}
 
@@ -160,6 +185,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
 		p.logger.Warn("failed to decode message received from peer: ", log.ErrKey, err)
+		p.status.increment(_failedMessageDecode, conn.RemoteAddr().String())
 		return
 	}
 
@@ -213,11 +239,13 @@ func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
 	}
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
+		p.status.increment(_failedConnectSendMessage, address)
 		return
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
+		p.status.increment(_failedWriteSendMessage, address)
 	}
 }
