@@ -50,7 +50,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		panic(err)
 	}
 
-	bytecode, err := ManagementContract.Bytecode()
+	bytecode, err := constants.Bytecode()
 	if err != nil {
 		panic(err)
 	}

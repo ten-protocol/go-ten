@@ -5,10 +5,10 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
@@ -24,7 +24,7 @@ func DeployContract(config Config, logger gethlog.Logger) {
 	var contractBytes []byte
 	switch config.Command { //nolint:exhaustive
 	case DeployMgmtContract:
-		bytecode, err := ManagementContract.Bytecode()
+		bytecode, err := constants.Bytecode()
 		if err != nil {
 			panic(err)
 		}
