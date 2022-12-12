@@ -2,7 +2,6 @@ package db
 
 import (
 	"crypto/ecdsa"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -40,7 +39,10 @@ type RollupResolver interface {
 	// ParentRollup returns the rollup's parent rollup.
 	ParentRollup(rollup *core.Rollup) (*core.Rollup, error)
 	// StoreGenesisRollup stores the rollup genesis
+	// todo - joel - rename
 	StoreGenesisRollup(rol *core.Rollup) error
+	// todo - joel - describe
+	StoreNewRollup(rollup *core.Rollup, receipts []*types.Receipt) error
 	// FetchGenesisRollup returns the rollup genesis.
 	FetchGenesisRollup() (*core.Rollup, error)
 	// FetchHeadRollup returns the current head rollup
@@ -54,8 +56,8 @@ type HeadsAfterL1BlockStorage interface {
 	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 	// FetchL2Head returns the current L2 chain head.
 	FetchL2Head() (*common.L2RootHash, error)
-	// UpdateL2HeadForL1Block maps the L1 block to its corresponding L2 head. If the rollup is new, stores it.
-	UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error
+	// UpdateL2HeadForL1Block updates the mapping from each L1 block to its corresponding L2 head.
+	UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt) error
 	// UpdateL1Head updates the L1 head.
 	UpdateL1Head(l1Head common.L1RootHash) error
 	// CreateStateDB creates a database that can be used to execute transactions

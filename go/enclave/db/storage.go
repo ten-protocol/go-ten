@@ -49,9 +49,6 @@ func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) error {
 	if err := obscurorawdb.WriteGenesisHash(s.db, rol.Hash()); err != nil {
 		return fmt.Errorf("could not write genesis hash. Cause: %w", err)
 	}
-	if err := s.storeNewRollup(batch, rol, nil); err != nil {
-		return fmt.Errorf("could not write genesis rollup to storage. Cause: %w", err)
-	}
 
 	if err := batch.Write(); err != nil {
 		return fmt.Errorf("could not write genesis rollup to storage. Cause: %w", err)
@@ -213,18 +210,11 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 }
 
 // TODO - #718 - This method has behaviour that's too dependent on various flags. Decompose.
-func (s *storageImpl) UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
+func (s *storageImpl) UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt) error {
 	batch := s.db.NewBatch()
 
 	if err := obscurorawdb.WriteL2Head(batch, l1Head, l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
-	}
-
-	if isNewRollup {
-		err := s.storeNewRollup(batch, l2Head, receipts)
-		if err != nil {
-			return err
-		}
 	}
 
 	if err := obscurorawdb.WriteCanonicalHash(batch, l2Head); err != nil {
@@ -351,7 +341,9 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
 }
 
-func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, receipts []*types.Receipt) error {
+func (s *storageImpl) StoreNewRollup(rollup *core.Rollup, receipts []*types.Receipt) error {
+	batch := s.db.NewBatch()
+
 	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
 		return fmt.Errorf("could not write rollup. Cause: %w", err)
 	}
@@ -365,6 +357,9 @@ func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, rec
 		return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
 	}
 
+	if err := batch.Write(); err != nil {
+		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
+	}
 	return nil
 }
 
