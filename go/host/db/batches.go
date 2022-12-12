@@ -62,7 +62,8 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 		}
 	}
 
-	// Update the total number of transactions.
+	// Update the total number of transactions. There's a potential race here, but absolute accuracy of the number of
+	// transactions is not required.
 	currentTotal, err := db.readTotalTransactions()
 	if err != nil {
 		return fmt.Errorf("could not retrieve total transactions. Cause: %w", err)
