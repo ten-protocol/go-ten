@@ -73,7 +73,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 		return fmt.Errorf("could not write total transactions. Cause: %w", err)
 	}
 
-	// Update the head if the new height is greater than the existing one
+	// Update the head if the new height is greater than the existing one.
 	headBatchHeader, err := db.GetHeadBatchHeader()
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
