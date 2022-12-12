@@ -394,34 +394,6 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-// Creates a new rollup, building on the latest chain heads, and updates the current L2 head.
-func (rc *RollupChain) produceNewRollupAndUpdateL2Head(block *types.Block) (*core.Rollup, error) {
-	rollup, err := rc.produceRollup(block)
-	if err != nil {
-		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
-	}
-	if err = rc.signRollup(rollup); err != nil {
-		return nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
-	}
-	rollupTxReceipts, err := rc.checkRollup(rollup)
-	if err != nil {
-		return nil, fmt.Errorf("could not check rollup. Cause: %w", err)
-	}
-
-	if err = rc.storage.StoreRollup(rollup, rollupTxReceipts); err != nil {
-		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
-	}
-	if err = rc.storage.UpdateL2HeadForL1Block(block.Hash(), rollup, rollupTxReceipts); err != nil {
-		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
-	}
-	if err = rc.storage.UpdateL1Head(block.Hash()); err != nil {
-		return nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
-	}
-
-	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(*rollup.Hash())))
-	return rollup, nil
-}
-
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced rollup, if there is one.
 func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, *core.Rollup, error) {
 	// We extract the rollups from the block.
@@ -657,23 +629,39 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 
 	// TODO - #718 - Validate any rollups in the block against the stored batches.
 
-	if err = rc.storage.UpdateL2HeadForL1Block(block.Hash(), currentHeadRollup, nil); err != nil {
+	// todo - joel - fold into function
+	// If we're the sequencer and we're post-genesis, we produce the new head rollup.
+	var rollupTxReceipts types.Receipts
+	if rc.nodeType == common.Sequencer {
+		currentHeadRollup, err = rc.produceRollup(block)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
+		}
+		if err = rc.signRollup(currentHeadRollup); err != nil {
+			return nil, nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
+		}
+		rollupTxReceipts, err = rc.checkRollup(currentHeadRollup)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not check rollup. Cause: %w", err)
+		}
+
+		if err = rc.storage.StoreRollup(currentHeadRollup, rollupTxReceipts); err != nil {
+			return nil, nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
+		}
+	}
+
+	if err = rc.storage.UpdateL2HeadForL1Block(block.Hash(), currentHeadRollup, rollupTxReceipts); err != nil {
 		return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
 	if err = rc.storage.UpdateL1Head(block.Hash()); err != nil {
 		return nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 	}
 
-	// If we're the sequencer and we're post-genesis, we produce the new head rollup.
+	// todo - joel - can I get rid of this ugly check?
 	var producedRollup *core.Rollup
 	if rc.nodeType == common.Sequencer {
-		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(block)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not produce new rollup. Cause: %w", err)
-		}
-		currentHeadRollup = producedRollup
+		producedRollup = currentHeadRollup
 	}
-
 	return currentHeadRollup.Hash(), producedRollup, nil
 }
 
