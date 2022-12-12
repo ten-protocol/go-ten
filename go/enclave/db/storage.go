@@ -50,7 +50,7 @@ func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) error {
 		return fmt.Errorf("could not write genesis hash. Cause: %w", err)
 	}
 	if err := s.storeNewRollup(batch, rol, nil); err != nil {
-		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
+		return fmt.Errorf("could not write genesis rollup to storage. Cause: %w", err)
 	}
 
 	if err := batch.Write(); err != nil {
