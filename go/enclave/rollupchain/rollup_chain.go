@@ -151,30 +151,24 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, *common.Header, error) {
+func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
 	err := rc.updateL1State(block, receipts, isLatest)
 	if err != nil {
-		return nil, nil, rc.rejectBlockErr(err)
+		return nil, rc.rejectBlockErr(err)
 	}
 
 	// We update the L1 and L2 chain heads.
 	newL2Head, producedRollup, err := rc.updateHeads(&block)
 	if err != nil {
-		return nil, nil, rc.rejectBlockErr(err)
-	}
-
-	// We check whether the L2 head has been updated.
-	var ingestedRollupHeader *common.Header
-	if producedRollup != nil {
-		ingestedRollupHeader = producedRollup.Header
+		return nil, rc.rejectBlockErr(err)
 	}
 
 	// TODO - #718 - We should produce the block submission response in `enclave.go`, not here.
-	return rc.produceBlockSubmissionResponse(&block, newL2Head, producedRollup), ingestedRollupHeader, nil
+	return rc.produceBlockSubmissionResponse(&block, newL2Head, producedRollup), nil
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
