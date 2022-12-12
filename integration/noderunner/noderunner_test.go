@@ -30,7 +30,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 )
 
-// TODO - Use the NewHostContainer/NewEnclaveContainer methods in the socket-based integration tests, and retire this smoketest.
+// TODO - Use the NewHostContainerFromConfig/NewEnclaveContainerFromConfig methods in the socket-based integration tests, and retire this smoketest.
 
 const (
 	testLogs             = "../.build/noderunner/"
@@ -85,13 +85,13 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	defer network.StopNodes()
 
 	go func() {
-		err := enclavecontainer.NewEnclaveContainer(enclaveConfig).Start()
+		err := enclavecontainer.NewEnclaveContainerFromConfig(enclaveConfig).Start()
 		if err != nil {
 			panic(err)
 		}
 	}()
 	go func() {
-		err := hostcontainer.NewHostContainer(hostConfig).Start()
+		err := hostcontainer.NewHostContainerFromConfig(hostConfig).Start()
 		if err != nil {
 			panic(err)
 		}
