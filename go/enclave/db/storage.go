@@ -210,7 +210,7 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 func (s *storageImpl) UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt) error {
 	batch := s.db.NewBatch()
 
-	if err := obscurorawdb.WriteL2Head(batch, l1Head, l2Head.Hash()); err != nil {
+	if err := obscurorawdb.WriteL2Head(batch, l1Head, *l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
@@ -350,7 +350,7 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup, receipts []*types.Receipt
 	if err := obscurorawdb.WriteTxLookupEntriesByRollup(batch, rollup); err != nil {
 		return fmt.Errorf("could not write transaction lookup entries by block. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteReceipts(batch, rollup.Hash(), receipts); err != nil {
+	if err := obscurorawdb.WriteReceipts(batch, *rollup.Hash(), receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
 	if err := obscurorawdb.WriteContractCreationTxs(batch, receipts); err != nil {

@@ -27,7 +27,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
-	"github.com/obscuronet/go-obscuro/go/enclave/events"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 	"github.com/status-im/keycard-go/hexutils"
@@ -60,7 +59,6 @@ type RollupChain struct {
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
 	mempool               mempool.Manager
 	faucet                Faucet
-	subscriptionManager   *events.SubscriptionManager
 	crossChainProcessors  *crosschain.Processors
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
@@ -79,7 +77,6 @@ func New(
 	storage db.Storage,
 	l1Blockchain *gethcore.BlockChain,
 	bridge *bridge.Bridge,
-	subscriptionManager *events.SubscriptionManager,
 	crossChainProcessors *crosschain.Processors,
 	txCrypto crypto.TransactionBlobCrypto,
 	mempool mempool.Manager,
@@ -96,7 +93,6 @@ func New(
 		transactionBlobCrypto: txCrypto,
 		mempool:               mempool,
 		faucet:                NewFaucet(),
-		subscriptionManager:   subscriptionManager,
 		crossChainProcessors:  crossChainProcessors,
 		enclavePrivateKey:     privateKey,
 		chainConfig:           chainConfig,
@@ -151,50 +147,22 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, *common.Header, error) {
+func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Rollup, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
 	err := rc.updateL1State(block, receipts, isLatest)
 	if err != nil {
-		return nil, nil, rc.rejectBlockErr(err)
+		return nil, nil, err
 	}
 
 	// We update the L1 and L2 chain heads.
-	newL2Head, blockStage, err := rc.updateL1AndL2Heads(&block)
+	newL2Head, producedRollup, err := rc.updateL1AndL2Heads(&block)
 	if err != nil {
-		return nil, nil, rc.rejectBlockErr(err)
+		return nil, nil, err
 	}
-
-	// If we're the sequencer and we're beyond the genesis block, we produce and store the new L2 chain head.
-	var producedRollup *core.Rollup
-	var isUpdatedRollupHead bool
-	if rc.nodeType == common.Sequencer && blockStage == PostGenesis {
-		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(&block)
-		if err != nil {
-			return nil, nil, rc.rejectBlockErr(err)
-		}
-
-		producedRollupHash := producedRollup.Hash()
-		newL2Head = &producedRollupHash
-		isUpdatedRollupHead = true
-	} else {
-		// For a validator, only processing the genesis block updates the L2 head.
-		isUpdatedRollupHead = blockStage == Genesis
-	}
-
-	var ingestedRollupHeader *common.Header
-	if isUpdatedRollupHead {
-		headRollup, err := rc.storage.FetchRollup(*newL2Head)
-		if err != nil {
-			return nil, nil, rc.rejectBlockErr(err)
-		}
-		ingestedRollupHeader = headRollup.Header
-	}
-
-	// TODO - #718 - We should produce the block submission response in `enclave.go`, not here.
-	return rc.produceBlockSubmissionResponse(&block, newL2Head, producedRollup), ingestedRollupHeader, nil
+	return newL2Head, producedRollup, nil
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
@@ -214,7 +182,6 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, er
 		return nil, nil //nolint:nilnil
 	}
 
-	// TODO - #718 - Refactor this to reduce shared logic with `produceNewRollupAndUpdateL2Head`
 	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
@@ -318,7 +285,7 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 			callMsg.To(),
 			callMsg.From(),
 			hexutils.BytesToHex(callMsg.Data()),
-			common.ShortHash(r.Hash()),
+			common.ShortHash(*r.Hash()),
 			r.Header.Root.Hex()),
 	)
 
@@ -342,7 +309,7 @@ func (rc *RollupChain) updateL1State(block types.Block, receipts types.Receipts,
 	// We check whether we've already processed the block.
 	_, err := rc.storage.FetchBlock(block.Hash())
 	if err == nil {
-		return rc.rejectBlockErr(common.ErrBlockAlreadyProcessed)
+		return common.ErrBlockAlreadyProcessed
 	}
 	if !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not retrieve block. Cause: %w", err)
@@ -351,14 +318,14 @@ func (rc *RollupChain) updateL1State(block types.Block, receipts types.Receipts,
 	// Reject block if not provided with matching receipts.
 	// This needs to happen before saving the block as otherwise it will be considered as processed.
 	if rc.crossChainProcessors.Enabled() && !crosschain.VerifyReceiptHash(&block, receipts) {
-		return rc.rejectBlockErr(errors.New("receipts do not match receipt_root in block"))
+		return errors.New("receipts do not match receipt_root in block")
 	}
 
 	// We insert the block into the L1 chain and store it.
 	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
-		return rc.rejectBlockErr(err)
+		return err
 	}
 	rc.logger.Trace("block inserted successfully",
 		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
@@ -368,7 +335,7 @@ func (rc *RollupChain) updateL1State(block types.Block, receipts types.Receipts,
 	// This requires block to be stored first ... but can permanently fail a block
 	err = rc.crossChainProcessors.Remote.StoreCrossChainMessages(&block, receipts)
 	if err != nil {
-		return rc.rejectBlockErr(errors.New("failed to process cross chain messages"))
+		return errors.New("failed to process cross chain messages")
 	}
 
 	return nil
@@ -451,38 +418,20 @@ func (rc *RollupChain) produceNewRollupAndUpdateL2Head(block *types.Block) (*cor
 		return nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 	}
 
-	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(rollup.Hash())))
+	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(*rollup.Hash())))
 	return rollup, nil
 }
 
-func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, producedRollup *core.Rollup) *common.BlockSubmissionResponse {
-	if l2Head == nil {
-		// not an error state, we ingested a block but no rollup head found
-		return &common.BlockSubmissionResponse{}
-	}
-
-	var producedExtRollup common.ExtRollup
-	if producedRollup != nil {
-		producedExtRollup = producedRollup.ToExtRollup(rc.transactionBlobCrypto)
-	}
-
-	return &common.BlockSubmissionResponse{
-		ProducedRollup: &producedExtRollup,
-		SubscribedLogs: rc.getEncryptedLogs(*block, l2Head),
-	}
-}
-
 // Updates the heads of the L1 and L2 chains.
-func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, BlockStage, error) {
+func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, *core.Rollup, error) {
 	// We extract the rollups from the block.
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 
-	// We determine whether this is a pre-genesis, genesis, or post-genesis block.
+	// We determine whether this is a pre-genesis, genesis, or post-genesis block, and handle the block.
 	blockStage, err := rc.getBlockStage(rollupsInBlock)
 	if err != nil {
-		return nil, -1, fmt.Errorf("could not determine block type. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not determine block type. Cause: %w", err)
 	}
-
 	var l2Head *common.L2RootHash
 	switch blockStage {
 	case PreGenesis:
@@ -493,10 +442,20 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 		l2Head, err = rc.handlePostGenesisBlock(block)
 	}
 	if err != nil {
-		return nil, -1, fmt.Errorf("could not handle block. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not handle block. Cause: %w", err)
 	}
 
-	return l2Head, blockStage, nil
+	// If we're the sequencer and we're post-genesis, we produce the new head rollup.
+	var producedRollup *core.Rollup
+	if blockStage == PostGenesis && rc.nodeType == common.Sequencer {
+		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(block)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not produce new rollup. Cause: %w", err)
+		}
+		l2Head = producedRollup.Hash()
+	}
+
+	return l2Head, producedRollup, nil
 }
 
 // Determines if this is a pre-genesis L2 block, the genesis L2 block, or a post-genesis L2 block.
@@ -525,11 +484,12 @@ func (rc *RollupChain) getBlockStage(rollupsInBlock []*core.Rollup) (BlockStage,
 func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
 	// todo change this to a hardcoded hash on testnet/mainnet
 	genesisRollup := rollupsInBlock[0]
+
 	rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
 	if err := rc.storage.StoreRollup(genesisRollup, nil); err != nil {
 		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
 	}
-	if err := rc.storage.StoreGenesisRollupHash(genesisRollup.Hash()); err != nil {
+	if err := rc.storage.StoreGenesisRollupHash(*genesisRollup.Hash()); err != nil {
 		return nil, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
 	}
 	if err := rc.storage.UpdateL2HeadForL1Block(block.Hash(), genesisRollup, nil); err != nil {
@@ -542,8 +502,7 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 		return nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
 	}
 
-	l2Head := genesisRollup.Hash()
-	return &l2Head, nil
+	return genesisRollup.Hash(), nil
 }
 
 // This is where transactions are executed and the state is calculated.
@@ -565,7 +524,7 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
-			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(rollup.Hash()), result))
+			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*rollup.Hash()), result))
 		}
 	}
 
@@ -667,7 +626,7 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
 
 		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, core.PrintTxs(rollup.Transactions), dump, depositReceipts))
+			common.ShortHash(*rollup.Hash()), rootHash, h.Root, h.Number, core.PrintTxs(rollup.Transactions), dump, depositReceipts))
 		return false
 	}
 
@@ -676,7 +635,7 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 	for i, w := range withdrawals {
 		hw := h.Withdrawals[i]
 		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Withdrawals don't match", common.ShortHash(rollup.Hash())))
+			rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Withdrawals don't match", common.ShortHash(*rollup.Hash())))
 			return false
 		}
 	}
@@ -684,13 +643,13 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 	rec := allReceipts(txReceipts, depositReceipts)
 	rbloom := types.CreateBloom(rec)
 	if !bytes.Equal(rbloom.Bytes(), h.Bloom.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(rollup.Hash()), h.Bloom, rbloom))
+		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(*rollup.Hash()), h.Bloom, rbloom))
 		return false
 	}
 
 	receiptSha := types.DeriveSha(rec, trie.NewStackTrie(nil))
 	if !bytes.Equal(receiptSha.Bytes(), h.ReceiptHash.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(rollup.Hash()), h.ReceiptHash, receiptSha))
+		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(*rollup.Hash()), h.ReceiptHash, receiptSha))
 		return false
 	}
 
@@ -718,8 +677,7 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 		return nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 	}
 
-	l2Head := currentHeadRollup.Hash()
-	return &l2Head, nil
+	return currentHeadRollup.Hash(), nil
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
@@ -812,22 +770,6 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 	return rollup, nil
 }
 
-// Retrieves and encrypts the logs for the block.
-func (rc *RollupChain) getEncryptedLogs(block types.Block, l2Head *common.L2RootHash) map[gethrpc.ID][]byte {
-	var logs []*types.Log
-	fetchedLogs, err := rc.storage.FetchLogs(block.Hash())
-	if err == nil {
-		logs = fetchedLogs
-	} else {
-		rc.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
-	}
-	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, *l2Head)
-	if err != nil {
-		rc.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
-	}
-	return encryptedLogs
-}
-
 // Creates a rollup.
 func (rc *RollupChain) produceRollup(block *types.Block) (*core.Rollup, error) {
 	headRollupHash, err := rc.storage.FetchHeadRollupForL1Block(block.ParentHash())
@@ -908,19 +850,6 @@ func (rc *RollupChain) produceRollup(block *types.Block) (*core.Rollup, error) {
 	return r, nil
 }
 
-func (rc *RollupChain) rejectBlockErr(cause error) *common.BlockRejectError {
-	var hash common.L1RootHash
-	l1Head, err := rc.storage.FetchHeadBlock()
-	// TODO - Handle error.
-	if err == nil {
-		hash = l1Head.Hash()
-	}
-	return &common.BlockRejectError{
-		L1Head:  hash,
-		Wrapped: cause,
-	}
-}
-
 // Returns the state of the chain at height
 // TODO make this cacheable
 func (rc *RollupChain) getChainStateAtBlock(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
@@ -931,7 +860,7 @@ func (rc *RollupChain) getChainStateAtBlock(blockNumber *gethrpc.BlockNumber) (*
 	}
 
 	// We get that of the chain at that height
-	blockchainState, err := rc.storage.CreateStateDB(rollup.Hash())
+	blockchainState, err := rc.storage.CreateStateDB(*rollup.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
