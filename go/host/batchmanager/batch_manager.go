@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sort"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -103,12 +102,10 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 		}
 	}
 
-	// We sort the batches so that the recipient can process them in order.
-	// TODO - #718 - Batches only need to be flipped, not sorted.
-	sort.Slice(batchesToSend, func(i, j int) bool {
-		return batchesToSend[i].Header.Number.Cmp(batchesToSend[j].Header.Number) < 0
-	})
-
+	// We reverse the batches so that the recipient can process them in order.
+	for i, j := 0, len(batchesToSend)-1; i < j; i, j = i+1, j-1 {
+		batchesToSend[i], batchesToSend[j] = batchesToSend[j], batchesToSend[i]
+	}
 	return batchesToSend, nil
 }
 
