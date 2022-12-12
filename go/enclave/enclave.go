@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -184,7 +185,6 @@ func NewEnclave(
 		storage,
 		l1Blockchain,
 		obscuroBridge,
-		subscriptionManager,
 		crossChainProcessors,
 		transactionBlobCrypto,
 		memp,
@@ -259,12 +259,14 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	blockSubmissionResponse, err := e.chain.ProcessL1Block(block, receipts, isLatest)
+	newL2Head, producedRollup, err := e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
 	}
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
+
+	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedRollup)
 
 	// We add any secret responses.
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
@@ -1067,6 +1069,39 @@ func (e *enclaveImpl) removeOldMempoolTxs(rollupHeader *common.Header) error {
 	}
 
 	return nil
+}
+
+func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, producedRollup *core.Rollup) *common.BlockSubmissionResponse {
+	if l2Head == nil {
+		// not an error state, we ingested a block but no rollup head found
+		return &common.BlockSubmissionResponse{}
+	}
+
+	var producedExtRollup common.ExtRollup
+	if producedRollup != nil {
+		producedExtRollup = producedRollup.ToExtRollup(e.transactionBlobCrypto)
+	}
+
+	return &common.BlockSubmissionResponse{
+		ProducedRollup: &producedExtRollup,
+		SubscribedLogs: e.getEncryptedLogs(*block, l2Head),
+	}
+}
+
+// Retrieves and encrypts the logs for the block.
+func (e *enclaveImpl) getEncryptedLogs(block types.Block, l2Head *common.L2RootHash) map[gethrpc.ID][]byte {
+	var logs []*types.Log
+	fetchedLogs, err := e.storage.FetchLogs(block.Hash())
+	if err == nil {
+		logs = fetchedLogs
+	} else {
+		e.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
+	}
+	encryptedLogs, err := e.subscriptionManager.GetSubscribedLogsEncrypted(logs, *l2Head)
+	if err != nil {
+		e.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
+	}
+	return encryptedLogs
 }
 
 // Todo - reinstate speculative execution after TN1

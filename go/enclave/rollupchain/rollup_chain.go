@@ -27,7 +27,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
-	"github.com/obscuronet/go-obscuro/go/enclave/events"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 	"github.com/status-im/keycard-go/hexutils"
@@ -60,7 +59,6 @@ type RollupChain struct {
 	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
 	mempool               mempool.Manager
 	faucet                Faucet
-	subscriptionManager   *events.SubscriptionManager
 	crossChainProcessors  *crosschain.Processors
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
@@ -79,7 +77,6 @@ func New(
 	storage db.Storage,
 	l1Blockchain *gethcore.BlockChain,
 	bridge *bridge.Bridge,
-	subscriptionManager *events.SubscriptionManager,
 	crossChainProcessors *crosschain.Processors,
 	txCrypto crypto.TransactionBlobCrypto,
 	mempool mempool.Manager,
@@ -96,7 +93,6 @@ func New(
 		transactionBlobCrypto: txCrypto,
 		mempool:               mempool,
 		faucet:                NewFaucet(),
-		subscriptionManager:   subscriptionManager,
 		crossChainProcessors:  crossChainProcessors,
 		enclavePrivateKey:     privateKey,
 		chainConfig:           chainConfig,
@@ -151,24 +147,24 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Rollup, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
 	err := rc.updateL1State(block, receipts, isLatest)
 	if err != nil {
-		return nil, rc.rejectBlockErr(err)
+		return nil, nil, rc.rejectBlockErr(err)
 	}
 
 	// We update the L1 and L2 chain heads.
 	newL2Head, producedRollup, err := rc.updateHeads(&block)
 	if err != nil {
-		return nil, rc.rejectBlockErr(err)
+		return nil, nil, rc.rejectBlockErr(err)
 	}
 
 	// TODO - #718 - We should produce the block submission response in `enclave.go`, not here.
-	return rc.produceBlockSubmissionResponse(&block, newL2Head, producedRollup), nil
+	return newL2Head, producedRollup, nil
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
@@ -428,23 +424,6 @@ func (rc *RollupChain) produceNewRollupAndUpdateL2Head(block *types.Block) (*cor
 	return rollup, nil
 }
 
-func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, producedRollup *core.Rollup) *common.BlockSubmissionResponse {
-	if l2Head == nil {
-		// not an error state, we ingested a block but no rollup head found
-		return &common.BlockSubmissionResponse{}
-	}
-
-	var producedExtRollup common.ExtRollup
-	if producedRollup != nil {
-		producedExtRollup = producedRollup.ToExtRollup(rc.transactionBlobCrypto)
-	}
-
-	return &common.BlockSubmissionResponse{
-		ProducedRollup: &producedExtRollup,
-		SubscribedLogs: rc.getEncryptedLogs(*block, l2Head),
-	}
-}
-
 // Updates the heads of the L1 and L2 chains.
 func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, *core.Rollup, error) {
 	// We extract the rollups from the block.
@@ -507,7 +486,7 @@ func (rc *RollupChain) getBlockStage(rollupsInBlock []*core.Rollup) (BlockStage,
 func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
 	// todo change this to a hardcoded hash on testnet/mainnet
 	genesisRollup := rollupsInBlock[0]
-	
+
 	rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
 	if err := rc.storage.StoreRollup(genesisRollup, nil); err != nil {
 		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
@@ -791,22 +770,6 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 		rollup = maybeRollup
 	}
 	return rollup, nil
-}
-
-// Retrieves and encrypts the logs for the block.
-func (rc *RollupChain) getEncryptedLogs(block types.Block, l2Head *common.L2RootHash) map[gethrpc.ID][]byte {
-	var logs []*types.Log
-	fetchedLogs, err := rc.storage.FetchLogs(block.Hash())
-	if err == nil {
-		logs = fetchedLogs
-	} else {
-		rc.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
-	}
-	encryptedLogs, err := rc.subscriptionManager.GetSubscribedLogsEncrypted(logs, *l2Head)
-	if err != nil {
-		rc.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
-	}
-	return encryptedLogs
 }
 
 // Creates a rollup.
