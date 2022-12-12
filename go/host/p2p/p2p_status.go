@@ -41,7 +41,7 @@ func (s *status) increment(failType string, host string) {
 			s.failures[failType] = map[string]int64{}
 		}
 
-		s.failures[failType][host] += 1
+		s.failures[failType][host]++
 	}()
 }
 
