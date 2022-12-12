@@ -222,7 +222,7 @@ func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollu
 	}
 
 	if isNewRollup {
-		err := s.storeNewRollup(batch, rollup, receipts)
+		err := s.storeNewRollup(batch, rollup, receipts, &l1Head)
 		if err != nil {
 			return err
 		}
@@ -230,14 +230,6 @@ func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollu
 
 	if err := obscurorawdb.WriteL2Head(batch, l1Head, rollup.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
-	}
-
-	var logs []*types.Log
-	for _, receipt := range receipts {
-		logs = append(logs, receipt.Logs...)
-	}
-	if err := obscurorawdb.WriteBlockLogs(batch, l1Head, logs); err != nil {
-		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
 
 	if err := batch.Write(); err != nil {
@@ -344,7 +336,7 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
 }
 
-func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, receipts []*types.Receipt) error {
+func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, receipts []*types.Receipt, l1Head *common.L1RootHash) error {
 	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
 		return fmt.Errorf("could not write rollup. Cause: %w", err)
 	}
@@ -360,6 +352,15 @@ func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, rec
 	if err := obscurorawdb.WriteContractCreationTx(batch, receipts); err != nil {
 		return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
 	}
+
+	var logs []*types.Log
+	for _, receipt := range receipts {
+		logs = append(logs, receipt.Logs...)
+	}
+	if err := obscurorawdb.WriteBlockLogs(batch, *l1Head, logs); err != nil {
+		return fmt.Errorf("could not write block logs. Cause: %w", err)
+	}
+
 	return nil
 }
 
