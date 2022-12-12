@@ -152,10 +152,7 @@ contract ManagementContract {
         // TODO How to ensure the sender without hashing the calldata ?
         // bytes32 derp = keccak256(abi.encodePacked(ParentHash, AggregatorID, L1Block, Number, rollupData));
 
-        //Cheapest to fail, thus always check first.
-       /* if (crossChainData.blockNumber != 0) {
-            require(crossChainData.blockHash == blockhash(crossChainData.blockNumber), "Rollup includes cross chain messages coming from a different fork!");
-        }  */
+        // TODO: Add a check that ensures the cross messages are coming from the correct fork using block hashes.
 
         // revert if the AggregatorID is not attested
         require(attested[r.AggregatorID], "aggregator not attested");
