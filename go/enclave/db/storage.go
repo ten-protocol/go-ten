@@ -46,7 +46,7 @@ func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logge
 func (s *storageImpl) StoreGenesisRollup(rol *core.Rollup) error {
 	batch := s.db.NewBatch()
 
-	err := obscurorawdb.WriteGenesisHash(s.db, rol.Hash())
+	err := obscurorawdb.WriteGenesisHash(s.db, *rol.Hash())
 	if err != nil {
 		return fmt.Errorf("could not write genesis hash. Cause: %w", err)
 	}
@@ -228,7 +228,7 @@ func (s *storageImpl) StoreNewHeads(l1Head common.L1RootHash, rollup *core.Rollu
 		}
 	}
 
-	if err := obscurorawdb.WriteL2Head(batch, l1Head, rollup.Hash()); err != nil {
+	if err := obscurorawdb.WriteL2Head(batch, l1Head, *rollup.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
@@ -348,13 +348,13 @@ func (s *storageImpl) storeNewRollup(batch ethdb.Batch, rollup *core.Rollup, rec
 	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
 		return fmt.Errorf("could not write rollup. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteCanonicalHash(batch, rollup.Hash(), rollup.NumberU64()); err != nil {
+	if err := obscurorawdb.WriteCanonicalHash(batch, *rollup.Hash(), rollup.NumberU64()); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
 	}
 	if err := obscurorawdb.WriteTxLookupEntriesByBlock(batch, rollup); err != nil {
 		return fmt.Errorf("could not write transaction lookup entries by block. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteReceipts(batch, rollup.Hash(), rollup.NumberU64(), receipts); err != nil {
+	if err := obscurorawdb.WriteReceipts(batch, *rollup.Hash(), rollup.NumberU64(), receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
 	if err := obscurorawdb.WriteContractCreationTx(batch, receipts); err != nil {

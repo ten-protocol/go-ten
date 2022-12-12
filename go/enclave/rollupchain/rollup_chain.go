@@ -162,7 +162,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 	}
 
 	// We update the L1 and L2 chain heads.
-	newL2Head, blockStage, err := rc.updateL1AndL2Heads(&block)
+	newL2Head, blockStage, err := rc.updateHeads(&block)
 	if err != nil {
 		return nil, nil, rc.rejectBlockErr(err)
 	}
@@ -175,9 +175,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 		if err != nil {
 			return nil, nil, rc.rejectBlockErr(err)
 		}
-
-		producedRollupHash := producedRollup.Hash()
-		newL2Head = &producedRollupHash
+		newL2Head = producedRollup.Hash()
 		isUpdatedRollupHead = true
 	} else {
 		// For a validator, only processing the genesis block updates the L2 head.
@@ -214,7 +212,6 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, er
 		return nil, nil //nolint:nilnil
 	}
 
-	// TODO - #718 - Refactor this to reduce shared logic with `produceNewRollupAndUpdateL2Head`
 	rollupTxReceipts, err := rc.checkRollup(rollup)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
@@ -315,7 +312,7 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 			callMsg.To(),
 			callMsg.From(),
 			hexutils.BytesToHex(callMsg.Data()),
-			common.ShortHash(r.Hash()),
+			common.ShortHash(*r.Hash()),
 			r.Header.Root.Hex()),
 	)
 
@@ -443,7 +440,7 @@ func (rc *RollupChain) produceNewRollupAndUpdateL2Head(block *types.Block) (*cor
 		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
 
-	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(rollup.Hash())))
+	rc.logger.Trace(fmt.Sprintf("Produced rollup r_%d", common.ShortHash(*rollup.Hash())))
 	return rollup, nil
 }
 
@@ -465,7 +462,7 @@ func (rc *RollupChain) produceBlockSubmissionResponse(block *types.Block, l2Head
 }
 
 // Updates the heads of the L1 and L2 chains.
-func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, BlockStage, error) {
+func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, BlockStage, error) {
 	// We extract the rollups from the block.
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 
@@ -528,8 +525,7 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 		return nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
 	}
 
-	l2Head := genesisRollup.Hash()
-	return &l2Head, nil
+	return genesisRollup.Hash(), nil
 }
 
 // This is where transactions are executed and the state is calculated.
@@ -551,7 +547,7 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
-			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(rollup.Hash()), result))
+			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*rollup.Hash()), result))
 		}
 	}
 
@@ -653,7 +649,7 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
 
 		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(rollup.Hash()), rootHash, h.Root, h.Number, core.PrintTxs(rollup.Transactions), dump, depositReceipts))
+			common.ShortHash(*rollup.Hash()), rootHash, h.Root, h.Number, core.PrintTxs(rollup.Transactions), dump, depositReceipts))
 		return false
 	}
 
@@ -662,7 +658,7 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 	for i, w := range withdrawals {
 		hw := h.Withdrawals[i]
 		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Withdrawals don't match", common.ShortHash(rollup.Hash())))
+			rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Withdrawals don't match", common.ShortHash(*rollup.Hash())))
 			return false
 		}
 	}
@@ -670,13 +666,13 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 	rec := allReceipts(txReceipts, depositReceipts)
 	rbloom := types.CreateBloom(rec)
 	if !bytes.Equal(rbloom.Bytes(), h.Bloom.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(rollup.Hash()), h.Bloom, rbloom))
+		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(*rollup.Hash()), h.Bloom, rbloom))
 		return false
 	}
 
 	receiptSha := types.DeriveSha(rec, trie.NewStackTrie(nil))
 	if !bytes.Equal(receiptSha.Bytes(), h.ReceiptHash.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(rollup.Hash()), h.ReceiptHash, receiptSha))
+		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(*rollup.Hash()), h.ReceiptHash, receiptSha))
 		return false
 	}
 
@@ -702,8 +698,7 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 		panic(fmt.Errorf("could not store new head. Cause: %w", err))
 	}
 
-	l2Head := currentHeadRollup.Hash()
-	return &l2Head, nil
+	return currentHeadRollup.Hash(), nil
 }
 
 // verifies that the headers of the rollup match the results of executing the transactions
@@ -915,7 +910,7 @@ func (rc *RollupChain) getChainStateAtBlock(blockNumber *gethrpc.BlockNumber) (*
 	}
 
 	// We get that of the chain at that height
-	blockchainState, err := rc.storage.CreateStateDB(rollup.Hash())
+	blockchainState, err := rc.storage.CreateStateDB(*rollup.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}

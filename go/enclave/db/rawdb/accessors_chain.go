@@ -54,7 +54,7 @@ func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 	if err := writeHeader(db, rollup.Header); err != nil {
 		return fmt.Errorf("could not write header. Cause: %w", err)
 	}
-	if err := writeBody(db, rollup.Hash(), rollup.Header.Number.Uint64(), rollup.Transactions); err != nil {
+	if err := writeBody(db, *rollup.Hash(), rollup.Header.Number.Uint64(), rollup.Transactions); err != nil {
 		return fmt.Errorf("could not write body. Cause: %w", err)
 	}
 	return nil
