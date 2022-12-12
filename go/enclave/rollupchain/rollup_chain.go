@@ -627,7 +627,7 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
-	rollupTxReceipts, err := rc.storage.GetReceiptsByHash(*l2Head.Hash())
+	l2HeadTxReceipts, err := rc.storage.GetReceiptsByHash(*l2Head.Hash())
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch rollup receipts. Cause: %w", err)
 	}
@@ -642,16 +642,16 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 		if err = rc.signRollup(l2Head); err != nil {
 			return nil, nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
 		}
-		if rollupTxReceipts, err = rc.checkRollup(l2Head); err != nil {
+		if l2HeadTxReceipts, err = rc.checkRollup(l2Head); err != nil {
 			return nil, nil, fmt.Errorf("could not check rollup. Cause: %w", err)
 		}
-		if err = rc.storage.StoreRollup(l2Head, rollupTxReceipts); err != nil {
+		if err = rc.storage.StoreRollup(l2Head, l2HeadTxReceipts); err != nil {
 			return nil, nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
 		}
 	}
 
 	// We update the chain heads.
-	if err = rc.storage.UpdateL2HeadForL1Block(block.Hash(), l2Head, rollupTxReceipts); err != nil {
+	if err = rc.storage.UpdateL2HeadForL1Block(block.Hash(), l2Head, l2HeadTxReceipts); err != nil {
 		return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
 	if err = rc.storage.UpdateL1Head(block.Hash()); err != nil {
