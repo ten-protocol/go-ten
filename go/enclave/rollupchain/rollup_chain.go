@@ -627,11 +627,14 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
+	rollupTxReceipts, err := rc.storage.GetReceiptsByHash(*l2Head.Hash())
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not fetch rollup receipts. Cause: %w", err)
+	}
 
 	// TODO - #718 - Validate any rollups in the block against the stored batches.
 
 	// If we're the sequencer, we produce a new L2 head to replace the old one.
-	var rollupTxReceipts types.Receipts
 	if rc.nodeType == common.Sequencer {
 		if l2Head, err = rc.produceRollup(block); err != nil {
 			return nil, nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
