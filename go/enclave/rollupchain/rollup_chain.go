@@ -162,8 +162,6 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 	if err != nil {
 		return nil, nil, rc.rejectBlockErr(err)
 	}
-
-	// TODO - #718 - We should produce the block submission response in `enclave.go`, not here.
 	return newL2Head, producedRollup, nil
 }
 
