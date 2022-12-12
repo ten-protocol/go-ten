@@ -32,9 +32,9 @@ func encodeRollupNumber(number uint64) []byte {
 	return enc
 }
 
-// headerKey = rollupHeaderPrefix + num (uint64 big endian) + hash
-func headerKey(number uint64, hash common.Hash) []byte {
-	return append(append(rollupHeaderPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
+// headerKey = rollupHeaderPrefix + hash
+func headerKey(hash common.Hash) []byte {
+	return append(append(rollupHeaderPrefix, hash.Bytes()...))
 }
 
 // headerKeyPrefix = headerPrefix + num (uint64 big endian)
@@ -47,9 +47,9 @@ func headerNumberKey(hash common.Hash) []byte {
 	return append(rollupHeaderNumberPrefix, hash.Bytes()...)
 }
 
-// rollupBodyKey = rollupBodyPrefix + num (uint64 big endian) + hash
-func rollupBodyKey(number uint64, hash common.Hash) []byte {
-	return append(append(rollupBodyPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
+// rollupBodyKey = rollupBodyPrefix + hash
+func rollupBodyKey(hash common.Hash) []byte {
+	return append(append(rollupBodyPrefix, hash.Bytes()...))
 }
 
 // headsAfterL1BlockKey = headsAfterL1BlockPrefix + hash
@@ -62,9 +62,9 @@ func logsKey(hash common.Hash) []byte {
 	return append(logsPrefix, hash.Bytes()...)
 }
 
-// rollupReceiptsKey = rollupReceiptsPrefix + num (uint64 big endian) + hash
-func rollupReceiptsKey(number uint64, hash common.Hash) []byte {
-	return append(append(rollupReceiptsPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
+// rollupReceiptsKey = rollupReceiptsPrefix + hash
+func rollupReceiptsKey(hash common.Hash) []byte {
+	return append(append(rollupReceiptsPrefix, hash.Bytes()...))
 }
 
 func contractReceiptKey(contractAddress common.Address) []byte {

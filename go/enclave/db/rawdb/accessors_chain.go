@@ -16,17 +16,12 @@ import (
 )
 
 func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash) (*core.Rollup, error) {
-	height, err := ReadHeaderNumber(db, hash)
-	if err != nil {
-		return nil, fmt.Errorf("could not read header number. Cause: %w", err)
-	}
-
-	header, err := readHeader(db, hash, *height)
+	header, err := readHeader(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
 
-	body, err := ReadBody(db, hash, *height)
+	body, err := ReadBody(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
 	}
@@ -54,7 +49,7 @@ func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 	if err := writeHeader(db, rollup.Header); err != nil {
 		return fmt.Errorf("could not write header. Cause: %w", err)
 	}
-	if err := writeBody(db, rollup.Hash(), rollup.Header.Number.Uint64(), rollup.Transactions); err != nil {
+	if err := writeBody(db, rollup.Hash(), rollup.Transactions); err != nil {
 		return fmt.Errorf("could not write body. Cause: %w", err)
 	}
 	return nil
@@ -76,7 +71,7 @@ func writeHeader(db ethdb.KeyValueWriter, header *common.Header) error {
 	if err != nil {
 		return fmt.Errorf("could not encode rollup header. Cause: %w", err)
 	}
-	key := headerKey(number, hash)
+	key := headerKey(hash)
 	if err = db.Put(key, data); err != nil {
 		return fmt.Errorf("could not put header in DB. Cause: %w", err)
 	}
@@ -94,8 +89,8 @@ func writeHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uin
 }
 
 // Retrieves the rollup header corresponding to the hash.
-func readHeader(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (*common.Header, error) {
-	data, err := readHeaderRLP(db, hash, number)
+func readHeader(db ethdb.KeyValueReader, hash gethcommon.Hash) (*common.Header, error) {
+	data, err := readHeaderRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
@@ -107,28 +102,28 @@ func readHeader(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (*
 }
 
 // Retrieves a block header in its raw RLP database encoding.
-func readHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (rlp.RawValue, error) {
-	data, err := db.Get(headerKey(number, hash))
+func readHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
+	data, err := db.Get(headerKey(hash))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block header. Cause: %w", err)
 	}
 	return data, nil
 }
 
-func writeBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, body []*common.L2Tx) error {
+func writeBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []*common.L2Tx) error {
 	data, err := rlp.EncodeToBytes(body)
 	if err != nil {
 		return fmt.Errorf("could not encode L2 transactions. Cause: %w", err)
 	}
-	if err = writeBodyRLP(db, hash, number, data); err != nil {
+	if err = writeBodyRLP(db, hash, data); err != nil {
 		return fmt.Errorf("could not write L2 transactions. Cause: %w", err)
 	}
 	return nil
 }
 
 // ReadBody retrieves the rollup body corresponding to the hash.
-func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) ([]*common.L2Tx, error) {
-	data, err := readBodyRLP(db, hash, number)
+func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash) ([]*common.L2Tx, error) {
+	data, err := readBodyRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
 	}
@@ -140,16 +135,16 @@ func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) ([]*
 }
 
 // Stores an RLP encoded block body into the database.
-func writeBodyRLP(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, rlp rlp.RawValue) error {
-	if err := db.Put(rollupBodyKey(number, hash), rlp); err != nil {
+func writeBodyRLP(db ethdb.KeyValueWriter, hash gethcommon.Hash, rlp rlp.RawValue) error {
+	if err := db.Put(rollupBodyKey(hash), rlp); err != nil {
 		return fmt.Errorf("could not put rollup body into DB. Cause: %w", err)
 	}
 	return nil
 }
 
 // Retrieves the block body (transactions and uncles) in RLP encoding.
-func readBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (rlp.RawValue, error) {
-	data, err := db.Get(rollupBodyKey(number, hash))
+func readBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
+	data, err := db.Get(rollupBodyKey(hash))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup body from DB. Cause: %w", err)
 	}
