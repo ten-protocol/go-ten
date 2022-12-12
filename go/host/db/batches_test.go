@@ -249,7 +249,7 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	}
 
 	headerTwo := common.Header{
-		Number: big.NewInt(rollupNumber),
+		Number: big.NewInt(rollupNumber + 1),
 	}
 	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
 	batchTwo := common.ExtBatch{
