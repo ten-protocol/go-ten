@@ -158,7 +158,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 	}
 
 	// We update the L1 and L2 chain heads.
-	newL2Head, producedRollup, err := rc.updateHeads(&block)
+	newL2Head, producedRollup, err := rc.updateL1AndL2Heads(&block)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -423,7 +423,7 @@ func (rc *RollupChain) produceNewRollupAndUpdateL2Head(block *types.Block) (*cor
 }
 
 // Updates the heads of the L1 and L2 chains.
-func (rc *RollupChain) updateHeads(block *types.Block) (*common.L2RootHash, *core.Rollup, error) {
+func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, *core.Rollup, error) {
 	// We extract the rollups from the block.
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 
