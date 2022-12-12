@@ -167,28 +167,26 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 		return nil, nil, rc.rejectBlockErr(err)
 	}
 
-	// If we're the sequencer and we're beyond the genesis block, we produce and store the new L2 chain head.
 	var producedRollup *core.Rollup
-	var isUpdatedRollupHead bool
-	if rc.nodeType == common.Sequencer && blockStage == PostGenesis {
-		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(&block)
-		if err != nil {
-			return nil, nil, rc.rejectBlockErr(err)
-		}
-		newL2Head = producedRollup.Hash()
-		isUpdatedRollupHead = true
-	} else {
-		// For a validator, only processing the genesis block updates the L2 head.
-		isUpdatedRollupHead = blockStage == Genesis
-	}
-
 	var ingestedRollupHeader *common.Header
-	if isUpdatedRollupHead {
+
+	// If this is the genesis block, our L2 head will have been updated to the genesis rollup.
+	if blockStage == Genesis {
 		headRollup, err := rc.storage.FetchRollup(*newL2Head)
 		if err != nil {
 			return nil, nil, rc.rejectBlockErr(err)
 		}
 		ingestedRollupHeader = headRollup.Header
+	}
+
+	// If we're the sequencer and we're beyond the genesis block, we produce and store the new L2 chain head.
+	if blockStage == PostGenesis && rc.nodeType == common.Sequencer {
+		producedRollup, err = rc.produceNewRollupAndUpdateL2Head(&block)
+		if err != nil {
+			return nil, nil, rc.rejectBlockErr(err)
+		}
+		newL2Head = producedRollup.Hash()
+		ingestedRollupHeader = producedRollup.Header
 	}
 
 	// TODO - #718 - We should produce the block submission response in `enclave.go`, not here.
