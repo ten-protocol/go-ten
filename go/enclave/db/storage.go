@@ -213,8 +213,18 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 	return logs, nil
 }
 
+// todo - joel - move around, rename
+func (s *storageImpl) UpdateHeadHeaderHash(l1Head common.L1RootHash) error {
+	batch := s.db.NewBatch()
+	rawdb.WriteHeadHeaderHash(batch, l1Head)
+	if err := batch.Write(); err != nil {
+		return fmt.Errorf("could not save new L1 head. Cause: %w", err)
+	}
+	return nil
+}
+
 // TODO - #718 - This method has behaviour that's too dependent on various flags. Decompose.
-func (s *storageImpl) UpdateHeads(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt, isNewRollup bool, isNewL1Block bool) error {
+func (s *storageImpl) UpdateHeads(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt, isNewRollup bool) error {
 	batch := s.db.NewBatch()
 
 	if err := obscurorawdb.WriteL2Head(batch, l1Head, l2Head.Hash()); err != nil {
@@ -227,10 +237,6 @@ func (s *storageImpl) UpdateHeads(l1Head common.L1RootHash, l2Head *core.Rollup,
 	}
 	if err := obscurorawdb.WriteBlockLogs(batch, l1Head, logs); err != nil {
 		return fmt.Errorf("could not write block logs. Cause: %w", err)
-	}
-
-	if isNewL1Block {
-		rawdb.WriteHeadHeaderHash(batch, l1Head)
 	}
 
 	if isNewRollup {
