@@ -154,13 +154,13 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 	// We update the L1 chain state.
 	err := rc.updateL1State(block, receipts, isLatest)
 	if err != nil {
-		return nil, nil, rc.rejectBlockErr(err)
+		return nil, nil, err
 	}
 
 	// We update the L1 and L2 chain heads.
 	newL2Head, producedRollup, err := rc.updateHeads(&block)
 	if err != nil {
-		return nil, nil, rc.rejectBlockErr(err)
+		return nil, nil, err
 	}
 	return newL2Head, producedRollup, nil
 }
@@ -309,7 +309,7 @@ func (rc *RollupChain) updateL1State(block types.Block, receipts types.Receipts,
 	// We check whether we've already processed the block.
 	_, err := rc.storage.FetchBlock(block.Hash())
 	if err == nil {
-		return rc.rejectBlockErr(common.ErrBlockAlreadyProcessed)
+		return common.ErrBlockAlreadyProcessed
 	}
 	if !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not retrieve block. Cause: %w", err)
@@ -318,14 +318,14 @@ func (rc *RollupChain) updateL1State(block types.Block, receipts types.Receipts,
 	// Reject block if not provided with matching receipts.
 	// This needs to happen before saving the block as otherwise it will be considered as processed.
 	if rc.crossChainProcessors.Enabled() && !crosschain.VerifyReceiptHash(&block, receipts) {
-		return rc.rejectBlockErr(errors.New("receipts do not match receipt_root in block"))
+		return errors.New("receipts do not match receipt_root in block")
 	}
 
 	// We insert the block into the L1 chain and store it.
 	ingestionType, err := rc.insertBlockIntoL1Chain(&block, isLatest)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
-		return rc.rejectBlockErr(err)
+		return err
 	}
 	rc.logger.Trace("block inserted successfully",
 		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
@@ -335,7 +335,7 @@ func (rc *RollupChain) updateL1State(block types.Block, receipts types.Receipts,
 	// This requires block to be stored first ... but can permanently fail a block
 	err = rc.crossChainProcessors.Remote.StoreCrossChainMessages(&block, receipts)
 	if err != nil {
-		return rc.rejectBlockErr(errors.New("failed to process cross chain messages"))
+		return errors.New("failed to process cross chain messages")
 	}
 
 	return nil
@@ -848,19 +848,6 @@ func (rc *RollupChain) produceRollup(block *types.Block) (*core.Rollup, error) {
 	)
 
 	return r, nil
-}
-
-func (rc *RollupChain) rejectBlockErr(cause error) *common.BlockRejectError {
-	var hash common.L1RootHash
-	l1Head, err := rc.storage.FetchHeadBlock()
-	// TODO - Handle error.
-	if err == nil {
-		hash = l1Head.Hash()
-	}
-	return &common.BlockRejectError{
-		L1Head:  hash,
-		Wrapped: cause,
-	}
 }
 
 // Returns the state of the chain at height

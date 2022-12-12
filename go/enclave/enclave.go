@@ -263,7 +263,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	newL2Head, producedRollup, err := e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
-		return nil, fmt.Errorf("could not submit L1 block. Cause: %w", err)
+		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
@@ -275,7 +275,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	if blockSubmissionResponse.ProducedRollup != nil {
 		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedRollup.Header)
 		if err != nil {
-			e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
+			return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
 		}
 	}
 
@@ -1102,6 +1102,19 @@ func (e *enclaveImpl) getEncryptedLogs(block types.Block, l2Head *common.L2RootH
 		e.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
 	}
 	return encryptedLogs
+}
+
+func (e *enclaveImpl) rejectBlockErr(cause error) *common.BlockRejectError {
+	var hash common.L1RootHash
+	l1Head, err := e.storage.FetchHeadBlock()
+	// TODO - Handle error.
+	if err == nil {
+		hash = l1Head.Hash()
+	}
+	return &common.BlockRejectError{
+		L1Head:  hash,
+		Wrapped: cause,
+	}
 }
 
 // Todo - reinstate speculative execution after TN1
