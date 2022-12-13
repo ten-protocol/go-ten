@@ -25,7 +25,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
@@ -53,13 +52,12 @@ type RollupChain struct {
 	nodeType    common.NodeType
 	chainConfig *params.ChainConfig
 
-	storage               db.Storage
-	l1Blockchain          *gethcore.BlockChain
-	bridge                *bridge.Bridge
-	transactionBlobCrypto crypto.TransactionBlobCrypto // todo - remove
-	mempool               mempool.Manager
-	faucet                Faucet
-	crossChainProcessors  *crosschain.Processors
+	storage              db.Storage
+	l1Blockchain         *gethcore.BlockChain
+	bridge               *bridge.Bridge
+	mempool              mempool.Manager
+	faucet               Faucet
+	crossChainProcessors *crosschain.Processors
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	blockProcessingMutex sync.Mutex
@@ -78,28 +76,26 @@ func New(
 	l1Blockchain *gethcore.BlockChain,
 	bridge *bridge.Bridge,
 	crossChainProcessors *crosschain.Processors,
-	txCrypto crypto.TransactionBlobCrypto,
 	mempool mempool.Manager,
 	privateKey *ecdsa.PrivateKey,
 	chainConfig *params.ChainConfig,
 	logger gethlog.Logger,
 ) *RollupChain {
 	return &RollupChain{
-		hostID:                hostID,
-		nodeType:              nodeType,
-		storage:               storage,
-		l1Blockchain:          l1Blockchain,
-		bridge:                bridge,
-		transactionBlobCrypto: txCrypto,
-		mempool:               mempool,
-		faucet:                NewFaucet(),
-		crossChainProcessors:  crossChainProcessors,
-		enclavePrivateKey:     privateKey,
-		chainConfig:           chainConfig,
-		blockProcessingMutex:  sync.Mutex{},
-		logger:                logger,
-		GlobalGasCap:          5_000_000_000,
-		BaseFee:               gethcommon.Big0,
+		hostID:               hostID,
+		nodeType:             nodeType,
+		storage:              storage,
+		l1Blockchain:         l1Blockchain,
+		bridge:               bridge,
+		mempool:              mempool,
+		faucet:               NewFaucet(),
+		crossChainProcessors: crossChainProcessors,
+		enclavePrivateKey:    privateKey,
+		chainConfig:          chainConfig,
+		blockProcessingMutex: sync.Mutex{},
+		logger:               logger,
+		GlobalGasCap:         5_000_000_000,
+		BaseFee:              gethcommon.Big0,
 	}
 }
 
@@ -166,16 +162,15 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
-func (rc *RollupChain) UpdateL2Chain(extBatch *common.ExtBatch) (*common.Header, error) {
+func (rc *RollupChain) UpdateL2Chain(batch *core.Batch) (*common.Header, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
 	// We retrieve the genesis batch from the L1 chain instead.
-	if extBatch.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0 {
+	if batch.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0 {
 		return nil, nil //nolint:nilnil
 	}
 
-	batch := core.ToEnclaveBatch(extBatch, rc.transactionBlobCrypto)
 	batchTxReceipts, err := rc.checkBatch(batch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check batch. Cause: %w", err)
