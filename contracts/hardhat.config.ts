@@ -1,4 +1,4 @@
-import { HardhatUserConfig, task } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 
 import "hardhat-abi-exporter";
@@ -6,8 +6,9 @@ import "@solidstate/hardhat-bytecode-exporter";
 
 import 'hardhat-deploy';
 import * as abigen from './scripts/abigen';
-import './scripts/run-obscuro-node.ts';
-import './scripts/run-wallet-extension.ts';
+
+import './scripts/obscuro-deploy';
+import './scripts/run-wallet-extension';
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -51,15 +52,16 @@ const config: HardhatUserConfig = {
     localGeth: {
       url: "http://127.0.0.1:8025",
       live: false,
-      saveDeployments: true,
+      saveDeployments: false,
       tags: ["local"],
       deploy: [ 'deploy_l1/' ],
       accounts: [ 'f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb']
     },
     localObscuro: {
       url: "http://127.0.0.1:3000",
+      obscuroEncRpcUrl: "http://127.0.0.1:13000",
       live: false,
-      saveDeployments: true,
+      saveDeployments: false,
       tags: ["local"],
       deploy: [ 'deploy_l2/' ],
       companionNetworks: {
