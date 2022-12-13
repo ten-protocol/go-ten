@@ -30,24 +30,24 @@ type BlockResolver interface {
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
 }
 
-type RollupResolver interface {
-	// FetchRollup returns the rollup with the given hash.
-	FetchRollup(hash common.L2RootHash) (*core.Rollup, error)
-	// FetchRollupByHeight returns the rollup on the canonical chain with the given height.
-	FetchRollupByHeight(height uint64) (*core.Rollup, error)
-	// FetchHeadRollup returns the current head rollup of the canonical chain.
-	FetchHeadRollup() (*core.Rollup, error)
-	// StoreRollup stores a rollup.
-	StoreRollup(rollup *core.Rollup, receipts []*types.Receipt) error
+type BatchResolver interface {
+	// FetchBatch returns the batch with the given hash.
+	FetchBatch(hash common.L2RootHash) (*core.Batch, error)
+	// FetchBatchByHeight returns the batch on the canonical chain with the given height.
+	FetchBatchByHeight(height uint64) (*core.Batch, error)
+	// FetchHeadBatch returns the current head batch of the canonical chain.
+	FetchHeadBatch() (*core.Batch, error)
+	// StoreBatch stores a batch.
+	StoreBatch(batch *core.Batch, receipts []*types.Receipt) error
 }
 
 type HeadsAfterL1BlockStorage interface {
-	// FetchL2Head returns the hash of the head rollup at a given L1 block.
+	// FetchL2Head returns the hash of the head batch at a given L1 block.
 	FetchL2Head(blockHash common.L1RootHash) (*common.L2RootHash, error)
 	// UpdateL1Head updates the L1 head.
 	UpdateL1Head(l1Head common.L1RootHash) error
 	// UpdateL2Head updates the canonical L2 head for a given L1 block.
-	UpdateL2Head(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt) error
+	UpdateL2Head(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
@@ -89,7 +89,7 @@ type CrossChainMessagesStorage interface {
 // Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
-	RollupResolver
+	BatchResolver
 	SharedSecretStorage
 	HeadsAfterL1BlockStorage
 	TransactionStorage

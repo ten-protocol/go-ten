@@ -37,10 +37,10 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (gen
 		return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
 	}
 
-	producedRollupMsg := ToExtRollupMsg(response.ProducedRollup)
+	producedBatchMsg := ToExtBatchMsg(response.ProducedBatch)
 
 	return generated.BlockSubmissionResponseMsg{
-		ProducedRollup:          &producedRollupMsg,
+		ProducedBatch:           &producedBatchMsg,
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
 	}, nil
@@ -97,7 +97,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 		return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
 	}
 	return &common.BlockSubmissionResponse{
-		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
+		ProducedBatch:           FromExtBatchMsg(msg.ProducedBatch),
 		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
 	}, nil
@@ -234,9 +234,9 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 	}
 }
 
-func FromExtBatchMsg(msg *generated.ExtBatchMsg) common.ExtBatch {
+func FromExtBatchMsg(msg *generated.ExtBatchMsg) *common.ExtBatch {
 	if msg.Header == nil {
-		return common.ExtBatch{
+		return &common.ExtBatch{
 			Header: nil,
 		}
 	}
@@ -247,7 +247,7 @@ func FromExtBatchMsg(msg *generated.ExtBatchMsg) common.ExtBatch {
 		txHashes[idx] = gethcommon.BytesToHash(bytes)
 	}
 
-	return common.ExtBatch{
+	return &common.ExtBatch{
 		// TODO - #718 - We use the rollup header converter for now. We'll need a separate one as the headers diverge.
 		Header:          FromRollupHeaderMsg(msg.Header),
 		TxHashes:        txHashes,

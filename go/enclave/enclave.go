@@ -260,7 +260,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	newL2Head, producedRollup, err := e.chain.ProcessL1Block(block, receipts, isLatest)
+	newL2Head, producedBatch, err := e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
@@ -268,22 +268,18 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
 	// We prepare the block submission response.
-	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedRollup)
+	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	// We remove any transactions considered immune to re-orgs from the mempool.
-	if blockSubmissionResponse.ProducedRollup != nil {
-		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedRollup.Header)
+	if blockSubmissionResponse.ProducedBatch != nil {
+		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedBatch.Header)
 		if err != nil {
 			return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
 		}
 	}
 
 	return blockSubmissionResponse, nil
-}
-
-func (e *enclaveImpl) ProduceRollup() (*common.ExtRollup, error) {
-	return nil, errutil.ErrNoImpl
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -333,13 +329,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 }
 
 func (e *enclaveImpl) SubmitBatch(batch *common.ExtBatch) error {
-	rollupHeader, err := e.chain.UpdateL2Chain(batch)
+	batchHeader, err := e.chain.UpdateL2Chain(batch)
 	if err != nil {
 		return fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err)
 	}
 
 	// We remove any transactions considered immune to re-orgs from the mempool.
-	err = e.removeOldMempoolTxs(rollupHeader)
+	err = e.removeOldMempoolTxs(batchHeader)
 	if err != nil {
 		e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
 	}
@@ -413,7 +409,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err != nil {
 		return nil, err
 	}
-	l2Head, err := e.storage.FetchHeadRollup()
+	l2Head, err := e.storage.FetchHeadBatch()
 	if err == nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
@@ -484,7 +480,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We retrieve the transaction.
-	tx, txRollupHash, txRollupHeight, _, err := e.storage.GetTransaction(txHash)
+	tx, txBatchHash, txBatchHeight, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil
@@ -493,11 +489,11 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// Only return receipts for transactions included in the canonical chain.
-	r, err := e.storage.FetchRollupByHeight(txRollupHeight)
+	r, err := e.storage.FetchBatchByHeight(txBatchHeight)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve rollup containing transaction. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve batch containing transaction. Cause: %w", err)
 	}
-	if !bytes.Equal(r.Hash().Bytes(), txRollupHash.Bytes()) {
+	if !bytes.Equal(r.Hash().Bytes(), txBatchHash.Bytes()) {
 		return nil, fmt.Errorf("transaction not included in the canonical chain")
 	}
 
@@ -517,7 +513,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We filter out irrelevant logs.
-	txReceipt.Logs, err = e.subscriptionManager.FilterLogs(txReceipt.Logs, txRollupHash, &sender, &filters.FilterCriteria{})
+	txReceipt.Logs, err = e.subscriptionManager.FilterLogs(txReceipt.Logs, txBatchHash, &sender, &filters.FilterCriteria{})
 	if err != nil {
 		return nil, fmt.Errorf("could not filter logs. Cause: %w", err)
 	}
@@ -660,8 +656,8 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 	return encryptedBalance, nil
 }
 
-func (e *enclaveImpl) GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error) {
-	stateDB, err := e.storage.CreateStateDB(*rollupHash)
+func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2RootHash) ([]byte, error) {
+	stateDB, err := e.storage.CreateStateDB(*batchHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
@@ -1053,15 +1049,15 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 	return &filter, &forAddress, nil
 }
 
-// Removes transactions from the mempool that are considered immune to re-orgs (i.e. over X rollups deep).
-func (e *enclaveImpl) removeOldMempoolTxs(rollupHeader *common.Header) error {
-	if rollupHeader == nil {
+// Removes transactions from the mempool that are considered immune to re-orgs (i.e. over X batches deep).
+func (e *enclaveImpl) removeOldMempoolTxs(batchHeader *common.Header) error {
+	if batchHeader == nil {
 		return nil
 	}
 
-	hr, err := e.storage.FetchRollup(rollupHeader.Hash())
+	hr, err := e.storage.FetchBatch(batchHeader.Hash())
 	if err != nil {
-		return fmt.Errorf("could not retrieve rollup. This should not happen because this rollup was just processed. Cause: %w", err)
+		return fmt.Errorf("could not retrieve batch. This should not happen because this batch was just processed. Cause: %w", err)
 	}
 	err = e.mempool.RemoveMempoolTxs(hr, e.storage)
 	if err != nil {
@@ -1071,19 +1067,19 @@ func (e *enclaveImpl) removeOldMempoolTxs(rollupHeader *common.Header) error {
 	return nil
 }
 
-func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, producedRollup *core.Rollup) *common.BlockSubmissionResponse {
+func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
 	if l2Head == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return &common.BlockSubmissionResponse{}
 	}
 
-	var producedExtRollup common.ExtRollup
-	if producedRollup != nil {
-		producedExtRollup = producedRollup.ToExtRollup(e.transactionBlobCrypto)
+	var producedExtBatch common.ExtBatch
+	if producedBatch != nil {
+		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
 	}
 
 	return &common.BlockSubmissionResponse{
-		ProducedRollup: &producedExtRollup,
+		ProducedBatch:  &producedExtBatch,
 		SubscribedLogs: e.getEncryptedLogs(*block, l2Head),
 	}
 }

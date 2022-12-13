@@ -140,15 +140,6 @@ func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBl
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
 }
 
-func (s *RPCServer) ProduceRollup(context.Context, *generated.ProduceRollupRequest) (*generated.ProduceRollupResponse, error) {
-	producedRollup, err := s.enclave.ProduceRollup()
-	if err != nil {
-		return nil, err
-	}
-	producedRollupMsg := rpc.ToExtRollupMsg(producedRollup)
-	return &generated.ProduceRollupResponse{ProducedRollup: &producedRollupMsg}, nil
-}
-
 func (s *RPCServer) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
 	encryptedHash, err := s.enclave.SubmitTx(request.EncryptedTx)
 	return &generated.SubmitTxResponse{EncryptedHash: encryptedHash}, err
@@ -156,7 +147,7 @@ func (s *RPCServer) SubmitTx(_ context.Context, request *generated.SubmitTxReque
 
 func (s *RPCServer) SubmitBatch(_ context.Context, request *generated.SubmitBatchRequest) (*generated.SubmitBatchResponse, error) {
 	batch := rpc.FromExtBatchMsg(request.Batch)
-	return &generated.SubmitBatchResponse{}, s.enclave.SubmitBatch(&batch)
+	return &generated.SubmitBatchResponse{}, s.enclave.SubmitBatch(batch)
 }
 
 func (s *RPCServer) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {

@@ -147,7 +147,7 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Rollup, error) {
+func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Batch, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
@@ -158,42 +158,36 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 	}
 
 	// We update the L1 and L2 chain heads.
-	newL2Head, producedRollup, err := rc.updateL1AndL2Heads(&block)
+	newL2Head, producedBatch, err := rc.updateL1AndL2Heads(&block)
 	if err != nil {
 		return nil, nil, err
 	}
-	return newL2Head, producedRollup, nil
+	return newL2Head, producedBatch, nil
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
-func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, error) {
+func (rc *RollupChain) UpdateL2Chain(extBatch *common.ExtBatch) (*common.Header, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	extRollup := common.ExtRollup{
-		Header:          batch.Header,
-		TxHashes:        batch.TxHashes,
-		EncryptedTxBlob: batch.EncryptedTxBlob,
-	}
-	rollup := core.ToEnclaveRollup(&extRollup, rc.transactionBlobCrypto)
-
 	// We retrieve the genesis batch from the L1 chain instead.
-	if rollup.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0 {
+	if extBatch.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0 {
 		return nil, nil //nolint:nilnil
 	}
 
-	rollupTxReceipts, err := rc.checkRollup(rollup)
+	batch := core.ToEnclaveBatch(extBatch, rc.transactionBlobCrypto)
+	batchTxReceipts, err := rc.checkBatch(batch)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
+		return nil, fmt.Errorf("failed to check batch. Cause: %w", err)
 	}
-	if err = rc.storage.StoreRollup(rollup, rollupTxReceipts); err != nil {
-		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
+	if err = rc.storage.StoreBatch(batch, batchTxReceipts); err != nil {
+		return nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
-	if err = rc.storage.UpdateL2Head(batch.Header.L1Proof, rollup, rollupTxReceipts); err != nil {
+	if err = rc.storage.UpdateL2Head(batch.Header.L1Proof, batch, batchTxReceipts); err != nil {
 		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
 
-	return rollup.Header, nil
+	return batch.Header, nil
 }
 
 func (rc *RollupChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
@@ -269,19 +263,19 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
 	}
 
-	// fetch the chain state at given rollup
+	// fetch the chain state at given batch
 	blockState, err := rc.getChainStateAtBlock(blockNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	r, err := rc.getRollup(*blockNumber)
+	r, err := rc.getBatch(*blockNumber)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch head state rollup. Cause: %w", err)
+		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
 
 	rc.logger.Trace(
-		fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, rollup=r_%d, state=%s",
+		fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, batch=b_%d, state=%s",
 			callMsg.To(),
 			callMsg.From(),
 			hexutils.BytesToHex(callMsg.Data()),
@@ -394,8 +388,8 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-// Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced rollup, if there is one.
-func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, *core.Rollup, error) {
+// Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
+func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, *core.Batch, error) {
 	// We extract the rollups from the block.
 	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 
@@ -419,7 +413,7 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 
 // Determines if this is a pre-genesis L2 block, the genesis L2 block, or a post-genesis L2 block.
 func (rc *RollupChain) getBlockStage(rollupsInBlock []*core.Rollup) (BlockStage, error) {
-	_, err := rc.storage.FetchRollupByHeight(0)
+	_, err := rc.storage.FetchBatchByHeight(0)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return -1, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
@@ -443,13 +437,19 @@ func (rc *RollupChain) getBlockStage(rollupsInBlock []*core.Rollup) (BlockStage,
 func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
 	// todo change this to a hardcoded hash on testnet/mainnet
 	genesisRollup := rollupsInBlock[0]
-
 	rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
-	if err := rc.storage.StoreRollup(genesisRollup, nil); err != nil {
-		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
+
+	// TODO - #718 - Store actual rollup, not batch.
+
+	genesisBatch := &core.Batch{
+		Header:       genesisRollup.Header,
+		Transactions: genesisRollup.Transactions,
 	}
-	if err := rc.storage.UpdateL2Head(block.Hash(), genesisRollup, nil); err != nil {
-		return nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
+	if err := rc.storage.StoreBatch(genesisBatch, nil); err != nil {
+		return nil, fmt.Errorf("failed to store batch. Cause: %w", err)
+	}
+	if err := rc.storage.UpdateL2Head(block.Hash(), genesisBatch, nil); err != nil {
+		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
 	if err := rc.storage.UpdateL1Head(block.Hash()); err != nil {
 		return nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
@@ -463,12 +463,12 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a message bus embedded in the platform, and this method is responsible for transferring messages as well.
-// The rollup can be a final rollup as received from peers or the rollup under construction.
-func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+// The batch can be a final batch as received from peers or the batch under construction.
+func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	txResults := evm.ExecuteTransactions(txs, stateDB, rollup.Header, rc.storage, rc.chainConfig, 0, rc.logger)
+	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, rc.storage, rc.chainConfig, 0, rc.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
@@ -480,35 +480,35 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
-			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from rollup r_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*rollup.Hash()), result))
+			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*batch.Hash()), result))
 		}
 	}
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
-	parent, err := rc.storage.FetchRollup(rollup.Header.ParentHash)
+	parent, err := rc.storage.FetchBatch(batch.Header.ParentHash)
 	if err != nil {
 		rc.logger.Crit("Sanity check. Rollup has no parent.", log.ErrKey, err)
 	}
 
 	parentProof, err := rc.storage.FetchBlock(parent.Header.L1Proof)
 	if err != nil {
-		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
 	}
-	rollupProof, err := rc.storage.FetchBlock(rollup.Header.L1Proof)
+	batchProof, err := rc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {
-		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
 	}
 
 	// TODO: Remove this depositing logic once the new bridge is added.
 	depositTxs := rc.bridge.ExtractDeposits(
 		parentProof,
-		rollupProof,
+		batchProof,
 		rc.storage,
 		stateDB,
 	)
 
-	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, batch.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 	depositReceipts := make([]*types.Receipt, len(depositResponses))
 	if len(depositResponses) != len(depositTxs) {
 		rc.logger.Crit("Sanity check. Some deposit transactions failed.")
@@ -524,9 +524,9 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 		i++
 	}
 
-	messages := rc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, rollupProof, stateDB)
+	messages := rc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, batchProof, stateDB)
 	transactions := rc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
-	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, rollup.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
 	if len(syntheticTransactionsResponses) != len(transactions) {
 		rc.logger.Crit("Sanity check. Some synthetic transactions failed.")
@@ -556,7 +556,7 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 				false)
 
 			clonedDB := stateDB.Copy()
-			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, rollup.Header, rc.storage, rc.chainConfig, rc.logger)
+			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, batch.Header, rc.storage, rc.chainConfig, rc.logger)
 			rc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
 		}
 
@@ -576,22 +576,22 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 	return rootHash, executedTransactions, txReceipts, depositReceipts
 }
 
-func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2RootHash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
-	h := rollup.Header
+func (rc *RollupChain) validateBatch(batch *core.Batch, rootHash common.L2RootHash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
+	h := batch.Header
 	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
 
-		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(*rollup.Hash()), rootHash, h.Root, h.Number, core.PrintTxs(rollup.Transactions), dump, depositReceipts))
+		rc.logger.Error(fmt.Sprintf("Verify batch b_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
+			common.ShortHash(*batch.Hash()), rootHash, h.Root, h.Number, core.PrintTxs(batch.Transactions), dump, depositReceipts))
 		return false
 	}
 
 	//  check that the withdrawals in the header match the withdrawals as calculated
-	withdrawals := rc.bridge.RollupPostProcessingWithdrawals(rollup, stateDB, toReceiptMap(txReceipts))
+	withdrawals := rc.bridge.BatchPostProcessingWithdrawals(batch, stateDB, toReceiptMap(txReceipts))
 	for i, w := range withdrawals {
 		hw := h.Withdrawals[i]
 		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Withdrawals don't match", common.ShortHash(*rollup.Hash())))
+			rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Withdrawals don't match", common.ShortHash(*batch.Hash())))
 			return false
 		}
 	}
@@ -599,13 +599,13 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 	rec := allReceipts(txReceipts, depositReceipts)
 	rbloom := types.CreateBloom(rec)
 	if !bytes.Equal(rbloom.Bytes(), h.Bloom.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(*rollup.Hash()), h.Bloom, rbloom))
+		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(*batch.Hash()), h.Bloom, rbloom))
 		return false
 	}
 
 	receiptSha := types.DeriveSha(rec, trie.NewStackTrie(nil))
 	if !bytes.Equal(receiptSha.Bytes(), h.ReceiptHash.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify rollup r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(*rollup.Hash()), h.ReceiptHash, receiptSha))
+		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(*batch.Hash()), h.ReceiptHash, receiptSha))
 		return false
 	}
 
@@ -613,37 +613,37 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 }
 
 // Calculates the state after processing the provided block.
-func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2RootHash, *core.Rollup, error) {
+func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2RootHash, *core.Batch, error) {
 	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
 	// We retrieve the current L2 head.
 	l2HeadHash, err := rc.storage.FetchL2Head(block.ParentHash())
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not retrieve current head rollup hash. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not retrieve current head batch hash. Cause: %w", err)
 	}
-	l2Head, err := rc.storage.FetchRollup(*l2HeadHash)
+	l2Head, err := rc.storage.FetchBatch(*l2HeadHash)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not fetch parent batch. Cause: %w", err)
 	}
 	l2HeadTxReceipts, err := rc.storage.GetReceiptsByHash(*l2Head.Hash())
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch rollup receipts. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
 	}
 
 	// TODO - #718 - Validate any rollups in the block against the stored batches.
 
 	// If we're the sequencer, we produce a new L2 head to replace the old one.
 	if rc.nodeType == common.Sequencer {
-		if l2Head, err = rc.produceRollup(block); err != nil {
-			return nil, nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
+		if l2Head, err = rc.produceBatch(block); err != nil {
+			return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
 		}
-		if err = rc.signRollup(l2Head); err != nil {
-			return nil, nil, fmt.Errorf("could not sign rollup. Cause: %w", err)
+		if err = rc.signBatch(l2Head); err != nil {
+			return nil, nil, fmt.Errorf("could not sign batch. Cause: %w", err)
 		}
-		if l2HeadTxReceipts, err = rc.checkRollup(l2Head); err != nil {
-			return nil, nil, fmt.Errorf("could not check rollup. Cause: %w", err)
+		if l2HeadTxReceipts, err = rc.checkBatch(l2Head); err != nil {
+			return nil, nil, fmt.Errorf("could not check batch. Cause: %w", err)
 		}
-		if err = rc.storage.StoreRollup(l2Head, l2HeadTxReceipts); err != nil {
-			return nil, nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
+		if err = rc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
+			return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 		}
 	}
 
@@ -655,198 +655,210 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 		return nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 	}
 
-	// We return the produced rollup, if we've produced one.
-	var producedRollup *core.Rollup
+	// We return the produced batch, if we've produced one.
+	var producedBatch *core.Batch
 	if rc.nodeType == common.Sequencer {
-		producedRollup = l2Head
+		producedBatch = l2Head
 	}
-	return l2Head.Hash(), producedRollup, nil
+	return l2Head.Hash(), producedBatch, nil
 }
 
-// verifies that the headers of the rollup match the results of executing the transactions
-func (rc *RollupChain) checkRollup(rollup *core.Rollup) ([]*types.Receipt, error) {
-	stateDB, err := rc.storage.CreateStateDB(rollup.Header.ParentHash)
+// verifies that the headers of the batch match the results of executing the transactions
+func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
+	stateDB, err := rc.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
-	// calculate the state to compare with what is in the Rollup
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(rollup, rollup.Transactions, stateDB)
-	if len(successfulTxs) != len(rollup.Transactions) {
-		return nil, fmt.Errorf("all transactions that are included in a rollup must be executed")
+	// calculate the state to compare with what is in the batch
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch, batch.Transactions, stateDB)
+	if len(successfulTxs) != len(batch.Transactions) {
+		return nil, fmt.Errorf("all transactions that are included in a batch must be executed")
 	}
 
-	if !rc.validateRollup(rollup, rootHash, txReceipts, depositReceipts, stateDB) {
-		return nil, fmt.Errorf("invalid rollup")
+	if !rc.validateBatch(batch, rootHash, txReceipts, depositReceipts, stateDB) {
+		return nil, fmt.Errorf("invalid batch")
 	}
 
 	// todo - check that the transactions hash to the header.txHash
 
 	// verify the signature
-	if !rc.verifySig(rollup) {
+	if !rc.verifySig(batch) {
 		return nil, fmt.Errorf("invalid signature")
 	}
 
 	return txReceipts, nil
 }
 
-func (rc *RollupChain) signRollup(r *core.Rollup) error {
+func (rc *RollupChain) signRollup(rollup *core.Rollup) error {
 	var err error
-	h := r.Hash()
-	r.Header.R, r.Header.S, err = ecdsa.Sign(rand.Reader, rc.enclavePrivateKey, h[:])
+	h := rollup.Hash()
+	rollup.Header.R, rollup.Header.S, err = ecdsa.Sign(rand.Reader, rc.enclavePrivateKey, h[:])
 	if err != nil {
 		return fmt.Errorf("could not sign rollup. Cause: %w", err)
 	}
 	return nil
 }
 
-func (rc *RollupChain) verifySig(r *core.Rollup) bool {
-	// If this rollup is generated by the current enclave skip the sig verification
-	if bytes.Equal(r.Header.Agg.Bytes(), rc.hostID.Bytes()) {
+func (rc *RollupChain) signBatch(batch *core.Batch) error {
+	var err error
+	h := batch.Hash()
+	batch.Header.R, batch.Header.S, err = ecdsa.Sign(rand.Reader, rc.enclavePrivateKey, h[:])
+	if err != nil {
+		return fmt.Errorf("could not sign batch. Cause: %w", err)
+	}
+	return nil
+}
+
+func (rc *RollupChain) verifySig(batch *core.Batch) bool {
+	// If this batch is generated by the current enclave skip the sig verification
+	if bytes.Equal(batch.Header.Agg.Bytes(), rc.hostID.Bytes()) {
 		return true
 	}
 
-	h := r.Hash()
-	if r.Header.R == nil || r.Header.S == nil {
-		rc.logger.Error("Missing signature on rollup")
+	h := batch.Hash()
+	if batch.Header.R == nil || batch.Header.S == nil {
+		rc.logger.Error("Missing signature on batch")
 		return false
 	}
 
-	pubKey, err := rc.storage.FetchAttestedKey(r.Header.Agg)
+	pubKey, err := rc.storage.FetchAttestedKey(batch.Header.Agg)
 	if err != nil {
-		rc.logger.Error("Could not retrieve attested key for aggregator %s. Cause: %w", r.Header.Agg, err)
+		rc.logger.Error("Could not retrieve attested key for aggregator %s. Cause: %w", batch.Header.Agg, err)
 		return false
 	}
 
-	return ecdsa.Verify(pubKey, h[:], r.Header.R, r.Header.S)
+	return ecdsa.Verify(pubKey, h[:], batch.Header.R, batch.Header.S)
 }
 
-// Retrieves the rollup with the given height, with special handling for earliest/latest/pending .
-func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, error) {
-	var rollup *core.Rollup
+// Retrieves the batch with the given height, with special handling for earliest/latest/pending .
+func (rc *RollupChain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error) {
+	var batch *core.Batch
 	switch height {
 	case gethrpc.EarliestBlockNumber:
-		genesisRollup, err := rc.storage.FetchRollupByHeight(0)
+		genesisBatch, err := rc.storage.FetchBatchByHeight(0)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
-		rollup = genesisRollup
+		batch = genesisBatch
 	case gethrpc.PendingBlockNumber:
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
-		headRollup, err := rc.storage.FetchHeadRollup()
+		headBatch, err := rc.storage.FetchHeadBatch()
 		if err != nil {
-			return nil, fmt.Errorf("rollup with requested height %d was not found. Cause: %w", height, err)
+			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)
 		}
-		rollup = headRollup
+		batch = headBatch
 	default:
-		maybeRollup, err := rc.storage.FetchRollupByHeight(uint64(height))
+		maybeBatch, err := rc.storage.FetchBatchByHeight(uint64(height))
 		if err != nil {
-			return nil, fmt.Errorf("rollup with requested height %d could not be retrieved. Cause: %w", height, err)
+			return nil, fmt.Errorf("batch with requested height %d could not be retrieved. Cause: %w", height, err)
 		}
-		rollup = maybeRollup
+		batch = maybeBatch
 	}
-	return rollup, nil
+	return batch, nil
 }
 
-// Creates a rollup.
-func (rc *RollupChain) produceRollup(block *types.Block) (*core.Rollup, error) {
-	headRollupHash, err := rc.storage.FetchL2Head(block.ParentHash())
+// Creates a batch.
+func (rc *RollupChain) produceBatch(block *types.Block) (*core.Batch, error) {
+	headBatchHash, err := rc.storage.FetchL2Head(block.ParentHash())
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve head rollup hash. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve head batch hash. Cause: %w", err)
 	}
-	headRollup, err := rc.storage.FetchRollup(*headRollupHash)
+	headBatch, err := rc.storage.FetchBatch(*headBatchHash)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 	}
 
-	// These variables will be used to create the new rollup
-	var newRollupTxs []*common.L2Tx
-	var newRollupState *state.StateDB
+	// These variables will be used to create the new batch
+	var newBatchTxs []*common.L2Tx
+	var newBatchState *state.StateDB
 
-	// Create a new rollup based on the fromBlock of inclusion of the previous, including all new transactions
+	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
 	nonce := common.GenerateNonce()
-	r, err := core.EmptyRollup(rc.hostID, headRollup.Header, block.Hash(), nonce)
+	batch, err := core.EmptyBatch(rc.hostID, headBatch.Header, block.Hash(), nonce)
 	if err != nil {
-		return nil, fmt.Errorf("could not create rollup. Cause: %w", err)
+		return nil, fmt.Errorf("could not create batch. Cause: %w", err)
 	}
 
-	newRollupTxs, err = rc.mempool.CurrentTxs(headRollup, rc.storage)
+	newBatchTxs, err = rc.mempool.CurrentTxs(headBatch, rc.storage)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve current transactions. Cause: %w", err)
 	}
 
-	newRollupState, err = rc.storage.CreateStateDB(r.Header.ParentHash)
+	newBatchState, err = rc.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(r, newRollupTxs, newRollupState)
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch, newBatchTxs, newBatchState)
 
-	r.Header.Root = rootHash
-	r.Transactions = successfulTxs
+	batch.Header.Root = rootHash
+	batch.Transactions = successfulTxs
 
 	// Postprocessing - withdrawals
 	txReceiptsMap := toReceiptMap(txReceipts)
-	r.Header.Withdrawals = rc.bridge.RollupPostProcessingWithdrawals(r, newRollupState, txReceiptsMap)
+	// todo - joel - rename method
+	batch.Header.Withdrawals = rc.bridge.BatchPostProcessingWithdrawals(batch, newBatchState, txReceiptsMap)
 	crossChainMessages, err := rc.crossChainProcessors.Local.ExtractOutboundMessages(txReceipts)
 	if err != nil {
 		rc.logger.Crit("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
 	}
 
-	r.Header.CrossChainMessages = crossChainMessages
+	batch.Header.CrossChainMessages = crossChainMessages
 
-	rc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to rollup. Equivalent withdrawals in header - %d", len(r.Header.CrossChainMessages), len(r.Header.Withdrawals)), log.CmpKey, log.CrossChainCmp)
+	rc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch. Equivalent withdrawals in header - %d",
+		len(batch.Header.CrossChainMessages), len(batch.Header.Withdrawals)), log.CmpKey, log.CrossChainCmp)
 
-	crossChainBind, err := rc.storage.FetchBlock(r.Header.L1Proof)
+	crossChainBind, err := rc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {
-		rc.logger.Crit("Failed to extract rollup proof that should exist!")
+		rc.logger.Crit("Failed to extract batch proof that should exist!")
 	}
 
-	r.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
-	r.Header.LatestInboundCrossChainHeight = crossChainBind.Number()
+	batch.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
+	batch.Header.LatestInboundCrossChainHeight = crossChainBind.Number()
 
 	receipts := allReceipts(txReceipts, depositReceipts)
 	if len(receipts) == 0 {
-		r.Header.ReceiptHash = types.EmptyRootHash
+		batch.Header.ReceiptHash = types.EmptyRootHash
 	} else {
-		r.Header.ReceiptHash = types.DeriveSha(receipts, trie.NewStackTrie(nil))
-		r.Header.Bloom = types.CreateBloom(receipts)
+		batch.Header.ReceiptHash = types.DeriveSha(receipts, trie.NewStackTrie(nil))
+		batch.Header.Bloom = types.CreateBloom(receipts)
 	}
 
 	if len(successfulTxs) == 0 {
-		r.Header.TxHash = types.EmptyRootHash
+		batch.Header.TxHash = types.EmptyRootHash
 	} else {
-		r.Header.TxHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
+		batch.Header.TxHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
 	}
 
-	rc.logger.Trace("Create rollup.",
+	rc.logger.Trace("Create batch.",
 		"State", gethlog.Lazy{Fn: func() string {
-			return strings.Replace(string(newRollupState.Dump(&state.DumpConfig{})), "\n", "", -1)
+			return strings.Replace(string(newBatchState.Dump(&state.DumpConfig{})), "\n", "", -1)
 		}},
 	)
 
-	return r, nil
+	return batch, nil
 }
 
 // Returns the state of the chain at height
 // TODO make this cacheable
 func (rc *RollupChain) getChainStateAtBlock(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
-	// We retrieve the rollup of interest.
-	rollup, err := rc.getRollup(*blockNumber)
+	// We retrieve the batch of interest.
+	batch, err := rc.getBatch(*blockNumber)
 	if err != nil {
 		return nil, err
 	}
 
 	// We get that of the chain at that height
-	blockchainState, err := rc.storage.CreateStateDB(*rollup.Hash())
+	blockchainState, err := rc.storage.CreateStateDB(*batch.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
 	if blockchainState == nil {
-		return nil, fmt.Errorf("unable to fetch chain state for rollup %s", rollup.Hash().Hex())
+		return nil, fmt.Errorf("unable to fetch chain state for batch %s", batch.Hash().Hex())
 	}
 
 	return blockchainState, err

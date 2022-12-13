@@ -61,11 +61,11 @@ func (db *mempoolManager) FetchMempoolTxs() []*common.L2Tx {
 	return mpCopy
 }
 
-func (db *mempoolManager) RemoveMempoolTxs(rollup *core.Rollup, resolver db.RollupResolver) error {
+func (db *mempoolManager) RemoveMempoolTxs(batch *core.Batch, resolver db.BatchResolver) error {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 
-	toRemove, err := txsXRollupsAgo(rollup, resolver)
+	toRemove, err := txsXBatchesAgo(batch, resolver)
 	if err != nil {
 		return fmt.Errorf("error retrieiving historic transactions. Cause: %w", err)
 	}
@@ -82,25 +82,25 @@ func (db *mempoolManager) RemoveMempoolTxs(rollup *core.Rollup, resolver db.Roll
 	return nil
 }
 
-// Returns all transactions in the rollup `HeightCommittedBlocks` deep.
-func txsXRollupsAgo(initialRollup *core.Rollup, resolver db.RollupResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
+// Returns all transactions in the batch `HeightCommittedBlocks` deep.
+func txsXBatchesAgo(initialBatch *core.Batch, resolver db.BatchResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
 	blocksDeep := 0
-	currentRollup := initialRollup
+	currentBatch := initialBatch
 	var err error
 
 	// todo - create method to return the canonical rollup from height N
 	for {
 		if blocksDeep == common.HeightCommittedBlocks {
 			// We've found the rollup `HeightCommittedBlocks` deep.
-			return core.ToMap(currentRollup.Transactions), nil
+			return core.ToMap(currentBatch.Transactions), nil
 		}
 
-		if currentRollup.Header.Number.Uint64() == common.L2GenesisHeight {
+		if currentBatch.Header.Number.Uint64() == common.L2GenesisHeight {
 			// There's less than `HeightCommittedBlocks` rollups, so there's no transactions to remove yet.
 			return map[gethcommon.Hash]gethcommon.Hash{}, nil
 		}
 
-		currentRollup, err = resolver.FetchRollup(currentRollup.Header.ParentHash)
+		currentBatch, err = resolver.FetchBatch(currentBatch.Header.ParentHash)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				return nil, fmt.Errorf("found a gap in the rollup chain")
@@ -112,8 +112,8 @@ func txsXRollupsAgo(initialRollup *core.Rollup, resolver db.RollupResolver) (map
 	}
 }
 
-// CurrentTxs - Calculate transactions to be included in the current rollup
-func (db *mempoolManager) CurrentTxs(head *core.Rollup, resolver db.RollupResolver) ([]*common.L2Tx, error) {
+// CurrentTxs - Calculate transactions to be included in the current batch
+func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.BatchResolver) ([]*common.L2Tx, error) {
 	txs, err := findTxsNotIncluded(head, db.FetchMempoolTxs(), resolver)
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func (db *mempoolManager) CurrentTxs(head *core.Rollup, resolver db.RollupResolv
 
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
 // todo - inefficient
-func findTxsNotIncluded(head *core.Rollup, txs []*common.L2Tx, s db.RollupResolver) ([]*common.L2Tx, error) {
+func findTxsNotIncluded(head *core.Batch, txs []*common.L2Tx, s db.BatchResolver) ([]*common.L2Tx, error) {
 	// go back only HeightCommittedBlocks blocks to accumulate transactions to be diffed against the mempool
 	startAt := uint64(0)
 	if head.NumberU64() > common.HeightCommittedBlocks {
@@ -137,25 +137,25 @@ func findTxsNotIncluded(head *core.Rollup, txs []*common.L2Tx, s db.RollupResolv
 	return filterOutTransactions(txs, included), nil
 }
 
-// Recursively finds all transactions included in the past stopAtHeight rollups.
-func allIncludedTransactions(rollup *core.Rollup, s db.RollupResolver, stopAtHeight uint64) (map[gethcommon.Hash]*common.L2Tx, error) {
-	if rollup.Header.Number.Uint64() == stopAtHeight {
-		return core.MakeMap(rollup.Transactions), nil
+// Recursively finds all transactions included in the past stopAtHeight batches.
+func allIncludedTransactions(batch *core.Batch, s db.BatchResolver, stopAtHeight uint64) (map[gethcommon.Hash]*common.L2Tx, error) {
+	if batch.Header.Number.Uint64() == stopAtHeight {
+		return core.MakeMap(batch.Transactions), nil
 	}
 
-	// We add this rollup's transactions to the included transactions.
+	// We add this batch's transactions to the included transactions.
 	newMap := make(map[gethcommon.Hash]*common.L2Tx)
-	for _, tx := range rollup.Transactions {
+	for _, tx := range batch.Transactions {
 		newMap[tx.Hash()] = tx
 	}
 
-	// If the rollup has a parent (i.e. it is not the genesis block), we recurse.
-	parentRollup, err := s.FetchRollup(rollup.Header.ParentHash)
+	// If the batch has a parent (i.e. it is not the genesis block), we recurse.
+	parentBatch, err := s.FetchBatch(batch.Header.ParentHash)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return nil, err
 	}
 	if err == nil {
-		txsMap, err := allIncludedTransactions(parentRollup, s, stopAtHeight)
+		txsMap, err := allIncludedTransactions(parentBatch, s, stopAtHeight)
 		if err != nil {
 			return nil, err
 		}

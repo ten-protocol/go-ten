@@ -53,11 +53,11 @@ func WriteTxLookupEntries(db ethdb.KeyValueWriter, number uint64, hashes []commo
 	return nil
 }
 
-// WriteTxLookupEntriesByRollup stores a positional metadata for every transaction from a rollup, enabling hash based
+// WriteTxLookupEntriesByBatch stores a positional metadata for every transaction from a batch, enabling hash based
 // transaction and receipt lookups.
-func WriteTxLookupEntriesByRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
-	for _, tx := range rollup.Transactions {
-		err := writeTxLookupEntry(db, tx.Hash(), rollup.Number().Bytes())
+func WriteTxLookupEntriesByBatch(db ethdb.KeyValueWriter, batch *core.Batch) error {
+	for _, tx := range batch.Transactions {
+		err := writeTxLookupEntry(db, tx.Hash(), batch.Number().Bytes())
 		if err != nil {
 			return err
 		}
