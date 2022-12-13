@@ -37,12 +37,10 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       tags: ["local"],
       deploy: [ 'deploy_l1/' ],
-      companionNetworks: {
-        layer1: 'localObscuro'
-      },
+      accounts: [ 'f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb']
     },
     localObscuro: {
-      url: "http://127.0.0.1:13001",
+      url: "http://127.0.0.1:3000",
       live: false,
       saveDeployments: true,
       tags: ["local"],
@@ -50,6 +48,10 @@ const config: HardhatUserConfig = {
       companionNetworks: {
         layer1: 'localGeth'
       },
+      accounts: [ 
+        '6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682', 
+        '4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8'
+      ]
     },
     hardhat : {
       deploy : [ 'deploy_l1/' ],
