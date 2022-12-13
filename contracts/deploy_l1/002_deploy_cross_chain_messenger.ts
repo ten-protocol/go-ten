@@ -1,7 +1,6 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import { ManagementContract } from '../typechain-types/contracts/management';
-import { ethers } from 'hardhat';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { 
@@ -13,7 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const mgmtDeployment = await deployments.get("ManagementContract");
 
-    const contract = await hre.ethers.getContract("ManagementContract");
+    const contract : ManagementContract = await hre.ethers.getContract("ManagementContract");
     const ManagementContract : ManagementContract = await contract.attach(mgmtDeployment.address);
     const busAddress = await ManagementContract.messageBus();
 
