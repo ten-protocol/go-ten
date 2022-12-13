@@ -43,7 +43,7 @@ type BatchResolver interface {
 
 type RollupResolver interface {
 	// StoreRollup stores a rollup.
-	StoreRollup(batch *core.Rollup) error
+	StoreRollup(rollup *core.Rollup) error
 }
 
 type HeadsAfterL1BlockStorage interface {
