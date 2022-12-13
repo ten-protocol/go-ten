@@ -12,13 +12,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const mgmtDeployment = await deployments.get("ManagementContract");
 
-    const contractFactory : ManagementContract = await hre.ethers.getContractFactory("ManagementContract");
-    const ManagementContract : ManagementContract = await contractFactory.attach(mgmtDeployment.address);
-    const busAddress = await ManagementContract.messageBus();
+    const messageBusAddress : string = await deployments.read("ManagementContract", {}, "messageBus");
 
     await deployments.deploy('CrossChainMessenger', {
         from: deployer,
-        args: [ busAddress ],
+        args: [ messageBusAddress ],
         log: true,
     });
 };
