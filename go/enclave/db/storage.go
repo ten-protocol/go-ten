@@ -43,17 +43,6 @@ func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logge
 	}
 }
 
-func (s *storageImpl) StoreGenesisRollupHash(rollupHash common.L2RootHash) error {
-	batch := s.db.NewBatch()
-	if err := obscurorawdb.WriteGenesisHash(s.db, rollupHash); err != nil {
-		return fmt.Errorf("could not write genesis rollup hash. Cause: %w", err)
-	}
-	if err := batch.Write(); err != nil {
-		return fmt.Errorf("could not write genesis rollup hash to storage. Cause: %w", err)
-	}
-	return nil
-}
-
 func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
 	l1Head := rawdb.ReadHeadHeaderHash(s.db)
 	if (bytes.Equal(l1Head.Bytes(), gethcommon.Hash{}.Bytes())) {

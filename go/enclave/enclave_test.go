@@ -513,9 +513,6 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(genRollup, nil); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.StoreGenesisRollupHash(*genRollup.Hash()); err != nil {
-		return err
-	}
 	if err = enclave.(*enclaveImpl).storage.UpdateL2Head(blk.Hash(), genRollup, nil); err != nil {
 		return err
 	}

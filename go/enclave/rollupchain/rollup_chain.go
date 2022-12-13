@@ -448,9 +448,6 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 	if err := rc.storage.StoreRollup(genesisRollup, nil); err != nil {
 		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
 	}
-	if err := rc.storage.StoreGenesisRollupHash(*genesisRollup.Hash()); err != nil {
-		return nil, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
-	}
 	if err := rc.storage.UpdateL2Head(block.Hash(), genesisRollup, nil); err != nil {
 		return nil, fmt.Errorf("could not store new chain heads. Cause: %w", err)
 	}
