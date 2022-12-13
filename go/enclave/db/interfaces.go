@@ -28,8 +28,8 @@ type BlockResolver interface {
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
-	// Proof - returns the block used as proof for the rollup
-	Proof(rollup *core.Rollup) (*types.Block, error)
+	// FetchLogs returns the block's logs.
+	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 }
 
 type RollupResolver interface {
@@ -47,19 +47,19 @@ type RollupResolver interface {
 	FetchGenesisRollup() (*core.Rollup, error)
 	// FetchHeadRollup returns the current head rollup
 	FetchHeadRollup() (*core.Rollup, error)
+	// Proof - returns the block used as proof for the rollup
+	Proof(rollup *core.Rollup) (*types.Block, error)
 }
 
 type HeadsAfterL1BlockStorage interface {
-	// FetchHeadRollupForL1Block returns the hash of the head rollup at a given L1 block.
-	FetchHeadRollupForL1Block(blockHash common.L1RootHash) (*common.L2RootHash, error)
-	// FetchLogs returns the block's logs.
-	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 	// FetchL2Head returns the current L2 chain head.
 	FetchL2Head() (*common.L2RootHash, error)
-	// UpdateL2HeadForL1Block updates the mapping from an L1 block to its corresponding L2 head.
-	UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt) error
+	// FetchL2HeadForL1Block returns the hash of the head rollup at a given L1 block.
+	FetchL2HeadForL1Block(blockHash common.L1RootHash) (*common.L2RootHash, error)
 	// UpdateL1Head updates the L1 head.
 	UpdateL1Head(l1Head common.L1RootHash) error
+	// UpdateL2Head updates the canonical L2 head for a given L1 block.
+	UpdateL2Head(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
@@ -94,8 +94,8 @@ type AttestationStorage interface {
 }
 
 type CrossChainMessagesStorage interface {
-	StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) error
-	GetL1Messages(blockHash gethcommon.Hash) (common.CrossChainMessages, error)
+	StoreL1Messages(blockHash common.L1RootHash, messages common.CrossChainMessages) error
+	GetL1Messages(blockHash common.L1RootHash) (common.CrossChainMessages, error)
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore

@@ -146,7 +146,7 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 
 	// We proceed in this way instead of calling `FetchHeadRollup` because we want to ensure the chain has not advanced
 	// causing a head block/head rollup mismatch.
-	l2Head, err := s.storage.FetchHeadRollupForL1Block(headBlock.Hash())
+	l2Head, err := s.storage.FetchL2HeadForL1Block(headBlock.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not filter logs as block state for head block could not be retrieved. Cause: %w", err)
 	}

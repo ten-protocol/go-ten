@@ -194,7 +194,7 @@ func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
 	return block, nil
 }
 
-func (s *storageImpl) FetchHeadRollupForL1Block(blockHash common.L1RootHash) (*common.L2RootHash, error) {
+func (s *storageImpl) FetchL2HeadForL1Block(blockHash common.L1RootHash) (*common.L2RootHash, error) {
 	return obscurorawdb.ReadL2Head(s.db, blockHash)
 }
 
@@ -207,7 +207,7 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 	return logs, nil
 }
 
-func (s *storageImpl) UpdateL2HeadForL1Block(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt) error {
+func (s *storageImpl) UpdateL2Head(l1Head common.L1RootHash, l2Head *core.Rollup, receipts []*types.Receipt) error {
 	batch := s.db.NewBatch()
 
 	if err := obscurorawdb.WriteL2Head(batch, l1Head, *l2Head.Hash()); err != nil {
@@ -363,10 +363,10 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup, receipts []*types.Receipt
 	return nil
 }
 
-func (s *storageImpl) StoreL1Messages(blockHash gethcommon.Hash, messages common.CrossChainMessages) error {
+func (s *storageImpl) StoreL1Messages(blockHash common.L1RootHash, messages common.CrossChainMessages) error {
 	return obscurorawdb.StoreL1Messages(s.db, blockHash, messages, s.logger)
 }
 
-func (s *storageImpl) GetL1Messages(blockHash gethcommon.Hash) (common.CrossChainMessages, error) {
+func (s *storageImpl) GetL1Messages(blockHash common.L1RootHash) (common.CrossChainMessages, error) {
 	return obscurorawdb.GetL1Messages(s.db, blockHash, s.logger)
 }
