@@ -14,9 +14,12 @@ var (
 	syntheticTransactionsKeyPrefix = []byte("oSTX") // attestationKeyPrefix + address -> key
 
 	batchHeaderPrefix       = []byte("oh")  // batchHeaderPrefix + num (uint64 big endian) + hash -> header
-	headerHashSuffix        = []byte("on")  // batchHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
+	batchHashSuffix         = []byte("on")  // batchHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
 	batchBodyPrefix         = []byte("ob")  // batchBodyPrefix + num (uint64 big endian) + hash -> batch body
-	batchHeaderNumberPrefix = []byte("oH")  // batchHeaderNumberPrefix + hash -> num (uint64 big endian)
+	batchNumberPrefix       = []byte("oH")  // batchNumberPrefix + hash -> num (uint64 big endian)
+	rollupHeaderPrefix      = []byte("rh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
+	rollupBodyPrefix        = []byte("rb")  // rollupBodyPrefix + num (uint64 big endian) + hash -> batch body
+	rollupNumberPrefix      = []byte("rn")  // rollupNumberPrefix + hash -> num (uint64 big endian)
 	headsAfterL1BlockPrefix = []byte("och") // headsAfterL1BlockPrefix + hash -> num (uint64 big endian)
 	logsPrefix              = []byte("olg") // logsPrefix + hash -> block logs
 	batchReceiptsPrefix     = []byte("or")  // batchReceiptsPrefix + num (uint64 big endian) + hash -> batch receipts
@@ -24,8 +27,9 @@ var (
 	txLookupPrefix          = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
 )
 
-// encodeBatchNumber encodes a batch number as big endian uint64
-func encodeBatchNumber(number uint64) []byte {
+// todo - joel - should this be here?
+// encodeNumber encodes a number as big endian uint64
+func encodeNumber(number uint64) []byte {
 	enc := make([]byte, 8)
 	binary.BigEndian.PutUint64(enc, number)
 	return enc
@@ -42,8 +46,8 @@ func batchBodyKey(hash common.L2RootHash) []byte {
 }
 
 // For storing and fetching a batch number by batch hash.
-func batchHeaderNumberKey(hash common.L2RootHash) []byte {
-	return append(batchHeaderNumberPrefix, hash.Bytes()...)
+func batchNumberKey(hash common.L2RootHash) []byte {
+	return append(batchNumberPrefix, hash.Bytes()...)
 }
 
 // For storing and fetching the L2 head hash by L1 block hash.
@@ -53,7 +57,7 @@ func headsAfterL1BlockKey(hash common.L1RootHash) []byte {
 
 // For storing and fetching the canonical L2 head hash by height.
 func batchHeaderHashKey(number uint64) []byte {
-	return append(append(batchHeaderPrefix, encodeBatchNumber(number)...), headerHashSuffix...)
+	return append(append(batchHeaderPrefix, encodeNumber(number)...), batchHashSuffix...)
 }
 
 // For storing and fetching a batch's receipts by batch hash.
@@ -81,4 +85,19 @@ func attestationPkKey(aggregator gethcommon.Address) []byte {
 
 func crossChainMessagesKey(blockHash common.L1RootHash) []byte {
 	return append(syntheticTransactionsKeyPrefix, blockHash.Bytes()...)
+}
+
+// For storing and fetching a rollup header by batch hash.
+func rollupHeaderKey(hash common.L2RootHash) []byte {
+	return append(rollupHeaderPrefix, hash.Bytes()...)
+}
+
+// For storing and fetching a rollup body by batch hash.
+func rollupBodyKey(hash common.L2RootHash) []byte {
+	return append(rollupBodyPrefix, hash.Bytes()...)
+}
+
+// For storing and fetching a rollup number by batch hash.
+func rollupNumberKey(hash common.L2RootHash) []byte {
+	return append(rollupNumberPrefix, hash.Bytes()...)
 }
