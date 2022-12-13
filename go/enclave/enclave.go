@@ -413,7 +413,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err != nil {
 		return nil, err
 	}
-	l2Head, err := e.storage.FetchHeadRollup()
+	l2Head, err := e.storage.FetchHeadBatch()
 	if err == nil {
 		// todo: we should return an error when head state is not available, but for current test situations with race
 		// 		conditions we allow it to return zero while head state is uninitialized
@@ -493,7 +493,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// Only return receipts for transactions included in the canonical chain.
-	r, err := e.storage.FetchRollupByHeight(txRollupHeight)
+	r, err := e.storage.FetchBatchByHeight(txRollupHeight)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup containing transaction. Cause: %w", err)
 	}
@@ -1059,7 +1059,7 @@ func (e *enclaveImpl) removeOldMempoolTxs(rollupHeader *common.Header) error {
 		return nil
 	}
 
-	hr, err := e.storage.FetchRollup(rollupHeader.Hash())
+	hr, err := e.storage.FetchBatch(rollupHeader.Hash())
 	if err != nil {
 		return fmt.Errorf("could not retrieve rollup. This should not happen because this rollup was just processed. Cause: %w", err)
 	}

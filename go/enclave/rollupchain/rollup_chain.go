@@ -186,7 +186,7 @@ func (rc *RollupChain) UpdateL2Chain(batch *common.ExtBatch) (*common.Header, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to check rollup. Cause: %w", err)
 	}
-	if err = rc.storage.StoreRollup(rollup, rollupTxReceipts); err != nil {
+	if err = rc.storage.StoreBatch(rollup, rollupTxReceipts); err != nil {
 		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
 	}
 	if err = rc.storage.UpdateL2Head(batch.Header.L1Proof, rollup, rollupTxReceipts); err != nil {
@@ -419,7 +419,7 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 
 // Determines if this is a pre-genesis L2 block, the genesis L2 block, or a post-genesis L2 block.
 func (rc *RollupChain) getBlockStage(rollupsInBlock []*core.Rollup) (BlockStage, error) {
-	_, err := rc.storage.FetchRollupByHeight(0)
+	_, err := rc.storage.FetchBatchByHeight(0)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return -1, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
@@ -445,7 +445,7 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 	genesisRollup := rollupsInBlock[0]
 
 	rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
-	if err := rc.storage.StoreRollup(genesisRollup, nil); err != nil {
+	if err := rc.storage.StoreBatch(genesisRollup, nil); err != nil {
 		return nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
 	}
 	if err := rc.storage.UpdateL2Head(block.Hash(), genesisRollup, nil); err != nil {
@@ -486,7 +486,7 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
-	parent, err := rc.storage.FetchRollup(rollup.Header.ParentHash)
+	parent, err := rc.storage.FetchBatch(rollup.Header.ParentHash)
 	if err != nil {
 		rc.logger.Crit("Sanity check. Rollup has no parent.", log.ErrKey, err)
 	}
@@ -620,7 +620,7 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not retrieve current head rollup hash. Cause: %w", err)
 	}
-	l2Head, err := rc.storage.FetchRollup(*l2HeadHash)
+	l2Head, err := rc.storage.FetchBatch(*l2HeadHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch parent rollup. Cause: %w", err)
 	}
@@ -642,7 +642,7 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 		if l2HeadTxReceipts, err = rc.checkRollup(l2Head); err != nil {
 			return nil, nil, fmt.Errorf("could not check rollup. Cause: %w", err)
 		}
-		if err = rc.storage.StoreRollup(l2Head, l2HeadTxReceipts); err != nil {
+		if err = rc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
 			return nil, nil, fmt.Errorf("failed to store rollup. Cause: %w", err)
 		}
 	}
@@ -726,7 +726,7 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 	var rollup *core.Rollup
 	switch height {
 	case gethrpc.EarliestBlockNumber:
-		genesisRollup, err := rc.storage.FetchRollupByHeight(0)
+		genesisRollup, err := rc.storage.FetchBatchByHeight(0)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
@@ -735,13 +735,13 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
-		headRollup, err := rc.storage.FetchHeadRollup()
+		headRollup, err := rc.storage.FetchHeadBatch()
 		if err != nil {
 			return nil, fmt.Errorf("rollup with requested height %d was not found. Cause: %w", height, err)
 		}
 		rollup = headRollup
 	default:
-		maybeRollup, err := rc.storage.FetchRollupByHeight(uint64(height))
+		maybeRollup, err := rc.storage.FetchBatchByHeight(uint64(height))
 		if err != nil {
 			return nil, fmt.Errorf("rollup with requested height %d could not be retrieved. Cause: %w", height, err)
 		}
@@ -756,7 +756,7 @@ func (rc *RollupChain) produceRollup(block *types.Block) (*core.Rollup, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head rollup hash. Cause: %w", err)
 	}
-	headRollup, err := rc.storage.FetchRollup(*headRollupHash)
+	headRollup, err := rc.storage.FetchBatch(*headRollupHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
 	}

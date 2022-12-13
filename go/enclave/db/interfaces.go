@@ -30,15 +30,15 @@ type BlockResolver interface {
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
 }
 
-type RollupResolver interface {
-	// FetchRollup returns the rollup with the given hash.
-	FetchRollup(hash common.L2RootHash) (*core.Rollup, error)
-	// FetchRollupByHeight returns the rollup on the canonical chain with the given height.
-	FetchRollupByHeight(height uint64) (*core.Rollup, error)
-	// FetchHeadRollup returns the current head rollup of the canonical chain.
-	FetchHeadRollup() (*core.Rollup, error)
-	// StoreRollup stores a rollup.
-	StoreRollup(rollup *core.Rollup, receipts []*types.Receipt) error
+type BatchResolver interface {
+	// FetchBatch returns the batch with the given hash.
+	FetchBatch(hash common.L2RootHash) (*core.Rollup, error)
+	// FetchBatchByHeight returns the batch on the canonical chain with the given height.
+	FetchBatchByHeight(height uint64) (*core.Rollup, error)
+	// FetchHeadBatch returns the current head batch of the canonical chain.
+	FetchHeadBatch() (*core.Rollup, error)
+	// StoreBatch stores a batch.
+	StoreBatch(rollup *core.Rollup, receipts []*types.Receipt) error
 }
 
 type HeadsAfterL1BlockStorage interface {
@@ -89,7 +89,7 @@ type CrossChainMessagesStorage interface {
 // Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
-	RollupResolver
+	BatchResolver
 	SharedSecretStorage
 	HeadsAfterL1BlockStorage
 	TransactionStorage

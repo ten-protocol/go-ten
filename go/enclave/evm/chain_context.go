@@ -23,7 +23,7 @@ func (occ *ObscuroChainContext) Engine() consensus.Engine {
 }
 
 func (occ *ObscuroChainContext) GetHeader(hash common.Hash, height uint64) *types.Header {
-	rol, err := occ.storage.FetchRollup(hash)
+	rol, err := occ.storage.FetchBatch(hash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil

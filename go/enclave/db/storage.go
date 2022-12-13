@@ -43,7 +43,7 @@ func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logge
 	}
 }
 
-func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
+func (s *storageImpl) FetchHeadBatch() (*core.Rollup, error) {
 	l1Head := rawdb.ReadHeadHeaderHash(s.db)
 	if (bytes.Equal(l1Head.Bytes(), gethcommon.Hash{}.Bytes())) {
 		return nil, fmt.Errorf("could not fetch L1 head hash")
@@ -52,10 +52,10 @@ func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch L2 head hash")
 	}
-	return s.FetchRollup(*l2Head)
+	return s.FetchBatch(*l2Head)
 }
 
-func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, error) {
+func (s *storageImpl) FetchBatch(hash common.L2RootHash) (*core.Rollup, error) {
 	s.assertSecretAvailable()
 	rollup, err := obscurorawdb.ReadRollup(s.db, hash)
 	if err != nil {
@@ -64,12 +64,12 @@ func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, error) 
 	return rollup, nil
 }
 
-func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, error) {
+func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Rollup, error) {
 	hash, err := obscurorawdb.ReadCanonicalHash(s.db, height)
 	if err != nil {
 		return nil, err
 	}
-	return s.FetchRollup(*hash)
+	return s.FetchBatch(*hash)
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block) {
@@ -134,7 +134,7 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 }
 
 func (s *storageImpl) HealthCheck() (bool, error) {
-	headRollup, err := s.FetchHeadRollup()
+	headRollup, err := s.FetchHeadBatch()
 	if err != nil {
 		s.logger.Error("unable to HealthCheck storage", "err", err)
 		return false, err
@@ -199,7 +199,7 @@ func (s *storageImpl) UpdateL1Head(l1Head common.L1RootHash) error {
 }
 
 func (s *storageImpl) CreateStateDB(hash common.L2RootHash) (*state.StateDB, error) {
-	rollup, err := s.FetchRollup(hash)
+	rollup, err := s.FetchBatch(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +282,7 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
 }
 
-func (s *storageImpl) StoreRollup(rollup *core.Rollup, receipts []*types.Receipt) error {
+func (s *storageImpl) StoreBatch(rollup *core.Rollup, receipts []*types.Receipt) error {
 	batch := s.db.NewBatch()
 
 	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
