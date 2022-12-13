@@ -31,8 +31,8 @@ task("run-wallet-extension", "Starts up the wallet extension docker container.")
             `--nodeHost=${parsedUrl.hostname}`,
             `--nodePortWS=${parsedUrl.port}`
         ],
-        ExposedPorts: { "3000/tcp": {} },
-        PortBindings:  { "3000/tcp": [{ "HostPort": "3000" }] }
+        ExposedPorts: { "3000/tcp": {}, "3001/tcp": {}, "3000/udp": {}, "3001/udp": {} },
+        PortBindings:  { "3000/tcp": [{ "HostPort": "3000" }], "3001/tcp": [{ "HostPort": "3001" }] }
     })
 
 

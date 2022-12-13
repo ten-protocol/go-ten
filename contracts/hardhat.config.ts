@@ -87,9 +87,6 @@ const config: HardhatUserConfig = {
     sequncer:{ // For management contract.
         default: 1,
     },
-    relayer: { // Address that will relay messages to enable boostrapping deposits.
-        default: 2,
-    }
   }
 };
 
