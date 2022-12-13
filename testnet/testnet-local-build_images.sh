@@ -20,6 +20,7 @@ command() {
     echo $@ completed
 }
 
+command docker build -t testnetobscuronet.azurecr.io/obscuronet/walletextension:latest -f "${testnet_path}/walletextension.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/gethnetwork:latest -f "${testnet_path}/gethnetwork.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/host:latest -f "${root_path}/dockerfiles/host.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest -f "${testnet_path}/contractdeployer.Dockerfile" "${root_path}" &

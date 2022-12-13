@@ -5,7 +5,6 @@ import "hardhat-abi-exporter";
 import "@solidstate/hardhat-bytecode-exporter";
 
 import 'hardhat-deploy';
-import * as hdnode from '@ethersproject/hdnode';
 import * as abigen from './scripts/abigen';
 import './scripts/run-obscuro-node.ts';
 
@@ -32,6 +31,22 @@ const config: HardhatUserConfig = {
     clear: true,
   },
   networks: {
+    simGeth: {
+      url: "http://127.0.0.1:32000",
+      live: false,
+      saveDeployments: true,
+      tags: ["local"],
+      deploy: [ 'deploy_l1/' ],
+      accounts: [ 'f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb']
+    },
+    simObscuro: {
+      url: "http://127.0.0.1:8025",
+      live: false,
+      saveDeployments: true,
+      tags: ["local"],
+      deploy: [ 'deploy_l1/' ],
+      accounts: [ 'f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb']
+    },
     localGeth: {
       url: "http://127.0.0.1:8025",
       live: false,
