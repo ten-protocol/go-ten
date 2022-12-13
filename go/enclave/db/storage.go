@@ -65,7 +65,7 @@ func (s *storageImpl) FetchBatch(hash common.L2RootHash) (*core.Batch, error) {
 }
 
 func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
-	hash, err := obscurorawdb.ReadCanonicalHash(s.db, height)
+	hash, err := obscurorawdb.ReadCanonicalBatchHash(s.db, height)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given batch.
 func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) (types.Receipts, error) {
-	number, err := obscurorawdb.ReadHeaderNumber(s.db, hash)
+	number, err := obscurorawdb.ReadBatchNumber(s.db, hash)
 	if err != nil {
 		return nil, err
 	}

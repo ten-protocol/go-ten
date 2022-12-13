@@ -58,7 +58,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, com
 		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve transaction lookup entry. Cause: %w", err)
 	}
 
-	blockHash, err := ReadCanonicalHash(db, *blockNumber)
+	blockHash, err := ReadCanonicalBatchHash(db, *blockNumber)
 	if err != nil {
 		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve canonical hash for block number. Cause: %w", err)
 	}

@@ -32,8 +32,8 @@ func ReadBatch(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Batch, er
 	}, nil
 }
 
-// ReadHeaderNumber returns the header number assigned to a hash.
-func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, error) {
+// ReadBatchNumber returns the number of a batch.
+func ReadBatchNumber(db ethdb.KeyValueReader, hash common.L2RootHash) (*uint64, error) {
 	data, err := db.Get(batchNumberKey(hash))
 	if err != nil {
 		return nil, errutil.ErrNotFound
@@ -212,8 +212,8 @@ func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) ([]*types
 	return logs, nil
 }
 
-// ReadCanonicalHash retrieves the hash of the canonical batch at a given height.
-func ReadCanonicalHash(db ethdb.Reader, number uint64) (*common.L2RootHash, error) {
+// ReadCanonicalBatchHash retrieves the hash of the canonical batch at a given height.
+func ReadCanonicalBatchHash(db ethdb.Reader, number uint64) (*common.L2RootHash, error) {
 	// Get it by hash from leveldb
 	data, err := db.Get(batchHeaderHashKey(number))
 	if err != nil {
