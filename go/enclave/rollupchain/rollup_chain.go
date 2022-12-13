@@ -713,6 +713,7 @@ func (rc *RollupChain) isValidSig(batch *core.Batch) bool {
 	}
 
 	// Batches should only be produced by the sequencer.
+	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
 	if !bytes.Equal(batch.Header.Agg.Bytes(), rc.sequencerID.Bytes()) {
 		rc.logger.Error("Batch was not produced by sequencer")
 		return false
