@@ -404,7 +404,7 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 		l2Head, err := rc.handleGenesisBlock(block, rollupsInBlock)
 		return l2Head, nil, err
 	case PostGenesis:
-		return rc.handlePostGenesisBlock(block)
+		return rc.handlePostGenesisBlock(block, rollupsInBlock)
 	}
 	return nil, nil, fmt.Errorf("unrecognised block stage")
 }
@@ -437,7 +437,10 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 	genesisRollup := rollupsInBlock[0]
 	rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
 
-	// TODO - #718 - Store actual rollup, not batch.
+	if err := rc.storage.StoreRollup(genesisRollup); err != nil {
+		return nil, fmt.Errorf("could not store genesis rollup. Cause: %w", err)
+	}
+
 	genesisBatch := &core.Batch{
 		Header:       genesisRollup.Header,
 		Transactions: genesisRollup.Transactions,
@@ -613,7 +616,7 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 }
 
 // Calculates the state after processing the provided block.
-func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2RootHash, *core.Batch, error) {
+func (rc *RollupChain) handlePostGenesisBlock(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, *core.Batch, error) {
 	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
 	// We retrieve the current L2 head.
 	l2HeadHash, err := rc.storage.FetchL2Head(block.ParentHash())
@@ -630,6 +633,12 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2Roo
 	}
 
 	// TODO - #718 - Validate any rollups in the block against the stored batches.
+
+	for _, rollup := range rollupsInBlock {
+		if err := rc.storage.StoreRollup(rollup); err != nil {
+			return nil, nil, fmt.Errorf("could not store rollup. Cause: %w", err)
+		}
+	}
 
 	// If we're the sequencer, we produce a new L2 head to replace the old one.
 	if rc.nodeType == common.Sequencer {
