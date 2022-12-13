@@ -43,3 +43,22 @@ func TestSerialiseRollup(t *testing.T) {
 		t.Errorf("rollup deserialized incorrectly\n")
 	}
 }
+
+func TestSerialiseBatch(t *testing.T) {
+	height := atomic.Value{}
+	height.Store(1)
+	batch := datagenerator.RandomBatch(nil)
+	_, read, err := rlp.EncodeToReader(&batch)
+	if err != nil {
+		panic(err)
+	}
+	r1 := common.ExtBatch{}
+
+	err = rlp.Decode(read, &r1)
+	if err != nil {
+		panic(err)
+	}
+	if r1.Hash() != batch.Hash() {
+		t.Errorf("batch deserialized incorrectly\n")
+	}
+}
