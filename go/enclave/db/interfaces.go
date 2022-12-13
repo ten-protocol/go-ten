@@ -73,13 +73,13 @@ type SharedSecretStorage interface {
 
 type TransactionStorage interface {
 	// GetTransaction - returns the positional metadata of the tx by hash
-	GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error)
+	GetTransaction(txHash common.L2TxHash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error)
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
-	GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error)
+	GetTransactionReceipt(txHash common.L2TxHash) (*types.Receipt, error)
 	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
-	GetReceiptsByHash(hash gethcommon.Hash) (types.Receipts, error)
+	GetReceiptsByHash(hash common.L2RootHash) (types.Receipts, error)
 	// GetSender returns the sender of the tx by hash
-	GetSender(txHash gethcommon.Hash) (gethcommon.Address, error)
+	GetSender(txHash common.L2TxHash) (gethcommon.Address, error)
 	// GetContractCreationTx returns the hash of the tx that created a contract
 	GetContractCreationTx(address gethcommon.Address) (*gethcommon.Hash, error)
 }
