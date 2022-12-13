@@ -7,6 +7,7 @@ import "@solidstate/hardhat-bytecode-exporter";
 import 'hardhat-deploy';
 import * as abigen from './scripts/abigen';
 import './scripts/run-obscuro-node.ts';
+import './scripts/run-wallet-extension.ts';
 
 const config: HardhatUserConfig = {
   solidity: {
