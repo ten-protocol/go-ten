@@ -67,7 +67,11 @@ func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, error) {
 }
 
 func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
-	l2Head, err := s.fetchL2Head()
+	l1Head := rawdb.ReadHeadHeaderHash(s.db)
+	if (bytes.Equal(l1Head.Bytes(), gethcommon.Hash{}.Bytes())) {
+		return nil, fmt.Errorf("could not fetch L1 head hash")
+	}
+	l2Head, err := s.FetchL2Head(l1Head)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch L2 head hash")
 	}
@@ -355,19 +359,4 @@ func (s *storageImpl) StoreL1Messages(blockHash common.L1RootHash, messages comm
 
 func (s *storageImpl) GetL1Messages(blockHash common.L1RootHash) (common.CrossChainMessages, error) {
 	return obscurorawdb.GetL1Messages(s.db, blockHash, s.logger)
-}
-
-// todo - joel - remove entirely. use `FetchL2Head` instead.
-func (s *storageImpl) fetchL2Head() (*common.L2RootHash, error) {
-	l1Head := rawdb.ReadHeadHeaderHash(s.db)
-	if (bytes.Equal(l1Head.Bytes(), gethcommon.Hash{}.Bytes())) {
-		return nil, errutil.ErrNotFound
-	}
-
-	l2Head, err := obscurorawdb.ReadL2Head(s.db, l1Head)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve block state for head. Cause: %w", err)
-	}
-
-	return l2Head, nil
 }
