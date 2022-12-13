@@ -134,12 +134,12 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 }
 
 func (s *storageImpl) HealthCheck() (bool, error) {
-	headRollup, err := s.FetchHeadBatch()
+	headBatch, err := s.FetchHeadBatch()
 	if err != nil {
 		s.logger.Error("unable to HealthCheck storage", "err", err)
 		return false, err
 	}
-	return headRollup != nil, nil
+	return headBatch != nil, nil
 }
 
 func (s *storageImpl) assertSecretAvailable() {
@@ -169,12 +169,12 @@ func (s *storageImpl) UpdateL2Head(l1Head common.L1RootHash, l2Head *core.Batch,
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
-	// We update the canonical hash of the rollup at this height.
+	// We update the canonical hash of the batch at this height.
 	if err := obscurorawdb.WriteCanonicalHash(batch, l2Head); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
 	}
 
-	// We update the block's logs, based on the rollup's logs.
+	// We update the block's logs, based on the batch's logs.
 	var logs []*types.Log
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
@@ -199,13 +199,13 @@ func (s *storageImpl) UpdateL1Head(l1Head common.L1RootHash) error {
 }
 
 func (s *storageImpl) CreateStateDB(hash common.L2RootHash) (*state.StateDB, error) {
-	rollup, err := s.FetchBatch(hash)
+	batch, err := s.FetchBatch(hash)
 	if err != nil {
 		return nil, err
 	}
 
 	// todo - snapshots?
-	statedb, err := state.New(rollup.Header.Root, s.stateDB, nil)
+	statedb, err := state.New(batch.Header.Root, s.stateDB, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}
@@ -221,7 +221,7 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	return statedb, nil
 }
 
-// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
+// GetReceiptsByHash retrieves the receipts for all transactions in a given batch.
 func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) (types.Receipts, error) {
 	number, err := obscurorawdb.ReadHeaderNumber(s.db, hash)
 	if err != nil {
@@ -286,7 +286,7 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) e
 	dbBatch := s.db.NewBatch()
 
 	if err := obscurorawdb.WriteBatch(dbBatch, batch); err != nil {
-		return fmt.Errorf("could not write rollup. Cause: %w", err)
+		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
 	if err := obscurorawdb.WriteTxLookupEntriesByBatch(dbBatch, batch); err != nil {
 		return fmt.Errorf("could not write transaction lookup entries by batch. Cause: %w", err)
