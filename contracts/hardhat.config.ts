@@ -51,17 +51,19 @@ const config: HardhatUserConfig = {
     },
     localGeth: {
       url: "http://127.0.0.1:8025",
+      chainId: 1337,
       live: false,
-      saveDeployments: false,
+      saveDeployments: true,
       tags: ["local"],
       deploy: [ 'deploy_l1/' ],
       accounts: [ 'f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb']
     },
     localObscuro: {
+      chainId: 777,
       url: "http://127.0.0.1:3000",
-      obscuroEncRpcUrl: "http://127.0.0.1:13000",
+      obscuroEncRpcUrl: "ws://host.docker.internal:13001",
       live: false,
-      saveDeployments: false,
+      saveDeployments: true,
       tags: ["local"],
       deploy: [ 'deploy_l2/' ],
       companionNetworks: {
