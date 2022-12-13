@@ -12,43 +12,43 @@ var (
 	attestationKeyPrefix           = []byte("oAK")  // attestationKeyPrefix + address -> key
 	syntheticTransactionsKeyPrefix = []byte("oSTX") // attestationKeyPrefix + address -> key
 
-	rollupHeaderPrefix       = []byte("oh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
-	headerHashSuffix         = []byte("on")  // rollupHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
-	rollupBodyPrefix         = []byte("ob")  // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
-	rollupHeaderNumberPrefix = []byte("oH")  // rollupHeaderNumberPrefix + hash -> num (uint64 big endian)
-	headsAfterL1BlockPrefix  = []byte("och") // headsAfterL1BlockPrefix + hash -> num (uint64 big endian)
-	logsPrefix               = []byte("olg") // logsPrefix + hash -> block logs
-	batchReceiptsPrefix      = []byte("or")  // batchReceiptsPrefix + num (uint64 big endian) + hash -> batch receipts
-	contractReceiptPrefix    = []byte("ocr") // contractReceiptPrefix + address -> tx hash
-	txLookupPrefix           = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
-	bloomBitsPrefix          = []byte("oB")  // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
+	batchHeaderPrefix       = []byte("oh")  // batchHeaderPrefix + num (uint64 big endian) + hash -> header
+	headerHashSuffix        = []byte("on")  // batchHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
+	batchBodyPrefix         = []byte("ob")  // batchBodyPrefix + num (uint64 big endian) + hash -> batch body
+	batchHeaderNumberPrefix = []byte("oH")  // batchHeaderNumberPrefix + hash -> num (uint64 big endian)
+	headsAfterL1BlockPrefix = []byte("och") // headsAfterL1BlockPrefix + hash -> num (uint64 big endian)
+	logsPrefix              = []byte("olg") // logsPrefix + hash -> block logs
+	batchReceiptsPrefix     = []byte("or")  // batchReceiptsPrefix + num (uint64 big endian) + hash -> batch receipts
+	contractReceiptPrefix   = []byte("ocr") // contractReceiptPrefix + address -> tx hash
+	txLookupPrefix          = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
+	bloomBitsPrefix         = []byte("oB")  // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
 )
 
-// encodeRollupNumber encodes a rollup number as big endian uint64
-func encodeRollupNumber(number uint64) []byte {
+// encodeBatchNumber encodes a batch number as big endian uint64
+func encodeBatchNumber(number uint64) []byte {
 	enc := make([]byte, 8)
 	binary.BigEndian.PutUint64(enc, number)
 	return enc
 }
 
-// headerKey = rollupHeaderPrefix + hash
+// headerKey = batchHeaderPrefix + hash
 func headerKey(hash common.Hash) []byte {
-	return append(rollupHeaderPrefix, hash.Bytes()...)
+	return append(batchHeaderPrefix, hash.Bytes()...)
 }
 
-// headerKeyPrefix = headerPrefix + num (uint64 big endian)
+// headerKeyPrefix = batchHeaderPrefix + num (uint64 big endian)
 func headerKeyPrefix(number uint64) []byte {
-	return append(rollupHeaderPrefix, encodeRollupNumber(number)...)
+	return append(batchHeaderPrefix, encodeBatchNumber(number)...)
 }
 
 // headerNumberKey = headerNumberPrefix + hash
 func headerNumberKey(hash common.Hash) []byte {
-	return append(rollupHeaderNumberPrefix, hash.Bytes()...)
+	return append(batchHeaderNumberPrefix, hash.Bytes()...)
 }
 
-// rollupBodyKey = rollupBodyPrefix + hash
-func rollupBodyKey(hash common.Hash) []byte {
-	return append(rollupBodyPrefix, hash.Bytes()...)
+// batchBodyKey = batchBodyPrefix + hash
+func batchBodyKey(hash common.Hash) []byte {
+	return append(batchBodyPrefix, hash.Bytes()...)
 }
 
 // headsAfterL1BlockKey = headsAfterL1BlockPrefix + hash
@@ -87,7 +87,7 @@ func bloomBitsKey(bit uint, section uint64, hash common.Hash) []byte {
 
 // headerHashKey = headerPrefix + num (uint64 big endian) + headerHashSuffix
 func headerHashKey(number uint64) []byte {
-	return append(append(rollupHeaderPrefix, encodeRollupNumber(number)...), headerHashSuffix...)
+	return append(append(batchHeaderPrefix, encodeBatchNumber(number)...), headerHashSuffix...)
 }
 
 func attestationPkKey(aggregator common.Address) []byte {
