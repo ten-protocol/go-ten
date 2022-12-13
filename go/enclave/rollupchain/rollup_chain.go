@@ -619,7 +619,7 @@ func (rc *RollupChain) validateRollup(rollup *core.Rollup, rootHash common.L2Roo
 func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2RootHash, *core.Rollup, error) {
 	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
 	// We retrieve the current L2 head.
-	l2HeadHash, err := rc.storage.FetchL2HeadForL1Block(block.ParentHash())
+	l2HeadHash, err := rc.storage.FetchL2Head(block.ParentHash())
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not retrieve current head rollup hash. Cause: %w", err)
 	}
@@ -738,14 +738,11 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
-		l2Head, err := rc.storage.FetchL2Head()
-		if err != nil {
-			return nil, fmt.Errorf("could not retrieve head state. Cause: %w", err)
-		}
-		rollup, err = rc.storage.FetchRollup(*l2Head)
+		headRollup, err := rc.storage.FetchHeadRollup()
 		if err != nil {
 			return nil, fmt.Errorf("rollup with requested height %d was not found. Cause: %w", height, err)
 		}
+		rollup = headRollup
 	default:
 		maybeRollup, err := rc.storage.FetchRollupByHeight(uint64(height))
 		if err != nil {
@@ -758,7 +755,7 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 
 // Creates a rollup.
 func (rc *RollupChain) produceRollup(block *types.Block) (*core.Rollup, error) {
-	headRollupHash, err := rc.storage.FetchL2HeadForL1Block(block.ParentHash())
+	headRollupHash, err := rc.storage.FetchL2Head(block.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head rollup hash. Cause: %w", err)
 	}
