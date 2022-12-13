@@ -486,7 +486,7 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
-	parent, err := rc.storage.ParentRollup(rollup)
+	parent, err := rc.storage.FetchRollup(rollup.Header.ParentHash)
 	if err != nil {
 		rc.logger.Crit("Sanity check. Rollup has no parent.", log.ErrKey, err)
 	}

@@ -107,11 +107,6 @@ func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 	return obscurorawdb.ReadSharedSecret(s.db)
 }
 
-func (s *storageImpl) ParentRollup(r *core.Rollup) (*core.Rollup, error) {
-	s.assertSecretAvailable()
-	return s.FetchRollup(r.Header.ParentHash)
-}
-
 func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, error) {
 	s.assertSecretAvailable()
 	return s.FetchBlock(b.Header().ParentHash)
