@@ -119,8 +119,8 @@ func (netw *MockP2P) SendBatches(batchMsg *host.BatchMsg, requesterAddress strin
 	return nil
 }
 
-func (netw *MockP2P) Status() map[string]map[string]int64 {
-	return map[string]map[string]int64{}
+func (netw *MockP2P) Status() *host.P2PStatus {
+	return &host.P2PStatus{}
 }
 
 func (netw *MockP2P) HealthCheck() bool {

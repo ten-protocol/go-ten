@@ -9,33 +9,32 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/go/config"
-
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/config"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 const (
 	tcp = "tcp"
-)
 
-// A P2P message's type.
-type msgType uint8
-
-const (
 	msgTypeTx msgType = iota
 	msgTypeBatches
 	msgTypeBatchRequest
 )
 
+var _peerListCoolOffPeriod = 10 * time.Second
+
+// A P2P message's type.
+type msgType uint8
+
 // Associates an encoded message to its type.
 type message struct {
+	Sender   string // TODO this needs to be authed in the future
 	Type     msgType
 	Contents []byte
 }
@@ -53,14 +52,15 @@ func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger) host.P2
 }
 
 type p2pImpl struct {
-	ourAddress        string
-	peerAddresses     []string
-	listener          net.Listener
-	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
-	nodeID            uint64
-	p2pTimeout        time.Duration
-	logger            gethlog.Logger
-	status            *status
+	ourAddress              string
+	peerAddresses           []string
+	peerAddressesLastUpdate time.Time
+	listener                net.Listener
+	listenerInterrupt       *int32 // A value of 1 indicates that new connections should not be accepted
+	nodeID                  uint64
+	p2pTimeout              time.Duration
+	logger                  gethlog.Logger
+	status                  *status
 }
 
 func (p *p2pImpl) StartListening(callback host.Host) {
@@ -90,10 +90,11 @@ func (p *p2pImpl) StopListening() error {
 func (p *p2pImpl) UpdatePeerList(newPeers []string) {
 	p.logger.Info(fmt.Sprintf("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers))
 	p.peerAddresses = newPeers
+	p.peerAddressesLastUpdate = time.Now()
 }
 
 func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
-	msg := message{Type: msgTypeTx, Contents: tx}
+	msg := message{Sender: p.ourAddress, Type: msgTypeTx, Contents: tx}
 	return p.broadcast(msg)
 }
 
@@ -103,7 +104,7 @@ func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
 
-	msg := message{Type: msgTypeBatches, Contents: encodedBatchMsg}
+	msg := message{Sender: p.ourAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
 	return p.broadcast(msg)
 }
 
@@ -116,7 +117,7 @@ func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
 	}
 
-	msg := message{Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
+	msg := message{Sender: p.ourAddress, Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
 	// TODO - #718 - Use better method to identify sequencer?
 	// TODO - #718 - Allow missing batches to be requested from peers other than sequencer?
 	return p.send(msg, p.peerAddresses[0])
@@ -128,25 +129,37 @@ func (p *p2pImpl) SendBatches(batchMsg *host.BatchMsg, to string) error {
 		return fmt.Errorf("could not encode batches using RLP. Cause: %w", err)
 	}
 
-	msg := message{Type: msgTypeBatches, Contents: encodedBatchMsg}
+	msg := message{Sender: p.ourAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
 	return p.send(msg, to)
 }
 
 // Status returns the current status of the lib
-func (p *p2pImpl) Status() map[string]map[string]int64 {
+func (p *p2pImpl) Status() *hostcommon.P2PStatus {
 	return p.status.status()
 }
 
 // HealthCheck returns whether the p2p is considered healthy
-// Currently it considers itself unhealthy if there's more than 100 failures on a given fail type
+// Currently it considers itself unhealthy
+// if there's more than 100 failures on a given fail type
+// if there's a known peer for which a message hasn't been received
 func (p *p2pImpl) HealthCheck() bool {
 	const thresholdPerFailure = 100
-	for _, failures := range p.status.status() {
-		threshold := int64(0)
-		for _, failCount := range failures {
-			threshold += failCount
-		}
-		if threshold >= thresholdPerFailure {
+	currentStatus := p.status.status()
+
+	if sumFailures(currentStatus.FailedMessageDecodes) >= thresholdPerFailure ||
+		sumFailures(currentStatus.FailedMessageReads) >= thresholdPerFailure ||
+		sumFailures(currentStatus.FailedSendMessagesPeerConnection) >= thresholdPerFailure ||
+		sumFailures(currentStatus.FailedSendMessageWrites) >= thresholdPerFailure {
+		return false
+	}
+
+	if time.Now().After(p.peerAddressesLastUpdate.Add(_peerListCoolOffPeriod)) {
+		if peerAddrs := peerNoMessage(currentStatus.ReceivedMessages, p.peerAddresses); len(peerAddrs) != 0 {
+			p.logger.Warn("not received any message from peer(s) in the alert period",
+				log.HostCmp, p.ourAddress,
+				"peers", peerAddrs,
+				"alertPeriod", _rollingPeriod,
+			)
 			return false
 		}
 	}
@@ -198,6 +211,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	case msgTypeBatchRequest:
 		callback.ReceiveBatchRequest(msg.Contents)
 	}
+	p.status.increment(_receivedMessage, msg.Sender)
 }
 
 // Broadcasts a message to all peers.

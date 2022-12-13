@@ -76,7 +76,7 @@ func (oc *ObsClient) RollupHeaderByHash(hash gethcommon.Hash) (*common.Header, e
 
 // Health returns the health of the node.
 func (oc *ObsClient) Health() (bool, error) {
-	var healthy *map[string]interface{}
+	var healthy *hostcommon.HealthCheck
 	err := oc.rpcClient.Call(&healthy, rpc.Health)
-	return (*healthy)[hostcommon.HealthNode].(bool), err
+	return (*healthy).OverallHealth, err
 }

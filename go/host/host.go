@@ -343,7 +343,7 @@ func (h *host) Stop() {
 }
 
 // HealthCheck returns whether the host, enclave and DB are healthy
-func (h *host) HealthCheck() (map[string]interface{}, error) {
+func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 	// check the enclave health, which in turn checks the DB health
 	enclaveHealthy, err := h.enclaveClient.HealthCheck()
 	if err != nil {
@@ -354,10 +354,14 @@ func (h *host) HealthCheck() (map[string]interface{}, error) {
 	// Overall health is achieved when all parts are healthy
 	obscuroNodeHealth := h.p2p.HealthCheck() && enclaveHealthy
 
-	return map[string]interface{}{
-		hostcommon.HealthNode:    obscuroNodeHealth,
-		hostcommon.HealthEnclave: enclaveHealthy,
-		hostcommon.StatusP2P:     h.p2p.Status(),
+	return &hostcommon.HealthCheck{
+		HealthCheckHost: &hostcommon.HealthCheckHost{
+			P2PStatus: h.p2p.Status(),
+		},
+		HealthCheckEnclave: &hostcommon.HealthCheckEnclave{
+			EnclaveHealthy: enclaveHealthy,
+		},
+		OverallHealth: obscuroNodeHealth,
 	}, nil
 }
 

@@ -12,12 +12,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-const (
-	HealthNode    = "HealthNode"
-	HealthEnclave = "EnclaveHealthy"
-	StatusP2P     = "P2PStatus"
-)
-
 // Host is the half of the Obscuro node that lives outside the enclave.
 type Host interface {
 	Config() *config.HostConfig
@@ -42,7 +36,7 @@ type Host interface {
 	Stop()
 
 	// HealthCheck returns the health status of the host + enclave + db
-	HealthCheck() (map[string]interface{}, error)
+	HealthCheck() (*HealthCheck, error)
 }
 
 // P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
@@ -60,7 +54,7 @@ type P2P interface {
 	SendBatches(batchMsg *BatchMsg, to string) error
 
 	// Status returns the status of the p2p communications.
-	Status() map[string]map[string]int64
+	Status() *P2PStatus
 
 	// HealthCheck returns whether the p2p lib is healthy.
 	HealthCheck() bool

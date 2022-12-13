@@ -301,9 +301,7 @@ func (c *inMemObscuroClient) addViewingKey(args []interface{}) error {
 }
 
 func (c *inMemObscuroClient) health(result interface{}) error {
-	*result.(**map[string]interface{}) = &map[string]interface{}{
-		hostcommon.HealthNode: true,
-	}
+	*result.(**hostcommon.HealthCheck) = &hostcommon.HealthCheck{OverallHealth: true}
 	return nil
 }
 
