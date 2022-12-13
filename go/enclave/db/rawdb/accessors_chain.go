@@ -15,7 +15,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
-func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash) (*core.Rollup, error) {
+func ReadBatch(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Batch, error) {
 	header, err := readHeader(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
@@ -26,7 +26,7 @@ func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash) (*core.Rollup, er
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
 	}
 
-	return &core.Rollup{
+	return &core.Batch{
 		Header:       header,
 		Transactions: body,
 	}, nil
@@ -45,11 +45,11 @@ func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, e
 	return &number, nil
 }
 
-func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
-	if err := writeHeader(db, rollup.Header); err != nil {
+func WriteBatch(db ethdb.KeyValueWriter, batch *core.Batch) error {
+	if err := writeHeader(db, batch.Header); err != nil {
 		return fmt.Errorf("could not write header. Cause: %w", err)
 	}
-	if err := writeBody(db, *rollup.Hash(), rollup.Transactions); err != nil {
+	if err := writeBody(db, *batch.Hash(), batch.Transactions); err != nil {
 		return fmt.Errorf("could not write body. Cause: %w", err)
 	}
 	return nil
@@ -151,17 +151,17 @@ func readBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, e
 	return data, nil
 }
 
-func ReadRollupsForHeight(db ethdb.Database, number uint64) ([]*core.Rollup, error) {
+func ReadBatchesForHeight(db ethdb.Database, number uint64) ([]*core.Batch, error) {
 	hashes := readAllHashes(db, number)
-	rollups := make([]*core.Rollup, len(hashes))
+	batches := make([]*core.Batch, len(hashes))
 	for i, hash := range hashes {
-		rollup, err := ReadRollup(db, hash)
+		batch, err := ReadBatch(db, hash)
 		if err != nil {
 			return nil, err
 		}
-		rollups[i] = rollup
+		batches[i] = batch
 	}
-	return rollups, nil
+	return batches, nil
 }
 
 // Retrieves all the hashes assigned to blocks at a certain heights, both canonical and reorged forks included.
@@ -245,8 +245,8 @@ func ReadCanonicalHash(db ethdb.Reader, number uint64) (*gethcommon.Hash, error)
 	return &hash, nil
 }
 
-// WriteCanonicalHash stores the hash assigned to a canonical rollup number.
-func WriteCanonicalHash(db ethdb.KeyValueWriter, l2Head *core.Rollup) error {
+// WriteCanonicalHash stores the hash assigned to a canonical batch number.
+func WriteCanonicalHash(db ethdb.KeyValueWriter, l2Head *core.Batch) error {
 	if err := db.Put(headerHashKey(l2Head.NumberU64()), l2Head.Hash().Bytes()); err != nil {
 		return fmt.Errorf("failed to store number to hash mapping. Cause: %w", err)
 	}

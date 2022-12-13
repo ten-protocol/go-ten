@@ -129,7 +129,7 @@ message SubmitBlockResponse {
 message ProduceRollupRequest {
 }
 message ProduceRollupResponse {
-  ExtRollupMsg producedRollup = 1;
+  ExtBatchMsg producedBatch = 1;
 }
 
 message SubmitTxRequest {
@@ -244,7 +244,7 @@ message AttestationReportMsg {
 }
 
 message BlockSubmissionResponseMsg {
-  ExtRollupMsg producedRollup = 1;
+  ExtBatchMsg producedBatch = 1;
   repeated SecretResponseMsg producedSecretResponses = 2;
   bytes subscribedLogs = 3;
   BlockSubmissionErrorMsg error = 4; // todo: avoid errors in Response objects, perhaps using gRPC Status responses

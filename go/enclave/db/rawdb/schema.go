@@ -18,7 +18,7 @@ var (
 	rollupHeaderNumberPrefix = []byte("oH")  // rollupHeaderNumberPrefix + hash -> num (uint64 big endian)
 	headsAfterL1BlockPrefix  = []byte("och") // headsAfterL1BlockPrefix + hash -> num (uint64 big endian)
 	logsPrefix               = []byte("olg") // logsPrefix + hash -> block logs
-	rollupReceiptsPrefix     = []byte("or")  // rollupReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
+	batchReceiptsPrefix      = []byte("or")  // batchReceiptsPrefix + num (uint64 big endian) + hash -> batch receipts
 	contractReceiptPrefix    = []byte("ocr") // contractReceiptPrefix + address -> tx hash
 	txLookupPrefix           = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
 	bloomBitsPrefix          = []byte("oB")  // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
@@ -61,9 +61,9 @@ func logsKey(hash common.Hash) []byte {
 	return append(logsPrefix, hash.Bytes()...)
 }
 
-// rollupReceiptsKey = rollupReceiptsPrefix + hash
-func rollupReceiptsKey(hash common.Hash) []byte {
-	return append(rollupReceiptsPrefix, hash.Bytes()...)
+// batchReceiptsKey = batchReceiptsPrefix + hash
+func batchReceiptsKey(hash common.Hash) []byte {
+	return append(batchReceiptsPrefix, hash.Bytes()...)
 }
 
 func contractReceiptKey(contractAddress common.Address) []byte {

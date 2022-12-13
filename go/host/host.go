@@ -519,11 +519,16 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		return nil // nothing further to process since network had no genesis
 	}
 
-	if result.ProducedRollup != nil && result.ProducedRollup.Header != nil {
+	if result.ProducedBatch != nil && result.ProducedBatch.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
-		h.publishRollup(result.ProducedRollup)
+		rollup := &common.ExtRollup{
+			Header:          result.ProducedBatch.Header,
+			TxHashes:        result.ProducedBatch.TxHashes,
+			EncryptedTxBlob: result.ProducedBatch.EncryptedTxBlob,
+		}
+		h.publishRollup(rollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.storeAndDistributeBatch(result.ProducedRollup)
+		h.storeAndDistributeBatch(result.ProducedBatch)
 	}
 
 	return nil
@@ -576,20 +581,14 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 }
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
-func (h *host) storeAndDistributeBatch(producedRollup *common.ExtRollup) {
-	batch := common.ExtBatch{
-		Header:          producedRollup.Header,
-		TxHashes:        producedRollup.TxHashes,
-		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
-	}
-
-	err := h.db.AddBatchHeader(&batch)
+func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
+	err := h.db.AddBatchHeader(producedBatch)
 	if err != nil {
 		h.logger.Error("could not store batch", log.ErrKey, err)
 	}
 
 	batchMsg := hostcommon.BatchMsg{
-		Batches:   []*common.ExtBatch{&batch},
+		Batches:   []*common.ExtBatch{producedBatch},
 		IsCatchUp: false,
 	}
 	err = h.p2p.BroadcastBatch(&batchMsg)
@@ -613,7 +612,13 @@ func (h *host) initialiseProtocol(block *types.Block) error {
 	h.publishRollup(genesisRollup)
 
 	// Distribute the corresponding genesis batch.
-	h.storeAndDistributeBatch(genesisRollup)
+	// todo - joel - should I be sending around the genesis batch?
+	batch := &common.ExtBatch{
+		Header:          genesisRollup.Header,
+		TxHashes:        genesisRollup.TxHashes,
+		EncryptedTxBlob: genesisRollup.EncryptedTxBlob,
+	}
+	h.storeAndDistributeBatch(batch)
 
 	return nil
 }

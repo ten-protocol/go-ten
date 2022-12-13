@@ -276,10 +276,10 @@ func (bridge *Bridge) ExtractDeposits(
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
+func (bridge *Bridge) BatchPostProcessingWithdrawals(newHeadBatch *core.Batch, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
 	w := make([]common.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
-	for _, t := range newHeadRollup.Transactions {
+	for _, t := range newHeadBatch.Transactions {
 		found, address, amount := erc20contractlib.DecodeTransferTx(t, bridge.logger)
 
 		supportedTokenAddress := bridge.L1Address(t.To())

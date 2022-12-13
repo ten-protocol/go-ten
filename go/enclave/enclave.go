@@ -260,7 +260,7 @@ func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.
-	newL2Head, producedRollup, err := e.chain.ProcessL1Block(block, receipts, isLatest)
+	newL2Head, producedBatch, err := e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
 		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
@@ -268,22 +268,18 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
 
 	// We prepare the block submission response.
-	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedRollup)
+	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	// We remove any transactions considered immune to re-orgs from the mempool.
-	if blockSubmissionResponse.ProducedRollup != nil {
-		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedRollup.Header)
+	if blockSubmissionResponse.ProducedBatch != nil {
+		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedBatch.Header)
 		if err != nil {
 			return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
 		}
 	}
 
 	return blockSubmissionResponse, nil
-}
-
-func (e *enclaveImpl) ProduceRollup() (*common.ExtRollup, error) {
-	return nil, errutil.ErrNoImpl
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -1071,19 +1067,19 @@ func (e *enclaveImpl) removeOldMempoolTxs(rollupHeader *common.Header) error {
 	return nil
 }
 
-func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, producedRollup *core.Rollup) *common.BlockSubmissionResponse {
+func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
 	if l2Head == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return &common.BlockSubmissionResponse{}
 	}
 
-	var producedExtRollup common.ExtRollup
-	if producedRollup != nil {
-		producedExtRollup = producedRollup.ToExtRollup(e.transactionBlobCrypto)
+	var producedExtBatch common.ExtBatch
+	if producedBatch != nil {
+		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
 	}
 
 	return &common.BlockSubmissionResponse{
-		ProducedRollup: &producedExtRollup,
+		ProducedBatch:  &producedExtBatch,
 		SubscribedLogs: e.getEncryptedLogs(*block, l2Head),
 	}
 }

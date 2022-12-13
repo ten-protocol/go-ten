@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	common2 "github.com/obscuronet/go-obscuro/go/common"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -12,10 +14,9 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-// HasReceipts verifies the existence of all the transaction receipts belonging
-// to a block.
+// HasReceipts verifies the existence of all the transaction receipts belonging to a batch.
 func HasReceipts(db ethdb.Reader, hash common.Hash) (bool, error) {
-	has, err := db.Has(rollupReceiptsKey(hash))
+	has, err := db.Has(batchReceiptsKey(hash))
 	if err != nil {
 		return false, err
 	}
@@ -25,9 +26,9 @@ func HasReceipts(db ethdb.Reader, hash common.Hash) (bool, error) {
 	return true, nil
 }
 
-// ReadReceiptsRLP retrieves all the transaction receipts belonging to a block in RLP encoding.
+// ReadReceiptsRLP retrieves all the transaction receipts belonging to a batch in RLP encoding.
 func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash) (rlp.RawValue, error) {
-	data, err := db.Get(rollupReceiptsKey(hash))
+	data, err := db.Get(batchReceiptsKey(hash))
 	if err != nil {
 		return nil, fmt.Errorf("could not read receipts. Cause: %w", err)
 	}
@@ -79,8 +80,8 @@ func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *para
 	return receipts, nil
 }
 
-// WriteReceipts stores all the transaction receipts belonging to a block.
-func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, receipts types.Receipts) error {
+// WriteReceipts stores all the transaction receipts belonging to a batch.
+func WriteReceipts(db ethdb.KeyValueWriter, hash common2.L2RootHash, receipts types.Receipts) error {
 	// Convert the receipts into their storage form and serialize them
 	storageReceipts := make([]*types.ReceiptForStorage, len(receipts))
 	for i, receipt := range receipts {
@@ -91,7 +92,7 @@ func WriteReceipts(db ethdb.KeyValueWriter, hash common.Hash, receipts types.Rec
 		return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 	}
 	// Store the flattened receipt slice
-	if err = db.Put(rollupReceiptsKey(hash), bytes); err != nil {
+	if err = db.Put(batchReceiptsKey(hash), bytes); err != nil {
 		return fmt.Errorf("failed to store block receipts. Cause: %w", err)
 	}
 	return nil
@@ -120,9 +121,9 @@ func ReadContractTransaction(db ethdb.Reader, address common.Address) (*common.H
 	return &hash, nil
 }
 
-// DeleteReceipts removes all receipt data associated with a block hash.
-func DeleteReceipts(db ethdb.KeyValueWriter, hash common.Hash, number uint64) error {
-	if err := db.Delete(rollupReceiptsKey(hash)); err != nil {
+// DeleteReceipts removes all receipt data associated with a batch hash.
+func DeleteReceipts(db ethdb.KeyValueWriter, hash common.Hash) error {
+	if err := db.Delete(batchReceiptsKey(hash)); err != nil {
 		return fmt.Errorf("failed to delete block receipts. Cause: %w", err)
 	}
 	return nil
