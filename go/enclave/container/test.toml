@@ -1,4 +1,4 @@
-hostID = "0x0000000000000000000000000000000000000000"
+hostID = "0x0000000000000000000000000000000000000001"
 hostAddress = "127.0.0.1:10000"
 address = "127.0.0.1:11000"
 nodeType = "sequencer"
@@ -12,3 +12,4 @@ erc20ContractAddresses = []
 logLevel = 3
 logPath = "enclave_logs.txt"
 useInMemoryDb = true
+sequencerID = "0x0000000000000000000000000000000000000000"
