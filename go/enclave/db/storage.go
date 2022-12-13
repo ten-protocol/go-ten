@@ -65,7 +65,7 @@ func (s *storageImpl) FetchBatch(hash common.L2RootHash) (*core.Batch, error) {
 }
 
 func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
-	hash, err := obscurorawdb.ReadCanonicalHash(s.db, height)
+	hash, err := obscurorawdb.ReadCanonicalBatchHash(s.db, height)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given batch.
 func (s *storageImpl) GetReceiptsByHash(hash gethcommon.Hash) (types.Receipts, error) {
-	number, err := obscurorawdb.ReadHeaderNumber(s.db, hash)
+	number, err := obscurorawdb.ReadBatchNumber(s.db, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -310,4 +310,17 @@ func (s *storageImpl) StoreL1Messages(blockHash common.L1RootHash, messages comm
 
 func (s *storageImpl) GetL1Messages(blockHash common.L1RootHash) (common.CrossChainMessages, error) {
 	return obscurorawdb.GetL1Messages(s.db, blockHash, s.logger)
+}
+
+func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
+	batch := s.db.NewBatch()
+
+	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
+		return fmt.Errorf("could not write rollup. Cause: %w", err)
+	}
+
+	if err := batch.Write(); err != nil {
+		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
+	}
+	return nil
 }
