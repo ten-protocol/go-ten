@@ -517,11 +517,16 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		return nil // nothing further to process since network had no genesis
 	}
 
-	if result.ProducedRollup != nil && result.ProducedRollup.Header != nil {
+	if result.ProducedBatch != nil && result.ProducedBatch.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
-		h.publishRollup(result.ProducedRollup)
+		rollup := &common.ExtRollup{
+			Header:          result.ProducedBatch.Header,
+			TxHashes:        result.ProducedBatch.TxHashes,
+			EncryptedTxBlob: result.ProducedBatch.EncryptedTxBlob,
+		}
+		h.publishRollup(rollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.storeAndDistributeBatch(result.ProducedRollup)
+		h.storeAndDistributeBatch(result.ProducedBatch)
 	}
 
 	return nil
@@ -574,20 +579,14 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 }
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
-func (h *host) storeAndDistributeBatch(producedRollup *common.ExtRollup) {
-	batch := common.ExtBatch{
-		Header:          producedRollup.Header,
-		TxHashes:        producedRollup.TxHashes,
-		EncryptedTxBlob: producedRollup.EncryptedTxBlob,
-	}
-
-	err := h.db.AddBatchHeader(&batch)
+func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
+	err := h.db.AddBatchHeader(producedBatch)
 	if err != nil {
 		h.logger.Error("could not store batch", log.ErrKey, err)
 	}
 
 	batchMsg := hostcommon.BatchMsg{
-		Batches:   []*common.ExtBatch{&batch},
+		Batches:   []*common.ExtBatch{producedBatch},
 		IsCatchUp: false,
 	}
 	err = h.p2p.BroadcastBatch(&batchMsg)
@@ -610,8 +609,14 @@ func (h *host) initialiseProtocol(block *types.Block) error {
 	// Publish the genesis rollup.
 	h.publishRollup(genesisRollup)
 
-	// Distribute the corresponding genesis batch.
-	h.storeAndDistributeBatch(genesisRollup)
+	// Distribute the corresponding genesis batch. Although the enclave retrieves the genesis batch from the L1 blocks,
+	// we need it stored to power various API calls.
+	batch := &common.ExtBatch{
+		Header:          genesisRollup.Header,
+		TxHashes:        genesisRollup.TxHashes,
+		EncryptedTxBlob: genesisRollup.EncryptedTxBlob,
+	}
+	h.storeAndDistributeBatch(batch)
 
 	return nil
 }
@@ -874,6 +879,14 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	}
 
 	for _, batch := range batchMsg.Batches {
+		// The enclave retrieves the genesis from the L1 chain, so we do not need to submit it.
+		if batch.Header.Number == big.NewInt(int64(common.L2GenesisHeight)) {
+			if err = h.db.AddBatchHeader(batch); err != nil {
+				return fmt.Errorf("could not store genesis batch header. Cause: %w", err)
+			}
+			continue
+		}
+
 		// TODO - #718 - Consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
 
 		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them

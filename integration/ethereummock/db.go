@@ -116,6 +116,10 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor c
 	return n.IsBlockAncestor(p, maybeAncestor)
 }
 
+func (n *blockResolverInMem) FetchLogs(common.L1RootHash) ([]*types.Log, error) {
+	return nil, errutil.ErrNoImpl
+}
+
 // The cache of included transactions
 type txDBInMem struct {
 	transactionsPerBlockCache map[common.L1RootHash]map[common.TxHash]*types.Transaction
@@ -163,7 +167,7 @@ func (m *Node) removeCommittedTransactions(
 			break
 		}
 
-		p, err := resolver.ParentBlock(b)
+		p, err := resolver.FetchBlock(b.ParentHash())
 		if err != nil {
 			m.logger.Crit("Could not retrieve parent block.", log.ErrKey, err)
 		}

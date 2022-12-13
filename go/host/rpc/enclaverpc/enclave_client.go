@@ -185,19 +185,6 @@ func (c *Client) SubmitL1Block(block types.Block, receipts types.Receipts, isLat
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) ProduceRollup() (*common.ExtRollup, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.ProduceRollup(timeoutCtx, &generated.ProduceRollupRequest{})
-	if err != nil {
-		return nil, fmt.Errorf("could not produce rollup. Cause: %w", err)
-	}
-
-	rollup := rpc.FromExtRollupMsg(response.ProducedRollup)
-	return rollup, nil
-}
-
 func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

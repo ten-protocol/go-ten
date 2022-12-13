@@ -1,0 +1,83 @@
+package core //nolint:dupl
+
+import (
+	"math/big"
+	"sync/atomic"
+	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common"
+)
+
+// Batch Data structure only for the internal use of the enclave since transactions are in clear
+// Making changes to this struct will require GRPC + GRPC Converters regen
+type Batch struct {
+	Header *common.Header
+
+	hash atomic.Value
+	// size   atomic.Value
+
+	Transactions []*common.L2Tx
+}
+
+// Hash returns the keccak256 hash of b's header.
+// The hash is computed on the first call and cached thereafter.
+func (b *Batch) Hash() *common.L2RootHash {
+	// Temporarily disabling the caching of the hash because it's causing bugs.
+	// Transforming a Batch to an ExtBatch and then back to a Batch will generate a different hash if caching is enabled.
+	// Todo - re-enable
+	//if hash := b.hash.Load(); hash != nil {
+	//	return hash.(common.L2RootHash)
+	//}
+	v := b.Header.Hash()
+	b.hash.Store(v)
+	return &v
+}
+
+func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }
+func (b *Batch) Number() *big.Int  { return new(big.Int).Set(b.Header.Number) }
+
+func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.TransactionBlobCrypto) common.ExtBatch {
+	txHashes := make([]gethcommon.Hash, len(b.Transactions))
+	for idx, tx := range b.Transactions {
+		txHashes[idx] = tx.Hash()
+	}
+
+	return common.ExtBatch{
+		Header:          b.Header,
+		TxHashes:        txHashes,
+		EncryptedTxBlob: transactionBlobCrypto.Encrypt(b.Transactions),
+	}
+}
+
+func ToEnclaveBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.TransactionBlobCrypto) *Batch {
+	return &Batch{
+		Header:       extBatch.Header,
+		Transactions: transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob),
+	}
+}
+
+func EmptyBatch(agg gethcommon.Address, parent *common.Header, blkHash gethcommon.Hash, nonce common.Nonce) (*Batch, error) {
+	rand, err := crypto.GeneratePublicRandomness()
+	if err != nil {
+		return nil, err
+	}
+	h := common.Header{
+		Agg:        agg,
+		ParentHash: parent.Hash(),
+		L1Proof:    blkHash,
+		Number:     big.NewInt(0).Add(parent.Number, big.NewInt(1)),
+		// TODO - Consider how this time should align with the time of the L1 block used as proof.
+		Time: uint64(time.Now().Unix()),
+		// generate true randomness inside the enclave.
+		// note that this randomness will be published in the header of the batch.
+		// the randomness exposed to smart contract is combining this with the shared secret.
+		MixDigest: gethcommon.BytesToHash(rand),
+	}
+	b := Batch{
+		Header: &h,
+	}
+	return &b, nil
+}

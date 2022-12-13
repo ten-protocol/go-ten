@@ -80,7 +80,7 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	subscription.Filter.ToBlock = nil
 
 	// We set the FromBlock to the current rollup height, so that historical logs aren't returned.
-	rollup, err := s.storage.FetchHeadRollup()
+	rollup, err := s.storage.FetchHeadBatch()
 	if err != nil {
 		return fmt.Errorf("unable to fetch head rollup. Cause: %w", err)
 	}
@@ -146,7 +146,7 @@ func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filte
 
 	// We proceed in this way instead of calling `FetchHeadRollup` because we want to ensure the chain has not advanced
 	// causing a head block/head rollup mismatch.
-	l2Head, err := s.storage.FetchHeadRollupForL1Block(headBlock.Hash())
+	l2Head, err := s.storage.FetchL2Head(headBlock.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not filter logs as block state for head block could not be retrieved. Cause: %w", err)
 	}
