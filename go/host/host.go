@@ -611,8 +611,8 @@ func (h *host) initialiseProtocol(block *types.Block) error {
 	// Publish the genesis rollup.
 	h.publishRollup(genesisRollup)
 
-	// Distribute the corresponding genesis batch.
-	// todo - joel - should I be sending around the genesis batch?
+	// Distribute the corresponding genesis batch. Although the enclave retrieves the genesis batch from the L1 blocks,
+	// we need it stored to power various API calls.
 	batch := &common.ExtBatch{
 		Header:          genesisRollup.Header,
 		TxHashes:        genesisRollup.TxHashes,
@@ -881,6 +881,14 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	}
 
 	for _, batch := range batchMsg.Batches {
+		// The enclave retrieves the genesis from the L1 chain, so we do not need to submit it.
+		if batch.Header.Number == big.NewInt(int64(common.L2GenesisHeight)) {
+			if err = h.db.AddBatchHeader(batch); err != nil {
+				return fmt.Errorf("could not store genesis batch header. Cause: %w", err)
+			}
+			continue
+		}
+
 		// TODO - #718 - Consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
 
 		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
