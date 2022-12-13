@@ -419,7 +419,7 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 
 // Determines if this is a pre-genesis L2 block, the genesis L2 block, or a post-genesis L2 block.
 func (rc *RollupChain) getBlockStage(rollupsInBlock []*core.Rollup) (BlockStage, error) {
-	_, err := rc.storage.FetchGenesisRollup()
+	_, err := rc.storage.FetchRollupByHeight(0)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return -1, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
@@ -729,7 +729,7 @@ func (rc *RollupChain) getRollup(height gethrpc.BlockNumber) (*core.Rollup, erro
 	var rollup *core.Rollup
 	switch height {
 	case gethrpc.EarliestBlockNumber:
-		genesisRollup, err := rc.storage.FetchGenesisRollup()
+		genesisRollup, err := rc.storage.FetchRollupByHeight(0)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}

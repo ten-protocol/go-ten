@@ -54,18 +54,6 @@ func (s *storageImpl) StoreGenesisRollupHash(rollupHash common.L2RootHash) error
 	return nil
 }
 
-func (s *storageImpl) FetchGenesisRollup() (*core.Rollup, error) {
-	hash, err := obscurorawdb.ReadGenesisHash(s.db)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
-	}
-	rollup, err := s.FetchRollup(*hash)
-	if err != nil {
-		return nil, err
-	}
-	return rollup, nil
-}
-
 func (s *storageImpl) FetchHeadRollup() (*core.Rollup, error) {
 	l1Head := rawdb.ReadHeadHeaderHash(s.db)
 	if (bytes.Equal(l1Head.Bytes(), gethcommon.Hash{}.Bytes())) {
@@ -88,14 +76,6 @@ func (s *storageImpl) FetchRollup(hash common.L2RootHash) (*core.Rollup, error) 
 }
 
 func (s *storageImpl) FetchRollupByHeight(height uint64) (*core.Rollup, error) {
-	if height == 0 {
-		genesisRollup, err := s.FetchGenesisRollup()
-		if err != nil {
-			return nil, fmt.Errorf("could not fetch genesis rollup. Cause: %w", err)
-		}
-		return genesisRollup, nil
-	}
-
 	hash, err := obscurorawdb.ReadCanonicalHash(s.db, height)
 	if err != nil {
 		return nil, err
