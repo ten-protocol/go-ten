@@ -3,7 +3,8 @@ package rawdb
 import (
 	"encoding/binary"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 var (
@@ -21,7 +22,6 @@ var (
 	batchReceiptsPrefix     = []byte("or")  // batchReceiptsPrefix + num (uint64 big endian) + hash -> batch receipts
 	contractReceiptPrefix   = []byte("ocr") // contractReceiptPrefix + address -> tx hash
 	txLookupPrefix          = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
-	bloomBitsPrefix         = []byte("oB")  // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
 )
 
 // encodeBatchNumber encodes a batch number as big endian uint64
@@ -31,69 +31,54 @@ func encodeBatchNumber(number uint64) []byte {
 	return enc
 }
 
-// headerKey = batchHeaderPrefix + hash
-func headerKey(hash common.Hash) []byte {
+// For storing and fetching a batch header by batch hash.
+func batchHeaderKey(hash common.L2RootHash) []byte {
 	return append(batchHeaderPrefix, hash.Bytes()...)
 }
 
-// headerKeyPrefix = batchHeaderPrefix + num (uint64 big endian)
-func headerKeyPrefix(number uint64) []byte {
-	return append(batchHeaderPrefix, encodeBatchNumber(number)...)
-}
-
-// headerNumberKey = headerNumberPrefix + hash
-func headerNumberKey(hash common.Hash) []byte {
-	return append(batchHeaderNumberPrefix, hash.Bytes()...)
-}
-
-// batchBodyKey = batchBodyPrefix + hash
-func batchBodyKey(hash common.Hash) []byte {
+// For storing and fetching a batch body by batch hash.
+func batchBodyKey(hash common.L2RootHash) []byte {
 	return append(batchBodyPrefix, hash.Bytes()...)
 }
 
-// headsAfterL1BlockKey = headsAfterL1BlockPrefix + hash
-func headsAfterL1BlockKey(hash common.Hash) []byte {
+// For storing and fetching a batch number by batch hash.
+func batchHeaderNumberKey(hash common.L2RootHash) []byte {
+	return append(batchHeaderNumberPrefix, hash.Bytes()...)
+}
+
+// For storing and fetching the L2 head hash by L1 block hash.
+func headsAfterL1BlockKey(hash common.L1RootHash) []byte {
 	return append(headsAfterL1BlockPrefix, hash.Bytes()...)
 }
 
-// logsKey = logsPrefix + hash
-func logsKey(hash common.Hash) []byte {
-	return append(logsPrefix, hash.Bytes()...)
+// For storing and fetching the canonical L2 head hash by height.
+func batchHeaderHashKey(number uint64) []byte {
+	return append(append(batchHeaderPrefix, encodeBatchNumber(number)...), headerHashSuffix...)
 }
 
-// batchReceiptsKey = batchReceiptsPrefix + hash
-func batchReceiptsKey(hash common.Hash) []byte {
+// For storing and fetching a batch's receipts by batch hash.
+func batchReceiptsKey(hash common.L2RootHash) []byte {
 	return append(batchReceiptsPrefix, hash.Bytes()...)
 }
 
-func contractReceiptKey(contractAddress common.Address) []byte {
+// logsPrefix + hash
+func logsKey(hash common.L1RootHash) []byte {
+	return append(logsPrefix, hash.Bytes()...)
+}
+
+func contractReceiptKey(contractAddress gethcommon.Address) []byte {
 	return append(contractReceiptPrefix, contractAddress.Bytes()...)
 }
 
 // txLookupKey = txLookupPrefix + hash
-func txLookupKey(hash common.Hash) []byte {
+func txLookupKey(hash common.TxHash) []byte {
 	return append(txLookupPrefix, hash.Bytes()...)
 }
 
-// bloomBitsKey = bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash
-func bloomBitsKey(bit uint, section uint64, hash common.Hash) []byte {
-	key := append(append(bloomBitsPrefix, make([]byte, 10)...), hash.Bytes()...)
-
-	binary.BigEndian.PutUint16(key[1:], uint16(bit))
-	binary.BigEndian.PutUint64(key[3:], section)
-
-	return key
-}
-
-// headerHashKey = headerPrefix + num (uint64 big endian) + headerHashSuffix
-func headerHashKey(number uint64) []byte {
-	return append(append(batchHeaderPrefix, encodeBatchNumber(number)...), headerHashSuffix...)
-}
-
-func attestationPkKey(aggregator common.Address) []byte {
+func attestationPkKey(aggregator gethcommon.Address) []byte {
 	return append(attestationKeyPrefix, aggregator.Bytes()...)
 }
 
-func crossChainMessagesKey(blockHash common.Hash) []byte {
+func crossChainMessagesKey(blockHash common.L1RootHash) []byte {
 	return append(syntheticTransactionsKeyPrefix, blockHash.Bytes()...)
 }

@@ -41,6 +41,11 @@ type BatchResolver interface {
 	StoreBatch(batch *core.Batch, receipts []*types.Receipt) error
 }
 
+type RollupResolver interface {
+	// StoreRollup stores a rollup.
+	StoreRollup(batch *core.Rollup) error
+}
+
 type HeadsAfterL1BlockStorage interface {
 	// FetchL2Head returns the hash of the head batch at a given L1 block.
 	FetchL2Head(blockHash common.L1RootHash) (*common.L2RootHash, error)
@@ -90,6 +95,7 @@ type CrossChainMessagesStorage interface {
 type Storage interface {
 	BlockResolver
 	BatchResolver
+	RollupResolver
 	SharedSecretStorage
 	HeadsAfterL1BlockStorage
 	TransactionStorage

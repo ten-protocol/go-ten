@@ -311,3 +311,17 @@ func (s *storageImpl) StoreL1Messages(blockHash common.L1RootHash, messages comm
 func (s *storageImpl) GetL1Messages(blockHash common.L1RootHash) (common.CrossChainMessages, error) {
 	return obscurorawdb.GetL1Messages(s.db, blockHash, s.logger)
 }
+
+func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
+	// todo - joel
+	//batch := s.db.NewBatch()
+	//
+	//if err := obscurorawdb.WriteBatch(batch, rollup); err != nil {
+	//	return fmt.Errorf("could not write rollup. Cause: %w", err)
+	//}
+	//
+	//if err := batch.Write(); err != nil {
+	//	return fmt.Errorf("could not write batch to storage. Cause: %w", err)
+	//}
+	return nil
+}

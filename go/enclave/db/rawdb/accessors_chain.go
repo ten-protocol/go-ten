@@ -34,7 +34,7 @@ func ReadBatch(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Batch, er
 
 // ReadHeaderNumber returns the header number assigned to a hash.
 func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, error) {
-	data, err := db.Get(headerNumberKey(hash))
+	data, err := db.Get(batchHeaderNumberKey(hash))
 	if err != nil {
 		return nil, errutil.ErrNotFound
 	}
@@ -57,11 +57,8 @@ func WriteBatch(db ethdb.KeyValueWriter, batch *core.Batch) error {
 
 // Stores a batch header into the database and also stores the hash-to-number mapping.
 func writeHeader(db ethdb.KeyValueWriter, header *common.Header) error {
-	hash := header.Hash()
-	number := header.Number.Uint64()
-
 	// Write the hash -> number mapping
-	err := writeHeaderNumber(db, hash, number)
+	err := writeHeaderNumber(db, header.Hash(), header.Number.Uint64())
 	if err != nil {
 		return fmt.Errorf("could not write header number. Cause: %w", err)
 	}
@@ -71,7 +68,7 @@ func writeHeader(db ethdb.KeyValueWriter, header *common.Header) error {
 	if err != nil {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
-	key := headerKey(hash)
+	key := batchHeaderKey(header.Hash())
 	if err = db.Put(key, data); err != nil {
 		return fmt.Errorf("could not put header in DB. Cause: %w", err)
 	}
@@ -80,7 +77,7 @@ func writeHeader(db ethdb.KeyValueWriter, header *common.Header) error {
 
 // Stores the hash->number mapping.
 func writeHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
-	key := headerNumberKey(hash)
+	key := batchHeaderNumberKey(hash)
 	enc := encodeBatchNumber(number)
 	if err := db.Put(key, enc); err != nil {
 		return fmt.Errorf("could not put header number in DB. Cause: %w", err)
@@ -103,7 +100,7 @@ func readHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header
 
 // Retrieves a block header in its raw RLP database encoding.
 func readHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
-	data, err := db.Get(headerKey(hash))
+	data, err := db.Get(batchHeaderKey(hash))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block header. Cause: %w", err)
 	}
@@ -149,35 +146,6 @@ func readBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawValue,
 		return nil, fmt.Errorf("could not retrieve batch body from DB. Cause: %w", err)
 	}
 	return data, nil
-}
-
-func ReadBatchesForHeight(db ethdb.Database, number uint64) ([]*core.Batch, error) {
-	hashes := readAllHashes(db, number)
-	batches := make([]*core.Batch, len(hashes))
-	for i, hash := range hashes {
-		batch, err := ReadBatch(db, hash)
-		if err != nil {
-			return nil, err
-		}
-		batches[i] = batch
-	}
-	return batches, nil
-}
-
-// Retrieves all the hashes assigned to blocks at a certain heights, both canonical and reorged forks included.
-func readAllHashes(db ethdb.Iteratee, number uint64) []gethcommon.Hash {
-	prefix := headerKeyPrefix(number)
-
-	hashes := make([]gethcommon.Hash, 0, 1)
-	it := db.NewIterator(prefix, nil)
-	defer it.Release()
-
-	for it.Next() {
-		if key := it.Key(); len(key) == len(prefix)+32 {
-			hashes = append(hashes, gethcommon.BytesToHash(key[len(key)-32:]))
-		}
-	}
-	return hashes
 }
 
 func WriteL2Head(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
@@ -234,10 +202,10 @@ func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) ([]*types
 	return logs, nil
 }
 
-// ReadCanonicalHash retrieves the hash assigned to a canonical block number.
-func ReadCanonicalHash(db ethdb.Reader, number uint64) (*gethcommon.Hash, error) {
+// ReadCanonicalHash retrieves the hash of the canonical batch at a given height.
+func ReadCanonicalHash(db ethdb.Reader, number uint64) (*common.L2RootHash, error) {
 	// Get it by hash from leveldb
-	data, err := db.Get(headerHashKey(number))
+	data, err := db.Get(batchHeaderHashKey(number))
 	if err != nil {
 		return nil, errutil.ErrNotFound
 	}
@@ -247,16 +215,8 @@ func ReadCanonicalHash(db ethdb.Reader, number uint64) (*gethcommon.Hash, error)
 
 // WriteCanonicalHash stores the hash assigned to a canonical batch number.
 func WriteCanonicalHash(db ethdb.KeyValueWriter, l2Head *core.Batch) error {
-	if err := db.Put(headerHashKey(l2Head.NumberU64()), l2Head.Hash().Bytes()); err != nil {
+	if err := db.Put(batchHeaderHashKey(l2Head.NumberU64()), l2Head.Hash().Bytes()); err != nil {
 		return fmt.Errorf("failed to store number to hash mapping. Cause: %w", err)
-	}
-	return nil
-}
-
-// DeleteCanonicalHash removes the number to hash canonical mapping.
-func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64) error {
-	if err := db.Delete(headerHashKey(number)); err != nil {
-		return fmt.Errorf("failed to delete number to hash mapping. Cause: %w", err)
 	}
 	return nil
 }
