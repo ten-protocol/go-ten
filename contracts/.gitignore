@@ -20,3 +20,4 @@ yalc.lock
 typechain-types/
 tsconfig.json
 package-lock.json
+exported/

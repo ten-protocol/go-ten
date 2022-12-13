@@ -5,8 +5,8 @@ import { HardhatPluginError } from 'hardhat/plugins';
 import { spawnSync } from "node:child_process";
 import * as fs from "fs";
 
-const abiExportPath = "./artifacts/abi/";
-const bytecodeExporterPath = "./artifacts/bin/"
+export const abiExportPath = "./exported/";
+export const bytecodeExporterPath = "./exported/"
 
 task("generate-abi-bindings", "Using the evm bytecode and exported abi's of the contract export go bindings.")
 .addFlag('noCompile', 'Don\'t compile before running this task')
