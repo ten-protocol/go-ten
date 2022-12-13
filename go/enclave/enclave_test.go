@@ -507,13 +507,13 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	}
 
 	// make sure the genesis is stored the rollup storage
-	genRollup := dummyRollup(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
+	genBatch := dummyBatch(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
 
 	// make sure the genesis is stored as the new Head of the rollup chain
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(genRollup, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.StoreBatch(genBatch, nil); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.UpdateL2Head(blk.Hash(), genRollup, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.UpdateL2Head(blk.Hash(), genBatch, nil); err != nil {
 		return err
 	}
 	return enclave.(*enclaveImpl).storage.UpdateL1Head(blk.Hash())
@@ -559,14 +559,14 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 		return err
 	}
 
-	// make sure the rollup is stored the rollup storage
-	rollup := dummyRollup(blk.Hash(), headRollup.NumberU64()+1, stateDB)
+	// make sure the batch is stored the batch storage
+	batch := dummyBatch(blk.Hash(), headRollup.NumberU64()+1, stateDB)
 
 	// make sure the genesis is stored as the new Head of the rollup chain
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(rollup, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, nil); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.UpdateL2Head(blk.Hash(), rollup, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.UpdateL2Head(blk.Hash(), batch, nil); err != nil {
 		return err
 	}
 	return nil
@@ -590,7 +590,7 @@ type prefundedAddress struct {
 	amount  *big.Int
 }
 
-func dummyRollup(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Rollup {
+func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Batch {
 	h := common.Header{
 		Agg:         gethcommon.HexToAddress("0x0"),
 		ParentHash:  common.L1RootHash{},
@@ -602,7 +602,7 @@ func dummyRollup(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *
 		ReceiptHash: types.EmptyRootHash,
 		Time:        uint64(time.Now().Unix()),
 	}
-	return &core.Rollup{
+	return &core.Batch{
 		Header:       &h,
 		Transactions: []*common.L2Tx{},
 	}
