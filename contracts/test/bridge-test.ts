@@ -13,6 +13,10 @@ import type {
 } from 'ethers';
 import { ObscuroERC20 } from "../typechain-types/contracts/bridge/L2";
 import { ObscuroERC20__factory } from "../typechain-types/factories/contracts/bridge/L2";
+import { CrossChainMessenger__factory } from "../typechain-types/factories/contracts/messaging/messenger";
+import { ObscuroBridge__factory } from "../typechain-types/factories/contracts/bridge/L1/L1_Bridge.sol";
+import { ObscuroL2Bridge__factory } from "../typechain-types/factories/contracts/bridge/L2/L2_Bridge.sol";
+import { MessageBus__factory } from "../typechain-types/factories/contracts/messaging";
 
 describe("Bridge", function () {
 
@@ -28,10 +32,10 @@ describe("Bridge", function () {
   let erc20address : any
 
   this.beforeEach(async function(){
-    const MessageBus = await hre.ethers.getContractFactory("MessageBus");
-    const Messenger = await hre.ethers.getContractFactory("CrossChainMessenger");
-    const L1Bridge = await hre.ethers.getContractFactory("ObscuroBridge");
-    const L2Bridge = await hre.ethers.getContractFactory("ObscuroL2Bridge");
+    const MessageBus : MessageBus__factory = await hre.ethers.getContractFactory("MessageBus");
+    const Messenger : CrossChainMessenger__factory = await hre.ethers.getContractFactory("CrossChainMessenger");
+    const L1Bridge : ObscuroBridge__factory = await hre.ethers.getContractFactory("ObscuroBridge");
+    const L2Bridge : ObscuroL2Bridge__factory = await hre.ethers.getContractFactory("ObscuroL2Bridge");
 
     const ERC20 = await hre.ethers.getContractFactory("ERC20");
 
@@ -119,7 +123,7 @@ describe("Bridge", function () {
   }
 
   it("Bridge owned wrapped token should be inaccessible externally", async function () {
-      const ObscuroERC20 = await hre.ethers.getContractFactory("ObscuroERC20");
+      const ObscuroERC20 : ObscuroERC20__factory = await hre.ethers.getContractFactory("ObscuroERC20");
       const [owner] = await ethers.getSigners();
 
       const whitelistTx = bridgeL1.whitelistToken(erc20address, "o.ZZZ", "o.ZZZ");
@@ -193,7 +197,7 @@ describe("Bridge", function () {
   it("Bridge mock environment full test.", async function () {
       const [owner] = await ethers.getSigners();
 
-      const ObscuroERC20 = await hre.ethers.getContractFactory("ObscuroERC20");
+      const ObscuroERC20 : ObscuroERC20__factory = await hre.ethers.getContractFactory("ObscuroERC20");
       const l1Erc20 : ObscuroERC20 = await ObscuroERC20.deploy("ZZZ", "ZZZ");
       const whitelistTx = bridgeL1.whitelistToken(l1Erc20.address, "o.ZZZ", "o.ZZZ");
       
@@ -259,8 +263,8 @@ describe("Bridge", function () {
       const eventSignature = "LogMessagePublished(address,uint64,uint32,uint32,bytes,uint8)";
 
       const topic = ethers.utils.id(eventSignature)
-      const event = (await (await whitelistTx).wait()).events?.find((x)=> { 
-          return x.topics.find((t)=> t == topic) != undefined;
+      const event = (await (await whitelistTx).wait()).events?.find((x: any)=> { 
+          return x.topics.find((t: any)=> t == topic) != undefined;
       });
 
       await expect(event).to.not.be.undefined;
