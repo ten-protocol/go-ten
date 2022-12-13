@@ -190,6 +190,7 @@ func NewEnclave(
 		memp,
 		enclaveKey,
 		&chainConfig,
+		config.SequencerID,
 		logger,
 	)
 

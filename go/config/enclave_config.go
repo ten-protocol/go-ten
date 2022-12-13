@@ -54,6 +54,8 @@ type EnclaveConfig struct {
 	MinGasPrice *big.Int
 	// MessageBus L1 Address
 	MessageBusAddress gethcommon.Address
+	// The identity of the sequencer for the network
+	SequencerID gethcommon.Address
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -78,5 +80,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		SqliteDBPath:              "",
 		ProfilerEnabled:           false,
 		MinGasPrice:               big.NewInt(1),
+		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 	}
 }

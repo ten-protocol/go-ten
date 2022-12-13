@@ -51,6 +51,7 @@ type RollupChain struct {
 	hostID      gethcommon.Address
 	nodeType    common.NodeType
 	chainConfig *params.ChainConfig
+	sequencerID gethcommon.Address
 
 	storage              db.Storage
 	l1Blockchain         *gethcore.BlockChain
@@ -79,6 +80,7 @@ func New(
 	mempool mempool.Manager,
 	privateKey *ecdsa.PrivateKey,
 	chainConfig *params.ChainConfig,
+	sequencerID gethcommon.Address,
 	logger gethlog.Logger,
 ) *RollupChain {
 	return &RollupChain{
@@ -96,6 +98,7 @@ func New(
 		logger:               logger,
 		GlobalGasCap:         5_000_000_000,
 		BaseFee:              gethcommon.Big0,
+		sequencerID:          sequencerID,
 	}
 }
 
@@ -435,7 +438,6 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 	rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
 
 	// TODO - #718 - Store actual rollup, not batch.
-
 	genesisBatch := &core.Batch{
 		Header:       genesisRollup.Header,
 		Transactions: genesisRollup.Transactions,
@@ -571,38 +573,41 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 	return rootHash, executedTransactions, txReceipts, depositReceipts
 }
 
-func (rc *RollupChain) validateBatch(batch *core.Batch, rootHash common.L2RootHash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
-	h := batch.Header
-	if !bytes.Equal(rootHash.Bytes(), h.Root.Bytes()) {
+func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
+	// Check that the root hash in the header matches the root hash as calculated.
+	if !bytes.Equal(rootHash.Bytes(), batch.Header.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
-
 		rc.logger.Error(fmt.Sprintf("Verify batch b_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(*batch.Hash()), rootHash, h.Root, h.Number, core.PrintTxs(batch.Transactions), dump, depositReceipts))
+			common.ShortHash(*batch.Hash()), rootHash, batch.Header.Root, batch.Header.Number, core.PrintTxs(batch.Transactions), dump, depositReceipts))
 		return false
 	}
 
-	//  check that the withdrawals in the header match the withdrawals as calculated
+	// Check that the withdrawals in the header match the withdrawals as calculated.
 	withdrawals := rc.bridge.BatchPostProcessingWithdrawals(batch, stateDB, toReceiptMap(txReceipts))
 	for i, w := range withdrawals {
-		hw := h.Withdrawals[i]
+		hw := batch.Header.Withdrawals[i]
 		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
 			rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Withdrawals don't match", common.ShortHash(*batch.Hash())))
 			return false
 		}
 	}
 
-	rec := allReceipts(txReceipts, depositReceipts)
-	rbloom := types.CreateBloom(rec)
-	if !bytes.Equal(rbloom.Bytes(), h.Bloom.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(*batch.Hash()), h.Bloom, rbloom))
+	// Check that the receipts bloom in the header matches the receipts bloom as calculated.
+	receipts := allReceipts(txReceipts, depositReceipts)
+	receiptBloom := types.CreateBloom(receipts)
+	if !bytes.Equal(receiptBloom.Bytes(), batch.Header.Bloom.Bytes()) {
+		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(*batch.Hash()), batch.Header.Bloom, receiptBloom))
 		return false
 	}
 
-	receiptSha := types.DeriveSha(rec, trie.NewStackTrie(nil))
-	if !bytes.Equal(receiptSha.Bytes(), h.ReceiptHash.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(*batch.Hash()), h.ReceiptHash, receiptSha))
+	// Check that the receipts SHA in the header matches the receipts SHA as calculated.
+	receiptSha := types.DeriveSha(receipts, trie.NewStackTrie(nil))
+	if !bytes.Equal(receiptSha.Bytes(), batch.Header.ReceiptHash.Bytes()) {
+		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(*batch.Hash()), batch.Header.ReceiptHash, receiptSha))
 		return false
 	}
+
+	// todo - check that the transactions hash to the header.txHash
 
 	return true
 }
@@ -671,14 +676,10 @@ func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
 		return nil, fmt.Errorf("all transactions that are included in a batch must be executed")
 	}
 
-	if !rc.validateBatch(batch, rootHash, txReceipts, depositReceipts, stateDB) {
+	if !rc.isValidBatch(batch, rootHash, txReceipts, depositReceipts, stateDB) {
 		return nil, fmt.Errorf("invalid batch")
 	}
-
-	// todo - check that the transactions hash to the header.txHash
-
-	// verify the signature
-	if !rc.verifySig(batch) {
+	if !rc.isValidSig(batch) {
 		return nil, fmt.Errorf("invalid signature")
 	}
 
@@ -705,13 +706,18 @@ func (rc *RollupChain) signBatch(batch *core.Batch) error {
 	return nil
 }
 
-func (rc *RollupChain) verifySig(batch *core.Batch) bool {
+func (rc *RollupChain) isValidSig(batch *core.Batch) bool {
 	// If this batch is generated by the current enclave skip the sig verification
 	if bytes.Equal(batch.Header.Agg.Bytes(), rc.hostID.Bytes()) {
 		return true
 	}
 
-	h := batch.Hash()
+	// Batches should only be produced by the sequencer.
+	if !bytes.Equal(batch.Header.Agg.Bytes(), rc.sequencerID.Bytes()) {
+		rc.logger.Error("Batch was not produced by sequencer")
+		return false
+	}
+
 	if batch.Header.R == nil || batch.Header.S == nil {
 		rc.logger.Error("Missing signature on batch")
 		return false
@@ -723,7 +729,7 @@ func (rc *RollupChain) verifySig(batch *core.Batch) bool {
 		return false
 	}
 
-	return ecdsa.Verify(pubKey, h[:], batch.Header.R, batch.Header.S)
+	return ecdsa.Verify(pubKey, batch.Hash()[:], batch.Header.R, batch.Header.S)
 }
 
 // Retrieves the batch with the given height, with special handling for earliest/latest/pending .
