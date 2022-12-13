@@ -25,7 +25,7 @@ func allIncludedTransactions(b *types.Block, r db.BlockResolver, db TxDB) map[co
 		return makeMap(b.Transactions())
 	}
 	newMap := make(map[common.TxHash]*types.Transaction)
-	p, err := r.ParentBlock(b)
+	p, err := r.FetchBlock(b.ParentHash())
 	if err != nil {
 		panic(fmt.Errorf("should not happen. Could not retrieve parent. Cause: %w", err))
 	}

@@ -100,7 +100,7 @@ func txsXRollupsAgo(initialRollup *core.Rollup, resolver db.RollupResolver) (map
 			return map[gethcommon.Hash]gethcommon.Hash{}, nil
 		}
 
-		currentRollup, err = resolver.ParentRollup(currentRollup)
+		currentRollup, err = resolver.FetchRollup(currentRollup.Header.ParentHash)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				return nil, fmt.Errorf("found a gap in the rollup chain")
@@ -150,7 +150,7 @@ func allIncludedTransactions(rollup *core.Rollup, s db.RollupResolver, stopAtHei
 	}
 
 	// If the rollup has a parent (i.e. it is not the genesis block), we recurse.
-	parentRollup, err := s.ParentRollup(rollup)
+	parentRollup, err := s.FetchRollup(rollup.Header.ParentHash)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return nil, err
 	}

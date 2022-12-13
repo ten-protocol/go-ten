@@ -513,10 +513,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(genRollup, nil); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.StoreGenesisRollupHash(*genRollup.Hash()); err != nil {
-		return err
-	}
-	if err = enclave.(*enclaveImpl).storage.UpdateL2HeadForL1Block(blk.Hash(), genRollup, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.UpdateL2Head(blk.Hash(), genRollup, nil); err != nil {
 		return err
 	}
 	return enclave.(*enclaveImpl).storage.UpdateL1Head(blk.Hash())
@@ -544,11 +541,11 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	}
 
 	// make sure the state is updated otherwise balances will not be available
-	l2Head, err := enclave.(*enclaveImpl).storage.FetchL2Head()
+	l2Head, err := enclave.(*enclaveImpl).storage.FetchHeadRollup()
 	if err != nil {
 		return err
 	}
-	stateDB, err := enclave.(*enclaveImpl).storage.CreateStateDB(*l2Head)
+	stateDB, err := enclave.(*enclaveImpl).storage.CreateStateDB(*l2Head.Hash())
 	if err != nil {
 		return err
 	}
@@ -569,7 +566,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(rollup, nil); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.UpdateL2HeadForL1Block(blk.Hash(), rollup, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.UpdateL2Head(blk.Hash(), rollup, nil); err != nil {
 		return err
 	}
 	return nil

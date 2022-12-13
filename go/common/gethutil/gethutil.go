@@ -20,25 +20,25 @@ func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) (*
 		return blockA, nil
 	}
 	if blockA.NumberU64() > blockB.NumberU64() {
-		p, err := resolver.ParentBlock(blockA)
+		p, err := resolver.FetchBlock(blockA.ParentHash())
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 		}
 		return LCA(p, blockB, resolver)
 	}
 	if blockB.NumberU64() > blockA.NumberU64() {
-		p, err := resolver.ParentBlock(blockB)
+		p, err := resolver.FetchBlock(blockB.ParentHash())
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 		}
 
 		return LCA(blockA, p, resolver)
 	}
-	parentBlockA, err := resolver.ParentBlock(blockA)
+	parentBlockA, err := resolver.FetchBlock(blockA.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 	}
-	parentBlockB, err := resolver.ParentBlock(blockB)
+	parentBlockB, err := resolver.FetchBlock(blockB.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 	}

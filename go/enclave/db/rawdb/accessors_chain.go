@@ -239,7 +239,7 @@ func ReadCanonicalHash(db ethdb.Reader, number uint64) (*gethcommon.Hash, error)
 	// Get it by hash from leveldb
 	data, err := db.Get(headerHashKey(number))
 	if err != nil {
-		return nil, err
+		return nil, errutil.ErrNotFound
 	}
 	hash := gethcommon.BytesToHash(data)
 	return &hash, nil

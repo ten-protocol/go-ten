@@ -12,7 +12,6 @@ var (
 	attestationKeyPrefix           = []byte("oAK")  // attestationKeyPrefix + address -> key
 	syntheticTransactionsKeyPrefix = []byte("oSTX") // attestationKeyPrefix + address -> key
 
-	genesisRollupHash        = []byte("GenesisRollupHash")
 	rollupHeaderPrefix       = []byte("oh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
 	headerHashSuffix         = []byte("on")  // rollupHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
 	rollupBodyPrefix         = []byte("ob")  // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
