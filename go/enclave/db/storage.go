@@ -149,14 +149,6 @@ func (s *storageImpl) assertSecretAvailable() {
 	//}
 }
 
-func (s *storageImpl) Proof(r *core.Rollup) (*types.Block, error) {
-	block, err := s.FetchBlock(r.Header.L1Proof)
-	if err != nil {
-		return nil, err
-	}
-	return block, nil
-}
-
 func (s *storageImpl) FetchL2Head(blockHash common.L1RootHash) (*common.L2RootHash, error) {
 	return obscurorawdb.ReadL2Head(s.db, blockHash)
 }

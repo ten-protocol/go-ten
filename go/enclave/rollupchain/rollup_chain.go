@@ -491,11 +491,11 @@ func (rc *RollupChain) processState(rollup *core.Rollup, txs []*common.L2Tx, sta
 		rc.logger.Crit("Sanity check. Rollup has no parent.", log.ErrKey, err)
 	}
 
-	parentProof, err := rc.storage.Proof(parent)
+	parentProof, err := rc.storage.FetchBlock(parent.Header.L1Proof)
 	if err != nil {
 		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
 	}
-	rollupProof, err := rc.storage.Proof(rollup)
+	rollupProof, err := rc.storage.FetchBlock(rollup.Header.L1Proof)
 	if err != nil {
 		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for rollup %s", rollup.Hash()), log.ErrKey, err)
 	}
@@ -799,7 +799,7 @@ func (rc *RollupChain) produceRollup(block *types.Block) (*core.Rollup, error) {
 
 	rc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to rollup. Equivalent withdrawals in header - %d", len(r.Header.CrossChainMessages), len(r.Header.Withdrawals)), log.CmpKey, log.CrossChainCmp)
 
-	crossChainBind, err := rc.storage.Proof(r)
+	crossChainBind, err := rc.storage.FetchBlock(r.Header.L1Proof)
 	if err != nil {
 		rc.logger.Crit("Failed to extract rollup proof that should exist!")
 	}

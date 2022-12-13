@@ -16,6 +16,10 @@ import (
 type BlockResolver interface {
 	// FetchBlock returns the L1 Block with the given hash.
 	FetchBlock(blockHash common.L1RootHash) (*types.Block, error)
+	// FetchHeadBlock - returns the head of the current chain.
+	FetchHeadBlock() (*types.Block, error)
+	// FetchLogs returns the block's logs.
+	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
@@ -24,10 +28,6 @@ type BlockResolver interface {
 	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
 	// Todo - this is super confusing, analyze the usage
 	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
-	// FetchHeadBlock - returns the head of the current chain.
-	FetchHeadBlock() (*types.Block, error)
-	// FetchLogs returns the block's logs.
-	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 }
 
 type RollupResolver interface {
@@ -39,8 +39,6 @@ type RollupResolver interface {
 	FetchHeadRollup() (*core.Rollup, error)
 	// StoreRollup stores a rollup.
 	StoreRollup(rollup *core.Rollup, receipts []*types.Receipt) error
-	// Proof - returns the block used as proof for the rollup
-	Proof(rollup *core.Rollup) (*types.Block, error)
 }
 
 type HeadsAfterL1BlockStorage interface {
