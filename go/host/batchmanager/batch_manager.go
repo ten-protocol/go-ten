@@ -32,8 +32,8 @@ func NewBatchManager(db *db.DB, p2pPublicAddress string) *BatchManager {
 // IsParentStored indicates whether the batch has already been stored. If not, it returns the batch request to send to
 // the sequencer.
 func (b *BatchManager) IsParentStored(batch *common.ExtBatch) (bool, *common.BatchRequest, error) {
-	// If this is the genesis batch or its child, we don't need to request the parent.
-	if batch.Header.Number.Uint64() <= common.L2GenesisHeight+1 {
+	// If this is the genesis batch, we don't need to request the parent.
+	if batch.Header.Number.Uint64() == common.L2GenesisHeight {
 		return true, nil, nil
 	}
 
