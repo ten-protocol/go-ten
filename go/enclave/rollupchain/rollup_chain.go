@@ -264,7 +264,7 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 	}
 
 	// fetch the chain state at given batch
-	blockState, err := rc.getChainSateAtBlock(blockNumber)
+	blockState, err := rc.getChainStateAtBlock(blockNumber)
 	if err != nil {
 		return nil, err
 	}
