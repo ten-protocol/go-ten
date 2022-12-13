@@ -7,6 +7,7 @@ import "@solidstate/hardhat-bytecode-exporter";
 import 'hardhat-deploy';
 import * as hdnode from '@ethersproject/hdnode';
 import * as abigen from './scripts/abigen';
+import './scripts/run-obscuro-node.ts';
 
 const config: HardhatUserConfig = {
   solidity: {
