@@ -58,11 +58,14 @@ const config: HardhatUserConfig = {
     }
   },
   namedAccounts: {
-    deployer: {
+    deployer: { // Addressed used for deploying.
         default: 0,
     },
-    sequncer:{
+    sequncer:{ // For management contract.
         default: 1,
+    },
+    relayer: { // Address that will relay messages to enable boostrapping deposits.
+        default: 2,
     }
   }
 };
