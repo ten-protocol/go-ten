@@ -107,11 +107,6 @@ func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 	return obscurorawdb.ReadSharedSecret(s.db)
 }
 
-func (s *storageImpl) ParentBlock(b *types.Block) (*types.Block, error) {
-	s.assertSecretAvailable()
-	return s.FetchBlock(b.Header().ParentHash)
-}
-
 func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
 	s.assertSecretAvailable()
 	if bytes.Equal(maybeAncestor.Hash().Bytes(), block.Hash().Bytes()) {
@@ -122,7 +117,7 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 		return false
 	}
 
-	p, err := s.ParentBlock(block)
+	p, err := s.FetchBlock(block.ParentHash())
 	if err != nil {
 		return false
 	}

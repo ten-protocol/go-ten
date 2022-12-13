@@ -167,7 +167,7 @@ func (m *Node) removeCommittedTransactions(
 			break
 		}
 
-		p, err := resolver.ParentBlock(b)
+		p, err := resolver.FetchBlock(b.ParentHash())
 		if err != nil {
 			m.logger.Crit("Could not retrieve parent block.", log.ErrKey, err)
 		}

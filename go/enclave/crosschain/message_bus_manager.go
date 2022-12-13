@@ -149,7 +149,7 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 		if b.NumberU64() < height {
 			m.logger.Crit("block height is less than genesis height")
 		}
-		p, err := m.storage.ParentBlock(b)
+		p, err := m.storage.FetchBlock(b.ParentHash())
 		if err != nil {
 			m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork")
 		}

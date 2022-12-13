@@ -18,8 +18,6 @@ type BlockResolver interface {
 	FetchBlock(blockHash common.L1RootHash) (*types.Block, error)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block)
-	// ParentBlock returns the L1 Block's parent.
-	ParentBlock(block *types.Block) (*types.Block, error)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	IsAncestor(block *types.Block, maybeAncestor *types.Block) bool
 	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
@@ -35,9 +33,9 @@ type BlockResolver interface {
 type RollupResolver interface {
 	// FetchRollup returns the rollup with the given hash.
 	FetchRollup(hash common.L2RootHash) (*core.Rollup, error)
-	// FetchRollupByHeight returns the rollup with the given height.
+	// FetchRollupByHeight returns the rollup on the canonical chain with the given height.
 	FetchRollupByHeight(height uint64) (*core.Rollup, error)
-	// FetchHeadRollup returns the current head rollup
+	// FetchHeadRollup returns the current head rollup of the canonical chain.
 	FetchHeadRollup() (*core.Rollup, error)
 	// StoreRollup stores a rollup.
 	StoreRollup(rollup *core.Rollup, receipts []*types.Receipt) error
