@@ -40,11 +40,11 @@ const config: HardhatUserConfig = {
       accounts: [ 'f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb']
     },
     simObscuro: {
-      url: "http://127.0.0.1:8025",
+      url: "http://127.0.0.1:3000",
       live: false,
       saveDeployments: true,
       tags: ["local"],
-      deploy: [ 'deploy_l1/' ],
+      deploy: [ 'deploy_l2/' ],
       accounts: [ 'f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb']
     },
     localGeth: {
