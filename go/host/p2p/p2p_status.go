@@ -15,13 +15,10 @@ const (
 	_receivedMessage          = "Received Messages"
 )
 
-var (
-	_rollingPeriod = 5 * time.Minute
-)
+var _rollingPeriod = 5 * time.Minute
 
 type status struct {
 	lock          sync.RWMutex
-	timestamp     time.Time
 	currentStatus map[string]*ttlMap
 }
 
@@ -48,7 +45,7 @@ func (s *status) increment(eventType string, host string) {
 	}()
 }
 
-// make sure it's returning a deep copy of the object to avoid thread issues
+// make sure it's returning a deep copy of the object to avoid multiple thread issues
 func (s *status) status() *hostcommon.P2PStatus {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
@@ -80,5 +77,4 @@ func peerNoMessage(receivedMsgs map[string]int64, knownPeers []string) []string 
 	}
 
 	return disconnectedPeers
-
 }

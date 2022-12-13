@@ -10,6 +10,7 @@ type item struct {
 	lastUpdate time.Time
 }
 
+// ttlMap is a map in which the values are removed after a certain amount of time
 type ttlMap struct {
 	values map[string]*item
 	lock   sync.RWMutex
@@ -46,7 +47,7 @@ func (t *ttlMap) increment(key string) {
 		newItem = &item{value: int64(0)}
 		t.values[key] = newItem
 	}
-	newItem.value += 1
+	newItem.value++
 	newItem.lastUpdate = time.Now()
 }
 

@@ -16,7 +16,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/config"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 const (
@@ -134,7 +133,7 @@ func (p *p2pImpl) SendBatches(batchMsg *host.BatchMsg, to string) error {
 }
 
 // Status returns the current status of the lib
-func (p *p2pImpl) Status() *hostcommon.P2PStatus {
+func (p *p2pImpl) Status() *host.P2PStatus {
 	return p.status.status()
 }
 
