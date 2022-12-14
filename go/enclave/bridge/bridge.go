@@ -157,10 +157,9 @@ func (bridge *Bridge) GetMapping(l1ContractAddress *gethcommon.Address) *ERC20Ma
 	return nil
 }
 
-// ExtractRollups returns the rollups published in this block, if any
-func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) ([]*core.Rollup, error) {
+// ExtractRollups - returns a list of the rollups published in this block
+func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
 	rollups := make([]*core.Rollup, 0)
-
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
 		t := bridge.MgmtContractLib.DecodeTx(tx)
@@ -168,25 +167,25 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			continue
 		}
 
-		if rollupTx, ok := t.(*ethadapter.L1RollupTx); ok {
-			rollup, err := common.DecodeRollup(rollupTx.Rollup)
+		if rolTx, ok := t.(*ethadapter.L1RollupTx); ok {
+			r, err := common.DecodeRollup(rolTx.Rollup)
 			if err != nil {
-				return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+				bridge.logger.Crit("could not decode rollup.", log.ErrKey, err)
+				return nil
 			}
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
-			if blockResolver.IsBlockAncestor(b, rollup.Header.L1Proof) {
-				rollups = append(rollups, core.ToEnclaveRollup(rollup, bridge.TransactionBlobCrypto))
+			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
+				rollups = append(rollups, core.ToEnclaveRollup(r, bridge.TransactionBlobCrypto))
 				bridge.logger.Trace(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
-					common.ShortHash(rollup.Hash()),
+					common.ShortHash(r.Hash()),
 					common.ShortHash(b.Hash()),
 				))
 			}
 		}
 	}
-
-	return rollups, nil
+	return rollups
 }
 
 // NewDepositTx creates a synthetic Obscuro transfer transaction based on deposits into the L1 bridge.
@@ -277,10 +276,10 @@ func (bridge *Bridge) ExtractDeposits(
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func (bridge *Bridge) BatchPostProcessingWithdrawals(txs []*common.L2Tx, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
+func (bridge *Bridge) BatchPostProcessingWithdrawals(newHeadBatch *core.Batch, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
 	w := make([]common.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
-	for _, t := range txs {
+	for _, t := range newHeadBatch.Transactions {
 		found, address, amount := erc20contractlib.DecodeTransferTx(t, bridge.logger)
 
 		supportedTokenAddress := bridge.L1Address(t.To())
