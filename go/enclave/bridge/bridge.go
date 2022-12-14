@@ -157,8 +157,8 @@ func (bridge *Bridge) GetMapping(l1ContractAddress *gethcommon.Address) *ERC20Ma
 	return nil
 }
 
-// ExtractRollups - returns a list of the rollups published in this block
-func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
+// ExtractRollup returns the rollup published in this block, if any
+func (bridge *Bridge) ExtractRollup(b *types.Block, blockResolver db.BlockResolver) (*core.Rollup, error) {
 	rollups := make([]*core.Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
@@ -170,8 +170,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 		if rolTx, ok := t.(*ethadapter.L1RollupTx); ok {
 			r, err := common.DecodeRollup(rolTx.Rollup)
 			if err != nil {
-				bridge.logger.Crit("could not decode rollup.", log.ErrKey, err)
-				return nil
+				return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
 			}
 
 			// Ignore rollups created with proofs from different L1 blocks
@@ -185,7 +184,14 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			}
 		}
 	}
-	return rollups
+
+	if len(rollups) > 1 {
+		return nil, fmt.Errorf("expected at most one rollup in block, found %d", len(rollups))
+	}
+	if len(rollups) == 1 {
+		return rollups[0], nil
+	}
+	return nil, nil //nolint:nilnil
 }
 
 // NewDepositTx creates a synthetic Obscuro transfer transaction based on deposits into the L1 bridge.
