@@ -524,12 +524,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 
 	if result.ProducedBatch != nil && result.ProducedBatch.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
-		rollup := &common.ExtRollup{
-			Header:          result.ProducedBatch.Header,
-			TxHashes:        result.ProducedBatch.TxHashes,
-			EncryptedTxBlob: result.ProducedBatch.EncryptedTxBlob,
-		}
-		h.publishRollup(rollup)
+		h.publishRollup(result.ProducedBatch.ToExtRollup())
 		// TODO - #718 - Unlink batch production from L1 cadence.
 		h.storeAndDistributeBatch(result.ProducedBatch)
 	}
@@ -616,12 +611,7 @@ func (h *host) initialiseProtocol(block *types.Block) error {
 
 	// Distribute the corresponding genesis batch. Although the enclave retrieves the genesis batch from the L1 blocks,
 	// we need it stored to power various API calls.
-	batch := &common.ExtBatch{
-		Header:          genesisRollup.Header,
-		TxHashes:        genesisRollup.TxHashes,
-		EncryptedTxBlob: genesisRollup.EncryptedTxBlob,
-	}
-	h.storeAndDistributeBatch(batch)
+	h.storeAndDistributeBatch(genesisRollup.ToExtBatch())
 
 	return nil
 }
