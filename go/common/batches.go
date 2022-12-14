@@ -17,13 +17,21 @@ type ExtBatch struct {
 
 // Hash returns the keccak256 hash of the batch's header.
 // The hash is computed on the first call and cached thereafter.
-func (r *ExtBatch) Hash() L2RootHash {
-	if hash := r.hash.Load(); hash != nil {
+func (b *ExtBatch) Hash() L2RootHash {
+	if hash := b.hash.Load(); hash != nil {
 		return hash.(L2RootHash)
 	}
-	v := r.Header.Hash()
-	r.hash.Store(v)
+	v := b.Header.Hash()
+	b.hash.Store(v)
 	return v
+}
+
+func (b *ExtBatch) ToExtRollup() *ExtRollup {
+	return &ExtRollup{
+		Header:          b.Header,
+		TxHashes:        b.TxHashes,
+		EncryptedTxBlob: b.EncryptedTxBlob,
+	}
 }
 
 // BatchRequest is used when requesting a range of batches from a peer.

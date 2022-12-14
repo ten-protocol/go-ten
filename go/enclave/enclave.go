@@ -329,7 +329,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 }
 
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
-	batch := core.ToEnclaveBatch(extBatch, e.transactionBlobCrypto)
+	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
 	batchHeader, err := e.chain.UpdateL2Chain(batch)
 	if err != nil {
 		return fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err)

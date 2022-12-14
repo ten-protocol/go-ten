@@ -1,9 +1,8 @@
-package core //nolint:dupl
+package core
 
 import (
 	"math/big"
 	"sync/atomic"
-	"time"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -52,32 +51,16 @@ func (r *Rollup) ToExtRollup(transactionBlobCrypto crypto.TransactionBlobCrypto)
 	}
 }
 
-func ToEnclaveRollup(encryptedRollup *common.ExtRollup, transactionBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
+func ToRollup(encryptedRollup *common.ExtRollup, transactionBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
 	return &Rollup{
 		Header:       encryptedRollup.Header,
 		Transactions: transactionBlobCrypto.Decrypt(encryptedRollup.EncryptedTxBlob),
 	}
 }
 
-func EmptyRollup(agg gethcommon.Address, parent *common.Header, blkHash gethcommon.Hash, nonce common.Nonce) (*Rollup, error) {
-	rand, err := crypto.GeneratePublicRandomness()
-	if err != nil {
-		return nil, err
+func (r *Rollup) ToBatch() *Batch {
+	return &Batch{
+		Header:       r.Header,
+		Transactions: r.Transactions,
 	}
-	h := common.Header{
-		Agg:        agg,
-		ParentHash: parent.Hash(),
-		L1Proof:    blkHash,
-		Number:     big.NewInt(0).Add(parent.Number, big.NewInt(1)),
-		// TODO - Consider how this time should align with the time of the L1 block used as proof.
-		Time: uint64(time.Now().Unix()),
-		// generate true randomness inside the enclave.
-		// note that this randomness will be published in the header of the rollup.
-		// the randomness exposed to smart contract is combining this with the shared secret.
-		MixDigest: gethcommon.BytesToHash(rand),
-	}
-	r := Rollup{
-		Header: &h,
-	}
-	return &r, nil
 }
