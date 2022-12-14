@@ -181,7 +181,7 @@ func (rc *RollupChain) UpdateL2Chain(batch *core.Batch) (*common.Header, error) 
 	if err = rc.storage.StoreBatch(batch, batchTxReceipts); err != nil {
 		return nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
-	if err = rc.storage.UpdateL2Head(batch.Header.L1Proof, batch, batchTxReceipts); err != nil {
+	if err = rc.storage.UpdateL2HeadBatch(batch.Header.L1Proof, batch, batchTxReceipts); err != nil {
 		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
 
@@ -448,7 +448,7 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 	if err := rc.storage.StoreBatch(genesisBatch, nil); err != nil {
 		return nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
-	if err := rc.storage.UpdateL2Head(block.Hash(), genesisBatch, nil); err != nil {
+	if err := rc.storage.UpdateL2HeadBatch(block.Hash(), genesisBatch, nil); err != nil {
 		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
 	if err := rc.storage.UpdateL1Head(block.Hash()); err != nil {
@@ -623,14 +623,14 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 // Calculates the state after processing the provided block.
 func (rc *RollupChain) handlePostGenesisBlock(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, *core.Batch, error) {
 	l1Head := block.Hash()
-	err := rc.processRollups(rollupsInBlock, &l1Head)
+	err := rc.processRollups(rollupsInBlock, block)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not process rollup in block. Cause: %w", err)
 	}
 
 	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
 	// We retrieve the current L2 head.
-	l2HeadHash, err := rc.storage.FetchL2Head(block.ParentHash())
+	l2HeadHash, err := rc.storage.FetchL2HeadBatch(block.ParentHash())
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not retrieve current head batch hash. Cause: %w", err)
 	}
@@ -660,7 +660,7 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block, rollupsInBlock
 	}
 
 	// We update the chain heads.
-	if err = rc.storage.UpdateL2Head(l1Head, l2Head, l2HeadTxReceipts); err != nil {
+	if err = rc.storage.UpdateL2HeadBatch(l1Head, l2Head, l2HeadTxReceipts); err != nil {
 		return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
 	}
 	if err = rc.storage.UpdateL1Head(l1Head); err != nil {
@@ -781,7 +781,7 @@ func (rc *RollupChain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error)
 
 // Creates a batch.
 func (rc *RollupChain) produceBatch(block *types.Block) (*core.Batch, error) {
-	headBatchHash, err := rc.storage.FetchL2Head(block.ParentHash())
+	headBatchHash, err := rc.storage.FetchL2HeadBatch(block.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head batch hash. Cause: %w", err)
 	}
@@ -893,7 +893,7 @@ func (rc *RollupChain) isAccountContractAtBlock(accountAddr gethcommon.Address, 
 }
 
 // Validates and stores the rollup in a given block.
-func (rc *RollupChain) processRollups(rollups []*core.Rollup, _ *gethcommon.Hash) error {
+func (rc *RollupChain) processRollups(rollups []*core.Rollup, _ *common.L1Block) error {
 	// We sort the rollups by number in ascending order, in order to process them in the correct order.
 	sort.Slice(rollups, func(i, j int) bool {
 		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0

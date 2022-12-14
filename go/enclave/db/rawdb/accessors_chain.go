@@ -158,15 +158,15 @@ func readBatchBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawV
 	return data, nil
 }
 
-func WriteL2Head(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
-	if err := db.Put(headsAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
+func WriteL2HeadBatch(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
+	if err := db.Put(headBatchAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
 		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
 	}
 	return nil
 }
 
-func ReadL2Head(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
-	data, err := kv.Get(headsAfterL1BlockKey(l1Head))
+func ReadL2HeadBatch(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
+	data, err := kv.Get(headBatchAfterL1BlockKey(l1Head))
 	if err != nil {
 		return nil, errutil.ErrNotFound
 	}

@@ -51,7 +51,7 @@ func batchNumberKey(hash common.L2RootHash) []byte {
 }
 
 // For storing and fetching the L2 head hash by L1 block hash.
-func headsAfterL1BlockKey(hash common.L1RootHash) []byte {
+func headBatchAfterL1BlockKey(hash common.L1RootHash) []byte {
 	return append(headsAfterL1BlockPrefix, hash.Bytes()...)
 }
 

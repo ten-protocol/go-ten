@@ -47,12 +47,12 @@ type RollupResolver interface {
 }
 
 type HeadsAfterL1BlockStorage interface {
-	// FetchL2Head returns the hash of the head batch at a given L1 block.
-	FetchL2Head(blockHash common.L1RootHash) (*common.L2RootHash, error)
+	// FetchL2HeadBatch returns the hash of the head batch at a given L1 block.
+	FetchL2HeadBatch(blockHash common.L1RootHash) (*common.L2RootHash, error)
 	// UpdateL1Head updates the L1 head.
 	UpdateL1Head(l1Head common.L1RootHash) error
-	// UpdateL2Head updates the canonical L2 head for a given L1 block.
-	UpdateL2Head(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error
+	// UpdateL2HeadBatch updates the canonical L2 head batch for a given L1 block.
+	UpdateL2HeadBatch(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
