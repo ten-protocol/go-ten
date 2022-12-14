@@ -696,7 +696,7 @@ func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error
 	return txReceipts, nil
 }
 
-// Checks that the batch is valid, both internally and relative to other stored light batches.
+// Checks that the batch is valid, both internally and relative to the previously-stored batches.
 func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
 	txReceipts, err := rc.isValidBatch(batch)
 	if err != nil {
