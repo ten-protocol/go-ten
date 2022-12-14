@@ -11,12 +11,12 @@ import (
 )
 
 // An arbitrary number to put in the header, to check that the header is retrieved correctly from the DB.
-const rollupNumber = 777
+const batchNumber = 777
 
 func TestCanStoreAndRetrieveBlockHeader(t *testing.T) {
 	db := NewInMemoryDB()
 	header := types.Header{
-		Number: big.NewInt(rollupNumber),
+		Number: big.NewInt(batchNumber),
 	}
 	err := db.AddBlockHeader(&header)
 	if err != nil {

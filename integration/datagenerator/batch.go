@@ -13,7 +13,7 @@ import (
 // when submitting cross chain messages.
 func RandomBatch(block *types.Block) common.ExtBatch {
 	extBatch := common.ExtBatch{
-		Header: &common.Header{
+		Header: &common.BatchHeader{
 			ParentHash:  randomHash(),
 			Agg:         RandomAddress(),
 			L1Proof:     randomHash(),

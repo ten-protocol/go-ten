@@ -14,7 +14,7 @@ import (
 // Batch Data structure only for the internal use of the enclave since transactions are in clear
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Batch struct {
-	Header *common.Header
+	Header *common.BatchHeader
 
 	hash atomic.Value
 	// size   atomic.Value
@@ -59,12 +59,12 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.Transaction
 	}
 }
 
-func EmptyBatch(agg gethcommon.Address, parent *common.Header, blkHash gethcommon.Hash, nonce common.Nonce) (*Batch, error) {
+func EmptyBatch(agg gethcommon.Address, parent *common.BatchHeader, blkHash gethcommon.Hash) (*Batch, error) {
 	rand, err := crypto.GeneratePublicRandomness()
 	if err != nil {
 		return nil, err
 	}
-	h := common.Header{
+	h := common.BatchHeader{
 		Agg:        agg,
 		ParentHash: parent.Hash(),
 		L1Proof:    blkHash,

@@ -1051,7 +1051,7 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 }
 
 // Removes transactions from the mempool that are considered immune to re-orgs (i.e. over X batches deep).
-func (e *enclaveImpl) removeOldMempoolTxs(batchHeader *common.Header) error {
+func (e *enclaveImpl) removeOldMempoolTxs(batchHeader *common.BatchHeader) error {
 	if batchHeader == nil {
 		return nil
 	}

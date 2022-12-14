@@ -13,7 +13,7 @@ import (
 // when submitting cross chain messages.
 func RandomRollup(block *types.Block) common.ExtRollup {
 	extRollup := common.ExtRollup{
-		Header: &common.Header{
+		Header: &common.RollupHeader{
 			ParentHash:  randomHash(),
 			Agg:         RandomAddress(),
 			L1Proof:     randomHash(),
