@@ -672,6 +672,7 @@ func (h *host) watchForReceipt(txHash common.TxHash, txDescription string) {
 			"status", receipt.Status,
 			"signer", h.ethWallet.Address().Hex(),
 			"tx_description", txDescription)
+		return
 	}
 	h.logger.Trace("Successful L1 transaction receipt found.", "blk", receipt.BlockNumber, "blkHash", receipt.BlockHash)
 }
