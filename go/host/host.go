@@ -525,15 +525,17 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	}
 
 	if result.ProducedBatch != nil && result.ProducedBatch.Header != nil {
-		// TODO - #718 - Unlink rollup production from L1 cadence.
+		// TODO - #718 - Unlink batch production from L1 cadence.
+		h.storeAndDistributeBatch(result.ProducedBatch)
+
 		rollup := &common.ExtRollup{
 			Header:          result.ProducedBatch.Header,
 			TxHashes:        result.ProducedBatch.TxHashes,
 			EncryptedTxBlob: result.ProducedBatch.EncryptedTxBlob,
 		}
-		h.publishRollup(rollup)
-		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.storeAndDistributeBatch(result.ProducedBatch)
+		if h.shouldPublishRollup(result.ProducedBatch) {
+			h.publishRollup(rollup)
+		}
 	}
 
 	return nil
@@ -556,6 +558,13 @@ func (h *host) processL1BlockTransactions(b *types.Block) {
 			}
 		}
 	}
+}
+
+// Indicates whether a rollup should be published at this point in time.
+func (h *host) shouldPublishRollup(batch *common.ExtBatch) bool {
+	// TODO - #718 - For now, we publish every third batch. Implement more sophisticated rules.
+	batchNumberMod3 := big.NewInt(0).Mod(batch.Header.Number, big.NewInt(3))
+	return batchNumberMod3.Cmp(big.NewInt(0)) == 0
 }
 
 // Publishes a rollup to the L1.
