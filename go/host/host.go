@@ -284,14 +284,19 @@ func (h *host) EnclaveClient() common.Enclave {
 
 func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
+
+	// TODO - #718 - We only need to submit to the enclave as the sequencer. But we still need to return the encrypted
+	//  transaction hash, so some round-trip to the enclave is required.
 	encryptedResponse, err := h.enclaveClient.SubmitTx(encryptedTx)
 	if err != nil {
 		return nil, fmt.Errorf("could not submit transaction. Cause: %w", err)
 	}
 
-	err = h.p2p.BroadcastTx(encryptedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not broadcast transaction. Cause: %w", err)
+	if h.config.NodeType != common.Sequencer {
+		err = h.p2p.SendTxToSequencer(encryptedTx)
+		if err != nil {
+			return nil, fmt.Errorf("could not broadcast transaction to sequencer. Cause: %w", err)
+		}
 	}
 
 	return encryptedResponse, nil
@@ -911,7 +916,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 			// We only request the missing batches if the batches did not themselves arrive as part of catch-up, to
 			// avoid excessive P2P pressure.
 			if !batchMsg.IsCatchUp {
-				if err = h.p2p.RequestBatches(batchRequest); err != nil {
+				if err = h.p2p.RequestBatchesFromSequencer(batchRequest); err != nil {
 					return fmt.Errorf("could not request historical batches. Cause: %w", err)
 				}
 				return nil
