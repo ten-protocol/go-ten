@@ -388,14 +388,11 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
 func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, *core.Batch, error) {
-	// We extract the rollup from the block, if any.
-	rollups, err := rc.bridge.ExtractRollups(block, rc.storage)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not extract rollup from block. Cause: %w", err)
-	}
+	// We extract the rollups from the block.
+	rollupsInBlock := rc.bridge.ExtractRollups(block, rc.storage)
 
 	// We determine whether this is a pre-genesis, genesis, or post-genesis block, and handle the block.
-	blockStage, err := rc.getBlockStage(rollups)
+	blockStage, err := rc.getBlockStage(rollupsInBlock)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not determine block type. Cause: %w", err)
 	}
@@ -404,16 +401,16 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 	case PreGenesis:
 		return nil, nil, nil
 	case Genesis:
-		l2Head, err := rc.handleGenesisBlock(block, rollups)
+		l2Head, err := rc.handleGenesisBlock(block, rollupsInBlock)
 		return l2Head, nil, err
 	case PostGenesis:
-		return rc.handlePostGenesisBlock(block, rollups)
+		return rc.handlePostGenesisBlock(block, rollupsInBlock)
 	}
 	return nil, nil, fmt.Errorf("unrecognised block stage")
 }
 
 // Determines if this is a pre-genesis L2 block, the genesis L2 block, or a post-genesis L2 block.
-func (rc *RollupChain) getBlockStage(rollups []*core.Rollup) (BlockStage, error) {
+func (rc *RollupChain) getBlockStage(rollupsInBlock []*core.Rollup) (BlockStage, error) {
 	_, err := rc.storage.FetchBatchByHeight(0)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
@@ -422,7 +419,7 @@ func (rc *RollupChain) getBlockStage(rollups []*core.Rollup) (BlockStage, error)
 
 		// If we haven't stored the genesis rollup and there are no rollups in this block, it cannot be the L2
 		// genesis block.
-		if len(rollups) == 0 {
+		if len(rollupsInBlock) == 0 {
 			return PreGenesis, nil
 		}
 
@@ -435,9 +432,9 @@ func (rc *RollupChain) getBlockStage(rollups []*core.Rollup) (BlockStage, error)
 }
 
 // We process the genesis block.
-func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollups []*core.Rollup) (*common.L2RootHash, error) {
+func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, error) {
 	// todo change this to a hardcoded hash on testnet/mainnet
-	genesisRollup := rollups[0]
+	genesisRollup := rollupsInBlock[0]
 	rc.logger.Info("Found genesis rollup", "l1Height", block.NumberU64(), "l1Hash", block.Hash())
 
 	if err := rc.storage.StoreRollup(genesisRollup); err != nil {
@@ -467,11 +464,11 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollups []*core.Ro
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a message bus embedded in the platform, and this method is responsible for transferring messages as well.
 // The batch can be a final batch as received from peers or the batch under construction.
-func (rc *RollupChain) processState(header *common.Header, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	txResults := evm.ExecuteTransactions(txs, stateDB, header, rc.storage, rc.chainConfig, 0, rc.logger)
+	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, rc.storage, rc.chainConfig, 0, rc.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
@@ -483,24 +480,24 @@ func (rc *RollupChain) processState(header *common.Header, txs []*common.L2Tx, s
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
-			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(header.Hash()), result))
+			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*batch.Hash()), result))
 		}
 	}
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
-	parent, err := rc.storage.FetchBatch(header.ParentHash)
+	parent, err := rc.storage.FetchBatch(batch.Header.ParentHash)
 	if err != nil {
 		rc.logger.Crit("Sanity check. Rollup has no parent.", log.ErrKey, err)
 	}
 
 	parentProof, err := rc.storage.FetchBlock(parent.Header.L1Proof)
 	if err != nil {
-		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", header.Hash()), log.ErrKey, err)
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Header.Hash()), log.ErrKey, err)
 	}
-	batchProof, err := rc.storage.FetchBlock(header.L1Proof)
+	batchProof, err := rc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {
-		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", header.Hash()), log.ErrKey, err)
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Header.Hash()), log.ErrKey, err)
 	}
 
 	// TODO: Remove this depositing logic once the new bridge is added.
@@ -511,7 +508,7 @@ func (rc *RollupChain) processState(header *common.Header, txs []*common.L2Tx, s
 		stateDB,
 	)
 
-	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, batch.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 	depositReceipts := make([]*types.Receipt, len(depositResponses))
 	if len(depositResponses) != len(depositTxs) {
 		rc.logger.Crit("Sanity check. Some deposit transactions failed.")
@@ -529,7 +526,7 @@ func (rc *RollupChain) processState(header *common.Header, txs []*common.L2Tx, s
 
 	messages := rc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, batchProof, stateDB)
 	transactions := rc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
-	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
 	if len(syntheticTransactionsResponses) != len(transactions) {
 		rc.logger.Crit("Sanity check. Some synthetic transactions failed.")
@@ -559,7 +556,7 @@ func (rc *RollupChain) processState(header *common.Header, txs []*common.L2Tx, s
 				false)
 
 			clonedDB := stateDB.Copy()
-			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, header, rc.storage, rc.chainConfig, rc.logger)
+			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, batch.Header, rc.storage, rc.chainConfig, rc.logger)
 			rc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
 		}
 
@@ -589,7 +586,7 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 	}
 
 	// Check that the withdrawals in the header match the withdrawals as calculated.
-	withdrawals := rc.bridge.BatchPostProcessingWithdrawals(batch.Transactions, stateDB, toReceiptMap(txReceipts))
+	withdrawals := rc.bridge.BatchPostProcessingWithdrawals(batch, stateDB, toReceiptMap(txReceipts))
 	for i, w := range withdrawals {
 		hw := batch.Header.Withdrawals[i]
 		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
@@ -686,7 +683,7 @@ func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error
 	}
 
 	// calculate the state to compare with what is in the batch
-	_, _, txReceipts, _ := rc.processState(batch.Header, batch.Transactions, stateDB) //nolint:dogsled
+	_, _, txReceipts, _ := rc.processState(batch, batch.Transactions, stateDB) //nolint:dogsled
 	return txReceipts, nil
 }
 
@@ -698,7 +695,7 @@ func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
 	}
 
 	// calculate the state to compare with what is in the batch
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch.Header, batch.Transactions, stateDB)
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch, batch.Transactions, stateDB)
 	if len(successfulTxs) != len(batch.Transactions) {
 		return nil, fmt.Errorf("all transactions that are included in a batch must be executed")
 	}
@@ -813,14 +810,14 @@ func (rc *RollupChain) produceBatch(block *types.Block) (*core.Batch, error) {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch.Header, newBatchTxs, newBatchState)
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch, newBatchTxs, newBatchState)
 
 	batch.Header.Root = rootHash
 	batch.Transactions = successfulTxs
 
 	// Postprocessing - withdrawals
 	txReceiptsMap := toReceiptMap(txReceipts)
-	batch.Header.Withdrawals = rc.bridge.BatchPostProcessingWithdrawals(batch.Transactions, newBatchState, txReceiptsMap)
+	batch.Header.Withdrawals = rc.bridge.BatchPostProcessingWithdrawals(batch, newBatchState, txReceiptsMap)
 	crossChainMessages, err := rc.crossChainProcessors.Local.ExtractOutboundMessages(txReceipts)
 	if err != nil {
 		rc.logger.Crit("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
