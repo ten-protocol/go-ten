@@ -579,21 +579,21 @@ func (rc *RollupChain) processState(header *common.Header, txs []*common.L2Tx, s
 	return rootHash, executedTransactions, txReceipts, depositReceipts
 }
 
-func (rc *RollupChain) isValidBatch(header *common.Header, txs []*common.L2Tx, rootHash common.L2RootHash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
+func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
 	// Check that the root hash in the header matches the root hash as calculated.
-	if !bytes.Equal(rootHash.Bytes(), header.Root.Bytes()) {
+	if !bytes.Equal(rootHash.Bytes(), batch.Header.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
 		rc.logger.Error(fmt.Sprintf("Verify batch b_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(header.Hash()), rootHash, header.Root, header.Number, core.PrintTxs(txs), dump, depositReceipts))
+			common.ShortHash(*batch.Hash()), rootHash, batch.Header.Root, batch.Header.Number, core.PrintTxs(batch.Transactions), dump, depositReceipts))
 		return false
 	}
 
 	// Check that the withdrawals in the header match the withdrawals as calculated.
-	withdrawals := rc.bridge.BatchPostProcessingWithdrawals(txs, stateDB, toReceiptMap(txReceipts))
+	withdrawals := rc.bridge.BatchPostProcessingWithdrawals(batch.Transactions, stateDB, toReceiptMap(txReceipts))
 	for i, w := range withdrawals {
-		hw := header.Withdrawals[i]
+		hw := batch.Header.Withdrawals[i]
 		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Withdrawals don't match", common.ShortHash(header.Hash())))
+			rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Withdrawals don't match", common.ShortHash(batch.Header.Hash())))
 			return false
 		}
 	}
@@ -601,20 +601,20 @@ func (rc *RollupChain) isValidBatch(header *common.Header, txs []*common.L2Tx, r
 	// Check that the receipts bloom in the header matches the receipts bloom as calculated.
 	receipts := allReceipts(txReceipts, depositReceipts)
 	receiptBloom := types.CreateBloom(receipts)
-	if !bytes.Equal(receiptBloom.Bytes(), header.Bloom.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(header.Hash()), header.Bloom, receiptBloom))
+	if !bytes.Equal(receiptBloom.Bytes(), batch.Header.Bloom.Bytes()) {
+		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(batch.Header.Hash()), batch.Header.Bloom, receiptBloom))
 		return false
 	}
 
 	// Check that the receipts SHA in the header matches the receipts SHA as calculated.
 	receiptSha := types.DeriveSha(receipts, trie.NewStackTrie(nil))
-	if !bytes.Equal(receiptSha.Bytes(), header.ReceiptHash.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(header.Hash()), header.ReceiptHash, receiptSha))
+	if !bytes.Equal(receiptSha.Bytes(), batch.Header.ReceiptHash.Bytes()) {
+		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(*batch.Hash()), batch.Header.ReceiptHash, receiptSha))
 		return false
 	}
 
 	// Check that the signature is valid.
-	if !rc.isValidSig(header) {
+	if !rc.isValidSig(batch.Header) {
 		return false
 	}
 
@@ -654,8 +654,8 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block, rollups []*cor
 		if err = rc.signBatch(l2Head); err != nil {
 			return nil, nil, fmt.Errorf("could not sign batch. Cause: %w", err)
 		}
-		if l2HeadTxReceipts, err = rc.checkBatch(l2Head); err != nil {
-			return nil, nil, fmt.Errorf("could not check batch. Cause: %w", err)
+		if l2HeadTxReceipts, err = rc.getTxReceipts(l2Head); err != nil {
+			return nil, nil, fmt.Errorf("could not get batch transaction receipts. Cause: %w", err)
 		}
 		if err = rc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
 			return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
@@ -678,7 +678,19 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block, rollups []*cor
 	return l2Head.Hash(), producedBatch, nil
 }
 
-// verifies that the headers of the batch match the results of executing the transactions
+// Returns the receipts for the transactions in the batch.
+func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error) {
+	stateDB, err := rc.storage.CreateStateDB(batch.Header.ParentHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+
+	// calculate the state to compare with what is in the batch
+	_, _, txReceipts, _ := rc.processState(batch.Header, batch.Transactions, stateDB) //nolint:dogsled
+	return txReceipts, nil
+}
+
+// verifies that the batch is valid, and the headers of the batch or rollup match the results of executing the transactions
 func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
 	stateDB, err := rc.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
@@ -691,7 +703,7 @@ func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
 		return nil, fmt.Errorf("all transactions that are included in a batch must be executed")
 	}
 
-	if !rc.isValidBatch(batch.Header, batch.Transactions, rootHash, txReceipts, depositReceipts, stateDB) {
+	if !rc.isValidBatch(batch, rootHash, txReceipts, depositReceipts, stateDB) {
 		return nil, fmt.Errorf("invalid batch")
 	}
 
@@ -719,7 +731,7 @@ func (rc *RollupChain) signBatch(batch *core.Batch) error {
 }
 
 func (rc *RollupChain) isValidSig(header *common.Header) bool {
-	// Batches should only be produced by the sequencer.
+	// Batches and rollups should only be produced by the sequencer.
 	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
 	if !bytes.Equal(header.Agg.Bytes(), rc.sequencerID.Bytes()) {
 		rc.logger.Error("Batch was not produced by sequencer")
@@ -889,11 +901,15 @@ func (rc *RollupChain) processRollups(rollups []*core.Rollup, _ *gethcommon.Hash
 		return nil
 	}
 
-	// TODO - #718 - Validate the rollups in the block against the stored batches.
-	//  * Rollups link to previous rollup
-	//  * Rollups contains all expected batches
-
 	for _, rollup := range rollups {
+		if !rc.isValidSig(rollup.Header) {
+			return fmt.Errorf("rollup signature was invalid")
+		}
+
+		// TODO - #718 - Also validate the rollups in the block against the stored batches.
+		//  * Rollups link to previous rollup
+		//  * Rollups contains all expected batches
+
 		if err := rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
