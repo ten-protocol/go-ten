@@ -188,6 +188,8 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
+	var err error
+
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		v := testcommon.RndBtw(1, 100)
 		ethWallet := ti.rndEthWallet()
@@ -199,6 +201,10 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			Sender:        &addr,
 		}
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
+		tx, err = ti.rpcHandles.RndEthClient().EstimateGasAndGasPrice(tx, ethWallet.Address())
+		if err != nil {
+			panic(err)
+		}
 		signedTx, err := ethWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -337,16 +343,8 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 }
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
-	// todo - reenable this logic when the nonce logic has been replaced by receipt confirmation
-	//max := big.NewInt(1_000_000_000_000_000_000)
-	//if nonce%3 == 0 {
-	//	value = max
-	//}
-
 	return &types.LegacyTx{
 		Nonce:    nonce,
-		Value:    gethcommon.Big0,
-		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     data,
 		To:       ti.wallets.Tokens[bridge.HOC].L2ContractAddress,
