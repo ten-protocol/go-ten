@@ -43,8 +43,8 @@ type P2P interface {
 	StartListening(callback Host)
 	StopListening() error
 	UpdatePeerList([]string)
-	// BroadcastTx sends the encrypted transaction to every other node on the network.
-	BroadcastTx(tx common.EncryptedTx) error
+	// SendTx sends the encrypted transaction to the sequencer.
+	SendTx(tx common.EncryptedTx) error
 	// BroadcastBatch sends the batch to every other node on the network.
 	BroadcastBatch(batchMsg *BatchMsg) error
 	// RequestBatches requests batches from the sequencer.
