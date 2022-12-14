@@ -152,14 +152,21 @@ func (ti *TransactionInjector) Stop() {
 
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomTransfers() {
+	var err error
+	
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
+		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
 		// We avoid transfers to self, unless there is only a single L2 wallet.
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
 		}
 		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500))
+		tx, err = obscuroClient.EstimateGasAndGasPrice(tx)
+		if err != nil {
+			panic(err)
+		}
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -173,7 +180,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		ti.stats.Transfer()
 
-		err = ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
+		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
 			continue
