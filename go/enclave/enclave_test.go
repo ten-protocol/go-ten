@@ -513,7 +513,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	if err = enclave.(*enclaveImpl).storage.StoreBatch(genBatch, nil); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.UpdateL2HeadBatch(blk.Hash(), genBatch, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blk.Hash(), genBatch, nil); err != nil {
 		return err
 	}
 	return enclave.(*enclaveImpl).storage.UpdateL1Head(blk.Hash())
@@ -566,7 +566,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, nil); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.UpdateL2HeadBatch(blk.Hash(), batch, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blk.Hash(), batch, nil); err != nil {
 		return err
 	}
 	return nil
