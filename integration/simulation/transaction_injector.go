@@ -192,6 +192,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		v := testcommon.RndBtw(1, 100)
+		ethClient := ti.rpcHandles.RndEthClient()
 		ethWallet := ti.rndEthWallet()
 		addr := ethWallet.Address()
 		txData := &ethadapter.L1DepositTx{
@@ -201,7 +202,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			Sender:        &addr,
 		}
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
-		tx, err = ti.rpcHandles.RndEthClient().EstimateGasAndGasPrice(tx, ethWallet.Address())
+		tx, err = ethClient.EstimateGasAndGasPrice(tx, ethWallet.Address())
 		if err != nil {
 			panic(err)
 		}
@@ -214,7 +215,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			common.ShortHash(signedTx.Hash()),
 			common.ShortAddress(ethWallet.Address()),
 		))
-		err = ti.rpcHandles.RndEthClient().SendTransaction(signedTx)
+		err = ethClient.SendTransaction(signedTx)
 		if err != nil {
 			panic(err)
 		}
