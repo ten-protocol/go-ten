@@ -16,12 +16,12 @@ import (
 )
 
 func ReadBatch(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Batch, error) {
-	header, err := readHeader(db, hash)
+	header, err := readBatchHeader(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
 
-	body, err := readBody(db, hash)
+	body, err := readBatchBody(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
 	}
@@ -96,8 +96,8 @@ func writeBatchHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, numbe
 }
 
 // Retrieves the batch header corresponding to the hash.
-func readHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header, error) {
-	data, err := readHeaderRLP(db, hash)
+func readBatchHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header, error) {
+	data, err := readBatchHeaderRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
@@ -108,8 +108,8 @@ func readHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header
 	return header, nil
 }
 
-// Retrieves a block header in its raw RLP database encoding.
-func readHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
+// Retrieves a batch header in its raw RLP database encoding.
+func readBatchHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
 	data, err := db.Get(batchHeaderKey(hash))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block header. Cause: %w", err)
@@ -129,7 +129,7 @@ func writeBatchBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []*commo
 }
 
 // Retrieves the batch body corresponding to the hash.
-func readBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
+func readBatchBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
 	data, err := readBatchBodyRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)

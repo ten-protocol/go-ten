@@ -56,7 +56,7 @@ func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *para
 	if err != nil {
 		return nil, fmt.Errorf("could not read receipt. Cause: %w", err)
 	}
-	body, err := readBody(db, hash)
+	body, err := readBatchBody(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("missing body but have receipt. Cause: %w", err)
 	}
