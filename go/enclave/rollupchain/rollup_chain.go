@@ -578,7 +578,7 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 }
 
 // Checks the internal validity of the batch.
-func (rc *RollupChain) isValidBatch(batch *core.Batch) (types.Receipts, error) {
+func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts, error) {
 	stateDB, err := rc.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
@@ -627,7 +627,7 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch) (types.Receipts, error) {
 
 	// todo - check that the transactions hash to the header.txHash
 
-	return receipts, nil
+	return txReceipts, nil
 }
 
 // Calculates the state after processing the provided block.
@@ -695,14 +695,14 @@ func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error
 
 // Checks that the batch is valid, both internally and relative to the previously-stored batches.
 func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
-	txReceipts, err := rc.isValidBatch(batch)
+	// We check that the batch is internally valid (e.g. its header matches its contents).
+	txReceipts, err := rc.isInternallyValidBatch(batch)
 	if err != nil {
-		println("jjj here")
 		return nil, fmt.Errorf("batch was invalid. Cause: %w", err)
 	}
 
+	// We check that we've stored the batch's parent.
 	if _, err = rc.storage.FetchBatch(batch.Header.ParentHash); err != nil {
-		println("jjj here")
 		return nil, fmt.Errorf("could not retrieve parent batch. Cause: %w", err)
 	}
 
