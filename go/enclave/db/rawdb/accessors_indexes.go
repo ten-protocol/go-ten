@@ -63,7 +63,7 @@ func ReadTransaction(db ethdb.Reader, hash common.Hash) (*types.Transaction, com
 		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve canonical hash for block number. Cause: %w", err)
 	}
 
-	transactions, err := ReadBody(db, *blockHash)
+	transactions, err := readBody(db, *blockHash)
 	if err != nil {
 		return nil, common.Hash{}, 0, 0, fmt.Errorf("could not retrieve block body. Cause: %w", err)
 	}

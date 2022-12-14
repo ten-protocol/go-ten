@@ -21,7 +21,7 @@ func ReadBatch(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Batch, er
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
 
-	body, err := ReadBody(db, hash)
+	body, err := readBody(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
 	}
@@ -128,8 +128,8 @@ func writeBatchBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []*commo
 	return nil
 }
 
-// ReadBody retrieves the batch body corresponding to the hash.
-func ReadBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
+// Retrieves the batch body corresponding to the hash.
+func readBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
 	data, err := readBatchBodyRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
