@@ -13,6 +13,11 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+// Used to hash headers.
+var hasherPool = sync.Pool{
+	New: func() interface{} { return sha3.NewLegacyKeccak256() },
+}
+
 // BatchHeader is a public / plaintext struct that holds common properties of batches.
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type BatchHeader struct {
@@ -36,7 +41,7 @@ type BatchHeader struct {
 
 	// The custom Obscuro fields.
 	Agg     common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
-	L1Proof L1RootHash     // the L1 block used by the enclave to generate the current rollup
+	L1Proof L1RootHash     // the L1 block used by the enclave to generate the current batch
 	R, S    *big.Int       // signature values
 	// TODO: mark as deprecated Withdrawals are now contained within cross chain messages.
 	Withdrawals        []Withdrawal
@@ -175,11 +180,6 @@ func (r *RollupHeader) ToBatchHeader() *BatchHeader {
 		LatestInboudCrossChainHash:    r.LatestInboudCrossChainHash,
 		LatestInboundCrossChainHeight: r.LatestInboundCrossChainHeight,
 	}
-}
-
-// Used to hash headers.
-var hasherPool = sync.Pool{
-	New: func() interface{} { return sha3.NewLegacyKeccak256() },
 }
 
 // Encodes value, hashes the encoded bytes and returns the hash.
