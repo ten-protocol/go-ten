@@ -116,7 +116,7 @@ func (p *p2pImpl) RequestBatchesFromSequencer(batchRequest *common.BatchRequest)
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
 	}
 
-	msg := message{Sender: p.ourAddress,Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
+	msg := message{Sender: p.ourAddress, Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
 	// TODO - #718 - Allow missing batches to be requested from peers other than sequencer?
 	return p.send(msg, p.getSequencer())
 }
