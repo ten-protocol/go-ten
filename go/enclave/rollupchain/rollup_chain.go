@@ -611,7 +611,7 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 	}
 
 	// Check that the signature is valid.
-	if !rc.isValidSig(batch.Header) {
+	if !rc.isValidSequencerSig(batch.Header.Hash(), batch.Header.Agg, batch.Header.R, batch.Header.S) {
 		return false
 	}
 
@@ -727,26 +727,27 @@ func (rc *RollupChain) signBatch(batch *core.Batch) error {
 	return nil
 }
 
-func (rc *RollupChain) isValidSig(header *common.Header) bool {
+// Checks that the header is signed validly by the sequencer.
+func (rc *RollupChain) isValidSequencerSig(headerHash gethcommon.Hash, aggregator gethcommon.Address, sigR *big.Int, sigS *big.Int) bool {
 	// Batches and rollups should only be produced by the sequencer.
 	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
-	if !bytes.Equal(header.Agg.Bytes(), rc.sequencerID.Bytes()) {
+	if !bytes.Equal(aggregator.Bytes(), rc.sequencerID.Bytes()) {
 		rc.logger.Error("Batch was not produced by sequencer")
 		return false
 	}
 
-	if header.R == nil || header.S == nil {
+	if sigR == nil || sigS == nil {
 		rc.logger.Error("Missing signature on batch")
 		return false
 	}
 
-	pubKey, err := rc.storage.FetchAttestedKey(header.Agg)
+	pubKey, err := rc.storage.FetchAttestedKey(aggregator)
 	if err != nil {
-		rc.logger.Error("Could not retrieve attested key for aggregator %s. Cause: %w", header.Agg, err)
+		rc.logger.Error("Could not retrieve attested key for aggregator %s. Cause: %w", aggregator, err)
 		return false
 	}
 
-	return ecdsa.Verify(pubKey, header.Hash().Bytes(), header.R, header.S)
+	return ecdsa.Verify(pubKey, headerHash.Bytes(), sigR, sigS)
 }
 
 // Retrieves the batch with the given height, with special handling for earliest/latest/pending .
@@ -899,7 +900,7 @@ func (rc *RollupChain) processRollups(rollups []*core.Rollup, _ *gethcommon.Hash
 	}
 
 	for _, rollup := range rollups {
-		if !rc.isValidSig(rollup.Header) {
+		if !rc.isValidSequencerSig(rollup.Header.Hash(), rollup.Header.Agg, rollup.Header.R, rollup.Header.S) {
 			return fmt.Errorf("rollup signature was invalid")
 		}
 
