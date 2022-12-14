@@ -50,7 +50,7 @@ func (netw *MockP2P) UpdatePeerList([]string) {
 	// Do nothing.
 }
 
-func (netw *MockP2P) SendTx(tx common.EncryptedTx) error {
+func (netw *MockP2P) SendTxToSequencer(tx common.EncryptedTx) error {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return nil
 	}
@@ -78,7 +78,7 @@ func (netw *MockP2P) BroadcastBatch(batchMsg *host.BatchMsg) error {
 	return nil
 }
 
-func (netw *MockP2P) RequestBatches(batchRequest *common.BatchRequest) error {
+func (netw *MockP2P) RequestBatchesFromSequencer(batchRequest *common.BatchRequest) error {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return nil
 	}

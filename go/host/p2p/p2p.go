@@ -90,7 +90,7 @@ func (p *p2pImpl) UpdatePeerList(newPeers []string) {
 	p.peerAddresses = newPeers
 }
 
-func (p *p2pImpl) SendTx(tx common.EncryptedTx) error {
+func (p *p2pImpl) SendTxToSequencer(tx common.EncryptedTx) error {
 	msg := message{Type: msgTypeTx, Contents: tx}
 	return p.send(msg, p.getSequencer())
 }
@@ -105,7 +105,7 @@ func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
 	return p.broadcast(msg)
 }
 
-func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
+func (p *p2pImpl) RequestBatchesFromSequencer(batchRequest *common.BatchRequest) error {
 	if len(p.peerAddresses) == 0 {
 		return errors.New("no peers available to request batches")
 	}

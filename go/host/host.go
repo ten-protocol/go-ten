@@ -293,7 +293,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	}
 
 	if h.config.NodeType != common.Sequencer {
-		err = h.p2p.SendTx(encryptedTx)
+		err = h.p2p.SendTxToSequencer(encryptedTx)
 		if err != nil {
 			return nil, fmt.Errorf("could not broadcast transaction to sequencer. Cause: %w", err)
 		}
@@ -916,7 +916,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 			// We only request the missing batches if the batches did not themselves arrive as part of catch-up, to
 			// avoid excessive P2P pressure.
 			if !batchMsg.IsCatchUp {
-				if err = h.p2p.RequestBatches(batchRequest); err != nil {
+				if err = h.p2p.RequestBatchesFromSequencer(batchRequest); err != nil {
 					return fmt.Errorf("could not request historical batches. Cause: %w", err)
 				}
 				return nil
