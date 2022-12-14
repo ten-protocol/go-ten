@@ -251,7 +251,10 @@ func (h *host) broadcastSecret() error {
 		HostAddress:   h.config.P2PPublicAddress,
 	}
 	initialiseSecretTx := h.mgmtContractLib.CreateInitializeSecret(l1tx, h.ethWallet.GetNonceAndIncrement())
-	err = h.signAndBroadcastL1Tx(initialiseSecretTx, l1TxTriesSecret)
+	err = h.signAndBroadcastL1Tx(common.DescribedTransactionData{
+		Data:        initialiseSecretTx,
+		Description: "Initialize secret transaction.",
+	}, l1TxTriesSecret)
 	if err != nil {
 		return fmt.Errorf("failed to initialise enclave secret. Cause: %w", err)
 	}
@@ -572,7 +575,10 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 		}})
 
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
-	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup)
+	err = h.signAndBroadcastL1Tx(common.DescribedTransactionData{
+		Data:        rollupTx,
+		Description: "Publish rollup transaction.",
+	}, l1TxTriesRollup)
 	if err != nil {
 		h.logger.Error("could not broadcast rollup", log.ErrKey, err)
 	}
@@ -617,9 +623,9 @@ func (h *host) initialiseProtocol(block *types.Block) error {
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.
-func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
+func (h *host) signAndBroadcastL1Tx(describedTx common.DescribedTransactionData, tries uint64) error {
 	var err error
-	tx, err = h.ethClient.EstimateGasAndGasPrice(tx, h.ethWallet.Address())
+	tx, err := h.ethClient.EstimateGasAndGasPrice(describedTx.Data, h.ethWallet.Address())
 	if err != nil {
 		return fmt.Errorf("unable to estimate gas limit and gas price - %w", err)
 	}
@@ -639,12 +645,12 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64) error {
 
 	// asynchronously watch for a successful receipt
 	// todo: consider how to handle the various ways that L1 transactions could fail to improve node operator QoL
-	go h.watchForReceipt(signedTx.Hash())
+	go h.watchForReceipt(signedTx.Hash(), describedTx.Description)
 
 	return nil
 }
 
-func (h *host) watchForReceipt(txHash common.TxHash) {
+func (h *host) watchForReceipt(txHash common.TxHash, txDescription string) {
 	var receipt *types.Receipt
 	var err error
 	err = retry.Do(
@@ -656,7 +662,7 @@ func (h *host) watchForReceipt(txHash common.TxHash) {
 	)
 	if err != nil {
 		h.logger.Error("receipt for L1 transaction never found despite 'successful' broadcast",
-			"err", err, "signer", h.ethWallet.Address().Hex(),
+			"err", err, "signer", h.ethWallet.Address().Hex(), "tx_description", txDescription,
 		)
 		return
 	}
@@ -664,7 +670,8 @@ func (h *host) watchForReceipt(txHash common.TxHash) {
 	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
 		h.logger.Error("unsuccessful receipt found for published L1 transaction",
 			"status", receipt.Status,
-			"signer", h.ethWallet.Address().Hex())
+			"signer", h.ethWallet.Address().Hex(),
+			"tx_description", txDescription)
 	}
 	h.logger.Trace("Successful L1 transaction receipt found.", "blk", receipt.BlockNumber, "blkHash", receipt.BlockHash)
 }
@@ -692,7 +699,11 @@ func (h *host) requestSecret() error {
 		panic(fmt.Errorf("could not fetch head L1 block. Cause: %w", err))
 	}
 	requestSecretTx := h.mgmtContractLib.CreateRequestSecret(l1tx, h.ethWallet.GetNonceAndIncrement())
-	err = h.signAndBroadcastL1Tx(requestSecretTx, l1TxTriesSecret)
+	err = h.signAndBroadcastL1Tx(common.DescribedTransactionData{
+		Data:        requestSecretTx,
+		Description: "Request secret transsaction.",
+	}, l1TxTriesSecret)
+
 	if err != nil {
 		return err
 	}
@@ -738,7 +749,10 @@ func (h *host) publishSharedSecretResponses(scrtResponses []*common.ProducedSecr
 		// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 		respondSecretTx := h.mgmtContractLib.CreateRespondSecret(l1tx, h.ethWallet.GetNonceAndIncrement(), false)
 		h.logger.Trace("Broadcasting secret response L1 tx.", "requester", scrtResponse.RequesterID)
-		err := h.signAndBroadcastL1Tx(respondSecretTx, l1TxTriesSecret)
+		err := h.signAndBroadcastL1Tx(common.DescribedTransactionData{
+			Data:        respondSecretTx,
+			Description: "Respond Secret Transaction.",
+		}, l1TxTriesSecret)
 		if err != nil {
 			return fmt.Errorf("could not broadcast secret response. Cause %w", err)
 		}
