@@ -634,13 +634,9 @@ func (rc *RollupChain) handlePostGenesisBlock(block *types.Block, rollupsInBlock
 
 	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
 	// We retrieve the current L2 head.
-	l2HeadHash, err := rc.storage.FetchHeadBatchForBlock(block.ParentHash())
+	l2Head, err := rc.storage.FetchHeadBatchForBlock(block.ParentHash())
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not retrieve current head batch hash. Cause: %w", err)
-	}
-	l2Head, err := rc.storage.FetchBatch(*l2HeadHash)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch parent batch. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
 	}
 	l2HeadTxReceipts, err := rc.storage.GetReceiptsByHash(*l2Head.Hash())
 	if err != nil {
@@ -785,11 +781,7 @@ func (rc *RollupChain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error)
 
 // Creates a batch.
 func (rc *RollupChain) produceBatch(block *types.Block) (*core.Batch, error) {
-	headBatchHash, err := rc.storage.FetchHeadBatchForBlock(block.ParentHash())
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve head batch hash. Cause: %w", err)
-	}
-	headBatch, err := rc.storage.FetchBatch(*headBatchHash)
+	headBatch, err := rc.storage.FetchHeadBatchForBlock(block.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 	}
