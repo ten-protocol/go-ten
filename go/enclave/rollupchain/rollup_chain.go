@@ -622,7 +622,7 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 	// Check that the signature is valid.
 	// todo: #1297 re-enable seq sig validation ASAP - once the testnet nodes all have access to the sequencer ID
 	//if err := rc.validateSequencerSig(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
-	//	return fmt.Errorf("verify batch r_%d: invalid signature. Cause: %s", common.ShortHash(*batch.Hash()), err.Error()))
+	//	return nil, fmt.Errorf("verify batch r_%d: invalid signature. Cause: %s", common.ShortHash(*batch.Hash()), err.Error())
 	//}
 
 	// todo - check that the transactions hash to the header.txHash
