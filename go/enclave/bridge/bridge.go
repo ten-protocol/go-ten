@@ -157,9 +157,10 @@ func (bridge *Bridge) GetMapping(l1ContractAddress *gethcommon.Address) *ERC20Ma
 	return nil
 }
 
-// ExtractRollup returns the rollup published in this block, if any
-func (bridge *Bridge) ExtractRollup(b *types.Block, blockResolver db.BlockResolver) (*core.Rollup, error) {
+// ExtractRollups returns the rollups published in this block, if any
+func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) ([]*core.Rollup, error) {
 	rollups := make([]*core.Rollup, 0)
+	
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
 		t := bridge.MgmtContractLib.DecodeTx(tx)
@@ -167,31 +168,25 @@ func (bridge *Bridge) ExtractRollup(b *types.Block, blockResolver db.BlockResolv
 			continue
 		}
 
-		if rolTx, ok := t.(*ethadapter.L1RollupTx); ok {
-			r, err := common.DecodeRollup(rolTx.Rollup)
+		if rollupTx, ok := t.(*ethadapter.L1RollupTx); ok {
+			rollup, err := common.DecodeRollup(rollupTx.Rollup)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
 			}
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
-			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-				rollups = append(rollups, core.ToEnclaveRollup(r, bridge.TransactionBlobCrypto))
+			if blockResolver.IsBlockAncestor(b, rollup.Header.L1Proof) {
+				rollups = append(rollups, core.ToEnclaveRollup(rollup, bridge.TransactionBlobCrypto))
 				bridge.logger.Trace(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
-					common.ShortHash(r.Hash()),
+					common.ShortHash(rollup.Hash()),
 					common.ShortHash(b.Hash()),
 				))
 			}
 		}
 	}
 
-	if len(rollups) > 1 {
-		return nil, fmt.Errorf("expected at most one rollup in block, found %d", len(rollups))
-	}
-	if len(rollups) == 1 {
-		return rollups[0], nil
-	}
-	return nil, nil //nolint:nilnil
+	return rollups, nil
 }
 
 // NewDepositTx creates a synthetic Obscuro transfer transaction based on deposits into the L1 bridge.
