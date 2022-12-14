@@ -641,7 +641,8 @@ func (h *host) signAndBroadcastL1Tx(describedTx common.DescribedTransactionData,
 	if err != nil {
 		return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 	}
-	h.logger.Trace("L1 transaction sent successfully, watching for receipt.")
+	h.logger.Trace("L1 transaction sent successfully, watching for receipt.",
+		"tx", signedTx.Hash().Hex())
 
 	// asynchronously watch for a successful receipt
 	// todo: consider how to handle the various ways that L1 transactions could fail to improve node operator QoL
@@ -662,7 +663,10 @@ func (h *host) watchForReceipt(txHash common.TxHash, txDescription string) {
 	)
 	if err != nil {
 		h.logger.Error("receipt for L1 transaction never found despite 'successful' broadcast",
-			"err", err, "signer", h.ethWallet.Address().Hex(), "tx_description", txDescription,
+			"err", err,
+			"signer", h.ethWallet.Address().Hex(),
+			"tx", txHash.Hex(),
+			"tx_description", txDescription,
 		)
 		return
 	}
@@ -671,10 +675,14 @@ func (h *host) watchForReceipt(txHash common.TxHash, txDescription string) {
 		h.logger.Error("unsuccessful receipt found for published L1 transaction",
 			"status", receipt.Status,
 			"signer", h.ethWallet.Address().Hex(),
+			"tx", txHash.Hex(),
 			"tx_description", txDescription)
 		return
 	}
-	h.logger.Trace("Successful L1 transaction receipt found.", "blk", receipt.BlockNumber, "blkHash", receipt.BlockHash)
+	h.logger.Trace("Successful L1 transaction receipt found.",
+		"blk", receipt.BlockNumber,
+		"blkHash", receipt.BlockHash,
+		"tx", txHash.Hex())
 }
 
 // This method implements the procedure by which a node obtains the secret
