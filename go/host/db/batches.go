@@ -18,7 +18,7 @@ import (
 // DB methods relating to batches.
 
 // GetHeadBatchHeader returns the header of the node's current head batch.
-func (db *DB) GetHeadBatchHeader() (*common.Header, error) {
+func (db *DB) GetHeadBatchHeader() (*common.BatchHeader, error) {
 	headBatchHash, err := db.readHeadBatchHash()
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (db *DB) GetHeadBatchHeader() (*common.Header, error) {
 }
 
 // GetBatchHeader returns the batch header given the hash.
-func (db *DB) GetBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
+func (db *DB) GetBatchHeader(hash gethcommon.Hash) (*common.BatchHeader, error) {
 	return db.readBatchHeader(hash)
 }
 
@@ -144,7 +144,7 @@ func batchNumberKey(txHash gethcommon.Hash) []byte {
 }
 
 // Retrieves the batch header corresponding to the hash.
-func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
+func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.BatchHeader, error) {
 	data, err := db.kvStore.Get(batchHeaderKey(hash))
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.Header, error) {
 	if len(data) == 0 {
 		return nil, errutil.ErrNotFound
 	}
-	header := new(common.Header)
+	header := new(common.BatchHeader)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (db *DB) readHeadBatchHash() (*gethcommon.Hash, error) {
 }
 
 // Stores a batch header into the database.
-func (db *DB) writeBatchHeader(header *common.Header) error {
+func (db *DB) writeBatchHeader(header *common.BatchHeader) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
@@ -193,7 +193,7 @@ func (db *DB) writeHeadBatchHash(val gethcommon.Hash) error {
 }
 
 // Stores a batch's hash in the database, keyed by the batch's number.
-func (db *DB) writeBatchHash(w ethdb.KeyValueWriter, header *common.Header) error {
+func (db *DB) writeBatchHash(w ethdb.KeyValueWriter, header *common.BatchHeader) error {
 	key := batchHashKey(header.Number)
 	if err := w.Put(key, header.Hash().Bytes()); err != nil {
 		return err
@@ -233,7 +233,7 @@ func (db *DB) readBatchTxHashes(batchHash common.L2RootHash) ([]gethcommon.Hash,
 }
 
 // Stores a batch's number in the database, keyed by the hash of a transaction in that rollup.
-func (db *DB) writeBatchNumber(w ethdb.KeyValueWriter, header *common.Header, txHash gethcommon.Hash) error {
+func (db *DB) writeBatchNumber(w ethdb.KeyValueWriter, header *common.BatchHeader, txHash gethcommon.Hash) error {
 	key := batchNumberKey(txHash)
 	if err := w.Put(key, header.Number.Bytes()); err != nil {
 		return err

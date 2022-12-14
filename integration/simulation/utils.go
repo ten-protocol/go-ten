@@ -46,7 +46,7 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 }
 
 // Uses the client to retrieve the current rollup head.
-func getHeadRollupHeader(client *obsclient.ObsClient, nodeIdx int) *common.Header {
+func getHeadRollupHeader(client *obsclient.ObsClient, nodeIdx int) *common.BatchHeader {
 	headRollupHeight, err := client.RollupNumber()
 	if err != nil {
 		panic(fmt.Errorf("simulation failed due to failed attempt to retrieve head rollup height. Cause: %w", err))

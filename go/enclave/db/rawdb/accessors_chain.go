@@ -83,7 +83,7 @@ func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 }
 
 // Stores a batch header into the database and also stores the hash-to-number mapping.
-func writeBatchHeader(db ethdb.KeyValueWriter, header *common.Header) error {
+func writeBatchHeader(db ethdb.KeyValueWriter, header *common.BatchHeader) error {
 	// Write the hash -> number mapping
 	err := writeBatchHeaderNumber(db, header.Hash(), header.Number.Uint64())
 	if err != nil {
@@ -113,12 +113,12 @@ func writeBatchHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, numbe
 }
 
 // Retrieves the batch header corresponding to the hash.
-func readBatchHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header, error) {
+func readBatchHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.BatchHeader, error) {
 	data, err := readBatchHeaderRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
-	header := new(common.Header)
+	header := new(common.BatchHeader)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
 	}
@@ -265,7 +265,7 @@ func WriteCanonicalHash(db ethdb.KeyValueWriter, l2Head *core.Batch) error {
 }
 
 // Stores a rollup header into the database and also stores the hash-to-number mapping.
-func writeRollupHeader(db ethdb.KeyValueWriter, header *common.Header) error {
+func writeRollupHeader(db ethdb.KeyValueWriter, header *common.RollupHeader) error {
 	// Write the hash -> number mapping
 	err := writeRollupHeaderNumber(db, header.Hash(), header.Number.Uint64())
 	if err != nil {
@@ -314,12 +314,12 @@ func writeRollupBodyRLP(db ethdb.KeyValueWriter, hash common.L2RootHash, rlp rlp
 }
 
 // Retrieves the rollup header corresponding to the hash.
-func readRollupHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header, error) {
+func readRollupHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.RollupHeader, error) {
 	data, err := readRollupHeaderRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
-	header := new(common.Header)
+	header := new(common.RollupHeader)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		return nil, fmt.Errorf("could not decode rollup header. Cause: %w", err)
 	}

@@ -236,13 +236,13 @@ func (c *inMemObscuroClient) getRollupByNumber(result interface{}, args []interf
 	if err != nil {
 		return fmt.Errorf("could not marshal %s response to JSON. Cause: %w", rpc.GetRollupByNumber, err)
 	}
-	var header common.Header
+	var header common.BatchHeader
 	err = json.Unmarshal(headerJSON, &header)
 	if err != nil {
 		return fmt.Errorf("could not marshal %s response to rollup header. Cause: %w", rpc.GetRollupByNumber, err)
 	}
 
-	*result.(**common.Header) = &header
+	*result.(**common.BatchHeader) = &header
 	return nil
 }
 
@@ -261,13 +261,13 @@ func (c *inMemObscuroClient) getRollupByHash(result interface{}, args []interfac
 	if err != nil {
 		return fmt.Errorf("could not marshal %s response to JSON. Cause: %w", rpc.GetRollupByHash, err)
 	}
-	var header common.Header
+	var header common.BatchHeader
 	err = json.Unmarshal(headerJSON, &header)
 	if err != nil {
 		return fmt.Errorf("could not marshal %s response to rollup header. Cause: %w", rpc.GetRollupByHash, err)
 	}
 
-	*result.(**common.Header) = &header
+	*result.(**common.BatchHeader) = &header
 	return nil
 }
 

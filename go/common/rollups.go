@@ -6,7 +6,7 @@ import (
 
 // ExtRollup is an encrypted form of rollup used when passing the rollup around outside of an enclave.
 type ExtRollup struct {
-	Header          *Header
+	Header          *RollupHeader
 	TxHashes        []TxHash // The hashes of the transactions included in the rollup
 	EncryptedTxBlob EncryptedTransactions
 	hash            atomic.Value
@@ -25,7 +25,7 @@ func (r *ExtRollup) Hash() L2RootHash {
 
 func (r *ExtRollup) ToExtBatch() *ExtBatch {
 	return &ExtBatch{
-		Header:          r.Header,
+		Header:          r.Header.ToBatchHeader(),
 		TxHashes:        r.TxHashes,
 		EncryptedTxBlob: r.EncryptedTxBlob,
 	}

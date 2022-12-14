@@ -109,7 +109,7 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 		return nil, err
 	}
 
-	h := common.Header{
+	h := common.RollupHeader{
 		Agg:         gethcommon.HexToAddress("0x0"),
 		ParentHash:  common.L2RootHash{},
 		L1Proof:     blkHash,
@@ -165,7 +165,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
-func (rc *RollupChain) UpdateL2Chain(batch *core.Batch) (*common.Header, error) {
+func (rc *RollupChain) UpdateL2Chain(batch *core.Batch) (*common.BatchHeader, error) {
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
@@ -267,7 +267,7 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 		return nil, err
 	}
 
-	r, err := rc.getBatch(*blockNumber)
+	batch, err := rc.getBatch(*blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
@@ -277,11 +277,11 @@ func (rc *RollupChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transa
 			callMsg.To(),
 			callMsg.From(),
 			hexutils.BytesToHex(callMsg.Data()),
-			common.ShortHash(*r.Hash()),
-			r.Header.Root.Hex()),
+			common.ShortHash(*batch.Hash()),
+			batch.Header.Root.Hex()),
 	)
 
-	result, err := evm.ExecuteOffChainCall(&callMsg, blockState, r.Header, rc.storage, rc.chainConfig, rc.logger)
+	result, err := evm.ExecuteOffChainCall(&callMsg, blockState, batch.Header, rc.storage, rc.chainConfig, rc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err
@@ -585,8 +585,8 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 	}
 
 	// calculate the state to compare with what is in the batch
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch, batch.Transactions, stateDB)
-	if len(successfulTxs) != len(batch.Transactions) {
+	rootHash, executedTxs, txReceipts, depositReceipts := rc.processState(batch, batch.Transactions, stateDB)
+	if len(executedTxs) != len(batch.Transactions) {
 		return nil, fmt.Errorf("all transactions that are included in a batch must be executed")
 	}
 
@@ -796,8 +796,7 @@ func (rc *RollupChain) produceBatch(block *types.Block) (*core.Batch, error) {
 	var newBatchState *state.StateDB
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	nonce := common.GenerateNonce()
-	batch, err := core.EmptyBatch(rc.hostID, headBatch.Header, block.Hash(), nonce)
+	batch, err := core.EmptyBatch(rc.hostID, headBatch.Header, block.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create batch. Cause: %w", err)
 	}
