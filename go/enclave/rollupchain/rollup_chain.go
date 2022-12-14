@@ -577,13 +577,24 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 	return rootHash, executedTransactions, txReceipts, depositReceipts
 }
 
-func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
+// Checks the internal validity of the batch.
+func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts, error) {
+	stateDB, err := rc.storage.CreateStateDB(batch.Header.ParentHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+
+	// calculate the state to compare with what is in the batch
+	rootHash, executedTxs, txReceipts, depositReceipts := rc.processState(batch, batch.Transactions, stateDB)
+	if len(executedTxs) != len(batch.Transactions) {
+		return nil, fmt.Errorf("all transactions that are included in a batch must be executed")
+	}
+
 	// Check that the root hash in the header matches the root hash as calculated.
 	if !bytes.Equal(rootHash.Bytes(), batch.Header.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
-		rc.logger.Error(fmt.Sprintf("Verify batch b_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(*batch.Hash()), rootHash, batch.Header.Root, batch.Header.Number, core.PrintTxs(batch.Transactions), dump, depositReceipts))
-		return false
+		return nil, fmt.Errorf("verify batch b_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
+			common.ShortHash(*batch.Hash()), rootHash, batch.Header.Root, batch.Header.Number, core.PrintTxs(batch.Transactions), dump, depositReceipts)
 	}
 
 	// Check that the withdrawals in the header match the withdrawals as calculated.
@@ -591,8 +602,7 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 	for i, w := range withdrawals {
 		hw := batch.Header.Withdrawals[i]
 		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Withdrawals don't match", common.ShortHash(*batch.Hash())))
-			return false
+			return nil, fmt.Errorf("verify batch r_%d: Withdrawals don't match", common.ShortHash(*batch.Hash()))
 		}
 	}
 
@@ -600,27 +610,24 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 	receipts := allReceipts(txReceipts, depositReceipts)
 	receiptBloom := types.CreateBloom(receipts)
 	if !bytes.Equal(receiptBloom.Bytes(), batch.Header.Bloom.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(*batch.Hash()), batch.Header.Bloom, receiptBloom))
-		return false
+		return nil, fmt.Errorf("verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(*batch.Hash()), batch.Header.Bloom, receiptBloom)
 	}
 
 	// Check that the receipts SHA in the header matches the receipts SHA as calculated.
 	receiptSha := types.DeriveSha(receipts, trie.NewStackTrie(nil))
 	if !bytes.Equal(receiptSha.Bytes(), batch.Header.ReceiptHash.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(*batch.Hash()), batch.Header.ReceiptHash, receiptSha))
-		return false
+		return nil, fmt.Errorf("verify batch r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(*batch.Hash()), batch.Header.ReceiptHash, receiptSha)
 	}
 
 	// Check that the signature is valid.
 	// todo: #1297 re-enable seq sig validation ASAP - once the testnet nodes all have access to the sequencer ID
 	//if err := rc.validateSequencerSig(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
-	//	rc.logger.Error(fmt.Sprintf("Verify batch r_%d: invalid signature. Cause: %s", common.ShortHash(*batch.Hash()), err.Error()))
-	//	return false
+	//	return nil, fmt.Errorf("verify batch r_%d: invalid signature. Cause: %s", common.ShortHash(*batch.Hash()), err.Error())
 	//}
 
 	// todo - check that the transactions hash to the header.txHash
 
-	return true
+	return txReceipts, nil
 }
 
 // Calculates the state after processing the provided block.
@@ -686,23 +693,20 @@ func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error
 	return txReceipts, nil
 }
 
-// verifies that the batch is valid, and the headers of the batch or rollup match the results of executing the transactions
+// Checks that the batch is valid, both internally and relative to the previously-stored batches.
 func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
-	stateDB, err := rc.storage.CreateStateDB(batch.Header.ParentHash)
+	// We check that the batch is internally valid (e.g. its header matches its contents).
+	txReceipts, err := rc.isInternallyValidBatch(batch)
 	if err != nil {
-		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+		return nil, fmt.Errorf("batch was invalid. Cause: %w", err)
 	}
 
-	// calculate the state to compare with what is in the batch
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch, batch.Transactions, stateDB)
-	// TODO - Do we filter out failed transaction receipts from batches? Don't validators need to know them?
-	if len(successfulTxs) != len(batch.Transactions) {
-		return nil, fmt.Errorf("all transactions that are included in a batch must be executed")
+	// We check that we've stored the batch's parent.
+	if _, err = rc.storage.FetchBatch(batch.Header.ParentHash); err != nil {
+		return nil, fmt.Errorf("could not retrieve parent batch. Cause: %w", err)
 	}
 
-	if !rc.isValidBatch(batch, rootHash, txReceipts, depositReceipts, stateDB) {
-		return nil, fmt.Errorf("invalid batch")
-	}
+	// TODO - #718 - Check that the transactions in the batch are unique
 
 	return txReceipts, nil
 }

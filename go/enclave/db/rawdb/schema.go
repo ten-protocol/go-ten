@@ -28,7 +28,6 @@ var (
 	txLookupPrefix               = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
 )
 
-// todo - joel - should this be here?
 // encodeNumber encodes a number as big endian uint64
 func encodeNumber(number uint64) []byte {
 	enc := make([]byte, 8)
