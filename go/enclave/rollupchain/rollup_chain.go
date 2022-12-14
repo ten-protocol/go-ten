@@ -493,11 +493,11 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 
 	parentProof, err := rc.storage.FetchBlock(parent.Header.L1Proof)
 	if err != nil {
-		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Header.Hash()), log.ErrKey, err)
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
 	}
 	batchProof, err := rc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {
-		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Header.Hash()), log.ErrKey, err)
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
 	}
 
 	// TODO: Remove this depositing logic once the new bridge is added.
@@ -590,7 +590,7 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 	for i, w := range withdrawals {
 		hw := batch.Header.Withdrawals[i]
 		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Withdrawals don't match", common.ShortHash(batch.Header.Hash())))
+			rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Withdrawals don't match", common.ShortHash(*batch.Hash())))
 			return false
 		}
 	}
@@ -599,7 +599,7 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 	receipts := allReceipts(txReceipts, depositReceipts)
 	receiptBloom := types.CreateBloom(receipts)
 	if !bytes.Equal(receiptBloom.Bytes(), batch.Header.Bloom.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(batch.Header.Hash()), batch.Header.Bloom, receiptBloom))
+		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(*batch.Hash()), batch.Header.Bloom, receiptBloom))
 		return false
 	}
 
