@@ -506,17 +506,27 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 		return err
 	}
 
-	// make sure the genesis is stored the rollup storage
-	genBatch := dummyBatch(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
+	genesisRollup := dummyRollup(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
+	genesisBatch := &core.Batch{
+		Header:       genesisRollup.Header,
+		Transactions: genesisRollup.Transactions,
+	}
 
-	// make sure the genesis is stored as the new Head of the rollup chain
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(genBatch, nil); err != nil {
+	// We update the database
+	if err = enclave.(*enclaveImpl).storage.StoreRollup(genesisRollup); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blk.Hash(), genBatch, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch, nil); err != nil {
 		return err
 	}
-	return enclave.(*enclaveImpl).storage.UpdateL1Head(blk.Hash())
+	blockHash := blk.Hash()
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, genesisRollup.Hash()); err != nil {
+		return err
+	}
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, genesisBatch, nil); err != nil {
+		return err
+	}
+	return enclave.(*enclaveImpl).storage.UpdateL1Head(blockHash)
 }
 
 func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAddress) error {
@@ -559,16 +569,27 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 		return err
 	}
 
-	// make sure the batch is stored the batch storage
-	batch := dummyBatch(blk.Hash(), headRollup.NumberU64()+1, stateDB)
+	rollup := dummyRollup(blk.Hash(), headRollup.NumberU64()+1, stateDB)
+	batch := &core.Batch{
+		Header:       rollup.Header,
+		Transactions: rollup.Transactions,
+	}
 
-	// make sure the genesis is stored as the new Head of the rollup chain
+	// We update the database.
+	if err = enclave.(*enclaveImpl).storage.StoreRollup(rollup); err != nil {
+		return err
+	}
 	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, nil); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blk.Hash(), batch, nil); err != nil {
+	blockHash := blk.Hash()
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, rollup.Hash()); err != nil {
 		return err
 	}
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, batch, nil); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -590,7 +611,7 @@ type prefundedAddress struct {
 	amount  *big.Int
 }
 
-func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Batch {
+func dummyRollup(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Rollup {
 	h := common.Header{
 		Agg:         gethcommon.HexToAddress("0x0"),
 		ParentHash:  common.L1RootHash{},
@@ -602,7 +623,7 @@ func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *c
 		ReceiptHash: types.EmptyRootHash,
 		Time:        uint64(time.Now().Unix()),
 	}
-	return &core.Batch{
+	return &core.Rollup{
 		Header:       &h,
 		Transactions: []*common.L2Tx{},
 	}
