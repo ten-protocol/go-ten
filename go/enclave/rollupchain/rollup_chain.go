@@ -919,11 +919,10 @@ func (rc *RollupChain) processRollups(rollups []*core.Rollup, block *common.L1Bl
 			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
-		// We check that the rollup numbers are sequential.
-		rollupNumIncrement := big.NewInt(0).Sub(rollup.Number(), currentHeadRollup.Number())
-		if rollupNumIncrement.Cmp(big.NewInt(1)) != 0 {
-			return fmt.Errorf("rollup number jumped by %d, from %d to %d; expected increment by 1",
-				rollupNumIncrement, currentHeadRollup.Number(), rollup.Number())
+		// We check that the rollups are sequential.
+		if rollup.Header.ParentHash.Hex() != currentHeadRollup.Hash().Hex() {
+			return fmt.Errorf("found gap in rollup chain. Rollup %s's parent was %s instead of %s",
+				rollup.Header.Hash(), rollup.Header.ParentHash, currentHeadRollup.Header.Hash())
 		}
 
 		// TODO - #718 - Validate the rollups in the block against the stored batches.
