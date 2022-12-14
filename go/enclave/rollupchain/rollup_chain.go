@@ -894,6 +894,21 @@ func (rc *RollupChain) isAccountContractAtBlock(accountAddr gethcommon.Address, 
 
 // Validates and stores the rollup in a given block.
 func (rc *RollupChain) processRollups(rollups []*core.Rollup, _ *gethcommon.Hash) error {
+	// We sort the rollups by number in ascending order, in order to process them in the correct order.
+	sort.Slice(rollups, func(i, j int) bool {
+		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
+	})
+
+	// We check if there are any duplicates.
+	for idx, rollup := range rollups {
+		if idx+1 >= len(rollups) {
+			break
+		}
+		if rollup.Header.Number.Cmp(rollups[idx+1].Header.Number) == 0 {
+			return fmt.Errorf("duplicates rollups found in block; two rollups with number %d", rollup.Header.Number)
+		}
+	}
+
 	if len(rollups) == 0 {
 		// TODO - #718 - Store previous rollup against new L1 head.
 		return nil
