@@ -10,7 +10,10 @@ type item struct {
 	lastUpdate time.Time
 }
 
-// ttlMap is a map in which the values are removed after a certain amount of time
+// ttlMap is a map in which the values that are not updated withing TTL are removed/reset
+// this is effective for :
+// - count errors, clears if no errors happen within TTL - > no errors for the TTL period
+// - count messages, clears if no messages are received withing TTL -> error for the TTL period
 type ttlMap struct {
 	values map[string]*item
 	lock   sync.RWMutex

@@ -17,6 +17,7 @@ const (
 
 var _rollingPeriod = 5 * time.Minute
 
+// status is the current message received and failures status of the p2p package
 type status struct {
 	lock          sync.RWMutex
 	currentStatus map[string]*ttlMap
