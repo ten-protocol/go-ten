@@ -611,7 +611,8 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 	}
 
 	// Check that the signature is valid.
-	if !rc.isValidSequencerSig(batch.Header.Hash(), batch.Header.Agg, batch.Header.R, batch.Header.S) {
+	if err := rc.validateSequencerSig(batch.Header.Hash(), batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
+		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: invalid signature. Cause: %s", common.ShortHash(*batch.Hash()), err.Error()))
 		return false
 	}
 
@@ -728,26 +729,26 @@ func (rc *RollupChain) signBatch(batch *core.Batch) error {
 }
 
 // Checks that the header is signed validly by the sequencer.
-func (rc *RollupChain) isValidSequencerSig(headerHash gethcommon.Hash, aggregator gethcommon.Address, sigR *big.Int, sigS *big.Int) bool {
+func (rc *RollupChain) validateSequencerSig(headerHash gethcommon.Hash, aggregator gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
 	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
 	if !bytes.Equal(aggregator.Bytes(), rc.sequencerID.Bytes()) {
-		rc.logger.Error("Batch was not produced by sequencer")
-		return false
+		return fmt.Errorf("expected batch to be produced by sequencer %s, but was produced by %s", rc.sequencerID.Hex(), aggregator.Hex())
 	}
 
 	if sigR == nil || sigS == nil {
-		rc.logger.Error("Missing signature on batch")
-		return false
+		return fmt.Errorf("missing signature on batch")
 	}
 
 	pubKey, err := rc.storage.FetchAttestedKey(aggregator)
 	if err != nil {
-		rc.logger.Error("Could not retrieve attested key for aggregator %s. Cause: %w", aggregator, err)
-		return false
+		return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", aggregator, err)
 	}
 
-	return ecdsa.Verify(pubKey, headerHash.Bytes(), sigR, sigS)
+	if !ecdsa.Verify(pubKey, headerHash.Bytes(), sigR, sigS) {
+		return fmt.Errorf("could not verify ECDSA signature")
+	}
+	return nil
 }
 
 // Retrieves the batch with the given height, with special handling for earliest/latest/pending .
@@ -900,8 +901,8 @@ func (rc *RollupChain) processRollups(rollups []*core.Rollup, _ *gethcommon.Hash
 	}
 
 	for _, rollup := range rollups {
-		if !rc.isValidSequencerSig(rollup.Header.Hash(), rollup.Header.Agg, rollup.Header.R, rollup.Header.S) {
-			return fmt.Errorf("rollup signature was invalid")
+		if err := rc.validateSequencerSig(rollup.Header.Hash(), rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
 		// TODO - #718 - Also validate the rollups in the block against the stored batches.
