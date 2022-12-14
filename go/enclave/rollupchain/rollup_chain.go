@@ -700,11 +700,16 @@ func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error
 func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
 	txReceipts, err := rc.isValidBatch(batch)
 	if err != nil {
+		println("jjj here")
 		return nil, fmt.Errorf("batch was invalid. Cause: %w", err)
 	}
 
-	// TODO - #718 - Check that the batch's parent is stored
-	// TODO - #718 - Check that the transactions in the light batch are unique
+	if _, err = rc.storage.FetchBatch(batch.Header.ParentHash); err != nil {
+		println("jjj here")
+		return nil, fmt.Errorf("could not retrieve parent batch. Cause: %w", err)
+	}
+
+	// TODO - #718 - Check that the transactions in the batch are unique
 
 	return txReceipts, nil
 }
