@@ -89,10 +89,13 @@ task("deploy", "Prepares for deploying.")
     process.on('SIGINT', ()=>exit(1));
 
     try {
-        const { deployer } = await hre.getNamedAccounts()
+        const { deployer } = await hre.getNamedAccounts();
         const key = await viewingKeyForAddress(deployer);
+
+        console.log(`Generated viewing key for ${deployer} - ${key}`);
+
         const signaturePromise = (await hre.ethers.getSigner(deployer)).signMessage(`vk${key}`);
-        const signedData = { 'signature': await signaturePromise, 'address': deployer }
+        const signedData = { 'signature': await signaturePromise, 'address': deployer };
         await submitKey(signedData);
 
         await runSuper();

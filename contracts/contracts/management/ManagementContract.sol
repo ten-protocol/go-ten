@@ -19,7 +19,7 @@ contract ManagementContract {
     Structs.Tree private tree;
 
     // networkSecretNotInitialized marks if the network secret has been initialized
-    bool private networkSecretInitialized ;
+    bool private networkSecretInitialized = false;
 
     // isWithdrawalAvailable marks if the contract allows withdrawals or not
     bool private isWithdrawalAvailable;
