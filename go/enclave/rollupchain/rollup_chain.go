@@ -621,9 +621,9 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 }
 
 // Calculates the state after processing the provided block.
-func (rc *RollupChain) handlePostGenesisBlock(block *types.Block, rollups []*core.Rollup) (*common.L2RootHash, *core.Batch, error) {
+func (rc *RollupChain) handlePostGenesisBlock(block *types.Block, rollupsInBlock []*core.Rollup) (*common.L2RootHash, *core.Batch, error) {
 	l1Head := block.Hash()
-	err := rc.processRollups(rollups, &l1Head)
+	err := rc.processRollups(rollupsInBlock, &l1Head)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not process rollup in block. Cause: %w", err)
 	}
