@@ -507,10 +507,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	}
 
 	genesisRollup := dummyRollup(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
-	genesisBatch := &core.Batch{
-		Header:       genesisRollup.Header,
-		Transactions: genesisRollup.Transactions,
-	}
+	genesisBatch := genesisRollup.ToBatch()
 
 	// We update the database
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(genesisRollup); err != nil {
@@ -570,10 +567,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	}
 
 	rollup := dummyRollup(blk.Hash(), headRollup.NumberU64()+1, stateDB)
-	batch := &core.Batch{
-		Header:       rollup.Header,
-		Transactions: rollup.Transactions,
-	}
+	batch := rollup.ToBatch()
 
 	// We update the database.
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(rollup); err != nil {
