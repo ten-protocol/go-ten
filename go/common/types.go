@@ -78,3 +78,8 @@ type (
 	EncryptedSharedEnclaveSecret []byte
 	EncodedAttestationReport     []byte
 )
+
+type DescribedTransactionData struct {
+	Data        types.TxData
+	Description string
+}
