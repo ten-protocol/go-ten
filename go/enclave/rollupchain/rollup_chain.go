@@ -925,12 +925,12 @@ func (rc *RollupChain) processRollups(rollups []*core.Rollup, block *common.L1Bl
 		if err = rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
-		currentHeadRollup = rollup.Hash()
+		currentHeadRollup = rollup
 	}
 
 	// We update the current head rollup to the latest processed rollup.
 	l1Head := block.Hash()
-	if err = rc.storage.UpdateHeadRollup(&l1Head, currentHeadRollup); err != nil {
+	if err = rc.storage.UpdateHeadRollup(&l1Head, currentHeadRollup.Hash()); err != nil {
 		return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 	}
 

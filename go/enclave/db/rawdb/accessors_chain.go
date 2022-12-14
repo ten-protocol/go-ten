@@ -55,6 +55,23 @@ func WriteBatch(db ethdb.KeyValueWriter, batch *core.Batch) error {
 	return nil
 }
 
+func ReadRollup(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Rollup, error) {
+	header, err := readRollupHeader(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read header. Cause: %w", err)
+	}
+
+	body, err := readRollupBody(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read body. Cause: %w", err)
+	}
+
+	return &core.Rollup{
+		Header:       header,
+		Transactions: body,
+	}, nil
+}
+
 func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 	if err := writeRollupHeader(db, rollup.Header); err != nil {
 		return fmt.Errorf("could not write header. Cause: %w", err)
@@ -294,4 +311,48 @@ func writeRollupBodyRLP(db ethdb.KeyValueWriter, hash common.L2RootHash, rlp rlp
 		return fmt.Errorf("could not put rollup body into DB. Cause: %w", err)
 	}
 	return nil
+}
+
+// Retrieves the rollup header corresponding to the hash.
+func readRollupHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header, error) {
+	data, err := readRollupHeaderRLP(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read header. Cause: %w", err)
+	}
+	header := new(common.Header)
+	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
+		return nil, fmt.Errorf("could not decode rollup header. Cause: %w", err)
+	}
+	return header, nil
+}
+
+// Retrieves a rollup header in its raw RLP database encoding.
+func readRollupHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
+	data, err := db.Get(rollupHeaderKey(hash))
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup header. Cause: %w", err)
+	}
+	return data, nil
+}
+
+// Retrieves the rollup body corresponding to the hash.
+func readRollupBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
+	data, err := readRollupBodyRLP(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read body. Cause: %w", err)
+	}
+	body := new([]*common.L2Tx)
+	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
+		return nil, fmt.Errorf("could not decode L2 transactions. Cause: %w", err)
+	}
+	return *body, nil
+}
+
+// Retrieves the rollup body (transactions and uncles) in RLP encoding.
+func readRollupBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawValue, error) {
+	data, err := db.Get(rollupBodyKey(hash))
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup body from DB. Cause: %w", err)
+	}
+	return data, nil
 }

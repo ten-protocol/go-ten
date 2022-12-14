@@ -148,13 +148,17 @@ func (s *storageImpl) assertSecretAvailable() {
 func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1RootHash) (*core.Batch, error) {
 	l2HeadBatch, err := obscurorawdb.ReadL2HeadBatch(s.db, blockHash)
 	if err != nil {
-		return nil, fmt.Errorf("could not read head L2 batch for block. Cause: %w", err)
+		return nil, fmt.Errorf("could not read L2 head batch for block. Cause: %w", err)
 	}
 	return obscurorawdb.ReadBatch(s.db, *l2HeadBatch)
 }
 
-func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*common.L2RootHash, error) {
-	return obscurorawdb.ReadL2HeadRollup(s.db, blockHash)
+func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*core.Rollup, error) {
+	l2HeadBatch, err := obscurorawdb.ReadL2HeadRollup(s.db, blockHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read L2 head rollup for block. Cause: %w", err)
+	}
+	return obscurorawdb.ReadRollup(s.db, *l2HeadBatch)
 }
 
 func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error) {
