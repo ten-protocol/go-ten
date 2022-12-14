@@ -90,9 +90,9 @@ func (p *p2pImpl) UpdatePeerList(newPeers []string) {
 	p.peerAddresses = newPeers
 }
 
-func (p *p2pImpl) BroadcastTx(tx common.EncryptedTx) error {
+func (p *p2pImpl) SendTxToSequencer(tx common.EncryptedTx) error {
 	msg := message{Type: msgTypeTx, Contents: tx}
-	return p.broadcast(msg)
+	return p.send(msg, p.getSequencer())
 }
 
 func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
@@ -105,7 +105,7 @@ func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
 	return p.broadcast(msg)
 }
 
-func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
+func (p *p2pImpl) RequestBatchesFromSequencer(batchRequest *common.BatchRequest) error {
 	if len(p.peerAddresses) == 0 {
 		return errors.New("no peers available to request batches")
 	}
@@ -115,9 +115,8 @@ func (p *p2pImpl) RequestBatches(batchRequest *common.BatchRequest) error {
 	}
 
 	msg := message{Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
-	// TODO - #718 - Use better method to identify sequencer?
 	// TODO - #718 - Allow missing batches to be requested from peers other than sequencer?
-	return p.send(msg, p.peerAddresses[0])
+	return p.send(msg, p.getSequencer())
 }
 
 func (p *p2pImpl) SendBatches(batchMsg *host.BatchMsg, to string) error {
@@ -191,7 +190,7 @@ func (p *p2pImpl) broadcast(msg message) error {
 	return nil
 }
 
-// Sends a message to the sequencer.
+// Sends a message to the provided address.
 func (p *p2pImpl) send(msg message, to string) error {
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
@@ -201,7 +200,7 @@ func (p *p2pImpl) send(msg message, to string) error {
 	return nil
 }
 
-// sendBytes Sends the bytes over P2P to the given address.
+// Sends the bytes to the provided address.
 func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
 	if wg != nil {
 		defer wg.Done()
@@ -220,4 +219,10 @@ func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
 	}
+}
+
+// Retrieves the sequencer's address.
+// TODO - #718 - Use better method to identify the sequencer?
+func (p *p2pImpl) getSequencer() string {
+	return p.peerAddresses[0]
 }
