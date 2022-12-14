@@ -13,18 +13,19 @@ var (
 	attestationKeyPrefix           = []byte("oAK")  // attestationKeyPrefix + address -> key
 	syntheticTransactionsKeyPrefix = []byte("oSTX") // attestationKeyPrefix + address -> key
 
-	batchHeaderPrefix       = []byte("oh")  // batchHeaderPrefix + num (uint64 big endian) + hash -> header
-	batchHashSuffix         = []byte("on")  // batchHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
-	batchBodyPrefix         = []byte("ob")  // batchBodyPrefix + num (uint64 big endian) + hash -> batch body
-	batchNumberPrefix       = []byte("oH")  // batchNumberPrefix + hash -> num (uint64 big endian)
-	rollupHeaderPrefix      = []byte("rh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
-	rollupBodyPrefix        = []byte("rb")  // rollupBodyPrefix + num (uint64 big endian) + hash -> batch body
-	rollupNumberPrefix      = []byte("rn")  // rollupNumberPrefix + hash -> num (uint64 big endian)
-	headsAfterL1BlockPrefix = []byte("och") // headsAfterL1BlockPrefix + hash -> num (uint64 big endian)
-	logsPrefix              = []byte("olg") // logsPrefix + hash -> block logs
-	batchReceiptsPrefix     = []byte("or")  // batchReceiptsPrefix + num (uint64 big endian) + hash -> batch receipts
-	contractReceiptPrefix   = []byte("ocr") // contractReceiptPrefix + address -> tx hash
-	txLookupPrefix          = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
+	batchHeaderPrefix            = []byte("oh")  // batchHeaderPrefix + num (uint64 big endian) + hash -> header
+	batchHashSuffix              = []byte("on")  // batchHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
+	batchBodyPrefix              = []byte("ob")  // batchBodyPrefix + num (uint64 big endian) + hash -> batch body
+	batchNumberPrefix            = []byte("oH")  // batchNumberPrefix + hash -> num (uint64 big endian)
+	rollupHeaderPrefix           = []byte("rh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
+	rollupBodyPrefix             = []byte("rb")  // rollupBodyPrefix + num (uint64 big endian) + hash -> batch body
+	rollupNumberPrefix           = []byte("rn")  // rollupNumberPrefix + hash -> num (uint64 big endian)
+	headBatchAfterL1BlockPrefix  = []byte("hb")  // headBatchAfterL1BlockPrefix + hash -> num (uint64 big endian)
+	headRollupAfterL1BlockPrefix = []byte("hr")  // headRollupAfterL1BlockPrefix + hash -> num (uint64 big endian)
+	logsPrefix                   = []byte("olg") // logsPrefix + hash -> block logs
+	batchReceiptsPrefix          = []byte("or")  // batchReceiptsPrefix + num (uint64 big endian) + hash -> batch receipts
+	contractReceiptPrefix        = []byte("ocr") // contractReceiptPrefix + address -> tx hash
+	txLookupPrefix               = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
 )
 
 // todo - joel - should this be here?
@@ -50,12 +51,12 @@ func batchNumberKey(hash common.L2RootHash) []byte {
 	return append(batchNumberPrefix, hash.Bytes()...)
 }
 
-// For storing and fetching the L2 head hash by L1 block hash.
-func headsAfterL1BlockKey(hash common.L1RootHash) []byte {
-	return append(headsAfterL1BlockPrefix, hash.Bytes()...)
+// For storing and fetching the L2 head batch hash by L1 block hash.
+func headBatchAfterL1BlockKey(hash common.L1RootHash) []byte {
+	return append(headBatchAfterL1BlockPrefix, hash.Bytes()...)
 }
 
-// For storing and fetching the canonical L2 head hash by height.
+// For storing and fetching the canonical L2 head batch hash by height.
 func batchHeaderHashKey(number uint64) []byte {
 	return append(append(batchHeaderPrefix, encodeNumber(number)...), batchHashSuffix...)
 }
@@ -63,6 +64,11 @@ func batchHeaderHashKey(number uint64) []byte {
 // For storing and fetching a batch's receipts by batch hash.
 func batchReceiptsKey(hash common.L2RootHash) []byte {
 	return append(batchReceiptsPrefix, hash.Bytes()...)
+}
+
+// For storing and fetching the L2 head rollup hash by L1 block hash.
+func headRollupAfterL1BlockKey(hash *common.L1RootHash) []byte {
+	return append(headRollupAfterL1BlockPrefix, hash.Bytes()...)
 }
 
 // logsPrefix + hash

@@ -48,11 +48,7 @@ func (s *storageImpl) FetchHeadBatch() (*core.Batch, error) {
 	if (bytes.Equal(l1Head.Bytes(), gethcommon.Hash{}.Bytes())) {
 		return nil, fmt.Errorf("could not fetch L1 head hash")
 	}
-	l2Head, err := s.FetchL2Head(l1Head)
-	if err != nil {
-		return nil, fmt.Errorf("could not fetch L2 head hash")
-	}
-	return s.FetchBatch(*l2Head)
+	return s.FetchHeadBatchForBlock(l1Head)
 }
 
 func (s *storageImpl) FetchBatch(hash common.L2RootHash) (*core.Batch, error) {
@@ -149,8 +145,20 @@ func (s *storageImpl) assertSecretAvailable() {
 	//}
 }
 
-func (s *storageImpl) FetchL2Head(blockHash common.L1RootHash) (*common.L2RootHash, error) {
-	return obscurorawdb.ReadL2Head(s.db, blockHash)
+func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1RootHash) (*core.Batch, error) {
+	l2HeadBatch, err := obscurorawdb.ReadL2HeadBatch(s.db, blockHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read L2 head batch for block. Cause: %w", err)
+	}
+	return obscurorawdb.ReadBatch(s.db, *l2HeadBatch)
+}
+
+func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*core.Rollup, error) {
+	l2HeadBatch, err := obscurorawdb.ReadL2HeadRollup(s.db, blockHash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read L2 head rollup for block. Cause: %w", err)
+	}
+	return obscurorawdb.ReadRollup(s.db, *l2HeadBatch)
 }
 
 func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error) {
@@ -162,10 +170,10 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 	return logs, nil
 }
 
-func (s *storageImpl) UpdateL2Head(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error {
+func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error {
 	batch := s.db.NewBatch()
 
-	if err := obscurorawdb.WriteL2Head(batch, l1Head, *l2Head.Hash()); err != nil {
+	if err := obscurorawdb.WriteL2HeadBatch(batch, l1Head, *l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
@@ -183,6 +191,17 @@ func (s *storageImpl) UpdateL2Head(l1Head common.L1RootHash, l2Head *core.Batch,
 		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
 
+	if err := batch.Write(); err != nil {
+		return fmt.Errorf("could not save new head. Cause: %w", err)
+	}
+	return nil
+}
+
+func (s *storageImpl) UpdateHeadRollup(l1Head *common.L1RootHash, l2Head *common.L2RootHash) error {
+	batch := s.db.NewBatch()
+	if err := obscurorawdb.WriteL2HeadRollup(batch, l1Head, l2Head); err != nil {
+		return fmt.Errorf("could not write block state. Cause: %w", err)
+	}
 	if err := batch.Write(); err != nil {
 		return fmt.Errorf("could not save new head. Cause: %w", err)
 	}

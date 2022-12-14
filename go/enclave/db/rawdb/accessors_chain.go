@@ -16,12 +16,12 @@ import (
 )
 
 func ReadBatch(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Batch, error) {
-	header, err := readHeader(db, hash)
+	header, err := readBatchHeader(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
 
-	body, err := ReadBody(db, hash)
+	body, err := readBatchBody(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
 	}
@@ -53,6 +53,23 @@ func WriteBatch(db ethdb.KeyValueWriter, batch *core.Batch) error {
 		return fmt.Errorf("could not write body. Cause: %w", err)
 	}
 	return nil
+}
+
+func ReadRollup(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Rollup, error) {
+	header, err := readRollupHeader(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read header. Cause: %w", err)
+	}
+
+	body, err := readRollupBody(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read body. Cause: %w", err)
+	}
+
+	return &core.Rollup{
+		Header:       header,
+		Transactions: body,
+	}, nil
 }
 
 func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
@@ -96,8 +113,8 @@ func writeBatchHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, numbe
 }
 
 // Retrieves the batch header corresponding to the hash.
-func readHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header, error) {
-	data, err := readHeaderRLP(db, hash)
+func readBatchHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header, error) {
+	data, err := readBatchHeaderRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
@@ -108,8 +125,8 @@ func readHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header
 	return header, nil
 }
 
-// Retrieves a block header in its raw RLP database encoding.
-func readHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
+// Retrieves a batch header in its raw RLP database encoding.
+func readBatchHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
 	data, err := db.Get(batchHeaderKey(hash))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block header. Cause: %w", err)
@@ -128,8 +145,8 @@ func writeBatchBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []*commo
 	return nil
 }
 
-// ReadBody retrieves the batch body corresponding to the hash.
-func ReadBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
+// Retrieves the batch body corresponding to the hash.
+func readBatchBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
 	data, err := readBatchBodyRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
@@ -158,15 +175,31 @@ func readBatchBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawV
 	return data, nil
 }
 
-func WriteL2Head(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
-	if err := db.Put(headsAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
+func WriteL2HeadBatch(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
+	if err := db.Put(headBatchAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
 		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
 	}
 	return nil
 }
 
-func ReadL2Head(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
-	data, err := kv.Get(headsAfterL1BlockKey(l1Head))
+func WriteL2HeadRollup(db ethdb.KeyValueWriter, l1Head *common.L1RootHash, l2Head *common.L2RootHash) error {
+	if err := db.Put(headRollupAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
+		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
+	}
+	return nil
+}
+
+func ReadL2HeadBatch(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
+	data, err := kv.Get(headBatchAfterL1BlockKey(l1Head))
+	if err != nil {
+		return nil, errutil.ErrNotFound
+	}
+	l2Head := gethcommon.BytesToHash(data)
+	return &l2Head, nil
+}
+
+func ReadL2HeadRollup(kv ethdb.KeyValueReader, l1Head *common.L1RootHash) (*common.L2RootHash, error) {
+	data, err := kv.Get(headRollupAfterL1BlockKey(l1Head))
 	if err != nil {
 		return nil, errutil.ErrNotFound
 	}
@@ -278,4 +311,48 @@ func writeRollupBodyRLP(db ethdb.KeyValueWriter, hash common.L2RootHash, rlp rlp
 		return fmt.Errorf("could not put rollup body into DB. Cause: %w", err)
 	}
 	return nil
+}
+
+// Retrieves the rollup header corresponding to the hash.
+func readRollupHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header, error) {
+	data, err := readRollupHeaderRLP(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read header. Cause: %w", err)
+	}
+	header := new(common.Header)
+	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
+		return nil, fmt.Errorf("could not decode rollup header. Cause: %w", err)
+	}
+	return header, nil
+}
+
+// Retrieves a rollup header in its raw RLP database encoding.
+func readRollupHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
+	data, err := db.Get(rollupHeaderKey(hash))
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup header. Cause: %w", err)
+	}
+	return data, nil
+}
+
+// Retrieves the rollup body corresponding to the hash.
+func readRollupBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
+	data, err := readRollupBodyRLP(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read body. Cause: %w", err)
+	}
+	body := new([]*common.L2Tx)
+	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
+		return nil, fmt.Errorf("could not decode L2 transactions. Cause: %w", err)
+	}
+	return *body, nil
+}
+
+// Retrieves the rollup body (transactions and uncles) in RLP encoding.
+func readRollupBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawValue, error) {
+	data, err := db.Get(rollupBodyKey(hash))
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup body from DB. Cause: %w", err)
+	}
+	return data, nil
 }
