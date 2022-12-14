@@ -445,10 +445,7 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 		return nil, fmt.Errorf("could not update l2 head rollup. Cause: %w", err)
 	}
 
-	genesisBatch := &core.Batch{
-		Header:       genesisRollup.Header,
-		Transactions: genesisRollup.Transactions,
-	}
+	genesisBatch := genesisRollup.ToBatch()
 	if err := rc.storage.StoreBatch(genesisBatch, nil); err != nil {
 		return nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 	}

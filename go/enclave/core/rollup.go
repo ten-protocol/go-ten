@@ -57,3 +57,10 @@ func ToRollup(encryptedRollup *common.ExtRollup, transactionBlobCrypto crypto.Tr
 		Transactions: transactionBlobCrypto.Decrypt(encryptedRollup.EncryptedTxBlob),
 	}
 }
+
+func (r *Rollup) ToBatch() *Batch {
+	return &Batch{
+		Header:       r.Header,
+		Transactions: r.Transactions,
+	}
+}
