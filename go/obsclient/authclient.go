@@ -139,3 +139,27 @@ func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg *ethereum.CallMsg)
 	}
 	return hexutil.DecodeUint64(result)
 }
+
+func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) (types.TxData, error) {
+	unEstimatedTx := types.NewTx(txData)
+	gasPrice := gethcommon.Big1 // constant gas price atm
+
+	gasLimit, err := ac.EstimateGas(context.Background(), &ethereum.CallMsg{
+		From:  ac.Address(),
+		To:    unEstimatedTx.To(),
+		Value: unEstimatedTx.Value(),
+		Data:  unEstimatedTx.Data(),
+	})
+	if err != nil {
+		gasLimit = unEstimatedTx.Gas()
+	}
+
+	return &types.LegacyTx{
+		Nonce:    unEstimatedTx.Nonce(),
+		GasPrice: gasPrice,
+		Gas:      gasLimit,
+		To:       unEstimatedTx.To(),
+		Value:    unEstimatedTx.Value(),
+		Data:     unEstimatedTx.Data(),
+	}, nil
+}
