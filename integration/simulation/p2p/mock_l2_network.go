@@ -112,6 +112,14 @@ func (netw *MockP2P) SendBatches(batchMsg *host.BatchMsg, requesterAddress strin
 	return nil
 }
 
+func (netw *MockP2P) Status() *host.P2PStatus {
+	return &host.P2PStatus{}
+}
+
+func (netw *MockP2P) HealthCheck() bool {
+	return true
+}
+
 // delay returns an expected delay on the l2
 func (netw *MockP2P) delay() time.Duration {
 	return testcommon.RndBtwTime(netw.avgLatency/10, 2*netw.avgLatency)

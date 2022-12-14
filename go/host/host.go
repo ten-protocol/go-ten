@@ -8,39 +8,28 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
-
-	"github.com/ethereum/go-ethereum/rlp"
-
-	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
-
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/obscuronet/go-obscuro/go/host/events"
-
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
-
-	"github.com/obscuronet/go-obscuro/go/host/db"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
-
-	"github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/obscuronet/go-obscuro/go/common/profiler"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/naoina/toml"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/profiler"
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
+	"github.com/obscuronet/go-obscuro/go/host/db"
+	"github.com/obscuronet/go-obscuro/go/host/events"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 const (
@@ -359,17 +348,26 @@ func (h *host) Stop() {
 }
 
 // HealthCheck returns whether the host, enclave and DB are healthy
-func (h *host) HealthCheck() (bool, error) {
+func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 	// check the enclave health, which in turn checks the DB health
 	enclaveHealthy, err := h.enclaveClient.HealthCheck()
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
 		h.logger.Error("unable to HealthCheck enclave", "err", err)
-		return false, nil
 	}
-	// TODO host healthcheck operations
-	hostHealthy := true
-	return enclaveHealthy && hostHealthy, nil
+
+	// Overall health is achieved when all parts are healthy
+	obscuroNodeHealth := h.p2p.HealthCheck() && enclaveHealthy
+
+	return &hostcommon.HealthCheck{
+		HealthCheckHost: &hostcommon.HealthCheckHost{
+			P2PStatus: h.p2p.Status(),
+		},
+		HealthCheckEnclave: &hostcommon.HealthCheckEnclave{
+			EnclaveHealthy: enclaveHealthy,
+		},
+		OverallHealth: obscuroNodeHealth,
+	}, nil
 }
 
 // Waits for enclave to be available, printing a wait message every two seconds.
