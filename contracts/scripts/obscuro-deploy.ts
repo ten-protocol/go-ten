@@ -6,6 +6,7 @@ import axios from 'axios';
 import {on, exit} from 'process';
 import http from 'http';
 import { string } from "hardhat/internal/core/params/argumentTypes";
+import { HardhatNetworkUserConfig } from "hardhat/types/config";
 
 async function viewingKeyForAddress(address: string) : Promise<string> {
     return new Promise((resolve, fail)=> {
@@ -69,30 +70,30 @@ async function submitKey(signedData: SignedData) : Promise<number> {
 task("deploy", "Prepares for deploying.")
 .setAction(async function(args, hre, runSuper) {
 
-    const rpcURL = hre.network.config.obscuroEncRpcUrl;
+    const rpcURL = (hre.network.config as HardhatNetworkUserConfig).obscuroEncRpcUrl;
     
     if (!rpcURL) {
         await runSuper();
         return;
     } 
+
+    process.on('exit', ()=>{
+        hre.run("stop-wallet-extension")
+    });
     
     await hre.run("run-wallet-extension", {rpcUrl : rpcURL});
 
 
-    process.on('SIGINT', ()=>{
-        exit(1);
-    });
+    
+
+    process.on('SIGINT', ()=>exit(1));
 
     try {
         const { deployer } = await hre.getNamedAccounts()
         const key = await viewingKeyForAddress(deployer);
-
-        const signature = (await hre.ethers.getSigner(deployer)).signMessage(`vk${key}`);
-        const signedData = { 'signature': await signature, 'address': deployer }
-
+        const signaturePromise = (await hre.ethers.getSigner(deployer)).signMessage(`vk${key}`);
+        const signedData = { 'signature': await signaturePromise, 'address': deployer }
         await submitKey(signedData);
-
-        setTimeout(()=>exit(1), 60_000);
 
         await runSuper();
     } 

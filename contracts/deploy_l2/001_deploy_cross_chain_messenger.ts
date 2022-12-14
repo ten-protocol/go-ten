@@ -1,5 +1,6 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
+import { ethers } from 'hardhat';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { 
@@ -15,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`Beginning deploy of cross chain messenger`);
 
     await deployments.deploy('CrossChainMessenger', {
-        from: deployer,
+    from: deployer,
         args: [ busAddress ],
         log: true,
     });

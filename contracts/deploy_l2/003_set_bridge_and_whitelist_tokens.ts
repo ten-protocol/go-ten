@@ -16,7 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const setResult = await l1Network.deployments.execute("ObscuroBridge", {
         from: l1Accounts.deployer, 
         log: true,
-    }, "setRemoteBridgeAddress", layer2BridgeDeployment.address);
+    }, "setRemoteBridge", layer2BridgeDeployment.address);
     if (setResult.status != 1) {
         console.error("Ops");
         throw Error("ops");
@@ -75,6 +75,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     let messages = getXChainMessages(hocResult);
     messages = messages.concat(getXChainMessages(pocResult));
 
+    // Freeze until the enclave processes the blocks and picks up the messages that have been carried over.
+    await new Promise(resolve=>setTimeout(resolve, 15_000));
+
+    console.log(`Relaying messages using account ${l2Accounts.deployer}`);
     const promises = messages.map(async (msg) => {
         return await l2Network.deployments.execute("CrossChainMessenger", {
             from: l2Accounts.deployer, 
