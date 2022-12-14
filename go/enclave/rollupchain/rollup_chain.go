@@ -914,17 +914,24 @@ func (rc *RollupChain) processRollups(rollups []*core.Rollup, block *common.L1Bl
 
 	// We check each rollup.
 	for _, rollup := range rollups {
+		// We check that the rollup is validly signed by the sequencer.
 		if !rc.isValidSequencerSig(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S) {
 			return fmt.Errorf("rollup signature was invalid")
 		}
 
-		// TODO - #718 - Also validate the rollups in the block against the stored batches.
-		//  * Rollups link to previous rollup
-		//  * Rollups contains all expected batches
+		// We check that the rollup numbers are sequential.
+		rollupNumIncrement := big.NewInt(0).Sub(rollup.Number(), currentHeadRollup.Number())
+		if rollupNumIncrement.Cmp(big.NewInt(1)) != 0 {
+			return fmt.Errorf("rollup number jumped by %d, from %d to %d; expected increment by 1",
+				rollupNumIncrement, currentHeadRollup.Number(), rollup.Number())
+		}
+
+		// TODO - #718 - Validate the rollups in the block against the stored batches.
 
 		if err = rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
+
 		currentHeadRollup = rollup
 	}
 
