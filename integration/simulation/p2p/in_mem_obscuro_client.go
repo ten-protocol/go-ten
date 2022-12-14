@@ -8,25 +8,18 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-
-	"github.com/obscuronet/go-obscuro/go/common/host"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
-
-	"github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/ethereum/go-ethereum/crypto/ecies"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
-
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/rpc"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 const (
@@ -44,7 +37,7 @@ type inMemObscuroClient struct {
 	enclavePublicKey *ecies.PublicKey
 }
 
-func NewInMemObscuroClient(nodeHost host.Host) rpc.Client {
+func NewInMemObscuroClient(nodeHost hostcommon.Host) rpc.Client {
 	logger := testlog.Logger().New(log.CmpKey, log.RPCClientCmp)
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
@@ -63,7 +56,7 @@ func NewInMemObscuroClient(nodeHost host.Host) rpc.Client {
 	}
 }
 
-func NewInMemoryEncRPCClient(host host.Host, viewingKey *rpc.ViewingKey, logger gethlog.Logger) *rpc.EncRPCClient {
+func NewInMemoryEncRPCClient(host hostcommon.Host, viewingKey *rpc.ViewingKey, logger gethlog.Logger) *rpc.EncRPCClient {
 	inMemClient := NewInMemObscuroClient(host)
 	encClient, err := rpc.NewEncRPCClient(inMemClient, viewingKey, logger)
 	if err != nil {
@@ -308,8 +301,7 @@ func (c *inMemObscuroClient) addViewingKey(args []interface{}) error {
 }
 
 func (c *inMemObscuroClient) health(result interface{}) error {
-	healty := true
-	*result.(**bool) = &healty
+	*result.(**hostcommon.HealthCheck) = &hostcommon.HealthCheck{OverallHealth: true}
 	return nil
 }
 

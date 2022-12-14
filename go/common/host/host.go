@@ -3,12 +3,13 @@ package host
 import (
 	"math/big"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/host/db"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // Host is the half of the Obscuro node that lives outside the enclave.
@@ -35,7 +36,7 @@ type Host interface {
 	Stop()
 
 	// HealthCheck returns the health status of the host + enclave + db
-	HealthCheck() (bool, error)
+	HealthCheck() (*HealthCheck, error)
 }
 
 // P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
@@ -43,14 +44,20 @@ type P2P interface {
 	StartListening(callback Host)
 	StopListening() error
 	UpdatePeerList([]string)
-	// BroadcastTx sends the encrypted transaction to every other node on the network.
-	BroadcastTx(tx common.EncryptedTx) error
+	// SendTxToSequencer sends the encrypted transaction to the sequencer.
+	SendTxToSequencer(tx common.EncryptedTx) error
 	// BroadcastBatch sends the batch to every other node on the network.
 	BroadcastBatch(batchMsg *BatchMsg) error
-	// RequestBatches requests batches from the sequencer.
-	RequestBatches(batchRequest *common.BatchRequest) error
+	// RequestBatchesFromSequencer requests batches from the sequencer.
+	RequestBatchesFromSequencer(batchRequest *common.BatchRequest) error
 	// SendBatches sends batches to a specific node, in response to a batch request.
 	SendBatches(batchMsg *BatchMsg, to string) error
+
+	// Status returns the status of the p2p communications.
+	Status() *P2PStatus
+
+	// HealthCheck returns whether the p2p lib is healthy.
+	HealthCheck() bool
 }
 
 // ReconnectingBlockProvider interface allows host to monitor and await L1 blocks.

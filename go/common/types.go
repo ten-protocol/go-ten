@@ -20,6 +20,7 @@ type (
 
 	// Local Obscuro aliases
 	L2RootHash     = common.Hash
+	L2TxHash       = common.Hash
 	L2Tx           = types.Transaction
 	L2Transactions = types.Transactions
 	L2Address      = common.Address

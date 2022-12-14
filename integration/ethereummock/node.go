@@ -209,7 +209,7 @@ func (m *Node) Start() {
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
 			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Ignore the locally produced block if someone else found one already
-				p, err := m.Resolver.ParentBlock(mb)
+				p, err := m.Resolver.FetchBlock(mb.ParentHash())
 				if err != nil {
 					panic(fmt.Errorf("could not retrieve parent. Cause: %w", err))
 				}
@@ -398,7 +398,7 @@ func (m *Node) BlocksBetween(blockA *types.Block, blockB *types.Block) []*types.
 		if bytes.Equal(tempBlock.Hash().Bytes(), blockA.Hash().Bytes()) {
 			break
 		}
-		tempBlock, err = m.Resolver.ParentBlock(tempBlock)
+		tempBlock, err = m.Resolver.FetchBlock(tempBlock.ParentHash())
 		if err != nil {
 			panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
 		}

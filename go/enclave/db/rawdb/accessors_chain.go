@@ -15,31 +15,26 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
-func ReadRollup(db ethdb.KeyValueReader, hash gethcommon.Hash) (*core.Rollup, error) {
-	height, err := ReadHeaderNumber(db, hash)
-	if err != nil {
-		return nil, fmt.Errorf("could not read header number. Cause: %w", err)
-	}
-
-	header, err := readHeader(db, hash, *height)
+func ReadBatch(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Batch, error) {
+	header, err := readBatchHeader(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
 
-	body, err := ReadBody(db, hash, *height)
+	body, err := readBatchBody(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
 	}
 
-	return &core.Rollup{
+	return &core.Batch{
 		Header:       header,
 		Transactions: body,
 	}, nil
 }
 
-// ReadHeaderNumber returns the header number assigned to a hash.
-func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, error) {
-	data, err := db.Get(headerNumberKey(hash))
+// ReadBatchNumber returns the number of a batch.
+func ReadBatchNumber(db ethdb.KeyValueReader, hash common.L2RootHash) (*uint64, error) {
+	data, err := db.Get(batchNumberKey(hash))
 	if err != nil {
 		return nil, errutil.ErrNotFound
 	}
@@ -50,23 +45,47 @@ func ReadHeaderNumber(db ethdb.KeyValueReader, hash gethcommon.Hash) (*uint64, e
 	return &number, nil
 }
 
-func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
-	if err := writeHeader(db, rollup.Header); err != nil {
+func WriteBatch(db ethdb.KeyValueWriter, batch *core.Batch) error {
+	if err := writeBatchHeader(db, batch.Header); err != nil {
 		return fmt.Errorf("could not write header. Cause: %w", err)
 	}
-	if err := writeBody(db, rollup.Hash(), rollup.Header.Number.Uint64(), rollup.Transactions); err != nil {
+	if err := writeBatchBody(db, *batch.Hash(), batch.Transactions); err != nil {
 		return fmt.Errorf("could not write body. Cause: %w", err)
 	}
 	return nil
 }
 
-// Stores a rollup header into the database and also stores the hash-to-number mapping.
-func writeHeader(db ethdb.KeyValueWriter, header *common.Header) error {
-	hash := header.Hash()
-	number := header.Number.Uint64()
+func ReadRollup(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Rollup, error) {
+	header, err := readRollupHeader(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read header. Cause: %w", err)
+	}
 
+	body, err := readRollupBody(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read body. Cause: %w", err)
+	}
+
+	return &core.Rollup{
+		Header:       header,
+		Transactions: body,
+	}, nil
+}
+
+func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
+	if err := writeRollupHeader(db, rollup.Header); err != nil {
+		return fmt.Errorf("could not write header. Cause: %w", err)
+	}
+	if err := writeRollupBody(db, *rollup.Hash(), rollup.Transactions); err != nil {
+		return fmt.Errorf("could not write body. Cause: %w", err)
+	}
+	return nil
+}
+
+// Stores a batch header into the database and also stores the hash-to-number mapping.
+func writeBatchHeader(db ethdb.KeyValueWriter, header *common.Header) error {
 	// Write the hash -> number mapping
-	err := writeHeaderNumber(db, hash, number)
+	err := writeBatchHeaderNumber(db, header.Hash(), header.Number.Uint64())
 	if err != nil {
 		return fmt.Errorf("could not write header number. Cause: %w", err)
 	}
@@ -74,9 +93,9 @@ func writeHeader(db ethdb.KeyValueWriter, header *common.Header) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
-		return fmt.Errorf("could not encode rollup header. Cause: %w", err)
+		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
-	key := headerKey(number, hash)
+	key := batchHeaderKey(header.Hash())
 	if err = db.Put(key, data); err != nil {
 		return fmt.Errorf("could not put header in DB. Cause: %w", err)
 	}
@@ -84,51 +103,51 @@ func writeHeader(db ethdb.KeyValueWriter, header *common.Header) error {
 }
 
 // Stores the hash->number mapping.
-func writeHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
-	key := headerNumberKey(hash)
-	enc := encodeRollupNumber(number)
+func writeBatchHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
+	key := batchNumberKey(hash)
+	enc := encodeNumber(number)
 	if err := db.Put(key, enc); err != nil {
 		return fmt.Errorf("could not put header number in DB. Cause: %w", err)
 	}
 	return nil
 }
 
-// Retrieves the rollup header corresponding to the hash.
-func readHeader(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (*common.Header, error) {
-	data, err := readHeaderRLP(db, hash, number)
+// Retrieves the batch header corresponding to the hash.
+func readBatchHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header, error) {
+	data, err := readBatchHeaderRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
 	header := new(common.Header)
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
-		return nil, fmt.Errorf("could not decode rollup header. Cause: %w", err)
+		return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
 	}
 	return header, nil
 }
 
-// Retrieves a block header in its raw RLP database encoding.
-func readHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (rlp.RawValue, error) {
-	data, err := db.Get(headerKey(number, hash))
+// Retrieves a batch header in its raw RLP database encoding.
+func readBatchHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
+	data, err := db.Get(batchHeaderKey(hash))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block header. Cause: %w", err)
 	}
 	return data, nil
 }
 
-func writeBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, body []*common.L2Tx) error {
+func writeBatchBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []*common.L2Tx) error {
 	data, err := rlp.EncodeToBytes(body)
 	if err != nil {
 		return fmt.Errorf("could not encode L2 transactions. Cause: %w", err)
 	}
-	if err = writeBodyRLP(db, hash, number, data); err != nil {
+	if err = writeBatchBodyRLP(db, hash, data); err != nil {
 		return fmt.Errorf("could not write L2 transactions. Cause: %w", err)
 	}
 	return nil
 }
 
-// ReadBody retrieves the rollup body corresponding to the hash.
-func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) ([]*common.L2Tx, error) {
-	data, err := readBodyRLP(db, hash, number)
+// Retrieves the batch body corresponding to the hash.
+func readBatchBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
+	data, err := readBatchBodyRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
 	}
@@ -139,61 +158,48 @@ func ReadBody(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) ([]*
 	return *body, nil
 }
 
-// Stores an RLP encoded block body into the database.
-func writeBodyRLP(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64, rlp rlp.RawValue) error {
-	if err := db.Put(rollupBodyKey(number, hash), rlp); err != nil {
-		return fmt.Errorf("could not put rollup body into DB. Cause: %w", err)
+// Stores an RLP encoded batch body into the database.
+func writeBatchBodyRLP(db ethdb.KeyValueWriter, hash common.L2RootHash, rlp rlp.RawValue) error {
+	if err := db.Put(batchBodyKey(hash), rlp); err != nil {
+		return fmt.Errorf("could not put batch body into DB. Cause: %w", err)
 	}
 	return nil
 }
 
-// Retrieves the block body (transactions and uncles) in RLP encoding.
-func readBodyRLP(db ethdb.KeyValueReader, hash gethcommon.Hash, number uint64) (rlp.RawValue, error) {
-	data, err := db.Get(rollupBodyKey(number, hash))
+// Retrieves the batch body (transactions and uncles) in RLP encoding.
+func readBatchBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawValue, error) {
+	data, err := db.Get(batchBodyKey(hash))
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve rollup body from DB. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve batch body from DB. Cause: %w", err)
 	}
 	return data, nil
 }
 
-func ReadRollupsForHeight(db ethdb.Database, number uint64) ([]*core.Rollup, error) {
-	hashes := readAllHashes(db, number)
-	rollups := make([]*core.Rollup, len(hashes))
-	for i, hash := range hashes {
-		rollup, err := ReadRollup(db, hash)
-		if err != nil {
-			return nil, err
-		}
-		rollups[i] = rollup
-	}
-	return rollups, nil
-}
-
-// Retrieves all the hashes assigned to blocks at a certain heights, both canonical and reorged forks included.
-func readAllHashes(db ethdb.Iteratee, number uint64) []gethcommon.Hash {
-	prefix := headerKeyPrefix(number)
-
-	hashes := make([]gethcommon.Hash, 0, 1)
-	it := db.NewIterator(prefix, nil)
-	defer it.Release()
-
-	for it.Next() {
-		if key := it.Key(); len(key) == len(prefix)+32 {
-			hashes = append(hashes, gethcommon.BytesToHash(key[len(key)-32:]))
-		}
-	}
-	return hashes
-}
-
-func WriteL2Head(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
-	if err := db.Put(headsAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
+func WriteL2HeadBatch(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
+	if err := db.Put(headBatchAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
 		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
 	}
 	return nil
 }
 
-func ReadL2Head(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
-	data, err := kv.Get(headsAfterL1BlockKey(l1Head))
+func WriteL2HeadRollup(db ethdb.KeyValueWriter, l1Head *common.L1RootHash, l2Head *common.L2RootHash) error {
+	if err := db.Put(headRollupAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
+		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
+	}
+	return nil
+}
+
+func ReadL2HeadBatch(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
+	data, err := kv.Get(headBatchAfterL1BlockKey(l1Head))
+	if err != nil {
+		return nil, errutil.ErrNotFound
+	}
+	l2Head := gethcommon.BytesToHash(data)
+	return &l2Head, nil
+}
+
+func ReadL2HeadRollup(kv ethdb.KeyValueReader, l1Head *common.L1RootHash) (*common.L2RootHash, error) {
+	data, err := kv.Get(headRollupAfterL1BlockKey(l1Head))
 	if err != nil {
 		return nil, errutil.ErrNotFound
 	}
@@ -239,29 +245,114 @@ func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) ([]*types
 	return logs, nil
 }
 
-// ReadCanonicalHash retrieves the hash assigned to a canonical block number.
-func ReadCanonicalHash(db ethdb.Reader, number uint64) (*gethcommon.Hash, error) {
+// ReadCanonicalBatchHash retrieves the hash of the canonical batch at a given height.
+func ReadCanonicalBatchHash(db ethdb.Reader, number uint64) (*common.L2RootHash, error) {
 	// Get it by hash from leveldb
-	data, err := db.Get(headerHashKey(number))
+	data, err := db.Get(batchHeaderHashKey(number))
 	if err != nil {
-		return nil, err
+		return nil, errutil.ErrNotFound
 	}
 	hash := gethcommon.BytesToHash(data)
 	return &hash, nil
 }
 
-// WriteCanonicalHash stores the hash assigned to a canonical block number.
-func WriteCanonicalHash(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
-	if err := db.Put(headerHashKey(number), hash.Bytes()); err != nil {
+// WriteCanonicalHash stores the hash assigned to a canonical batch number.
+func WriteCanonicalHash(db ethdb.KeyValueWriter, l2Head *core.Batch) error {
+	if err := db.Put(batchHeaderHashKey(l2Head.NumberU64()), l2Head.Hash().Bytes()); err != nil {
 		return fmt.Errorf("failed to store number to hash mapping. Cause: %w", err)
 	}
 	return nil
 }
 
-// DeleteCanonicalHash removes the number to hash canonical mapping.
-func DeleteCanonicalHash(db ethdb.KeyValueWriter, number uint64) error {
-	if err := db.Delete(headerHashKey(number)); err != nil {
-		return fmt.Errorf("failed to delete number to hash mapping. Cause: %w", err)
+// Stores a rollup header into the database and also stores the hash-to-number mapping.
+func writeRollupHeader(db ethdb.KeyValueWriter, header *common.Header) error {
+	// Write the hash -> number mapping
+	err := writeRollupHeaderNumber(db, header.Hash(), header.Number.Uint64())
+	if err != nil {
+		return fmt.Errorf("could not write header number. Cause: %w", err)
+	}
+
+	// Write the encoded header
+	data, err := rlp.EncodeToBytes(header)
+	if err != nil {
+		return fmt.Errorf("could not encode batch header. Cause: %w", err)
+	}
+	key := rollupHeaderKey(header.Hash())
+	if err = db.Put(key, data); err != nil {
+		return fmt.Errorf("could not put header in DB. Cause: %w", err)
 	}
 	return nil
+}
+
+func writeRollupBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []*common.L2Tx) error {
+	data, err := rlp.EncodeToBytes(body)
+	if err != nil {
+		return fmt.Errorf("could not encode L2 transactions. Cause: %w", err)
+	}
+	if err = writeRollupBodyRLP(db, hash, data); err != nil {
+		return fmt.Errorf("could not write L2 transactions. Cause: %w", err)
+	}
+	return nil
+}
+
+// Stores the hash->number mapping.
+func writeRollupHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
+	key := rollupNumberKey(hash)
+	enc := encodeNumber(number)
+	if err := db.Put(key, enc); err != nil {
+		return fmt.Errorf("could not put rollup header number in DB. Cause: %w", err)
+	}
+	return nil
+}
+
+// Stores an RLP encoded rollup body into the database.
+func writeRollupBodyRLP(db ethdb.KeyValueWriter, hash common.L2RootHash, rlp rlp.RawValue) error {
+	if err := db.Put(rollupBodyKey(hash), rlp); err != nil {
+		return fmt.Errorf("could not put rollup body into DB. Cause: %w", err)
+	}
+	return nil
+}
+
+// Retrieves the rollup header corresponding to the hash.
+func readRollupHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.Header, error) {
+	data, err := readRollupHeaderRLP(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read header. Cause: %w", err)
+	}
+	header := new(common.Header)
+	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
+		return nil, fmt.Errorf("could not decode rollup header. Cause: %w", err)
+	}
+	return header, nil
+}
+
+// Retrieves a rollup header in its raw RLP database encoding.
+func readRollupHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
+	data, err := db.Get(rollupHeaderKey(hash))
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup header. Cause: %w", err)
+	}
+	return data, nil
+}
+
+// Retrieves the rollup body corresponding to the hash.
+func readRollupBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
+	data, err := readRollupBodyRLP(db, hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not read body. Cause: %w", err)
+	}
+	body := new([]*common.L2Tx)
+	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
+		return nil, fmt.Errorf("could not decode L2 transactions. Cause: %w", err)
+	}
+	return *body, nil
+}
+
+// Retrieves the rollup body (transactions and uncles) in RLP encoding.
+func readRollupBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawValue, error) {
+	data, err := db.Get(rollupBodyKey(hash))
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve rollup body from DB. Cause: %w", err)
+	}
+	return data, nil
 }

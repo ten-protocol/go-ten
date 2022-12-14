@@ -47,9 +47,6 @@ type Enclave interface {
 	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitL1Block(block L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, error)
 
-	// ProduceRollup creates a new rollup.
-	ProduceRollup() (*ExtRollup, error)
-
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
 
@@ -114,7 +111,7 @@ type Enclave interface {
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
-	ProducedRollup          *ExtRollup                // If the node is the sequencer, the rollup produced if the ingested L1 block contained a new rollup.
+	ProducedBatch           *ExtBatch                 // If the node is the sequencer, the batch produced if the ingested L1 block contained a new batch.
 	ProducedSecretResponses []*ProducedSecretResponse // The responses to any secret requests in the ingested L1 block.
 	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the L1 block and all its ancestors for each subscription ID.
 	RejectError             *BlockRejectError         // If block was rejected, contains information about what block to submit next.

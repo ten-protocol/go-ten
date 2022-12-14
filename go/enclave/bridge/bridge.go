@@ -177,7 +177,7 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-				rollups = append(rollups, core.ToEnclaveRollup(r, bridge.TransactionBlobCrypto))
+				rollups = append(rollups, core.ToRollup(r, bridge.TransactionBlobCrypto))
 				bridge.logger.Trace(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
 					common.ShortHash(r.Hash()),
 					common.ShortHash(b.Hash()),
@@ -260,7 +260,7 @@ func (bridge *Bridge) ExtractDeposits(
 			bridge.logger.Crit("block height is less than genesis height")
 			return nil
 		}
-		p, err := blockResolver.ParentBlock(b)
+		p, err := blockResolver.FetchBlock(b.ParentHash())
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
@@ -276,10 +276,10 @@ func (bridge *Bridge) ExtractDeposits(
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func (bridge *Bridge) RollupPostProcessingWithdrawals(newHeadRollup *core.Rollup, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
+func (bridge *Bridge) BatchPostProcessingWithdrawals(newHeadBatch *core.Batch, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
 	w := make([]common.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
-	for _, t := range newHeadRollup.Transactions {
+	for _, t := range newHeadBatch.Transactions {
 		found, address, amount := erc20contractlib.DecodeTransferTx(t, bridge.logger)
 
 		supportedTokenAddress := bridge.L1Address(t.To())

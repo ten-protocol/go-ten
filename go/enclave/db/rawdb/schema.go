@@ -3,7 +3,8 @@ package rawdb
 import (
 	"encoding/binary"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 var (
@@ -12,89 +13,96 @@ var (
 	attestationKeyPrefix           = []byte("oAK")  // attestationKeyPrefix + address -> key
 	syntheticTransactionsKeyPrefix = []byte("oSTX") // attestationKeyPrefix + address -> key
 
-	genesisRollupHash        = []byte("GenesisRollupHash")
-	rollupHeaderPrefix       = []byte("oh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
-	headerHashSuffix         = []byte("on")  // rollupHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
-	rollupBodyPrefix         = []byte("ob")  // rollupBodyPrefix + num (uint64 big endian) + hash -> rollup body
-	rollupHeaderNumberPrefix = []byte("oH")  // rollupHeaderNumberPrefix + hash -> num (uint64 big endian)
-	headsAfterL1BlockPrefix  = []byte("och") // headsAfterL1BlockPrefix + hash -> num (uint64 big endian)
-	logsPrefix               = []byte("olg") // logsPrefix + hash -> block logs
-	rollupReceiptsPrefix     = []byte("or")  // rollupReceiptsPrefix + num (uint64 big endian) + hash -> block receipts
-	contractReceiptPrefix    = []byte("ocr") // contractReceiptPrefix + address -> tx hash
-	txLookupPrefix           = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
-	bloomBitsPrefix          = []byte("oB")  // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
+	batchHeaderPrefix            = []byte("oh")  // batchHeaderPrefix + num (uint64 big endian) + hash -> header
+	batchHashSuffix              = []byte("on")  // batchHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
+	batchBodyPrefix              = []byte("ob")  // batchBodyPrefix + num (uint64 big endian) + hash -> batch body
+	batchNumberPrefix            = []byte("oH")  // batchNumberPrefix + hash -> num (uint64 big endian)
+	rollupHeaderPrefix           = []byte("rh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
+	rollupBodyPrefix             = []byte("rb")  // rollupBodyPrefix + num (uint64 big endian) + hash -> batch body
+	rollupNumberPrefix           = []byte("rn")  // rollupNumberPrefix + hash -> num (uint64 big endian)
+	headBatchAfterL1BlockPrefix  = []byte("hb")  // headBatchAfterL1BlockPrefix + hash -> num (uint64 big endian)
+	headRollupAfterL1BlockPrefix = []byte("hr")  // headRollupAfterL1BlockPrefix + hash -> num (uint64 big endian)
+	logsPrefix                   = []byte("olg") // logsPrefix + hash -> block logs
+	batchReceiptsPrefix          = []byte("or")  // batchReceiptsPrefix + num (uint64 big endian) + hash -> batch receipts
+	contractReceiptPrefix        = []byte("ocr") // contractReceiptPrefix + address -> tx hash
+	txLookupPrefix               = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
 )
 
-// encodeRollupNumber encodes a rollup number as big endian uint64
-func encodeRollupNumber(number uint64) []byte {
+// encodeNumber encodes a number as big endian uint64
+func encodeNumber(number uint64) []byte {
 	enc := make([]byte, 8)
 	binary.BigEndian.PutUint64(enc, number)
 	return enc
 }
 
-// headerKey = rollupHeaderPrefix + num (uint64 big endian) + hash
-func headerKey(number uint64, hash common.Hash) []byte {
-	return append(append(rollupHeaderPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
+// For storing and fetching a batch header by batch hash.
+func batchHeaderKey(hash common.L2RootHash) []byte {
+	return append(batchHeaderPrefix, hash.Bytes()...)
 }
 
-// headerKeyPrefix = headerPrefix + num (uint64 big endian)
-func headerKeyPrefix(number uint64) []byte {
-	return append(rollupHeaderPrefix, encodeRollupNumber(number)...)
+// For storing and fetching a batch body by batch hash.
+func batchBodyKey(hash common.L2RootHash) []byte {
+	return append(batchBodyPrefix, hash.Bytes()...)
 }
 
-// headerNumberKey = headerNumberPrefix + hash
-func headerNumberKey(hash common.Hash) []byte {
-	return append(rollupHeaderNumberPrefix, hash.Bytes()...)
+// For storing and fetching a batch number by batch hash.
+func batchNumberKey(hash common.L2RootHash) []byte {
+	return append(batchNumberPrefix, hash.Bytes()...)
 }
 
-// rollupBodyKey = rollupBodyPrefix + num (uint64 big endian) + hash
-func rollupBodyKey(number uint64, hash common.Hash) []byte {
-	return append(append(rollupBodyPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
+// For storing and fetching the L2 head batch hash by L1 block hash.
+func headBatchAfterL1BlockKey(hash common.L1RootHash) []byte {
+	return append(headBatchAfterL1BlockPrefix, hash.Bytes()...)
 }
 
-// headsAfterL1BlockKey = headsAfterL1BlockPrefix + hash
-func headsAfterL1BlockKey(hash common.Hash) []byte {
-	return append(headsAfterL1BlockPrefix, hash.Bytes()...)
+// For storing and fetching the canonical L2 head batch hash by height.
+func batchHeaderHashKey(number uint64) []byte {
+	return append(append(batchHeaderPrefix, encodeNumber(number)...), batchHashSuffix...)
 }
 
-// logsKey = logsPrefix + hash
-func logsKey(hash common.Hash) []byte {
+// For storing and fetching a batch's receipts by batch hash.
+func batchReceiptsKey(hash common.L2RootHash) []byte {
+	return append(batchReceiptsPrefix, hash.Bytes()...)
+}
+
+// For storing and fetching the L2 head rollup hash by L1 block hash.
+func headRollupAfterL1BlockKey(hash *common.L1RootHash) []byte {
+	return append(headRollupAfterL1BlockPrefix, hash.Bytes()...)
+}
+
+// logsPrefix + hash
+func logsKey(hash common.L1RootHash) []byte {
 	return append(logsPrefix, hash.Bytes()...)
 }
 
-// rollupReceiptsKey = rollupReceiptsPrefix + num (uint64 big endian) + hash
-func rollupReceiptsKey(number uint64, hash common.Hash) []byte {
-	return append(append(rollupReceiptsPrefix, encodeRollupNumber(number)...), hash.Bytes()...)
-}
-
-func contractReceiptKey(contractAddress common.Address) []byte {
+func contractReceiptKey(contractAddress gethcommon.Address) []byte {
 	return append(contractReceiptPrefix, contractAddress.Bytes()...)
 }
 
 // txLookupKey = txLookupPrefix + hash
-func txLookupKey(hash common.Hash) []byte {
+func txLookupKey(hash common.TxHash) []byte {
 	return append(txLookupPrefix, hash.Bytes()...)
 }
 
-// bloomBitsKey = bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash
-func bloomBitsKey(bit uint, section uint64, hash common.Hash) []byte {
-	key := append(append(bloomBitsPrefix, make([]byte, 10)...), hash.Bytes()...)
-
-	binary.BigEndian.PutUint16(key[1:], uint16(bit))
-	binary.BigEndian.PutUint64(key[3:], section)
-
-	return key
-}
-
-// headerHashKey = headerPrefix + num (uint64 big endian) + headerHashSuffix
-func headerHashKey(number uint64) []byte {
-	return append(append(rollupHeaderPrefix, encodeRollupNumber(number)...), headerHashSuffix...)
-}
-
-func attestationPkKey(aggregator common.Address) []byte {
+func attestationPkKey(aggregator gethcommon.Address) []byte {
 	return append(attestationKeyPrefix, aggregator.Bytes()...)
 }
 
-func crossChainMessagesKey(blockHash common.Hash) []byte {
+func crossChainMessagesKey(blockHash common.L1RootHash) []byte {
 	return append(syntheticTransactionsKeyPrefix, blockHash.Bytes()...)
+}
+
+// For storing and fetching a rollup header by batch hash.
+func rollupHeaderKey(hash common.L2RootHash) []byte {
+	return append(rollupHeaderPrefix, hash.Bytes()...)
+}
+
+// For storing and fetching a rollup body by batch hash.
+func rollupBodyKey(hash common.L2RootHash) []byte {
+	return append(rollupBodyPrefix, hash.Bytes()...)
+}
+
+// For storing and fetching a rollup number by batch hash.
+func rollupNumberKey(hash common.L2RootHash) []byte {
+	return append(rollupNumberPrefix, hash.Bytes()...)
 }
