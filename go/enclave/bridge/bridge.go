@@ -160,7 +160,7 @@ func (bridge *Bridge) GetMapping(l1ContractAddress *gethcommon.Address) *ERC20Ma
 // ExtractRollups returns the rollups published in this block, if any
 func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) ([]*core.Rollup, error) {
 	rollups := make([]*core.Rollup, 0)
-	
+
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
 		t := bridge.MgmtContractLib.DecodeTx(tx)
@@ -277,10 +277,10 @@ func (bridge *Bridge) ExtractDeposits(
 }
 
 // Todo - this has to be implemented differently based on how we define the ObsERC20
-func (bridge *Bridge) BatchPostProcessingWithdrawals(newHeadBatch *core.Batch, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
+func (bridge *Bridge) BatchPostProcessingWithdrawals(txs []*common.L2Tx, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
 	w := make([]common.Withdrawal, 0)
 	// go through each transaction and check if the withdrawal was processed correctly
-	for _, t := range newHeadBatch.Transactions {
+	for _, t := range txs {
 		found, address, amount := erc20contractlib.DecodeTransferTx(t, bridge.logger)
 
 		supportedTokenAddress := bridge.L1Address(t.To())

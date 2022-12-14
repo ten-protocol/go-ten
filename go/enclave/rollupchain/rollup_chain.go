@@ -467,11 +467,11 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollups []*core.Ro
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a message bus embedded in the platform, and this method is responsible for transferring messages as well.
 // The batch can be a final batch as received from peers or the batch under construction.
-func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+func (rc *RollupChain) processState(header *common.Header, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, rc.storage, rc.chainConfig, 0, rc.logger)
+	txResults := evm.ExecuteTransactions(txs, stateDB, header, rc.storage, rc.chainConfig, 0, rc.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
@@ -483,24 +483,24 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
-			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*batch.Hash()), result))
+			rc.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(header.Hash()), result))
 		}
 	}
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
-	parent, err := rc.storage.FetchBatch(batch.Header.ParentHash)
+	parent, err := rc.storage.FetchBatch(header.ParentHash)
 	if err != nil {
 		rc.logger.Crit("Sanity check. Rollup has no parent.", log.ErrKey, err)
 	}
 
 	parentProof, err := rc.storage.FetchBlock(parent.Header.L1Proof)
 	if err != nil {
-		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", header.Hash()), log.ErrKey, err)
 	}
-	batchProof, err := rc.storage.FetchBlock(batch.Header.L1Proof)
+	batchProof, err := rc.storage.FetchBlock(header.L1Proof)
 	if err != nil {
-		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
+		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", header.Hash()), log.ErrKey, err)
 	}
 
 	// TODO: Remove this depositing logic once the new bridge is added.
@@ -511,7 +511,7 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 		stateDB,
 	)
 
-	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, batch.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 	depositReceipts := make([]*types.Receipt, len(depositResponses))
 	if len(depositResponses) != len(depositTxs) {
 		rc.logger.Crit("Sanity check. Some deposit transactions failed.")
@@ -529,7 +529,7 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 
 	messages := rc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, batchProof, stateDB)
 	transactions := rc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
-	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
+	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
 	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
 	if len(syntheticTransactionsResponses) != len(transactions) {
 		rc.logger.Crit("Sanity check. Some synthetic transactions failed.")
@@ -559,7 +559,7 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 				false)
 
 			clonedDB := stateDB.Copy()
-			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, batch.Header, rc.storage, rc.chainConfig, rc.logger)
+			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, header, rc.storage, rc.chainConfig, rc.logger)
 			rc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
 		}
 
@@ -579,21 +579,21 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 	return rootHash, executedTransactions, txReceipts, depositReceipts
 }
 
-func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
+func (rc *RollupChain) isValidBatch(header *common.Header, txs []*common.L2Tx, rootHash common.L2RootHash, txReceipts []*types.Receipt, depositReceipts []*types.Receipt, stateDB *state.StateDB) bool {
 	// Check that the root hash in the header matches the root hash as calculated.
-	if !bytes.Equal(rootHash.Bytes(), batch.Header.Root.Bytes()) {
+	if !bytes.Equal(rootHash.Bytes(), header.Root.Bytes()) {
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
 		rc.logger.Error(fmt.Sprintf("Verify batch b_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
-			common.ShortHash(*batch.Hash()), rootHash, batch.Header.Root, batch.Header.Number, core.PrintTxs(batch.Transactions), dump, depositReceipts))
+			common.ShortHash(header.Hash()), rootHash, header.Root, header.Number, core.PrintTxs(txs), dump, depositReceipts))
 		return false
 	}
 
 	// Check that the withdrawals in the header match the withdrawals as calculated.
-	withdrawals := rc.bridge.BatchPostProcessingWithdrawals(batch, stateDB, toReceiptMap(txReceipts))
+	withdrawals := rc.bridge.BatchPostProcessingWithdrawals(txs, stateDB, toReceiptMap(txReceipts))
 	for i, w := range withdrawals {
-		hw := batch.Header.Withdrawals[i]
+		hw := header.Withdrawals[i]
 		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Withdrawals don't match", common.ShortHash(*batch.Hash())))
+			rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Withdrawals don't match", common.ShortHash(header.Hash())))
 			return false
 		}
 	}
@@ -601,15 +601,20 @@ func (rc *RollupChain) isValidBatch(batch *core.Batch, rootHash common.L2RootHas
 	// Check that the receipts bloom in the header matches the receipts bloom as calculated.
 	receipts := allReceipts(txReceipts, depositReceipts)
 	receiptBloom := types.CreateBloom(receipts)
-	if !bytes.Equal(receiptBloom.Bytes(), batch.Header.Bloom.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(*batch.Hash()), batch.Header.Bloom, receiptBloom))
+	if !bytes.Equal(receiptBloom.Bytes(), header.Bloom.Bytes()) {
+		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: Invalid bloom (remote: %x  local: %x)", common.ShortHash(header.Hash()), header.Bloom, receiptBloom))
 		return false
 	}
 
 	// Check that the receipts SHA in the header matches the receipts SHA as calculated.
 	receiptSha := types.DeriveSha(receipts, trie.NewStackTrie(nil))
-	if !bytes.Equal(receiptSha.Bytes(), batch.Header.ReceiptHash.Bytes()) {
-		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(*batch.Hash()), batch.Header.ReceiptHash, receiptSha))
+	if !bytes.Equal(receiptSha.Bytes(), header.ReceiptHash.Bytes()) {
+		rc.logger.Error(fmt.Sprintf("Verify batch r_%d: invalid receipt root hash (remote: %x local: %x)", common.ShortHash(header.Hash()), header.ReceiptHash, receiptSha))
+		return false
+	}
+
+	// Check that the signature is valid.
+	if !rc.isValidSig(header) {
 		return false
 	}
 
@@ -681,16 +686,13 @@ func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
 	}
 
 	// calculate the state to compare with what is in the batch
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch, batch.Transactions, stateDB)
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch.Header, batch.Transactions, stateDB)
 	if len(successfulTxs) != len(batch.Transactions) {
 		return nil, fmt.Errorf("all transactions that are included in a batch must be executed")
 	}
 
-	if !rc.isValidBatch(batch, rootHash, txReceipts, depositReceipts, stateDB) {
+	if !rc.isValidBatch(batch.Header, batch.Transactions, rootHash, txReceipts, depositReceipts, stateDB) {
 		return nil, fmt.Errorf("invalid batch")
-	}
-	if !rc.isValidSig(batch) {
-		return nil, fmt.Errorf("invalid signature")
 	}
 
 	return txReceipts, nil
@@ -716,26 +718,26 @@ func (rc *RollupChain) signBatch(batch *core.Batch) error {
 	return nil
 }
 
-func (rc *RollupChain) isValidSig(batch *core.Batch) bool {
+func (rc *RollupChain) isValidSig(header *common.Header) bool {
 	// Batches should only be produced by the sequencer.
 	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
-	if !bytes.Equal(batch.Header.Agg.Bytes(), rc.sequencerID.Bytes()) {
+	if !bytes.Equal(header.Agg.Bytes(), rc.sequencerID.Bytes()) {
 		rc.logger.Error("Batch was not produced by sequencer")
 		return false
 	}
 
-	if batch.Header.R == nil || batch.Header.S == nil {
+	if header.R == nil || header.S == nil {
 		rc.logger.Error("Missing signature on batch")
 		return false
 	}
 
-	pubKey, err := rc.storage.FetchAttestedKey(batch.Header.Agg)
+	pubKey, err := rc.storage.FetchAttestedKey(header.Agg)
 	if err != nil {
-		rc.logger.Error("Could not retrieve attested key for aggregator %s. Cause: %w", batch.Header.Agg, err)
+		rc.logger.Error("Could not retrieve attested key for aggregator %s. Cause: %w", header.Agg, err)
 		return false
 	}
 
-	return ecdsa.Verify(pubKey, batch.Hash()[:], batch.Header.R, batch.Header.S)
+	return ecdsa.Verify(pubKey, header.Hash().Bytes(), header.R, header.S)
 }
 
 // Retrieves the batch with the given height, with special handling for earliest/latest/pending .
@@ -799,14 +801,14 @@ func (rc *RollupChain) produceBatch(block *types.Block) (*core.Batch, error) {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
-	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch, newBatchTxs, newBatchState)
+	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch.Header, newBatchTxs, newBatchState)
 
 	batch.Header.Root = rootHash
 	batch.Transactions = successfulTxs
 
 	// Postprocessing - withdrawals
 	txReceiptsMap := toReceiptMap(txReceipts)
-	batch.Header.Withdrawals = rc.bridge.BatchPostProcessingWithdrawals(batch, newBatchState, txReceiptsMap)
+	batch.Header.Withdrawals = rc.bridge.BatchPostProcessingWithdrawals(batch.Transactions, newBatchState, txReceiptsMap)
 	crossChainMessages, err := rc.crossChainProcessors.Local.ExtractOutboundMessages(txReceipts)
 	if err != nil {
 		rc.logger.Crit("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
