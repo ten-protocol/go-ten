@@ -260,7 +260,7 @@ message BlockSubmissionErrorMsg {
 }
 
 message ExtRollupMsg {
-  HeaderMsg header = 1;
+  RollupHeaderMsg header = 1;
   repeated bytes txHashes = 2;
   bytes txs = 3;
 }
@@ -273,12 +273,12 @@ message CrossChainMsg {
   bytes Payload = 5;
 }
 message ExtBatchMsg {
-  HeaderMsg header = 1;
+  BatchHeaderMsg header = 1;
   repeated bytes txHashes = 2;
   bytes txs = 3;
 }
 
-message HeaderMsg {
+message RollupHeaderMsg {
   bytes ParentHash = 1;
   bytes Node = 2;
   bytes Nonce = 3;
@@ -304,6 +304,34 @@ message HeaderMsg {
   bytes LatestInboundCrossChainHeight = 23;
   bytes LatestInboundCrossChainHash = 24;
   repeated CrossChainMsg CrossChainMessages = 25; 
+}
+
+message BatchHeaderMsg {
+  bytes ParentHash = 1;
+  bytes Node = 2;
+  bytes Nonce = 3;
+  bytes Proof = 4;
+  bytes Root = 5;
+  bytes TxHash = 6;
+  uint64 Number = 7;
+  bytes Bloom = 8;
+  bytes ReceiptHash = 9;
+  bytes Extra = 10;
+  bytes R = 11;
+  bytes S = 12;
+  repeated WithdrawalMsg Withdrawals = 13;
+  bytes UncleHash = 14;
+  bytes Coinbase = 15;
+  uint64 Difficulty = 16;
+  uint64 GasLimit = 17;
+  uint64 GasUsed = 18;
+  uint64 Time = 19;
+  bytes MixDigest = 20;
+  uint64 BaseFee = 21;
+  uint64 RollupNonce = 22;
+  bytes LatestInboundCrossChainHeight = 23;
+  bytes LatestInboundCrossChainHash = 24;
+  repeated CrossChainMsg CrossChainMessages = 25;
 }
 
 message SecretResponseMsg {
