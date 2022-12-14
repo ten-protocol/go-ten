@@ -695,6 +695,7 @@ func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
 
 	// calculate the state to compare with what is in the batch
 	rootHash, successfulTxs, txReceipts, depositReceipts := rc.processState(batch, batch.Transactions, stateDB)
+	// TODO - Do we filter out failed transaction receipts from batches? Don't validators need to know them?
 	if len(successfulTxs) != len(batch.Transactions) {
 		return nil, fmt.Errorf("all transactions that are included in a batch must be executed")
 	}
