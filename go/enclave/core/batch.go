@@ -1,4 +1,4 @@
-package core //nolint:dupl
+package core
 
 import (
 	"math/big"
@@ -52,7 +52,7 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.TransactionBlobCrypto) c
 	}
 }
 
-func ToEnclaveBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.TransactionBlobCrypto) *Batch {
+func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.TransactionBlobCrypto) *Batch {
 	return &Batch{
 		Header:       extBatch.Header,
 		Transactions: transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob),
