@@ -390,10 +390,11 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 	if rc.nodeType == common.Sequencer {
 		producedBatch = l2Head
 	}
-	if l2Head != nil {
-		return l2Head.Hash(), producedBatch, nil
+	// This is the special case of a pre-genesis block being processed by a non-sequencer.
+	if l2Head == nil {
+		return nil, producedBatch, nil
 	}
-	return nil, producedBatch, nil
+	return l2Head.Hash(), producedBatch, nil
 }
 
 // Produces a new batch, signs it and stores it.
