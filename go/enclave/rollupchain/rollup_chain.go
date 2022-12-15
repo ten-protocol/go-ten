@@ -373,22 +373,19 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 			if l2Head, err = rc.produceGenesisBatch(block.Hash()); err != nil {
 				return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
 			}
-			if err = rc.storage.StoreBatch(l2Head, nil); err != nil {
-				return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
-			}
 		} else {
 			if l2Head, err = rc.produceBatch(block); err != nil {
 				return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
 			}
-			if err = rc.signBatch(l2Head); err != nil {
-				return nil, nil, fmt.Errorf("could not sign batch. Cause: %w", err)
-			}
-			if l2HeadTxReceipts, err = rc.getTxReceipts(l2Head); err != nil {
-				return nil, nil, fmt.Errorf("could not get batch transaction receipts. Cause: %w", err)
-			}
-			if err = rc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
-				return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
-			}
+		}
+		if err = rc.signBatch(l2Head); err != nil {
+			return nil, nil, fmt.Errorf("could not sign batch. Cause: %w", err)
+		}
+		if l2HeadTxReceipts, err = rc.getTxReceipts(l2Head); err != nil {
+			return nil, nil, fmt.Errorf("could not get batch transaction receipts. Cause: %w", err)
+		}
+		if err = rc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
+			return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 		}
 	}
 
@@ -451,12 +448,6 @@ func (rc *RollupChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Bat
 	// Should be the first transaction to be processed.
 	if err := rc.mempool.AddMempoolTx(deployTx); err != nil {
 		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
-	}
-
-	// todo - joel - move out of method, can do at top level
-	err = rc.signBatch(genesisBatch)
-	if err != nil {
-		return nil, fmt.Errorf("could not sign genesis rollup. Cause: %w", err)
 	}
 
 	return genesisBatch, nil
@@ -632,6 +623,10 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 
 // Returns the receipts for the transactions in the batch.
 func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error) {
+	if batch.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0 {
+		return nil, nil //nolint:nilnil
+	}
+
 	stateDB, err := rc.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
