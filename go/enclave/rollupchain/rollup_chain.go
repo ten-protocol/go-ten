@@ -871,16 +871,15 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 		//	return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		//}
 
+		// We check we receive the genesis batch first.
+		if currentHeadRollup == nil && rollup.Number().Cmp(big.NewInt(0)) != 0 {
+			return fmt.Errorf("received batch with number %d but no genesis batch is stored", rollup.Number())
+		}
+
 		// We check that the rollups are sequential.
-		if currentHeadRollup == nil {
-			if rollup.Number().Cmp(big.NewInt(0)) != 0 {
-				return fmt.Errorf("received batch with number %d but no genesis batch is stored", rollup.Number())
-			}
-		} else {
-			if rollup.Header.ParentHash.Hex() != currentHeadRollup.Hash().Hex() {
-				return fmt.Errorf("found gap in rollup chain. Rollup %s's parent was %s instead of %s",
-					rollup.Header.Hash(), rollup.Header.ParentHash, currentHeadRollup.Header.Hash())
-			}
+		if currentHeadRollup != nil && rollup.Header.ParentHash.Hex() != currentHeadRollup.Hash().Hex() {
+			return fmt.Errorf("found gap in rollup chain. Rollup %s's parent was %s instead of %s",
+				rollup.Header.Hash(), rollup.Header.ParentHash, currentHeadRollup.Header.Hash())
 		}
 
 		// TODO - #718 - Validate the rollups in the block against the stored batches.
@@ -892,7 +891,7 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 		currentHeadRollup = rollup
 	}
 
-	// We update the current head rollup to the latest processed rollup (unless no head has been stored yet).
+	// We update the current head rollup to the latest processed rollup, unless no head rollup exists yet.
 	if currentHeadRollup != nil {
 		l1Head := block.Hash()
 		if err = rc.storage.UpdateHeadRollup(&l1Head, currentHeadRollup.Hash()); err != nil {
