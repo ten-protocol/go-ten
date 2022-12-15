@@ -344,8 +344,79 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
 func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, *core.Batch, error) {
-	// todo - joel - useless method, compress with below.
-	return rc.handlePostGenesisBlock(block)
+	err := rc.processRollups(block)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not process rollup in block. Cause: %w", err)
+	}
+
+	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
+	// We retrieve the current L2 head.
+	// todo - joel - address v ugly handling of no L2 head existing
+	isGenesis := false
+	l2Head, err := rc.storage.FetchHeadBatchForBlock(block.ParentHash())
+	if err != nil {
+		if !errors.Is(err, errutil.ErrNotFound) {
+			return nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
+		}
+		isGenesis = true
+	}
+	var l2HeadTxReceipts types.Receipts
+	if !isGenesis {
+		if l2HeadTxReceipts, err = rc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
+			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
+		}
+	}
+
+	// If we're the sequencer, we produce a new L2 head to replace the old one.
+	if rc.nodeType == common.Sequencer {
+		if isGenesis {
+			if l2Head, err = rc.produceGenesisBatch(block.Hash()); err != nil {
+				return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
+			}
+			if err = rc.storage.StoreBatch(l2Head, nil); err != nil {
+				return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
+			}
+		} else {
+			if l2Head, err = rc.produceBatch(block); err != nil {
+				return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
+			}
+			if err = rc.signBatch(l2Head); err != nil {
+				return nil, nil, fmt.Errorf("could not sign batch. Cause: %w", err)
+			}
+			if l2HeadTxReceipts, err = rc.getTxReceipts(l2Head); err != nil {
+				return nil, nil, fmt.Errorf("could not get batch transaction receipts. Cause: %w", err)
+			}
+			if err = rc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
+				return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
+			}
+		}
+	}
+
+	// We update the chain heads.
+	if l2Head != nil {
+		if err = rc.storage.UpdateHeadBatch(block.Hash(), l2Head, l2HeadTxReceipts); err != nil {
+			return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
+		}
+		// todo - joel - this branch only applies to sequencer - can we move it up?
+		if isGenesis {
+			if err = rc.faucet.CommitGenesisState(rc.storage); err != nil {
+				return nil, nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
+			}
+		}
+		if err = rc.storage.UpdateL1Head(block.Hash()); err != nil {
+			return nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
+		}
+	}
+
+	// We return the produced batch, if we've produced one.
+	var producedBatch *core.Batch
+	if rc.nodeType == common.Sequencer {
+		producedBatch = l2Head
+	}
+	if l2Head != nil {
+		return l2Head.Hash(), producedBatch, nil
+	}
+	return nil, producedBatch, nil
 }
 
 // Creates a genesis batch linked to the provided L1 block and signs it.
@@ -557,84 +628,6 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 	// todo - check that the transactions hash to the header.txHash
 
 	return txReceipts, nil
-}
-
-// Calculates the state after processing the provided block.
-// todo - joel - rename
-func (rc *RollupChain) handlePostGenesisBlock(block *types.Block) (*common.L2RootHash, *core.Batch, error) {
-	err := rc.processRollups(block)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not process rollup in block. Cause: %w", err)
-	}
-
-	// TODO - #718 - Cannot assume that the most recent rollup is on the previous block anymore. May be on the same block.
-	// We retrieve the current L2 head.
-	// todo - joel - address v ugly handling of no L2 head existing
-	isGenesis := false
-	l2Head, err := rc.storage.FetchHeadBatchForBlock(block.ParentHash())
-	if err != nil {
-		if !errors.Is(err, errutil.ErrNotFound) {
-			return nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
-		}
-		isGenesis = true
-	}
-	var l2HeadTxReceipts types.Receipts
-	if !isGenesis {
-		if l2HeadTxReceipts, err = rc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
-			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
-		}
-	}
-
-	// If we're the sequencer, we produce a new L2 head to replace the old one.
-	if rc.nodeType == common.Sequencer {
-		if isGenesis {
-			if l2Head, err = rc.produceGenesisBatch(block.Hash()); err != nil {
-				return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
-			}
-			if err = rc.storage.StoreBatch(l2Head, nil); err != nil {
-				return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
-			}
-		} else {
-			if l2Head, err = rc.produceBatch(block); err != nil {
-				return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
-			}
-			if err = rc.signBatch(l2Head); err != nil {
-				return nil, nil, fmt.Errorf("could not sign batch. Cause: %w", err)
-			}
-			if l2HeadTxReceipts, err = rc.getTxReceipts(l2Head); err != nil {
-				return nil, nil, fmt.Errorf("could not get batch transaction receipts. Cause: %w", err)
-			}
-			if err = rc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
-				return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
-			}
-		}
-	}
-
-	// We update the chain heads.
-	if l2Head != nil {
-		if err = rc.storage.UpdateHeadBatch(block.Hash(), l2Head, l2HeadTxReceipts); err != nil {
-			return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
-		}
-		// todo - joel - this branch only applies to sequencer - can we move it up?
-		if isGenesis {
-			if err = rc.faucet.CommitGenesisState(rc.storage); err != nil {
-				return nil, nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
-			}
-		}
-		if err = rc.storage.UpdateL1Head(block.Hash()); err != nil {
-			return nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
-		}
-	}
-
-	// We return the produced batch, if we've produced one.
-	var producedBatch *core.Batch
-	if rc.nodeType == common.Sequencer {
-		producedBatch = l2Head
-	}
-	if l2Head != nil {
-		return l2Head.Hash(), producedBatch, nil
-	}
-	return nil, producedBatch, nil
 }
 
 // Returns the receipts for the transactions in the batch.
@@ -875,7 +868,7 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 		// We check that the rollups are sequential.
 		if currentHeadRollup == nil {
 			if rollup.Number().Cmp(big.NewInt(0)) != 0 {
-				return fmt.Errorf("todo - joel - write msg")
+				return fmt.Errorf("received batch with number %d but no genesis batch is stored", rollup.Number())
 			}
 		} else {
 			if rollup.Header.ParentHash.Hex() != currentHeadRollup.Hash().Hex() {
