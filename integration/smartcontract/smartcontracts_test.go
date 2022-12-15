@@ -9,12 +9,11 @@ import (
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -90,7 +89,7 @@ func TestManagementContract(t *testing.T) {
 		"detectSimpleFork":                   detectSimpleFork,
 	} {
 		t.Run(name, func(t *testing.T) {
-			bytecode, err := managementcontract.Bytecode()
+			bytecode, err := constants.Bytecode()
 			if err != nil {
 				panic(err)
 			}

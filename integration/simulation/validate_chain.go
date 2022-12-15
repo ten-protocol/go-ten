@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/contracts/messagebuscontract/generated/MessageBus"
+	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -507,7 +507,6 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 	}
 
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
-	var err error
 	for {
 		if header == nil {
 			t.Errorf(fmt.Sprintf("Node %d: Reached a missing rollup", nodeIdx))
@@ -522,11 +521,13 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 			numberOfWithdrawalRequests++
 		}
 
-		header, err = obscuroClient.RollupHeaderByHash(header.ParentHash)
+		newHeader, err := obscuroClient.RollupHeaderByHash(header.ParentHash)
 		if err != nil {
 			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header %s. Cause: %s", nodeIdx, header.ParentHash, err))
 			return
 		}
+
+		header = newHeader
 	}
 }
 

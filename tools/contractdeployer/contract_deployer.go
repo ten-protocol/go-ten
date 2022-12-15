@@ -9,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/contracts/managementcontract"
 	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -156,7 +155,7 @@ func (cd *contractDeployer) signAndSendTxWithReceipt(wallet wallet.Wallet, deplo
 func getContractCode(cfg *Config) ([]byte, error) {
 	switch cfg.ContractName {
 	case mgmtContract:
-		return managementcontract.Bytecode()
+		return constants.Bytecode()
 
 	case Layer2Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]
