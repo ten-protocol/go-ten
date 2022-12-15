@@ -18,7 +18,7 @@ service EnclaveProto {
   // Init - initialise an enclave with a seed received by another enclave
   rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
 
-  // ProduceGenesis - the genesis enclave produces the genesis rollup
+  // ProduceGenesis - produce the genesis batch
   rpc ProduceGenesis(ProduceGenesisRequest) returns (ProduceGenesisResponse) {}
 
   // Start - start speculative execution
@@ -31,9 +31,6 @@ service EnclaveProto {
   // For good functioning the caller should always submit blocks ordered by height
   // submitting a block before receiving ancestors of it, will result in it being ignored
   rpc SubmitL1Block(SubmitBlockRequest) returns (SubmitBlockResponse) {}
-
-  // ProduceRollup creates a new rollup.
-  rpc ProduceRollup(ProduceRollupRequest) returns (ProduceRollupResponse) {}
 
   // SubmitTx - user transactions
   rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
@@ -108,7 +105,7 @@ message ProduceGenesisRequest {
 }
 
 message ProduceGenesisResponse {
-  ExtRollupMsg genesisRollup = 1;
+  ExtBatchMsg genesisBatch = 1;
 }
 
 message StartRequest {
@@ -124,12 +121,6 @@ message SubmitBlockRequest {
 }
 message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
-}
-
-message ProduceRollupRequest {
-}
-message ProduceRollupResponse {
-  ExtBatchMsg producedBatch = 1;
 }
 
 message SubmitTxRequest {
@@ -251,18 +242,12 @@ message BlockSubmissionResponseMsg {
 }
 
 message ProduceGenesisResponseMsg {
-  ExtRollupMsg genesisRollup = 1;
+  ExtBatchMsg genesisBatch = 1;
 }
 
 message BlockSubmissionErrorMsg {
   string cause = 1; // error cause description
   bytes l1Head = 2; // hash for the L1 head block in enclave's view of the canonical chain
-}
-
-message ExtRollupMsg {
-  RollupHeaderMsg header = 1;
-  repeated bytes txHashes = 2;
-  bytes txs = 3;
 }
 
 message CrossChainMsg {
@@ -276,34 +261,6 @@ message ExtBatchMsg {
   BatchHeaderMsg header = 1;
   repeated bytes txHashes = 2;
   bytes txs = 3;
-}
-
-message RollupHeaderMsg {
-  bytes ParentHash = 1;
-  bytes Node = 2;
-  bytes Nonce = 3;
-  bytes Proof = 4;
-  bytes Root = 5;
-  bytes TxHash = 6;
-  uint64 Number = 7;
-  bytes Bloom = 8;
-  bytes ReceiptHash = 9;
-  bytes Extra = 10;
-  bytes R = 11;
-  bytes S = 12;
-  repeated WithdrawalMsg Withdrawals = 13;
-  bytes UncleHash = 14;
-  bytes Coinbase = 15;
-  uint64 Difficulty = 16;
-  uint64 GasLimit = 17;
-  uint64 GasUsed = 18;
-  uint64 Time = 19;
-  bytes MixDigest = 20;
-  uint64 BaseFee = 21;
-  uint64 RollupNonce = 22;
-  bytes LatestInboundCrossChainHeight = 23;
-  bytes LatestInboundCrossChainHash = 24;
-  repeated CrossChainMsg CrossChainMessages = 25; 
 }
 
 message BatchHeaderMsg {

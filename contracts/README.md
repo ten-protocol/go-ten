@@ -2,6 +2,8 @@
 
 This hardhat project contains the relevant smart contracts for the Obscuro L2 platform.
 
+**NPM** handles the versions of the libraries that are used in the contracts.
+
 ## Dependencies
 
 NodeJS LTS (v18)
@@ -9,7 +11,7 @@ NPM (tested with 8.19.3)
 
 ## Installing
 
-Running the following command will pull all of the relevant dependencies for node and solidity.
+Running the following command will pull all the relevant dependencies for node and solidity.
 
 ```shell
 npm install

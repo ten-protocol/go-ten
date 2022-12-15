@@ -598,20 +598,20 @@ func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
 // Called only by the first enclave to bootstrap the network
 
 func (h *host) initialiseProtocol(block *types.Block) error {
-	// Create the genesis rollup
-	genesisRollup, err := h.enclaveClient.ProduceGenesis(block.Hash())
+	// Create the genesis batch.
+	genesisBatch, err := h.enclaveClient.ProduceGenesis(block.Hash())
 	if err != nil {
 		return fmt.Errorf("could not produce genesis. Cause: %w", err)
 	}
 	h.logger.Info(fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
-		common.ShortHash(genesisRollup.Header.Hash())))
+		common.ShortHash(genesisBatch.Header.Hash())))
 
 	// Publish the genesis rollup.
-	h.publishRollup(genesisRollup)
+	h.publishRollup(genesisBatch.ToExtRollup())
 
-	// Distribute the corresponding genesis batch. Although the enclave retrieves the genesis batch from the L1 blocks,
+	// Distribute the corresponding genesis batch. Although the enclave retrieves the genesis rollup from the L1 blocks,
 	// we need it stored to power various API calls.
-	h.storeAndDistributeBatch(genesisRollup.ToExtBatch())
+	h.storeAndDistributeBatch(genesisBatch)
 
 	return nil
 }

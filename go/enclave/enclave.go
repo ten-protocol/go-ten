@@ -247,14 +247,13 @@ func (e *enclaveImpl) Start(block types.Block) error {
 	return nil
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup, error) {
-	genesisRollup, err := e.chain.ProduceGenesisRollup(blkHash)
+func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtBatch, error) {
+	genesisBatch, err := e.chain.ProduceGenesisBatch(blkHash)
 	if err != nil {
 		return nil, err
 	}
 
-	genesisExtRollup := genesisRollup.ToExtRollup(e.transactionBlobCrypto)
-	return &genesisExtRollup, nil
+	return genesisBatch.ToExtBatch(e.transactionBlobCrypto), nil
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
@@ -1074,13 +1073,13 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head 
 		return &common.BlockSubmissionResponse{}
 	}
 
-	var producedExtBatch common.ExtBatch
+	var producedExtBatch *common.ExtBatch
 	if producedBatch != nil {
 		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
 	}
 
 	return &common.BlockSubmissionResponse{
-		ProducedBatch:  &producedExtBatch,
+		ProducedBatch:  producedExtBatch,
 		SubscribedLogs: e.getEncryptedLogs(*block, l2Head),
 	}
 }

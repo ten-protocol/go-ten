@@ -33,8 +33,8 @@ type Enclave interface {
 	// InitEnclave - initialise an enclave with a seed received by another enclave
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
 
-	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash gethcommon.Hash) (*ExtRollup, error)
+	// ProduceGenesis - produce the genesis batch
+	ProduceGenesis(blkHash gethcommon.Hash) (*ExtBatch, error)
 
 	// Start - start speculative execution
 	Start(block types.Block) error

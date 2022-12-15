@@ -38,13 +38,13 @@ func (r *Rollup) Hash() *common.L2RootHash {
 func (r *Rollup) NumberU64() uint64 { return r.Header.Number.Uint64() }
 func (r *Rollup) Number() *big.Int  { return new(big.Int).Set(r.Header.Number) }
 
-func (r *Rollup) ToExtRollup(transactionBlobCrypto crypto.TransactionBlobCrypto) common.ExtRollup {
+func (r *Rollup) ToExtRollup(transactionBlobCrypto crypto.TransactionBlobCrypto) *common.ExtRollup {
 	txHashes := make([]gethcommon.Hash, len(r.Transactions))
 	for idx, tx := range r.Transactions {
 		txHashes[idx] = tx.Hash()
 	}
 
-	return common.ExtRollup{
+	return &common.ExtRollup{
 		Header:          r.Header,
 		TxHashes:        txHashes,
 		EncryptedTxBlob: transactionBlobCrypto.Encrypt(r.Transactions),

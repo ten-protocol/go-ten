@@ -102,26 +102,25 @@ func New(
 	}
 }
 
-// ProduceGenesisRollup creates a genesis rollup linked to the provided L1 block and signs it.
-func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Rollup, error) {
+// ProduceGenesisBatch creates a genesis batch linked to the provided L1 block and signs it.
+func (rc *RollupChain) ProduceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, error) {
 	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
 	if err != nil {
 		return nil, err
 	}
 
-	h := common.RollupHeader{
-		Agg:         gethcommon.HexToAddress("0x0"),
-		ParentHash:  common.L2RootHash{},
-		L1Proof:     blkHash,
-		Root:        *preFundGenesisState,
-		TxHash:      types.EmptyRootHash,
-		Number:      big.NewInt(int64(0)),
-		Withdrawals: []common.Withdrawal{},
-		ReceiptHash: types.EmptyRootHash,
-		Time:        uint64(time.Now().Unix()),
-	}
-	rolGenesis := &core.Rollup{
-		Header:       &h,
+	genesisBatch := &core.Batch{
+		Header: &common.BatchHeader{
+			Agg:         gethcommon.HexToAddress("0x0"),
+			ParentHash:  common.L2RootHash{},
+			L1Proof:     blkHash,
+			Root:        *preFundGenesisState,
+			TxHash:      types.EmptyRootHash,
+			Number:      big.NewInt(int64(0)),
+			Withdrawals: []common.Withdrawal{},
+			ReceiptHash: types.EmptyRootHash,
+			Time:        uint64(time.Now().Unix()),
+		},
 		Transactions: []*common.L2Tx{},
 	}
 
@@ -137,12 +136,12 @@ func (rc *RollupChain) ProduceGenesisRollup(blkHash common.L1RootHash) (*core.Ro
 		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
 	}
 
-	err = rc.signRollup(rolGenesis)
+	err = rc.signBatch(genesisBatch)
 	if err != nil {
 		return nil, fmt.Errorf("could not sign genesis rollup. Cause: %w", err)
 	}
 
-	return rolGenesis, nil
+	return genesisBatch, nil
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
@@ -708,16 +707,6 @@ func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
 	// TODO - #718 - Check that the transactions in the batch are unique
 
 	return txReceipts, nil
-}
-
-func (rc *RollupChain) signRollup(rollup *core.Rollup) error {
-	var err error
-	h := rollup.Hash()
-	rollup.Header.R, rollup.Header.S, err = ecdsa.Sign(rand.Reader, rc.enclavePrivateKey, h[:])
-	if err != nil {
-		return fmt.Errorf("could not sign rollup. Cause: %w", err)
-	}
-	return nil
 }
 
 func (rc *RollupChain) signBatch(batch *core.Batch) error {
