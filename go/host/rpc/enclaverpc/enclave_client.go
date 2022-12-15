@@ -129,7 +129,7 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	return nil
 }
 
-func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup, error) {
+func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtBatch, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -138,8 +138,8 @@ func (c *Client) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtRollup, err
 		return nil, fmt.Errorf("could not produce genesis block. Cause: %w", err)
 	}
 
-	genesisRollup := rpc.FromExtRollupMsg(response.GenesisRollup)
-	return genesisRollup, nil
+	genesisBatch := rpc.FromExtBatchMsg(response.GenesisBatch)
+	return genesisBatch, nil
 }
 
 func (c *Client) Start(block types.Block) error {

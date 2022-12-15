@@ -96,13 +96,13 @@ func (s *RPCServer) InitEnclave(_ context.Context, request *generated.InitEnclav
 }
 
 func (s *RPCServer) ProduceGenesis(_ context.Context, request *generated.ProduceGenesisRequest) (*generated.ProduceGenesisResponse, error) {
-	genesisRollup, err := s.enclave.ProduceGenesis(gethcommon.BytesToHash(request.GetBlockHash()))
+	genesisBatch, err := s.enclave.ProduceGenesis(gethcommon.BytesToHash(request.GetBlockHash()))
 	if err != nil {
 		return nil, err
 	}
 
-	genesisRollupMsg := rpc.ToExtRollupMsg(genesisRollup)
-	return &generated.ProduceGenesisResponse{GenesisRollup: &genesisRollupMsg}, nil
+	genesisBatchMsg := rpc.ToExtBatchMsg(genesisBatch)
+	return &generated.ProduceGenesisResponse{GenesisBatch: &genesisBatchMsg}, nil
 }
 
 func (s *RPCServer) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
