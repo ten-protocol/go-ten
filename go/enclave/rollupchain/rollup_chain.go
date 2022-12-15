@@ -360,15 +360,18 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 	}
 
 	var l2HeadTxReceipts types.Receipts
+	// If we're the sequencer, we produce a new L2 head to replace the old one.
 	if rc.nodeType == common.Sequencer {
-		// If we're the sequencer, we produce a new L2 head to replace the old one.
 		l2Head, l2HeadTxReceipts, err = rc.produceAndStoreBatch(block, isGenesis)
-	} else {
-		// Otherwise, we grab the stored transaction receipts, provided this isn't the genesis block.
-		if !isGenesis {
-			if l2HeadTxReceipts, err = rc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
-				return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
-			}
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
+		}
+	}
+
+	// If we're not the sequencer and this isn't the genesis block, we retrieve the stored receipts.
+	if rc.nodeType != common.Sequencer && !isGenesis {
+		if l2HeadTxReceipts, err = rc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
+			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
 		}
 	}
 
@@ -376,12 +379,6 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 	if l2Head != nil {
 		if err = rc.storage.UpdateHeadBatch(block.Hash(), l2Head, l2HeadTxReceipts); err != nil {
 			return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
-		}
-		// todo - joel - this branch only applies to sequencer - can we move it up?
-		if isGenesis {
-			if err = rc.faucet.CommitGenesisState(rc.storage); err != nil {
-				return nil, nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
-			}
 		}
 		if err = rc.storage.UpdateL1Head(block.Hash()); err != nil {
 			return nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
@@ -455,6 +452,9 @@ func (rc *RollupChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Bat
 		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
 	}
 
+	if err = rc.faucet.CommitGenesisState(rc.storage); err != nil {
+		return nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
+	}
 	return genesisBatch, nil
 }
 
@@ -629,7 +629,7 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 // Returns the receipts for the transactions in the batch.
 func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error) {
 	if batch.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0 {
-		return nil, nil //nolint:nilnil
+		return nil, nil
 	}
 
 	stateDB, err := rc.storage.CreateStateDB(batch.Header.ParentHash)
@@ -723,7 +723,7 @@ func (rc *RollupChain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error)
 	return batch, nil
 }
 
-// Creates a batch.
+// Creates either a genesis or regular (i.e. post-genesis) batch.
 func (rc *RollupChain) produceBatch(block *types.Block, isGenesis bool) (*core.Batch, error) {
 	// We handle producing the genesis batch as a special case.
 	if isGenesis {
