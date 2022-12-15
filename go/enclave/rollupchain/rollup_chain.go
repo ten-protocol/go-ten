@@ -116,26 +116,21 @@ func (rc *RollupChain) UpdateL2Chain(batch *core.Batch) (*common.BatchHeader, er
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	isGenesis := false
-	if batch.Number().Cmp(big.NewInt(0)) == 0 {
-		isGenesis = true
+	// We validate the received batch, before storing it and updating the head.
+	batchTxReceipts, err := rc.checkBatch(batch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check batch. Cause: %w", err)
 	}
 
-	// todo - joel - this checking is very ugly
-	var batchTxReceipts types.Receipts
-	var err error
-	if !isGenesis {
-		if batchTxReceipts, err = rc.checkBatch(batch); err != nil {
-			return nil, fmt.Errorf("failed to check batch. Cause: %w", err)
-		}
-	}
 	if err = rc.storage.StoreBatch(batch, batchTxReceipts); err != nil {
 		return nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 	if err = rc.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, batchTxReceipts); err != nil {
 		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
-	if isGenesis {
+
+	// If this is the genesis batch, we commit the genesis state.
+	if batch.IsGenesis() {
 		if err = rc.faucet.CommitGenesisState(rc.storage); err != nil {
 			return nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
 		}
@@ -629,7 +624,7 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 
 // Returns the receipts for the transactions in the batch.
 func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error) {
-	if batch.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0 {
+	if batch.IsGenesis() {
 		return nil, nil
 	}
 
@@ -645,6 +640,11 @@ func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error
 
 // Checks that the batch is valid, both internally and relative to the previously-stored batches.
 func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
+	// TODO - #718 - Determine what level of checking we should perform on the genesis batch.
+	if batch.IsGenesis() {
+		return nil, nil
+	}
+
 	// We check that the batch is internally valid (e.g. its header matches its contents).
 	txReceipts, err := rc.isInternallyValidBatch(batch)
 	if err != nil {
