@@ -23,7 +23,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/integration"
 
@@ -31,6 +30,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -193,6 +194,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
 			MinGasPrice:            big.NewInt(1),
 			MessageBusAddress:      *params.L1SetupData.MessageBusAddr,
+			SequencerID:            params.SequencerAddress,
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
 		encl := enclave.NewEnclave(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)

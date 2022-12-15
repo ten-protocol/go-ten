@@ -40,6 +40,8 @@ type SimParams struct {
 	IsInMem   bool // Denotes that the sim does not have a full RPC layer.
 
 	ReceiptTimeout time.Duration // How long to wait for transactions to be confirmed.
+
+	SequencerAddress common.Address // Central sequencer address
 }
 
 type L1SetupData struct {

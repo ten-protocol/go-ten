@@ -24,7 +24,7 @@ func DeployContract(config Config, logger gethlog.Logger) {
 	var contractBytes []byte
 	switch config.Command { //nolint:exhaustive
 	case DeployMgmtContract:
-		bytecode, err := constants.Bytecode()
+		bytecode, err := constants.Bytecode(common.Address{})
 		if err != nil {
 			panic(err)
 		}

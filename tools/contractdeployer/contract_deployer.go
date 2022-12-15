@@ -155,7 +155,7 @@ func (cd *contractDeployer) signAndSendTxWithReceipt(wallet wallet.Wallet, deplo
 func getContractCode(cfg *Config) ([]byte, error) {
 	switch cfg.ContractName {
 	case mgmtContract:
-		return constants.Bytecode()
+		return constants.Bytecode(common.Address{})
 
 	case Layer2Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]

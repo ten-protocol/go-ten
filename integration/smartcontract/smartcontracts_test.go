@@ -89,7 +89,8 @@ func TestManagementContract(t *testing.T) {
 		"detectSimpleFork":                   detectSimpleFork,
 	} {
 		t.Run(name, func(t *testing.T) {
-			bytecode, err := constants.Bytecode()
+			randomSequencerAddr := datagenerator.RandomAddress()
+			bytecode, err := constants.Bytecode(randomSequencerAddr)
 			if err != nil {
 				panic(err)
 			}
@@ -101,8 +102,15 @@ func TestManagementContract(t *testing.T) {
 
 			// run the test using the new contract, but same wallet
 			test(t,
-				newDebugMgmtContractLib(receipt.ContractAddress, client.EthClient(),
-					mgmtcontractlib.NewMgmtContractLib(&receipt.ContractAddress, testlog.Logger())),
+				newDebugMgmtContractLib(
+					receipt.ContractAddress,
+					client.EthClient(),
+					mgmtcontractlib.NewMgmtContractLib(
+						&receipt.ContractAddress,
+						testlog.Logger(),
+					),
+					randomSequencerAddr,
+				),
 				w,
 				client,
 			)
@@ -692,5 +700,17 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 
 	if available {
 		t.Error("Withdrawals should NOT be available at this stage")
+	}
+}
+
+// sequencerAddressIsSet ensures the contract sequencer address is set
+func sequencerAddressIsSet(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
+	sequencerAddress, err := mgmtContractLib.GenContract.SequencerAddress(nil)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if sequencerAddress.Hex() != mgmtContractLib.SequencerAddress.Hex() {
+		t.Error("unexpected sequencer Address")
 	}
 }

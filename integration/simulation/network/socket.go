@@ -45,6 +45,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 		simParams.StartPort,
 		simParams.NumberOfNodes,
 		int(simParams.AvgBlockDuration.Seconds()),
+		simParams.SequencerAddress,
 	)
 
 	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1SetupData.MgmtContractAddress, testlog.Logger())

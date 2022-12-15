@@ -26,7 +26,13 @@ contract ManagementContract {
 
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
-    constructor() {
+
+    // Sequencer's known Address
+    address private sequencerAddress;
+
+    constructor(address _sequencerAddress) {
+        sequencerAddress = _sequencerAddress;
+
         messageBus = new MessageBus.MessageBus();
         emit LogManagementContractCreated(address(messageBus));
     }
@@ -236,5 +242,10 @@ contract ManagementContract {
     // Accessor that checks if an address is attested or not
     function Attested(address _addr) view public returns (bool) {
         return attested[_addr];
+    }
+
+    // Accessor returns the Sequencers Address
+    function SequencerAddress() view public returns (address) {
+        return sequencerAddress;
     }
 }

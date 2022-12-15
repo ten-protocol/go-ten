@@ -5,12 +5,13 @@ import (
 	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
 )
 
-func Bytecode() ([]byte, error) {
+// TODO move this out of the constants package
+func Bytecode(seqAddress common.Address) ([]byte, error) {
 	parsed, err := ManagementContract.ManagementContractMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
-	input, err := parsed.Pack("")
+	input, err := parsed.Pack("", seqAddress)
 	if err != nil {
 		return nil, err
 	}

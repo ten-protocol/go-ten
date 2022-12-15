@@ -19,11 +19,17 @@ import (
 // allows the direct use of the generatedManagementContract package
 type debugMgmtContractLib struct {
 	mgmtcontractlib.MgmtContractLib
-	GenContract *generatedManagementContract.ManagementContract
+	GenContract      *generatedManagementContract.ManagementContract
+	SequencerAddress gethcommon.Address
 }
 
 // newDebugMgmtContractLib creates an instance of the generated contract package and allows the use of the MgmtContractLib properties
-func newDebugMgmtContractLib(address gethcommon.Address, client *ethereumclient.Client, mgmtContractLib mgmtcontractlib.MgmtContractLib) *debugMgmtContractLib {
+func newDebugMgmtContractLib(
+	address gethcommon.Address,
+	client *ethereumclient.Client,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	sequencerAddr gethcommon.Address,
+) *debugMgmtContractLib {
 	genContract, err := generatedManagementContract.NewManagementContract(address, client)
 	if err != nil {
 		panic(err)
@@ -32,6 +38,7 @@ func newDebugMgmtContractLib(address gethcommon.Address, client *ethereumclient.
 	return &debugMgmtContractLib{
 		mgmtContractLib,
 		genContract,
+		sequencerAddr,
 	}
 }
 

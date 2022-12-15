@@ -35,6 +35,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) 
 		params.StartPort,
 		params.NumberOfNodes,
 		int(params.AvgBlockDuration.Seconds()),
+		params.SequencerAddress,
 	)
 
 	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&params.L1SetupData.MgmtContractAddress, testlog.Logger())

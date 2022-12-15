@@ -22,7 +22,6 @@ const (
 	profilerEnabledName           = "profilerEnabled"
 	minGasPriceName               = "minGasPrice"
 	messageBusAddressName         = "messageBusAddress"
-	sequencerIDName               = "sequencerID"
 )
 
 // Returns a map of the flag usages.
@@ -49,6 +48,5 @@ func getFlagUsageMap() map[string]string {
 		profilerEnabledName:           "Runs a profiler instance (Defaults to false)",
 		minGasPriceName:               "The minimum gas price for mining a transaction",
 		messageBusAddressName:         "The address of the L1 message bus contract owned by the management contract.",
-		sequencerIDName:               "The 20 bytes of the address of the sequencer for this network",
 	}
 }

@@ -28,7 +28,13 @@ const (
 	// TODO - Also prefund the L1 HOC and POC addresses used for the end-to-end tests when run locally.
 )
 
-func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, blockDurationSeconds int) (*params.L1SetupData, []ethadapter.EthClient, *gethnetwork.GethNetwork) {
+func SetUpGethNetwork(
+	wallets *params.SimWallets,
+	startPort int,
+	nrNodes int,
+	blockDurationSeconds int,
+	sequencerAddress common.Address,
+) (*params.L1SetupData, []ethadapter.EthClient, *gethnetwork.GethNetwork) {
 	// make sure the geth network binaries exist
 	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
 	if err != nil {
@@ -42,7 +48,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	}
 
 	// kickoff the network with the prefunded wallet addresses
-	gethNetwork := gethnetwork.NewGethNetwork(StartPort, StartPort+DefaultWsPortOffset, path, nrNodes, blockDurationSeconds, walletAddresses, "", int(gethlog.LvlDebug))
+	gethNetwork := gethnetwork.NewGethNetwork(startPort, startPort+DefaultWsPortOffset, path, nrNodes, blockDurationSeconds, walletAddresses, "", int(gethlog.LvlDebug))
 
 	// connect to the first host to deploy
 	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
@@ -50,7 +56,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		panic(err)
 	}
 
-	bytecode, err := constants.Bytecode()
+	bytecode, err := constants.Bytecode(sequencerAddress)
 	if err != nil {
 		panic(err)
 	}
