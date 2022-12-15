@@ -369,24 +369,7 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 
 	// If we're the sequencer, we produce a new L2 head to replace the old one.
 	if rc.nodeType == common.Sequencer {
-		if isGenesis {
-			if l2Head, err = rc.produceGenesisBatch(block.Hash()); err != nil {
-				return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
-			}
-		} else {
-			if l2Head, err = rc.produceBatch(block); err != nil {
-				return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
-			}
-		}
-		if err = rc.signBatch(l2Head); err != nil {
-			return nil, nil, fmt.Errorf("could not sign batch. Cause: %w", err)
-		}
-		if l2HeadTxReceipts, err = rc.getTxReceipts(l2Head); err != nil {
-			return nil, nil, fmt.Errorf("could not get batch transaction receipts. Cause: %w", err)
-		}
-		if err = rc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
-			return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
-		}
+		l2Head, l2HeadTxReceipts, err = rc.produceAndStoreBatch(block, isGenesis)
 	}
 
 	// We update the chain heads.
@@ -414,6 +397,33 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 		return l2Head.Hash(), producedBatch, nil
 	}
 	return nil, producedBatch, nil
+}
+
+func (rc *RollupChain) produceAndStoreBatch(block *common.L1Block, isGenesis bool) (*core.Batch, types.Receipts, error) {
+	// todo - joel - fold into produce batch
+	var l2Head *core.Batch
+	var err error
+	if isGenesis {
+		if l2Head, err = rc.produceGenesisBatch(block.Hash()); err != nil {
+			return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
+		}
+	} else {
+		if l2Head, err = rc.produceBatch(block); err != nil {
+			return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
+		}
+	}
+	if err = rc.signBatch(l2Head); err != nil {
+		return nil, nil, fmt.Errorf("could not sign batch. Cause: %w", err)
+	}
+	l2HeadTxReceipts, err := rc.getTxReceipts(l2Head)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not get batch transaction receipts. Cause: %w", err)
+	}
+	if err = rc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
+		return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
+	}
+
+	return l2Head, l2HeadTxReceipts, nil
 }
 
 // Creates a genesis batch linked to the provided L1 block and signs it.
