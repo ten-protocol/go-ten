@@ -13,7 +13,7 @@ import (
 // Rollup Data structure only for the internal use of the enclave since transactions are in clear
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Rollup struct {
-	Header *common.Header
+	Header *common.RollupHeader
 
 	hash atomic.Value
 	// size   atomic.Value
@@ -60,7 +60,7 @@ func ToRollup(encryptedRollup *common.ExtRollup, transactionBlobCrypto crypto.Tr
 
 func (r *Rollup) ToBatch() *Batch {
 	return &Batch{
-		Header:       r.Header,
+		Header:       r.Header.ToBatchHeader(),
 		Transactions: r.Transactions,
 	}
 }

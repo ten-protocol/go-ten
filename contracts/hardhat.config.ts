@@ -11,6 +11,9 @@ import './scripts/obscuro-deploy';
 import './scripts/run-wallet-extension';
 
 const config: HardhatUserConfig = {
+  paths: {
+    sources: "src"
+  },
   solidity: {
     version: "0.8.9",
     settings: {

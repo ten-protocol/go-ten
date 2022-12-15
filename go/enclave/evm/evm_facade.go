@@ -25,7 +25,7 @@ import (
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
-func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Header, storage db.Storage, chainConfig *params.ChainConfig, fromTxIndex int, logger gethlog.Logger) map[common.TxHash]interface{} {
+func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.BatchHeader, storage db.Storage, chainConfig *params.ChainConfig, fromTxIndex int, logger gethlog.Logger) map[common.TxHash]interface{} {
 	chain, vmCfg, gp := initParams(storage, true, logger)
 	zero := uint64(0)
 	usedGas := &zero
@@ -89,7 +89,7 @@ func logReceipt(r *types.Receipt, logger gethlog.Logger) {
 func ExecuteOffChainCall(
 	msg *types.Message,
 	s *state.StateDB,
-	header *common.Header,
+	header *common.BatchHeader,
 	storage db.Storage,
 	chainConfig *params.ChainConfig,
 	logger gethlog.Logger,

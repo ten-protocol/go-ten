@@ -606,7 +606,7 @@ type prefundedAddress struct {
 }
 
 func dummyRollup(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Rollup {
-	h := common.Header{
+	h := common.RollupHeader{
 		Agg:         gethcommon.HexToAddress("0x0"),
 		ParentHash:  common.L1RootHash{},
 		L1Proof:     blkHash,

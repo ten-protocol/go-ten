@@ -161,7 +161,7 @@ func ToExtBatchMsg(batch *common.ExtBatch) generated.ExtBatchMsg {
 	return generated.ExtBatchMsg{Header: ToBatchHeaderMsg(batch.Header), TxHashes: txHashBytes, Txs: batch.EncryptedTxBlob}
 }
 
-func ToRollupHeaderMsg(header *common.Header) *generated.RollupHeaderMsg { //nolint:dupl
+func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg { //nolint:dupl
 	if header == nil {
 		return nil
 	}
@@ -213,7 +213,7 @@ func ToRollupHeaderMsg(header *common.Header) *generated.RollupHeaderMsg { //nol
 	return &headerMsg
 }
 
-func ToBatchHeaderMsg(header *common.Header) *generated.BatchHeaderMsg { //nolint:dupl
+func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg { //nolint:dupl
 	if header == nil {
 		return nil
 	}
@@ -305,7 +305,7 @@ func FromExtBatchMsg(msg *generated.ExtBatchMsg) *common.ExtBatch {
 	}
 }
 
-func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.Header { //nolint:dupl
+func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader { //nolint:dupl
 	if header == nil {
 		return nil
 	}
@@ -320,7 +320,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.Header { //n
 
 	r := &big.Int{}
 	s := &big.Int{}
-	return &common.Header{
+	return &common.RollupHeader{
 		ParentHash:                    gethcommon.BytesToHash(header.ParentHash),
 		Agg:                           gethcommon.BytesToAddress(header.Node),
 		Nonce:                         types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),
@@ -348,7 +348,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.Header { //n
 	}
 }
 
-func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.Header { //nolint:dupl
+func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader { //nolint:dupl
 	if header == nil {
 		return nil
 	}
@@ -363,7 +363,7 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.Header { //nol
 
 	r := &big.Int{}
 	s := &big.Int{}
-	return &common.Header{
+	return &common.BatchHeader{
 		ParentHash:                    gethcommon.BytesToHash(header.ParentHash),
 		Agg:                           gethcommon.BytesToAddress(header.Node),
 		Nonce:                         types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),

@@ -41,6 +41,22 @@ func TestDoWithTimeoutStrategy_UnsuccessfulAfterTimeout(t *testing.T) {
 	assert.Greater(t, count, 5, "expected function to be called at least 5 times before timing out")
 }
 
+func TestDoWithFailFast_ReturnImmediately(t *testing.T) {
+	// similar to unsuccessful test except our function returns a FailFast error and we expect no retries
+	var count int
+	testFunc := func() error {
+		count = count + 1
+		fmt.Printf("c: %d\n", count)
+		return FailFast(fmt.Errorf("attempt number %d", count))
+	}
+	err := Do(testFunc, NewTimeoutStrategy(600*time.Millisecond, 100*time.Millisecond))
+	if err == nil {
+		assert.Fail(t, "expected failure from timeout but no err received")
+	}
+
+	assert.Equal(t, count, 1, "expected function to only be called once before breaking out of retry")
+}
+
 func TestDoublingBackoffStrategy_DoublingIntervalsAndRespectMaxRetries(t *testing.T) {
 	var count int
 	prevAttempt := time.Now()

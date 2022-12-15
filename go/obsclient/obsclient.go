@@ -55,23 +55,23 @@ func (oc *ObsClient) RollupNumber() (uint64, error) {
 }
 
 // RollupHeaderByNumber returns the header of the rollup with the given number
-func (oc *ObsClient) RollupHeaderByNumber(number *big.Int) (*common.Header, error) {
-	var rollupHeader *common.Header
-	err := oc.rpcClient.Call(&rollupHeader, rpc.GetRollupByNumber, toBlockNumArg(number), false)
-	if err == nil && rollupHeader == nil {
+func (oc *ObsClient) RollupHeaderByNumber(number *big.Int) (*common.BatchHeader, error) {
+	var batchHeader *common.BatchHeader
+	err := oc.rpcClient.Call(&batchHeader, rpc.GetRollupByNumber, toBlockNumArg(number), false)
+	if err == nil && batchHeader == nil {
 		err = ethereum.NotFound
 	}
-	return rollupHeader, err
+	return batchHeader, err
 }
 
 // RollupHeaderByHash returns the block header with the given hash.
-func (oc *ObsClient) RollupHeaderByHash(hash gethcommon.Hash) (*common.Header, error) {
-	var rollupHeader *common.Header
-	err := oc.rpcClient.Call(&rollupHeader, rpc.GetRollupByHash, hash, false)
-	if err == nil && rollupHeader == nil {
+func (oc *ObsClient) RollupHeaderByHash(hash gethcommon.Hash) (*common.BatchHeader, error) {
+	var batchHeader *common.BatchHeader
+	err := oc.rpcClient.Call(&batchHeader, rpc.GetRollupByHash, hash, false)
+	if err == nil && batchHeader == nil {
 		err = ethereum.NotFound
 	}
-	return rollupHeader, err
+	return batchHeader, err
 }
 
 // Health returns the health of the node.
