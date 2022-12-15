@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/retry"
+
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -17,6 +19,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 )
+
+var _awaitReceiptPollingInterval = 100 * time.Millisecond
 
 func RndBtw(min uint64, max uint64) uint64 {
 	if min >= max {
@@ -35,27 +39,25 @@ func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 // AwaitReceipt blocks until the receipt for the transaction with the given hash has been received. Errors if the
 // transaction is unsuccessful or times out.
 func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash gethcommon.Hash, timeout time.Duration) error {
-	startTime := time.Now()
-	for {
-		receipt, err := client.TransactionReceipt(ctx, txHash)
-		if err != nil {
-			if !errors.Is(err, rpc.ErrNilResponse) {
-				return err
-			}
-
-			if time.Now().After(startTime.Add(timeout)) {
-				return fmt.Errorf("could not retrieve transaction %s after timeout", txHash.Hex())
-			}
-			time.Sleep(100 * time.Millisecond)
-			continue
+	var receipt *types.Receipt
+	var err error
+	err = retry.Do(func() error {
+		receipt, err = client.TransactionReceipt(ctx, txHash)
+		if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
+			// we only retry for a nil "not found" response. This is a different error, so we bail out of the retry loop
+			return retry.FailFast(err)
 		}
-
-		if receipt.Status == types.ReceiptStatusFailed {
-			return fmt.Errorf("receipt had status failed")
-		}
-
-		return nil
+		return err
+	}, retry.NewTimeoutStrategy(timeout, _awaitReceiptPollingInterval))
+	if err != nil {
+		return fmt.Errorf("could not retrieve receipt for transaction %s - %w", txHash.Hex(), err)
 	}
+
+	if receipt.Status == types.ReceiptStatusFailed {
+		return fmt.Errorf("receipt had status failed for transaction %s", txHash.Hex())
+	}
+
+	return nil
 }
 
 // PrefundWallets sends an amount `alloc` from the faucet wallet to each listed wallet.
