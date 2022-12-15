@@ -66,7 +66,7 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 	if err != nil {
 		return nil, fmt.Errorf("could not determine latest canonical ancestor. Cause: %w", err)
 	}
-	batchesToSend := []*common.ExtBatch{firstBatch}
+	var batchesToSend []*common.ExtBatch
 
 	// We find the batch we want to send up to - either the head batch, or the max number of requested batches,
 	// whichever is lower.
@@ -101,6 +101,7 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 			return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 		}
 	}
+	batchesToSend = append(batchesToSend, firstBatch)
 
 	// We reverse the batches so that the recipient can process them in order.
 	for i, j := 0, len(batchesToSend)-1; i < j; i, j = i+1, j-1 {
