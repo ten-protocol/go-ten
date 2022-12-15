@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -900,6 +901,14 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 	batches, err := h.batchManager.GetBatches(batchRequest)
 	if err != nil {
 		return fmt.Errorf("could not retrieve batches based on request. Cause: %w", err)
+	}
+
+	if len(batches) != 0 {
+		var batchNums []string
+		for _, batch := range batches {
+			batchNums = append(batchNums, batch.Header.Number.String())
+		}
+		println(fmt.Sprintf("jjj sending catch-up batches: %s", strings.Join(batchNums, ", ")))
 	}
 
 	batchMsg := hostcommon.BatchMsg{

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -66,7 +67,7 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 	if err != nil {
 		return nil, fmt.Errorf("could not determine latest canonical ancestor. Cause: %w", err)
 	}
-	batchesToSend := []*common.ExtBatch{firstBatch}
+	var batchesToSend []*common.ExtBatch
 
 	// We find the batch we want to send up to - either the head batch, or the max number of requested batches,
 	// whichever is lower.
@@ -100,6 +101,16 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 		}
+	}
+
+	batchesToSend = append(batchesToSend, firstBatch)
+
+	if len(batchesToSend) != 0 {
+		var batchNums []string
+		for _, batch := range batchesToSend {
+			batchNums = append(batchNums, batch.Header.Number.String())
+		}
+		println(fmt.Sprintf("jjj pre-sorting, batches to send are: %s", strings.Join(batchNums, ", ")))
 	}
 
 	// We reverse the batches so that the recipient can process them in order.
