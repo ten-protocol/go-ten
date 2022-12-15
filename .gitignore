@@ -16,6 +16,7 @@
 
 # GoLand files
 .idea/
+.vscode/
 go-obscuro.iml
 
 # Simulation files
@@ -47,3 +48,28 @@ testnet/.env
 
 # Docs build files
 docs/_site
+
+# contracts
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+node_modules/
+.env*
+!.env*.default
+.vscode/*
+!.vscode/settings.json.default
+
+contracts/cache/
+contracts/artifacts/
+
+.yalc
+yalc.lock
+
+contracts/typechain-types/
+contracts/tsconfig.json
+contracts/package-lock.json
