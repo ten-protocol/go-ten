@@ -102,6 +102,7 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 			return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 		}
 	}
+	batchesToSend = append(batchesToSend, firstBatch)
 
 	batchesToSend = append(batchesToSend, firstBatch)
 
