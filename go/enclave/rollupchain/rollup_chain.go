@@ -126,9 +126,8 @@ func (rc *RollupChain) UpdateL2Chain(batch *core.Batch) (*common.BatchHeader, er
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	// We retrieve the genesis batch from the L1 chain instead.
-	if batch.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0 {
-		return nil, nil //nolint:nilnil
+	if batch.Number().Cmp(big.NewInt(0)) == 0 {
+		println(fmt.Sprintf("jjj node %d getting genesis", common.ShortAddress(rc.hostID)))
 	}
 
 	batchTxReceipts, err := rc.checkBatch(batch)
