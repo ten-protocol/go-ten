@@ -875,7 +875,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 
 	for _, batch := range batchMsg.Batches {
 		// The enclave retrieves the genesis from the L1 chain, so we do not need to submit it.
-		if batch.Header.Number == big.NewInt(int64(common.L2GenesisHeight)) {
+		if batch.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0 {
 			if err = h.db.AddBatchHeader(batch); err != nil {
 				return fmt.Errorf("could not store genesis batch header. Cause: %w", err)
 			}
@@ -909,6 +909,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 				}
 				return nil
 			}
+			return nil
 		}
 
 		// We only store the batch locally if it stores successfully on the enclave.
