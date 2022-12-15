@@ -8,6 +8,9 @@ const abiExportPath = "./artifacts/abi/";
 const bytecodeExporterPath = "./artifacts/bin/"
 
 const config: HardhatUserConfig = {
+  paths: {
+    sources: "src"
+  },
   solidity: {
     version: "0.8.9",
     settings: {
