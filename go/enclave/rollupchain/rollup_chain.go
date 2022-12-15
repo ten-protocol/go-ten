@@ -102,48 +102,6 @@ func New(
 	}
 }
 
-// ProduceGenesisBatch creates a genesis batch linked to the provided L1 block and signs it.
-func (rc *RollupChain) ProduceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, error) {
-	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
-	if err != nil {
-		return nil, err
-	}
-
-	genesisBatch := &core.Batch{
-		Header: &common.BatchHeader{
-			Agg:         gethcommon.HexToAddress("0x0"),
-			ParentHash:  common.L2RootHash{},
-			L1Proof:     blkHash,
-			Root:        *preFundGenesisState,
-			TxHash:      types.EmptyRootHash,
-			Number:      big.NewInt(int64(0)),
-			Withdrawals: []common.Withdrawal{},
-			ReceiptHash: types.EmptyRootHash,
-			Time:        uint64(time.Now().Unix()),
-		},
-		Transactions: []*common.L2Tx{},
-	}
-
-	// TODO: Figure out a better way to bootstrap the system contracts.
-	deployTx, err := rc.crossChainProcessors.Local.GenerateMessageBusDeployTx()
-	if err != nil {
-		rc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
-	}
-
-	// Add transaction to mempool so it gets processed when it can.
-	// Should be the first transaction to be processed.
-	if err := rc.mempool.AddMempoolTx(deployTx); err != nil {
-		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
-	}
-
-	err = rc.signBatch(genesisBatch)
-	if err != nil {
-		return nil, fmt.Errorf("could not sign genesis rollup. Cause: %w", err)
-	}
-
-	return genesisBatch, nil
-}
-
 // ProcessL1Block is used to update the enclave with an additional L1 block.
 func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Batch, error) {
 	rc.blockProcessingMutex.Lock()
@@ -459,6 +417,48 @@ func (rc *RollupChain) handleGenesisBlock(block *types.Block, rollupsInBlock []*
 	}
 
 	return genesisRollup.Hash(), nil
+}
+
+// Creates a genesis batch linked to the provided L1 block and signs it.
+func (rc *RollupChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, error) {
+	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
+	if err != nil {
+		return nil, err
+	}
+
+	genesisBatch := &core.Batch{
+		Header: &common.BatchHeader{
+			Agg:         gethcommon.HexToAddress("0x0"),
+			ParentHash:  common.L2RootHash{},
+			L1Proof:     blkHash,
+			Root:        *preFundGenesisState,
+			TxHash:      types.EmptyRootHash,
+			Number:      big.NewInt(int64(0)),
+			Withdrawals: []common.Withdrawal{},
+			ReceiptHash: types.EmptyRootHash,
+			Time:        uint64(time.Now().Unix()),
+		},
+		Transactions: []*common.L2Tx{},
+	}
+
+	// TODO: Figure out a better way to bootstrap the system contracts.
+	deployTx, err := rc.crossChainProcessors.Local.GenerateMessageBusDeployTx()
+	if err != nil {
+		rc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
+	}
+
+	// Add transaction to mempool so it gets processed when it can.
+	// Should be the first transaction to be processed.
+	if err := rc.mempool.AddMempoolTx(deployTx); err != nil {
+		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
+	}
+
+	err = rc.signBatch(genesisBatch)
+	if err != nil {
+		return nil, fmt.Errorf("could not sign genesis rollup. Cause: %w", err)
+	}
+
+	return genesisBatch, nil
 }
 
 // This is where transactions are executed and the state is calculated.

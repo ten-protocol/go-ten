@@ -18,9 +18,6 @@ service EnclaveProto {
   // Init - initialise an enclave with a seed received by another enclave
   rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
 
-  // ProduceGenesis - produce the genesis batch
-  rpc ProduceGenesis(ProduceGenesisRequest) returns (ProduceGenesisResponse) {}
-
   // Start - start speculative execution
   rpc Start(StartRequest) returns (StartResponse) {}
 
@@ -98,14 +95,7 @@ message InitEnclaveRequest {
   bytes encryptedSharedEnclaveSecret = 1;
 }
 message InitEnclaveResponse {
-  string error = 1;}
-
-message ProduceGenesisRequest {
-  bytes blockHash = 1;
-}
-
-message ProduceGenesisResponse {
-  ExtBatchMsg genesisBatch = 1;
+  string error = 1;
 }
 
 message StartRequest {
@@ -239,10 +229,6 @@ message BlockSubmissionResponseMsg {
   repeated SecretResponseMsg producedSecretResponses = 2;
   bytes subscribedLogs = 3;
   BlockSubmissionErrorMsg error = 4; // todo: avoid errors in Response objects, perhaps using gRPC Status responses
-}
-
-message ProduceGenesisResponseMsg {
-  ExtBatchMsg genesisBatch = 1;
 }
 
 message BlockSubmissionErrorMsg {
