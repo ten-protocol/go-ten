@@ -32,9 +32,6 @@ service EnclaveProto {
   // submitting a block before receiving ancestors of it, will result in it being ignored
   rpc SubmitL1Block(SubmitBlockRequest) returns (SubmitBlockResponse) {}
 
-  // ProduceRollup creates a new rollup.
-  rpc ProduceRollup(ProduceRollupRequest) returns (ProduceRollupResponse) {}
-
   // SubmitTx - user transactions
   rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
 
@@ -124,12 +121,6 @@ message SubmitBlockRequest {
 }
 message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
-}
-
-message ProduceRollupRequest {
-}
-message ProduceRollupResponse {
-  ExtBatchMsg producedBatch = 1;
 }
 
 message SubmitTxRequest {
