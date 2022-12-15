@@ -619,10 +619,9 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 	}
 
 	// Check that the signature is valid.
-	// todo: #1297 re-enable seq sig validation ASAP - once the testnet nodes all have access to the sequencer ID
-	//if err := rc.validateSequencerSig(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
-	//	return nil, fmt.Errorf("verify batch r_%d: invalid signature. Cause: %s", common.ShortHash(*batch.Hash()), err.Error())
-	//}
+	if err := rc.validateSequencerSig(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
+		return nil, fmt.Errorf("verify batch r_%d: invalid signature. Cause: %s", common.ShortHash(*batch.Hash()), err.Error())
+	}
 
 	// todo - check that the transactions hash to the header.txHash
 
@@ -721,7 +720,6 @@ func (rc *RollupChain) signBatch(batch *core.Batch) error {
 }
 
 // Checks that the header is signed validly by the sequencer.
-// todo: #1297 remove the nolint:unused here when validation usage is re-enabled
 func (rc *RollupChain) validateSequencerSig(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error { //nolint:unused
 	// Batches and rollups should only be produced by the sequencer.
 	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
@@ -907,10 +905,9 @@ func (rc *RollupChain) processRollups(rollups []*core.Rollup, block *common.L1Bl
 
 	// We check each rollup.
 	for _, rollup := range rollups {
-		// todo: #1297 re-enable seq sig validation ASAP - once the testnet nodes all have access to the sequencer ID
-		//if err := rc.validateSequencerSig(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
-		//	return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
-		//}
+		if err := rc.validateSequencerSig(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
+		}
 
 		// We check that the rollups are sequential.
 		if rollup.Header.ParentHash.Hex() != currentHeadRollup.Hash().Hex() {
