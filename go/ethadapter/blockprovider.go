@@ -80,7 +80,7 @@ func (e *EthBlockProvider) streamBlocks(ctx context.Context, fromHeight *big.Int
 			block, err := e.fetchNextCanonicalBlock(ctx, fromHeight, latestSent)
 			if err != nil {
 				e.logger.Error("unexpected error while preparing block to stream, will retry in 1 sec", log.ErrKey, err)
-				time.Sleep(time.Second)
+				time.Sleep(10 * time.Millisecond)
 				continue
 			}
 			e.logger.Trace("blockProvider streaming block", "height", block.Number(), "hash", block.Hash())
