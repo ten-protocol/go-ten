@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -103,16 +102,6 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 		}
 	}
 	batchesToSend = append(batchesToSend, firstBatch)
-
-	batchesToSend = append(batchesToSend, firstBatch)
-
-	if len(batchesToSend) != 0 {
-		var batchNums []string
-		for _, batch := range batchesToSend {
-			batchNums = append(batchNums, batch.Header.Number.String())
-		}
-		println(fmt.Sprintf("jjj pre-sorting, batches to send are: %s", strings.Join(batchNums, ", ")))
-	}
 
 	// We reverse the batches so that the recipient can process them in order.
 	for i, j := 0, len(batchesToSend)-1; i < j; i, j = i+1, j-1 {

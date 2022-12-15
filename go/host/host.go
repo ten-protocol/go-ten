@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -842,27 +841,20 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	for _, batch := range batchMsg.Batches {
 		// TODO - #718 - Consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
 
-		println(fmt.Sprintf("jjj node %d getting batch %d", h.shortID, batch.Header.Number))
-
 		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
 		// up later, once we've received the L1 block.
 		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
-				println(fmt.Sprintf("jjj skipping storing batch %d because do not have block", batch.Header.Number))
 				return nil
 			}
-			return fmt.Errorf("could not retrieve block. Cause: %w", err)
+			return fmt.Errorf("could not retrieve block header. Cause: %w", err)
 		}
-
-		println(fmt.Sprintf("jjj node %d getting batch %d - stage 2", h.shortID, batch.Header.Number))
 
 		isParentStored, batchRequest, err := h.batchManager.IsParentStored(batch)
 		if err != nil {
 			return fmt.Errorf("could not determine whether batch parent was missing. Cause: %w", err)
 		}
-
-		println(fmt.Sprintf("jjj node %d getting batch %d - stage 3 - parent stored? %t", h.shortID, batch.Header.Number, isParentStored))
 
 		// We have encountered a missing parent batch. We abort the storage operation and request the missing batches.
 		if !isParentStored {
@@ -876,8 +868,6 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 			}
 			return nil
 		}
-
-		println(fmt.Sprintf("jjj submitting batch %d", batch.Header.Number))
 
 		// We only store the batch locally if it stores successfully on the enclave.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
@@ -901,14 +891,6 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 	batches, err := h.batchManager.GetBatches(batchRequest)
 	if err != nil {
 		return fmt.Errorf("could not retrieve batches based on request. Cause: %w", err)
-	}
-
-	if len(batches) != 0 {
-		var batchNums []string
-		for _, batch := range batches {
-			batchNums = append(batchNums, batch.Header.Number.String())
-		}
-		println(fmt.Sprintf("jjj sending catch-up batches: %s", strings.Join(batchNums, ", ")))
 	}
 
 	batchMsg := hostcommon.BatchMsg{

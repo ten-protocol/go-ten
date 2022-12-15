@@ -36,16 +36,6 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
-// todo - joel - can probs get rid of this?
-const (
-	Genesis BlockStage = iota
-	PostGenesis
-)
-
-// BlockStage represents where the block falls in the L2 chain's lifecycle - whether it's a pre-genesis, genesis or
-// post-genesis L2 block.
-type BlockStage int64
-
 // RollupChain represents the canonical chain, and manages the state.
 type RollupChain struct {
 	hostID      gethcommon.Address
@@ -126,19 +116,29 @@ func (rc *RollupChain) UpdateL2Chain(batch *core.Batch) (*common.BatchHeader, er
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
+	isGenesis := false
 	if batch.Number().Cmp(big.NewInt(0)) == 0 {
-		println(fmt.Sprintf("jjj node %d getting genesis", common.ShortAddress(rc.hostID)))
+		isGenesis = true
 	}
 
-	batchTxReceipts, err := rc.checkBatch(batch)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check batch. Cause: %w", err)
+	// todo - joel - this checking is very ugly
+	var batchTxReceipts types.Receipts
+	var err error
+	if !isGenesis {
+		if batchTxReceipts, err = rc.checkBatch(batch); err != nil {
+			return nil, fmt.Errorf("failed to check batch. Cause: %w", err)
+		}
 	}
 	if err = rc.storage.StoreBatch(batch, batchTxReceipts); err != nil {
 		return nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 	if err = rc.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, batchTxReceipts); err != nil {
 		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
+	}
+	if isGenesis {
+		if err = rc.faucet.CommitGenesisState(rc.storage); err != nil {
+			return nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
+		}
 	}
 
 	return batch.Header, nil
