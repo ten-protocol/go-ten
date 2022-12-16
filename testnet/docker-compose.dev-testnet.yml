@@ -58,6 +58,7 @@ services:
       PROFILERENABLED: some_bool
       P2PPUBLICADDRESS: some_string
       LOGLEVEL: some_int
+      SEQUENCERID: some_address
     image: testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
@@ -73,7 +74,8 @@ services:
                  "--profilerEnabled=$PROFILERENABLED",
                  "--hostAddress=$P2PPUBLICADDRESS",
                  "--logPath=sys_out",
-                 "--logLevel=$LOGLEVEL"
+                 "--logLevel=$LOGLEVEL",
+                 "--sequencerID=$SEQUENCERID"
     ]
 
   edgelessdb:
