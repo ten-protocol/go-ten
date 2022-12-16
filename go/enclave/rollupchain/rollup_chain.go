@@ -345,18 +345,18 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool
 	}
 
 	// We determine whether we have produced a genesis batch yet.
-	isGenesis := false
+	genesisBatchStored := true
 	l2Head, err := rc.storage.FetchHeadBatchForBlock(block.ParentHash())
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
 		}
-		isGenesis = true
+		genesisBatchStored = false
 	}
 
 	var l2HeadTxReceipts types.Receipts
-	// If this isn't the genesis block, we retrieve the stored receipts.
-	if !isGenesis {
+	// If there is an L2 head, we retrieve its stored receipts.
+	if genesisBatchStored {
 		if l2HeadTxReceipts, err = rc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
 			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
 		}
@@ -365,7 +365,7 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool
 	// If we're the sequencer and we're on the latest block, we produce a new L2 head to replace the old one.
 	var producedBatch *core.Batch
 	if rc.nodeType == common.Sequencer && isLatestBlock {
-		l2Head, l2HeadTxReceipts, err = rc.produceAndStoreBatch(block, isGenesis)
+		l2Head, l2HeadTxReceipts, err = rc.produceAndStoreBatch(block, genesisBatchStored)
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
 		}
@@ -390,8 +390,8 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool
 }
 
 // Produces a new batch, signs it and stores it.
-func (rc *RollupChain) produceAndStoreBatch(block *common.L1Block, isGenesis bool) (*core.Batch, types.Receipts, error) {
-	l2Head, err := rc.produceBatch(block, isGenesis)
+func (rc *RollupChain) produceAndStoreBatch(block *common.L1Block, genesisBatchStored bool) (*core.Batch, types.Receipts, error) {
+	l2Head, err := rc.produceBatch(block, genesisBatchStored)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
 	}
@@ -720,9 +720,9 @@ func (rc *RollupChain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error)
 }
 
 // Creates either a genesis or regular (i.e. post-genesis) batch.
-func (rc *RollupChain) produceBatch(block *types.Block, isGenesis bool) (*core.Batch, error) {
+func (rc *RollupChain) produceBatch(block *types.Block, genesisBatchStored bool) (*core.Batch, error) {
 	// We handle producing the genesis batch as a special case.
-	if isGenesis {
+	if !genesisBatchStored {
 		return rc.produceGenesisBatch(block.Hash())
 	}
 
