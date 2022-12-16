@@ -344,7 +344,7 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool
 		return nil, nil, fmt.Errorf("could not process rollup in block. Cause: %w", err)
 	}
 
-	// We determine whether this is the genesis block.
+	// We determine whether we have produced a genesis batch yet.
 	isGenesis := false
 	l2Head, err := rc.storage.FetchHeadBatchForBlock(block.ParentHash())
 	if err != nil {
