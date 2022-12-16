@@ -41,9 +41,9 @@ services:
     ]
 
   enclave:
-    devices:
-      - /dev/sgx_enclave
-      - /dev/sgx_provision
+    privileged: true
+    volumes:
+      - /dev/sgx:/dev/sgx
     networks:
       - default
     ports:
