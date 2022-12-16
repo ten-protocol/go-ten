@@ -339,9 +339,9 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
 func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*common.L2RootHash, *core.Batch, error) {
-	// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
 	err := rc.processRollups(block)
 	if err != nil {
+		// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
 		rc.logger.Error("could not process rollups", log.ErrKey, err)
 	}
 
