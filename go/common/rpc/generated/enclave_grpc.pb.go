@@ -26,8 +26,6 @@ type EnclaveProtoClient interface {
 	GenerateSecret(ctx context.Context, in *GenerateSecretRequest, opts ...grpc.CallOption) (*GenerateSecretResponse, error)
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
-	// ProduceGenesis - produce the genesis batch
-	ProduceGenesis(ctx context.Context, in *ProduceGenesisRequest, opts ...grpc.CallOption) (*ProduceGenesisResponse, error)
 	// Start - start speculative execution
 	Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
@@ -107,15 +105,6 @@ func (c *enclaveProtoClient) GenerateSecret(ctx context.Context, in *GenerateSec
 func (c *enclaveProtoClient) InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error) {
 	out := new(InitEnclaveResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/InitEnclave", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *enclaveProtoClient) ProduceGenesis(ctx context.Context, in *ProduceGenesisRequest, opts ...grpc.CallOption) (*ProduceGenesisResponse, error) {
-	out := new(ProduceGenesisResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/ProduceGenesis", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -287,8 +276,6 @@ type EnclaveProtoServer interface {
 	GenerateSecret(context.Context, *GenerateSecretRequest) (*GenerateSecretResponse, error)
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
-	// ProduceGenesis - produce the genesis batch
-	ProduceGenesis(context.Context, *ProduceGenesisRequest) (*ProduceGenesisResponse, error)
 	// Start - start speculative execution
 	Start(context.Context, *StartRequest) (*StartResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
@@ -346,9 +333,6 @@ func (UnimplementedEnclaveProtoServer) GenerateSecret(context.Context, *Generate
 }
 func (UnimplementedEnclaveProtoServer) InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InitEnclave not implemented")
-}
-func (UnimplementedEnclaveProtoServer) ProduceGenesis(context.Context, *ProduceGenesisRequest) (*ProduceGenesisResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ProduceGenesis not implemented")
 }
 func (UnimplementedEnclaveProtoServer) Start(context.Context, *StartRequest) (*StartResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
@@ -482,24 +466,6 @@ func _EnclaveProto_InitEnclave_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).InitEnclave(ctx, req.(*InitEnclaveRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EnclaveProto_ProduceGenesis_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ProduceGenesisRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).ProduceGenesis(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/ProduceGenesis",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).ProduceGenesis(ctx, req.(*ProduceGenesisRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -832,10 +798,6 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "InitEnclave",
 			Handler:    _EnclaveProto_InitEnclave_Handler,
-		},
-		{
-			MethodName: "ProduceGenesis",
-			Handler:    _EnclaveProto_ProduceGenesis_Handler,
 		},
 		{
 			MethodName: "Start",

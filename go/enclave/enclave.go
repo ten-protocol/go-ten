@@ -247,15 +247,6 @@ func (e *enclaveImpl) Start(block types.Block) error {
 	return nil
 }
 
-func (e *enclaveImpl) ProduceGenesis(blkHash gethcommon.Hash) (*common.ExtBatch, error) {
-	genesisBatch, err := e.chain.ProduceGenesisBatch(blkHash)
-	if err != nil {
-		return nil, err
-	}
-
-	return genesisBatch.ToExtBatch(e.transactionBlobCrypto), nil
-}
-
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	// We update the enclave state based on the L1 block.

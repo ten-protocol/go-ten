@@ -43,13 +43,13 @@ func (f *FailFastError) Error() string {
 	return f.wrapped.Error()
 }
 
-// Unwrap function means failFastError will still work with errors.Is and errors.As for the wrapped error
+// Unwrap function means FailFastError will still work with errors.Is and errors.As for the wrapped error
 func (f *FailFastError) Unwrap() error {
 	return f.wrapped
 }
 
 // FailFast allows code to break out of the retry if they encounter a situation they would prefer to fail fast.
-// - `retry.Do` will not retry if the error is of type `failFastError`, instead it will immediately return the wrapped error.
+// - `retry.Do` will not retry if the error is of type `FailFastError`, instead it will immediately return the wrapped error.
 func FailFast(err error) *FailFastError {
 	return &FailFastError{wrapped: err}
 }
