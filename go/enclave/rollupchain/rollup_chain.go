@@ -339,9 +339,10 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
 func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*common.L2RootHash, *core.Batch, error) {
+	// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
 	err := rc.processRollups(block)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not process rollup in block. Cause: %w", err)
+		rc.logger.Error("could not process rollups", log.ErrKey, err)
 	}
 
 	// We determine whether we have produced a genesis batch yet.
@@ -859,9 +860,17 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 		return fmt.Errorf("could not fetch current L2 head rollup")
 	}
 
+	// We associated the L1 block with the current head rollup, unless no head rollup exists yet.
+	if currentHeadRollup != nil {
+		l1Head := block.Hash()
+		if err = rc.storage.UpdateHeadRollup(&l1Head, currentHeadRollup.Hash()); err != nil {
+			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
+		}
+	}
+
 	// We check each rollup.
 	for _, rollup := range rollups {
-		if err := rc.validateSequencerSig(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+		if err = rc.validateSequencerSig(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
 			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
@@ -882,15 +891,11 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
 
-		currentHeadRollup = rollup
-	}
-
-	// We update the current head rollup to the latest processed rollup, unless no head rollup exists yet.
-	if currentHeadRollup != nil {
-		l1Head := block.Hash()
-		if err = rc.storage.UpdateHeadRollup(&l1Head, currentHeadRollup.Hash()); err != nil {
+		l1HeadHash := block.Hash()
+		if err = rc.storage.UpdateHeadRollup(&l1HeadHash, rollup.Hash()); err != nil {
 			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 		}
+		currentHeadRollup = rollup
 	}
 
 	return nil
