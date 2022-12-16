@@ -104,7 +104,7 @@ func (rc *RollupChain) ProcessL1Block(block types.Block, receipts types.Receipts
 	}
 
 	// We update the L1 and L2 chain heads.
-	newL2Head, producedBatch, err := rc.updateL1AndL2Heads(&block)
+	newL2Head, producedBatch, err := rc.updateL1AndL2Heads(&block, isLatest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -338,7 +338,7 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 }
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
-func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHash, *core.Batch, error) {
+func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*common.L2RootHash, *core.Batch, error) {
 	err := rc.processRollups(block)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not process rollup in block. Cause: %w", err)
@@ -355,19 +355,21 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 	}
 
 	var l2HeadTxReceipts types.Receipts
-	// If we're the sequencer, we produce a new L2 head to replace the old one.
-	if rc.nodeType == common.Sequencer {
+	// If this isn't the genesis block, we retrieve the stored receipts.
+	if !isGenesis {
+		if l2HeadTxReceipts, err = rc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
+			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
+		}
+	}
+
+	// If we're the sequencer and we're on the latest block, we produce a new L2 head to replace the old one.
+	var producedBatch *core.Batch
+	if rc.nodeType == common.Sequencer && isLatestBlock {
 		l2Head, l2HeadTxReceipts, err = rc.produceAndStoreBatch(block, isGenesis)
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
 		}
-	}
-
-	// If we're not the sequencer and this isn't the genesis block, we retrieve the stored receipts.
-	if rc.nodeType != common.Sequencer && !isGenesis {
-		if l2HeadTxReceipts, err = rc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
-			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
-		}
+		producedBatch = l2Head
 	}
 
 	// We update the chain heads.
@@ -380,16 +382,11 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block) (*common.L2RootHas
 		}
 	}
 
-	// We return the produced batch, if we've produced one.
-	var producedBatch *core.Batch
-	if rc.nodeType == common.Sequencer {
-		producedBatch = l2Head
+	var l2HeadHash *gethcommon.Hash
+	if l2Head != nil {
+		l2HeadHash = l2Head.Hash()
 	}
-	// This is the special case of a pre-genesis block being processed by a non-sequencer.
-	if l2Head == nil {
-		return nil, producedBatch, nil
-	}
-	return l2Head.Hash(), producedBatch, nil
+	return l2HeadHash, producedBatch, nil
 }
 
 // Produces a new batch, signs it and stores it.
