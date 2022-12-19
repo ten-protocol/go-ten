@@ -14,6 +14,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/host/metrics"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
@@ -24,9 +25,11 @@ const (
 	msgTypeTx msgType = iota
 	msgTypeBatches
 	msgTypeBatchRequest
+
+	_thresholdErrorFailure = 100
 )
 
-var _peerListCoolOffPeriod = 10 * time.Second
+var _alertPeriod = 5 * time.Minute
 
 // A P2P message's type.
 type msgType uint8
@@ -39,14 +42,15 @@ type message struct {
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger) host.P2P {
+func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger, metrics *metrics.P2PMetrics) host.P2P {
 	return &p2pImpl{
 		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},
 		nodeID:        common.ShortAddress(config.ID),
 		p2pTimeout:    config.P2PConnectionTimeout,
 		logger:        logger,
-		status:        newStatus(),
+		peerTracker:   newPeerTracker(),
+		metrics:       metrics,
 	}
 }
 
@@ -59,7 +63,8 @@ type p2pImpl struct {
 	nodeID                  uint64
 	p2pTimeout              time.Duration
 	logger                  gethlog.Logger
-	status                  *status
+	metrics                 *metrics.P2PMetrics
+	peerTracker             *peerTracker
 }
 
 func (p *p2pImpl) StartListening(callback host.Host) {
@@ -89,7 +94,6 @@ func (p *p2pImpl) StopListening() error {
 func (p *p2pImpl) UpdatePeerList(newPeers []string) {
 	p.logger.Info(fmt.Sprintf("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers))
 	p.peerAddresses = newPeers
-	p.peerAddressesLastUpdate = time.Now()
 }
 
 func (p *p2pImpl) SendTxToSequencer(tx common.EncryptedTx) error {
@@ -131,35 +135,37 @@ func (p *p2pImpl) SendBatches(batchMsg *host.BatchMsg, to string) error {
 	return p.send(msg, to)
 }
 
-// Status returns the current status of the lib
+// Status returns the current peerTracker of the lib
 func (p *p2pImpl) Status() *host.P2PStatus {
-	return p.status.status()
+	return p.metrics.Status()
 }
 
 // HealthCheck returns whether the p2p is considered healthy
 // Currently it considers itself unhealthy
 // if there's more than 100 failures on a given fail type
-// if there's a known peer for which a message hasn't been received
+// if there's a known peer for which a message hasn't been received in a period
 func (p *p2pImpl) HealthCheck() bool {
-	const thresholdPerFailure = 100
-	currentStatus := p.status.status()
+	currentStatus := p.metrics.Status()
 
-	if sumFailures(currentStatus.FailedMessageDecodes) >= thresholdPerFailure ||
-		sumFailures(currentStatus.FailedMessageReads) >= thresholdPerFailure ||
-		sumFailures(currentStatus.FailedSendMessagesPeerConnection) >= thresholdPerFailure ||
-		sumFailures(currentStatus.FailedSendMessageWrites) >= thresholdPerFailure {
+	if currentStatus.FailedReceivedMessages >= _thresholdErrorFailure ||
+		currentStatus.FailedSendMessage >= _thresholdErrorFailure {
 		return false
 	}
 
-	if time.Now().After(p.peerAddressesLastUpdate.Add(_peerListCoolOffPeriod)) {
-		if peerAddrs := peerNoMessage(currentStatus.ReceivedMessages, p.peerAddresses); len(peerAddrs) != 0 {
-			p.logger.Warn("not received any message from peer(s) in the alert period",
+	var noReceivedMsgForPeer []string
+	receivedMessagesByPeer := p.peerTracker.receivedMessagesByPeer()
+	for peer, lastMsgTimestamp := range receivedMessagesByPeer {
+		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {
+			noReceivedMsgForPeer = append(noReceivedMsgForPeer, peer)
+			p.logger.Warn("no message from peer(s) in the alert period",
 				log.HostCmp, p.ourAddress,
-				"peers", peerAddrs,
-				"alertPeriod", _rollingPeriod,
+				"peer", peer,
+				"alertPeriod", _alertPeriod,
 			)
-			return false
 		}
+	}
+	if len(noReceivedMsgForPeer) > 0 {
+		return false
 	}
 
 	return true
@@ -188,7 +194,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	encodedMsg, err := io.ReadAll(conn)
 	if err != nil {
 		p.logger.Warn("failed to read message from peer", log.ErrKey, err)
-		p.status.increment(_failedMessageRead, conn.RemoteAddr().String())
+		p.metrics.IncrementHost(metrics.FailedMessageRead, conn.RemoteAddr().String())
 		return
 	}
 
@@ -196,7 +202,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
 		p.logger.Warn("failed to decode message received from peer: ", log.ErrKey, err)
-		p.status.increment(_failedMessageDecode, conn.RemoteAddr().String())
+		p.metrics.IncrementHost(metrics.FailedMessageDecode, conn.RemoteAddr().String())
 		return
 	}
 
@@ -209,7 +215,8 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	case msgTypeBatchRequest:
 		callback.ReceiveBatchRequest(msg.Contents)
 	}
-	p.status.increment(_receivedMessage, msg.Sender)
+	p.metrics.IncrementHost(metrics.ReceivedMessage, msg.Sender)
+	p.peerTracker.receivedPeerMsg(msg.Sender)
 }
 
 // Broadcasts a message to all peers.
@@ -251,14 +258,14 @@ func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
 	}
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
-		p.status.increment(_failedConnectSendMessage, address)
+		p.metrics.IncrementHost(metrics.FailedConnectSendMessage, address)
 		return
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
-		p.status.increment(_failedWriteSendMessage, address)
+		p.metrics.IncrementHost(metrics.FailedWriteSendMessage, address)
 	}
 }
 

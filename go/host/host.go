@@ -23,6 +23,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
 	"github.com/obscuronet/go-obscuro/go/host/db"
 	"github.com/obscuronet/go-obscuro/go/host/events"
+	"github.com/obscuronet/go-obscuro/go/host/metrics"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -78,6 +79,8 @@ type host struct {
 	batchManager    *batchmanager.BatchManager
 
 	logger gethlog.Logger
+
+	metrics *metrics.Metrics
 }
 
 func NewHost(
@@ -88,6 +91,7 @@ func NewHost(
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	logger gethlog.Logger,
+	hostMetrics *metrics.Metrics,
 ) hostcommon.Host {
 	database := db.NewInMemoryDB() // todo - make this config driven
 	host := &host{
@@ -119,7 +123,8 @@ func NewHost(
 		logEventManager: events.NewLogEventManager(logger),
 		batchManager:    batchmanager.NewBatchManager(database, config.P2PPublicAddress),
 
-		logger: logger,
+		logger:  logger,
+		metrics: hostMetrics,
 	}
 
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
@@ -181,6 +186,8 @@ func NewHost(
 
 func (h *host) Start() {
 	h.validateConfig()
+
+	h.metrics.Start() // enable the metrics service
 
 	tomlConfig, err := toml.Marshal(h.config)
 	if err != nil {

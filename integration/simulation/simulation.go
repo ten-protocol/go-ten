@@ -67,6 +67,7 @@ func (s *Simulation) Start() {
 	timer := time.Now()
 	fmt.Printf("Starting injection\n")
 	testlog.Logger().Info("Starting injection")
+	time.Sleep(6 * time.Hour)
 	go s.TxInjector.Start()
 
 	// Allow for some time after tx injection was stopped so that the network can process all transactions, catch up
