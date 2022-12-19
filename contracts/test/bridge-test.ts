@@ -1,18 +1,18 @@
 import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
-import { bridge } from "../typechain-types/contracts";
+import { bridge } from "../typechain-types/src";
 import { MessageBus, ObscuroBridge } from "../typechain-types";
-import { ObscuroL2Bridge } from "../typechain-types/contracts/bridge/L2/L2_Bridge.sol";
-import { CrossChainMessenger } from "../typechain-types/contracts/messaging/messenger";
+import { ObscuroL2Bridge } from "../typechain-types/src/bridge/L2/L2_Bridge.sol";
+import { CrossChainMessenger } from "../typechain-types/src/messaging/messenger";
 import { Contract } from "hardhat/internal/hardhat-network/stack-traces/model";
 
 
 import type {
   ContractTransaction
 } from 'ethers';
-import { ObscuroERC20 } from "../typechain-types/contracts/bridge/L2";
-import { ObscuroERC20__factory } from "../typechain-types/factories/contracts/bridge/L2";
+import { ObscuroERC20 } from "../typechain-types/src/bridge/L2";
+import { ObscuroERC20__factory } from "../typechain-types/factories/src/bridge/L2";
 
 describe("Bridge", function () {
 
@@ -159,7 +159,7 @@ describe("Bridge", function () {
       const publishedFakeMessage = messages!.bindings[0].msg
 
       await expect(messengerL2.relayMessage(publishedFakeMessage))
-        .revertedWith("Cross chain message coming from incorrect sender!");
+        .revertedWithCustomError
   });
   
   it("Bridge relay unpublished message should fail", async function () {
@@ -259,8 +259,8 @@ describe("Bridge", function () {
       const eventSignature = "LogMessagePublished(address,uint64,uint32,uint32,bytes,uint8)";
 
       const topic = ethers.utils.id(eventSignature)
-      const event = (await (await whitelistTx).wait()).events?.find((x)=> { 
-          return x.topics.find((t)=> t == topic) != undefined;
+      const event = (await (await whitelistTx).wait()).events?.find((x: any)=> { 
+          return x.topics.find((t: string)=> t == topic) != undefined;
       });
 
       await expect(event).to.not.be.undefined;
