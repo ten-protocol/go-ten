@@ -28,6 +28,8 @@ help_and_exit() {
     echo ""
     echo "  sgx_enabled        *Required* Set the execution to run with sgx enabled"
     echo ""
+    echo "  sequencerID        *Optional* Set the sequencer address. Defaults to 0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
+    echo ""
     echo "  host_id            *Optional* Set the host ID used by the enclave. Defaults to 0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
     echo ""
     echo "  l1port             *Optional* Set the l1 port. Defaults to 9000"
@@ -69,7 +71,8 @@ debug_enclave=false
 dev_testnet=false
 host_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
-log_level=5
+log_level=4
+sequencer_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 
 
 # Fetch options
@@ -94,6 +97,7 @@ do
             --p2p_public_address)       p2p_public_address=${value} ;;
             --debug_enclave)            debug_enclave=${value} ;;
             --dev_testnet)              dev_testnet=${value} ;;
+            --sequencerId)              sequencer_id=${value} ;;
 
             --help)                     help_and_exit ;;
             *)
@@ -119,6 +123,7 @@ echo "NODETYPE=${node_type}" >> "${testnet_path}/.env"
 echo "LOGLEVEL=${log_level}" >> "${testnet_path}/.env"
 echo "PROFILERENABLED=${profiler_enabled}" >> "${testnet_path}/.env"
 echo "P2PPUBLICADDRESS=${p2p_public_address}" >> "${testnet_path}/.env"
+echo "SEQUENCERID=${sequencer_id}" >> "${testnet_path}/.env"
 
 
 if ${debug_enclave} ;

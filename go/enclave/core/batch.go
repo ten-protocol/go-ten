@@ -39,13 +39,19 @@ func (b *Batch) Hash() *common.L2RootHash {
 func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }
 func (b *Batch) Number() *big.Int  { return new(big.Int).Set(b.Header.Number) }
 
-func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.TransactionBlobCrypto) common.ExtBatch {
+// IsGenesis indicates whether the batch is the genesis batch.
+// TODO - #718 - Change this to a check against a hardcoded genesis hash.
+func (b *Batch) IsGenesis() bool {
+	return b.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
+}
+
+func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.TransactionBlobCrypto) *common.ExtBatch {
 	txHashes := make([]gethcommon.Hash, len(b.Transactions))
 	for idx, tx := range b.Transactions {
 		txHashes[idx] = tx.Hash()
 	}
 
-	return common.ExtBatch{
+	return &common.ExtBatch{
 		Header:          b.Header,
 		TxHashes:        txHashes,
 		EncryptedTxBlob: transactionBlobCrypto.Encrypt(b.Transactions),
