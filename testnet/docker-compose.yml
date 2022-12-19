@@ -79,9 +79,9 @@ services:
     ]
 
   edgelessdb:
-    privileged: true
-    volumes:
-      - /dev/sgx:/dev/sgx
+    devices:
+      - /dev/sgx_enclave
+      - /dev/sgx_provision
     networks:
       - default
     environment:
