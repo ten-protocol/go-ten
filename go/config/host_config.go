@@ -168,7 +168,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		P2PConnectionTimeout:   time.Duration(defaultP2PTimeoutSecs) * time.Second,
 		RollupContractAddress:  gethcommon.BytesToAddress([]byte("")),
 		LogLevel:               int(log.LvlInfo),
-		LogPath:                "",
+		LogPath:                "sys_out",
 		PrivateKeyString:       "0000000000000000000000000000000000000000000000000000000000000001",
 		L1ChainID:              1337,
 		ObscuroChainID:         777,

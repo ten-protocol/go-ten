@@ -52,14 +52,14 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 		&simParams.L1SetupData.ObxErc20Address, &simParams.L1SetupData.EthErc20Address)
 
 	// Start the enclaves
-	startRemoteEnclaveServers(simParams)
+	StartRemoteEnclaveServers(simParams)
 
 	n.enclaveAddresses = make([]string, simParams.NumberOfNodes)
 	for i := 0; i < simParams.NumberOfNodes; i++ {
 		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, simParams.StartPort+DefaultEnclaveOffset+i)
 	}
 
-	l2Clients, hostRPCAddresses := startStandaloneObscuroNodes(simParams, n.gethClients, n.enclaveAddresses)
+	l2Clients, hostRPCAddresses := StartStandaloneObscuroNodes(simParams, n.gethClients, n.enclaveAddresses)
 	n.l2Clients = l2Clients
 	n.hostRPCAddresses = hostRPCAddresses
 

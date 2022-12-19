@@ -83,7 +83,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 	return obscuroClients
 }
 
-func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpc.Client, []string) {
+func StartStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpc.Client, []string) {
 	// handle to the obscuro clients
 	nodeRPCAddresses := make([]string, params.NumberOfNodes)
 	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
@@ -173,7 +173,7 @@ func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 	return authClients
 }
 
-func startRemoteEnclaveServers(params *params.SimParams) {
+func StartRemoteEnclaveServers(params *params.SimParams) {
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// create a remote enclave server
 		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
