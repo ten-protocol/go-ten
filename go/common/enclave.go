@@ -3,6 +3,7 @@ package common
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -32,9 +33,6 @@ type Enclave interface {
 
 	// InitEnclave - initialise an enclave with a seed received by another enclave
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
-
-	// ProduceGenesis - the genesis enclave produces the genesis rollup
-	ProduceGenesis(blkHash gethcommon.Hash) (*ExtRollup, error)
 
 	// Start - start speculative execution
 	Start(block types.Block) error
@@ -147,4 +145,10 @@ func (r BlockRejectError) Error() string {
 
 func (r BlockRejectError) Unwrap() error {
 	return r.Wrapped
+}
+
+// Is implementation supports the errors.Is() behaviour. The error being sent over the wire means we lose the typing
+// on the `Wrapped` error, but comparing the string helps in our use cases of standard exported errors above
+func (r BlockRejectError) Is(err error) bool {
+	return strings.Contains(r.Error(), err.Error()) || errors.Is(err, r.Wrapped)
 }

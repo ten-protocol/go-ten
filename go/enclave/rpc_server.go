@@ -95,16 +95,6 @@ func (s *RPCServer) InitEnclave(_ context.Context, request *generated.InitEnclav
 	return &generated.InitEnclaveResponse{Error: errStr}, nil
 }
 
-func (s *RPCServer) ProduceGenesis(_ context.Context, request *generated.ProduceGenesisRequest) (*generated.ProduceGenesisResponse, error) {
-	genesisRollup, err := s.enclave.ProduceGenesis(gethcommon.BytesToHash(request.GetBlockHash()))
-	if err != nil {
-		return nil, err
-	}
-
-	genesisRollupMsg := rpc.ToExtRollupMsg(genesisRollup)
-	return &generated.ProduceGenesisResponse{GenesisRollup: &genesisRollupMsg}, nil
-}
-
 func (s *RPCServer) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
 	bl := s.decodeBlock(request.EncodedBlock)
 	err := s.enclave.Start(bl)

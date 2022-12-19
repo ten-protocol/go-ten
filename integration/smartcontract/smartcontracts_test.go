@@ -403,6 +403,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	if err != nil {
 		t.Error(err)
 	}
+
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
 	}

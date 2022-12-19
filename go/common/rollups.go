@@ -22,11 +22,3 @@ func (r *ExtRollup) Hash() L2RootHash {
 	r.hash.Store(v)
 	return v
 }
-
-func (r *ExtRollup) ToExtBatch() *ExtBatch {
-	return &ExtBatch{
-		Header:          r.Header.ToBatchHeader(),
-		TxHashes:        r.TxHashes,
-		EncryptedTxBlob: r.EncryptedTxBlob,
-	}
-}
