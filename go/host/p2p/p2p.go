@@ -55,16 +55,15 @@ func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger, metrics
 }
 
 type p2pImpl struct {
-	ourAddress              string
-	peerAddresses           []string
-	peerAddressesLastUpdate time.Time
-	listener                net.Listener
-	listenerInterrupt       *int32 // A value of 1 indicates that new connections should not be accepted
-	nodeID                  uint64
-	p2pTimeout              time.Duration
-	logger                  gethlog.Logger
-	metrics                 *metrics.P2PMetrics
-	peerTracker             *peerTracker
+	ourAddress        string
+	peerAddresses     []string
+	listener          net.Listener
+	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
+	nodeID            uint64
+	p2pTimeout        time.Duration
+	logger            gethlog.Logger
+	metrics           *metrics.P2PMetrics
+	peerTracker       *peerTracker
 }
 
 func (p *p2pImpl) StartListening(callback host.Host) {
@@ -152,11 +151,10 @@ func (p *p2pImpl) HealthCheck() bool {
 		return false
 	}
 
-	var noReceivedMsgForPeer []string
-	receivedMessagesByPeer := p.peerTracker.receivedMessagesByPeer()
-	for peer, lastMsgTimestamp := range receivedMessagesByPeer {
+	var noMsgReceivedPeers []string
+	for peer, lastMsgTimestamp := range p.peerTracker.receivedMessagesByPeer() {
 		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {
-			noReceivedMsgForPeer = append(noReceivedMsgForPeer, peer)
+			noMsgReceivedPeers = append(noMsgReceivedPeers, peer)
 			p.logger.Warn("no message from peer(s) in the alert period",
 				log.HostCmp, p.ourAddress,
 				"peer", peer,
@@ -164,7 +162,7 @@ func (p *p2pImpl) HealthCheck() bool {
 			)
 		}
 	}
-	if len(noReceivedMsgForPeer) > 0 {
+	if len(noMsgReceivedPeers) > 0 { //nolint: gosimple
 		return false
 	}
 

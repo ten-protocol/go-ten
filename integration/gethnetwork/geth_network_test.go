@@ -64,7 +64,6 @@ func TestGethAllNodesJoinSameNetwork(t *testing.T) {
 	peerCountStr := network.IssueCommand(0, peerCountCmd)
 	peerCount, _ := strconv.Atoi(peerCountStr)
 
-	time.Sleep(6 * time.Hour)
 	// nodes don't consider themselves a peer
 	if expectedPeers := numNodes - 1; peerCount != expectedPeers {
 		t.Fatalf("Wrong number of peers on the network. Found %d, expected %d.", peerCount, expectedPeers)
