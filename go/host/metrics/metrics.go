@@ -13,12 +13,12 @@ import (
 type Metrics struct {
 	*P2PMetrics
 	registry gethmetrics.Registry
-	port     uint64
+	port     uint
 	logger   gethlog.Logger
 }
 
-func NewHostMetrics(port uint64, logger gethlog.Logger) *Metrics {
-	gethmetrics.Enabled = true // TODO hook this under a metrics enabling flag ?
+func NewHostMetrics(enabled bool, port uint, logger gethlog.Logger) *Metrics {
+	gethmetrics.Enabled = enabled
 	reg := gethmetrics.DefaultRegistry
 	return &Metrics{
 		P2PMetrics: NewP2PMetrics(reg),
@@ -29,8 +29,11 @@ func NewHostMetrics(port uint64, logger gethlog.Logger) *Metrics {
 }
 
 func (m *Metrics) Start() {
+	// metrics not enabled
+	if !gethmetrics.Enabled {
+		return
+	}
 	// starts the metric server
-	// TODO hook this under a metrics enabling flag ?
 	address := fmt.Sprintf("%s:%d", "127.0.0.1", m.port)
 	m.logger.Info("HTTP Metric server started at %s", address)
 	exp.Setup(address)

@@ -25,6 +25,8 @@ const (
 	obscuroChainIDName           = "obscuroChainID"
 	profilerEnabledName          = "profilerEnabled"
 	l1StartHashName              = "l1Start"
+	metricsEnabledName           = "metricsEnabled"
+	metricsHTTPPortName          = "metricsHTTPPort"
 )
 
 // Returns a map of the flag usages.
@@ -53,5 +55,7 @@ func getFlagUsageMap() map[string]string {
 		l1ChainIDName:                "An integer representing the unique chain id of the Ethereum chain used as an L1 (default 1337)",
 		obscuroChainIDName:           "An integer representing the unique chain id of the Obscuro chain (default 777)",
 		profilerEnabledName:          "Runs a profiler instance (Defaults to false)",
+		metricsEnabledName:           "Whether the metrics are enabled (Defaults to true)",
+		metricsHTTPPortName:          "The port on which the metrics are served (Defaults to 0.0.0.0:14000)",
 	}
 }

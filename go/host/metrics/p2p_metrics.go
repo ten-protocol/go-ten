@@ -6,11 +6,11 @@ import (
 )
 
 const (
-	FailedMessageRead        = "Failed Message Reads"
-	FailedMessageDecode      = "Failed Message Decodes"
-	FailedConnectSendMessage = "Failed Peer Connects"
-	FailedWriteSendMessage   = "Failed Socket Writes"
-	ReceivedMessage          = "Received Messages"
+	P2PFailedMessageRead        = "msg/inbound/failed_read"
+	P2PFailedMessageDecode      = "msg/inbound/failed_decode"
+	P2PFailedConnectSendMessage = "msg/outbound/failed_peer_connect"
+	P2PFailedWriteSendMessage   = "msg/outbound/failed_write"
+	P2PReceivedMessage          = "msg/inbound/success_received"
 )
 
 // P2PMetrics represents the metrics for the p2p library
@@ -22,11 +22,11 @@ type P2PMetrics struct {
 func NewP2PMetrics(registry gethmetrics.Registry) *P2PMetrics {
 	return &P2PMetrics{
 		hostBasedGauges: map[string]*PerStringGaugeMap{
-			FailedMessageRead:        NewPerStringGaugeMap(registry, FailedMessageRead),
-			FailedMessageDecode:      NewPerStringGaugeMap(registry, FailedMessageDecode),
-			FailedConnectSendMessage: NewPerStringGaugeMap(registry, FailedConnectSendMessage),
-			FailedWriteSendMessage:   NewPerStringGaugeMap(registry, FailedWriteSendMessage),
-			ReceivedMessage:          NewPerStringGaugeMap(registry, ReceivedMessage),
+			P2PFailedMessageRead:        NewPerStringGaugeMap(registry, P2PFailedMessageRead),
+			P2PFailedMessageDecode:      NewPerStringGaugeMap(registry, P2PFailedMessageDecode),
+			P2PFailedConnectSendMessage: NewPerStringGaugeMap(registry, P2PFailedConnectSendMessage),
+			P2PFailedWriteSendMessage:   NewPerStringGaugeMap(registry, P2PFailedWriteSendMessage),
+			P2PReceivedMessage:          NewPerStringGaugeMap(registry, P2PReceivedMessage),
 		},
 	}
 }
@@ -46,13 +46,13 @@ func (m *P2PMetrics) Status() *hostcommon.P2PStatus {
 
 	for gaugeName, gauge := range m.hostBasedGauges {
 		switch gaugeName {
-		case ReceivedMessage:
+		case P2PReceivedMessage:
 			status.ReceivedMessages = gauge.totals()
-		case FailedMessageRead:
-		case FailedMessageDecode:
+		case P2PFailedMessageRead:
+		case P2PFailedMessageDecode:
 			status.FailedReceivedMessages += gauge.totals()
-		case FailedWriteSendMessage:
-		case FailedConnectSendMessage:
+		case P2PFailedWriteSendMessage:
+		case P2PFailedConnectSendMessage:
 			status.FailedSendMessage += gauge.totals()
 		}
 	}

@@ -192,7 +192,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	encodedMsg, err := io.ReadAll(conn)
 	if err != nil {
 		p.logger.Warn("failed to read message from peer", log.ErrKey, err)
-		p.metrics.IncrementHost(metrics.FailedMessageRead, conn.RemoteAddr().String())
+		p.metrics.IncrementHost(metrics.P2PFailedMessageRead, conn.RemoteAddr().String())
 		return
 	}
 
@@ -200,7 +200,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
 		p.logger.Warn("failed to decode message received from peer: ", log.ErrKey, err)
-		p.metrics.IncrementHost(metrics.FailedMessageDecode, conn.RemoteAddr().String())
+		p.metrics.IncrementHost(metrics.P2PFailedMessageDecode, conn.RemoteAddr().String())
 		return
 	}
 
@@ -213,7 +213,7 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	case msgTypeBatchRequest:
 		callback.ReceiveBatchRequest(msg.Contents)
 	}
-	p.metrics.IncrementHost(metrics.ReceivedMessage, msg.Sender)
+	p.metrics.IncrementHost(metrics.P2PReceivedMessage, msg.Sender)
 	p.peerTracker.receivedPeerMsg(msg.Sender)
 }
 
@@ -256,14 +256,14 @@ func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
 	}
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
-		p.metrics.IncrementHost(metrics.FailedConnectSendMessage, address)
+		p.metrics.IncrementHost(metrics.P2PFailedConnectSendMessage, address)
 		return
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
-		p.metrics.IncrementHost(metrics.FailedWriteSendMessage, address)
+		p.metrics.IncrementHost(metrics.P2PFailedWriteSendMessage, address)
 	}
 }
 
