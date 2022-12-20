@@ -102,7 +102,8 @@ func createInMemObscuroNode(
 
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
-	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, nil)
+	hostMetrics := metrics.NewHostMetrics(300+hostConfig.ClientRPCPortHTTP, hostLogger)
+	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, hostMetrics)
 	mockP2P.CurrentNode = inMemNode
 	return inMemNode
 }

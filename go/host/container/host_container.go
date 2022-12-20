@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/host/metrics"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	commonhost "github.com/obscuronet/go-obscuro/go/common/host"
@@ -65,23 +66,18 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostConta
 
 	enclaveClient := enclaverpc.NewClient(cfg, logger)
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
-	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, nil)
+	hostMetrics := metrics.NewHostMetrics(300+cfg.ClientRPCPortHTTP, logger)
 
-	return NewHostContainer(cfg, aggP2P, l1Client, enclaveClient, ethWallet, logger)
+	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, hostMetrics.P2PMetrics)
+
+	return NewHostContainer(cfg, aggP2P, l1Client, enclaveClient, ethWallet, logger, hostMetrics)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(
-	cfg *config.HostConfig, // provides various parameters that the host needs to function
-	p2p commonhost.P2P, // provides the inbound and outbound p2p communication layer
-	l1Client ethadapter.EthClient, // provides inbound and outbound L1 connectivity
-	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
-	hostWallet wallet.Wallet, // provides an L1 wallet for the host's transactions
-	logger gethlog.Logger, // provides logging with context
-) *HostContainer {
+func NewHostContainer(cfg *config.HostConfig, p2p commonhost.P2P, l1Client ethadapter.EthClient, enclaveClient common.Enclave, hostWallet wallet.Wallet, logger gethlog.Logger, hostMetrics *metrics.Metrics) *HostContainer {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.RollupContractAddress, logger)
-	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, mgmtContractLib, logger, nil)
+	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, mgmtContractLib, logger, hostMetrics)
 	return &HostContainer{
 		host:   h,
 		logger: logger,
