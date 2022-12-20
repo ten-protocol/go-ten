@@ -41,7 +41,7 @@ func TestDoWithTimeoutStrategy_UnsuccessfulAfterTimeout(t *testing.T) {
 	assert.Greater(t, count, 5, "expected function to be called at least 5 times before timing out")
 }
 
-func TestDoWithFailFast_ReturnImmediately(t *testing.T) {
+func TestDoWithFFast_ReturnImmediately(t *testing.T) {
 	// similar to unsuccessful test except our function returns a FailFast error and we expect no retries
 	var count int
 	testFunc := func() error {

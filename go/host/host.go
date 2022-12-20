@@ -52,9 +52,8 @@ const (
 
 // Implementation of host.Host.
 type host struct {
-	config          *config.HostConfig
-	shortID         uint64
-	genesisRequired bool
+	config  *config.HostConfig
+	shortID uint64
 
 	p2p           hostcommon.P2P       // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
@@ -208,11 +207,6 @@ func (h *host) Start() {
 		}
 	}
 
-	if h.config.IsGenesis {
-		// the genesis node gets a flag set on it until it has published the genesis block
-		// todo: handle genesis separately as an initial step for the genesis node
-		h.genesisRequired = true
-	}
 	// start the obscuro RPC endpoints
 	if h.rpcServer != nil {
 		h.rpcServer.Start()
@@ -514,14 +508,6 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		return nil
 	}
 
-	if h.genesisRequired {
-		if err = h.initialiseProtocol(block); err != nil {
-			h.logger.Crit("Could not initialise protocol.", log.ErrKey, err)
-		}
-		h.genesisRequired = false
-		return nil // nothing further to process since network had no genesis
-	}
-
 	if result.ProducedBatch != nil && result.ProducedBatch.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
 		h.publishRollup(result.ProducedBatch.ToExtRollup())
@@ -593,27 +579,6 @@ func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
 	if err != nil {
 		h.logger.Error("could not broadcast batch", log.ErrKey, err)
 	}
-}
-
-// Called only by the first enclave to bootstrap the network
-
-func (h *host) initialiseProtocol(block *types.Block) error {
-	// Create the genesis rollup
-	genesisRollup, err := h.enclaveClient.ProduceGenesis(block.Hash())
-	if err != nil {
-		return fmt.Errorf("could not produce genesis. Cause: %w", err)
-	}
-	h.logger.Info(fmt.Sprintf("Initialising network. Genesis rollup r_%d.",
-		common.ShortHash(genesisRollup.Header.Hash())))
-
-	// Publish the genesis rollup.
-	h.publishRollup(genesisRollup)
-
-	// Distribute the corresponding genesis batch. Although the enclave retrieves the genesis batch from the L1 blocks,
-	// we need it stored to power various API calls.
-	h.storeAndDistributeBatch(genesisRollup.ToExtBatch())
-
-	return nil
 }
 
 // `tries` is the number of times to attempt broadcasting the transaction.
@@ -874,14 +839,6 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	}
 
 	for _, batch := range batchMsg.Batches {
-		// The enclave retrieves the genesis from the L1 chain, so we do not need to submit it.
-		if batch.Header.Number == big.NewInt(int64(common.L2GenesisHeight)) {
-			if err = h.db.AddBatchHeader(batch); err != nil {
-				return fmt.Errorf("could not store genesis batch header. Cause: %w", err)
-			}
-			continue
-		}
-
 		// TODO - #718 - Consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
 
 		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
@@ -891,7 +848,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 			if errors.Is(err, errutil.ErrNotFound) {
 				return nil
 			}
-			return fmt.Errorf("could not retrieve block. Cause: %w", err)
+			return fmt.Errorf("could not retrieve block header. Cause: %w", err)
 		}
 
 		isParentStored, batchRequest, err := h.batchManager.IsParentStored(batch)
@@ -909,6 +866,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 				}
 				return nil
 			}
+			return nil
 		}
 
 		// We only store the batch locally if it stores successfully on the enclave.
