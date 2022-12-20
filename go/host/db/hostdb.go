@@ -1,7 +1,6 @@
 package db
 
 import (
-	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 	"os"
 
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -10,6 +9,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
+	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 )
 
 // Schema keys, in alphabetical order.
@@ -40,8 +40,8 @@ func NewInMemoryDB() *DB {
 		kvStore:      gethdb.NewMemDB(),
 		batchesWrite: gethmetrics.NewRegisteredGauge("host/db/batches/write", nil),
 		batchesRead:  gethmetrics.NewRegisteredGauge("host/db/batches/read", nil),
-		blocksWrite:  gethmetrics.NewRegisteredGauge("host/db/rollups/write", nil),
-		blockssRead:  gethmetrics.NewRegisteredGauge("host/db/rollups/write", nil),
+		blocksWrite:  gethmetrics.NewRegisteredGauge("host/db/blocks/write", nil),
+		blockssRead:  gethmetrics.NewRegisteredGauge("host/db/blocks/write", nil),
 	}
 }
 
