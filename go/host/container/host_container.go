@@ -67,7 +67,6 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostConta
 	enclaveClient := enclaverpc.NewClient(cfg, logger)
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	hostMetrics := metrics.NewHostMetrics(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
-
 	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, hostMetrics.P2PMetrics)
 
 	return NewHostContainer(cfg, aggP2P, l1Client, enclaveClient, ethWallet, logger, hostMetrics)
@@ -82,7 +81,7 @@ func NewHostContainer(
 	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
 	hostWallet wallet.Wallet, // provides an L1 wallet for the host's transactions
 	logger gethlog.Logger, // provides logging with context
-	hostMetrics *metrics.Metrics,
+	hostMetrics *metrics.Metrics, // provides metrics
 ) *HostContainer {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.RollupContractAddress, logger)
 	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, mgmtContractLib, logger, hostMetrics)

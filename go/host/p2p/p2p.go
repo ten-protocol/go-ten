@@ -134,7 +134,7 @@ func (p *p2pImpl) SendBatches(batchMsg *host.BatchMsg, to string) error {
 	return p.send(msg, to)
 }
 
-// Status returns the current peerTracker of the lib
+// Status returns the current status of the p2p layer
 func (p *p2pImpl) Status() *host.P2PStatus {
 	return p.metrics.Status()
 }
@@ -142,7 +142,7 @@ func (p *p2pImpl) Status() *host.P2PStatus {
 // HealthCheck returns whether the p2p is considered healthy
 // Currently it considers itself unhealthy
 // if there's more than 100 failures on a given fail type
-// if there's a known peer for which a message hasn't been received in a period
+// if there's a known peer for which a message hasn't been received
 func (p *p2pImpl) HealthCheck() bool {
 	currentStatus := p.metrics.Status()
 
@@ -155,7 +155,7 @@ func (p *p2pImpl) HealthCheck() bool {
 	for peer, lastMsgTimestamp := range p.peerTracker.receivedMessagesByPeer() {
 		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {
 			noMsgReceivedPeers = append(noMsgReceivedPeers, peer)
-			p.logger.Warn("no message from peer(s) in the alert period",
+			p.logger.Warn("no message from peer in the alert period",
 				log.HostCmp, p.ourAddress,
 				"peer", peer,
 				"alertPeriod", _alertPeriod,

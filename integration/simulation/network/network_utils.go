@@ -146,7 +146,6 @@ func createSocketObscuroNode(
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 
 	// create the metrics service
-	// TODO hook this up to a CLI flag
 	hostMetrics := metrics.NewHostMetrics(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 
 	// create a socket P2P layer
