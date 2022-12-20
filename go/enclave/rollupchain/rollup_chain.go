@@ -421,7 +421,7 @@ func (rc *RollupChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Bat
 
 	genesisBatch := &core.Batch{
 		Header: &common.BatchHeader{
-			Agg:         gethcommon.HexToAddress("0x0"),
+			Agg:         rc.hostID,
 			ParentHash:  common.L2RootHash{},
 			L1Proof:     blkHash,
 			Root:        *preFundGenesisState,
