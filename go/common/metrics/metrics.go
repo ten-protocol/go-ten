@@ -9,18 +9,18 @@ import (
 	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 )
 
-// Metrics provides the metrics for the host
+// Service provides the metrics for the host
 // it registers the gethmetrics Registry
 // and handles the metrics server
-type Metrics struct {
+type Service struct {
 	registry gethmetrics.Registry
 	port     uint
 	logger   gethlog.Logger
 }
 
-func New(enabled bool, port uint, logger gethlog.Logger) *Metrics {
+func New(enabled bool, port uint, logger gethlog.Logger) *Service {
 	gethmetrics.Enabled = enabled
-	return &Metrics{
+	return &Service{
 		registry: gethmetrics.NewRegistry(),
 		port:     port,
 		logger:   logger,
@@ -28,7 +28,7 @@ func New(enabled bool, port uint, logger gethlog.Logger) *Metrics {
 }
 
 // Start starts the metrics server
-func (m *Metrics) Start() {
+func (m *Service) Start() {
 	// metrics not enabled
 	if !gethmetrics.Enabled {
 		return
@@ -40,10 +40,11 @@ func (m *Metrics) Start() {
 	exp.Setup(address)
 }
 
-func (m *Metrics) Registry() gethmetrics.Registry {
+// Registry returns the registry for the metrics service
+func (m *Service) Registry() gethmetrics.Registry {
 	return m.registry
 }
 
-func (m *Metrics) Stop() {
+func (m *Service) Stop() {
 	// TODO re-write this http server so to have a stop method
 }

@@ -102,8 +102,8 @@ func createInMemObscuroNode(
 
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
-	hostMetrics := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, hostMetrics.Registry())
+	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
+	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, metricsService.Registry())
 	mockP2P.CurrentNode = inMemNode
 	return inMemNode
 }
@@ -146,13 +146,13 @@ func createSocketObscuroNode(
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 
 	// create the metrics service
-	hostMetrics := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
+	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 
 	// create a socket P2P layer
 	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
-	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, p2pLogger, hostMetrics.Registry())
+	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, p2pLogger, metricsService.Registry())
 
-	return host.NewHost(hostConfig, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, hostMetrics.Registry())
+	return host.NewHost(hostConfig, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, metricsService.Registry())
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {

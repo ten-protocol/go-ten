@@ -20,21 +20,21 @@ import (
 )
 
 type HostContainer struct {
-	host         commonhost.Host
-	logger       gethlog.Logger
-	metricServer *metrics.Metrics
+	host           commonhost.Host
+	logger         gethlog.Logger
+	metricsService *metrics.Service
 }
 
 func (h *HostContainer) Start() error {
 	fmt.Println("Starting Obscuro host...")
 	h.logger.Info("Starting Obscuro host...")
-	h.metricServer.Start()
+	h.metricsService.Start()
 	h.host.Start()
 	return nil
 }
 
 func (h *HostContainer) Stop() error {
-	h.metricServer.Stop()
+	h.metricsService.Stop()
 	h.host.Stop()
 	return nil
 }
@@ -70,10 +70,10 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostConta
 
 	enclaveClient := enclaverpc.NewClient(cfg, logger)
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
-	hostMetrics := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
-	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, hostMetrics.Registry())
+	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
+	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, metricsService.Registry())
 
-	return NewHostContainer(cfg, aggP2P, l1Client, enclaveClient, ethWallet, logger, hostMetrics)
+	return NewHostContainer(cfg, aggP2P, l1Client, enclaveClient, ethWallet, logger, metricsService)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
@@ -85,13 +85,13 @@ func NewHostContainer(
 	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
 	hostWallet wallet.Wallet, // provides an L1 wallet for the host's transactions
 	logger gethlog.Logger, // provides logging with context
-	hostMetrics *metrics.Metrics, // provides the metrics service for other packages to use
+	metricsService *metrics.Service, // provides the metrics service for other packages to use
 ) *HostContainer {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.RollupContractAddress, logger)
-	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, mgmtContractLib, logger, hostMetrics.Registry())
+	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, mgmtContractLib, logger, metricsService.Registry())
 	return &HostContainer{
-		host:         h,
-		logger:       logger,
-		metricServer: hostMetrics,
+		host:           h,
+		logger:         logger,
+		metricsService: metricsService,
 	}
 }
