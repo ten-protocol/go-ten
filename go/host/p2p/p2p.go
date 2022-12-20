@@ -3,19 +3,20 @@ package p2p
 import (
 	"errors"
 	"fmt"
-	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 	"io"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 )
 
 const (

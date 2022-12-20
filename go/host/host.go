@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -30,6 +29,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 

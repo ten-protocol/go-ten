@@ -2,7 +2,6 @@ package network
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/metrics"
 	"math"
 	"math/big"
 	"time"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/metrics"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
