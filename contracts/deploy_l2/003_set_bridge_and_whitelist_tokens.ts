@@ -77,8 +77,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     let messages = getXChainMessages(hocResult);
     messages = messages.concat(getXChainMessages(pocResult));
 
-    console.log(`Messages = ${JSON.stringify(messages)}`);
-
     // Freeze until the enclave processes the blocks and picks up the messages that have been carried over.
     await new Promise(resolve=>setTimeout(resolve, 2_000));
 
@@ -95,9 +93,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     console.log(`Relaying message - ${JSON.stringify(messages[1])}`);
     results = results.concat(await relayMsg(messages[1]))
-
-    const wrappedHOC : string = await l2Network.deployments.read("ObscuroL2Bridge", "remoteToLocalToken", HOCDeployment.address)
-    console.log(`Wrapped HOC addr - ${wrappedHOC}`);
 
     results.forEach(res=>{
         if (res.status != 1) {
