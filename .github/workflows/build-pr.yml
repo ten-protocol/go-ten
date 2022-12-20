@@ -15,15 +15,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Install dependencies
-        run: cd contracts && npm install
-      - name: Hardhat test
-        run: cd contracts && npx hardhat test
-
+      
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
