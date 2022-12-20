@@ -34,7 +34,7 @@ func (m *Metrics) Start() {
 		return
 	}
 	// starts the metric server
-	address := fmt.Sprintf("%s:%d", "127.0.0.1", m.port)
+	address := fmt.Sprintf("%s:%d", "0.0.0.0", m.port)
 	m.logger.Info("HTTP Metric server started at %s", address)
 	exp.Setup(address)
 }
