@@ -3,9 +3,8 @@ package container
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common/metrics"
-
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/metrics"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
