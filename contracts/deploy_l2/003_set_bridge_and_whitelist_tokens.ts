@@ -22,6 +22,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         throw Error("ops");
     }
 
+    console.log(`setRemoteBridge = ${layer2BridgeDeployment.address}`);
+
     let hocResult = await l1Network.deployments.execute("ObscuroBridge", {
         from: l1Accounts.deployer, 
         log: true,
@@ -75,18 +77,28 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     let messages = getXChainMessages(hocResult);
     messages = messages.concat(getXChainMessages(pocResult));
 
+    console.log(`Messages = ${JSON.stringify(messages)}`);
+
     // Freeze until the enclave processes the blocks and picks up the messages that have been carried over.
-    await new Promise(resolve=>setTimeout(resolve, 15_000));
+    await new Promise(resolve=>setTimeout(resolve, 2_000));
 
     console.log(`Relaying messages using account ${l2Accounts.deployer}`);
-    const promises = messages.map(async (msg) => {
-        return await l2Network.deployments.execute("CrossChainMessenger", {
+    const relayMsg = async (msg: any) => {
+        return l2Network.deployments.execute("CrossChainMessenger", {
             from: l2Accounts.deployer, 
             log: true,
-        }, "relayMessage", msg)
-    })
+        }, "relayMessage", msg);
+    };
 
-    const results = await Promise.all(promises);
+    console.log(`Relaying message - ${JSON.stringify(messages[0])}`);
+    let results = [await relayMsg(messages[0])];
+
+    console.log(`Relaying message - ${JSON.stringify(messages[1])}`);
+    results = results.concat(await relayMsg(messages[1]))
+
+    const wrappedHOC : string = await l2Network.deployments.read("ObscuroL2Bridge", "remoteToLocalToken", HOCDeployment.address)
+    console.log(`Wrapped HOC addr - ${wrappedHOC}`);
+
     results.forEach(res=>{
         if (res.status != 1) {
             throw Error("Unable to relay messages...");

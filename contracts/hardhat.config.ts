@@ -79,8 +79,13 @@ const config: HardhatUserConfig = {
     },
     hardhat : {
       deploy : [ 'deploy_l1/' ],
+      chainId: 1337,
       live: false,
       saveDeployments: false,
+      accounts:[ {
+        privateKey: 'f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb',
+        balance: "174165200000000000",
+      }]
     }
   },
   namedAccounts: {

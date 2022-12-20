@@ -3,6 +3,7 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "./ICrossChainMessenger.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract CrossChainMessenger is ICrossChainMessenger {
     
@@ -17,6 +18,8 @@ contract CrossChainMessenger is ICrossChainMessenger {
     function messageBus() external view returns (address) {
         return address(messageBusContract);
     }
+
+    error Fail(uint256 time, uint256 expected);
 
     function consumeMessage(Structs.CrossChainMessage calldata message) private {
         require(messageBusContract.verifyMessageFinalized(message), "Message not found or finalized.");
@@ -47,11 +50,9 @@ contract CrossChainMessenger is ICrossChainMessenger {
         crossChainSender = message.sender;
 
         CrossChainCall memory callData = abi.decode(message.payload, (CrossChainCall));
-        (bool success,  bytes memory returnData ) = callData.target.call(callData.data);        
-        if (!success) {
-            //This doesn't seem to really work ...
-            revert(_getRevertMsg(returnData));
-        }
+
+        (bool success,  bytes memory returnData ) = callData.target.call(callData.data);
+        require(success, _getRevertMsg(returnData));
 
         crossChainSender = address(0x0);
     }

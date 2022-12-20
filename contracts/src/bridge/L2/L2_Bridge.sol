@@ -67,7 +67,6 @@ contract ObscuroL2Bridge is IBridge, IBridgeSubordinate, CrossChainEnabledObscur
     function receiveAssets(address asset, uint256 amount, address receiver) 
     external 
     onlyCrossChainSender(remoteBridgeAddress) {
-
         address localAddress = remoteToLocalToken[asset];
 
         ObscuroERC20 token = wrappedTokens[localAddress];

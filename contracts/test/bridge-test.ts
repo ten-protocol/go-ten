@@ -100,7 +100,7 @@ describe("Bridge", function () {
           // same for messenger.
           let bus : MessageBus = event.address == busL1.address ? busL2 : busL1;
           let messenger : CrossChainMessenger = event.address == busL1.address ? messengerL2 : messengerL1;
-          await (await bus.storeCrossChainMessage(xchainMessage, 1)).wait();
+          await (await bus.storeCrossChainMessage(xchainMessage, 0)).wait();
            
           return { 
               msg: xchainMessage,
@@ -285,7 +285,7 @@ describe("Bridge", function () {
         consistencyLevel: decodedEvent.args[5]
       };
 
-      const storeMessage = busL2.storeCrossChainMessage(xchainMessage, 1);
+      const storeMessage = busL2.storeCrossChainMessage(xchainMessage, 0);
       await expect(storeMessage).to.not.be.reverted;
 
       const tx = messengerL2.relayMessage(xchainMessage);

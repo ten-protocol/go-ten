@@ -225,12 +225,12 @@ func (s *RPCServer) EstimateGas(_ context.Context, req *generated.EstimateGasReq
 	encryptedBalance, err := s.enclave.EstimateGas(req.EncryptedParams)
 	if err != nil {
 		// handle complex errors from the EVM
-		errResponse, processErr := serializeEVMError(err)
+		_, processErr := serializeEVMError(err)
 		if processErr != nil {
 			// unable to serialize the error
 			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
 		}
-		return &generated.EstimateGasResponse{Error: errResponse}, nil
+		return nil, err
 	}
 	return &generated.EstimateGasResponse{EncryptedResponse: encryptedBalance}, nil
 }

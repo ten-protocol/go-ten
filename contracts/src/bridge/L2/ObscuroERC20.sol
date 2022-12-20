@@ -24,4 +24,8 @@ contract ObscuroERC20 is ERC20, AccessControl {
         require(balanceOf(giver) >= amount, "Insufficient balance.");
         _burn(giver, amount);
     }
+
+    fallback() external payable {revert("fallback() method unsupported");}
+
+    receive() external payable {revert("Contract does not support receive()");}
 }
