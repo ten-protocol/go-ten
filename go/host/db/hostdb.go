@@ -1,6 +1,7 @@
 package db
 
 import (
+	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 	"os"
 
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -25,14 +26,22 @@ var (
 
 // DB allows to access the nodes public nodeDB
 type DB struct {
-	kvStore ethdb.KeyValueStore
-	logger  gethlog.Logger
+	kvStore      ethdb.KeyValueStore
+	logger       gethlog.Logger
+	batchesWrite gethmetrics.Gauge
+	batchesRead  gethmetrics.Gauge
+	blocksWrite  gethmetrics.Gauge
+	blockssRead  gethmetrics.Gauge
 }
 
 // NewInMemoryDB returns a new instance of the Node DB
 func NewInMemoryDB() *DB {
 	return &DB{
-		kvStore: gethdb.NewMemDB(),
+		kvStore:      gethdb.NewMemDB(),
+		batchesWrite: gethmetrics.NewRegisteredGauge("host/db/batches/write", nil),
+		batchesRead:  gethmetrics.NewRegisteredGauge("host/db/batches/read", nil),
+		blocksWrite:  gethmetrics.NewRegisteredGauge("host/db/rollups/write", nil),
+		blockssRead:  gethmetrics.NewRegisteredGauge("host/db/rollups/write", nil),
 	}
 }
 
