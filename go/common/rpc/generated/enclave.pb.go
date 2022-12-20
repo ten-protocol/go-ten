@@ -2054,7 +2054,7 @@ type BlockSubmissionResponseMsg struct {
 	ProducedBatch           *ExtBatchMsg             `protobuf:"bytes,1,opt,name=producedBatch,proto3" json:"producedBatch,omitempty"`
 	ProducedSecretResponses []*SecretResponseMsg     `protobuf:"bytes,2,rep,name=producedSecretResponses,proto3" json:"producedSecretResponses,omitempty"`
 	SubscribedLogs          []byte                   `protobuf:"bytes,3,opt,name=subscribedLogs,proto3" json:"subscribedLogs,omitempty"`
-	Error                   *BlockSubmissionErrorMsg `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"` // todo: avoid errors in Response objects, perhaps using gRPC Status responses
+	Error                   *BlockSubmissionErrorMsg `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"` // todo: avoid errors in Response objects, perhaps using gRPC status responses
 }
 
 func (x *BlockSubmissionResponseMsg) Reset() {
@@ -3132,7 +3132,7 @@ var file_enclave_proto_depIdxs = []int32{
 	47, // 6: generated.ExtBatchMsg.header:type_name -> generated.BatchHeaderMsg
 	49, // 7: generated.BatchHeaderMsg.Withdrawals:type_name -> generated.WithdrawalMsg
 	45, // 8: generated.BatchHeaderMsg.CrossChainMessages:type_name -> generated.CrossChainMsg
-	0,  // 9: generated.EnclaveProto.Status:input_type -> generated.StatusRequest
+	0,  // 9: generated.EnclaveProto.status:input_type -> generated.StatusRequest
 	2,  // 10: generated.EnclaveProto.Attestation:input_type -> generated.AttestationRequest
 	4,  // 11: generated.EnclaveProto.GenerateSecret:input_type -> generated.GenerateSecretRequest
 	6,  // 12: generated.EnclaveProto.InitEnclave:input_type -> generated.InitEnclaveRequest
@@ -3153,7 +3153,7 @@ var file_enclave_proto_depIdxs = []int32{
 	36, // 27: generated.EnclaveProto.EstimateGas:input_type -> generated.EstimateGasRequest
 	38, // 28: generated.EnclaveProto.GetLogs:input_type -> generated.GetLogsRequest
 	41, // 29: generated.EnclaveProto.HealthCheck:input_type -> generated.EmptyArgs
-	1,  // 30: generated.EnclaveProto.Status:output_type -> generated.StatusResponse
+	1,  // 30: generated.EnclaveProto.status:output_type -> generated.StatusResponse
 	3,  // 31: generated.EnclaveProto.Attestation:output_type -> generated.AttestationResponse
 	5,  // 32: generated.EnclaveProto.GenerateSecret:output_type -> generated.GenerateSecretResponse
 	7,  // 33: generated.EnclaveProto.InitEnclave:output_type -> generated.InitEnclaveResponse

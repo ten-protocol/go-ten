@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/metrics"
 	"math"
 	"math/big"
 	"time"
@@ -31,7 +32,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/go-obscuro/go/host/metrics"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -102,8 +102,8 @@ func createInMemObscuroNode(
 
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
-	hostMetrics := metrics.NewHostMetrics(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, hostMetrics)
+	hostMetrics := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
+	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, hostMetrics.Registry())
 	mockP2P.CurrentNode = inMemNode
 	return inMemNode
 }
@@ -146,13 +146,13 @@ func createSocketObscuroNode(
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 
 	// create the metrics service
-	hostMetrics := metrics.NewHostMetrics(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
+	hostMetrics := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 
 	// create a socket P2P layer
 	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
-	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, p2pLogger, hostMetrics.P2PMetrics)
+	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, p2pLogger, hostMetrics.Registry())
 
-	return host.NewHost(hostConfig, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, hostMetrics)
+	return host.NewHost(hostConfig, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, hostMetrics.Registry())
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {

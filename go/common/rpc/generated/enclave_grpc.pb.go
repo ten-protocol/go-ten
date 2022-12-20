@@ -77,7 +77,7 @@ func NewEnclaveProtoClient(cc grpc.ClientConnInterface) EnclaveProtoClient {
 
 func (c *enclaveProtoClient) Status(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
 	out := new(StatusResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/Status", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/status", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ type UnimplementedEnclaveProtoServer struct {
 }
 
 func (UnimplementedEnclaveProtoServer) Status(context.Context, *StatusRequest) (*StatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Status not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method status not implemented")
 }
 func (UnimplementedEnclaveProtoServer) Attestation(context.Context, *AttestationRequest) (*AttestationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Attestation not implemented")
@@ -408,7 +408,7 @@ func _EnclaveProto_Status_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/Status",
+		FullMethod: "/generated.EnclaveProto/status",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).Status(ctx, req.(*StatusRequest))
@@ -784,7 +784,7 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*EnclaveProtoServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Status",
+			MethodName: "status",
 			Handler:    _EnclaveProto_Status_Handler,
 		},
 		{

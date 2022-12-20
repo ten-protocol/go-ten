@@ -3,11 +3,10 @@ package container
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/host/metrics"
+	"github.com/obscuronet/go-obscuro/go/common/metrics"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-	commonhost "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/common"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -16,21 +15,27 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/p2p"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+	commonhost "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 type HostContainer struct {
-	host   commonhost.Host
-	logger gethlog.Logger
+	host         commonhost.Host
+	logger       gethlog.Logger
+	metricServer *metrics.Metrics
 }
 
 func (h *HostContainer) Start() error {
 	fmt.Println("Starting Obscuro host...")
 	h.logger.Info("Starting Obscuro host...")
+	h.metricServer.Start()
 	h.host.Start()
 	return nil
 }
 
 func (h *HostContainer) Stop() error {
+	h.metricServer.Stop()
 	h.host.Stop()
 	return nil
 }
@@ -66,8 +71,8 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostConta
 
 	enclaveClient := enclaverpc.NewClient(cfg, logger)
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
-	hostMetrics := metrics.NewHostMetrics(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
-	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, hostMetrics.P2PMetrics)
+	hostMetrics := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
+	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, hostMetrics.Registry())
 
 	return NewHostContainer(cfg, aggP2P, l1Client, enclaveClient, ethWallet, logger, hostMetrics)
 }
@@ -81,12 +86,13 @@ func NewHostContainer(
 	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
 	hostWallet wallet.Wallet, // provides an L1 wallet for the host's transactions
 	logger gethlog.Logger, // provides logging with context
-	hostMetrics *metrics.Metrics, // provides metrics
+	hostMetrics *metrics.Metrics, // provides the metrics service for other packages to use
 ) *HostContainer {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.RollupContractAddress, logger)
-	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, mgmtContractLib, logger, hostMetrics)
+	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, mgmtContractLib, logger, hostMetrics.Registry())
 	return &HostContainer{
-		host:   h,
-		logger: logger,
+		host:         h,
+		logger:       logger,
+		metricServer: hostMetrics,
 	}
 }

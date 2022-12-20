@@ -35,13 +35,13 @@ type DB struct {
 }
 
 // NewInMemoryDB returns a new instance of the Node DB
-func NewInMemoryDB() *DB {
+func NewInMemoryDB(regMetrics gethmetrics.Registry) *DB {
 	return &DB{
 		kvStore:      gethdb.NewMemDB(),
-		batchesWrite: gethmetrics.NewRegisteredGauge("host/db/batches/write", nil),
-		batchesRead:  gethmetrics.NewRegisteredGauge("host/db/batches/read", nil),
-		blocksWrite:  gethmetrics.NewRegisteredGauge("host/db/blocks/write", nil),
-		blockssRead:  gethmetrics.NewRegisteredGauge("host/db/blocks/write", nil),
+		batchesWrite: gethmetrics.NewRegisteredGauge("host/db/batches/write", regMetrics),
+		batchesRead:  gethmetrics.NewRegisteredGauge("host/db/batches/read", regMetrics),
+		blocksWrite:  gethmetrics.NewRegisteredGauge("host/db/blocks/write", regMetrics),
+		blockssRead:  gethmetrics.NewRegisteredGauge("host/db/blocks/write", regMetrics),
 	}
 }
 

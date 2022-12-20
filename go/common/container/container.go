@@ -10,7 +10,7 @@ import (
 )
 
 // Container is a Start-able server process that is expected to self-recover from any issues until Stop is called.
-// In future it might expose methods like `Status()` for monitoring/interacting with the process.
+// In future it might expose methods like `status()` for monitoring/interacting with the process.
 //
 // Both EnclaveContainer and HostContainer implement Container.
 //
