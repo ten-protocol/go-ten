@@ -11,8 +11,8 @@ import { Contract } from "hardhat/internal/hardhat-network/stack-traces/model";
 import type {
   ContractTransaction
 } from 'ethers';
-import { ObscuroERC20 } from "../typechain-types/src/bridge/L2";
-import { ObscuroERC20__factory } from "../typechain-types/factories/src/bridge/L2";
+import { WrappedERC20 } from "../typechain-types/src/bridge/L2";
+import { WrappedERC20__factory } from "../typechain-types/factories/src/bridge/L2";
 
 describe("Bridge", function () {
 
@@ -119,7 +119,7 @@ describe("Bridge", function () {
   }
 
   it("Bridge owned wrapped token should be inaccessible externally", async function () {
-      const ObscuroERC20 = await hre.ethers.getContractFactory("ObscuroERC20");
+      const WrappedERC20 = await hre.ethers.getContractFactory("WrappedERC20");
       const [owner] = await ethers.getSigners();
 
       const whitelistTx = bridgeL1.whitelistToken(erc20address, "o.ZZZ", "o.ZZZ");
@@ -130,7 +130,7 @@ describe("Bridge", function () {
       await messages!.relayAll();
 
       const localERC = await bridgeL2.remoteToLocalToken(erc20address);
-      const l2Erc20 : ObscuroERC20 = ObscuroERC20.attach(localERC);
+      const l2Erc20 : WrappedERC20 = WrappedERC20.attach(localERC);
 
       await expect(l2Erc20.issueFor(owner.address, 5_000_000)).reverted
   });
@@ -193,8 +193,8 @@ describe("Bridge", function () {
   it("Bridge mock environment full test.", async function () {
       const [owner] = await ethers.getSigners();
 
-      const ObscuroERC20 = await hre.ethers.getContractFactory("ObscuroERC20");
-      const l1Erc20 : ObscuroERC20 = await ObscuroERC20.deploy("ZZZ", "ZZZ");
+      const WrappedERC20 = await hre.ethers.getContractFactory("WrappedERC20");
+      const l1Erc20 : WrappedERC20 = await WrappedERC20.deploy("ZZZ", "ZZZ");
       const whitelistTx = bridgeL1.whitelistToken(l1Erc20.address, "o.ZZZ", "o.ZZZ");
       
       await expect(whitelistTx, "Transaction whitelisting the erc20 token failed!").to.not.be.reverted;
@@ -206,7 +206,7 @@ describe("Bridge", function () {
         .to.hexEqual(ethers.constants.AddressZero);
         
       const localErc = await bridgeL2.remoteToLocalToken(l1Erc20.address);
-      const l2Erc20 : ObscuroERC20 = ObscuroERC20.attach(localErc);
+      const l2Erc20 : WrappedERC20 = WrappedERC20.attach(localErc);
 
       await expect(await bridgeL2.wrappedTokens(l2Erc20.address), "L2 bridge should not return zero for whitelisted contract.")
         .to.not.hexEqual(ethers.constants.AddressZero);

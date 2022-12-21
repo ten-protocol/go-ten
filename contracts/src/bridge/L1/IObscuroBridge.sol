@@ -4,7 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 
 // The interface for the layer 1 bridge that drives the whitelist
 // and has the functionality to modify it.
-interface IL1Bridge {
+interface IObscuroBridge {
 
     // This will whitelista token and generate a cross chain message to the IBridgeSubordinate
     // to create wrapped tokens in case of succcess.

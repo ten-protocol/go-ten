@@ -10,13 +10,13 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../IBridge.sol";
 import "../IBridgeSubordinate.sol";
 import "../../messaging/messenger/CrossChainEnabledObscuro.sol";
-import "./ObscuroERC20.sol";
+import "./WrappedERC20.sol";
 
 contract ObscuroL2Bridge is IBridge, IBridgeSubordinate, CrossChainEnabledObscuro {
 
     event CreatedWrappedToken(address remoteAddress, address localAddress, string name, string symbol);
 
-    mapping(address => ObscuroERC20) public wrappedTokens;
+    mapping(address => WrappedERC20) public wrappedTokens;
     mapping(address => address) public localToRemoteToken;
     mapping(address => address) public remoteToLocalToken;
 
@@ -32,7 +32,7 @@ contract ObscuroL2Bridge is IBridge, IBridgeSubordinate, CrossChainEnabledObscur
     external 
     onlyCrossChainSender(remoteBridgeAddress) 
     {
-        ObscuroERC20 newToken = new ObscuroERC20(name, symbol);
+        WrappedERC20 newToken = new WrappedERC20(name, symbol);
         address localAddress = address(newToken);
 
         wrappedTokens[localAddress] = newToken;
@@ -57,7 +57,7 @@ contract ObscuroL2Bridge is IBridge, IBridgeSubordinate, CrossChainEnabledObscur
     function sendERC20(address asset, uint256 amount, address receiver) external {
         require(hasTokenMapping(asset), "No mapping for token.");
        
-        ObscuroERC20 token = wrappedTokens[asset];
+        WrappedERC20 token = wrappedTokens[asset];
         token.burnFor(msg.sender, amount);
 
         bytes memory data = abi.encodeWithSelector(IBridge.receiveAssets.selector, localToRemoteToken[asset], amount, receiver);
@@ -70,7 +70,7 @@ contract ObscuroL2Bridge is IBridge, IBridgeSubordinate, CrossChainEnabledObscur
 
         address localAddress = remoteToLocalToken[asset];
 
-        ObscuroERC20 token = wrappedTokens[localAddress];
+        WrappedERC20 token = wrappedTokens[localAddress];
         require(address(token) != address(0x0), "Receiving assets for unknown wrapped token!");
 
         token.issueFor(receiver, amount);

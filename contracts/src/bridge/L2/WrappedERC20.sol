@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 
-contract ObscuroERC20 is ERC20, AccessControl {
+contract WrappedERC20 is ERC20, AccessControl {
 
    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 

@@ -2,14 +2,14 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./IL1Bridge.sol";
+import "./IObscuroBridge.sol";
 import "../IBridge.sol";
 import "../IBridgeSubordinate.sol";
 import "../../messaging/messenger/CrossChainEnabledObscuro.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract ObscuroBridge is CrossChainEnabledObscuro, IBridge, IL1Bridge, AccessControl  {
+contract ObscuroBridge is CrossChainEnabledObscuro, IBridge, IObscuroBridge, AccessControl  {
 
     bytes32 public constant NATIVE_TOKEN_ROLE = keccak256("NATIVE_TOKEN");
     bytes32 public constant ERC20_TOKEN_ROLE = keccak256("ERC20_TOKEN");
