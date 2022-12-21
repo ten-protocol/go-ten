@@ -214,9 +214,9 @@ describe("Bridge", function () {
       await expect(l1Erc20.issueFor(owner.address, 10_000_000), "Failed to mint L1 token").not.reverted;
       await expect(l1Erc20.increaseAllowance(bridgeL1.address, 9_000_000), "Failed to increase allowance!").not.reverted;
 
-      await expect(bridgeL1.sendAssets(l1Erc20.address, 10_000_000, owner.address), "Sending more than allowed should revert").reverted;
+      await expect(bridgeL1.sendERC20(l1Erc20.address, 10_000_000, owner.address), "Sending more than allowed should revert").reverted;
 
-      const sendAssetsTx = bridgeL1.sendAssets(l1Erc20.address, 9_000_000, owner.address);      
+      const sendAssetsTx = bridgeL1.sendERC20(l1Erc20.address, 9_000_000, owner.address);      
       await expect(sendAssetsTx, "Sending as much as allowed should not revert").not.reverted;
 
       await expect(await l1Erc20.balanceOf(owner.address), "Remaining L1 balance should be initial minus bridged amount!")
@@ -236,7 +236,7 @@ describe("Bridge", function () {
 
       await expect(l2Erc20.increaseAllowance(bridgeL2.address, 8_000_000), "L2 allowance increase should not revert.").not.reverted;
 
-      const bridgeBackTx = bridgeL2.sendAssets(l2Erc20.address, 8_000_000, owner.address);
+      const bridgeBackTx = bridgeL2.sendERC20(l2Erc20.address, 8_000_000, owner.address);
       await expect(bridgeBackTx, "Sending assets back to L1 should not revert").not.reverted;
     
       messages = await submitMessagesFromTx(await bridgeBackTx);

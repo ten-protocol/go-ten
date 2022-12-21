@@ -54,7 +54,7 @@ contract ObscuroL2Bridge is IBridge, IBridgeSubordinate, CrossChainEnabledObscur
         queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0);
     }
 
-    function sendAssets(address asset, uint256 amount, address receiver) external {
+    function sendERC20(address asset, uint256 amount, address receiver) external {
         require(hasTokenMapping(asset), "No mapping for token.");
        
         ObscuroERC20 token = wrappedTokens[asset];

@@ -46,7 +46,7 @@ contract ObscuroBridge is CrossChainEnabledObscuro, IBridge, IL1Bridge, AccessCo
         queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0);
     }
 
-    function sendAssets(address asset, uint256 amount, address receiver) override external {
+    function sendERC20(address asset, uint256 amount, address receiver) override external {
         require(amount > 0, "Attempting empty transfer.");
         require(hasRole(ERC20_TOKEN_ROLE, asset), "This address has not been given a type and is thus considered not whitelisted.");
 
