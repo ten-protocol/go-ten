@@ -12,7 +12,7 @@ import "../IBridgeSubordinate.sol";
 import "../../messaging/messenger/CrossChainEnabledObscuro.sol";
 import "./WrappedERC20.sol";
 
-contract ObscuroL2Bridge is IBridge, IBridgeSubordinate, CrossChainEnabledObscuro {
+contract EthereumBridge is IBridge, IBridgeSubordinate, CrossChainEnabledObscuro {
 
     event CreatedWrappedToken(address remoteAddress, address localAddress, string name, string symbol);
 

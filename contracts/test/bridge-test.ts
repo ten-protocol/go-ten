@@ -3,7 +3,7 @@ import hre, { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { bridge } from "../typechain-types/src";
 import { MessageBus, ObscuroBridge } from "../typechain-types";
-import { ObscuroL2Bridge } from "../typechain-types/src/bridge/L2/L2_Bridge.sol";
+import { EthereumBridge } from "../typechain-types/src/bridge/L2/L2_Bridge.sol";
 import { CrossChainMessenger } from "../typechain-types/src/messaging/messenger";
 import { Contract } from "hardhat/internal/hardhat-network/stack-traces/model";
 
@@ -23,7 +23,7 @@ describe("Bridge", function () {
   let messengerL2: CrossChainMessenger
 
   let bridgeL1 : ObscuroBridge
-  let bridgeL2 : ObscuroL2Bridge
+  let bridgeL2 : EthereumBridge
 
   let erc20address : any
 
@@ -31,7 +31,7 @@ describe("Bridge", function () {
     const MessageBus = await hre.ethers.getContractFactory("MessageBus");
     const Messenger = await hre.ethers.getContractFactory("CrossChainMessenger");
     const L1Bridge = await hre.ethers.getContractFactory("ObscuroBridge");
-    const L2Bridge = await hre.ethers.getContractFactory("ObscuroL2Bridge");
+    const L2Bridge = await hre.ethers.getContractFactory("EthereumBridge");
 
     const ERC20 = await hre.ethers.getContractFactory("ERC20");
 
