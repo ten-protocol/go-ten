@@ -70,8 +70,9 @@ type p2pImpl struct {
 	p2pTimeout        time.Duration
 	logger            gethlog.Logger
 	peerTracker       *peerTracker
-	hostGauges        map[string]map[string]gethmetrics.Gauge
-	metricsRegistry   gethmetrics.Registry
+	// hostGauges holds a map of gauges per event per host to track p2p metrics and health status
+	hostGauges      map[string]map[string]gethmetrics.Gauge
+	metricsRegistry gethmetrics.Registry
 }
 
 func (p *p2pImpl) StartListening(callback host.Host) {
@@ -311,7 +312,7 @@ func (p *p2pImpl) incHostGaugeMetric(host string, gaugeName string) {
 		p.hostGauges[host] = map[string]gethmetrics.Gauge{}
 	}
 	if _, ok := p.hostGauges[host][gaugeName]; !ok {
-		p.hostGauges[host][gaugeName] = gethmetrics.NewRegisteredGauge(_failedMessageRead, p.metricsRegistry)
+		p.hostGauges[host][gaugeName] = gethmetrics.NewRegisteredGauge(gaugeName, p.metricsRegistry)
 	}
 	p.hostGauges[host][gaugeName].Inc(1)
 }
