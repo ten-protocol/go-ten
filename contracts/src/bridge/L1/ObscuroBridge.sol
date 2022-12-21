@@ -9,6 +9,8 @@ import "../../messaging/messenger/CrossChainEnabledObscuro.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
+// This is the Ethereum side of the Obscuro Bridge.
+// End-users can interact with it to transfer ERC20 tokens and native eth to the Layer 2 Obscuro.
 contract ObscuroBridge is CrossChainEnabledObscuro, IBridge, IObscuroBridge, AccessControl  {
 
     bytes32 public constant NATIVE_TOKEN_ROLE = keccak256("NATIVE_TOKEN");
