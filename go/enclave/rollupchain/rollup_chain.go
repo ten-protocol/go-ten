@@ -874,9 +874,9 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
-		// We check we receive the genesis batch first.
+		// We check we receive the genesis rollup first.
 		if currentHeadRollup == nil && rollup.Number().Cmp(big.NewInt(0)) != 0 {
-			return fmt.Errorf("received batch with number %d but no genesis batch is stored", rollup.Number())
+			return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollup.Number())
 		}
 
 		// We check that the rollups are sequential.
