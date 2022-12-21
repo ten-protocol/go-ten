@@ -36,7 +36,7 @@ contract ObscuroBridge is
         _grantRole(ERC20_TOKEN_ROLE, asset);
 
         bytes memory data = abi.encodeWithSelector(
-            ITokenFactory.createWrappedToken.selector,
+            ITokenFactory.onCreateTokenCommand.selector,
             asset,
             name,
             symbol

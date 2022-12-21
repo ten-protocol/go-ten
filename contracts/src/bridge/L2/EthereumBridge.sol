@@ -35,7 +35,7 @@ contract EthereumBridge is
         remoteBridgeAddress = remoteBridge;
     }
 
-    function createWrappedToken(
+    function onCreateTokenCommand(
         address crossChainAddress,
         string calldata name,
         string calldata symbol
