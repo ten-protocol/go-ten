@@ -15,24 +15,24 @@ const (
 
 // metrics represents the metrics for the p2p library
 type metrics struct {
-	hostBasedGauges map[string]*perStringGaugeMap // gauges broken down per host
+	hostBasedGauges map[string]*perHostMetrics // gauges broken down per host
 }
 
 // newP2PMetrics creates the P2P metrics used by the P2P layer
 func newP2PMetrics(registry gethmetrics.Registry) *metrics {
 	return &metrics{
-		hostBasedGauges: map[string]*perStringGaugeMap{
-			_failedMessageRead:        newPerStringGaugeMap(registry, _failedMessageRead),
-			_failedMessageDecode:      newPerStringGaugeMap(registry, _failedMessageDecode),
-			_failedConnectSendMessage: newPerStringGaugeMap(registry, _failedConnectSendMessage),
-			_failedWriteSendMessage:   newPerStringGaugeMap(registry, _failedWriteSendMessage),
-			_receivedMessage:          newPerStringGaugeMap(registry, _receivedMessage),
+		hostBasedGauges: map[string]*perHostMetrics{
+			_failedMessageRead:        newperHostMetricMap(registry, _failedMessageRead),
+			_failedMessageDecode:      newperHostMetricMap(registry, _failedMessageDecode),
+			_failedConnectSendMessage: newperHostMetricMap(registry, _failedConnectSendMessage),
+			_failedWriteSendMessage:   newperHostMetricMap(registry, _failedWriteSendMessage),
+			_receivedMessage:          newperHostMetricMap(registry, _receivedMessage),
 		},
 	}
 }
 
-// incrementHost adds one (1) to the given gauge instrument at a given host
-func (m *metrics) incrementHost(instrument string, host string) {
+// incrementHostEvent adds one (1) to the given instrument at a given host
+func (m *metrics) incrementHostEvent(instrument string, host string) {
 	m.hostBasedGauges[instrument].inc(host, 1)
 }
 

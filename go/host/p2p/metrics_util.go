@@ -2,17 +2,17 @@ package p2p
 
 import gethmetrics "github.com/ethereum/go-ethereum/metrics"
 
-// perStringGaugeMap is a map that returns metrics per string
+// perHostMetrics is a map that returns metrics per string
 // errors per host or events per type are common usages
-type perStringGaugeMap struct {
+type perHostMetrics struct {
 	gaugeMap map[string]gethmetrics.Gauge
 	instName string
 	reg      gethmetrics.Registry
 }
 
-// newPerStringGaugeMap creates a new instrument
-func newPerStringGaugeMap(registry gethmetrics.Registry, instrumentName string) *perStringGaugeMap {
-	return &perStringGaugeMap{
+// newperHostMetricMap creates a new p2p instrument for host based tracking
+func newperHostMetricMap(registry gethmetrics.Registry, instrumentName string) *perHostMetrics {
+	return &perHostMetrics{
 		instName: instrumentName,
 		gaugeMap: map[string]gethmetrics.Gauge{},
 		reg:      registry,
@@ -22,7 +22,7 @@ func newPerStringGaugeMap(registry gethmetrics.Registry, instrumentName string) 
 // inc increments the instrument at a given host with a specific value
 // creates one entry it one does not exist
 // gethmetrics is thread-safe so no concurrency is handled at the map level
-func (g *perStringGaugeMap) inc(str string, val int64) {
+func (g *perHostMetrics) inc(str string, val int64) {
 	if _, ok := g.gaugeMap[str]; !ok {
 		g.gaugeMap[str] = gethmetrics.NewRegisteredGauge(g.instName, g.reg)
 	}
@@ -30,7 +30,7 @@ func (g *perStringGaugeMap) inc(str string, val int64) {
 }
 
 // totals returns the sum of all entries
-func (g *perStringGaugeMap) totals() int64 {
+func (g *perHostMetrics) totals() int64 {
 	total := int64(0)
 	for _, gauge := range g.gaugeMap {
 		total += gauge.Value()
