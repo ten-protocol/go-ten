@@ -14,7 +14,7 @@ import (
 const batchNumber = 777
 
 func TestCanStoreAndRetrieveBlockHeader(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	header := types.Header{
 		Number: big.NewInt(batchNumber),
 	}
@@ -33,7 +33,7 @@ func TestCanStoreAndRetrieveBlockHeader(t *testing.T) {
 }
 
 func TestUnknownBlockHeaderReturnsNotFound(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	header := types.Header{}
 
 	_, err := db.GetBlockHeader(header.Hash())

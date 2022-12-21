@@ -29,6 +29,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
@@ -78,6 +79,8 @@ type host struct {
 	batchManager    *batchmanager.BatchManager
 
 	logger gethlog.Logger
+
+	metricRegistry gethmetrics.Registry
 }
 
 func NewHost(
@@ -88,8 +91,9 @@ func NewHost(
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	logger gethlog.Logger,
+	regMetrics gethmetrics.Registry,
 ) hostcommon.Host {
-	database := db.NewInMemoryDB() // todo - make this config driven
+	database := db.NewInMemoryDB(regMetrics) // todo - make this config driven
 	host := &host{
 		// config
 		config:  config,
@@ -119,7 +123,8 @@ func NewHost(
 		logEventManager: events.NewLogEventManager(logger),
 		batchManager:    batchmanager.NewBatchManager(database, config.P2PPublicAddress),
 
-		logger: logger,
+		logger:         logger,
+		metricRegistry: regMetrics,
 	}
 
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {

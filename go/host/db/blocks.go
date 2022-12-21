@@ -50,6 +50,7 @@ func (db *DB) writeBlockHeader(header *types.Header) error {
 	if err := db.kvStore.Put(key, data); err != nil {
 		return err
 	}
+	db.blockWrites.Inc(1)
 	return nil
 }
 
@@ -66,5 +67,6 @@ func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*ty
 	if err := rlp.Decode(bytes.NewReader(data), header); err != nil {
 		return nil, err
 	}
+	db.blockReads.Inc(1)
 	return header, nil
 }

@@ -115,6 +115,7 @@ func (db *DB) GetTotalTransactions() (*big.Int, error) {
 
 // GetBatch returns the batch with the given hash.
 func (db *DB) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
+	db.batchReads.Inc(1)
 	return db.readBatch(batchHash)
 }
 
@@ -301,6 +302,7 @@ func (db *DB) writeBatch(batch *common.ExtBatch) error {
 	if err := db.kvStore.Put(key, data); err != nil {
 		return err
 	}
+	db.batchWrites.Inc(1)
 	return nil
 }
 

@@ -13,7 +13,7 @@ import (
 )
 
 func TestCanStoreAndRetrieveBatchHeader(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	header := common.BatchHeader{
 		Number: big.NewInt(batchNumber),
 	}
@@ -36,7 +36,7 @@ func TestCanStoreAndRetrieveBatchHeader(t *testing.T) {
 }
 
 func TestUnknownBatchHeaderReturnsNotFound(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	header := types.Header{}
 
 	_, err := db.GetBatchHeader(header.Hash())
@@ -46,7 +46,7 @@ func TestUnknownBatchHeaderReturnsNotFound(t *testing.T) {
 }
 
 func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	headerOne := common.BatchHeader{
 		Number: big.NewInt(batchNumber),
 	}
@@ -82,7 +82,7 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 }
 
 func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	headerOne := common.BatchHeader{
 		Number: big.NewInt(batchNumber),
 	}
@@ -118,7 +118,7 @@ func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 }
 
 func TestHeadBatchHeaderIsNotSetInitially(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 
 	_, err := db.GetHeadBatchHeader()
 	if !errors.Is(err, errutil.ErrNotFound) {
@@ -127,7 +127,7 @@ func TestHeadBatchHeaderIsNotSetInitially(t *testing.T) {
 }
 
 func TestCanRetrieveBatchHashByNumber(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	header := common.BatchHeader{
 		Number: big.NewInt(batchNumber),
 	}
@@ -150,7 +150,7 @@ func TestCanRetrieveBatchHashByNumber(t *testing.T) {
 }
 
 func TestUnknownBatchNumberReturnsNotFound(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	header := types.Header{}
 
 	_, err := db.GetBatchHash(header.Number)
@@ -160,7 +160,7 @@ func TestUnknownBatchNumberReturnsNotFound(t *testing.T) {
 }
 
 func TestCanRetrieveBatchNumberByTxHash(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	header := common.BatchHeader{
 		Number: big.NewInt(batchNumber),
 	}
@@ -185,7 +185,7 @@ func TestCanRetrieveBatchNumberByTxHash(t *testing.T) {
 }
 
 func TestUnknownBatchTxHashReturnsNotFound(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 
 	_, err := db.GetBatchNumber(gethcommon.BytesToHash([]byte("magicString")))
 	if !errors.Is(err, errutil.ErrNotFound) {
@@ -194,7 +194,7 @@ func TestUnknownBatchTxHashReturnsNotFound(t *testing.T) {
 }
 
 func TestCanRetrieveBatchTransactions(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	header := common.BatchHeader{
 		Number: big.NewInt(batchNumber),
 	}
@@ -224,7 +224,7 @@ func TestCanRetrieveBatchTransactions(t *testing.T) {
 }
 
 func TestTransactionsForUnknownBatchReturnsNotFound(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 
 	_, err := db.GetBatchNumber(gethcommon.BytesToHash([]byte("magicString")))
 	if !errors.Is(err, errutil.ErrNotFound) {
@@ -233,7 +233,7 @@ func TestTransactionsForUnknownBatchReturnsNotFound(t *testing.T) {
 }
 
 func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
-	db := NewInMemoryDB()
+	db := NewInMemoryDB(nil)
 	headerOne := common.BatchHeader{
 		Number: big.NewInt(batchNumber),
 	}
