@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/metrics/exp"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
