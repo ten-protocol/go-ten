@@ -3,7 +3,7 @@ import hre, { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { bridge } from "../typechain-types/src";
 import { MessageBus, ObscuroBridge } from "../typechain-types";
-import { EthereumBridge } from "../typechain-types/src/bridge/L2/L2_Bridge.sol";
+import { EthereumBridge } from "../typechain-types/src/bridge/L2/EthereumBridge";
 import { CrossChainMessenger } from "../typechain-types/src/messaging/messenger";
 import { Contract } from "hardhat/internal/hardhat-network/stack-traces/model";
 
@@ -197,6 +197,7 @@ describe("Bridge", function () {
       const l1Erc20 : WrappedERC20 = await WrappedERC20.deploy("ZZZ", "ZZZ");
       const whitelistTx = bridgeL1.whitelistToken(l1Erc20.address, "o.ZZZ", "o.ZZZ");
       
+      
       await expect(whitelistTx, "Transaction whitelisting the erc20 token failed!").to.not.be.reverted;
       let messages = await submitMessagesFromTx(await whitelistTx);
       await expect(messages, "Missing message to create wrapped tokens on L2 bridge.").not.null;
@@ -207,6 +208,10 @@ describe("Bridge", function () {
         
       const localErc = await bridgeL2.remoteToLocalToken(l1Erc20.address);
       const l2Erc20 : WrappedERC20 = WrappedERC20.attach(localErc);
+
+      const l2Erc20ForOwner = l2Erc20.connect(owner);
+      const l1Erc20ForOwner = l1Erc20.connect(owner);
+
 
       await expect(await bridgeL2.wrappedTokens(l2Erc20.address), "L2 bridge should not return zero for whitelisted contract.")
         .to.not.hexEqual(ethers.constants.AddressZero);
@@ -219,20 +224,18 @@ describe("Bridge", function () {
       const sendAssetsTx = bridgeL1.sendERC20(l1Erc20.address, 9_000_000, owner.address);      
       await expect(sendAssetsTx, "Sending as much as allowed should not revert").not.reverted;
 
-      await expect(await l1Erc20.balanceOf(owner.address), "Remaining L1 balance should be initial minus bridged amount!")
+      await expect(await l1Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "Remaining L1 balance should be initial minus bridged amount!")
         .to.equal(10_000_000 - 9_000_000);
-
-      await expect(await l1Erc20.balanceOf(bridgeL1.address), "Bridge L1 balance should match the locked tokens.")
-        .to.equal(9_000_000);
 
       messages = await submitMessagesFromTx(await sendAssetsTx);
       await expect(messages, "Sending assets to L2 resulted in no messages!").not.null;
 
-      await expect(await l2Erc20.balanceOf(owner.address), "There should be no balance before relaying stored messages!").to.equal(0);
+
+      await expect(await l2Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "There should be no balance before relaying stored messages!").to.equal(0);
 
       await messages!.relayAll();
 
-      await expect(await l2Erc20.balanceOf(owner.address), "Relay should have granted balance").to.equal(9_000_000);
+      await expect(await l2Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "Relay should have granted balance").to.equal(9_000_000);
 
       await expect(l2Erc20.increaseAllowance(bridgeL2.address, 8_000_000), "L2 allowance increase should not revert.").not.reverted;
 
@@ -243,8 +246,8 @@ describe("Bridge", function () {
       await expect(messages, "Sending assets back to L1 should produce cross chain messages").not.null;
       await messages!.relayAll();
 
-      await expect(await l2Erc20.balanceOf(owner.address), "Remaining L2 balance should be reduced!").to.equal(1_000_000);
-      await expect(await l1Erc20.balanceOf(owner.address), "New L1 balance should match leftover + bridged amount")
+      await expect(await l2Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "Remaining L2 balance should be reduced!").to.equal(1_000_000);
+      await expect(await l1Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "New L1 balance should match leftover + bridged amount")
         .to.equal(1_000_000 + 8_000_000);
   }); 
 

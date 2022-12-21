@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../IBridge.sol";
 import "../IBridgeSubordinate.sol";
 import "../../messaging/messenger/CrossChainEnabledObscuro.sol";
-import "./WrappedERC20.sol";
+import "../../common/WrappedERC20.sol";
 
 contract EthereumBridge is
     IBridge,
