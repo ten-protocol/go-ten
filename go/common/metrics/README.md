@@ -14,14 +14,14 @@ Instrumentation can be added and used as the following example shows:
 import gethmetrics "github.com/ethereum/go-ethereum/metrics"
 
 type SomeStruct struct {
-	...
-    someMeter gethmetrics.Meter
-	someGauge gethmetrics.Gauge
+        ...
+        someMeter gethmetrics.Meter
+        someGauge gethmetrics.Gauge
 }
 
+// registry should be passed down from the parent package
 func New(registry gethmetrics.Registry) *SomeStruct {
 	return &SomeStruct {
-            // registry should be passed down from the parent package
             someMeter : gethmetrics.NewRegisteredMeter("some/metric/path", registry),
             someGauge : gethmetrics.NewRegisteredGauge("some/metric/path", registry), 
         }

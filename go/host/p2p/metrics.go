@@ -22,11 +22,11 @@ type metrics struct {
 func newP2PMetrics(registry gethmetrics.Registry) *metrics {
 	return &metrics{
 		hostBasedGauges: map[string]*perHostMetrics{
-			_failedMessageRead:        newperHostMetricMap(registry, _failedMessageRead),
-			_failedMessageDecode:      newperHostMetricMap(registry, _failedMessageDecode),
-			_failedConnectSendMessage: newperHostMetricMap(registry, _failedConnectSendMessage),
-			_failedWriteSendMessage:   newperHostMetricMap(registry, _failedWriteSendMessage),
-			_receivedMessage:          newperHostMetricMap(registry, _receivedMessage),
+			_failedMessageRead:        newPerHostMetricMap(registry, _failedMessageRead),
+			_failedMessageDecode:      newPerHostMetricMap(registry, _failedMessageDecode),
+			_failedConnectSendMessage: newPerHostMetricMap(registry, _failedConnectSendMessage),
+			_failedWriteSendMessage:   newPerHostMetricMap(registry, _failedWriteSendMessage),
+			_receivedMessage:          newPerHostMetricMap(registry, _receivedMessage),
 		},
 	}
 }

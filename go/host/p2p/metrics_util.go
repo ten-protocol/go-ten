@@ -10,8 +10,8 @@ type perHostMetrics struct {
 	reg      gethmetrics.Registry
 }
 
-// newperHostMetricMap creates a new p2p instrument for host based tracking
-func newperHostMetricMap(registry gethmetrics.Registry, instrumentName string) *perHostMetrics {
+// newPerHostMetricMap creates a new p2p instrument for host based tracking
+func newPerHostMetricMap(registry gethmetrics.Registry, instrumentName string) *perHostMetrics {
 	return &perHostMetrics{
 		instName: instrumentName,
 		gaugeMap: map[string]gethmetrics.Gauge{},
