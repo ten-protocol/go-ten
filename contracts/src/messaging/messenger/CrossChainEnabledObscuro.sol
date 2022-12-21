@@ -6,7 +6,6 @@ import "./ICrossChainMessenger.sol";
 
 // TODO: We need to upgrade the open zeppelin version to the 4.x that adds cross chain enabled
 abstract contract CrossChainEnabledObscuro {
-    
     ICrossChainMessenger messenger;
     IMessageBus messageBus;
     uint32 nonce = 0;
@@ -34,21 +33,35 @@ abstract contract CrossChainEnabledObscuro {
     // a message is relayed from the correct sender to a different contract that
     // maliciously calls into this contract.
     modifier onlyCrossChainSender(address sender) {
-        require(_isCrossChain(), "Contract caller is not the registered messenger!");
-        require(_crossChainSender() == sender, "Cross chain message coming from incorrect sender!");
+        require(
+            _isCrossChain(),
+            "Contract caller is not the registered messenger!"
+        );
+        require(
+            _crossChainSender() == sender,
+            "Cross chain message coming from incorrect sender!"
+        );
         _;
     }
 
     // This function should be called to queue messages that are encodings of function calls
-    // using the abi.encodeWithSelector(bytes4, arg) pattern. 
+    // using the abi.encodeWithSelector(bytes4, arg) pattern.
     // target - the contract on which the call will be executed.
     // message - the result of abi.encodeWithSelector(bytes4, arg)
-    // topic - TODO: determine if should be removed.  
+    // topic - TODO: determine if should be removed.
     // gas - when doing target.call{} this gas will be the limit set for the call. *Currently Unused*
-    // consinstencyLevel - Block confirmations before finalizing message. Obscuro allows that even 0 is secure, 
+    // consinstencyLevel - Block confirmations before finalizing message. Obscuro allows that even 0 is secure,
     // but it might not be suitable for all protocols.
-    function queueMessage(address target, bytes memory message, uint32 topic, uint256 gas, uint8 consistencyLevel) internal {
-        bytes memory payload = abi.encode(ICrossChainMessenger.CrossChainCall(target, message, gas));
+    function queueMessage(
+        address target,
+        bytes memory message,
+        uint32 topic,
+        uint256 gas,
+        uint8 consistencyLevel
+    ) internal {
+        bytes memory payload = abi.encode(
+            ICrossChainMessenger.CrossChainCall(target, message, gas)
+        );
         messageBus.publishMessage(nonce++, topic, payload, consistencyLevel);
     }
 }

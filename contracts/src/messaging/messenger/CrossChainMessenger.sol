@@ -5,12 +5,11 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./ICrossChainMessenger.sol";
 
 contract CrossChainMessenger is ICrossChainMessenger {
-    
     error CallFailed(bytes error);
 
     IMessageBus messageBusContract;
     address public crossChainSender = address(0x0);
-    mapping (bytes32 => bool) messageConsumed;
+    mapping(bytes32 => bool) messageConsumed;
 
     constructor(address messageBusAddr) {
         messageBusContract = IMessageBus(messageBusAddr);
@@ -20,10 +19,15 @@ contract CrossChainMessenger is ICrossChainMessenger {
         return address(messageBusContract);
     }
 
-    // Will verify that the message exists & has not been already consumed and will 
+    // Will verify that the message exists & has not been already consumed and will
     // mark it as consumed.
-    function consumeMessage(Structs.CrossChainMessage calldata message) private {
-        require(messageBusContract.verifyMessageFinalized(message), "Message not found or finalized.");
+    function consumeMessage(
+        Structs.CrossChainMessage calldata message
+    ) private {
+        require(
+            messageBusContract.verifyMessageFinalized(message),
+            "Message not found or finalized."
+        );
         bytes32 msgHash = keccak256(abi.encode(message));
         require(messageConsumed[msgHash] == false, "Message already consumed.");
 
@@ -32,7 +36,10 @@ contract CrossChainMessenger is ICrossChainMessenger {
 
     // TODO: Remove this. It does not serve any real purpose on chain, but is currently required for hardhat tests
     // as producing the same result in JS has proven difficult...
-    function encodeCall(address target, bytes calldata payload) public pure returns (bytes memory) {
+    function encodeCall(
+        address target,
+        bytes calldata payload
+    ) public pure returns (bytes memory) {
         return abi.encode(CrossChainCall(target, payload, 0));
     }
 
@@ -47,10 +54,15 @@ contract CrossChainMessenger is ICrossChainMessenger {
 
         //TODO: Do not relay to self. Do not relay to known contracts. Consider what else not to talk to.
         //Add reentracy guards and paranoid security checks as messenger contracts will have above average rights
-        //when communicating with other contracts. 
+        //when communicating with other contracts.
 
-        CrossChainCall memory callData = abi.decode(message.payload, (CrossChainCall));
-        (bool success,  bytes memory returnData ) = callData.target.call(callData.data);        
+        CrossChainCall memory callData = abi.decode(
+            message.payload,
+            (CrossChainCall)
+        );
+        (bool success, bytes memory returnData) = callData.target.call(
+            callData.data
+        );
         if (!success) {
             revert CallFailed(returnData);
         }

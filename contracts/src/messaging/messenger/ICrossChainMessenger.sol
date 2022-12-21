@@ -12,7 +12,7 @@ interface ICrossChainMessenger {
         uint256 gas;
     }
 
-    // Returns the address of the message bus which is being used to verify messages. 
+    // Returns the address of the message bus which is being used to verify messages.
     function messageBus() external view returns (address);
 
     // Returns the message.sender of the current message that is being relayed.
