@@ -2,8 +2,8 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-// IBridgeSubordinate is the interface for the layer 2 bridge, which accepts commands from the L1 bridge.
-interface IBridgeSubordinate {
+// ITokenFactory is the interface for the layer 2 bridge, which accepts commands from the L1 bridge.
+interface ITokenFactory {
     // createWrappedToken - Will instantiate an ERC20 token contract, owned by the bridge. This token contract allows
     // for minting and burning of assets.
     // crossChainAddress - the address on which the L1 token contract resides

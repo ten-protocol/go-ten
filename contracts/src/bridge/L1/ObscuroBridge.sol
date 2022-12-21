@@ -4,7 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "./IObscuroBridgeAdmin.sol";
 import "../IBridge.sol";
-import "../IBridgeSubordinate.sol";
+import "../ITokenFactory.sol";
 import "../../messaging/messenger/CrossChainEnabledObscuro.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -36,7 +36,7 @@ contract ObscuroBridge is
         _grantRole(ERC20_TOKEN_ROLE, asset);
 
         bytes memory data = abi.encodeWithSelector(
-            IBridgeSubordinate.createWrappedToken.selector,
+            ITokenFactory.createWrappedToken.selector,
             asset,
             name,
             symbol

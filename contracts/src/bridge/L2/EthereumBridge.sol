@@ -6,13 +6,13 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../IBridge.sol";
-import "../IBridgeSubordinate.sol";
+import "../ITokenFactory.sol";
 import "../../messaging/messenger/CrossChainEnabledObscuro.sol";
 import "../../common/WrappedERC20.sol";
 
 contract EthereumBridge is
     IBridge,
-    IBridgeSubordinate,
+    ITokenFactory,
     CrossChainEnabledObscuro
 {
     event CreatedWrappedToken(
