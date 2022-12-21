@@ -70,7 +70,7 @@ type p2pImpl struct {
 	p2pTimeout        time.Duration
 	logger            gethlog.Logger
 	peerTracker       *peerTracker
-	// hostGauges holds a map of gauges per event per host to track p2p metrics and health status
+	// hostGauges holds a map of gauges per host per event to track p2p metrics and health status
 	hostGauges      map[string]map[string]gethmetrics.Gauge
 	metricsRegistry gethmetrics.Registry
 }
