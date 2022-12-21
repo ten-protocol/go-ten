@@ -15,7 +15,9 @@ interface IBridge {
     // receiver - the L2 address that will receive the assets on the other network.
     function sendNative(address receiver) external payable;
 
-    // Sends ERC20 assets over to the other network. Allowance must be allocated to the Bridge contract.
+    // Sends ERC20 assets over to the other network. The user must grant allowance to the bridge
+    // bofore calling this function for more or equal to the amount being bridged over. 
+    // This can be done using IERC20(asset).increaseAllowance(bridge, amount); 
     // asset - the address of the smart contract of the ERC20 token.
     // amount - the number of tokens being transfered.
     // receiver - the L2 address receiving the assets.

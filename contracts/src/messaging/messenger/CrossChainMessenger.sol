@@ -4,6 +4,16 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "./ICrossChainMessenger.sol";
 
+// CrossChainMessenger is the contract that provides the context for contracts
+// that inherit CrossChainEnabledObscuro. It allows to deliver messages using relayMessage.
+// This contract abstracts the message verification logic away from the CrossChainEnabled contracts.
+// It works by querying the message bus that has been passed in the constructor and calling functions
+// that have been encoded with abi.encodeWithSelector(bytes4, arg).
+// It's also responsible for marking messages as consumed whenever a successful call happens. This means
+// that CrossChainEnabled contracts need not bother with anything related to verification, apart from confirming
+// from whom the messages are coming from.
+// Notice that this Messenger has no restrictions on who can relay messages, nor does it have any understanding of fees.
+// You can opt in to deploy a customer messenger for your cross chain dApp with more specialized logic.
 contract CrossChainMessenger is ICrossChainMessenger {
     error CallFailed(bytes error);
 
