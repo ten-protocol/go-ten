@@ -17,8 +17,15 @@ contract ObscuroBridge is
     IObscuroBridgeAdmin,
     AccessControl
 {
+    // This is the role that is given to the address that represents a native currency
     bytes32 public constant NATIVE_TOKEN_ROLE = keccak256("NATIVE_TOKEN");
+
+    // This is the role that is given to addresses which are ERC20 contract.
+    // If we have assigned a role to a contract it is considered whitelisted.
     bytes32 public constant ERC20_TOKEN_ROLE = keccak256("ERC20_TOKEN");
+
+    // This is the role of the address that can perform administrative changes
+    // like adding or removing tokens.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     address remoteBridgeAddress;
