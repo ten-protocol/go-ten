@@ -2,15 +2,11 @@ package metrics
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/ethereum/go-ethereum/metrics/exp"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 )
-
-var _processCollectionRefreshDuration = 3 * time.Second
 
 // Service provides the metrics for the host
 // it registers the gethmetrics Registry
