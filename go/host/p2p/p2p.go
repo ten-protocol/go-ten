@@ -17,7 +17,6 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethmetrics "github.com/ethereum/go-ethereum/metrics"
-	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 const (
@@ -283,8 +282,8 @@ func (p *p2pImpl) getSequencer() string {
 }
 
 // status returns the current status of the p2p layer
-func (p *p2pImpl) status() *hostcommon.P2PStatus {
-	status := &hostcommon.P2PStatus{
+func (p *p2pImpl) status() *host.P2PStatus {
+	status := &host.P2PStatus{
 		FailedReceivedMessages: int64(0),
 		FailedSendMessage:      int64(0),
 		ReceivedMessages:       int64(0),
