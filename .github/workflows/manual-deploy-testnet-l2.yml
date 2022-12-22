@@ -166,7 +166,7 @@ jobs:
                --is_genesis=${{ matrix.is_genesis }} \
                --node_type=${{ matrix.node_type }} \
                --sgx_enabled=true \
-               --host_id=${{ matrix.node_pk_addr }} \
+               --host_id=${{ secrets[matrix.node_pk_addr] }} \
                --l1host=${{ github.event.inputs.L1HOST }} \
                --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} \
                --hocerc20addr=${{needs.build.outputs.hocErc20Addr}} \
