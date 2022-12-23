@@ -97,7 +97,7 @@ do
             --p2p_public_address)       p2p_public_address=${value} ;;
             --debug_enclave)            debug_enclave=${value} ;;
             --dev_testnet)              dev_testnet=${value} ;;
-            --sequencerId)              sequencer_id=${value} ;;
+            --sequencerID)              sequencer_id=${value} ;;
 
             --help)                     help_and_exit ;;
             *)

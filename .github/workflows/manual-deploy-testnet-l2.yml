@@ -166,13 +166,13 @@ jobs:
                --is_genesis=${{ matrix.is_genesis }} \
                --node_type=${{ matrix.node_type }} \
                --sgx_enabled=true \
-               --host_id=${{ matrix.node_pk_addr }} \
+               --host_id=${{ secrets[matrix.node_pk_addr] }} \
                --l1host=${{ github.event.inputs.L1HOST }} \
                --mgmtcontractaddr=${{needs.build.outputs.mgmtContractAddr}} \
                --hocerc20addr=${{needs.build.outputs.hocErc20Addr}} \
                --pocerc20addr=${{needs.build.outputs.pocErc20Addr}} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
-               --sequencerID=${{ GETHNETWORK_PREFUNDED_ADDR_0 }} \
+               --sequencerID=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
                --p2p_public_address=obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
 
 
