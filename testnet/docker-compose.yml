@@ -49,17 +49,17 @@ services:
     ports:
       - "6060:6060"
     environment:
-      MGMTCONTRACTADDR: some_address
-      HOCERC20ADDR: some_address
-      POCERC20ADDR: some_address
-      HOSTID: some_address
-      NODETYPE: some_string
-      OE_SIMULATION: 0
-      PROFILERENABLED: some_bool
-      P2PPUBLICADDRESS: some_string
-      LOGLEVEL: some_int
-      SEQUENCERID: some_address
-      PCCS_ADDR: some_address
+      - MGMTCONTRACTADDR=some_address
+      - HOCERC20ADDR=some_address
+      - POCERC20ADDR=some_address
+      - HOSTID=some_address
+      - NODETYPE=some_string
+      - OE_SIMULATION=0
+      - PROFILERENABLED=some_bool
+      - P2PPUBLICADDRESS=some_string
+      - LOGLEVEL=some_int
+      - SEQUENCERID=some_address
+      - PCCS_ADDR=some_address
     image: testnetobscuronet.azurecr.io/obscuronet/enclave:latest
     entrypoint: [
               "/home/obscuro/go-obscuro/go/enclave/main/entry.sh",
@@ -87,8 +87,8 @@ services:
     networks:
       - default
     environment:
-      EDG_EDB_CERT_DNS: edgelessdb
-      PCCS_ADDR: some_address
+      - EDG_EDB_CERT_DNS=edgelessdb
+      - PCCS_ADDR=some_address
     ports:
       - "3306:3306"
       - "8080:8080"
