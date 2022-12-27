@@ -50,3 +50,32 @@ chmod +x start-obscuro-node.sh \
   --pocerc20addr="0xB46213b1755545261Ce32e8b46B300fB01663889" \
   --pkstring="PrivateKeyString" \
   --p2p_public_address="HOST:10000"
+```
+
+## - (Alternatively) Steps required to run a node on Alibaba SGX
+Setup an Alibaba node to provide SGX to docker .
+
+Instance Type g7t - Linux Distro : Alibaba Linux 3
+
+### Install docker
+```
+sudo yum install -y yum-utils \
+    && sudo yum-config-manager \
+    --add-repo https://download.docker.com/linux/centos/docker-ce.repo \
+    && sudo yum install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin \
+    && sudo systemctl start docker
+```
+
+### Install sgx
+```
+yum install -y yum-utils && \
+yum-config-manager --add-repo \
+https://enclave-cn-hongkong.oss-cn-hongkong-internal.aliyuncs.com/repo/alinux/enclave-expr.repo \
+&& yum install -y libsgx-ae-le libsgx-ae-pce libsgx-ae-qe3 libsgx-ae-qve \
+libsgx-aesm-ecdsa-plugin libsgx-aesm-launch-plugin libsgx-aesm-pce-plugin \
+libsgx-aesm-quote-ex-plugin libsgx-dcap-default-qpl libsgx-dcap-ql \
+libsgx-dcap-quote-verify libsgx-enclave-common libsgx-launch libsgx-pce-logic \
+libsgx-qe3-logic libsgx-quote-ex libsgx-ra-network libsgx-ra-uefi \
+libsgx-uae-service libsgx-urts sgx-ra-service sgx-aesm-service \
+&& yum install -y sgxsdk
+```
