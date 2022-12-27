@@ -62,7 +62,8 @@ services:
       PCCS_URL: some_address
     image: testnetobscuronet.azurecr.io/obscuronet/enclave:latest
     entrypoint: [
-                 "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
+                "/home/obscuro/go-obscuro/go/enclave/main/entry.sh",
+                "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
                  "--hostID=$HOSTID",
                  "--address=:11000",
                  "--nodeType=$NODETYPE",
