@@ -59,7 +59,7 @@ services:
       P2PPUBLICADDRESS: some_string
       LOGLEVEL: some_int
       SEQUENCERID: some_address
-      PCCS_URL: some_address
+      PCCS_ADDR: some_address
     image: testnetobscuronet.azurecr.io/obscuronet/enclave:latest
     entrypoint: [
               "/home/obscuro/go-obscuro/go/enclave/main/entry.sh",
