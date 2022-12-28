@@ -13,7 +13,7 @@ RUN mkdir /home/go-obscuro
 COPY ./go.mod /home/go-obscuro
 COPY ./go.sum /home/go-obscuro
 WORKDIR /home/go-obscuro
-RUN go get -d ./...
+RUN go get -d -v ./...
 
 # make sure the all code is available
 COPY . /home/go-obscuro

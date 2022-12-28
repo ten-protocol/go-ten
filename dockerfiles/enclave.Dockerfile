@@ -3,6 +3,7 @@ FROM ghcr.io/edgelesssys/ego-dev:latest
 # on the container:
 #   /home/obscuro/data       contains working files for the enclave
 #   /home/obscuro/go-obscuro contains the src
+#
 
 # setup container data structure
 RUN mkdir -p /data && mkdir -p /home/obscuro/go-obscuro
