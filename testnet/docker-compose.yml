@@ -14,15 +14,15 @@ services:
       - "6061:6061"
       - "10000:10000"
     environment:
-      MGMTCONTRACTADDR: some_address
-      PKSTRING: some_string
-      L1HOST: some_host
-      L1PORT: some_port
-      ISGENESIS: some_bool
-      NODETYPE: some_string
-      PROFILERENABLED: some_bool
-      P2PPUBLICADDRESS: some_string
-      LOGLEVEL: some_int
+      - MGMTCONTRACTADDR=some_address
+      - PKSTRING=some_string
+      - L1HOST=some_host
+      - L1PORT=some_port
+      - ISGENESIS=some_bool
+      - NODETYPE=some_string
+      - PROFILERENABLED=some_bool
+      - P2PPUBLICADDRESS=some_string
+      - LOGLEVEL=some_int
     image: testnetobscuronet.azurecr.io/obscuronet/host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
@@ -41,27 +41,29 @@ services:
     ]
 
   enclave:
-    privileged: true
-    volumes:
-      - /dev/sgx:/dev/sgx
+    devices:
+      - /dev/sgx_enclave
+      - /dev/sgx_provision
     networks:
       - default
     ports:
       - "6060:6060"
     environment:
-      MGMTCONTRACTADDR: some_address
-      HOCERC20ADDR: some_address
-      POCERC20ADDR: some_address
-      HOSTID: some_address
-      NODETYPE: some_string
-      OE_SIMULATION: 0
-      PROFILERENABLED: some_bool
-      P2PPUBLICADDRESS: some_string
-      LOGLEVEL: some_int
-      SEQUENCERID: some_address
+      - OE_SIMULATION=0
+      - MGMTCONTRACTADDR=some_address
+      - HOCERC20ADDR=some_address
+      - POCERC20ADDR=some_address
+      - HOSTID=some_address
+      - NODETYPE=some_string
+      - PROFILERENABLED=some_bool
+      - P2PPUBLICADDRESS=some_string
+      - LOGLEVEL=some_int
+      - SEQUENCERID=some_address
+      - PCCS_ADDR
     image: testnetobscuronet.azurecr.io/obscuronet/enclave:latest
     entrypoint: [
-                 "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
+              "/home/obscuro/go-obscuro/go/enclave/main/entry.sh",
+              "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
                  "--hostID=$HOSTID",
                  "--address=:11000",
                  "--nodeType=$NODETYPE",
@@ -85,7 +87,8 @@ services:
     networks:
       - default
     environment:
-      EDG_EDB_CERT_DNS: edgelessdb
+      - EDG_EDB_CERT_DNS=edgelessdb
+      - PCCS_ADDR
     ports:
       - "3306:3306"
       - "8080:8080"

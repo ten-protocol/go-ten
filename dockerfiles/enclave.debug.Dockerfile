@@ -9,8 +9,7 @@ FROM golang:1.17-alpine
 # Note: ego uses a virtual file system mount to map data directory to /data inside the enclave,
 #   for this non-ego build I'm using /data as the data dir to preserve /data folder in paths inside enclave
 RUN mkdir /data
-RUN mkdir /home/obscuro
-RUN mkdir /home/obscuro/go-obscuro
+RUN mkdir -p /home/obscuro/go-obscuro
 
 # build the enclave from the current branch
 COPY . /home/obscuro/go-obscuro
@@ -23,4 +22,3 @@ RUN go get -d -v ./...
 RUN go install -v ./...
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 EXPOSE 11000
-ENTRYPOINT ["main"]
