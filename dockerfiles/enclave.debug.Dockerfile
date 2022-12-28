@@ -16,7 +16,7 @@ ENV CGO_ENABLED=1
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 # setup container data structure
-RUN mkdir /data && mkdir -p /home/obscuro/go-obscuro
+RUN mkdir -p /data && mkdir -p /home/obscuro/go-obscuro
 
 # Ensures container layer caching when dependencies are not changed
 WORKDIR /home/obscuro/go-obscuro
@@ -28,9 +28,8 @@ RUN go mod download
 COPY . .
 
 # build the enclave from the current branch
-COPY . /home/obscuro/go-obscuro
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
-
 # Install the package
 RUN go install -v ./...
+
 EXPOSE 11000
