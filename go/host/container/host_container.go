@@ -81,13 +81,13 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostConta
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
 func NewHostContainer(
-	cfg *config.HostConfig,          // provides various parameters that the host needs to function
-	p2p commonhost.P2P,              // provides the inbound and outbound p2p communication layer
-	l1Client ethadapter.EthClient,   // provides inbound and outbound L1 connectivity
-	enclaveClient common.Enclave,    // provides RPC connection to this host's Enclave
-	hostWallet wallet.Wallet,        // provides an L1 wallet for the host's transactions
-	rpcServer clientrpc.Server,      // For communication with Obscuro client applications
-	logger gethlog.Logger,           // provides logging with context
+	cfg *config.HostConfig, // provides various parameters that the host needs to function
+	p2p commonhost.P2P, // provides the inbound and outbound p2p communication layer
+	l1Client ethadapter.EthClient, // provides inbound and outbound L1 connectivity
+	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
+	hostWallet wallet.Wallet, // provides an L1 wallet for the host's transactions
+	rpcServer clientrpc.Server, // For communication with Obscuro client applications
+	logger gethlog.Logger, // provides logging with context
 	metricsService *metrics.Service, // provides the metrics service for other packages to use
 ) *HostContainer {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.RollupContractAddress, logger)
