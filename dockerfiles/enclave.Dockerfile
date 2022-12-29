@@ -6,7 +6,7 @@ FROM ghcr.io/edgelesssys/ego-dev:latest
 #
 
 # setup container data structure
-RUN mkdir -p /data && mkdir -p /home/obscuro/go-obscuro
+RUN mkdir -p /home/obscuro/data && mkdir -p /home/obscuro/go-obscuro
 
 # Ensures container layer caching when dependencies are not changed
 WORKDIR /home/obscuro/go-obscuro

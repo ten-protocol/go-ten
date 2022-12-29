@@ -13,7 +13,7 @@ FROM golang:1.17-alpine
 # install build utils
 RUN apk add build-base
 ENV CGO_ENABLED=1
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.9.1
 
 # setup container data structure
 RUN mkdir -p /data && mkdir -p /home/obscuro/go-obscuro
@@ -30,6 +30,6 @@ COPY . .
 # build the enclave from the current branch
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 # Install the package
-RUN go install -v ./...
+RUN go get -v ./...
 
 EXPOSE 11000

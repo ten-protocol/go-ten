@@ -114,6 +114,9 @@ then
 fi
 
 
+# reset any data in the env file
+echo "" > "${testnet_path}/.env"
+
 # set the data in the env file
 echo "PKSTRING=${pk_string}" >> "${testnet_path}/.env"
 echo "HOSTID=${host_id}"  >> "${testnet_path}/.env"
