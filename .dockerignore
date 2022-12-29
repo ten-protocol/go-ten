@@ -19,8 +19,7 @@
 go-obscuro.iml
 
 # Simulation files
-.build/
-simulation_result.txt
+**/.build/
 
 # macOS files
 **/.DS_Store
@@ -33,6 +32,10 @@ tools/walletextension/main/main
 tools/walletextension/main/wallet_extension
 tools/networkmanager/main/main
 tools/obscuroscan/main/main
+**/node_modules/
+**/dist
+.git
+**/npm-debug.log
 
 
 # Logs files
@@ -44,4 +47,6 @@ tools/obscuroscan/main/main
 testnet/.env
 
 # Docs build files
-docs/_site
+docs/
+design/
+planning/
