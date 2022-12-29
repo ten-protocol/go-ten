@@ -21,6 +21,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
 
 	"github.com/obscuronet/go-obscuro/go/config"
 
@@ -103,7 +104,8 @@ func createInMemObscuroNode(
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, metricsService.Registry())
+	rpcServer := clientrpc.NewServer(hostConfig, hostLogger)
+	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, rpcServer, ethWallet, mgmtContractLib, hostLogger, metricsService.Registry())
 	mockP2P.CurrentNode = inMemNode
 	return inMemNode
 }
@@ -151,8 +153,9 @@ func createSocketObscuroNode(
 	// create a socket P2P layer
 	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
 	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, p2pLogger, metricsService.Registry())
+	rpcServer := clientrpc.NewServer(hostConfig, hostLogger)
 
-	return host.NewHost(hostConfig, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, metricsService.Registry())
+	return host.NewHost(hostConfig, nodeP2p, ethClient, enclaveClient, rpcServer, ethWallet, mgmtContractLib, hostLogger, metricsService.Registry())
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {

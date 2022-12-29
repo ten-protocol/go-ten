@@ -3,7 +3,6 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
-	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -90,8 +89,11 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 			panic(err)
 		}
 	}()
+
+	var hostContainer *hostcontainer.HostContainer
 	go func() {
-		err := hostcontainer.NewHostContainerFromConfig(hostConfig).Start()
+		hostContainer = hostcontainer.NewHostContainerFromConfig(hostConfig)
+		err = hostContainer.Start()
 		if err != nil {
 			panic(err)
 		}
@@ -111,7 +113,12 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		time.Sleep(time.Second)
 		wait--
 	}
-	defer teardown(obscuroClient, rpcAddress)
+	defer func() {
+		// the container stops the enclave
+		if err = hostContainer.Stop(); err != nil {
+			t.Fatal("unable to properly stop the host container")
+		}
+	}()
 
 	// Check if the host profiler is up
 	_, err = http.Get(fmt.Sprintf("http://%s:%d", localhost, profiler.DefaultHostPort)) //nolint
@@ -138,32 +145,4 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 
 	t.Fatalf("Zero rollups have been produced after ten seconds. Something is wrong. Latest error was: %s", err)
-}
-
-func teardown(obscuroClient rpc.Client, rpcServerAddr string) {
-	if obscuroClient == nil {
-		return
-	}
-
-	obscuroClient.Call(nil, rpc.StopHost) //nolint:errcheck
-
-	// We wait for the client server port to be closed.
-	wait := 0
-	for tcpConnectionAvailable(rpcServerAddr) {
-		if wait == 20 { // max wait in seconds
-			panic(fmt.Sprintf("RPC client server had not shut down after %d seconds", wait))
-		}
-		time.Sleep(time.Second)
-		wait++
-	}
-}
-
-func tcpConnectionAvailable(addr string) bool {
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		return false
-	}
-	_ = conn.Close()
-	// we don't worry about failure while closing, it connected successfully so let test proceed
-	return true
 }

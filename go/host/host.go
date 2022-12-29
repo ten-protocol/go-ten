@@ -88,6 +88,7 @@ func NewHost(
 	p2p hostcommon.P2P,
 	ethClient ethadapter.EthClient,
 	enclaveClient common.Enclave,
+	rpcServer clientrpc.Server,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	logger gethlog.Logger,
@@ -118,6 +119,8 @@ func NewHost(
 		// Initialize the host DB
 		db: database,
 
+		rpcServer: rpcServer, // use injected RPC server
+
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
 		ethWallet:       ethWallet,       // the host's ethereum wallet
 		logEventManager: events.NewLogEventManager(logger),
@@ -128,7 +131,7 @@ func NewHost(
 	}
 
 	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
-		rpcAPIs := []rpc.API{
+		host.rpcServer.RegisterAPIs([]rpc.API{
 			{
 				Namespace: APINamespaceObscuro,
 				Version:   APIVersion1,
@@ -165,8 +168,7 @@ func NewHost(
 				Service:   clientapi.NewFilterAPI(host, logger),
 				Public:    true,
 			},
-		}
-		host.rpcServer = clientrpc.NewServer(config, rpcAPIs, logger)
+		})
 	}
 
 	var prof *profiler.Profiler

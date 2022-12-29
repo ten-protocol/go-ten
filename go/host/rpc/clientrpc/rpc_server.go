@@ -1,11 +1,12 @@
 package clientrpc
 
 import (
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -16,6 +17,7 @@ const (
 type Server interface {
 	Start()
 	Stop()
+	RegisterAPIs(apis []rpc.API)
 }
 
 // An implementation of `host.Server` that reuses the Geth `node` package for client communication.
@@ -24,7 +26,7 @@ type serverImpl struct {
 	logger gethlog.Logger
 }
 
-func NewServer(config *config.HostConfig, rpcAPIs []rpc.API, logger gethlog.Logger) Server {
+func NewServer(config *config.HostConfig, logger gethlog.Logger) Server {
 	rpcConfig := node.Config{
 		Logger: logger.New(log.CmpKey, log.HostRPCCmp),
 	}
@@ -45,12 +47,16 @@ func NewServer(config *config.HostConfig, rpcAPIs []rpc.API, logger gethlog.Logg
 	if err != nil {
 		logger.Crit("could not create new client server.", log.ErrKey, err)
 	}
-	rpcServerNode.RegisterAPIs(rpcAPIs)
 
 	return &serverImpl{node: rpcServerNode, logger: logger}
 }
 
+func (s *serverImpl) RegisterAPIs(apis []rpc.API) {
+	s.node.RegisterAPIs(apis)
+}
+
 func (s *serverImpl) Start() {
+	// make sure you *have* registered apis
 	if err := s.node.Start(); err != nil {
 		s.logger.Crit("could not start node client server.", log.ErrKey, err)
 	}
