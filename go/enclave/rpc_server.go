@@ -95,15 +95,6 @@ func (s *RPCServer) InitEnclave(_ context.Context, request *generated.InitEnclav
 	return &generated.InitEnclaveResponse{Error: errStr}, nil
 }
 
-func (s *RPCServer) Start(_ context.Context, request *generated.StartRequest) (*generated.StartResponse, error) {
-	bl := s.decodeBlock(request.EncodedBlock)
-	err := s.enclave.Start(bl)
-	if err != nil {
-		return nil, err
-	}
-	return &generated.StartResponse{}, nil
-}
-
 func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl := s.decodeBlock(request.EncodedBlock)
 	receipts := s.decodeReceipts(request.EncodedReceipts)
