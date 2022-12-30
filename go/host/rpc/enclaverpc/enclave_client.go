@@ -129,23 +129,6 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	return nil
 }
 
-func (c *Client) Start(block types.Block) error {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	var buffer bytes.Buffer
-	if err := block.EncodeRLP(&buffer); err != nil {
-		return fmt.Errorf("could not encode block. Cause: %w", err)
-	}
-
-	_, err := c.protoClient.Start(timeoutCtx, &generated.StartRequest{EncodedBlock: buffer.Bytes()})
-	if err != nil {
-		return fmt.Errorf("could not start enclave. Cause: %w", err)
-	}
-
-	return nil
-}
-
 func (c *Client) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

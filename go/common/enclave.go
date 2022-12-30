@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
@@ -33,9 +32,6 @@ type Enclave interface {
 
 	// InitEnclave - initialise an enclave with a seed received by another enclave
 	InitEnclave(secret EncryptedSharedEnclaveSecret) error
-
-	// Start - start speculative execution
-	Start(block types.Block) error
 
 	// SubmitL1Block - Used for the host to submit L1 blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
