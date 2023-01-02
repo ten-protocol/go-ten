@@ -2,16 +2,15 @@ package network
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
-
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -74,8 +73,8 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 		healthy := false
 		for ; !healthy; time.Sleep(500 * time.Millisecond) {
 			healthy, _ = client.Health()
-			if time.Now().After(startTime.Add(5 * time.Minute)) {
-				panic("nodes not healthy after 5 minutes")
+			if time.Now().After(startTime.Add(3 * time.Minute)) {
+				panic("nodes not healthy after 3 minutes")
 			}
 		}
 	}

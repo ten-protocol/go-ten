@@ -165,7 +165,6 @@ func (h *host) Start() {
 		// start the host's main processing loop
 		h.startProcessing()
 	}()
-
 }
 
 func (h *host) broadcastSecret() error {

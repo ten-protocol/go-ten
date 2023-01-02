@@ -125,6 +125,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 		var client rpc.Client
 		var err error
 
+		// create a connection to the created nodes
 		for connected := false; !connected; time.Sleep(500 * time.Millisecond) {
 			client, err = rpc.NewNetworkClient(rpcAddress)
 			connected = err == nil // The client cannot be created until the node has started.

@@ -13,25 +13,20 @@ import (
 	"testing"
 	"time"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-
-	gethnode "github.com/ethereum/go-ethereum/node"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/obscuronet/go-obscuro/integration"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
-	enclaverpc "github.com/obscuronet/go-obscuro/go/enclave/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
-
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/gorilla/websocket"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/tools/walletextension"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethnode "github.com/ethereum/go-ethereum/node"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	enclaverpc "github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
