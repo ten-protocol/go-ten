@@ -125,10 +125,15 @@ func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 		var client rpc.Client
 		var err error
 
-		// create a connection to the created nodes
+		// create a connection to the newly created nodes - panic if no connection is made after some time
+		startTime := time.Now()
 		for connected := false; !connected; time.Sleep(500 * time.Millisecond) {
 			client, err = rpc.NewNetworkClient(rpcAddress)
 			connected = err == nil // The client cannot be created until the node has started.
+			if time.Now().After(startTime.Add(2 * time.Minute)) {
+				testlog.Logger().Crit("failed to create a connect to node after 2 minute")
+			}
+
 			testlog.Logger().Info(fmt.Sprintf("Could not create client %d. Retrying...", i), log.ErrKey, err)
 		}
 
