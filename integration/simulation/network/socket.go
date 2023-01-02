@@ -2,8 +2,8 @@ package network
 
 import (
 	"fmt"
-
 	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
@@ -67,6 +67,19 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 	for idx, l2Client := range n.l2Clients {
 		obscuroClients[idx] = obsclient.NewObsClient(l2Client)
 	}
+
+	// make sure the nodes are healthy
+	for _, client := range obscuroClients {
+		startTime := time.Now()
+		healthy := false
+		for ; !healthy; time.Sleep(500 * time.Millisecond) {
+			healthy, _ = client.Health()
+			if time.Now().After(startTime.Add(5 * time.Minute)) {
+				panic("nodes not healthy after 5 minutes")
+			}
+		}
+	}
+
 	walletClients := createAuthClientsPerWallet(n.l2Clients, simParams.Wallets)
 
 	return &RPCHandles{

@@ -13,8 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/host"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -33,6 +31,8 @@ import (
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 
 	"github.com/gorilla/websocket"
+
+	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
 const (
@@ -85,14 +85,14 @@ func createDummyHost(t *testing.T) {
 	rpcServerNode, err := gethnode.New(&cfg)
 	rpcServerNode.RegisterAPIs([]gethrpc.API{
 		{
-			Namespace: host.APINamespaceObscuro,
-			Version:   host.APIVersion1,
+			Namespace: hostcontainer.APINamespaceObscuro,
+			Version:   hostcontainer.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},
 		{
-			Namespace: host.APINamespaceEth,
-			Version:   host.APIVersion1,
+			Namespace: hostcontainer.APINamespaceEth,
+			Version:   hostcontainer.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},
