@@ -124,7 +124,6 @@ func createSocketObscuroHostContainer(
 	ethClient ethadapter.EthClient,
 	l1StartBlk gethcommon.Hash,
 ) *container.HostContainer {
-
 	hostConfig := &config.HostConfig{
 		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:              isGenesis,

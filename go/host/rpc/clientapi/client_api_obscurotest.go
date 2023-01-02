@@ -28,6 +28,6 @@ func (api *TestAPI) StopHost() {
 	}
 
 	if api.container != nil {
-		api.container.Stop()
+		_ = api.container.Stop()
 	}
 }

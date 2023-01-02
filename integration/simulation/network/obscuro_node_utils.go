@@ -116,7 +116,7 @@ func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 
 	// start each obscuro node
 	for _, m := range obscuroNodes {
-		m.Start()
+		_ = m.Start()
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
