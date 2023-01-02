@@ -510,10 +510,12 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We marshal the receipt to JSON.
-	txReceiptBytes, err := txReceipt.MarshalJSON()
+	txReceiptBytes, err := common.MarshalReceipt(txReceipt)
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
 	}
+
+	fmt.Println(string(txReceiptBytes))
 
 	// We encrypt the receipt.
 	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptWithViewingKey(sender, txReceiptBytes)
