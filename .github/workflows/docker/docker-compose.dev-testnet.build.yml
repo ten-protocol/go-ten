@@ -5,20 +5,20 @@ services:
   gethnetwork:
     image: "testnetobscuronet.azurecr.io/obscuronet/gethnetwork:latest"
     build:
-      context: ../../../go-obscuro/
+      context: ../../../
       dockerfile: ./testnet/gethnetwork.Dockerfile
   host:
     image: "testnetobscuronet.azurecr.io/obscuronet/dev_host:latest"
     build:
-      context: ../../../go-obscuro/
+      context: ../../../
       dockerfile: ./dockerfiles/host.Dockerfile
   contractdeployer:
     image: "testnetobscuronet.azurecr.io/obscuronet/dev_contractdeployer:latest"
     build:
-      context: ../../../go-obscuro/
+      context: ../../../
       dockerfile: ./testnet/contractdeployer.Dockerfile
   enclave:
     image: "testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest"
     build:
-      context: ../../../go-obscuro/
+      context: ../../../
       dockerfile: ./dockerfiles/enclave.Dockerfile
