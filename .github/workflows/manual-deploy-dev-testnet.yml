@@ -39,14 +39,14 @@ jobs:
       - name: 'Push dev testnet images'
         uses: azure/docker-login@v1
         with:
-          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          login-server: testnetobscuronet.azurecr.io
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_l1network:latest      
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_enclave:latest
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_host:latest
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_contractdeployer:latest
+          docker push testnetobscuronet.azurecr.io/obscuronet/dev_testnet_l1network:latest      
+          docker push testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest
+          docker push testnetobscuronet.azurecr.io/obscuronet/dev_host:latest
+          docker push testnetobscuronet.azurecr.io/obscuronet/dev_contractdeployer:latest
 
   deploy-l1:
     needs: build-push-images
@@ -64,8 +64,8 @@ jobs:
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: dev-testnet-gethnetwork
-          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_l1network:latest
-          registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          image: testnetobscuronet.azurecr.io/obscuronet/dev_testnet_l1network:latest
+          registry-login-server: testnetobscuronet.azurecr.io
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
           name: dev-testnet-gethnetwork
@@ -98,7 +98,7 @@ jobs:
         id: deployContracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-contracts.sh --l1host=${{ github.event.inputs.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} --docker_image=${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_contractdeployer:latest
+          ./testnet/testnet-deploy-contracts.sh --l1host=${{ github.event.inputs.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} --docker_image=testnetobscuronet.azurecr.io/obscuronet/dev_contractdeployer:latest
           source ./testnet/.env
           echo "MGMTCONTRACTADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
           echo "HOCERC20ADDR=$HOCERC20ADDR" >> $GITHUB_ENV
@@ -265,7 +265,7 @@ jobs:
         id: deployL2Contracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-l2-contracts.sh --l2host=dev-obscuronode-0-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com --docker_image=${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_contractdeployer:latest
+          ./testnet/testnet-deploy-l2-contracts.sh --l2host=dev-obscuronode-0-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com --docker_image=testnetobscuronet.azurecr.io/obscuronet/dev_contractdeployer:latest
 
   deploy-faucet:
     runs-on: ubuntu-latest

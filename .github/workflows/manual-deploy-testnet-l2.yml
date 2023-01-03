@@ -36,13 +36,13 @@ jobs:
       - name: 'Push obscuro node images'
         uses: azure/docker-login@v1
         with:
-          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          login-server: testnetobscuronet.azurecr.io
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/enclave:latest
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/host:latest
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/contractdeployer:latest    
+          docker push testnetobscuronet.azurecr.io/obscuronet/enclave:latest
+          docker push testnetobscuronet.azurecr.io/obscuronet/host:latest
+          docker push testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest    
 
   build:
     needs: build-push-images
