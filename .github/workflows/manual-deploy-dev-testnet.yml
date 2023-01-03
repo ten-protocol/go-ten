@@ -29,7 +29,7 @@ jobs:
       - name: "Build Containers in parallel"
         run: |
           cd ./testnet
-          docker compose -f ./.github/workflows/docker/docker-compose.dev-testnet.build.yml build --parallel 
+          docker compose -f ../.github/workflows/docker/docker-compose.dev-testnet.build.yml build --parallel 
 
   deploy-l1:
     needs: build-images
