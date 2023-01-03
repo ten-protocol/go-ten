@@ -117,7 +117,10 @@ func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 	// start each obscuro node
 	for _, m := range obscuroNodes {
 		// TODO bubble up errors from the containers/host/enclave Start https://github.com/obscuronet/obscuro-internal/issues/1315
-		_ = m.Start()
+		err := m.Start()
+		if err != nil {
+			testlog.Logger().Crit("unable to start obscuro node ", log.ErrKey, err)
+		}
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
