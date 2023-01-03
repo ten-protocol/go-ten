@@ -32,6 +32,7 @@ jobs:
           docker compose -f ./.github/workflows/docker/docker-compose.dev-testnet.build.yml build --parallel 
 
   deploy-l1:
+    needs: build-images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
