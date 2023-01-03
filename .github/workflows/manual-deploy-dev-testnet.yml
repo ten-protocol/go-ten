@@ -23,8 +23,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: 'Set up Docker + Build Containers'
+      - name: 'Set up Docker'
         uses: docker/setup-buildx-action@v1
+
+      - name: "Build Containers in parallel"
         run: |
           cd ${{ github.workspace }}/obscuro-test/utils/testnet
           docker compose -f ./.github/workflows/docker/docker-compose.dev-testnet.build.yml build --parallel 
