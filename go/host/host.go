@@ -23,8 +23,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
 	"github.com/obscuronet/go-obscuro/go/host/db"
 	"github.com/obscuronet/go-obscuro/go/host/events"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -34,13 +32,6 @@ import (
 )
 
 const (
-	APIVersion1             = "1.0"
-	APINamespaceObscuro     = "obscuro"
-	APINamespaceEth         = "eth"
-	apiNamespaceObscuroScan = "obscuroscan"
-	apiNamespaceNetwork     = "net"
-	apiNamespaceTest        = "test"
-
 	// Attempts to broadcast the rollup transaction to the L1. Worst-case, equates to 7 seconds, plus time per request.
 	l1TxTriesRollup = 3
 	// Attempts to send secret initialisation, request or response transactions to the L1. Worst-case, equates to 63 seconds, plus time per request.
@@ -59,7 +50,6 @@ type host struct {
 	p2p           hostcommon.P2P       // For communication with other Obscuro nodes
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	enclaveClient common.Enclave       // For communication with the enclave
-	rpcServer     clientrpc.Server     // For communication with Obscuro client applications
 
 	// control the host lifecycle
 	exitHostCh            chan bool
@@ -88,7 +78,6 @@ func NewHost(
 	p2p hostcommon.P2P,
 	ethClient ethadapter.EthClient,
 	enclaveClient common.Enclave,
-	rpcServer clientrpc.Server,
 	ethWallet wallet.Wallet,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	logger gethlog.Logger,
@@ -119,8 +108,6 @@ func NewHost(
 		// Initialize the host DB
 		db: database,
 
-		rpcServer: rpcServer, // use injected RPC server
-
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
 		ethWallet:       ethWallet,       // the host's ethereum wallet
 		logEventManager: events.NewLogEventManager(logger),
@@ -128,47 +115,6 @@ func NewHost(
 
 		logger:         logger,
 		metricRegistry: regMetrics,
-	}
-
-	if config.HasClientRPCHTTP || config.HasClientRPCWebsockets {
-		host.rpcServer.RegisterAPIs([]rpc.API{
-			{
-				Namespace: APINamespaceObscuro,
-				Version:   APIVersion1,
-				Service:   clientapi.NewObscuroAPI(host),
-				Public:    true,
-			},
-			{
-				Namespace: APINamespaceEth,
-				Version:   APIVersion1,
-				Service:   clientapi.NewEthereumAPI(host, logger),
-				Public:    true,
-			},
-			{
-				Namespace: apiNamespaceObscuroScan,
-				Version:   APIVersion1,
-				Service:   clientapi.NewObscuroScanAPI(host),
-				Public:    true,
-			},
-			{
-				Namespace: apiNamespaceNetwork,
-				Version:   APIVersion1,
-				Service:   clientapi.NewNetworkAPI(host),
-				Public:    true,
-			},
-			{
-				Namespace: apiNamespaceTest,
-				Version:   APIVersion1,
-				Service:   clientapi.NewTestAPI(host),
-				Public:    true,
-			},
-			{
-				Namespace: APINamespaceEth,
-				Version:   APIVersion1,
-				Service:   clientapi.NewFilterAPI(host, logger),
-				Public:    true,
-			},
-		})
 	}
 
 	var prof *profiler.Profiler
@@ -186,6 +132,7 @@ func NewHost(
 	return host
 }
 
+// Start validates the host config and starts the Host in a go routine - immediately returns after
 func (h *host) Start() {
 	h.validateConfig()
 
@@ -195,33 +142,29 @@ func (h *host) Start() {
 	}
 	h.logger.Info("Host started with following config", log.CfgKey, string(tomlConfig))
 
-	// wait for the Enclave to be available
-	h.waitForEnclave()
+	go func() {
+		// wait for the Enclave to be available
+		h.waitForEnclave()
 
-	// TODO the host should only connect to enclaves with the same ID as the host.ID
-	// TODO Issue: https://github.com/obscuronet/obscuro-internal/issues/1265
+		// TODO the host should only connect to enclaves with the same ID as the host.ID
+		// TODO Issue: https://github.com/obscuronet/obscuro-internal/issues/1265
 
-	// todo: we should try to recover the key from a previous run of the node here? Before generating or requesting the key.
-	if h.config.IsGenesis {
-		err = h.broadcastSecret()
-		if err != nil {
-			h.logger.Crit("Could not broadcast secret", log.ErrKey, err.Error())
+		// todo: we should try to recover the key from a previous run of the node here? Before generating or requesting the key.
+		if h.config.IsGenesis {
+			err = h.broadcastSecret()
+			if err != nil {
+				h.logger.Crit("Could not broadcast secret", log.ErrKey, err.Error())
+			}
+		} else {
+			err = h.requestSecret()
+			if err != nil {
+				h.logger.Crit("Could not request secret", log.ErrKey, err.Error())
+			}
 		}
-	} else {
-		err = h.requestSecret()
-		if err != nil {
-			h.logger.Crit("Could not request secret", log.ErrKey, err.Error())
-		}
-	}
 
-	// start the obscuro RPC endpoints
-	if h.rpcServer != nil {
-		h.rpcServer.Start()
-		h.logger.Info("Started client server.")
-	}
-
-	// start the host's main processing loop
-	h.startProcessing()
+		// start the host's main processing loop
+		h.startProcessing()
+	}()
 }
 
 func (h *host) broadcastSecret() error {
@@ -334,12 +277,6 @@ func (h *host) Stop() {
 	}
 	if err := h.enclaveClient.StopClient(); err != nil {
 		h.logger.Error("failed to stop enclave RPC client", log.ErrKey, err)
-	}
-	if h.rpcServer != nil {
-		// We cannot stop the RPC server synchronously. This is because the host itself is being stopped by an RPC
-		// call, so there is a deadlock. The RPC server is waiting for all connections to close, but a single
-		// connection remains open, waiting for the RPC server to close.
-		go h.rpcServer.Stop()
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.

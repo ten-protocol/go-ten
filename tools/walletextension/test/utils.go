@@ -13,26 +13,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/host"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-
-	gethnode "github.com/ethereum/go-ethereum/node"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/go-kit/kit/transport/http/jsonrpc"
-	"github.com/obscuronet/go-obscuro/integration"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
-	enclaverpc "github.com/obscuronet/go-obscuro/go/enclave/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
-
+	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/gorilla/websocket"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/tools/walletextension"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethnode "github.com/ethereum/go-ethereum/node"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	enclaverpc "github.com/obscuronet/go-obscuro/go/enclave/rpc"
+	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
 const (
@@ -85,14 +80,14 @@ func createDummyHost(t *testing.T) {
 	rpcServerNode, err := gethnode.New(&cfg)
 	rpcServerNode.RegisterAPIs([]gethrpc.API{
 		{
-			Namespace: host.APINamespaceObscuro,
-			Version:   host.APIVersion1,
+			Namespace: hostcontainer.APINamespaceObscuro,
+			Version:   hostcontainer.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},
 		{
-			Namespace: host.APINamespaceEth,
-			Version:   host.APIVersion1,
+			Namespace: hostcontainer.APINamespaceEth,
+			Version:   hostcontainer.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},

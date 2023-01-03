@@ -3,6 +3,7 @@ package container
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/metrics"
@@ -11,12 +12,22 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/host"
 	"github.com/obscuronet/go-obscuro/go/host/p2p"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	commonhost "github.com/obscuronet/go-obscuro/go/common/host"
+)
+
+const (
+	APIVersion1             = "1.0"
+	APINamespaceObscuro     = "obscuro"
+	APINamespaceEth         = "eth"
+	APINamespaceObscuroScan = "obscuroscan"
+	APINamespaceNetwork     = "net"
+	APINamespaceTest        = "test"
 )
 
 type HostContainer struct {
@@ -30,12 +41,16 @@ func (h *HostContainer) Start() error {
 	fmt.Println("Starting Obscuro host...")
 	h.logger.Info("Starting Obscuro host...")
 	h.metricsService.Start()
+	// make sure the rpc server has a host to render requests
 	h.host.Start()
+	h.rpcServer.Start()
 	return nil
 }
 
 func (h *HostContainer) Stop() error {
 	h.metricsService.Stop()
+	// make sure the rpc server does not request services from a stopped host
+	h.rpcServer.Stop()
 	h.host.Stop()
 	return nil
 }
@@ -91,11 +106,56 @@ func NewHostContainer(
 	metricsService *metrics.Service, // provides the metrics service for other packages to use
 ) *HostContainer {
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.RollupContractAddress, logger)
-	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, rpcServer, hostWallet, mgmtContractLib, logger, metricsService.Registry())
-	return &HostContainer{
+
+	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, mgmtContractLib, logger, metricsService.Registry())
+
+	hostContainer := &HostContainer{
 		host:           h,
 		logger:         logger,
 		rpcServer:      rpcServer,
 		metricsService: metricsService,
 	}
+
+	if cfg.HasClientRPCHTTP || cfg.HasClientRPCWebsockets {
+		rpcServer.RegisterAPIs([]rpc.API{
+			{
+				Namespace: APINamespaceObscuro,
+				Version:   APIVersion1,
+				Service:   clientapi.NewObscuroAPI(h),
+				Public:    true,
+			},
+			{
+				Namespace: APINamespaceEth,
+				Version:   APIVersion1,
+				Service:   clientapi.NewEthereumAPI(h, logger),
+				Public:    true,
+			},
+			{
+				Namespace: APINamespaceObscuroScan,
+				Version:   APIVersion1,
+				Service:   clientapi.NewObscuroScanAPI(h),
+				Public:    true,
+			},
+			{
+				Namespace: APINamespaceNetwork,
+				Version:   APIVersion1,
+				Service:   clientapi.NewNetworkAPI(h),
+				Public:    true,
+			},
+			{
+				Namespace: APINamespaceTest,
+				Version:   APIVersion1,
+				Service:   clientapi.NewTestAPI(nil, hostContainer),
+				Public:    true,
+			},
+			{
+				Namespace: APINamespaceEth,
+				Version:   APIVersion1,
+				Service:   clientapi.NewFilterAPI(h, logger),
+				Public:    true,
+			},
+		})
+	}
+
+	return hostContainer
 }
