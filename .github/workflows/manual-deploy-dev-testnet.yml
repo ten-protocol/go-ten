@@ -28,7 +28,7 @@ jobs:
 
       - name: "Build Containers in parallel"
         run: |
-          cd ${{ github.workspace }}/obscuro-test/utils/testnet
+          cd ./testnet
           docker compose -f ./.github/workflows/docker/docker-compose.dev-testnet.build.yml build --parallel 
 
   deploy-l1:
