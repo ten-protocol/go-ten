@@ -15,7 +15,7 @@ on:
         default: 'testnet-gethnetwork.uksouth.azurecontainer.io'
 
 jobs:
-  build-images:
+  build-push-images:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -23,12 +23,29 @@ jobs:
       - name: 'Set up Docker'
         uses: docker/setup-buildx-action@v1
 
-      - name: "Build Containers in parallel"
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: "Build images in parallel"
         run: |
           cd ./testnet
-          docker compose -f ../.github/workflows/docker/docker-compose.testnet.build.yml build --parallel 
+          docker compose -f ../.github/workflows/docker/docker-compose.testnet.build.yml build --parallel
+
+      - name: 'Push obscuro node images'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - run: |
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/enclave:latest
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/host:latest
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/contractdeployer:latest    
 
   build:
+    needs: build-push-images
     runs-on: ubuntu-latest
     # Map a step output to a job output
     outputs:
@@ -42,17 +59,6 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: 'Build and push obscuro node images'
-        uses: azure/docker-login@v1
-        with:
-          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-      - run: |
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/enclave:latest
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/host:latest
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/contractdeployer:latest
 
       - name: 'Deploy Contracts'
         id: deployContracts
