@@ -201,8 +201,19 @@ jobs:
               --resource-group Testnet \
               --lb-name testnet-loadbalancer
 
+  wait-node-up:
+    needs: deploy-l2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: "Wait until obscuro node is healthy"
+        shell: bash
+        run: |
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-testnet-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+
   deploy-l2-contracts:
-    needs: deploy
+    needs: wait-node-up
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
