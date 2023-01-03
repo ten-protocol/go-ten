@@ -19,7 +19,7 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: testnet-obscuroscan
-  CONTAINER_REGISTRY: ${{ secrets.REGISTRY_LOGIN_SERVER }}  # set secret with Container Registry URL, example : xyz.azurecr.io 
+  CONTAINER_REGISTRY: testnetobscuronet.azurecr.io  # set secret with Container Registry URL, example : xyz.azurecr.io 
   AZURE_RESOURCE_GROUP: testnet   # set this to your Azure Resource group's name - Needed only if you are provisioning the app in the workflow
   AZURE_APP_PLAN: obscuroscan-plan  # set this to your App service plan's name - Needed only if you are provisioning the app in the workflow
   
@@ -31,22 +31,22 @@ jobs:
     - name: Azure authentication
       uses: azure/login@v1
       with:
-        login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+        login-server: testnetobscuronet.azurecr.io
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     - name: ACR authentication
       uses: azure/docker-login@v1
       with:
-        login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+        login-server: testnetobscuronet.azurecr.io
         username: ${{ secrets.REGISTRY_USERNAME }}
         password: ${{ secrets.REGISTRY_PASSWORD }}    
     - name: Docker Build & Push to ACR
       run: |
-        docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_testnet_obscuroscan:latest -f testnet/obscuroscan.Dockerfile  .
-        docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_testnet_obscuroscan:latest
+        docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_testnet_obscuroscan:latest -f testnet/obscuroscan.Dockerfile  .
+        docker push testnetobscuronet.azurecr.io/obscuronet/obscuro_testnet_obscuroscan:latest
 
     - name: 'Deploy to Azure Web App for Container'
       uses: azure/webapps-deploy@v2
       with: 
         app-name: ${{ env.AZURE_WEBAPP_NAME }} 
-        images: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/obscuro_testnet_obscuroscan:latest
+        images: testnetobscuronet.azurecr.io/obscuronet/obscuro_testnet_obscuroscan:latest
         startup-command: './tools/obscuroscan/main/main --rpcServerAddress http://testnet.obscu.ro:13000 --address 0.0.0.0:80'
