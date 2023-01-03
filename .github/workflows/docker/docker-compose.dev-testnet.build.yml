@@ -3,7 +3,7 @@
 version: '3.9'
 services:
   gethnetwork:
-    image: "testnetobscuronet.azurecr.io/obscuronet/gethnetwork:latest"
+    image: "testnetobscuronet.azurecr.io/obscuronet/dev_testnet_l1network:latest"
     build:
       context: ../../../
       dockerfile: ./testnet/gethnetwork.Dockerfile

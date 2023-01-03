@@ -30,20 +30,20 @@ jobs:
       - name: 'Build and push image'
         uses: azure/docker-login@v1
         with:
-          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          login-server: testnetobscuronet.azurecr.io
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_obscuroscan:latest -f testnet/obscuroscan.Dockerfile  .
-          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_obscuroscan:latest
+          docker build -t testnetobscuronet.azurecr.io/obscuronet/dev_testnet_obscuroscan:latest -f testnet/obscuroscan.Dockerfile  .
+          docker push testnetobscuronet.azurecr.io/obscuronet/dev_testnet_obscuroscan:latest
 
       - name: 'Deploy to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: dev-testnet-obscuroscan
-          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/obscuronet/dev_testnet_obscuroscan:latest
-          registry-login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          image: testnetobscuronet.azurecr.io/obscuronet/dev_testnet_obscuroscan:latest
+          registry-login-server: testnetobscuronet.azurecr.io
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
           registry-password: ${{ secrets.REGISTRY_PASSWORD }}
           name: dev-testnet-obscuroscan
