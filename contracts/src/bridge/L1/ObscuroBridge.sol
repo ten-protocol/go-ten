@@ -87,7 +87,8 @@ contract ObscuroBridge is
             hasRole(ERC20_TOKEN_ROLE, asset),
             "This address has not been given a type and is thus considered not whitelisted."
         );
-
+        
+        // ensures the token is correctly transferred to the contract - tx reverts on failure
         SafeERC20.safeTransferFrom(
             IERC20(asset),
             msg.sender,

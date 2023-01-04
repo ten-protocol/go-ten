@@ -3,6 +3,8 @@ name: Run Hardhat Tests
 
 on:
   pull_request:
+    paths:
+      - 'contracts/**'
     paths-ignore:
       - 'docs/**'
       - 'design/**'
