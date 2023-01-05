@@ -202,7 +202,8 @@ func checkDepositsSuccessful(txInjector *simulation.TransactionInjector, l1Clien
 func checkL2TxsSuccessful(ctx context.Context, rpcHandles *network.RPCHandles, txInjector *simulation.TransactionInjector) {
 	injectedTransfers := len(txInjector.TxTracker.TransferL2Transactions)
 	injectedWithdrawals := len(txInjector.TxTracker.WithdrawalL2Transactions)
-	notFoundTransfers, notFoundWithdrawals := simulation.FindNotIncludedL2Txs(ctx, 0, rpcHandles, txInjector)
+	injectedNativeTransfers := len(txInjector.TxTracker.NativeValueTransferL2Transactions)
+	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := simulation.FindNotIncludedL2Txs(ctx, 0, rpcHandles, txInjector)
 
 	if notFoundTransfers != 0 {
 		println(fmt.Sprintf("Injected %d transfers into the L2 but %d were missing.", injectedTransfers, notFoundTransfers))
@@ -214,5 +215,11 @@ func checkL2TxsSuccessful(ctx context.Context, rpcHandles *network.RPCHandles, t
 		println(fmt.Sprintf("Injected %d withdrawals into the L2 but %d were missing.", injectedWithdrawals, notFoundWithdrawals))
 	} else {
 		println(fmt.Sprintf("Successfully injected %d withdrawals into the L1.", injectedWithdrawals))
+	}
+
+	if notFoundNativeTransfers != 0 {
+		println(fmt.Sprintf("Injected %d native transfers into the L2 but %d were missing.", injectedNativeTransfers, notFoundNativeTransfers))
+	} else {
+		println(fmt.Sprintf("Successfully injected %d withdrawals into the L1.", injectedNativeTransfers))
 	}
 }
