@@ -23,6 +23,19 @@ services:
       - PROFILERENABLED=some_bool
       - P2PPUBLICADDRESS=some_string
       - LOGLEVEL=some_int
+    labels:
+      com.datadoghq.ad.check_names: '["openmetrics"]'
+      com.datadoghq.ad.init_configs: '[{}]'
+      com.datadoghq.ad.instances: |
+        [
+          {
+            "openmetrics_endpoint": "http://%%host%%:14000/debug/metrics/prometheus",
+            "namespace": "host",
+            "metrics": [
+              ".*"
+            ]
+          }
+        ]
     image: testnetobscuronet.azurecr.io/obscuronet/dev_host:latest
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",

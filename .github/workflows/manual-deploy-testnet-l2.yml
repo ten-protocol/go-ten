@@ -160,9 +160,6 @@ jobs:
                -v /proc/:/host/proc/:ro \
                -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
-               -l com.datadoghq.ad.check_names='["openmetrics"]' \
-               -l com.datadoghq.ad.init_configs='[{}]' \
-               -l com.datadoghq.ad.instances='["{\"openmetrics_endpoint\":\"http://%%host%%:14000/debug/metrics \",\"namespace\":\"obscuro_namespace\",\"metrics\":[\".*\"]}"]' \
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/testnet/ \
             && ./start-obscuro-node.sh \
