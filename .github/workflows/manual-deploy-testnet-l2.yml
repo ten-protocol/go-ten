@@ -120,7 +120,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "T${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "T-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
             --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}  testnetlatest=true \
@@ -190,7 +190,7 @@ jobs:
       - name: 'Remove existing backend nodes from the load balancer'
         run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh
 
-      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
+      - name: 'Add load balancer address pool to the IP configuration'
         uses: azure/CLI@v1
         with:
           inlineScript: |
