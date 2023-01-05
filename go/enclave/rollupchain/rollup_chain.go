@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"math/big"
 	"sort"
 	"strings"
@@ -28,6 +27,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 	"github.com/status-im/keycard-go/hexutils"
 

@@ -3,7 +3,6 @@ package contractdeployer
 import (
 	"context"
 	"fmt"
-
 	"math/big"
 	"time"
 

@@ -47,7 +47,6 @@ func TestCustomGenesis(t *testing.T) {
 				{"Address": "%s", "Amount": %d}	] }
 				`,
 			addr1.Hex(), amt1, addr2.Hex(), amt2))
-
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
 	}

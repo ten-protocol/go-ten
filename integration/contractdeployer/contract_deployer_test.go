@@ -3,10 +3,11 @@ package contractdeployer
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 

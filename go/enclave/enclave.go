@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 

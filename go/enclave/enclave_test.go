@@ -4,10 +4,11 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 
 	"github.com/ethereum/go-ethereum/core/state"
 

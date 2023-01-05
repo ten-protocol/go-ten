@@ -2,12 +2,13 @@ package network
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"math/big"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 
 	"github.com/obscuronet/go-obscuro/go/common/container"
 	"github.com/obscuronet/go-obscuro/go/common/host"
