@@ -202,7 +202,7 @@ jobs:
               --lb-name testnet-loadbalancer
 
   wait-node-up:
-    needs: deploy-l2
+    needs: deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
