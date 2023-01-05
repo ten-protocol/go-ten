@@ -52,12 +52,12 @@ describe("Bridge", function () {
 
   it ("Contracts exists", async function() {
     // This test feels redundant as beforeEach would fail ... but I don't trust javascript.
-    await expect(busL1.address).to.not.hexEqual(ethers.constants.AddressZero);
-    await expect(busL2.address).to.not.hexEqual(ethers.constants.AddressZero);
-    await expect(messengerL1.address).to.not.hexEqual(ethers.constants.AddressZero);
-    await expect(messengerL2.address).to.not.hexEqual(ethers.constants.AddressZero);
-    await expect(bridgeL1.address).to.not.hexEqual(ethers.constants.AddressZero);
-    await expect(bridgeL2.address).to.not.hexEqual(ethers.constants.AddressZero);
+    expect(busL1.address).to.not.hexEqual(ethers.constants.AddressZero);
+    expect(busL2.address).to.not.hexEqual(ethers.constants.AddressZero);
+    expect(messengerL1.address).to.not.hexEqual(ethers.constants.AddressZero);
+    expect(messengerL2.address).to.not.hexEqual(ethers.constants.AddressZero);
+    expect(bridgeL1.address).to.not.hexEqual(ethers.constants.AddressZero);
+    expect(bridgeL2.address).to.not.hexEqual(ethers.constants.AddressZero);
   });
 
   async function submitMessagesFromTx(tx: ContractTransaction) {
