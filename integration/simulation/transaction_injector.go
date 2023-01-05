@@ -173,11 +173,8 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 			GasPrice: gethcommon.Big1,
 			To:       &toWalletAddr,
 		}
-		// tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500))
-		tx, err := obscuroClient.EstimateGasAndGasPrice(txData)
-		if err != nil {
-			panic(err)
-		}
+
+		tx := obscuroClient.EstimateGasAndGasPrice(txData)
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -206,8 +203,6 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomTransfers() {
-	var err error
-
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
@@ -217,10 +212,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			toWallet = ti.rndObsWallet()
 		}
 		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500))
-		tx, err = obscuroClient.EstimateGasAndGasPrice(tx)
-		if err != nil {
-			panic(err)
-		}
+		tx = obscuroClient.EstimateGasAndGasPrice(tx)
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
