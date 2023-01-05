@@ -173,7 +173,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 			GasPrice: gethcommon.Big1,
 			To:       &toWalletAddr,
 		}
-		//tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500))
+		// tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500))
 		tx, err := obscuroClient.EstimateGasAndGasPrice(txData)
 		if err != nil {
 			panic(err)
