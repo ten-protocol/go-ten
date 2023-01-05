@@ -132,7 +132,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "T${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
+            az vm open-port -g Testnet -n "T-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
 
       - name: 'Wait for Obscuro sequencer to start'
         shell: bash
@@ -142,7 +142,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "T${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "T-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
