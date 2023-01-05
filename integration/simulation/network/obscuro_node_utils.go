@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
+
 	"github.com/obscuronet/go-obscuro/go/common/container"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/enclave"
@@ -199,7 +201,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 			MessageBusAddress:      *params.L1SetupData.MessageBusAddr,
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
-		encl := enclave.NewEnclave(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
+		encl := enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
 		enclaveContainer := enclavecontainer.EnclaveContainer{
 			Enclave:   encl,
 			RPCServer: enclave.NewEnclaveRPCServer(enclaveConfig.Address, encl, enclaveLogger),

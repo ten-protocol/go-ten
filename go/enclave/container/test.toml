@@ -13,3 +13,4 @@ logLevel = 3
 logPath = "enclave_logs.txt"
 useInMemoryDb = true
 sequencerID = "0x0000000000000000000000000000000000000000"
+obscuroGenesis = ""

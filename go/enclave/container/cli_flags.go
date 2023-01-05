@@ -23,6 +23,7 @@ const (
 	minGasPriceName               = "minGasPrice"
 	messageBusAddressName         = "messageBusAddress"
 	sequencerIDName               = "sequencerID"
+	obscuroGenesisName            = "obscuroGenesis"
 )
 
 // Returns a map of the flag usages.
@@ -50,5 +51,6 @@ func getFlagUsageMap() map[string]string {
 		minGasPriceName:               "The minimum gas price for mining a transaction",
 		messageBusAddressName:         "The address of the L1 message bus contract owned by the management contract.",
 		sequencerIDName:               "The 20 bytes of the address of the sequencer for this network",
+		obscuroGenesisName:            "The json string with the obscuro genesis",
 	}
 }
