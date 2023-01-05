@@ -12,7 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const layer1BridgeDeployment = await hre.companionNetworks.layer1.deployments.get("ObscuroBridge");
     const messengerDeployment = await deployments.get("CrossChainMessenger");
 
-    await deployments.deploy('ObscuroL2Bridge', {
+    await deployments.deploy('EthereumBridge', {
         from: deployer,
         args: [ messengerDeployment.address, layer1BridgeDeployment.address ],
         log: true,
@@ -20,5 +20,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ['ObscuroL2Bridge', 'ObscuroL2Bridge_deploy'];
+func.tags = ['EthereumBridge', 'EthereumBridge_deploy'];
 func.dependencies = ['CrossChainMessenger'];

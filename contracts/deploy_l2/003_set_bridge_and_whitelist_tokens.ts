@@ -9,7 +9,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const l1Accounts = await l1Network.getNamedAccounts();
     const l2Accounts = await l2Network.getNamedAccounts();
 
-    const layer2BridgeDeployment = await l2Network.deployments.get("ObscuroL2Bridge");
+    const layer2BridgeDeployment = await l2Network.deployments.get("EthereumBridge");
     const HOCDeployment = await l1Network.deployments.get("HOCERC20");
     const POCDeployment = await l1Network.deployments.get("POCERC20");
 
@@ -18,8 +18,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     }, "setRemoteBridge", layer2BridgeDeployment.address);
     if (setResult.status != 1) {
-        console.error("Ops");
-        throw Error("ops");
+        console.error("Unable to link L1 and L2 bridges!");
+        throw Error("Unable to link L1 and L2 bridges!");
     }
 
     console.log(`setRemoteBridge = ${layer2BridgeDeployment.address}`);
@@ -30,8 +30,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }, "whitelistToken", HOCDeployment.address, "HOC", "HOC");
 
     if (hocResult.status != 1) {
-        console.error("Ops");
-        throw Error("ops");
+        console.error("Unable to whitelist HOC token!");
+        throw Error("Unable to whitelist HOC token!");
     }
 
     const pocResult = await l1Network.deployments.execute("ObscuroBridge", {
@@ -40,8 +40,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }, "whitelistToken", POCDeployment.address, "POC", "POC");
     
     if (pocResult.status != 1) {
-        console.error("Ops");
-        throw Error("ops");
+        console.error("Unable to whitelist POC token!");
+        throw Error("Unable to whitelist POC token!");
     }
 
     const eventSignature = "LogMessagePublished(address,uint64,uint32,uint32,bytes,uint8)";
@@ -103,4 +103,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ['Whitelist', 'Whitelist_deploy'];
-func.dependencies = ['ObscuroL2Bridge'];
+func.dependencies = ['EthereumBridge'];
