@@ -63,6 +63,12 @@ type HostInputConfig struct {
 	ProfilerEnabled bool
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
+
+	// MetricsEnabled defines whether the metrics are enabled or not
+	MetricsEnabled bool
+
+	// MetricsHTTPPort sets the port where the http server is available
+	MetricsHTTPPort uint
 }
 
 // ToHostConfig returns a HostConfig given a HostInputConfig
@@ -92,6 +98,8 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		ProfilerEnabled:        p.ProfilerEnabled,
 		L1StartHash:            p.L1StartHash,
 		ID:                     gethcommon.Address{},
+		MetricsEnabled:         p.MetricsEnabled,
+		MetricsHTTPPort:        p.MetricsHTTPPort,
 	}
 }
 
@@ -146,6 +154,12 @@ type HostConfig struct {
 
 	// The host's identity derived from the L1 Private Key
 	ID gethcommon.Address
+
+	// MetricsEnabled defines whether the metrics are enabled or not
+	MetricsEnabled bool
+
+	// MetricsHTTPPort sets the port where the http server is available
+	MetricsHTTPPort uint
 }
 
 // DefaultHostParsedConfig returns a HostConfig with default values.
@@ -174,5 +188,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		ObscuroChainID:         777,
 		ProfilerEnabled:        false,
 		L1StartHash:            common.L1RootHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
+		MetricsEnabled:         true,
+		MetricsHTTPPort:        14000,
 	}
 }

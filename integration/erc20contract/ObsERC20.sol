@@ -31,7 +31,11 @@ contract ObsERC20 is ERC20 {
 
     IMessageBus bus;
 
-    enum Topics{ MINT, TRANSFER }
+    enum Topics{ 
+        MINT, 
+        TRANSFER 
+    }
+    
     struct AssetTransferMessage {
         address sender;
         address receiver;

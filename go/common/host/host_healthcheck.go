@@ -19,9 +19,7 @@ type HealthCheckHost struct {
 
 // P2PStatus is the representation of the Status of the P2P layer
 type P2PStatus struct {
-	FailedMessageReads               map[string]int64
-	FailedMessageDecodes             map[string]int64
-	FailedSendMessagesPeerConnection map[string]int64
-	FailedSendMessageWrites          map[string]int64
-	ReceivedMessages                 map[string]int64
+	FailedReceivedMessages int64
+	FailedSendMessage      int64
+	ReceivedMessages       int64
 }

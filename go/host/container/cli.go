@@ -40,6 +40,8 @@ type HostConfigToml struct {
 	ObscuroChainID         int64
 	ProfilerEnabled        bool
 	L1StartHash            string
+	MetricsEnabled         bool
+	MetricsHTTPPort        uint
 }
 
 // ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
@@ -70,6 +72,8 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	privateKeyStr := flag.String(privateKeyName, cfg.PrivateKeyString, flagUsageMap[privateKeyName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
 	l1StartHash := flag.String(l1StartHashName, cfg.L1StartHash.Hex(), flagUsageMap[l1StartHashName])
+	metricsEnabled := flag.Bool(metricsEnabledName, cfg.MetricsEnabled, flagUsageMap[metricsEnabledName])
+	metricsHTPPPort := flag.Uint(metricsHTTPPortName, cfg.MetricsHTTPPort, flagUsageMap[metricsHTTPPortName])
 
 	flag.Parse()
 
@@ -105,6 +109,8 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.ObscuroChainID = *obscuroChainID
 	cfg.ProfilerEnabled = *profilerEnabled
 	cfg.L1StartHash = gethcommon.HexToHash(*l1StartHash)
+	cfg.MetricsEnabled = *metricsEnabled
+	cfg.MetricsHTTPPort = *metricsHTPPPort
 
 	return cfg, nil
 }
@@ -151,5 +157,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		ObscuroChainID:         tomlConfig.ObscuroChainID,
 		ProfilerEnabled:        tomlConfig.ProfilerEnabled,
 		L1StartHash:            gethcommon.HexToHash(tomlConfig.L1StartHash),
+		MetricsEnabled:         tomlConfig.MetricsEnabled,
+		MetricsHTTPPort:        tomlConfig.MetricsHTTPPort,
 	}, nil
 }

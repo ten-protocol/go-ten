@@ -8,19 +8,28 @@ FROM golang:1.17-alpine
 #
 # Note: ego uses a virtual file system mount to map data directory to /data inside the enclave,
 #   for this non-ego build I'm using /data as the data dir to preserve /data folder in paths inside enclave
-RUN mkdir /data
-RUN mkdir /home/obscuro
-RUN mkdir /home/obscuro/go-obscuro
+#
 
-# build the enclave from the current branch
-COPY . /home/obscuro/go-obscuro
-WORKDIR /home/obscuro/go-obscuro/go/enclave/main
+# install build utils
 RUN apk add build-base
 ENV CGO_ENABLED=1
-# Download all the dependencies
-RUN go get -d -v ./...
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.9.1
+
+# setup container data structure
+RUN mkdir -p /data && mkdir -p /home/obscuro/go-obscuro
+
+# Ensures container layer caching when dependencies are not changed
+WORKDIR /home/obscuro/go-obscuro
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
+# COPY the source code as the last step
+COPY . .
+
+# build the enclave from the current branch
+WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 # Install the package
-RUN go install -v ./...
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
+RUN go get -v ./...
+
 EXPOSE 11000
-ENTRYPOINT ["main"]

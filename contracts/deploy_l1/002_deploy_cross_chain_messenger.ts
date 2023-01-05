@@ -1,6 +1,5 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
-import { ManagementContract } from '../typechain-types/contracts/management';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { 

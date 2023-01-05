@@ -11,15 +11,17 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
+	"github.com/obscuronet/go-obscuro/go/common/metrics"
+	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
 
 	"github.com/obscuronet/go-obscuro/go/config"
 
@@ -31,7 +33,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
-
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -102,12 +103,14 @@ func createInMemObscuroNode(
 
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
-	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
+	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
+
+	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, metricsService.Registry())
 	mockP2P.CurrentNode = inMemNode
 	return inMemNode
 }
 
-func createSocketObscuroNode(
+func createSocketObscuroHostContainer(
 	id int64,
 	isGenesis bool,
 	nodeType common.NodeType,
@@ -120,7 +123,7 @@ func createSocketObscuroNode(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	ethClient ethadapter.EthClient,
 	l1StartBlk gethcommon.Hash,
-) commonhost.Host {
+) *container.HostContainer {
 	hostConfig := &config.HostConfig{
 		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
 		IsGenesis:              isGenesis,
@@ -137,18 +140,17 @@ func createSocketObscuroNode(
 		L1ChainID:              integration.EthereumChainID,
 		ObscuroChainID:         integration.ObscuroChainID,
 		L1StartHash:            l1StartBlk,
+		RollupContractAddress:  *mgmtContractLib.GetContractAddr(),
 	}
 
-	// create an enclave client
-	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, id))
-
+	// TODO change this to use the NewHostContainerFromConfig - depends on https://github.com/obscuronet/obscuro-internal/issues/1303
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
+	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
+	hostP2P := p2p.NewSocketP2PLayer(hostConfig, hostLogger.New(log.CmpKey, log.P2PCmp), metricsService.Registry())
+	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, id))
+	rpcServer := clientrpc.NewServer(hostConfig, hostLogger)
 
-	// create a socket P2P layer
-	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
-	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, p2pLogger)
-
-	return host.NewHost(hostConfig, nodeP2p, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger)
+	return container.NewHostContainer(hostConfig, hostP2P, ethClient, enclaveClient, ethWallet, rpcServer, hostLogger, metricsService)
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {

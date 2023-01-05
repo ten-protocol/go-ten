@@ -9,6 +9,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
+	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 )
 
 // Schema keys, in alphabetical order.
@@ -25,14 +26,22 @@ var (
 
 // DB allows to access the nodes public nodeDB
 type DB struct {
-	kvStore ethdb.KeyValueStore
-	logger  gethlog.Logger
+	kvStore     ethdb.KeyValueStore
+	logger      gethlog.Logger
+	batchWrites gethmetrics.Gauge
+	batchReads  gethmetrics.Gauge
+	blockWrites gethmetrics.Gauge
+	blockReads  gethmetrics.Gauge
 }
 
 // NewInMemoryDB returns a new instance of the Node DB
-func NewInMemoryDB() *DB {
+func NewInMemoryDB(regMetrics gethmetrics.Registry) *DB {
 	return &DB{
-		kvStore: gethdb.NewMemDB(),
+		kvStore:     gethdb.NewMemDB(),
+		batchWrites: gethmetrics.NewRegisteredGauge("host/db/batch/writes", regMetrics),
+		batchReads:  gethmetrics.NewRegisteredGauge("host/db/batch/reads", regMetrics),
+		blockWrites: gethmetrics.NewRegisteredGauge("host/db/block/writes", regMetrics),
+		blockReads:  gethmetrics.NewRegisteredGauge("host/db/block/reads", regMetrics),
 	}
 }
 

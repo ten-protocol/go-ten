@@ -8,11 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/container"
-
-	"github.com/obscuronet/go-obscuro/go/enclave"
-
+	"github.com/obscuronet/go-obscuro/go/common/container"
 	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/enclave"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -22,8 +20,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/integration"
 
@@ -31,6 +27,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
 )
 
 const (
@@ -87,7 +86,7 @@ func StartStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 	// handle to the obscuro clients
 	nodeRPCAddresses := make([]string, params.NumberOfNodes)
 	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
-	obscuroNodes := make([]host.Host, params.NumberOfNodes)
+	obscuroNodes := make([]container.Container, params.NumberOfNodes)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
@@ -97,7 +96,7 @@ func StartStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 		nodeRPCPortWS := params.StartPort + DefaultHostRPCWSOffset + i
 
 		// create an Obscuro node
-		obscuroNodes[i] = createSocketObscuroNode(
+		obscuroNodes[i] = createSocketObscuroHostContainer(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
@@ -117,8 +116,11 @@ func StartStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 
 	// start each obscuro node
 	for _, m := range obscuroNodes {
-		t := m
-		go t.Start()
+		// TODO bubble up errors from the containers/host/enclave Start https://github.com/obscuronet/obscuro-internal/issues/1315
+		err := m.Start()
+		if err != nil {
+			testlog.Logger().Crit("unable to start obscuro node ", log.ErrKey, err)
+		}
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
@@ -127,14 +129,16 @@ func StartStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 		var client rpc.Client
 		var err error
 
-		started := false
-		for !started {
+		// create a connection to the newly created nodes - panic if no connection is made after some time
+		startTime := time.Now()
+		for connected := false; !connected; time.Sleep(500 * time.Millisecond) {
 			client, err = rpc.NewNetworkClient(rpcAddress)
-			started = err == nil // The client cannot be created until the node has started.
-			if !started {
-				testlog.Logger().Info(fmt.Sprintf("Could not create client %d. Retrying...", i), log.ErrKey, err)
+			connected = err == nil // The client cannot be created until the node has started.
+			if time.Now().After(startTime.Add(2 * time.Minute)) {
+				testlog.Logger().Crit("failed to create a connect to node after 2 minute")
 			}
-			time.Sleep(500 * time.Millisecond)
+
+			testlog.Logger().Info(fmt.Sprintf("Could not create client %d. Retrying...", i), log.ErrKey, err)
 		}
 
 		obscuroClients[i] = client
@@ -196,7 +200,7 @@ func StartRemoteEnclaveServers(params *params.SimParams) {
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
 		encl := enclave.NewEnclave(enclaveConfig, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
-		enclaveContainer := container.EnclaveContainer{
+		enclaveContainer := enclavecontainer.EnclaveContainer{
 			Enclave:   encl,
 			RPCServer: enclave.NewEnclaveRPCServer(enclaveConfig.Address, encl, enclaveLogger),
 			Logger:    enclaveLogger,

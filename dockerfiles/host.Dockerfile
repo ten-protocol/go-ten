@@ -24,4 +24,3 @@ RUN go build
 
 # expose the http and the ws ports to the host
 EXPOSE 8025 9000
-ENTRYPOINT ["/home/go-obscuro/go/host/main/main"]

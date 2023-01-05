@@ -1,0 +1,27 @@
+name: Run Hardhat Tests
+# Builds and runs tests on each push to a branch PR'ed against main.
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/**'
+    paths-ignore:
+      - 'docs/**'
+      - 'design/**'
+      - 'planning/**'
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: cd contracts && npm install
+      - name: Hardhat test
+        run: cd contracts && npx hardhat test
