@@ -56,7 +56,7 @@ type EnclaveConfig struct {
 	MessageBusAddress gethcommon.Address
 	// The identity of the sequencer for the network
 	SequencerID gethcommon.Address
-	// Specifies the prefunded addresses at the genesis of the Obscuro network
+	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
 	ObscuroGenesis string
 }
 

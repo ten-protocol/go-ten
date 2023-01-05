@@ -61,7 +61,7 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	mcOwnerWallet := datagenerator.RandomWallet(ethereumChainID)
 
 	// create the L2 faucet wallet
-	l2FaucetPrivKey, err := crypto.HexToECDSA(genesis.TestnetGenesisPK)
+	l2FaucetPrivKey, err := crypto.HexToECDSA(genesis.TestnetPrefundedPK)
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}

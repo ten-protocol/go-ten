@@ -6,7 +6,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-const TestnetGenesisPK = "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b" // The faucet's private key.
+const TestnetPrefundedPK = "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b" // The genesis main account private key.
 
 var TestnetGenesis = Genesis{
 	Accounts: []Account{

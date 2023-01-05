@@ -88,7 +88,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	createObscuroNetwork(t)
 
-	faucetWallet := getWallet(genesis.TestnetGenesisPK)
+	faucetWallet := getWallet(genesis.TestnetPrefundedPK)
 	faucetClient := getClient(faucetWallet)
 
 	contractDeployerWallet := getWallet(contractDeployerPrivateKeyHex)
