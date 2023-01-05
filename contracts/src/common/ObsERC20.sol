@@ -9,18 +9,6 @@ import "../messaging/IMessageBus.sol";
 contract ObsERC20 is ERC20 {
     address bridge = 0xdeB34A740ECa1eC42C8b8204CBEC0bA34FDD27f3;
 
-    IMessageBus bus;
-
-    enum Topics {
-        MINT,
-        TRANSFER
-    }
-    struct AssetTransferMessage {
-        address sender;
-        address receiver;
-        uint256 amount;
-    }
-
     constructor(
         string memory name,
         string memory symbol
