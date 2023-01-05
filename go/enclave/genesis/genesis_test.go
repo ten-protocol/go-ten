@@ -13,7 +13,7 @@ import (
 )
 
 func TestDefaultGenesis(t *testing.T) {
-	gen, err := NewGenesis("")
+	gen, err := New("")
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
 	}
@@ -40,7 +40,7 @@ func TestCustomGenesis(t *testing.T) {
 	addr2 := datagenerator.RandomAddress()
 	amt2 := datagenerator.RandomUInt64()
 
-	gen, err := NewGenesis(
+	gen, err := New(
 		fmt.Sprintf(
 			`{"Accounts": [
 				{"Address": "%s", "Amount": %d},

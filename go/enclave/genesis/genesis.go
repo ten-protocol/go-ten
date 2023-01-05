@@ -12,31 +12,20 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
+// Account specifies the address that's prefunded and the amount it's funded with
 type Account struct {
 	Address gethcommon.Address
 	Amount  *big.Int
 }
 
+// Genesis holds a range of prefunded accounts
 type Genesis struct {
 	Accounts []Account
 }
 
-//func (g *Genesis) UnmarshalJSON(data []byte) error {
-//	aux := &struct {
-//		Accounts []struct {
-//			Address []byte
-//			Amount  *big.Int
-//		}
-//	}{}
-//
-//	if err := json.Unmarshal(data, aux); err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
-
-func NewGenesis(genesisJSON string) (*Genesis, error) {
+// New creates a new Genesis given a json string
+// if the string is empty then it defaults to the testnet genesis
+func New(genesisJSON string) (*Genesis, error) {
 	// defaults to the testnet genesis
 	if genesisJSON == "" {
 		return &TestnetGenesis, nil
