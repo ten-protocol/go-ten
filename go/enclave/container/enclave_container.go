@@ -12,6 +12,8 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+
+	enclaveGenesis "github.com/obscuronet/go-obscuro/go/enclave/genesis"
 )
 
 // TODO - Replace with the genesis.json of Obscuro's L1 network.
@@ -59,7 +61,12 @@ func NewEnclaveContainerWithLogger(config config.EnclaveConfig, logger gethlog.L
 	if config.ValidateL1Blocks {
 		config.GenesisJSON = []byte(hardcodedGenesisJSON)
 	}
-	encl := enclave.NewEnclave(config, mgmtContractLib, erc20ContractLib, logger)
+
+	genesis, err := enclaveGenesis.NewGenesis(config.ObscuroGenesis)
+	if err != nil {
+		logger.Crit("unable to parse obscuro genesis", log.ErrKey, err)
+	}
+	encl := enclave.NewEnclave(config, genesis, mgmtContractLib, erc20ContractLib, logger)
 	rpcServer := enclave.NewEnclaveRPCServer(config.Address, encl, logger)
 
 	return &EnclaveContainer{

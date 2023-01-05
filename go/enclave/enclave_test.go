@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"math/big"
 	"testing"
 	"time"
@@ -266,7 +267,7 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 
 // TestGetBalance runs the GetBalance tests
 func TestGetBalance(t *testing.T) {
-	tests := map[string]func(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey){
+	tests := map[string]func(t *testing.T, prefund []genesis.Account, enclave common.Enclave, vk *rpc.ViewingKey){
 		"getBalanceSuccess":             getBalanceSuccess,
 		"getBalanceRequestUnsuccessful": getBalanceRequestUnsuccessful,
 	}
@@ -276,10 +277,10 @@ func TestGetBalance(t *testing.T) {
 		w := datagenerator.RandomWallet(integration.ObscuroChainID)
 
 		// prefund the wallet
-		prefundedAddresses := []prefundedAddress{
+		prefundedAddresses := []genesis.Account{
 			{
-				address: w.Address(),
-				amount:  big.NewInt(123_000_000),
+				Address: w.Address(),
+				Amount:  big.NewInt(123_000_000),
 			},
 		}
 
@@ -302,9 +303,9 @@ func TestGetBalance(t *testing.T) {
 	}
 }
 
-func getBalanceSuccess(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, vk *rpc.ViewingKey) {
+func getBalanceSuccess(t *testing.T, prefund []genesis.Account, enclave common.Enclave, vk *rpc.ViewingKey) {
 	// create the request payload
-	req := []interface{}{prefund[0].address.Hex(), "latest"}
+	req := []interface{}{prefund[0].Address.Hex(), "latest"}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		t.Fatal(err)
@@ -335,12 +336,12 @@ func getBalanceSuccess(t *testing.T, prefund []prefundedAddress, enclave common.
 	}
 
 	// make sure its de expected value
-	if prefund[0].amount.Cmp(balance) != 0 {
-		t.Errorf("unexpected balance, expected %d, got %d", prefund[0].amount, balance)
+	if prefund[0].Amount.Cmp(balance) != 0 {
+		t.Errorf("unexpected balance, expected %d, got %d", prefund[0].Amount, balance)
 	}
 }
 
-func getBalanceRequestUnsuccessful(t *testing.T, prefund []prefundedAddress, enclave common.Enclave, _ *rpc.ViewingKey) {
+func getBalanceRequestUnsuccessful(t *testing.T, prefund []genesis.Account, enclave common.Enclave, _ *rpc.ViewingKey) {
 	type errorTest struct {
 		request  []interface{}
 		errorStr string
@@ -351,15 +352,15 @@ func getBalanceRequestUnsuccessful(t *testing.T, prefund []prefundedAddress, enc
 			errorStr: "no address specified",
 		},
 		"No2ndArg": {
-			request:  []interface{}{prefund[0].address.Hex()},
+			request:  []interface{}{prefund[0].Address.Hex()},
 			errorStr: "required exactly two params, but received 1",
 		},
 		"Nil2ndArg": {
-			request:  []interface{}{prefund[0].address.Hex(), nil},
+			request:  []interface{}{prefund[0].Address.Hex(), nil},
 			errorStr: "empty hex string",
 		},
 		"Rubbish2ndArg": {
-			request:  []interface{}{prefund[0].address.Hex(), "Rubbish"},
+			request:  []interface{}{prefund[0].Address.Hex(), "Rubbish"},
 			errorStr: "hex string without 0x prefix",
 		},
 	} {
@@ -394,9 +395,9 @@ func TestGetBalanceBlockHeight(t *testing.T) {
 	w := datagenerator.RandomWallet(integration.ObscuroChainID)
 	w2 := datagenerator.RandomWallet(integration.ObscuroChainID)
 
-	fundedAtBlock1 := prefundedAddress{
-		address: w.Address(),
-		amount:  big.NewInt(int64(datagenerator.RandomUInt64())),
+	fundedAtBlock1 := genesis.Account{
+		Address: w.Address(),
+		Amount:  big.NewInt(int64(datagenerator.RandomUInt64())),
 	}
 
 	// create the enclave
@@ -415,13 +416,13 @@ func TestGetBalanceBlockHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = injectNewBlockAndChangeBalance(testEnclave, []prefundedAddress{fundedAtBlock1})
+	err = injectNewBlockAndChangeBalance(testEnclave, []genesis.Account{fundedAtBlock1})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// wallet 0 should have balance at block 1
-	err = checkExpectedBalance(testEnclave, gethrpc.BlockNumber(1), w, fundedAtBlock1.amount)
+	err = checkExpectedBalance(testEnclave, gethrpc.BlockNumber(1), w, fundedAtBlock1.Amount)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -456,7 +457,7 @@ func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wal
 }
 
 // createTestEnclave returns a test instance of the enclave
-func createTestEnclave(prefundedAddresses []prefundedAddress) (common.Enclave, error) {
+func createTestEnclave(prefundedAddresses []genesis.Account) (common.Enclave, error) {
 	rndAddr := gethcommon.HexToAddress("contract1")
 	rndAddr2 := gethcommon.HexToAddress("contract2")
 	enclaveConfig := config.EnclaveConfig{
@@ -468,7 +469,12 @@ func createTestEnclave(prefundedAddresses []prefundedAddress) (common.Enclave, e
 		MinGasPrice:            big.NewInt(1),
 	}
 	logger := log.New(log.TestLogCmp, int(gethlog.LvlError), log.SysOut)
-	enclave := NewEnclave(enclaveConfig, nil, nil, logger)
+
+	obsGenesis := &genesis.TestnetGenesis
+	if len(prefundedAddresses) > 0 {
+		obsGenesis = &genesis.Genesis{Accounts: prefundedAddresses}
+	}
+	enclave := NewEnclave(enclaveConfig, obsGenesis, nil, nil, logger)
 
 	_, err := enclave.GenerateSecret()
 	if err != nil {
@@ -483,7 +489,7 @@ func createTestEnclave(prefundedAddresses []prefundedAddress) (common.Enclave, e
 	return enclave, nil
 }
 
-func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) error {
+func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) error {
 	// Random Layer 1 block where the genesis rollup is set
 	blk := types.NewBlock(&types.Header{}, nil, nil, nil, &trie.StackTrie{})
 	_, err := enclave.SubmitL1Block(*blk, make(types.Receipts, 0), true)
@@ -498,7 +504,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	}
 
 	for _, prefundedAddr := range addresses {
-		genesisPreallocStateDB.SetBalance(prefundedAddr.address, prefundedAddr.amount)
+		genesisPreallocStateDB.SetBalance(prefundedAddr.Address, prefundedAddr.Amount)
 	}
 
 	_, err = genesisPreallocStateDB.Commit(false)
@@ -526,7 +532,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []prefundedAddress) err
 	return enclave.(*enclaveImpl).storage.UpdateL1Head(blockHash)
 }
 
-func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAddress) error {
+func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Account) error {
 	headBlock, err := enclave.(*enclaveImpl).storage.FetchHeadBlock()
 	if err != nil {
 		return err
@@ -558,7 +564,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []prefundedAdd
 	}
 
 	for _, fund := range funds {
-		stateDB.SetBalance(fund.address, fund.amount)
+		stateDB.SetBalance(fund.Address, fund.Amount)
 	}
 
 	_, err = stateDB.Commit(false)
@@ -598,11 +604,6 @@ func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber,
 	}
 
 	return nil
-}
-
-type prefundedAddress struct {
-	address gethcommon.Address
-	amount  *big.Int
 }
 
 func dummyRollup(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Rollup {

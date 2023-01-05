@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"math"
 	"math/big"
 	"time"
@@ -99,7 +100,7 @@ func createInMemObscuroNode(
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
-	enclaveClient := enclave.NewEnclave(enclaveConfig, mgmtContractLib, stableTokenContractLib, enclaveLogger)
+	enclaveClient := enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, mgmtContractLib, stableTokenContractLib, enclaveLogger)
 
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)

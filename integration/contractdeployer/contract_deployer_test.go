@@ -3,6 +3,7 @@ package contractdeployer
 import (
 	"context"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"math/big"
 	"testing"
 	"time"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
@@ -87,7 +87,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	createObscuroNetwork(t)
 
-	faucetWallet := getWallet(rollupchain.FaucetPrivateKeyHex)
+	faucetWallet := getWallet(genesis.TestnetGenesisPK)
 	faucetClient := getClient(faucetWallet)
 
 	contractDeployerWallet := getWallet(contractDeployerPrivateKeyHex)

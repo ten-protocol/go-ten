@@ -56,6 +56,8 @@ type EnclaveConfig struct {
 	MessageBusAddress gethcommon.Address
 	// The identity of the sequencer for the network
 	SequencerID gethcommon.Address
+	// Specifies the prefunded addresses at the genesis of the Obscuro network
+	ObscuroGenesis string
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -81,5 +83,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		ProfilerEnabled:           false,
 		MinGasPrice:               big.NewInt(1),
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
+		ObscuroGenesis:            "",
 	}
 }

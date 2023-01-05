@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -84,6 +85,7 @@ type enclaveImpl struct {
 // received from the L1 node if `validateBlocks` is set to true.
 func NewEnclave(
 	config config.EnclaveConfig,
+	genesis *genesis.Genesis,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	logger gethlog.Logger,
@@ -191,6 +193,7 @@ func NewEnclave(
 		enclaveKey,
 		&chainConfig,
 		config.SequencerID,
+		genesis,
 		logger,
 	)
 
