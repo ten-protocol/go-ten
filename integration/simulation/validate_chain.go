@@ -72,6 +72,9 @@ func checkTransactionsInjected(t *testing.T, s *Simulation) {
 	if len(s.TxInjector.TxTracker.WithdrawalL2Transactions) < txThreshold {
 		t.Errorf("Simulation only issued %d withdrawal L2 transactions. At least %d expected", len(s.TxInjector.TxTracker.WithdrawalL2Transactions), txThreshold)
 	}
+	if len(s.TxInjector.TxTracker.NativeValueTransferL2Transactions) < txThreshold {
+		t.Errorf("Simulation only issued %d transfer L2 transactions. At least %d expected", len(s.TxInjector.TxTracker.NativeValueTransferL2Transactions), txThreshold)
+	}
 }
 
 // checkEthereumBlockchainValidity: sanity check of the state of all L1 nodes
@@ -343,7 +346,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeIdx, efficiency, s.Params.L2ToL1EfficiencyThreshold)
 	}
 
-	notFoundTransfers, notFoundWithdrawals := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
+	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
 			nodeIdx, notFoundTransfers, len(s.TxInjector.TxTracker.TransferL2Transactions))
@@ -351,6 +354,10 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	if notFoundWithdrawals > 0 {
 		t.Errorf("Node %d: %d out of %d Withdrawal Txs not found in the enclave",
 			nodeIdx, notFoundWithdrawals, len(s.TxInjector.TxTracker.WithdrawalL2Transactions))
+	}
+	if notFoundNativeTransfers > 0 {
+		t.Errorf("Node %d: %d out of %d Native Transfer Txs not found in the enclave",
+			nodeIdx, notFoundNativeTransfers, len(s.TxInjector.TxTracker.NativeValueTransferL2Transactions))
 	}
 
 	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
@@ -441,8 +448,8 @@ func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsC
 }
 
 // FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.
-func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int) {
-	transfers, withdrawals := txInjector.TxTracker.GetL2Transactions()
+func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int, int) {
+	transfers, withdrawals, nativeTransfers := txInjector.TxTracker.GetL2Transactions()
 	notFoundTransfers := 0
 	for _, tx := range transfers {
 		sender := getSender(tx)
@@ -463,7 +470,17 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 		}
 	}
 
-	return notFoundTransfers, notFoundWithdrawals
+	notFoundNativeTransfers := 0
+	for _, tx := range nativeTransfers {
+		sender := getSender(tx)
+		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
+		l2tx, _, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
+		if err != nil || l2tx == nil {
+			notFoundNativeTransfers++
+		}
+	}
+
+	return notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers
 }
 
 func getSender(tx *common.L2Tx) gethcommon.Address {
