@@ -6,6 +6,11 @@
 * Predominantly internal changes as part of work on faster finality, persistent L1 and updated bridge. No user 
   visible changes or breaking API changes are made. 
 * A list of the PRs merged in this release is as below;
+    * `7652b2c5` Fix for issue deploying testnet (#1020)
+    * `84bd5d82` Added bridge smart contracts and test. (#993)
+    * `8a75bd05` Deployments wait until node 0 is healthy (#1018)
+    * `383b9c7b` Updated changelog (#1016)
+    * `3622359f` Uses known registry address (#1017)
     * `6f4f876c` Decouples host and rpc server (#1014)
     * `81d92fb3` Locks edb version for the obscuro node (#1012)
     * `1bb248d3` Remove unnecessary start method from enclave interface (#1011)
