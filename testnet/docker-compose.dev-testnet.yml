@@ -29,7 +29,7 @@ services:
       com.datadoghq.ad.instances: |
         [
           {
-            "openmetrics_endpoint": "http://%%host%%:14000/debug/metrics/prometheus",
+            "openmetrics_endpoint": "http://host:14000/debug/metrics/prometheus",
             "namespace": "host",
             "metrics": [
               ".*"
