@@ -93,7 +93,7 @@ func TestManagementContract(t *testing.T) {
 			if err != nil {
 				panic(err)
 			}
-			// deploy the same contract to a new address
+			// deploy the same contract to 	a new address
 			receipt, err := network.DeployContract(client, w, bytecode)
 			if err != nil {
 				t.Error(err)

@@ -20,8 +20,7 @@ const config: HardhatUserConfig = {
       optimizer: {
         enabled: true,
         runs: 1000,
-      },
-      remappings : ["@openzeppelin=node_modules/@openzeppelin"],
+      }
     },
   },
   abiExporter : {
