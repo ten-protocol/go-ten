@@ -65,10 +65,10 @@ contract MessageBus is IMessageBus, Ownable {
         Structs.CrossChainMessage calldata crossChainMessage
     ) external view override returns (bool) {
         bytes32 msgHash = keccak256(abi.encode(crossChainMessage));
+        
         uint256 timestamp = messageFinalityTimestamps[msgHash];
         //timestamp exists and block current time has surpassed it.
         return timestamp > 0 && timestamp <= block.timestamp;
-      //  require(timestamp <= block.timestamp, "Message is not finalized yet!");
     }
 
     // Returns the time when a message is final (when the rollup challenge period has passed). If the message was never submitted the call will revert.

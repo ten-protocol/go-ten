@@ -27,6 +27,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 	"github.com/status-im/keycard-go/hexutils"
 
@@ -47,7 +48,7 @@ type RollupChain struct {
 	l1Blockchain         *gethcore.BlockChain
 	bridge               *bridge.Bridge
 	mempool              mempool.Manager
-	faucet               Faucet
+	genesis              *genesis.Genesis
 	crossChainProcessors *crosschain.Processors
 
 	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
@@ -71,6 +72,7 @@ func New(
 	privateKey *ecdsa.PrivateKey,
 	chainConfig *params.ChainConfig,
 	sequencerID gethcommon.Address,
+	genesis *genesis.Genesis,
 	logger gethlog.Logger,
 ) *RollupChain {
 	return &RollupChain{
@@ -80,7 +82,6 @@ func New(
 		l1Blockchain:         l1Blockchain,
 		bridge:               bridge,
 		mempool:              mempool,
-		faucet:               NewFaucet(),
 		crossChainProcessors: crossChainProcessors,
 		enclavePrivateKey:    privateKey,
 		chainConfig:          chainConfig,
@@ -89,6 +90,7 @@ func New(
 		GlobalGasCap:         5_000_000_000,
 		BaseFee:              gethcommon.Big0,
 		sequencerID:          sequencerID,
+		genesis:              genesis,
 	}
 }
 
@@ -131,8 +133,8 @@ func (rc *RollupChain) UpdateL2Chain(batch *core.Batch) (*common.BatchHeader, er
 
 	// If this is the genesis batch, we commit the genesis state.
 	if batch.IsGenesis() {
-		if err = rc.faucet.CommitGenesisState(rc.storage); err != nil {
-			return nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
+		if err = rc.genesis.CommitGenesisState(rc.storage); err != nil {
+			return nil, fmt.Errorf("could not apply genesis state. Cause: %w", err)
 		}
 	}
 
@@ -414,7 +416,7 @@ func (rc *RollupChain) produceAndStoreBatch(block *common.L1Block, genesisBatchS
 
 // Creates a genesis batch linked to the provided L1 block and signs it.
 func (rc *RollupChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, error) {
-	preFundGenesisState, err := rc.faucet.GetGenesisRoot(rc.storage)
+	preFundGenesisState, err := rc.genesis.GetGenesisRoot(rc.storage)
 	if err != nil {
 		return nil, err
 	}
@@ -446,8 +448,8 @@ func (rc *RollupChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Bat
 		rc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
 	}
 
-	if err = rc.faucet.CommitGenesisState(rc.storage); err != nil {
-		return nil, fmt.Errorf("could not apply faucet preallocation. Cause: %w", err)
+	if err = rc.genesis.CommitGenesisState(rc.storage); err != nil {
+		return nil, fmt.Errorf("could not apply genesis preallocation. Cause: %w", err)
 	}
 	return genesisBatch, nil
 }

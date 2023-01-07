@@ -120,7 +120,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "T${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "T-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-testnet-${{ GITHUB.RUN_NUMBER }}" \
             --tags deploygroup=ObscuroNodeTestnet-${{ GITHUB.RUN_NUMBER }}  testnetlatest=true \
@@ -132,7 +132,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "T${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
+            az vm open-port -g Testnet -n "T-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
 
       - name: 'Wait for Obscuro sequencer to start'
         shell: bash
@@ -142,7 +142,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "T${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "T-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
@@ -190,7 +190,7 @@ jobs:
       - name: 'Remove existing backend nodes from the load balancer'
         run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh
 
-      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
+      - name: 'Add load balancer address pool to the IP configuration'
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -202,7 +202,7 @@ jobs:
               --lb-name testnet-loadbalancer
 
   wait-node-up:
-    needs: deploy-l2
+    needs: deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

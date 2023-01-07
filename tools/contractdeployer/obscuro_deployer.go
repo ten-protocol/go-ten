@@ -6,15 +6,15 @@ import (
 	"math/big"
 	"time"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/obsclient/clientutil"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 func prepareObscuroDeployer(cfg *Config, wal wallet.Wallet, logger gethlog.Logger) (contractDeployerClient, error) {
@@ -34,7 +34,7 @@ func prepareObscuroDeployer(cfg *Config, wal wallet.Wallet, logger gethlog.Logge
 
 func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient, logger gethlog.Logger) error {
 	// Create the L2 faucet wallet and client.
-	faucetPrivKey, err := crypto.HexToECDSA(rollupchain.FaucetPrivateKeyHex)
+	faucetPrivKey, err := crypto.HexToECDSA(genesis.TestnetPrefundedPK)
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}

@@ -134,6 +134,11 @@ func (ti *TransactionInjector) Start() {
 	})
 
 	wg.Go(func() error {
+		ti.issueRandomValueTransfers()
+		return nil
+	})
+
+	wg.Go(func() error {
 		ti.issueInvalidL2Txs()
 		return nil
 	})
@@ -150,10 +155,54 @@ func (ti *TransactionInjector) Stop() {
 	}
 }
 
+// issueRandomValueTransfers creates and issues a number of L2 value transfer transactions proportional to the simulation time, such that they can be processed
+func (ti *TransactionInjector) issueRandomValueTransfers() {
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
+		fromWallet := ti.rndObsWallet()
+		toWallet := ti.rndObsWallet()
+		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
+		// We avoid transfers to self, unless there is only a single L2 wallet.
+		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
+			toWallet = ti.rndObsWallet()
+		}
+		toWalletAddr := toWallet.Address()
+		txData := &types.LegacyTx{
+			Nonce:    fromWallet.GetNonceAndIncrement(),
+			Value:    big.NewInt(int64(testcommon.RndBtw(1, 500))),
+			Gas:      uint64(1_000_000),
+			GasPrice: gethcommon.Big1,
+			To:       &toWalletAddr,
+		}
+
+		tx := obscuroClient.EstimateGasAndGasPrice(txData)
+		signedTx, err := fromWallet.SignTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
+		ti.logger.Info(fmt.Sprintf(
+			"Transfer transaction injected into L2. Hash: %d. From address: %d. To address: %d",
+			common.ShortHash(signedTx.Hash()),
+			common.ShortAddress(fromWallet.Address()),
+			common.ShortAddress(toWallet.Address()),
+		))
+
+		ti.stats.Transfer()
+
+		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		if err != nil {
+			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
+			continue
+		}
+
+		// todo - retrieve receipt
+
+		go ti.TxTracker.trackNativeValueTransferL2Tx(signedTx)
+		sleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
+	}
+}
+
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomTransfers() {
-	var err error
-
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
@@ -163,10 +212,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			toWallet = ti.rndObsWallet()
 		}
 		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), testcommon.RndBtw(1, 500))
-		tx, err = obscuroClient.EstimateGasAndGasPrice(tx)
-		if err != nil {
-			panic(err)
-		}
+		tx = obscuroClient.EstimateGasAndGasPrice(tx)
 		signedTx, err := fromWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
