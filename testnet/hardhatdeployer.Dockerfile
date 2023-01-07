@@ -34,4 +34,5 @@ RUN rm package-lock.json
 RUN npm install
 RUN npx hardhat compile
 COPY ./contracts /home/go-obscuro/contracts
+VOLUME /home/go-obscuro/contracts/deployments
 ENTRYPOINT [ "npx", "hardhat" ]

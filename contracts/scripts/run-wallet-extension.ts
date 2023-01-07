@@ -52,7 +52,7 @@ task("start:local:wallet-extension")
     return weProcess;
 });
 
-task("run-wallet-extension", "Starts up the wallet extension docker container.")
+task("start:docker:wallet-extension", "Starts up the wallet extension docker container.")
 .addFlag('wait')
 .addParam('dockerImage', 
     'The docker image to use for wallet extension', 

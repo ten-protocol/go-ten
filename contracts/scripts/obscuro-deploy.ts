@@ -67,47 +67,6 @@ async function submitKey(signedData: SignedData) : Promise<number> {
     });
 }
 
-task("deploy", "Prepares for deploying.")
-.setAction(async function(args, hre, runSuper) {
-
-    const rpcURL = (hre.network.config as HardhatNetworkUserConfig).obscuroEncRpcUrl;
-    
-    if (!rpcURL) {
-        await runSuper();
-        return;
-    } 
-
-    process.on('exit', ()=>{
-        hre.run("stop-wallet-extension")
-    });
-    
-    await hre.run("run-wallet-extension", {rpcUrl : rpcURL});
-
-
-    
-
-    process.on('SIGINT', ()=>exit(1));
-
-    try {
-        const { deployer } = await hre.getNamedAccounts();
-        const key = await viewingKeyForAddress(deployer);
-
-        console.log(`Generated viewing key for ${deployer} - ${key}`);
-
-        const signaturePromise = (await hre.ethers.getSigner(deployer)).signMessage(`vk${key}`);
-        const signedData = { 'signature': await signaturePromise, 'address': deployer };
-        await submitKey(signedData);
-
-        await runSuper();
-    } 
-    finally 
-    {
-        await hre.run("stop-wallet-extension");
-    }
-
-});
-
-
 task("obscuro:deploy", "Prepares for deploying.")
 .setAction(async function(args, hre, runSuper) {
 

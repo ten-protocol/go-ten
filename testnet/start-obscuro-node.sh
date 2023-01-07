@@ -76,6 +76,7 @@ pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
 log_level=4
 sequencer_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pccs_addr="127.0.0.1:8081"
+msg_bus_addr=0xFD03804faCA2538F4633B3EBdfEfc38adafa259B
 
 
 # Fetch options
@@ -102,7 +103,7 @@ do
             --dev_testnet)              dev_testnet=${value} ;;
             --sequencerID)              sequencer_id=${value} ;;
             --pccs_addr)                pccs_addr=${value} ;;
-
+            --msg_bus_addr)             msg_bus_addr=${value} ;;
             --help)                     help_and_exit ;;
             *)
     esac
@@ -132,6 +133,7 @@ echo "PROFILERENABLED=${profiler_enabled}" >> "${testnet_path}/.env"
 echo "P2PPUBLICADDRESS=${p2p_public_address}" >> "${testnet_path}/.env"
 echo "SEQUENCERID=${sequencer_id}" >> "${testnet_path}/.env"
 echo "PCCS_ADDR=${pccs_addr}" >> "${testnet_path}/.env"
+echo "MSGBUSCONTRACTADDR=${msg_bus_addr}" >> "${testnet_path}/.env"
 
 
 if ${debug_enclave} ;

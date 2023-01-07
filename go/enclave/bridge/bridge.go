@@ -4,11 +4,8 @@ package bridge
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math/big"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -229,49 +226,12 @@ func (bridge *Bridge) ExtractDeposits(
 	blockResolver db.BlockResolver,
 	rollupState *state.StateDB,
 ) []*common.L2Tx {
-	from := fromBlock.Hash()
-	height := fromBlock.NumberU64()
 	if !blockResolver.IsAncestor(toBlock, fromBlock) {
 		bridge.logger.Crit("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
 		return nil
 	}
 
-	fromL1Deposits := make([]uint64, 0)
 	allDeposits := make([]*common.L2Tx, 0)
-	b := toBlock
-	for {
-		if bytes.Equal(b.Hash().Bytes(), from.Bytes()) {
-			break
-		}
-		for _, tx := range b.Transactions() {
-			t := bridge.Erc20ContractLib.DecodeTx(tx)
-			if t == nil {
-				continue
-			}
-
-			if depositTx, ok := t.(*ethadapter.L1DepositTx); ok {
-				// todo - the adjust has to be per token
-				depL2Tx := bridge.NewDepositTx(depositTx.TokenContract, *depositTx.Sender, depositTx.Amount, rollupState, uint64(len(allDeposits)))
-				allDeposits = append(allDeposits, depL2Tx)
-				fromL1Deposits = append(fromL1Deposits, common.ShortHash(tx.Hash()))
-			}
-		}
-		if b.NumberU64() < height {
-			bridge.logger.Crit("block height is less than genesis height")
-			return nil
-		}
-		p, err := blockResolver.FetchBlock(b.ParentHash())
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
-			}
-			bridge.logger.Crit("deposits can't be processed because the parent block could not be retrieved", log.ErrKey, err)
-			return nil
-		}
-		b = p
-	}
-
-	bridge.logger.Trace(fmt.Sprintf("Extracted deposits %d ->%d: %v -> %v", fromBlock.NumberU64(), toBlock.NumberU64(), fromL1Deposits, allDeposits))
 	return allDeposits
 }
 

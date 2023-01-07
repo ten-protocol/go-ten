@@ -54,20 +54,22 @@ services:
      - P2PPUBLICADDRESS=some_string
      - LOGLEVEL=some_int
      - SEQUENCERID=some_address
+     - MSGBUSCONTRACTADDR=some_address
     image: testnetobscuronet.azurecr.io/obscuronet/enclave:latest
     entrypoint: [
-                 "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
-                 "--hostID=$HOSTID",
-                 "--address=:11000",
-                 "--nodeType=$NODETYPE",
-                 "--useInMemoryDB=false",
-                 "--sqliteDBPath=/data/sqlite.db",
-                 "--managementContractAddress=$MGMTCONTRACTADDR",
-                 "--erc20ContractAddresses=$HOCERC20ADDR,$POCERC20ADDR",
-                 "--hostAddress=host:10000",
-                 "--profilerEnabled=$PROFILERENABLED",
-                 "--hostAddress=$P2PPUBLICADDRESS",
-                 "--logPath=sys_out",
-                 "--logLevel=$LOGLEVEL",
-                 "--sequencerID=$SEQUENCERID"
+      "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
+      "--hostID=$HOSTID",
+      "--address=:11000",
+      "--nodeType=$NODETYPE",
+      "--useInMemoryDB=false",
+      "--sqliteDBPath=/data/sqlite.db",
+      "--managementContractAddress=$MGMTCONTRACTADDR",
+      "--erc20ContractAddresses=$HOCERC20ADDR,$POCERC20ADDR",
+      "--hostAddress=host:10000",
+      "--profilerEnabled=$PROFILERENABLED",
+      "--hostAddress=$P2PPUBLICADDRESS",
+      "--logPath=sys_out",
+      "--logLevel=$LOGLEVEL",
+      "--sequencerID=$SEQUENCERID",
+      "--messageBusAddress=$MSGBUSCONTRACTADDR"
     ]
