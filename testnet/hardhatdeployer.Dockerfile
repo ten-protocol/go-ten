@@ -24,7 +24,7 @@ WORKDIR /home/go-obscuro/tools/walletextension/main
 RUN go build -o ../bin/wallet_extension_linux
 WORKDIR /home/go-obscuro/tools/walletextension/bin
 
-FROM node:lts
+FROM node:lts-alpine
 
 COPY --from=0 /home/go-obscuro/tools/walletextension/bin /home/go-obscuro/tools/walletextension/bin
 COPY ./contracts /home/go-obscuro/contracts
@@ -33,5 +33,5 @@ WORKDIR /home/go-obscuro/contracts
 RUN rm package-lock.json
 RUN npm install
 RUN npx hardhat compile
-COPY . /home/go-obscuro/contracts/
+COPY ./contracts /home/go-obscuro/contracts
 ENTRYPOINT [ "npx", "hardhat" ]

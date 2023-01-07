@@ -108,6 +108,34 @@ task("deploy", "Prepares for deploying.")
 });
 
 
+task("obscuro:deploy", "Prepares for deploying.")
+.setAction(async function(args, hre, runSuper) {
+
+    const rpcURL = (hre.network.config as HardhatNetworkUserConfig).obscuroEncRpcUrl;
+    
+    if (!rpcURL) {
+        return;
+    } 
+    
+    await hre.run("start:local:wallet-extension", {
+        rpcUrl : rpcURL,
+        withStdOut: true
+    });    
+
+    process.on('SIGINT', ()=>exit(1));
+
+    const { deployer } = await hre.getNamedAccounts();
+    const key = await viewingKeyForAddress(deployer);
+
+    console.log(`Generated viewing key for ${deployer} - ${key}`);
+
+    const signaturePromise = (await hre.ethers.getSigner(deployer)).signMessage(`vk${key}`);
+    const signedData = { 'signature': await signaturePromise, 'address': deployer };
+    await submitKey(signedData);
+
+    await hre.run('deploy');
+});
+
 declare module 'hardhat/types/config' {
     interface HardhatNetworkUserConfig {
         obscuroEncRpcUrl?: string

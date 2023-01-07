@@ -1,7 +1,4 @@
-import { subtask, task } from "hardhat/config";
-import { TASK_COMPILE } from "hardhat/builtin-tasks/task-names";
-import * as path from "path";
-import { HardhatPluginError } from 'hardhat/plugins';
+import { task } from "hardhat/config";
 
 import * as dockerApi from 'node-docker-api';
 import YAML from 'yaml'
@@ -11,6 +8,49 @@ import { NetworksUserConfig, NetworkUserConfig } from "hardhat/types";
 
 import * as url from 'node:url';
 
+import { spawn } from 'node:child_process';
+import * as path from "path";
+
+
+
+task("start:local:wallet-extension")
+.addFlag('withStdOut')
+.addParam('rpcUrl', "Node rpc endpoint where the wallet extension should connect to.")
+.addOptionalParam('port', "Port that the wallet extension will open for incoming requests.", "3001")
+.setAction(async function(args, hre) {
+    const nodeUrl = url.parse(args.rpcUrl)
+
+    if (args.withStdOut) {
+        console.log(`Node url = ${JSON.stringify(nodeUrl, null, "  ")}`);
+    }
+
+    const walletExtensionPath = path.resolve(hre.config.paths.root, "../tools/walletextension/bin/wallet_extension_linux");
+    const weProcess = spawn(walletExtensionPath, [
+        `-portWS`, `${args.port}`,
+        `-nodeHost`, `${nodeUrl.hostname}`,
+        `-nodePortWS`, `${nodeUrl.port}`
+    ]);
+
+    await new Promise((resolve, fail)=>{
+        const timeoutSchedule = setTimeout(fail, 40_000);
+        weProcess.stdout.on('data', (data: string) => {
+            if (args.withStdOut) {
+                console.log(data.toString());
+            }
+
+            if (data.includes("Wallet extension started")) {
+                clearTimeout(timeoutSchedule);
+                resolve(true)
+            }
+        });
+
+        weProcess.stderr.on('data', (data: string) => {
+            console.log(data.toString());
+        });
+    });
+
+    return weProcess;
+});
 
 task("run-wallet-extension", "Starts up the wallet extension docker container.")
 .addFlag('wait')
