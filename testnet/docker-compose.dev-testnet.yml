@@ -59,6 +59,7 @@ services:
       - P2PPUBLICADDRESS=some_string
       - LOGLEVEL=some_int
       - SEQUENCERID=some_address
+      - PCCS_ADDR
     image: testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest
     entrypoint: [
                  "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
@@ -86,6 +87,7 @@ services:
       - default
     environment:
       - EDG_EDB_CERT_DNS=edgelessdb
+      - PCCS_ADDR
     ports:
       - "3306:3306"
       - "8080:8080"

@@ -44,7 +44,7 @@ help_and_exit() {
     echo ""
     echo "  p2p_public_address *Optional* Set host p2p public address. Defaults to 127.0.0.1:10000"
     echo ""
-    echo "  pccs_addr           *Optional* Set the enclave Provision Certificate Cache Service. Defaults to 127.0.0.1:8081"
+    echo "  pccs_addr           *Optional* Set the enclave Provision Certificate Cache Service. Default to None"
     echo ""
     echo "  profiler_enabled   *Optional* Enables the profiler in the host + enclave. Defaults to false"
     echo ""
@@ -75,7 +75,6 @@ host_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
 log_level=4
 sequencer_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
-pccs_addr="127.0.0.1:8081"
 
 
 # Fetch options
@@ -131,8 +130,11 @@ echo "LOGLEVEL=${log_level}" >> "${testnet_path}/.env"
 echo "PROFILERENABLED=${profiler_enabled}" >> "${testnet_path}/.env"
 echo "P2PPUBLICADDRESS=${p2p_public_address}" >> "${testnet_path}/.env"
 echo "SEQUENCERID=${sequencer_id}" >> "${testnet_path}/.env"
-echo "PCCS_ADDR=${pccs_addr}" >> "${testnet_path}/.env"
 
+# only set the env var if it's defined
+if [[ ! -z ${pccs_addr} ]]; then # if not not set check is awful
+    echo "PCCS_ADDR=${pccs_addr}" >> "${testnet_path}/.env"
+fi
 
 if ${debug_enclave} ;
 then
