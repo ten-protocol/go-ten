@@ -132,8 +132,11 @@ echo "P2PPUBLICADDRESS=${p2p_public_address}" >> "${testnet_path}/.env"
 echo "SEQUENCERID=${sequencer_id}" >> "${testnet_path}/.env"
 
 # only set the env var if it's defined
-if [[ ! -z ${pccs_addr} ]]; then # if not not set check is awful
-    echo "PCCS_ADDR=${pccs_addr}" >> "${testnet_path}/.env"
+if [ -z ${pccs_addr+x} ];
+then
+  echo "pccs_addr not set";
+else
+  echo "PCCS_ADDR=${pccs_addr}" >> "${testnet_path}/.env"
 fi
 
 if ${debug_enclave} ;
