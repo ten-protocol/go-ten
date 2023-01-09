@@ -30,7 +30,7 @@ COPY --from=0 /home/go-obscuro/tools/walletextension/bin /home/go-obscuro/tools/
 COPY ./contracts /home/go-obscuro/contracts
 
 WORKDIR /home/go-obscuro/contracts
-RUN rm package-lock.json
+RUN rm package-lock.json || true
 RUN npm install
 RUN npx hardhat compile
 COPY ./contracts /home/go-obscuro/contracts
