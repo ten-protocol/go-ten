@@ -355,9 +355,9 @@ only a single Obscuro node is started, it must be set as a genesis node and as t
 
 ```
 ./testnet-local-gethnetwork.sh --pkaddresses=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944,0x0654D8B60033144D567f25bF41baC1FB0D60F23B
-./testnet-deploy-contracts.sh --l1host=gethnetwork --pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
+./testnet-deploy-l1.sh --l1host=gethnetwork
 ./start-obscuro-node.sh --sgx_enabled=false --host_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0x6d2994ACb911CFceaeE6C36D881cbDFE2F9553B0 --pocerc20addr=0x26c62148Cf06C9742b8506A2BCEcd7d72E51A206 --is_genesis=true --node_type=sequencer
-./testnet-deploy-l2-contracts.sh --l2host=testnet-host-1 
+./testnet-deploy-l2.sh --l2host=testnet-host-1 --l1host=gethnetwork
 ./start-obscuroscan.sh --rpcServerAddress=http://testnet-host-1:13000 --receivingPort=8098
 ```
 
