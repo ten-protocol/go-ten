@@ -56,10 +56,10 @@ time=0
 
 while ! [[ $net_status = *\"OverallHealth\":true* ]]
 do
-    net_status=$(curl -s --request POST "http://${host}:${port}" \
+    net_status=$(curl --request POST "http://${host}:${port}" \
                  --header 'Content-Type: application/json' \
-                 --data-raw '{ "method":"obscuro_health", "params":null, "id":1, "jsonrpc":"2.0" }')
-     echo $net_status
+                 --data-raw '{ "method":"obscuro_health", "params":null, "id":1, "jsonrpc":"2.0" }') || true
+    echo $net_status
 
     sleep 1
     ((time=time+1))

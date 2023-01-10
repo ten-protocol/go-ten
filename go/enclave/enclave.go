@@ -1059,12 +1059,15 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head 
 	}
 
 	var producedExtBatch *common.ExtBatch
+	var producedExtRollup *common.ExtRollup
 	if producedBatch != nil {
 		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
+		producedExtRollup = producedExtBatch.ToExtRollup()
 	}
 
 	return &common.BlockSubmissionResponse{
 		ProducedBatch:  producedExtBatch,
+		ProducedRollup: producedExtRollup,
 		SubscribedLogs: e.getEncryptedLogs(*block, l2Head),
 	}
 }
