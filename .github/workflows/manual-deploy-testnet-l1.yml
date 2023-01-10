@@ -81,7 +81,7 @@ jobs:
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: testnet-gethnetwork
+          dns-name-label: ${{env.L1_CONTAINER_NAME}}
           image: ${{env.L1_DOCKER_BUILD_TAG}}
           registry-login-server: testnetobscuronet.azurecr.io
           registry-username: ${{ secrets.REGISTRY_USERNAME }}
