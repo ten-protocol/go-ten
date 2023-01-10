@@ -10,12 +10,8 @@
 
 name: '[M] Deploy Testnet Obscuroscan'
 
-on: 
-  push:
-    branches:
-    - main
-    paths:
-    - 'tools/obscuroscan/**'
+on:
+  workflow_dispatch:
 
 env:
   AZURE_WEBAPP_NAME: testnet-obscuroscan
