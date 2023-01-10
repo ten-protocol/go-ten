@@ -196,7 +196,9 @@ jobs:
             && sudo apt-get update \
             && sudo apt-get install -y jq \
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
+            && docker network create --driver bridge node_network || true \
             && docker run -d --name datadog-agent \
+               --network node_network \
                -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
                -e DD_LOGS_ENABLED=true \
                -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
