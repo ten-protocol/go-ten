@@ -34,11 +34,11 @@ jobs:
       - name: 'Set up Docker'
         uses: docker/setup-buildx-action@v1
 
-      - name: 'Set deployment variables'
       - if: ${{ testnet_type }} == "testnet"
         run: |
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/testnet_l1network:latest" >> $GITHUB_ENV
           echo "L1_CONTAINER_NAME=testnet-gethnetwork" >> $GITHUB_ENV
+
       - if: ${{ testnet_type }} == "dev-testnet"
         run: |
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_testnet_l1network:latest" >> $GITHUB_ENV
