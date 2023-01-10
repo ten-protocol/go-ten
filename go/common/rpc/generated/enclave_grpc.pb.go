@@ -26,8 +26,6 @@ type EnclaveProtoClient interface {
 	GenerateSecret(ctx context.Context, in *GenerateSecretRequest, opts ...grpc.CallOption) (*GenerateSecretResponse, error)
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
-	// Start - start speculative execution
-	Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
 	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
@@ -105,15 +103,6 @@ func (c *enclaveProtoClient) GenerateSecret(ctx context.Context, in *GenerateSec
 func (c *enclaveProtoClient) InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error) {
 	out := new(InitEnclaveResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/InitEnclave", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *enclaveProtoClient) Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error) {
-	out := new(StartResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/Start", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -276,8 +265,6 @@ type EnclaveProtoServer interface {
 	GenerateSecret(context.Context, *GenerateSecretRequest) (*GenerateSecretResponse, error)
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
-	// Start - start speculative execution
-	Start(context.Context, *StartRequest) (*StartResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
 	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
@@ -333,9 +320,6 @@ func (UnimplementedEnclaveProtoServer) GenerateSecret(context.Context, *Generate
 }
 func (UnimplementedEnclaveProtoServer) InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InitEnclave not implemented")
-}
-func (UnimplementedEnclaveProtoServer) Start(context.Context, *StartRequest) (*StartResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
 }
 func (UnimplementedEnclaveProtoServer) SubmitL1Block(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitL1Block not implemented")
@@ -466,24 +450,6 @@ func _EnclaveProto_InitEnclave_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).InitEnclave(ctx, req.(*InitEnclaveRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EnclaveProto_Start_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StartRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).Start(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/Start",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).Start(ctx, req.(*StartRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -798,10 +764,6 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "InitEnclave",
 			Handler:    _EnclaveProto_InitEnclave_Handler,
-		},
-		{
-			MethodName: "Start",
-			Handler:    _EnclaveProto_Start_Handler,
 		},
 		{
 			MethodName: "SubmitL1Block",
