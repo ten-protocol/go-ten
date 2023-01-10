@@ -786,8 +786,9 @@ func (h *host) checkBlockForSecretResponse(block *types.Block) bool {
 // Handles an incoming set of batches. There are two possibilities:
 // (1) There are no gaps in the historical chain of batches. The new batches can be added immediately
 // (2) There are gaps in the historical chain of batches. To avoid an inconsistent state (i.e. one where we have stored
-// a batch without its parent), we request the sequencer to resend the batches we've just received, plus any missing
-// historical batches, then discard the received batches. We will store all of these at once when we receive them
+//
+//	a batch without its parent), we request the sequencer to resend the batches we've just received, plus any missing
+//	historical batches, then discard the received batches. We will store all of these at once when we receive them
 func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	var batchMsg *hostcommon.BatchMsg
 	err := rlp.DecodeBytes(*encodedBatchMsg, &batchMsg)
@@ -798,7 +799,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	for _, batch := range batchMsg.Batches {
 		// TODO - #718 - Consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
 
-		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
+		// If we do not have the block the batch is tied to, we skip processing the batches for now. We'll catch them
 		// up later, once we've received the L1 block.
 		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
 		if err != nil {
