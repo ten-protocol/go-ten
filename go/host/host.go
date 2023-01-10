@@ -432,7 +432,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	h.processL1BlockTransactions(block)
 
 	// submit each block to the enclave for ingestion plus validation
-	result, err := h.enclaveClient.SubmitL1Block(*block, h.extractReceipts(block), isLatestBlock)
+	blockSubmissionResponse, err := h.enclaveClient.SubmitL1Block(*block, h.extractReceipts(block), isLatestBlock)
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
@@ -441,23 +441,23 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
 
-	h.logEventManager.SendLogsToSubscribers(result)
+	h.logEventManager.SendLogsToSubscribers(blockSubmissionResponse)
 
-	err = h.publishSharedSecretResponses(result.ProducedSecretResponses)
+	err = h.publishSharedSecretResponses(blockSubmissionResponse.ProducedSecretResponses)
 	if err != nil {
 		h.logger.Error("failed to publish response to secret request", log.ErrKey, err)
 	}
 
-	// If we're not the sequencer, we do not need to produce the genesis or publish and distribute rollups.
+	// If we're not the sequencer, we do not need to publish and distribute batches or rollups.
 	if h.config.NodeType != common.Sequencer {
 		return nil
 	}
 
-	if result.ProducedBatch != nil && result.ProducedBatch.Header != nil {
+	if blockSubmissionResponse.ProducedBatch != nil && blockSubmissionResponse.ProducedBatch.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
-		h.publishRollup(result.ProducedBatch.ToExtRollup())
+		h.publishRollup(blockSubmissionResponse.ProducedBatch.ToExtRollup())
 		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.storeAndDistributeBatch(result.ProducedBatch)
+		h.storeAndDistributeBatch(blockSubmissionResponse.ProducedBatch)
 	}
 
 	return nil
