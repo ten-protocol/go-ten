@@ -28,8 +28,14 @@ jobs:
     # Map a step output to a job output
     outputs:
       MGMT_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MGMT_CONTRACT_ADDR }}
-      hocErc20Addr: ${{ steps.deployContracts.outputs.hocErc20Addr }}
-      pocErc20Addr: ${{ steps.deployContracts.outputs.pocErc20Addr }}
+      HOC_ERC20_ADDR: ${{ steps.deployContracts.outputs.HOC_ERC20_ADDR }}
+      POC_ERC20_ADDR: ${{ steps.deployContracts.outputs.POC_ERC20_ADDR }}
+      L2_ENCLAVE_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG }}
+      L2_HOST_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HOST_DOCKER_BUILD_TAG }}
+      L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG }}
+      RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
+      RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
+      RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
 
     steps:
       - uses: actions/checkout@v2
@@ -60,6 +66,7 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
           
       - name: 'Output env vars'
+        id: outputVars
         run: |
           echo "L2_ENCLAVE_DOCKER_BUILD_TAG=${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
           echo "L2_HOST_DOCKER_BUILD_TAG=${{env.L2_HOST_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
@@ -69,21 +76,21 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
           
 
-      - name: 'Build and push obscuro node images'
+      - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
         with:
           login-server: testnetobscuronet.azurecr.io
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Login to Azure docker registry'
-        run: |
-          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
-          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
-          docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
+#      - name: 'Build and push obscuro node images'
+#        run: |
+#          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
+#          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
+#          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
+#          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
+#          docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
+#          docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
 
       - name: 'Deploy Contracts'
         id: deployContracts
@@ -91,13 +98,13 @@ jobs:
         run: |
           ./testnet/testnet-deploy-contracts.sh --l1host=${{ github.event.inputs.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }}
           source ./testnet/.env
+          echo "Contracts deployed to $MGMTCONTRACTADDR and $HOCERC20ADDR and $POCERC20ADDR"
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
           echo "HOC_ERC20_ADDR=$HOCERC20ADDR" >> $GITHUB_ENV
           echo "POC_ERC20_ADDR=$POCERC20ADDR" >> $GITHUB_ENV
-          echo "Contracts deployed to $MGMTCONTRACTADDR and $HOCERC20ADDR and $POCERC20ADDR"
-          echo "MGMT_CONTRACT_ADDR=${{env.MGMTCONTRACTADDR}}" >> $GITHUB_OUTPUT
-          echo "HOC_ERC20_ADDR=${{env.HOC_ERC20_ADDR}}" >> $GITHUB_OUTPUT
-          echo "POC_ERC20_ADDR=${{env.POC_ERC20_ADDR}}" >> $GITHUB_OUTPUT
+          echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_OUTPUT
+          echo "HOC_ERC20_ADDR=$HOCERC20ADDR" >> $GITHUB_OUTPUT
+          echo "POC_ERC20_ADDR=$POCERC20ADDR" >> $GITHUB_OUTPUT
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
       - name: 'Delete deployed VMs'
@@ -147,7 +154,7 @@ jobs:
             host_id: 1
 
     steps:
-      - name: Extract branch name
+      - name: 'Extract branch name'
         shell: bash
         run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF_NAME})"
         id: extract_branch
