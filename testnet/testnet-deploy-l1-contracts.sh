@@ -59,7 +59,7 @@ network_cfg='{
             "url" : '"\"http://${l1host}:${l1port}\""',
             "live" : false,
             "saveDeployments" : true,
-            "deploy": [ "deploy_scripts/layer1", "testnet" ],
+            "deploy": [ "deployment_scripts/layer1", "deployment_scripts/testnet" ],
             "accounts": [ "'${pkstring}'" ]
         }
     }'
