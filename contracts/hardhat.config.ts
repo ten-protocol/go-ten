@@ -4,6 +4,8 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-abi-exporter";
 import "@solidstate/hardhat-bytecode-exporter";
 
+import './tasks/wallet-extension';
+
 const abiExportPath = "./artifacts/abi/";
 const bytecodeExporterPath = "./artifacts/bin/"
 
