@@ -4,8 +4,10 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-abi-exporter";
 import "@solidstate/hardhat-bytecode-exporter";
 
-const abiExportPath = "./artifacts/abi/";
-const bytecodeExporterPath = "./artifacts/bin/"
+import 'hardhat-deploy';
+
+const abiExportPath = "./exported/";
+const bytecodeExporterPath = "./exported/"
 
 const config: HardhatUserConfig = {
   paths: {
@@ -32,6 +34,14 @@ const config: HardhatUserConfig = {
     path: bytecodeExporterPath,
     runOnCompile: true,
     clear: true,
+  },
+  namedAccounts: {
+    deployer: { // Addressed used for deploying.
+        default: 0,
+    },
+    sequncer:{ // For management contract.
+        default: 1,
+    },
   }
 };
 
@@ -108,5 +118,19 @@ task("generate-abi-bindings", "Using the evm bytecode and exported abi's of the 
     }
   }));
 })
+
+try {
+  config.networks = JSON.parse(fs.readFileSync('config/networks.json', 'utf8'));
+} catch (e) {
+  console.log(`Failed parsing "config/networks.json" with reason - ${e}`);
+}
+
+try {
+  if (process.env.NETWORK_JSON != null) {
+    config.networks = JSON.parse(process.env.NETWORK_JSON!!);
+  }
+} catch (e) {
+  console.log(`Unable to parse networks configuration from environment variable. Reason is ${e}`);
+}
 
 export default config;
