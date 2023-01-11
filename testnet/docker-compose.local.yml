@@ -32,3 +32,8 @@ services:
     build:
       context: $ROOT_PATH
       dockerfile: ./testnet/obscuroscan.Dockerfile
+  hardhat-deployer:
+    image: "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
+    build:
+      context: $ROOT_PATH
+      dockerfile: ./testnet/hardhatdeployer.Dockerfile

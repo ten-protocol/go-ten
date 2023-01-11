@@ -16,7 +16,8 @@
     },
     "hardhat": {
       "deploy": [
-        "deployment_scripts/layer1/"
+        "deployment_scripts/layer1/",
+        "deployment_scripts/testnet/"
       ],
       "chainId": 1337,
       "accounts": [
