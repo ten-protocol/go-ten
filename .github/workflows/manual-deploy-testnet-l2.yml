@@ -240,7 +240,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: 'Remove existing backend nodes from the load balancer'
-        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh
+        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}
 
       - name: 'Add load balancer address pool to the IP configuration'
         uses: azure/CLI@v1
@@ -251,7 +251,7 @@ jobs:
               --ip-config-name ipconfig${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }} \
               --nic-name ${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
-              --lb-name -${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-loadbalancer
+              --lb-name ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-loadbalancer
 
   wait-node-up:
     needs:
