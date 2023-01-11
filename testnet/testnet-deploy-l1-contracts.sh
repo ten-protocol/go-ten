@@ -76,3 +76,11 @@ docker run --name=hh-l1-deployer \
     "${docker_image}" \
     deploy \
     --network layer1
+
+mgmtContractAddr=$(docker logs --tail 5 hh-l1-deployer | grep -e 'ManagementContract' | cut -c 121-162)
+pocErc20Addr=$(docker logs --tail 5 hh-l1-deployer | grep -e 'deploying "POC' | cut -c 111-152)
+hocErc20Addr=$(docker logs --tail 5 hh-l1-deployer | grep -e 'deploying "HOC' | cut -c 111-152)
+
+echo "MGMTCONTRACTADDR=${mgmtContractAddr}" > "${testnet_path}/.env"
+echo "HOCERC20ADDR=${hocErc20Addr}" >> "${testnet_path}/.env"
+echo "POCERC20ADDR=${pocErc20Addr}" >> "${testnet_path}/.env"
