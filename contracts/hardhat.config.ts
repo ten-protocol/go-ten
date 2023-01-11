@@ -18,7 +18,6 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 1000,
       },
-      remappings : ["@openzeppelin=node_modules/@openzeppelin"],
       outputSelection: { "*": { "*": [ "*" ], "": [ "*" ] } }
     },
   },
