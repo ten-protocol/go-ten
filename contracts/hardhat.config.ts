@@ -36,7 +36,7 @@ const config: HardhatUserConfig = {
     deployer: { // Addressed used for deploying.
         default: 0,
     },
-    sequncer:{ // For management contract.
+    sequencer:{ // For management contract.
         default: 1,
     },
   }
