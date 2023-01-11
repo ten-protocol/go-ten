@@ -227,7 +227,9 @@ jobs:
 
 
   update-loadbalancer:
-    needs: deploy
+    needs:
+      - build
+      - deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -252,7 +254,9 @@ jobs:
               --lb-name -${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-loadbalancer
 
   wait-node-up:
-    needs: deploy
+    needs:
+      - build
+      - deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -263,7 +267,9 @@ jobs:
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
 
   deploy-l2-contracts:
-    needs: wait-node-up
+    needs:
+      - build
+      - wait-node-up
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
