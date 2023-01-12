@@ -870,12 +870,13 @@ func (rc *RollupChain) processRollups(block *common.L1Block, parentHeadRollup *c
 		if idx+1 >= len(rollups) {
 			break
 		}
-		if rollup.Header.Number.Cmp(rollups[idx+1].Header.Number) == 0 {
-			return fmt.Errorf("duplicates rollups found in block; two rollups with number %d", rollup.Header.Number)
+		if big.NewInt(0).Sub(rollups[idx+1].Header.Number, rollup.Header.Number).Cmp(big.NewInt(1)) != 0 {
+			return fmt.Errorf("found gap in block rollups between rollup %d and rollup %d",
+				rollup.Header.Number, rollups[idx+1].Header.Number)
 		}
 	}
 
-	// todo - joel - check for missing numbers and missing links
+	// todo - joel - check for missing hash links
 
 	// We check each rollup.
 	for _, rollup := range rollups {
