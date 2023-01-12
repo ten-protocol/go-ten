@@ -624,7 +624,7 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 	}
 
 	// Check that the signature is valid.
-	if err := rc.validateSequencerSig(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
+	if err = rc.validateSequencerSig(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
 		return nil, fmt.Errorf("verify batch r_%d: invalid signature. Cause: %w", common.ShortHash(*batch.Hash()), err)
 	}
 
@@ -860,6 +860,11 @@ func (rc *RollupChain) processRollups(block *common.L1Block, parentHeadRollup *c
 		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
 	})
 
+	// We check we receive the genesis rollup first.
+	if parentHeadRollup == nil && !rollups[0].IsGenesis() {
+		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
+	}
+
 	// We check if there are any duplicates.
 	for idx, rollup := range rollups {
 		if idx+1 >= len(rollups) {
@@ -870,20 +875,17 @@ func (rc *RollupChain) processRollups(block *common.L1Block, parentHeadRollup *c
 		}
 	}
 
-	// We check we receive the genesis rollup first.
-	if parentHeadRollup == nil && rollups[0].Number().Cmp(big.NewInt(0)) != 0 {
-		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
-	}
+	// todo - joel - check for missing numbers and missing links
 
 	// We check each rollup.
-	currentHeadRollup := parentHeadRollup
 	for _, rollup := range rollups {
-		if err := rc.checkRollupInternalValidity(rollup, currentHeadRollup); err != nil {
-			return err
+		// We check that the rollup is signed by the sequencer.
+		if err := rc.validateSequencerSig(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
 		if err := rc.checkRollupAgainstBatches(rollup); err != nil {
-			return err
+			rc.logger.Error("could not check rollups against batches", log.ErrKey, err)
 		}
 
 		if err := rc.storage.StoreRollup(rollup); err != nil {
@@ -893,18 +895,15 @@ func (rc *RollupChain) processRollups(block *common.L1Block, parentHeadRollup *c
 		if err := rc.storage.UpdateHeadRollup(&l1HeadHash, rollup.Hash()); err != nil {
 			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 		}
-		currentHeadRollup = rollup
 	}
 
 	return nil
 }
 
-// TODO - Joel - Handle case where batch arrives later than the rollup.
-// TODO - #718 - More validation of the rollup against the batch.
+// TODO - #718 - Additional validation of the rollup against the batch.
 // TODO - #718 - Refactor this logic once there are multiple batches for a single rollup.
 func (rc *RollupChain) checkRollupAgainstBatches(rollup *core.Rollup) error {
 	// We validate the rollup against the corresponding batch.
-	// TODO - #718 - If this validation fails, it's a critical issue. Think about how to handle.
 	batch, err := rc.storage.FetchBatch(*rollup.Hash())
 	if err != nil {
 		return fmt.Errorf("could not retrieve batch for rollup. Cause: %w", err)
@@ -913,22 +912,6 @@ func (rc *RollupChain) checkRollupAgainstBatches(rollup *core.Rollup) error {
 		if tx != batch.Transactions[i] {
 			return fmt.Errorf("mismatch between rollup and batch transactions")
 		}
-	}
-
-	return nil
-}
-
-// Checks that the rollup is internally-valid (as opposed to valid relative to the batch).
-func (rc *RollupChain) checkRollupInternalValidity(rollup *core.Rollup, currentHeadRollup *core.Rollup) error {
-	// We check that the rollup is signed by the sequencer.
-	if err := rc.validateSequencerSig(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
-		return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
-	}
-
-	// We check that the rollups are sequential.
-	if currentHeadRollup != nil && rollup.Header.ParentHash.Hex() != currentHeadRollup.Hash().Hex() {
-		return fmt.Errorf("found gap in rollup chain. Rollup %s's parent was %s instead of %s",
-			rollup.Header.Hash(), rollup.Header.ParentHash, currentHeadRollup.Header.Hash())
 	}
 
 	return nil
