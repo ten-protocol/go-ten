@@ -45,7 +45,7 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Sets env vars for tesnet'
+      - name: 'Sets env vars for testnet'
         if: ${{ github.event.inputs.testnet_type  == 'testnet' }}
         run: |
           echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/enclave:latest" >> $GITHUB_ENV
