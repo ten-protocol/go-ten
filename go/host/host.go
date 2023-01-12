@@ -366,6 +366,7 @@ func (h *host) startProcessing() {
 				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
 			}
 
+		// TODO - #718 - Adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.
 		case batchMsg := <-h.batchP2PCh:
 			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
 			if err := h.handleBatches(&batchMsg); err != nil {
@@ -828,6 +829,8 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 		}
 
 		// We only store the batch locally if it stores successfully on the enclave.
+		// TODO - #718 - Edge case when the enclave is restarted and loses some state; move to having enclave as source
+		//  of truth re: stored batches.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
@@ -839,6 +842,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	return nil
 }
 
+// TODO - #718 - Only allow requests for batches since last rollup, to avoid DoS attacks.
 func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchRequest) error {
 	var batchRequest *common.BatchRequest
 	err := rlp.DecodeBytes(*encodedBatchRequest, &batchRequest)
