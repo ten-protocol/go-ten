@@ -1,9 +1,7 @@
 package common
 
 import (
-	"math"
 	"math/big"
-	"math/rand"
 	"sync/atomic"
 	"time"
 
@@ -40,10 +38,6 @@ func Schedule(delay time.Duration, fun ScheduledFunc) {
 		ticker.Stop()
 		fun()
 	}()
-}
-
-func GenerateNonce() Nonce {
-	return uint64(rand.Int63n(math.MaxInt64)) //nolint:gosec
 }
 
 func MaxInt(x, y uint32) uint32 {
