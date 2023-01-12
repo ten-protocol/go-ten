@@ -341,19 +341,19 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*common.L2RootHash, *core.Batch, error) {
 	// We associate the L1 block with the parent's head rollup for now (unless no head rollup yet exists).
 	l1ParentHash := block.ParentHash()
-	parentHeadRollup, err := rc.storage.FetchHeadRollupForBlock(&l1ParentHash)
+	currentHeadRollup, err := rc.storage.FetchHeadRollupForBlock(&l1ParentHash)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return nil, nil, fmt.Errorf("could not fetch current L2 head rollup")
 	}
-	if parentHeadRollup != nil {
+	if currentHeadRollup != nil {
 		l1Head := block.Hash()
-		if err = rc.storage.UpdateHeadRollup(&l1Head, parentHeadRollup.Hash()); err != nil {
+		if err = rc.storage.UpdateHeadRollup(&l1Head, currentHeadRollup.Hash()); err != nil {
 			return nil, nil, fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 		}
 	}
 
 	// We process the rollups, updating the rollup associated with the L1 block as we go.
-	err = rc.processRollups(block, parentHeadRollup)
+	err = rc.processRollups(block, currentHeadRollup)
 	if err != nil {
 		// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
 		rc.logger.Error("could not process rollups", log.ErrKey, err)
@@ -848,7 +848,7 @@ func (rc *RollupChain) isAccountContractAtBlock(accountAddr gethcommon.Address, 
 }
 
 // Validates and stores the rollup in a given block.
-func (rc *RollupChain) processRollups(block *common.L1Block, parentHeadRollup *core.Rollup) error {
+func (rc *RollupChain) processRollups(block *common.L1Block, currentHeadRollup *core.Rollup) error {
 	// We extract the rollups from the block.
 	rollups := rc.bridge.ExtractRollups(block, rc.storage)
 	if len(rollups) == 0 {
@@ -861,22 +861,32 @@ func (rc *RollupChain) processRollups(block *common.L1Block, parentHeadRollup *c
 	})
 
 	// We check we receive the genesis rollup first.
-	if parentHeadRollup == nil && !rollups[0].IsGenesis() {
+	if currentHeadRollup == nil && !rollups[0].IsGenesis() {
 		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
 	}
 
-	// We check if there are any duplicates.
+	// We check if there are any gaps in the received rollups.
 	for idx, rollup := range rollups {
-		if idx+1 >= len(rollups) {
-			break
+		// We can skip the checks below for the genesis rollup.
+		if idx == 0 && currentHeadRollup == nil {
+			continue
 		}
-		if big.NewInt(0).Sub(rollups[idx+1].Header.Number, rollup.Header.Number).Cmp(big.NewInt(1)) != 0 {
+
+		previousRollup := currentHeadRollup
+		if idx != 0 {
+			previousRollup = rollups[idx-1]
+		}
+
+		if big.NewInt(0).Sub(rollup.Header.Number, previousRollup.Header.Number).Cmp(big.NewInt(1)) != 0 {
 			return fmt.Errorf("found gap in block rollups between rollup %d and rollup %d",
-				rollup.Header.Number, rollups[idx+1].Header.Number)
+				previousRollup.Header.Number, rollup.Header.Number)
+		}
+
+		if rollup.Header.ParentHash != *previousRollup.Hash() {
+			return fmt.Errorf("found gap in block rollups. Rollup %d did not reference rollup %d by hash",
+				previousRollup.Header.Number, rollup.Header.Number)
 		}
 	}
-
-	// todo - joel - check for missing hash links
 
 	// We check each rollup.
 	for _, rollup := range rollups {
