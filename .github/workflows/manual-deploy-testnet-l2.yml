@@ -19,6 +19,7 @@ on:
       L1HOST:
         description: 'L1 FQDN Address (defaults to Dev Testnet L1)'
         required: true
+        # It's expected to supply the L1 to which the deployed L2 will connect to.
         default: 'dev-testnet-gethnetwork.uksouth.azurecontainer.io'
 
 
