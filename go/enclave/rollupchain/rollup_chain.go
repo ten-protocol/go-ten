@@ -885,7 +885,21 @@ func (rc *RollupChain) processRollups(block *common.L1Block, parentHeadRollup *c
 				rollup.Header.Hash(), rollup.Header.ParentHash, currentHeadRollup.Header.Hash())
 		}
 
-		// TODO - #718 - Validate the rollups in the block against the stored batches.
+		// We validate the rollup against the corresponding batch.
+		// TODO - #718 - If this validation fails, it's a critical issue. Think about how to handle.
+		batch, err := rc.storage.FetchBatch(*rollup.Hash())
+		if err != nil {
+			return fmt.Errorf("could not retrieve batch for rollup. Cause: %w", err)
+		}
+		for i, tx := range rollup.Transactions {
+			if tx != batch.Transactions[i] {
+				return fmt.Errorf("mismatch between rollup and batch transactions")
+			}
+		}
+
+		// TODO - Joel - Handle case where batch arrives later than the rollup.
+		// TODO - #718 - More validation of the rollup against the batch.
+		// TODO - #718 - Refactor this logic once there are multiple batches for a single rollup.
 
 		if err := rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
