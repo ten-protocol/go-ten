@@ -16,11 +16,6 @@ on:
         options:
           - 'dev-testnet'
           - 'testnet'
-      L1HOST:
-        description: 'L1 FQDN Address (defaults to Dev Testnet L1)'
-        required: true
-        # It's expected to supply the L1 to which the deployed L2 will connect to.
-        default: 'dev-testnet-gethnetwork.uksouth.azurecontainer.io'
 
 
 jobs:
@@ -37,6 +32,7 @@ jobs:
       RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
       RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
+      L1_HOST: ${{ steps.outputVars.outputs.L1_HOST }}
 
     steps:
       - uses: actions/checkout@v2
@@ -55,6 +51,7 @@ jobs:
           echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
+          echo "L1_HOST=testnet-gethnetwork.uksouth.azurecontainer.io" >> $GITHUB_ENV
           
       - name: 'Sets env vars for dev-tesnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
@@ -65,6 +62,7 @@ jobs:
           echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
+          echo "L1_HOST=dev-testnet-gethnetwork.uksouth.azurecontainer.io" >> $GITHUB_ENV
           
       - name: 'Output env vars'
         id: outputVars
@@ -75,6 +73,7 @@ jobs:
           echo "RESOURCE_TAG_NAME=${{env.RESOURCE_TAG_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
+          echo "L1_HOST=${{env.L1_HOST}}" >> $GITHUB_OUTPUT
           
 
       - name: 'Login to Azure docker registry'
@@ -97,7 +96,7 @@ jobs:
         id: deployContracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-contracts.sh --l1host=${{ github.event.inputs.L1HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }}
+          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1_HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }}
           source ./testnet/.env
           echo "Contracts deployed to $MGMTCONTRACTADDR and $HOCERC20ADDR and $POCERC20ADDR"
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
@@ -218,7 +217,7 @@ jobs:
                --node_type=${{ matrix.node_type }} \
                --sgx_enabled=true \
                --host_id=${{ secrets[matrix.node_pk_addr] }} \
-               --l1host=${{ github.event.inputs.L1HOST }} \
+               --l1host=${{needs.build.outputs.L1_HOST}} \
                --mgmtcontractaddr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
                --hocerc20addr=${{needs.build.outputs.HOC_ERC20_ADDR}} \
                --pocerc20addr=${{needs.build.outputs.POC_ERC20_ADDR}} \
