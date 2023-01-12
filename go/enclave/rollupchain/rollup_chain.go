@@ -851,6 +851,9 @@ func (rc *RollupChain) isAccountContractAtBlock(accountAddr gethcommon.Address, 
 func (rc *RollupChain) processRollups(block *common.L1Block, parentHeadRollup *core.Rollup) error {
 	// We extract the rollups from the block.
 	rollups := rc.bridge.ExtractRollups(block, rc.storage)
+	if len(rollups) == 0 {
+		return nil
+	}
 
 	// We sort the rollups by number in ascending order, in order to process them in the correct order.
 	sort.Slice(rollups, func(i, j int) bool {
@@ -867,39 +870,21 @@ func (rc *RollupChain) processRollups(block *common.L1Block, parentHeadRollup *c
 		}
 	}
 
+	// We check we receive the genesis rollup first.
+	if parentHeadRollup == nil && rollups[0].Number().Cmp(big.NewInt(0)) != 0 {
+		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
+	}
+
 	// We check each rollup.
 	currentHeadRollup := parentHeadRollup
 	for _, rollup := range rollups {
-		if err := rc.validateSequencerSig(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
-			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
+		if err := rc.checkRollupInternalValidity(rollup, currentHeadRollup); err != nil {
+			return err
 		}
 
-		// We check we receive the genesis rollup first.
-		if currentHeadRollup == nil && rollup.Number().Cmp(big.NewInt(0)) != 0 {
-			return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollup.Number())
+		if err := rc.checkRollupAgainstBatches(rollup); err != nil {
+			return err
 		}
-
-		// We check that the rollups are sequential.
-		if currentHeadRollup != nil && rollup.Header.ParentHash.Hex() != currentHeadRollup.Hash().Hex() {
-			return fmt.Errorf("found gap in rollup chain. Rollup %s's parent was %s instead of %s",
-				rollup.Header.Hash(), rollup.Header.ParentHash, currentHeadRollup.Header.Hash())
-		}
-
-		// We validate the rollup against the corresponding batch.
-		// TODO - #718 - If this validation fails, it's a critical issue. Think about how to handle.
-		batch, err := rc.storage.FetchBatch(*rollup.Hash())
-		if err != nil {
-			return fmt.Errorf("could not retrieve batch for rollup. Cause: %w", err)
-		}
-		for i, tx := range rollup.Transactions {
-			if tx != batch.Transactions[i] {
-				return fmt.Errorf("mismatch between rollup and batch transactions")
-			}
-		}
-
-		// TODO - Joel - Handle case where batch arrives later than the rollup.
-		// TODO - #718 - More validation of the rollup against the batch.
-		// TODO - #718 - Refactor this logic once there are multiple batches for a single rollup.
 
 		if err := rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
@@ -909,6 +894,41 @@ func (rc *RollupChain) processRollups(block *common.L1Block, parentHeadRollup *c
 			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 		}
 		currentHeadRollup = rollup
+	}
+
+	return nil
+}
+
+// TODO - Joel - Handle case where batch arrives later than the rollup.
+// TODO - #718 - More validation of the rollup against the batch.
+// TODO - #718 - Refactor this logic once there are multiple batches for a single rollup.
+func (rc *RollupChain) checkRollupAgainstBatches(rollup *core.Rollup) error {
+	// We validate the rollup against the corresponding batch.
+	// TODO - #718 - If this validation fails, it's a critical issue. Think about how to handle.
+	batch, err := rc.storage.FetchBatch(*rollup.Hash())
+	if err != nil {
+		return fmt.Errorf("could not retrieve batch for rollup. Cause: %w", err)
+	}
+	for i, tx := range rollup.Transactions {
+		if tx != batch.Transactions[i] {
+			return fmt.Errorf("mismatch between rollup and batch transactions")
+		}
+	}
+
+	return nil
+}
+
+// Checks that the rollup is internally-valid (as opposed to valid relative to the batch).
+func (rc *RollupChain) checkRollupInternalValidity(rollup *core.Rollup, currentHeadRollup *core.Rollup) error {
+	// We check that the rollup is signed by the sequencer.
+	if err := rc.validateSequencerSig(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+		return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
+	}
+
+	// We check that the rollups are sequential.
+	if currentHeadRollup != nil && rollup.Header.ParentHash.Hex() != currentHeadRollup.Hash().Hex() {
+		return fmt.Errorf("found gap in rollup chain. Rollup %s's parent was %s instead of %s",
+			rollup.Header.Hash(), rollup.Header.ParentHash, currentHeadRollup.Header.Hash())
 	}
 
 	return nil
