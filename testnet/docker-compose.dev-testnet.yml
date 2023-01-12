@@ -99,6 +99,7 @@ services:
       - default
     environment:
       - EDG_EDB_CERT_DNS=edgelessdb
+      - PCCS_ADDR
     ports:
       - "3306:3306"
       - "8080:8080"

@@ -5,17 +5,25 @@
 #
 #
 
+if [[ $1 == "testnet" ]]; then
+  lb=testnet-loadbalancer
+  pool=Backend-Pool-Obscuro-testnet
+else
+  lb=devtestnet-loadbalancer
+  pool=Backend-Pool-Obscuro-devtestnet
+fi
+
 nic_id=$(az network lb address-pool show \
     --resource-group Testnet \
-    --lb-name testnet-loadbalancer \
-    --name Backend-Pool-Obscuro-Testnet \
+    --lb-name ${lb} \
+    --name ${pool} \
     --query backendIpConfigurations \
     --output tsv | cut -f5 | cut -d "/" -f 9)
 
 ipconfig_id=$(az network lb address-pool show \
     --resource-group Testnet \
-    --lb-name testnet-loadbalancer \
-    --name Backend-Pool-Obscuro-Testnet \
+    --lb-name ${lb} \
+    --name ${pool} \
     --query backendIpConfigurations \
     --output tsv | cut -f5 | cut -d "/" -f 11)
 
@@ -30,11 +38,11 @@ if [[ -z "${ipconfig_id}" ]]; then
 fi
 
 az network nic ip-config address-pool remove \
-   --address-pool Backend-Pool-Obscuro-Testnet \
+   --address-pool ${pool} \
    --ip-config-name "${ipconfig_id}" \
    --nic-name "${nic_id}" \
    --resource-group Testnet \
-   --lb-name testnet-loadbalancer \
+   --lb-name ${lb} \
    
 
 echo 'Load balancer removed successfully'
