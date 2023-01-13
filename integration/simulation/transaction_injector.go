@@ -241,6 +241,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
+	var err error
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		v := testcommon.RndBtw(1, 100)
 		ethClient := ti.rpcHandles.RndEthClient()
@@ -253,11 +254,14 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			Sender:        &addr,
 		}
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
-		estimatedTx, err := ethClient.EstimateGasAndGasPrice(tx, addr)
+		tx, err = ethClient.EstimateGasAndGasPrice(tx, addr)
 		if err != nil {
-			estimatedTx = tx
+			sleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
+			// todo review this nonce management, this bug took WAY longer to find than expected
+			ethWallet.SetNonce(ethWallet.GetNonce() - 1)
+			continue
 		}
-		signedTx, err := ethWallet.SignTransaction(estimatedTx)
+		signedTx, err := ethWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
 		}

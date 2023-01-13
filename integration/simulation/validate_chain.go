@@ -271,10 +271,10 @@ func ExtractDataFromEthereumChain(
 			}
 			switch l1tx := t.(type) {
 			case *ethadapter.L1DepositTx:
-				deposits = append(deposits, tx.Hash())
-				totalDeposited.Add(totalDeposited, l1tx.Amount)
 				// TODO: Remove this hack once the old integrated bridge is removed.
 				if receipt, err := node.TransactionReceipt(tx.Hash()); err == nil && receipt.Status == 1 {
+					deposits = append(deposits, tx.Hash())
+					totalDeposited.Add(totalDeposited, l1tx.Amount)
 					succesfulDeposits++
 				}
 			case *ethadapter.L1RollupTx:
