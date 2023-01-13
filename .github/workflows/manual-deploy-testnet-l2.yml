@@ -102,7 +102,7 @@ jobs:
         id: deployContracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1_HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }}
+          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1_HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} --docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
           source ./testnet/.env
           echo "Contracts deployed to $MGMTCONTRACTADDR and $HOCERC20ADDR and $POCERC20ADDR"
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
