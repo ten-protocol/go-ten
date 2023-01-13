@@ -1,10 +1,11 @@
 package smartcontract
 
 import (
-	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/ethereum/go-ethereum/log"
 
@@ -172,7 +173,7 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 		w.GetNonceAndIncrement(),
 	)
 
-	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
+	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
 		t.Error(err)
 	}
