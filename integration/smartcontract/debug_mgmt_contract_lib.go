@@ -45,12 +45,6 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 		&ethadapter.L1RollupTx{Rollup: encodedRollup},
 		w.GetNonceAndIncrement(),
 	)
-	txData, err = client.EstimateGasAndGasPrice(txData, w.Address())
-	if err != nil {
-		// todo review this nonce management
-		w.SetNonce(w.GetNonce() - 1)
-		return err
-	}
 
 	issuedTx, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {

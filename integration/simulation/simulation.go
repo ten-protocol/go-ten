@@ -8,21 +8,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
@@ -214,6 +211,7 @@ func (s *Simulation) prefundL1Accounts() {
 		if err != nil {
 			// ignore txs that are not able to be estimated/execute
 			testlog.Logger().Error("unable to estimate tx", log.ErrKey, err)
+			tokenOwner.SetNonce(tokenOwner.GetNonce() - 1)
 			continue
 		}
 		signedTx, err := tokenOwner.SignTransaction(estimatedTx)
