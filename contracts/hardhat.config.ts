@@ -4,6 +4,7 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-abi-exporter";
 import "@solidstate/hardhat-bytecode-exporter";
 
+import './tasks/wallet-extension';
 import * as abigen from './tasks/abigen';
 
 const config: HardhatUserConfig = {
