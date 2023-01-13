@@ -51,6 +51,7 @@ task("obscuro:wallet-extension:start:local")
     return weProcess;
 });
 
+// This is not to be used for internal development. It is targeted at external devs when the obscuro hh plugin is finished!
 task("obscuro:wallet-extension:start:docker", "Starts up the wallet extension docker container.")
 .addFlag('wait')
 .addParam('dockerImage', 
@@ -111,6 +112,7 @@ task("obscuro:wallet-extension:start:docker", "Starts up the wallet extension do
     }
 });
 
+// This is not to be used for internal development. It is targeted at external devs when the obscuro hh plugin is finished!
 task("obscuro:wallet-extension:stop:docker", "Stops the docker container with matching image name.")
 .addParam('dockerImage', 
     'The docker image to use for wallet extension', 
