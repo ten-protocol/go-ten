@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"math/big"
 	"sync"
 	"time"
@@ -197,6 +198,7 @@ func (s *Simulation) deployObscuroERC20s() {
 // Sends an amount from the faucet to each L1 account, to pay for transactions.
 func (s *Simulation) prefundL1Accounts() {
 	for _, w := range s.Params.Wallets.SimEthWallets {
+		ethClient := s.RPCHandles.RndEthClient()
 		receiver := w.Address()
 		tokenOwner := s.Params.Wallets.Tokens[bridge.HOC].L1Owner
 		ownerAddr := tokenOwner.Address()
@@ -207,7 +209,13 @@ func (s *Simulation) prefundL1Accounts() {
 			Sender:        &ownerAddr,
 		}
 		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData, tokenOwner.GetNonceAndIncrement())
-		signedTx, err := tokenOwner.SignTransaction(tx)
+		estimatedTx, err := ethClient.EstimateGasAndGasPrice(tx, tokenOwner.Address())
+		if err != nil {
+			// ignore txs that are not able to be estimated/execute
+			testlog.Logger().Error("unable to estimate tx", log.ErrKey, err)
+			continue
+		}
+		signedTx, err := tokenOwner.SignTransaction(estimatedTx)
 		if err != nil {
 			panic(err)
 		}
@@ -215,11 +223,6 @@ func (s *Simulation) prefundL1Accounts() {
 		if err != nil {
 			panic(err)
 		}
-
-		// TODO:: Add better tracking for failed transactions and display revert reasons
-
-		// Not sure why this is tracked as deposit; This is a prefunding transfer. Needs different logic.
-		// s.Stats.Deposit(initialBalance)
 
 		go s.TxInjector.TxTracker.trackL1Tx(txData)
 	}
