@@ -1,6 +1,7 @@
 package smartcontract
 
 import (
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 	"time"
@@ -128,13 +129,9 @@ func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmt
 		w.GetNonceAndIncrement(),
 	)
 
-	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
-	if err != nil {
+	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
+	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
 		t.Error(err)
-	}
-
-	if receipt.Status != types.ReceiptStatusFailed {
-		t.Errorf("transaction should have failed, expected %d got %d", 0, receipt.Status)
 	}
 }
 
@@ -176,12 +173,8 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 	)
 
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
-	if err != nil {
+	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
 		t.Error(err)
-	}
-
-	if receipt.Status != types.ReceiptStatusFailed {
-		t.Errorf("transaction should have failed, expected %d got %d", 0, receipt.Status)
 	}
 }
 
@@ -284,12 +277,9 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 		true,
 	)
 
-	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
-	if err != nil {
+	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
+	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
 		t.Error(err)
-	}
-	if receipt.Status != types.ReceiptStatusFailed {
-		t.Errorf("transaction should have failed, expected %d got %d", 1, receipt.Status)
 	}
 
 	// agg c responds to the secret AGAIN, but trying to mimick aggregator A
@@ -303,12 +293,9 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 		true,
 	)
 
-	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
-	if err != nil {
+	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
+	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
 		t.Error(err)
-	}
-	if receipt.Status != types.ReceiptStatusFailed {
-		t.Errorf("transaction should have failed, expected %d got %d", 0, receipt.Status)
 	}
 }
 

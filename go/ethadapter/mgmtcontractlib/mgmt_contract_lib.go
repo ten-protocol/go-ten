@@ -142,11 +142,9 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 	}
 
 	return &types.LegacyTx{
-		Nonce:    nonce,
-		GasPrice: constants.DefaultGasPrice,
-		Gas:      constants.DefaultGasLimit,
-		To:       c.addr,
-		Data:     data,
+		Nonce: nonce,
+		To:    c.addr,
+		Data:  data,
 	}
 }
 
@@ -157,11 +155,9 @@ func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx, 
 	}
 
 	return &types.LegacyTx{
-		Nonce:    nonce,
-		GasPrice: constants.DefaultGasPrice,
-		Gas:      constants.DefaultGasLimit,
-		To:       c.addr,
-		Data:     data,
+		Nonce: nonce,
+		To:    c.addr,
+		Data:  data,
 	}
 }
 
