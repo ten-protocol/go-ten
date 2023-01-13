@@ -215,8 +215,7 @@ func (e *gethRPCClient) EstimateGasAndGasPrice(txData types.TxData, from gethcom
 		Data:  unEstimatedTx.Data(),
 	})
 	if err != nil {
-		e.logger.Warn("unable to estimate tx - skipping gas limit assignment ", log.ErrKey, err, "txData", txData)
-		gasLimit = unEstimatedTx.Gas()
+		return nil, err
 	}
 
 	return &types.LegacyTx{
