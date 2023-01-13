@@ -28,9 +28,10 @@ start_path="$(cd "$(dirname "${0}")" && pwd)"
 testnet_path="${start_path}"
 
 # Define defaults
-l1port=9000
-docker_image="testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest"
-
+l1port=8025
+docker_image="testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
+pkstring="f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
+    
 # Fetch options
 for argument in "$@"
 do
@@ -53,56 +54,35 @@ then
     help_and_exit
 fi
 
+network_cfg='{ 
+        "layer1" : {
+            "url" : '"\"http://${l1host}:${l1port}\""',
+            "live" : false,
+            "saveDeployments" : true,
+            "deploy": [ "deployment_scripts/layer1", "deployment_scripts/testnet" ],
+            "accounts": [ "'${pkstring}'" ]
+        }
+    }'
+
 # deploy contracts to the geth network
-echo "Deploying contracts to the geth network..."
+echo "Creating docker network..."
 docker network create --driver bridge node_network || true
 
-# deploy Obscuro management contract\
-echo "Deploying Obscuro management contract to L1 network"
-docker run --name=mgmtcontractdeployer \
+echo "Deploying contracts to Layer 1 using obscuro hardhat container..."
+docker run --name=hh-l1-deployer \
     --network=node_network \
-    --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
+    -e NETWORK_JSON="${network_cfg}" \
     "${docker_image}" \
-    --nodeHost=${l1host} \
-    --nodePort=${l1port} \
-    --l1Deployment \
-    --contractName="MGMT" \
-    --privateKey=${pkstring}
-# storing the contract address to the .env file (note: this first contract creates/overwrites the .env file)
-mgmtContractAddr=$(docker logs --tail 1 mgmtcontractdeployer)
+    deploy \
+    --network layer1
+
+# --tail 5 gets the last 5 lines of the deployment; grep -e '' gives us the line matching the pattern; cut takes out the address where the contract has been deployed
+# The standard output from the hh deploy plugin looks like
+#  deploying "ManagementContract" (tx: 0xcb6e341c9f30e1b86214542bcd1c930f202201b4483801df5cd3c1f53c4b55f8)...: deployed at 0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF with 2533700 gas
+mgmtContractAddr=$(docker logs --tail 5 hh-l1-deployer | grep -e 'ManagementContract' | cut -c 121-162)
+pocErc20Addr=$(docker logs --tail 5 hh-l1-deployer | grep -e 'deploying "POC' | cut -c 111-152)
+hocErc20Addr=$(docker logs --tail 5 hh-l1-deployer | grep -e 'deploying "HOC' | cut -c 111-152)
+
 echo "MGMTCONTRACTADDR=${mgmtContractAddr}" > "${testnet_path}/.env"
-echo ""
-
-# deploy Hocus ERC20 contract
-echo "Deploying Hocus ERC20 contract to L1 network"
-docker run --name=hocerc20deployer \
-    --network=node_network \
-    --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
-     "${docker_image}" \
-    --nodeHost=${l1host} \
-    --nodePort=${l1port} \
-    --l1Deployment \
-    --contractName="Layer1ERC20" \
-    --privateKey=${pkstring}\
-    --constructorParams="Hocus,HOC,1000000000000000000000000000000,${mgmtContractAddr}"
-# storing the contract address to the .env file
-hocErc20Addr=$(docker logs --tail 1 hocerc20deployer)
 echo "HOCERC20ADDR=${hocErc20Addr}" >> "${testnet_path}/.env"
-echo ""
-
-# deploy Pocus ERC20 contract
-echo "Deploying Pocus ERC20 contract to L1 network"
-docker run --name=pocerc20deployer \
-    --network=node_network \
-    --entrypoint /home/go-obscuro/tools/contractdeployer/main/main \
-     "${docker_image}" \
-    --nodeHost=${l1host} \
-    --nodePort=${l1port} \
-    --l1Deployment \
-    --contractName="Layer1ERC20" \
-    --privateKey=${pkstring}\
-    --constructorParams="Pocus,POC,1000000000000000000000000000000,${mgmtContractAddr}"
-# storing the contract address to the .env file
-pocErc20Addr=$(docker logs --tail 1 pocerc20deployer)
 echo "POCERC20ADDR=${pocErc20Addr}" >> "${testnet_path}/.env"
-echo ""
