@@ -14,7 +14,6 @@ import (
 	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
@@ -175,11 +174,9 @@ func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, 
 		panic(err)
 	}
 	return &types.LegacyTx{
-		Nonce:    nonce,
-		GasPrice: constants.DefaultGasPrice,
-		Gas:      constants.DefaultGasLimit,
-		To:       c.addr,
-		Data:     data,
+		Nonce: nonce,
+		To:    c.addr,
+		Data:  data,
 	}
 }
 
@@ -195,11 +192,9 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecr
 		panic(err)
 	}
 	return &types.LegacyTx{
-		Nonce:    nonce,
-		GasPrice: constants.DefaultGasPrice,
-		Gas:      constants.DefaultGasLimit,
-		To:       c.addr,
-		Data:     data,
+		Nonce: nonce,
+		To:    c.addr,
+		Data:  data,
 	}
 }
 

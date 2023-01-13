@@ -104,13 +104,13 @@ func StopGethNetwork(clients []ethadapter.EthClient, netw *gethnetwork.GethNetwo
 // DeployContract returns receipt of deployment
 // todo -this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
-	var err error
-
-	deployContractTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
-		GasPrice: constants.DefaultGasPrice,
-		Gas:      constants.DefaultGasLimit,
-		Data:     contractBytes,
+	deployContractTx, err := workerClient.EstimateGasAndGasPrice(&types.LegacyTx{
+		Nonce: w.GetNonceAndIncrement(),
+		Data:  contractBytes,
+	}, w.Address())
+	if err != nil {
+		w.SetNonce(w.GetNonce() - 1)
+		return nil, err
 	}
 
 	signedTx, err := w.SignTransaction(deployContractTx)

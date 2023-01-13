@@ -195,6 +195,11 @@ func (h *host) broadcastSecret() error {
 		HostAddress:   h.config.P2PPublicAddress,
 	}
 	initialiseSecretTx := h.mgmtContractLib.CreateInitializeSecret(l1tx, h.ethWallet.GetNonceAndIncrement())
+	initialiseSecretTx, err = h.ethClient.EstimateGasAndGasPrice(initialiseSecretTx, h.ethWallet.Address())
+	if err != nil {
+		h.ethWallet.SetNonce(h.ethWallet.GetNonce() - 1)
+		return err
+	}
 	// we block here until we confirm a successful receipt. It is important this is published before the initial rollup.
 	err = h.signAndBroadcastL1Tx(initialiseSecretTx, l1TxTriesSecret, true)
 	if err != nil {
@@ -654,6 +659,8 @@ func (h *host) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 }
 
 func (h *host) publishSharedSecretResponses(scrtResponses []*common.ProducedSecretResponse) error {
+	var err error
+
 	for _, scrtResponse := range scrtResponses {
 		// todo: implement proper protocol so only one host responds to this secret requests initially
 		// 	for now we just have the genesis host respond until protocol implemented
@@ -671,7 +678,7 @@ func (h *host) publishSharedSecretResponses(scrtResponses []*common.ProducedSecr
 		}
 		// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 		respondSecretTx := h.mgmtContractLib.CreateRespondSecret(l1tx, h.ethWallet.GetNonceAndIncrement(), false)
-		respondSecretTx, err := h.ethClient.EstimateGasAndGasPrice(respondSecretTx, h.ethWallet.Address())
+		respondSecretTx, err = h.ethClient.EstimateGasAndGasPrice(respondSecretTx, h.ethWallet.Address())
 		if err != nil {
 			h.ethWallet.SetNonce(h.ethWallet.GetNonce() - 1)
 			return err
