@@ -118,12 +118,10 @@ func (rc *RollupChain) UpdateL2Chain(batch *core.Batch) (*common.BatchHeader, er
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	// We validate the received batch, before storing it and updating the head.
-	batchTxReceipts, err := rc.checkBatch(batch)
+	batchTxReceipts, err := rc.validateBatch(batch)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check batch. Cause: %w", err)
+		return nil, fmt.Errorf("failed to validate batch. Cause: %w", err)
 	}
-
 	if err = rc.storage.StoreBatch(batch, batchTxReceipts); err != nil {
 		return nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
@@ -341,8 +339,8 @@ func (rc *RollupChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool)
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
 func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*common.L2RootHash, *core.Batch, error) {
-	err := rc.processRollups(block)
-	if err != nil {
+	// We process the rollups, updating the head rollup associated with the L1 block as we go.
+	if err := rc.processRollups(block); err != nil {
 		// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
 		rc.logger.Error("could not process rollups", log.ErrKey, err)
 	}
@@ -357,8 +355,8 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool
 		genesisBatchStored = false
 	}
 
-	var l2HeadTxReceipts types.Receipts
 	// If there is an L2 head, we retrieve its stored receipts.
+	var l2HeadTxReceipts types.Receipts
 	if genesisBatchStored {
 		if l2HeadTxReceipts, err = rc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
 			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
@@ -375,7 +373,7 @@ func (rc *RollupChain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool
 		producedBatch = l2Head
 	}
 
-	// We update the chain heads.
+	// We update the L1 and L2 chain heads.
 	if l2Head != nil {
 		if err = rc.storage.UpdateHeadBatch(block.Hash(), l2Head, l2HeadTxReceipts); err != nil {
 			return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
@@ -612,7 +610,7 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 	}
 
 	// Check that the signature is valid.
-	if err := rc.validateSequencerSig(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
+	if err = rc.checkSignedBySequencer(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
 		return nil, fmt.Errorf("verify batch r_%d: invalid signature. Cause: %w", common.ShortHash(*batch.Hash()), err)
 	}
 
@@ -638,7 +636,7 @@ func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error
 }
 
 // Checks that the batch is valid, both internally and relative to the previously-stored batches.
-func (rc *RollupChain) checkBatch(batch *core.Batch) ([]*types.Receipt, error) {
+func (rc *RollupChain) validateBatch(batch *core.Batch) ([]*types.Receipt, error) {
 	// TODO - #718 - Determine what level of checking we should perform on the genesis batch.
 	if batch.IsGenesis() {
 		return nil, nil
@@ -671,7 +669,7 @@ func (rc *RollupChain) signBatch(batch *core.Batch) error {
 }
 
 // Checks that the header is signed validly by the sequencer.
-func (rc *RollupChain) validateSequencerSig(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
+func (rc *RollupChain) checkSignedBySequencer(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
 	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
 	if !bytes.Equal(aggregator.Bytes(), rc.sequencerID.Bytes()) {
@@ -837,32 +835,12 @@ func (rc *RollupChain) isAccountContractAtBlock(accountAddr gethcommon.Address, 
 
 // Validates and stores the rollup in a given block.
 func (rc *RollupChain) processRollups(block *common.L1Block) error {
-	// We extract the rollups from the block.
-	rollups := rc.bridge.ExtractRollups(block, rc.storage)
-
-	// We sort the rollups by number in ascending order, in order to process them in the correct order.
-	sort.Slice(rollups, func(i, j int) bool {
-		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
-	})
-
-	// We check if there are any duplicates.
-	for idx, rollup := range rollups {
-		if idx+1 >= len(rollups) {
-			break
-		}
-		if rollup.Header.Number.Cmp(rollups[idx+1].Header.Number) == 0 {
-			return fmt.Errorf("duplicates rollups found in block; two rollups with number %d", rollup.Header.Number)
-		}
-	}
-
-	// We retrieve the current head rollup.
+	// Initially, we associate the L1 block with the parent's head rollup. This will be updated as we process rollups.
 	l1ParentHash := block.ParentHash()
 	currentHeadRollup, err := rc.storage.FetchHeadRollupForBlock(&l1ParentHash)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not fetch current L2 head rollup")
 	}
-
-	// We associated the L1 block with the current head rollup, unless no head rollup exists yet.
 	if currentHeadRollup != nil {
 		l1Head := block.Hash()
 		if err = rc.storage.UpdateHeadRollup(&l1Head, currentHeadRollup.Hash()); err != nil {
@@ -870,34 +848,80 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 		}
 	}
 
-	// We check each rollup.
-	for _, rollup := range rollups {
-		if err = rc.validateSequencerSig(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+	rollups := rc.bridge.ExtractRollups(block, rc.storage)
+	if len(rollups) == 0 {
+		return nil
+	}
+
+	// We sort the rollups in order to process them in the correct order.
+	sort.Slice(rollups, func(i, j int) bool {
+		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
+	})
+
+	// We check we receive the genesis rollup first.
+	if currentHeadRollup == nil && !rollups[0].IsGenesis() {
+		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
+	}
+
+	for idx, rollup := range rollups {
+		if !rollup.IsGenesis() {
+			previousRollup := currentHeadRollup
+			if idx != 0 {
+				previousRollup = rollups[idx-1]
+			}
+			if err := rc.checkRollupChain(rollup, previousRollup); err != nil {
+				return err
+			}
+		}
+
+		if err := rc.checkSignedBySequencer(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
 			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
-		// We check we receive the genesis rollup first.
-		if currentHeadRollup == nil && rollup.Number().Cmp(big.NewInt(0)) != 0 {
-			return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollup.Number())
+		if err := rc.checkRollupAgainstBatches(rollup); err != nil {
+			// TODO - #718 - Determine how to handle this critical error case.
+			rc.logger.Error("could not check rollups against batches", log.ErrKey, err)
 		}
 
-		// We check that the rollups are sequential.
-		if currentHeadRollup != nil && rollup.Header.ParentHash.Hex() != currentHeadRollup.Hash().Hex() {
-			return fmt.Errorf("found gap in rollup chain. Rollup %s's parent was %s instead of %s",
-				rollup.Header.Hash(), rollup.Header.ParentHash, currentHeadRollup.Header.Hash())
-		}
-
-		// TODO - #718 - Validate the rollups in the block against the stored batches.
-
-		if err = rc.storage.StoreRollup(rollup); err != nil {
+		if err := rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
-
 		l1HeadHash := block.Hash()
-		if err = rc.storage.UpdateHeadRollup(&l1HeadHash, rollup.Hash()); err != nil {
+		if err := rc.storage.UpdateHeadRollup(&l1HeadHash, rollup.Hash()); err != nil {
 			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 		}
-		currentHeadRollup = rollup
+	}
+
+	return nil
+}
+
+func (rc *RollupChain) checkRollupChain(rollup *core.Rollup, previousRollup *core.Rollup) error {
+	if big.NewInt(0).Sub(rollup.Header.Number, previousRollup.Header.Number).Cmp(big.NewInt(1)) != 0 {
+		return fmt.Errorf("found gap in block rollups between rollup %d and rollup %d",
+			previousRollup.Header.Number, rollup.Header.Number)
+	}
+
+	if rollup.Header.ParentHash != *previousRollup.Hash() {
+		return fmt.Errorf("found gap in block rollups. Rollup %d did not reference rollup %d by hash",
+			previousRollup.Header.Number, rollup.Header.Number)
+	}
+	return nil
+}
+
+// TODO - #718 - Additional validation of the rollup against the batch.
+// TODO - #718 - Refactor this logic once there are multiple batches for a single rollup.
+func (rc *RollupChain) checkRollupAgainstBatches(rollup *core.Rollup) error {
+	// We validate the rollup against the corresponding batch.
+	// TODO - #718 - Handle case where rollup is received ahead of batch (currently, we simply log an error in the
+	//  calling method).
+	batch, err := rc.storage.FetchBatch(*rollup.Hash())
+	if err != nil {
+		return fmt.Errorf("could not retrieve batch for rollup. Cause: %w", err)
+	}
+	for i, tx := range rollup.Transactions {
+		if tx != batch.Transactions[i] {
+			return fmt.Errorf("mismatch between rollup and batch transactions")
+		}
 	}
 
 	return nil

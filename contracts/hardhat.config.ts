@@ -5,6 +5,8 @@ import "hardhat-abi-exporter";
 import "@solidstate/hardhat-bytecode-exporter";
 
 import 'hardhat-deploy';
+
+import './tasks/wallet-extension';
 import * as abigen from './tasks/abigen';
 
 const config: HardhatUserConfig = {

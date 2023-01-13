@@ -366,6 +366,7 @@ func (h *host) startProcessing() {
 				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
 			}
 
+		// TODO - #718 - Adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.
 		case batchMsg := <-h.batchP2PCh:
 			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
 			if err := h.handleBatches(&batchMsg); err != nil {
@@ -786,8 +787,9 @@ func (h *host) checkBlockForSecretResponse(block *types.Block) bool {
 // Handles an incoming set of batches. There are two possibilities:
 // (1) There are no gaps in the historical chain of batches. The new batches can be added immediately
 // (2) There are gaps in the historical chain of batches. To avoid an inconsistent state (i.e. one where we have stored
-// a batch without its parent), we request the sequencer to resend the batches we've just received, plus any missing
-// historical batches, then discard the received batches. We will store all of these at once when we receive them
+//
+//	a batch without its parent), we request the sequencer to resend the batches we've just received, plus any missing
+//	historical batches, then discard the received batches. We will store all of these at once when we receive them
 func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	var batchMsg *hostcommon.BatchMsg
 	err := rlp.DecodeBytes(*encodedBatchMsg, &batchMsg)
@@ -798,7 +800,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	for _, batch := range batchMsg.Batches {
 		// TODO - #718 - Consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
 
-		// If we do not have the block the rollup is tied to, we skip processing the batches for now. We'll catch them
+		// If we do not have the block the batch is tied to, we skip processing the batches for now. We'll catch them
 		// up later, once we've received the L1 block.
 		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
 		if err != nil {
@@ -827,6 +829,8 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 		}
 
 		// We only store the batch locally if it stores successfully on the enclave.
+		// TODO - #718 - Edge case when the enclave is restarted and loses some state; move to having enclave as source
+		//  of truth re: stored batches.
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
@@ -838,6 +842,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	return nil
 }
 
+// TODO - #718 - Only allow requests for batches since last rollup, to avoid DoS attacks.
 func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchRequest) error {
 	var batchRequest *common.BatchRequest
 	err := rlp.DecodeBytes(*encodedBatchRequest, &batchRequest)

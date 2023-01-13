@@ -38,6 +38,12 @@ func (r *Rollup) Hash() *common.L2RootHash {
 func (r *Rollup) NumberU64() uint64 { return r.Header.Number.Uint64() }
 func (r *Rollup) Number() *big.Int  { return new(big.Int).Set(r.Header.Number) }
 
+// IsGenesis indicates whether the rollup is the genesis rollup.
+// TODO - #718 - Change this to a check against a hardcoded genesis hash.
+func (r *Rollup) IsGenesis() bool {
+	return r.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
+}
+
 func (r *Rollup) ToExtRollup(transactionBlobCrypto crypto.TransactionBlobCrypto) *common.ExtRollup {
 	txHashes := make([]gethcommon.Hash, len(r.Transactions))
 	for idx, tx := range r.Transactions {
