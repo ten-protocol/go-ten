@@ -8,6 +8,7 @@ import 'hardhat-deploy';
 
 import './tasks/wallet-extension';
 import * as abigen from './tasks/abigen';
+import './tasks/obscuro-deploy';
 
 import * as fs from "fs";
 
@@ -40,8 +41,11 @@ const config: HardhatUserConfig = {
     deployer: { // Addressed used for deploying.
         default: 0,
     },
-    sequencer:{ // For management contract.
+    hocowner: {
         default: 1,
+    },
+    pocowner: {
+        default: 2,
     },
   }
 };
