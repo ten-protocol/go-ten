@@ -4,6 +4,7 @@ package contractdeployer
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -90,8 +91,8 @@ func (cd *contractDeployer) run() (string, error) {
 
 	deployContractTx := types.LegacyTx{
 		Nonce:    cd.wallet.GetNonceAndIncrement(),
-		GasPrice: constants.DefaultGasPrice,
-		Gas:      constants.DefaultGasLimit,
+		GasPrice: big.NewInt(2000000000),
+		Gas:      uint64(1025_000_000),
 		Data:     cd.contractCode,
 	}
 

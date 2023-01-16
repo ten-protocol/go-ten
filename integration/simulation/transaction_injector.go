@@ -257,7 +257,10 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		tx := ti.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
 		tx, err = ethClient.EstimateGasAndGasPrice(tx, addr)
 		if err != nil {
-			panic(err)
+			// todo review this nonce management, updating the nonce with a failed tx bug took WAY longer to find than expected
+			ethWallet.SetNonce(ethWallet.GetNonce() - 1)
+			sleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
+			continue
 		}
 		signedTx, err := ethWallet.SignTransaction(tx)
 		if err != nil {

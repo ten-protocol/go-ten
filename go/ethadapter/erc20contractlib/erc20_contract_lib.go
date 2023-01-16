@@ -6,7 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -52,11 +51,9 @@ func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethadapter.L1DepositTx, nonce
 	}
 
 	return &types.LegacyTx{
-		Nonce:    nonce,
-		GasPrice: constants.DefaultGasPrice,
-		Gas:      constants.DefaultGasLimit,
-		To:       tx.TokenContract,
-		Data:     data,
+		Nonce: nonce,
+		To:    tx.TokenContract,
+		Data:  data,
 	}
 }
 
