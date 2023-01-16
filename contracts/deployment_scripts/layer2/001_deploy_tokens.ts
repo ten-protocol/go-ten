@@ -13,6 +13,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         pocowner,
     } = await getNamedAccounts();
 
+    console.log(`HOC = ${hocowner}  POC=${pocowner}`);
+
+    await hre.run('obscuro:wallet-extension:add-key', {address: hocowner});
+    await hre.run('obscuro:wallet-extension:add-key', {address: pocowner});
+
     await deployments.deploy('L2HOCERC20', {
         from: hocowner,
         contract: "WrappedERC20",

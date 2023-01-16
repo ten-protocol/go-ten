@@ -41,14 +41,11 @@ const config: HardhatUserConfig = {
     deployer: { // Addressed used for deploying.
         default: 0,
     },
-    sequencer:{ // For management contract.
+    hocowner: {
         default: 1,
     },
-    hocowner: {
-        default: 2,
-    },
     pocowner: {
-        default: 3,
+        default: 2,
     },
   }
 };

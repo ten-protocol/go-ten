@@ -56,7 +56,7 @@ do
 done
 
 # ensure required fields
-if [[ -z ${l2host:-} || -z ${pkstring:-} || -z ${hocpkstring:-} || -z ${pocpkstring:-} ]];
+if [[ -z ${l2host:-} || -z ${deployer_pkstring:-} || -z ${hocpkstring:-} || -z ${pocpkstring:-} ]];
 then
     help_and_exit
 fi
@@ -72,7 +72,6 @@ network_cfg='{
             "saveDeployments" : true,
             "deploy": [ "deployment_scripts/layer2" ],
             "accounts": [ 
-                "'${deployer_pkstring}'",
                 "'${deployer_pkstring}'",
                 "'${hocpkstring}'",
                 "'${pocpkstring}'"
