@@ -48,21 +48,33 @@ func (h *HostContainer) Start() error {
 	h.logger.Info("Started Obscuro host...")
 	fmt.Println("Started Obscuro host...")
 
-	err = h.rpcServer.Start()
-	if err != nil {
-		return err
+	if h.rpcServer != nil {
+		err = h.rpcServer.Start()
+		if err != nil {
+			return err
+		}
+
+		h.logger.Info("Started Obscuro host RPC Server...")
+		fmt.Println("Started Obscuro host RPC Server...")
 	}
-	h.logger.Info("Started Obscuro host RPC Server...")
-	fmt.Println("Started Obscuro host RPC Server...")
+
 	return nil
 }
 
 func (h *HostContainer) Stop() error {
 	h.metricsService.Stop()
+	
 	// make sure the rpc server does not request services from a stopped host
-	h.rpcServer.Stop()
+	if h.rpcServer != nil {
+		h.rpcServer.Stop()
+	}
+
 	h.host.Stop()
 	return nil
+}
+
+func (h *HostContainer) Host() commonhost.Host {
+	return h.host
 }
 
 // NewHostContainerFromConfig uses config to create all HostContainer dependencies and inject them into a new HostContainer
@@ -100,24 +112,25 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostConta
 	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, metricsService.Registry())
 	rpcServer := clientrpc.NewServer(cfg, logger)
 
-	return NewHostContainer(cfg, aggP2P, l1Client, enclaveClient, ethWallet, rpcServer, logger, metricsService)
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.RollupContractAddress, logger)
+
+	return NewHostContainer(cfg, aggP2P, l1Client, enclaveClient, mgmtContractLib, ethWallet, rpcServer, logger, metricsService)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
 func NewHostContainer(
-	cfg *config.HostConfig, // provides various parameters that the host needs to function
-	p2p commonhost.P2P, // provides the inbound and outbound p2p communication layer
-	l1Client ethadapter.EthClient, // provides inbound and outbound L1 connectivity
-	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
-	hostWallet wallet.Wallet, // provides an L1 wallet for the host's transactions
-	rpcServer clientrpc.Server, // For communication with Obscuro client applications
-	logger gethlog.Logger, // provides logging with context
-	metricsService *metrics.Service, // provides the metrics service for other packages to use
+	cfg *config.HostConfig,                      // provides various parameters that the host needs to function
+	p2p commonhost.P2P,                          // provides the inbound and outbound p2p communication layer
+	l1Client ethadapter.EthClient,               // provides inbound and outbound L1 connectivity
+	enclaveClient common.Enclave,                // provides RPC connection to this host's Enclave
+	contractLib mgmtcontractlib.MgmtContractLib, // provides the management contract lib injection
+	hostWallet wallet.Wallet,                    // provides an L1 wallet for the host's transactions
+	rpcServer clientrpc.Server,                  // For communication with Obscuro client applications
+	logger gethlog.Logger,                       // provides logging with context
+	metricsService *metrics.Service,             // provides the metrics service for other packages to use
 ) *HostContainer {
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.RollupContractAddress, logger)
-
-	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, mgmtContractLib, logger, metricsService.Registry())
+	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
 
 	hostContainer := &HostContainer{
 		host:           h,
@@ -155,7 +168,7 @@ func NewHostContainer(
 			{
 				Namespace: APINamespaceTest,
 				Version:   APIVersion1,
-				Service:   clientapi.NewTestAPI(nil, hostContainer),
+				Service:   clientapi.NewTestAPI(hostContainer),
 				Public:    true,
 			},
 			{
