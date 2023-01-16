@@ -129,7 +129,7 @@ task("obscuro:wallet-extension:stop:docker", "Stops the docker container with ma
     await container?.stop()
 });
 
-task("add-key", "Creates a viewing key for a specifiec address")
+task("obscuro:wallet-extension:add-key", "Creates a viewing key for a specifiec address")
 .addParam("address", "The address for which to add key")
 .setAction(async function(args, hre) {
     async function viewingKeyForAddress(address: string) : Promise<string> {

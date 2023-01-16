@@ -11,28 +11,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     await deployments.deploy('HOCERC20', {
         from: deployer,
-        contract: "WrappedERC20",
-        args: [ "HOC", "HOC" ],
+        contract: "ConstantSupplyERC20",
+        args: [ "HOC", "HOC", "1000000000000000000000000000000" ],
         log: true,
     });
 
     await deployments.deploy('POCERC20', {
         from: deployer,
-        contract: "WrappedERC20",
-        args: [ "POC", "POC" ],
+        contract: "ConstantSupplyERC20",
+        args: [ "POC", "POC", "1000000000000000000000000000000" ],
         log: true,
     });
-
-
-    await deployments.execute('HOCERC20', {
-        from: deployer,
-        log: true,
-    }, "issueFor", deployer, "1000000000000000000000000000000");
-
-    await deployments.execute('POCERC20', {
-        from: deployer,
-        log: true, 
-    }, "issueFor", deployer, "1000000000000000000000000000000");
 };
 
 export default func;
