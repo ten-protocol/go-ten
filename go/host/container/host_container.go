@@ -63,7 +63,7 @@ func (h *HostContainer) Start() error {
 
 func (h *HostContainer) Stop() error {
 	h.metricsService.Stop()
-	
+
 	// make sure the rpc server does not request services from a stopped host
 	if h.rpcServer != nil {
 		h.rpcServer.Stop()
@@ -120,15 +120,15 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostConta
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
 func NewHostContainer(
-	cfg *config.HostConfig,                      // provides various parameters that the host needs to function
-	p2p commonhost.P2P,                          // provides the inbound and outbound p2p communication layer
-	l1Client ethadapter.EthClient,               // provides inbound and outbound L1 connectivity
-	enclaveClient common.Enclave,                // provides RPC connection to this host's Enclave
+	cfg *config.HostConfig, // provides various parameters that the host needs to function
+	p2p commonhost.P2P, // provides the inbound and outbound p2p communication layer
+	l1Client ethadapter.EthClient, // provides inbound and outbound L1 connectivity
+	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
 	contractLib mgmtcontractlib.MgmtContractLib, // provides the management contract lib injection
-	hostWallet wallet.Wallet,                    // provides an L1 wallet for the host's transactions
-	rpcServer clientrpc.Server,                  // For communication with Obscuro client applications
-	logger gethlog.Logger,                       // provides logging with context
-	metricsService *metrics.Service,             // provides the metrics service for other packages to use
+	hostWallet wallet.Wallet, // provides an L1 wallet for the host's transactions
+	rpcServer clientrpc.Server, // For communication with Obscuro client applications
+	logger gethlog.Logger, // provides logging with context
+	metricsService *metrics.Service, // provides the metrics service for other packages to use
 ) *HostContainer {
 	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
 
