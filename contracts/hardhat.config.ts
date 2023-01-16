@@ -8,6 +8,7 @@ import 'hardhat-deploy';
 
 import './tasks/wallet-extension';
 import * as abigen from './tasks/abigen';
+import './tasks/obscuro-deploy';
 
 import * as fs from "fs";
 
