@@ -30,7 +30,7 @@ func (e *EnclaveContainer) Start() error {
 	if err != nil {
 		return err
 	}
-	e.Logger.Info("Obscuro enclave service started.")
+	e.Logger.Info("obscuro enclave RPC service started.")
 	return nil
 }
 
