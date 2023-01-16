@@ -44,6 +44,12 @@ const config: HardhatUserConfig = {
     sequencer:{ // For management contract.
         default: 1,
     },
+    hocowner: {
+        default: 2,
+    },
+    pocowner: {
+        default: 3,
+    },
   }
 };
 

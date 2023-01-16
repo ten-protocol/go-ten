@@ -32,7 +32,9 @@ testnet_path="${start_path}"
 # Define defaults
 l2port=13001
 # todo: get rid of these defaults and require them to be passed in, using github secrets for testnet values (requires bridge.go changes)
-pkstring="8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"
+deployer_pkstring="8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"
+hocpkstring="6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
+pocpkstring="4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
 docker_image="testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
 
 # Fetch options
@@ -45,6 +47,8 @@ do
             --l2host)                   l2host=${value} ;;
             --l2port)                   l2port=${value} ;;
             --pkstring)                 pkstring=${value} ;;
+            --hocpkstring)              hocpkstring=${value} ;;
+            --pocpkstring)              pocpkstring=${value} ;;
             --docker_image)             docker_image=${value} ;;
             --help)                     help_and_exit ;;
             *)
@@ -52,7 +56,7 @@ do
 done
 
 # ensure required fields
-if [[ -z ${l2host:-} || -z ${pkstring:-} ]];
+if [[ -z ${l2host:-} || -z ${pkstring:-} || -z ${hocpkstring:-} || -z ${pocpkstring:-} ]];
 then
     help_and_exit
 fi
@@ -67,7 +71,12 @@ network_cfg='{
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ "deployment_scripts/layer2" ],
-            "accounts": [ "'${pkstring}'" ]
+            "accounts": [ 
+                "'${deployer_pkstring}'",
+                "'${deployer_pkstring}'",
+                "'${hocpkstring}'",
+                "'${pocpkstring}'"
+            ]
         }
     }'
 

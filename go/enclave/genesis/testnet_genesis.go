@@ -15,6 +15,14 @@ var TestnetGenesis = Genesis{
 			Address: gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
 			Amount:  parseHugeNumber("7500000000000000000000000000000"),
 		},
+		{
+			Address: gethcommon.HexToAddress("0x987E0a0692475bCc5F13D97E700bb43c1913EFfe"),
+			Amount:  parseHugeNumber("7500000000000000000000000000000"),
+		},
+		{
+			Address: gethcommon.HexToAddress("0xDEe530E22045939e6f6a0A593F829e35A140D3F1"),
+			Amount:  parseHugeNumber("7500000000000000000000000000000"),
+		},
 	},
 }
 
