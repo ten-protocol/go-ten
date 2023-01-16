@@ -133,12 +133,12 @@ func NewHost(
 }
 
 // Start validates the host config and starts the Host in a go routine - immediately returns after
-func (h *host) Start() {
+func (h *host) Start() error {
 	h.validateConfig()
 
 	tomlConfig, err := toml.Marshal(h.config)
 	if err != nil {
-		h.logger.Crit("could not print host config")
+		return fmt.Errorf("could not print host config - %w", err)
 	}
 	h.logger.Info("Host started with following config", log.CfgKey, string(tomlConfig))
 
@@ -165,6 +165,8 @@ func (h *host) Start() {
 		// start the host's main processing loop
 		h.startProcessing()
 	}()
+
+	return nil
 }
 
 func (h *host) broadcastSecret() error {

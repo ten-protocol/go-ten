@@ -38,12 +38,22 @@ type HostContainer struct {
 }
 
 func (h *HostContainer) Start() error {
-	fmt.Println("Starting Obscuro host...")
-	h.logger.Info("Starting Obscuro host...")
 	h.metricsService.Start()
+
 	// make sure the rpc server has a host to render requests
-	h.host.Start()
-	h.rpcServer.Start()
+	err := h.host.Start()
+	if err != nil {
+		return err
+	}
+	h.logger.Info("Started Obscuro host...")
+	fmt.Println("Started Obscuro host...")
+
+	err = h.rpcServer.Start()
+	if err != nil {
+		return err
+	}
+	h.logger.Info("Started Obscuro host RPC Server...")
+	fmt.Println("Started Obscuro host RPC Server...")
 	return nil
 }
 

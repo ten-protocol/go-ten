@@ -71,7 +71,12 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 	// start each obscuro node
 	for _, m := range obscuroNodes {
 		t := m
-		go t.Start()
+		go func() {
+			err := t.Start()
+			if err != nil {
+				panic(err)
+			}
+		}()
 	}
 
 	// Create a handle to each node

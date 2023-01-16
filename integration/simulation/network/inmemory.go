@@ -99,7 +99,12 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 	for _, m := range obscuroNodes {
 		t := m
-		go t.Start()
+		go func() {
+			err := t.Start()
+			if err != nil {
+				panic(err)
+			}
+		}()
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
