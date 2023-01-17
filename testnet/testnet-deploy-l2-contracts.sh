@@ -33,7 +33,13 @@ testnet_path="${start_path}"
 l2port=13001
 l1port=8025
 # todo: get rid of these defaults and require them to be passed in, using github secrets for testnet values (requires bridge.go changes)
+
+# L1 deployer
+pkstring="f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
+
+# L2 deployer
 deployer_pkstring="8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"
+
 hocpkstring="6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 pocpkstring="4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
 docker_image="testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
@@ -50,6 +56,7 @@ do
             --l1host)                   l1host=${value} ;;
             --l1port)                   l1port=${value} ;;
             --pkstring)                 pkstring=${value} ;;
+            --deployer_pkstring)        deployer_pkstring=${value} ;;
             --hocpkstring)              hocpkstring=${value} ;;
             --pocpkstring)              pocpkstring=${value} ;;
             --docker_image)             docker_image=${value} ;;
@@ -77,7 +84,9 @@ network_cfg='{
                 "deployment_scripts/testnet/layer1",
                 "deployment_scripts/bridge/layer1"
             ],
-            "accounts": [ "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb" ]
+            "accounts": [ 
+                "'${pkstring}'",
+            ]
         },
         "layer2" : {
             "obscuroEncRpcUrl" : '"\"ws://${l2host}:${l2port}\""',
