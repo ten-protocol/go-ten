@@ -73,6 +73,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         return l2Network.deployments.execute("CrossChainMessenger", {
             from: l2Accounts.deployer, 
             log: true,
+            gasLimit: 1024_000_000
         }, "relayMessage", msg);
     };
 

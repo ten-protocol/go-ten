@@ -221,7 +221,7 @@ func (s *RPCServer) EstimateGas(_ context.Context, req *generated.EstimateGasReq
 			// unable to serialize the error
 			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
 		}
-		return &generated.EstimateGasResponse{Error: errResponse}, err
+		return &generated.EstimateGasResponse{Error: errResponse}, nil
 	}
 	return &generated.EstimateGasResponse{EncryptedResponse: encryptedBalance}, nil
 }
