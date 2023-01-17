@@ -1,9 +1,9 @@
-# Deploys an Obscuro network on Azure for Testnet and Dev Testnet
+# Deploys or Updates an Obscuro network on Azure for Testnet and Dev Testnet
 #
 # The Obscuro network is composed of 2 obscuro nodes running on individual vms with SGX
 #
 
-name: '[M] Deploy Testnet L2'
+name: '[M] Upgrade Testnet L2'
 
 on:
   workflow_dispatch:
@@ -16,6 +16,11 @@ on:
         options:
           - 'dev-testnet'
           - 'testnet'
+      reset:
+        description: 'Reset testnet ?'
+        type: boolean
+        default: false
+        required: true
 
 
 jobs:
@@ -54,7 +59,7 @@ jobs:
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
           echo "L1_HOST=testnet-gethnetwork.uksouth.azurecontainer.io" >> $GITHUB_ENV
-          
+
       - name: 'Sets env vars for dev-tesnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
@@ -66,7 +71,7 @@ jobs:
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
           echo "L1_HOST=dev-testnet-gethnetwork.uksouth.azurecontainer.io" >> $GITHUB_ENV
-          
+
       - name: 'Output env vars'
         id: outputVars
         run: |
@@ -78,7 +83,7 @@ jobs:
           echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
           echo "L1_HOST=${{env.L1_HOST}}" >> $GITHUB_OUTPUT
-          
+
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -99,6 +104,7 @@ jobs:
           docker push ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
 
       - name: 'Deploy Contracts'
+        if: ${{ github.event.inputs.reset }}
         id: deployContracts
         shell: bash
         run: |
@@ -114,6 +120,7 @@ jobs:
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
       - name: 'Delete deployed VMs'
+        if: ${{ github.event.inputs.reset }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -121,6 +128,7 @@ jobs:
 
       # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
       - name: 'Delete VMs dependencies'
+        if: ${{ github.event.inputs.reset }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -171,6 +179,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
+        if: ${{ github.event.inputs.reset }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -183,6 +192,7 @@ jobs:
             --public-ip-sku Basic --authentication-type password
 
       - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
+        if: ${{ github.event.inputs.reset }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -193,6 +203,7 @@ jobs:
         run: if [ 0! = ${{ matrix.host_id }} ]; then sleep 60; fi
 
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
+        if: ${{ github.event.inputs.reset }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -232,7 +243,25 @@ jobs:
                --p2p_public_address=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
 
 
+
+
+      - name: 'Update Obscuro node-${{ matrix.host_id }} on Azure'
+        if: ${{ github.event.inputs.reset }}
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            --command-id RunShellScript \
+            --scripts '
+              cd /home/obscuro/go-obscuro/testnet/ \
+              docker compose down host enclave && \
+              docker compose pull && docker compose up host enclave -d
+              '
+
+
+
   update-loadbalancer:
+    if: ${{ github.event.inputs.reset }}
     needs:
       - build
       - deploy
@@ -258,6 +287,7 @@ jobs:
               --nic-name ${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
               --resource-group Testnet \
               --lb-name ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-loadbalancer
+  
 
   wait-node-up:
     needs:
@@ -273,6 +303,7 @@ jobs:
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
 
   deploy-l2-contracts:
+    if: ${{ github.event.inputs.reset }}
     needs:
       - build
       - wait-node-up
