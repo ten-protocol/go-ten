@@ -21,6 +21,11 @@ on:
         type: boolean
         default: false
         required: true
+      github_deploy_number:
+        description: 'Github Deployment Number'
+        type: number
+        default: 0
+        required: true
 
 
 jobs:
@@ -92,16 +97,16 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Build and push obscuro node images'
-        run: |
-          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
-          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
-          docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
-          docker build -t ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/hardhatdeployer.Dockerfile .
-          docker push ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+#      - name: 'Build and push obscuro node images'
+#        run: |
+#          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
+#          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
+#          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
+#          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
+#          docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
+#          docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
+#          docker build -t ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/hardhatdeployer.Dockerfile .
+#          docker push ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
 
       - name: 'Deploy Contracts'
         if: ${{ github.event.inputs.reset }}
@@ -250,7 +255,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ github.event.inputs.github_deploy_number }}"  \
             --command-id RunShellScript \
             --scripts '
               cd /home/obscuro/go-obscuro/testnet/ \
@@ -298,9 +303,17 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: "Wait until obscuro node is healthy"
+        if: ${{ github.event.inputs.reset }}
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com   
+
+      - name: "Wait until obscuro node is healthy"
+        if: ${{ ! github.event.inputs.reset }}
+        shell: bash
+        run: |
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ github.event.inputs.github_deploy_number }}.uksouth.cloudapp.azure.com
+  
 
   deploy-l2-contracts:
     if: ${{ github.event.inputs.reset }}
