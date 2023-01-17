@@ -31,6 +31,7 @@ testnet_path="${start_path}"
 
 # Define defaults
 l2port=13001
+l1port=8025
 # todo: get rid of these defaults and require them to be passed in, using github secrets for testnet values (requires bridge.go changes)
 deployer_pkstring="8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"
 hocpkstring="6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
@@ -46,6 +47,8 @@ do
     case "$key" in
             --l2host)                   l2host=${value} ;;
             --l2port)                   l2port=${value} ;;
+            --l1host)                   l1host=${value} ;;
+            --l1port)                   l1port=${value} ;;
             --pkstring)                 pkstring=${value} ;;
             --hocpkstring)              hocpkstring=${value} ;;
             --pocpkstring)              pocpkstring=${value} ;;
@@ -56,7 +59,7 @@ do
 done
 
 # ensure required fields
-if [[ -z ${l2host:-} || -z ${deployer_pkstring:-} || -z ${hocpkstring:-} || -z ${pocpkstring:-} ]];
+if [[ -z ${l2host:-} || -z ${deployer_pkstring:-} || -z ${hocpkstring:-} || -z ${pocpkstring:-} ||  -z ${l1host:-} ]];
 then
     help_and_exit
 fi
@@ -64,13 +67,29 @@ fi
 # deploy contracts to the obscuro network
 echo "Deploying Token ERC20 contract to the obscuro network..."
 
-network_cfg='{ 
+network_cfg='{
+        "layer1" : {
+            "url" : '"\"http://${l1host}:${l1port}\""',
+            "live" : false,
+            "saveDeployments" : true,
+            "deploy": [ 
+                "deployment_scripts/core/layer1", 
+                "deployment_scripts/testnet/layer1",
+                "deployment_scripts/bridge/layer1"
+            ],
+            "accounts": [ "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb" ]
+        },
         "layer2" : {
             "obscuroEncRpcUrl" : '"\"ws://${l2host}:${l2port}\""',
             "url": "http://127.0.0.1:3000",
             "live" : false,
             "saveDeployments" : true,
-            "deploy": [ "deployment_scripts/layer2" ],
+            "companionNetworks" : { "layer1" : "layer1" },
+            "deploy": [ 
+                "deployment_scripts/core/layer2/",
+                "deployment_scripts/bridge/layer2/",
+                "deployment_scripts/testnet/layer2/"
+            ],
             "accounts": [ 
                 "'${deployer_pkstring}'",
                 "'${hocpkstring}'",
@@ -87,6 +106,7 @@ echo "Deploying contracts to Layer 2 using obscuro hardhat container..."
 docker run --name=hh-l2-deployer \
     --network=node_network \
     -e NETWORK_JSON="${network_cfg}" \
+    -v deploymentsvol:/home/go-obscuro/contracts/deployments \
     "${docker_image}" \
     obscuro:deploy \
     --network layer2

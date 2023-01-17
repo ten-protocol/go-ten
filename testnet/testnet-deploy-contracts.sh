@@ -59,7 +59,11 @@ network_cfg='{
             "url" : '"\"http://${l1host}:${l1port}\""',
             "live" : false,
             "saveDeployments" : true,
-            "deploy": [ "deployment_scripts/layer1", "deployment_scripts/testnet" ],
+            "deploy": [ 
+                "deployment_scripts/core/layer1", 
+                "deployment_scripts/testnet/layer1",
+                "deployment_scripts/bridge/layer1"
+            ],
             "accounts": [ "'${pkstring}'" ]
         }
     }'
@@ -72,6 +76,7 @@ echo "Deploying contracts to Layer 1 using obscuro hardhat container..."
 docker run --name=hh-l1-deployer \
     --network=node_network \
     -e NETWORK_JSON="${network_cfg}" \
+    -v deploymentsvol:/home/go-obscuro/contracts/deployments \
     "${docker_image}" \
     deploy \
     --network layer1

@@ -70,7 +70,7 @@ contract CrossChainMessenger is ICrossChainMessenger {
             message.payload,
             (CrossChainCall)
         );
-        (bool success, bytes memory returnData) = callData.target.call(
+        (bool success, bytes memory returnData) = callData.target.call{gas: gasleft()}(
             callData.data
         );
         if (!success) {

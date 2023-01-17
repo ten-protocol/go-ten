@@ -26,4 +26,3 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 export default func;
 func.tags = ['HPERC20', 'HPERC20_deploy'];
-func.dependencies = ['ObscuroBridge'];
