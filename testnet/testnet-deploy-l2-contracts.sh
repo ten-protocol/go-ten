@@ -85,7 +85,7 @@ network_cfg='{
                 "deployment_scripts/bridge/layer1"
             ],
             "accounts": [ 
-                "'${pkstring}'",
+                "'${pkstring}'"
             ]
         },
         "layer2" : {
