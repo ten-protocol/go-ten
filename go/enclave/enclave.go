@@ -831,14 +831,24 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 	cap = hi
 
 	// Execute the binary search and hone in on an isGasEnough gas limit
+	hasSuccessfulExecution := false
 	for lo+1 < hi {
 		mid := (hi + lo) / 2
 		failed, _, err := e.isGasEnough(args, mid, blkNumber)
 		// If the error is not nil(consensus error), it means the provided message
 		// call or transaction will never be accepted no matter how much gas it is
 		// assigned. Return the error directly, don't struggle any more.
+		if err == nil && !failed {
+			hasSuccessfulExecution = true
+		}
+
 		if err != nil {
-			return 0, err
+			if hasSuccessfulExecution {
+				hi = cap
+				break
+			} else {
+				return 0, err
+			}
 		}
 		if failed {
 			lo = mid
