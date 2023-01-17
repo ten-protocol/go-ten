@@ -1,0 +1,149 @@
+# Upgrades an existing Obscuro network on Azure for Testnet and Dev Testnet
+#
+# The Obscuro network is composed of 2 obscuro nodes running on individual vms with SGX
+#
+
+name: '[M] Upgrade Testnet L2'
+
+on:
+  workflow_dispatch:
+    inputs:
+      testnet_type:
+        description: 'Testnet Type'
+        required: true
+        default: 'dev-testnet'
+        type: choice
+        options:
+          - 'dev-testnet'
+          - 'testnet'
+      github_deploy_number:
+        description: 'Github Deployment Number'
+        type: number
+        default: 0
+        required: true
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Map a step output to a job output
+    outputs:
+      L2_ENCLAVE_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG }}
+      L2_HOST_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HOST_DOCKER_BUILD_TAG }}
+      L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG }}
+      L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }}
+      RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
+      RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
+      RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Sets env vars for testnet'
+        if: ${{ github.event.inputs.testnet_type  == 'testnet' }}
+        run: |
+          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/enclave:latest" >> $GITHUB_ENV
+          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/host:latest" >> $GITHUB_ENV
+          echo "L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest" >> $GITHUB_ENV
+          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
+          echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
+          
+      - name: 'Sets env vars for dev-tesnet'
+        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
+        run: |
+          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest" >> $GITHUB_ENV
+          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest" >> $GITHUB_ENV
+          echo "L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_contractdeployer:latest" >> $GITHUB_ENV
+          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_hardhatdeployer:latest" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
+          echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
+
+      - name: 'Output env vars'
+        id: outputVars
+        run: |
+          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
+          echo "L2_HOST_DOCKER_BUILD_TAG=${{env.L2_HOST_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
+          echo "L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG=${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
+          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
+          echo "RESOURCE_TAG_NAME=${{env.RESOURCE_TAG_NAME}}" >> $GITHUB_OUTPUT
+          echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
+          echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
+
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Build and push obscuro node images'
+        run: |
+          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
+          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
+          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
+          docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
+          docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
+          docker build -t ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/hardhatdeployer.Dockerfile .
+          docker push ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        host_id: [ 0,1 ]
+
+    steps:
+      - name: 'Extract branch name'
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF_NAME})"
+        id: extract_branch
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Update Obscuro node-${{ matrix.host_id }} on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ github.event.inputs.github_deploy_number }}"  \
+            --command-id RunShellScript \
+            --scripts '
+              cd /home/obscuro/go-obscuro/testnet/ \
+              docker compose down host enclave && \
+              docker compose pull && \
+              docker compose up host enclave
+            '
+
+  wait-node-up:
+    needs:
+      - build
+      - deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: "Wait until obscuro node is healthy"
+        shell: bash
+        run: |
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ github.event.inputs.github_deploy_number }}.uksouth.cloudapp.azure.com
+
+  deploy-faucet:
+    runs-on: ubuntu-latest
+    needs: wait-node-up
+    steps:
+      - name: 'Trigger Faucet deployment workflow'
+        run: |
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/faucet/actions/workflows/manual-deploy-testnet-faucet.yml/dispatches --data '{"ref": "main" }'
