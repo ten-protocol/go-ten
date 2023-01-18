@@ -9,6 +9,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const {deployer} = await getNamedAccounts();
 
+    // Deploy a constant supply (constructor mints) erc20
     await deployments.deploy('HOCERC20', {
         from: deployer,
         contract: "ConstantSupplyERC20",
@@ -16,6 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     });
 
+    // Deploy a constant supply (constructor mints) erc20
     await deployments.deploy('POCERC20', {
         from: deployer,
         contract: "ConstantSupplyERC20",

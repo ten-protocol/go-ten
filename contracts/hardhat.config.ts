@@ -10,8 +10,6 @@ import './tasks/wallet-extension';
 import * as abigen from './tasks/abigen';
 import './tasks/obscuro-deploy';
 
-import './tasks/obscuro-test';
-
 import * as fs from "fs";
 
 const config: HardhatUserConfig = {

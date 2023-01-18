@@ -9,8 +9,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const {deployer} = await getNamedAccounts();
 
+    // Read the message bus address from the management contract deployment.
     const messageBusAddress : string = await deployments.read("ManagementContract", {}, "messageBus");
 
+    // Setup the cross chain messenger and point it to the message bus from the management contract to be used for validation
     await deployments.deploy('CrossChainMessenger', {
         from: deployer,
         args: [ messageBusAddress ],

@@ -16,6 +16,12 @@ help_and_exit() {
     echo ""
     echo "  l2port             *Optional* Set the l2 port. Defaults to 10000"
     echo ""
+    echo ""
+    echo "  l1port             *Optional* Set the l1 port. Defaults to 10000"
+    echo ""
+    echo ""
+    echo "  l1host             *Required* Set the l1 host address"
+    echo ""
     echo "  docker_image       *Optional* Sets the docker image to use. Defaults to testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest"
     echo ""
     echo ""
@@ -74,6 +80,8 @@ fi
 # deploy contracts to the obscuro network
 echo "Deploying Token ERC20 contract to the obscuro network..."
 
+# Hardhat core flags for network - https://hardhat.org/hardhat-network/docs/reference#config
+# Hardhat deploy plugin flags - https://github.com/wighawag/hardhat-deploy#2-extra-hardhatconfig-networks-options
 network_cfg='{
         "layer1" : {
             "url" : '"\"http://${l1host}:${l1port}\""',
