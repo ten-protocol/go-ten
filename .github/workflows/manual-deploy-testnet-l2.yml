@@ -20,7 +20,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     # Map a step output to a job output
     outputs:
       MGMT_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MGMT_CONTRACT_ADDR }}
