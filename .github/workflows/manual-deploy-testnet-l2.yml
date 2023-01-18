@@ -284,7 +284,7 @@ jobs:
         id: deployL2Contracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-l2-contracts.sh --l2host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./testnet/testnet-deploy-l2-contracts.sh --l2host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com  --docker_image=${{needs.build.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
 
   deploy-faucet:
     runs-on: ubuntu-latest
