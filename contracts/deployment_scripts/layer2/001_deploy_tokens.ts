@@ -20,6 +20,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`Adding VK for POC owner = ${pocowner}`);
     await hre.run('obscuro:wallet-extension:add-key', {address: pocowner});
 
+    console.log(`Added keys ...`);
+
     await deployments.deploy('L2HOCERC20', {
         from: hocowner,
         contract: "WrappedERC20",
