@@ -22,5 +22,4 @@ func TestStartEth2Network(t *testing.T) {
 }
 
 func genesisParamsAreUsed(t *testing.T, network *Eth2Network) {
-
 }

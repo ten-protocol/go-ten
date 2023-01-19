@@ -3,8 +3,6 @@ package gethnetwork
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
 	"os/exec"
@@ -12,6 +10,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/ethclient"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -35,13 +36,13 @@ type Eth2Network struct {
 }
 
 func NewEth2Network(
-	//gethBinaryPath string,
-	//prysmBinaryPath string,
+	// gethBinaryPath string,
+	// prysmBinaryPath string,
 	httpPortStart int,
-	//websocketPortStart int,
+	// websocketPortStart int,
 	numNodes int,
-	//blockTimeSecs int,
-	//preFundedAddrs []string,
+	// blockTimeSecs int,
+	// preFundedAddrs []string,
 ) *Eth2Network {
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
@@ -121,9 +122,9 @@ func (n *Eth2Network) Start() error {
 	// start each of the nodes
 	for i, nodeDataDir := range n.dataDirs {
 		dataDir := nodeDataDir
-		nodeId := i
+		nodeID := i
 		go func() {
-			err := n.gethStartNode(8551+nodeId, 30303+nodeId, n.nodePorts[nodeId], dataDir)
+			err := n.gethStartNode(8551+nodeID, 30303+nodeID, n.nodePorts[nodeID], dataDir)
 			if err != nil {
 				panic(err)
 			}
@@ -132,8 +133,9 @@ func (n *Eth2Network) Start() error {
 
 	// wait for each of the nodes to start
 	for i := range n.dataDirs {
+		nodeID := i
 		eg.Go(func() error {
-			return n.waitForNodeUp(i, 15*time.Second)
+			return n.waitForNodeUp(nodeID, 15*time.Second)
 		})
 	}
 	err = eg.Wait()
@@ -155,10 +157,10 @@ func (n *Eth2Network) Start() error {
 
 	// start each of the beacon nodes
 	for i, nodeDataDir := range n.dataDirs {
-		nodeId := i
+		nodeID := i
 		dataDir := nodeDataDir
 		go func() {
-			err = n.prysmStartBeaconNode(8551+nodeId, 12000+nodeId, 4000+nodeId, dataDir)
+			err = n.prysmStartBeaconNode(8551+nodeID, 12000+nodeID, 4000+nodeID, dataDir)
 			if err != nil {
 				panic(err)
 			}
@@ -187,7 +189,6 @@ func (n *Eth2Network) Start() error {
 }
 
 func (n *Eth2Network) Stop() {
-
 }
 
 func (n *Eth2Network) gethInitGenesisData(dataDirPath string) error {
@@ -210,10 +211,10 @@ func (n *Eth2Network) gethInitGenesisData(dataDirPath string) error {
 //	return cmd.Run()
 //}
 
-func (n *Eth2Network) gethImportMinerAccount(nodeId int) error {
+func (n *Eth2Network) gethImportMinerAccount(nodeID int) error {
 	args := []string{
 		"--exec", fmt.Sprintf("loadScript('%s');", n.preloadScriptPath),
-		"attach", fmt.Sprintf("http://127.0.0.1:%d", n.nodePorts[nodeId]),
+		"attach", fmt.Sprintf("http://127.0.0.1:%d", n.nodePorts[nodeID]),
 	}
 	fmt.Printf("gethImportMinerAccount: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
@@ -297,7 +298,6 @@ func (n *Eth2Network) prysmStartValidator(nodeDataDir string) error {
 	cmd.Stderr = n.logFile
 
 	return cmd.Run()
-
 }
 
 func (n *Eth2Network) waitForMergeEvent(startTime time.Time) error {
@@ -321,9 +321,9 @@ func (n *Eth2Network) waitForMergeEvent(startTime time.Time) error {
 	return nil
 }
 
-func (n *Eth2Network) waitForNodeUp(nodeId int, timeout time.Duration) error {
+func (n *Eth2Network) waitForNodeUp(nodeID int, timeout time.Duration) error {
 	for startTime := time.Now(); time.Now().Before(startTime.Add(timeout)); time.Sleep(time.Second) {
-		dial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.nodePorts[nodeId]))
+		dial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.nodePorts[nodeID]))
 		if err != nil {
 			continue
 		}
