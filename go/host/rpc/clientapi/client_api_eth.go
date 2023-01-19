@@ -192,7 +192,7 @@ func headerToMap(header *common.BatchHeader) map[string]interface{} {
 		"sha3Uncles":       header.UncleHash,
 		"miner":            header.Coinbase,
 		"stateRoot":        header.Root,
-		"transactionsRoot": header.TxHash,
+		"transactionsRoot": header.BodyHash,
 		"receiptsRoot":     header.ReceiptHash,
 		"logsBloom":        header.Bloom,
 		"difficulty":       header.Difficulty,
