@@ -26,7 +26,7 @@ type BatchHeader struct {
 	UncleHash   common.Hash    `json:"sha3Uncles"`
 	Coinbase    common.Address `json:"miner"`
 	Root        StateRoot      `json:"stateRoot"`
-	BodyHash    common.Hash    `json:"transactionsRoot"` // corresponds to block's `TxHash`. todo - include the synthetic deposits
+	TxHash      common.Hash    `json:"transactionsRoot"` // todo - include the synthetic deposits
 	ReceiptHash common.Hash    `json:"receiptsRoot"`
 	Bloom       types.Bloom    `json:"logsBloom"`
 	Difficulty  *big.Int
@@ -118,7 +118,7 @@ func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 		Coinbase:   b.Coinbase,
 		Root:       b.Root,
 		// TODO - #718 - Once there are multiple batches per rollup, this conversion will no longer be possible.
-		HeadBatchHash:                 b.BodyHash,
+		HeadBatchHash:                 b.TxHash,
 		ReceiptHash:                   b.ReceiptHash,
 		Bloom:                         b.Bloom,
 		Difficulty:                    b.Difficulty,
@@ -161,7 +161,7 @@ func (r *RollupHeader) ToBatchHeader() *BatchHeader {
 		Coinbase:   r.Coinbase,
 		Root:       r.Root,
 		// TODO - #718 - Once there are multiple batches per rollup, this conversion will no longer be possible.
-		BodyHash:                      r.HeadBatchHash,
+		TxHash:                        r.HeadBatchHash,
 		ReceiptHash:                   r.ReceiptHash,
 		Bloom:                         r.Bloom,
 		Difficulty:                    r.Difficulty,

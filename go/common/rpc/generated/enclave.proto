@@ -254,7 +254,7 @@ message BatchHeaderMsg {
   bytes Nonce = 3;
   bytes Proof = 4;
   bytes Root = 5;
-  bytes BodyHash = 6;
+  bytes TxHash = 6;
   uint64 Number = 7;
   bytes Bloom = 8;
   bytes ReceiptHash = 9;

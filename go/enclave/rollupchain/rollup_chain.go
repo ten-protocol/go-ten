@@ -425,7 +425,7 @@ func (rc *RollupChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Bat
 			ParentHash:  common.L2RootHash{},
 			L1Proof:     blkHash,
 			Root:        *preFundGenesisState,
-			BodyHash:    types.EmptyRootHash,
+			TxHash:      types.EmptyRootHash,
 			Number:      big.NewInt(int64(0)),
 			Withdrawals: []common.Withdrawal{},
 			ReceiptHash: types.EmptyRootHash,
@@ -787,9 +787,9 @@ func (rc *RollupChain) produceBatch(block *types.Block, genesisBatchStored bool)
 	}
 
 	if len(successfulTxs) == 0 {
-		batch.Header.BodyHash = types.EmptyRootHash
+		batch.Header.TxHash = types.EmptyRootHash
 	} else {
-		batch.Header.BodyHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
+		batch.Header.TxHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
 	}
 
 	rc.logger.Trace("Create batch.",

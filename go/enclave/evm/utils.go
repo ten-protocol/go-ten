@@ -25,7 +25,7 @@ func convertToEthHeader(h *common.BatchHeader, secret []byte) (*types.Header, er
 	return &types.Header{
 		ParentHash:  h.ParentHash,
 		Root:        h.Root,
-		TxHash:      h.BodyHash,
+		TxHash:      h.TxHash,
 		ReceiptHash: h.ReceiptHash,
 		Bloom:       h.Bloom,
 		Difficulty:  big.NewInt(0).SetBytes(randomness),
