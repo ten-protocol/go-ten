@@ -132,10 +132,10 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 
 	counter := 0
-	// We retry 20 times to check if the network has produced any rollups, sleeping half a second between each attempt.
+	// We retry 20 times to check if the network has produced any rollups, sleeping one second between each attempt.
 	for counter < 20 {
 		counter++
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(time.Second)
 
 		var rollupNumber hexutil.Uint64
 		err = obscuroClient.Call(&rollupNumber, rpc.RollupNumber)
