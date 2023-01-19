@@ -32,12 +32,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Mint the initial supply. This is different to the older smart contracts that had a
     // static supply minted on contract creation
     await deployments.execute('L2HOCERC20', {
-        from: hocowner,
+        from: deployer,
         log: true
     }, "issueFor", hocowner, "1000000000000000000000000000000");
 
     await deployments.deploy('L2POCERC20', {
-        from: pocowner,
+        from: deployer,
         contract: "WrappedERC20",
         args: [ "POC", "POC" ],
         log: true
@@ -45,7 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // Mint initial supply for POC too.
     await deployments.execute('L2POCERC20', {
-        from: pocowner,
+        from: deployer,
         log: true
     }, "issueFor", pocowner, "1000000000000000000000000000000");
 };
