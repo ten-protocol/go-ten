@@ -610,7 +610,7 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 	}
 
 	// Check that the signature is valid.
-	if err = rc.checkSignedBySequencer(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
+	if err = rc.checkSequencerSignature(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
 		return nil, fmt.Errorf("verify batch r_%d: invalid signature. Cause: %w", common.ShortHash(*batch.Hash()), err)
 	}
 
@@ -669,7 +669,7 @@ func (rc *RollupChain) signBatch(batch *core.Batch) error {
 }
 
 // Checks that the header is signed validly by the sequencer.
-func (rc *RollupChain) checkSignedBySequencer(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
+func (rc *RollupChain) checkSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
 	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
 	if !bytes.Equal(aggregator.Bytes(), rc.sequencerID.Bytes()) {
@@ -858,12 +858,12 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 			if idx != 0 {
 				previousRollup = rollups[idx-1]
 			}
-			if err = rc.checkRollupChain(rollup, previousRollup); err != nil {
+			if err = rc.checkRollupsCorrectlyChained(rollup, previousRollup); err != nil {
 				return err
 			}
 		}
 
-		if err = rc.checkSignedBySequencer(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+		if err = rc.checkSequencerSignature(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
 			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
@@ -891,7 +891,8 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 	return nil
 }
 
-func (rc *RollupChain) checkRollupChain(rollup *core.Rollup, previousRollup *core.Rollup) error {
+// Checks that the rollup has a number exactly 1 higher than the previous rollup, and links to that rollup by hash.
+func (rc *RollupChain) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRollup *core.Rollup) error {
 	if big.NewInt(0).Sub(rollup.Header.Number, previousRollup.Header.Number).Cmp(big.NewInt(1)) != 0 {
 		return fmt.Errorf("found gap in block rollups between rollup %d and rollup %d",
 			previousRollup.Header.Number, rollup.Header.Number)
