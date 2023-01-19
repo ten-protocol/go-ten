@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -72,11 +73,11 @@ func NewEth2Network(
 	}
 
 	// TODO HOOK LOGS
-	//logPath := path.Join(buildDir, "node_logs.txt")
-	//logFile, err := os.Create(logPath)
-	//if err != nil {
-	//	panic(err)
-	//}
+	logPath := path.Join(binDir, "node_logs.txt")
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		panic(err)
+	}
 
 	return &Eth2Network{
 		buildDir:                 buildDir,
@@ -89,7 +90,7 @@ func NewEth2Network(
 		prysmValidatorBinaryPath: prysmValidatorBinaryPath,
 		gethGenesisPath:          gethGenesisPath,
 		prysmGenesisPath:         prysmGenesisPath,
-		logFile:                  os.Stdout,
+		logFile:                  logFile,
 		preloadScriptPath:        preloadScriptPath,
 	}
 }
@@ -111,7 +112,7 @@ func (n *Eth2Network) Start() error {
 	}()
 
 	// TODO dont use sleep ensure the node is up instead with polling
-	time.Sleep(15 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	// import miner account that helps to reach to POS
 	err = n.gethImportMinerAccount()
@@ -124,15 +125,21 @@ func (n *Eth2Network) Start() error {
 		return err
 	}
 
-	err = n.prysmStartBeaconNode(n.dataDirs[0])
-	if err != nil {
-		return err
-	}
+	go func() {
+		err = n.prysmStartBeaconNode(n.dataDirs[0])
+		if err != nil {
+			panic(err)
+		}
+	}()
 
-	err = n.prysmStartValidator(n.dataDirs[0])
-	if err != nil {
-		return err
-	}
+	go func() {
+		err = n.prysmStartValidator(n.dataDirs[0])
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	time.Sleep(time.Hour)
 
 	return nil
 }
@@ -143,6 +150,7 @@ func (n *Eth2Network) Stop() {
 
 func (n *Eth2Network) gethInitGenesisData(dataDirPath string) error {
 	args := []string{dataDirFlag, dataDirPath, "init", n.gethGenesisPath}
+	fmt.Printf("gethInitGenesisData: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
 	cmd.Stdout = n.logFile
 	cmd.Stderr = n.logFile
@@ -165,6 +173,7 @@ func (n *Eth2Network) gethImportMinerAccount() error {
 		"--exec", fmt.Sprintf("loadScript('%s');", n.preloadScriptPath),
 		"attach", "http://127.0.0.1:8545",
 	}
+	fmt.Printf("gethImportMinerAccount: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
 	cmd.Stdout = n.logFile
 	cmd.Stderr = n.logFile
@@ -177,8 +186,10 @@ func (n *Eth2Network) gethStartNode(dataDirPath string) error {
 		"--http", "--http.api", "miner,engine,personal,eth,net,web3,debug",
 		dataDirFlag, dataDirPath,
 		"--allow-insecure-unlock",
-		"--networkid", "1999",
+		"--nodiscover", "--syncmode", "full",
+		"--networkid", "32382",
 	}
+	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
 	cmd.Stdout = n.logFile
 	cmd.Stderr = n.logFile
@@ -192,6 +203,7 @@ func (n *Eth2Network) prysmGenerateGenesis() error {
 		"--num-validators", "64", "--output-ssz", n.prysmGenesisPath,
 		"--chain-config-file", n.prysmConfigPath,
 	}
+	fmt.Printf("prysmGenerateGenesis: %s %s\n", n.prysmBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.prysmBinaryPath, args...) //nolint
 	cmd.Stdout = n.logFile
 	cmd.Stderr = n.logFile
@@ -201,7 +213,7 @@ func (n *Eth2Network) prysmGenerateGenesis() error {
 
 func (n *Eth2Network) prysmStartBeaconNode(nodeDataDir string) error {
 	args := []string{
-		"--datadir", "beacondata",
+		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
 		"--min-sync-peers", "0",
 		"--interop-genesis-state", n.prysmGenesisPath,
 		"--interop-eth1data-votes",
@@ -213,6 +225,8 @@ func (n *Eth2Network) prysmStartBeaconNode(nodeDataDir string) error {
 		"--accept-terms-of-use",
 		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
 	}
+
+	fmt.Printf("prysmStartBeaconNode: %s %s\n", n.prysmBeaconBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.prysmBeaconBinaryPath, args...) //nolint
 	cmd.Stdout = n.logFile
 	cmd.Stderr = n.logFile
@@ -230,6 +244,8 @@ func (n *Eth2Network) prysmStartValidator(nodeDataDir string) error {
 		"--chain-config-file", n.prysmConfigPath,
 		"--config-file", n.prysmConfigPath,
 	}
+
+	fmt.Printf("prysmStartValidator: %s %s\n", n.prysmValidatorBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.prysmValidatorBinaryPath, args...) //nolint
 	cmd.Stdout = n.logFile
 	cmd.Stderr = n.logFile
