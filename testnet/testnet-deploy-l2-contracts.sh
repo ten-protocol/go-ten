@@ -67,7 +67,7 @@ echo "Deploying Token ERC20 contract to the obscuro network..."
 network_cfg='{ 
         "layer2" : {
             "obscuroEncRpcUrl" : '"\"ws://${l2host}:${l2port}\""',
-            "url": "http://127.0.0.1:3005",
+            "url": "http://127.0.0.1:3000",
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ "deployment_scripts/layer2" ],
@@ -89,4 +89,5 @@ docker run --name=hh-l2-deployer \
     -e NETWORK_JSON="${network_cfg}" \
     "${docker_image}" \
     obscuro:deploy \
-    --network layer2
+    --network layer2 \
+    --verbose
