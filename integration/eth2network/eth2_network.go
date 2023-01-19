@@ -1,7 +1,10 @@
 package gethnetwork
 
 import (
+	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
 	"os/exec"
@@ -16,24 +19,25 @@ const (
 )
 
 type Eth2Network struct {
-	buildDir                 string
 	dataDirs                 []string
+	buildDir                 string
+	binDir                   string
 	gethBinaryPath           string
 	prysmBinaryPath          string
 	prysmBeaconBinaryPath    string
 	logFile                  io.Writer
 	gethGenesisPath          string
-	binDir                   string
 	preloadScriptPath        string
 	prysmGenesisPath         string
 	prysmConfigPath          string
 	prysmValidatorBinaryPath string
+	nodePorts                []int
 }
 
 func NewEth2Network(
 	//gethBinaryPath string,
 	//prysmBinaryPath string,
-	//portStart int,
+	httpPortStart int,
 	//websocketPortStart int,
 	numNodes int,
 	//blockTimeSecs int,
@@ -62,8 +66,10 @@ func NewEth2Network(
 	fmt.Printf("Geth nodes created in: %s\n", nodesDir)
 
 	dataDirs := make([]string, numNodes)
+	nodePorts := make([]int, numNodes)
 	for i := 0; i < numNodes; i++ {
 		dataDirs[i] = path.Join(nodesDir, "node_datadir_"+strconv.Itoa(i+1))
+		nodePorts[i] = httpPortStart + i
 	}
 
 	// Nodes logs are written to the build directory
@@ -83,6 +89,7 @@ func NewEth2Network(
 		buildDir:                 buildDir,
 		binDir:                   binDir,
 		dataDirs:                 dataDirs,
+		nodePorts:                nodePorts,
 		gethBinaryPath:           gethBinaryPath,
 		prysmBinaryPath:          prysmBinaryPath,
 		prysmBeaconBinaryPath:    prysmBeaconBinaryPath,
@@ -96,48 +103,83 @@ func NewEth2Network(
 }
 
 func (n *Eth2Network) Start() error {
+	startTime := time.Now()
+	var eg errgroup.Group
 
-	// initialize the genesis data on the node
-	err := n.gethInitGenesisData(n.dataDirs[0])
+	// initialize the genesis data on the nodes
+	for _, nodeDataDir := range n.dataDirs {
+		dataDir := nodeDataDir
+		eg.Go(func() error {
+			return n.gethInitGenesisData(dataDir)
+		})
+	}
+	err := eg.Wait()
 	if err != nil {
 		return err
 	}
 
-	// start the node
-	go func() {
-		err = n.gethStartNode(n.dataDirs[0])
-		if err != nil {
-			panic(err)
-		}
-	}()
+	// start each of the nodes
+	for i, nodeDataDir := range n.dataDirs {
+		dataDir := nodeDataDir
+		nodeId := i
+		go func() {
+			err := n.gethStartNode(8551+nodeId, 30303+nodeId, n.nodePorts[nodeId], dataDir)
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
 
-	// TODO dont use sleep ensure the node is up instead with polling
-	time.Sleep(5 * time.Second)
+	// wait for each of the nodes to start
+	for i := range n.dataDirs {
+		eg.Go(func() error {
+			return n.waitForNodeUp(i, 15*time.Second)
+		})
+	}
+	err = eg.Wait()
+	if err != nil {
+		panic(err)
+	}
 
-	// import miner account that helps to reach to POS
-	err = n.gethImportMinerAccount()
+	// import miner account that helps to reach to POS on node 0
+	err = n.gethImportMinerAccount(0)
 	if err != nil {
 		return err
 	}
 
+	// generate the genesis using the node 0
 	err = n.prysmGenerateGenesis()
 	if err != nil {
 		return err
 	}
 
-	go func() {
-		err = n.prysmStartBeaconNode(n.dataDirs[0])
-		if err != nil {
-			panic(err)
-		}
-	}()
+	// start each of the beacon nodes
+	for i, nodeDataDir := range n.dataDirs {
+		nodeId := i
+		dataDir := nodeDataDir
+		go func() {
+			err = n.prysmStartBeaconNode(8551+nodeId, 12000+nodeId, 4000+nodeId, dataDir)
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
 
-	go func() {
-		err = n.prysmStartValidator(n.dataDirs[0])
-		if err != nil {
-			panic(err)
-		}
-	}()
+	// start each of the validator nodes
+	for _, nodeDataDir := range n.dataDirs {
+		dataDir := nodeDataDir
+		go func() {
+			err = n.prysmStartValidator(dataDir)
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
+
+	err = n.waitForMergeEvent(startTime)
+	if err != nil {
+		panic(err)
+	}
 
 	time.Sleep(time.Hour)
 
@@ -168,10 +210,10 @@ func (n *Eth2Network) gethInitGenesisData(dataDirPath string) error {
 //	return cmd.Run()
 //}
 
-func (n *Eth2Network) gethImportMinerAccount() error {
+func (n *Eth2Network) gethImportMinerAccount(nodeId int) error {
 	args := []string{
 		"--exec", fmt.Sprintf("loadScript('%s');", n.preloadScriptPath),
-		"attach", "http://127.0.0.1:8545",
+		"attach", fmt.Sprintf("http://127.0.0.1:%d", n.nodePorts[nodeId]),
 	}
 	fmt.Printf("gethImportMinerAccount: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
@@ -181,9 +223,11 @@ func (n *Eth2Network) gethImportMinerAccount() error {
 	return cmd.Run()
 }
 
-func (n *Eth2Network) gethStartNode(dataDirPath string) error {
+func (n *Eth2Network) gethStartNode(executionPort, networkPort, httpPort int, dataDirPath string) error {
 	args := []string{
-		"--http", "--http.api", "miner,engine,personal,eth,net,web3,debug",
+		"--http", "--http.port", fmt.Sprintf("%d", httpPort), "--http.api", "miner,engine,personal,eth,net,web3,debug",
+		"--authrpc.port", fmt.Sprintf("%d", executionPort),
+		"--port", fmt.Sprintf("%d", networkPort),
 		dataDirFlag, dataDirPath,
 		"--allow-insecure-unlock",
 		"--nodiscover", "--syncmode", "full",
@@ -211,9 +255,11 @@ func (n *Eth2Network) prysmGenerateGenesis() error {
 	return cmd.Run()
 }
 
-func (n *Eth2Network) prysmStartBeaconNode(nodeDataDir string) error {
+func (n *Eth2Network) prysmStartBeaconNode(executionPort, p2pPort, rpcPort int, nodeDataDir string) error {
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
+		"--rpc-port", fmt.Sprintf("%d", rpcPort),
+		"--p2p-udp-port", fmt.Sprintf("%d", p2pPort),
 		"--min-sync-peers", "0",
 		"--interop-genesis-state", n.prysmGenesisPath,
 		"--interop-eth1data-votes",
@@ -221,7 +267,7 @@ func (n *Eth2Network) prysmStartBeaconNode(nodeDataDir string) error {
 		"--chain-config-file", n.prysmConfigPath,
 		"--config-file", n.prysmConfigPath,
 		"--chain-id", "32382",
-		"--execution-endpoint", "http://localhost:8551",
+		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", executionPort),
 		"--accept-terms-of-use",
 		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
 	}
@@ -252,4 +298,40 @@ func (n *Eth2Network) prysmStartValidator(nodeDataDir string) error {
 
 	return cmd.Run()
 
+}
+
+func (n *Eth2Network) waitForMergeEvent(startTime time.Time) error {
+	dial, err := ethclient.Dial("http://127.0.0.1:8545")
+	if err != nil {
+		return err
+	}
+	number, err := dial.BlockNumber(context.Background())
+	if err != nil {
+		return err
+	}
+
+	for ; number != 3; time.Sleep(time.Second) {
+		number, err = dial.BlockNumber(context.Background())
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Printf("Reached the merge block after %s\n", time.Since(startTime))
+	return nil
+}
+
+func (n *Eth2Network) waitForNodeUp(nodeId int, timeout time.Duration) error {
+	for startTime := time.Now(); time.Now().Before(startTime.Add(timeout)); time.Sleep(time.Second) {
+		dial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.nodePorts[nodeId]))
+		if err != nil {
+			continue
+		}
+		_, err = dial.BlockNumber(context.Background())
+		if err == nil {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("node not responsive after %s", timeout)
 }

@@ -7,8 +7,8 @@ import (
 )
 
 func TestStartEth2Network(t *testing.T) {
-	network := NewEth2Network(2)
-	assert.NotNil(t, network.Start())
+	network := NewEth2Network(8545, 2)
+	assert.Nil(t, network.Start())
 
 	defer network.Stop()
 
