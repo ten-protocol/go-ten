@@ -298,6 +298,11 @@ func (s *SubscriptionManager) getNumberOfSubsThreadsafe() int {
 //   - One of the log's user addresses matches the subscription's account
 //   - The log matches the filter
 func isRelevant(logItem *types.Log, userAddrs []string, account *gethcommon.Address, filter *filters.FilterCriteria) bool {
+	filteredLogs := filterLogs([]*types.Log{logItem}, filter.FromBlock, filter.ToBlock, filter.Addresses, filter.Topics)
+	if len(filteredLogs) == 0 {
+		return false
+	}
+
 	// If there are no user addresses, this is a lifecycle event, and is therefore relevant to everyone.
 	if len(userAddrs) == 0 {
 		return true
@@ -305,8 +310,7 @@ func isRelevant(logItem *types.Log, userAddrs []string, account *gethcommon.Addr
 
 	for _, addr := range userAddrs {
 		if addr == account.Hex() {
-			filteredLogs := filterLogs([]*types.Log{logItem}, filter.FromBlock, filter.ToBlock, filter.Addresses, filter.Topics)
-			return len(filteredLogs) != 0
+			return true
 		}
 	}
 
