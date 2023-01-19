@@ -81,7 +81,7 @@ type RollupHeader struct {
 	// TODO: mark as deprecated Withdrawals are now contained within cross chain messages.
 	Withdrawals        []Withdrawal
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
-	BatchHash          common.Hash                           // The latest batch included in this rollup.
+	HeadBatchHash      common.Hash                           // The latest batch included in this rollup.
 
 	// The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHash common.Hash `json:"inboundCrossChainHash"`
@@ -118,7 +118,7 @@ func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 		Coinbase:   b.Coinbase,
 		Root:       b.Root,
 		// TODO - #718 - Once there are multiple batches per rollup, this conversion will no longer be possible.
-		BatchHash:                     b.BodyHash,
+		HeadBatchHash:                 b.BodyHash,
 		ReceiptHash:                   b.ReceiptHash,
 		Bloom:                         b.Bloom,
 		Difficulty:                    b.Difficulty,
@@ -161,7 +161,7 @@ func (r *RollupHeader) ToBatchHeader() *BatchHeader {
 		Coinbase:   r.Coinbase,
 		Root:       r.Root,
 		// TODO - #718 - Once there are multiple batches per rollup, this conversion will no longer be possible.
-		BodyHash:                      r.BatchHash,
+		BodyHash:                      r.HeadBatchHash,
 		ReceiptHash:                   r.ReceiptHash,
 		Bloom:                         r.Bloom,
 		Difficulty:                    r.Difficulty,
