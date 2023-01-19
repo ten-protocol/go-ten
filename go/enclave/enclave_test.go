@@ -613,7 +613,6 @@ func dummyRollup(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *
 		ParentHash:  common.L1RootHash{},
 		L1Proof:     blkHash,
 		Root:        state.IntermediateRoot(true),
-		TxHash:      types.EmptyRootHash,
 		Number:      big.NewInt(int64(height)),
 		Withdrawals: []common.Withdrawal{},
 		ReceiptHash: types.EmptyRootHash,

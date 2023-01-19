@@ -304,7 +304,7 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		Nonce:                       []byte{},
 		Proof:                       header.L1Proof.Bytes(),
 		Root:                        header.Root.Bytes(),
-		TxHash:                      header.TxHash.Bytes(),
+		HeadBatchHash:               header.HeadBatchHash.Bytes(),
 		Number:                      header.Number.Uint64(),
 		Bloom:                       header.Bloom.Bytes(),
 		ReceiptHash:                 header.ReceiptHash.Bytes(),
@@ -321,7 +321,7 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		MixDigest:                   header.MixDigest.Bytes(),
 		BaseFee:                     baseFee,
 		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
-		LatestInboundCrossChainHash: header.LatestInboudCrossChainHash.Bytes(),
+		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
 	}
 
 	if header.LatestInboundCrossChainHeight != nil {
@@ -372,7 +372,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		Nonce:                         types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),
 		L1Proof:                       gethcommon.BytesToHash(header.Proof),
 		Root:                          gethcommon.BytesToHash(header.Root),
-		TxHash:                        gethcommon.BytesToHash(header.TxHash),
+		HeadBatchHash:                 gethcommon.BytesToHash(header.HeadBatchHash),
 		Number:                        big.NewInt(int64(header.Number)),
 		Bloom:                         types.BytesToBloom(header.Bloom),
 		ReceiptHash:                   gethcommon.BytesToHash(header.ReceiptHash),
@@ -389,7 +389,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		MixDigest:                     gethcommon.BytesToHash(header.MixDigest),
 		BaseFee:                       big.NewInt(int64(header.BaseFee)),
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
-		LatestInboudCrossChainHash:    gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
+		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
 		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),
 	}
 }

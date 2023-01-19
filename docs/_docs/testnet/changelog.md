@@ -2,6 +2,25 @@
 ---
 # Obscuro Testnet Change Log
 
+## January 2023-01-17 (v0.9)
+* A list of the PRs merged in this release is as below;
+    * `35054c64` In mem tests now use containers (#1045)
+    * `b736353f` Added layer 2 deployment and updated bits around it (#1044)
+    * `d9ef7b8a` Fixes to some hh deployment issues (#1043)
+    * `ce18d3fd` Propagates container start error (#1042)
+    * `bb1bc76c` Remove gas constants (#1041)
+    * `80fcc27d` Hardhat deploy plugin and deployment of the layer 1 bits (#1038)
+    * `070c79d7` Added tasks for the wallet extension (#1037)
+    * `a0eb02c3` Testnet and dev tesnet now deploy from one workflow (#1035)
+    * `10838a4e` Improved validation of incoming rollups (#1040)
+    * `47ecb855` Extracted abigen task as a separate one (#1036)
+    * `e375f0f5` Obscuroscan now deploys manually (#1033)
+    * `d37f325a` Separate batch and rollup in block submission response (#1034)
+    * `0d32caf7` Testnet metrics are pushed to datadog (#1025)
+    * `35c60d39` Fixed a slight bug in the message bus (#1028)
+    * `e30dcb2a` Changed runner from self hosted to ubuntu (#1030)
+    * `a3567c0e` Parallel build the images (#941)
+  
 ## January 2023-01-04 (v0.8)
 * Predominantly internal changes as part of work on faster finality, persistent L1 and updated bridge. No user 
   visible changes or breaking API changes are made. 

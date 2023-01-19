@@ -4,25 +4,17 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-
 	"github.com/obscuronet/go-obscuro/go/common/host"
-
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-
-	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
-
-	"github.com/obscuronet/go-obscuro/go/rpc"
-
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
-
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-
-	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
-
+	"github.com/obscuronet/go-obscuro/go/host/container"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
 type basicNetworkOfInMemoryNodes struct {
@@ -38,9 +30,10 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
-	obscuroNodes := make([]host.Host, params.NumberOfNodes)
+	obscuroNodes := make([]*container.HostContainer, params.NumberOfNodes)
 	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
+	obscuroHosts := make([]host.Host, params.NumberOfNodes)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyOBXAddress := datagenerator.RandomAddress()
@@ -77,12 +70,13 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		obscuroNodes[i] = agg
 		n.l2Clients[i] = obscuroClient
 		l1Clients[i] = miner
+		obscuroHosts[i] = obscuroNodes[i].Host()
 	}
 
 	// populate the nodes field of each network
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.ethNodes[i].Network.(*ethereummock.MockEthNetwork).AllNodes = n.ethNodes
-		p2pLayers[i].Nodes = obscuroNodes
+		p2pLayers[i].Nodes = obscuroHosts
 	}
 
 	// The sequence of starting the nodes is important to catch various edge cases.

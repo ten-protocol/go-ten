@@ -288,7 +288,7 @@ message RollupHeaderMsg {
   bytes Nonce = 3;
   bytes Proof = 4;
   bytes Root = 5;
-  bytes TxHash = 6;
+  bytes HeadBatchHash = 6;
   uint64 Number = 7;
   bytes Bloom = 8;
   bytes ReceiptHash = 9;

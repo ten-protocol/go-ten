@@ -6,40 +6,29 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-
-	commonhost "github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/host"
-
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/metrics"
-	"github.com/obscuronet/go-obscuro/go/host/container"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
-
 	"github.com/obscuronet/go-obscuro/go/config"
-
 	"github.com/obscuronet/go-obscuro/go/enclave"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/go-obscuro/integration"
-	simp2p "github.com/obscuronet/go-obscuro/integration/simulation/p2p"
-
-	"github.com/obscuronet/go-obscuro/go/wallet"
-
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/host/container"
+	"github.com/obscuronet/go-obscuro/go/host/p2p"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/host/p2p"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
+	simp2p "github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 )
 
 const (
@@ -76,28 +65,32 @@ func createInMemObscuroNode(
 	mockP2P *simp2p.MockP2P,
 	l1BusAddress *gethcommon.Address,
 	l1StartBlk gethcommon.Hash,
-) commonhost.Host {
+) *container.HostContainer {
+	mgtContractAddress := mgmtContractLib.GetContractAddr()
+
 	hostConfig := &config.HostConfig{
-		ID:               gethcommon.BigToAddress(big.NewInt(id)),
-		IsGenesis:        isGenesis,
-		NodeType:         nodeType,
-		HasClientRPCHTTP: false,
-		P2PPublicAddress: fmt.Sprintf("%d", id),
-		L1StartHash:      l1StartBlk,
+		ID:                    gethcommon.BigToAddress(big.NewInt(id)),
+		IsGenesis:             isGenesis,
+		NodeType:              nodeType,
+		HasClientRPCHTTP:      false,
+		P2PPublicAddress:      fmt.Sprintf("%d", id),
+		L1StartHash:           l1StartBlk,
+		RollupContractAddress: *mgtContractAddress,
 	}
 
 	enclaveConfig := config.EnclaveConfig{
-		HostID:                 hostConfig.ID,
-		NodeType:               nodeType,
-		L1ChainID:              integration.EthereumChainID,
-		ObscuroChainID:         integration.ObscuroChainID,
-		WillAttest:             false,
-		ValidateL1Blocks:       validateBlocks,
-		GenesisJSON:            genesisJSON,
-		UseInMemoryDB:          true,
-		ERC20ContractAddresses: wallets.AllEthAddresses(),
-		MinGasPrice:            big.NewInt(1),
-		MessageBusAddress:      *l1BusAddress,
+		HostID:                    hostConfig.ID,
+		NodeType:                  nodeType,
+		L1ChainID:                 integration.EthereumChainID,
+		ObscuroChainID:            integration.ObscuroChainID,
+		WillAttest:                false,
+		ValidateL1Blocks:          validateBlocks,
+		GenesisJSON:               genesisJSON,
+		UseInMemoryDB:             true,
+		ERC20ContractAddresses:    wallets.AllEthAddresses(),
+		MinGasPrice:               big.NewInt(1),
+		MessageBusAddress:         *l1BusAddress,
+		ManagementContractAddress: *mgtContractAddress,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
@@ -107,9 +100,10 @@ func createInMemObscuroNode(
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 
-	inMemNode := host.NewHost(hostConfig, mockP2P, ethClient, enclaveClient, ethWallet, mgmtContractLib, hostLogger, metricsService.Registry())
-	mockP2P.CurrentNode = inMemNode
-	return inMemNode
+	currentContainer := container.NewHostContainer(hostConfig, mockP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
+	mockP2P.CurrentNode = currentContainer.Host()
+
+	return currentContainer
 }
 
 func createSocketObscuroHostContainer(
@@ -152,7 +146,7 @@ func createSocketObscuroHostContainer(
 	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, id))
 	rpcServer := clientrpc.NewServer(hostConfig, hostLogger)
 
-	return container.NewHostContainer(hostConfig, hostP2P, ethClient, enclaveClient, ethWallet, rpcServer, hostLogger, metricsService)
+	return container.NewHostContainer(hostConfig, hostP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, rpcServer, hostLogger, metricsService)
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {

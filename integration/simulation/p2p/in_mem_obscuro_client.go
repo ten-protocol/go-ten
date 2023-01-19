@@ -12,12 +12,12 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
@@ -37,7 +37,7 @@ type inMemObscuroClient struct {
 	enclavePublicKey *ecies.PublicKey
 }
 
-func NewInMemObscuroClient(nodeHost hostcommon.Host) rpc.Client {
+func NewInMemObscuroClient(hostContainer *container.HostContainer) rpc.Client {
 	logger := testlog.Logger().New(log.CmpKey, log.RPCClientCmp)
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
@@ -47,22 +47,13 @@ func NewInMemObscuroClient(nodeHost hostcommon.Host) rpc.Client {
 	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	return &inMemObscuroClient{
-		obscuroAPI:       clientapi.NewObscuroAPI(nodeHost),
-		ethAPI:           clientapi.NewEthereumAPI(nodeHost, logger),
-		filterAPI:        clientapi.NewFilterAPI(nodeHost, logger),
-		obscuroScanAPI:   clientapi.NewObscuroScanAPI(nodeHost),
-		testAPI:          clientapi.NewTestAPI(nodeHost, nil),
+		obscuroAPI:       clientapi.NewObscuroAPI(hostContainer.Host()),
+		ethAPI:           clientapi.NewEthereumAPI(hostContainer.Host(), logger),
+		filterAPI:        clientapi.NewFilterAPI(hostContainer.Host(), logger),
+		obscuroScanAPI:   clientapi.NewObscuroScanAPI(hostContainer.Host()),
+		testAPI:          clientapi.NewTestAPI(hostContainer),
 		enclavePublicKey: enclPubKey,
 	}
-}
-
-func NewInMemoryEncRPCClient(host hostcommon.Host, viewingKey *rpc.ViewingKey, logger gethlog.Logger) *rpc.EncRPCClient {
-	inMemClient := NewInMemObscuroClient(host)
-	encClient, err := rpc.NewEncRPCClient(inMemClient, viewingKey, logger)
-	if err != nil {
-		panic(err)
-	}
-	return encClient
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.

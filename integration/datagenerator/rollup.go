@@ -27,7 +27,7 @@ func RandomRollup(block *types.Block) common.ExtRollup {
 
 	if block != nil {
 		extRollup.Header.LatestInboundCrossChainHeight = block.Number()
-		extRollup.Header.LatestInboudCrossChainHash = block.Hash()
+		extRollup.Header.LatestInboundCrossChainHash = block.Hash()
 	}
 
 	return extRollup

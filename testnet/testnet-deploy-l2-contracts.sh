@@ -126,4 +126,5 @@ docker run --name=hh-l2-deployer \
     -v deploymentsvol:/home/go-obscuro/contracts/deployments \
     "${docker_image}" \
     obscuro:deploy \
-    --network layer2
+    --network layer2 \
+    --verbose
