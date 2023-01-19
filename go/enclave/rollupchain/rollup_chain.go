@@ -883,7 +883,7 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 	}
 	if newHeadRollup != nil {
 		l1Head := block.Hash()
-		if err = rc.storage.UpdateHeadRollup(&l1Head, currentHeadRollup.Hash()); err != nil {
+		if err = rc.storage.UpdateHeadRollup(&l1Head, newHeadRollup.Hash()); err != nil {
 			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 		}
 	}
