@@ -74,8 +74,7 @@ docker run --name=hh-l1-deployer \
     -e NETWORK_JSON="${network_cfg}" \
     "${docker_image}" \
     deploy \
-    --network layer1 \
-    --verbose
+    --network layer1
 
 # --tail 5 gets the last 5 lines of the deployment; grep -e '' gives us the line matching the pattern; cut takes out the address where the contract has been deployed
 # The standard output from the hh deploy plugin looks like
