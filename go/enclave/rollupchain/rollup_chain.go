@@ -848,18 +848,14 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 		}
 	}
 
+	// We retrieve the block's rollups, ordered by number.
 	rollups := rc.bridge.ExtractRollups(block, rc.storage)
-	if len(rollups) == 0 {
-		return nil
-	}
-
-	// We sort the rollups in order to process them in the correct order.
 	sort.Slice(rollups, func(i, j int) bool {
 		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
 	})
 
-	// We check we receive the genesis rollup first.
-	if currentHeadRollup == nil && !rollups[0].IsGenesis() {
+	// If this is the first rollup we've ever received, we check that it's the genesis rollup.
+	if currentHeadRollup == nil && len(rollups) != 0 && !rollups[0].IsGenesis() {
 		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
 	}
 
@@ -869,25 +865,25 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 			if idx != 0 {
 				previousRollup = rollups[idx-1]
 			}
-			if err := rc.checkRollupChain(rollup, previousRollup); err != nil {
+			if err = rc.checkRollupChain(rollup, previousRollup); err != nil {
 				return err
 			}
 		}
 
-		if err := rc.checkSignedBySequencer(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+		if err = rc.checkSignedBySequencer(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
 			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
-		if err := rc.checkRollupAgainstBatches(rollup); err != nil {
+		if err = rc.checkRollupAgainstBatches(rollup); err != nil {
 			// TODO - #718 - Determine how to handle this critical error case.
 			rc.logger.Error("could not check rollups against batches", log.ErrKey, err)
 		}
 
-		if err := rc.storage.StoreRollup(rollup); err != nil {
+		if err = rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
 		l1HeadHash := block.Hash()
-		if err := rc.storage.UpdateHeadRollup(&l1HeadHash, rollup.Hash()); err != nil {
+		if err = rc.storage.UpdateHeadRollup(&l1HeadHash, rollup.Hash()); err != nil {
 			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 		}
 	}
