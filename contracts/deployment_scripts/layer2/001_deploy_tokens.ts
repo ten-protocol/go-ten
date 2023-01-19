@@ -20,11 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`Adding VK for POC owner = ${pocowner}`);
     await hre.run('obscuro:wallet-extension:add-key', {address: pocowner});
 
-    console.log(`Added keys ...`);
-
-    const signer = await hre.ethers.getSigner(hocowner)
-    console.log(`Getting balance...`);
-    console.log(`Signer balance = ${await signer.getBalance()}`);
+    console.log(`Added keys!`);
 
     await deployments.deploy('L2HOCERC20', {
         from: hocowner,
@@ -41,7 +37,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }, "issueFor", hocowner, "1000000000000000000000000000000");
 
     await deployments.deploy('L2POCERC20', {
-        from: deployer,
+        from: pocowner,
         contract: "WrappedERC20",
         args: [ "POC", "POC" ],
         log: true
@@ -49,7 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // Mint initial supply for POC too.
     await deployments.execute('L2POCERC20', {
-        from: deployer,
+        from: pocowner,
         log: true
     }, "issueFor", pocowner, "1000000000000000000000000000000");
 };
