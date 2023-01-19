@@ -835,17 +835,10 @@ func (rc *RollupChain) isAccountContractAtBlock(accountAddr gethcommon.Address, 
 
 // Validates and stores the rollup in a given block.
 func (rc *RollupChain) processRollups(block *common.L1Block) error {
-	// Initially, we associate the L1 block with the parent's head rollup. This will be updated as we process rollups.
 	l1ParentHash := block.ParentHash()
 	currentHeadRollup, err := rc.storage.FetchHeadRollupForBlock(&l1ParentHash)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not fetch current L2 head rollup")
-	}
-	if currentHeadRollup != nil {
-		l1Head := block.Hash()
-		if err = rc.storage.UpdateHeadRollup(&l1Head, currentHeadRollup.Hash()); err != nil {
-			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
-		}
 	}
 
 	// We retrieve the block's rollups, ordered by number.
@@ -882,8 +875,15 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 		if err = rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
-		l1HeadHash := block.Hash()
-		if err = rc.storage.UpdateHeadRollup(&l1HeadHash, rollup.Hash()); err != nil {
+	}
+
+	newHeadRollup := currentHeadRollup
+	if len(rollups) > 0 {
+		newHeadRollup = rollups[len(rollups)-1]
+	}
+	if newHeadRollup != nil {
+		l1Head := block.Hash()
+		if err = rc.storage.UpdateHeadRollup(&l1Head, currentHeadRollup.Hash()); err != nil {
 			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 		}
 	}
