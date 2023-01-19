@@ -229,6 +229,7 @@ jobs:
                --pocerc20addr=${{needs.build.outputs.POC_ERC20_ADDR}} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --sequencerID=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
+               --dev_testnet=${{ github.event.inputs.testnet_type  == 'testnet' }} \
                --p2p_public_address=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
 
 
