@@ -23,7 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`Added keys ...`);
 
     await deployments.deploy('L2HOCERC20', {
-        from: hocowner,
+        from: deployer,
         contract: "WrappedERC20",
         args: [ "HOC", "HOC" ],
         log: true
