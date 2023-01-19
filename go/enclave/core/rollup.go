@@ -4,21 +4,13 @@ import (
 	"math/big"
 	"sync/atomic"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
-// Rollup Data structure only for the internal use of the enclave since transactions are in clear
-// Making changes to this struct will require GRPC + GRPC Converters regen
 type Rollup struct {
-	Header *common.RollupHeader
-
-	hash atomic.Value
-	// size   atomic.Value
-
-	Transactions []*common.L2Tx
+	Header      *common.RollupHeader
+	BatchHashes []common.L2RootHash // todo - joel - references?
+	hash        atomic.Value
 }
 
 // Hash returns the keccak256 hash of b's header.
@@ -44,29 +36,15 @@ func (r *Rollup) IsGenesis() bool {
 	return r.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
 
-func (r *Rollup) ToExtRollup(transactionBlobCrypto crypto.TransactionBlobCrypto) *common.ExtRollup {
-	txHashes := make([]gethcommon.Hash, len(r.Transactions))
-	for idx, tx := range r.Transactions {
-		txHashes[idx] = tx.Hash()
-	}
-
+func (r *Rollup) ToExtRollup() *common.ExtRollup {
 	return &common.ExtRollup{
-		Header:          r.Header,
-		TxHashes:        txHashes,
-		EncryptedTxBlob: transactionBlobCrypto.Encrypt(r.Transactions),
+		Header:      r.Header,
+		BatchHashes: r.BatchHashes,
 	}
 }
 
-func ToRollup(encryptedRollup *common.ExtRollup, transactionBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
+func ToRollup(encryptedRollup *common.ExtRollup) *Rollup {
 	return &Rollup{
-		Header:       encryptedRollup.Header,
-		Transactions: transactionBlobCrypto.Decrypt(encryptedRollup.EncryptedTxBlob),
-	}
-}
-
-func (r *Rollup) ToBatch() *Batch {
-	return &Batch{
-		Header:       r.Header.ToBatchHeader(),
-		Transactions: r.Transactions,
+		Header: encryptedRollup.Header,
 	}
 }

@@ -5,11 +5,11 @@ import (
 )
 
 // ExtRollup is an encrypted form of rollup used when passing the rollup around outside of an enclave.
+// todo - joel - delete
 type ExtRollup struct {
-	Header          *RollupHeader
-	TxHashes        []TxHash // The hashes of the transactions included in the rollup
-	EncryptedTxBlob EncryptedTransactions
-	hash            atomic.Value
+	Header      *RollupHeader
+	BatchHashes []L2RootHash // The hashes of the batches included in the rollup
+	hash        atomic.Value
 }
 
 // Hash returns the keccak256 hash of the rollup's header.
