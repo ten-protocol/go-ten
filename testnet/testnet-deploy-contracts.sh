@@ -54,6 +54,8 @@ then
     help_and_exit
 fi
 
+# Hardhat core flags for network - https://hardhat.org/hardhat-network/docs/reference#config
+# Hardhat deploy plugin flags - https://github.com/wighawag/hardhat-deploy#2-extra-hardhatconfig-networks-options
 network_cfg='{ 
         "layer1" : {
             "url" : '"\"http://${l1host}:${l1port}\""',

@@ -8,6 +8,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         getNamedAccounts
     } = hre;
 
+    // Get the prefunded L2 deployer account to use for deploying.
     const {deployer} = await getNamedAccounts();
 
     // TODO: Remove hardcoded L2 message bus address when properly exposed.

@@ -44,6 +44,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // This function converts the logs from transaction receipts into cross chain messages
     function getXChainMessages(result: Receipt) {
+        
         // Get events with matching topic as the event id of LogMessagePublished
         const events = result.logs?.filter((x)=> { 
             return x.topics.find((t: string)=> t == topic) != undefined;
