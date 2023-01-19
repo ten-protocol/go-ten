@@ -15,7 +15,7 @@ const (
 
 // Server is the layer responsible for handling RPC requests from Obscuro client applications.
 type Server interface {
-	Start()
+	Start() error
 	Stop()
 	RegisterAPIs(apis []rpc.API)
 }
@@ -55,11 +55,8 @@ func (s *serverImpl) RegisterAPIs(apis []rpc.API) {
 	s.node.RegisterAPIs(apis)
 }
 
-func (s *serverImpl) Start() {
-	// make sure you *have* registered apis
-	if err := s.node.Start(); err != nil {
-		s.logger.Crit("could not start node client server.", log.ErrKey, err)
-	}
+func (s *serverImpl) Start() error {
+	return s.node.Start()
 }
 
 func (s *serverImpl) Stop() {

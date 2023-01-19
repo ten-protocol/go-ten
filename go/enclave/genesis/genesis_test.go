@@ -18,7 +18,7 @@ func TestDefaultGenesis(t *testing.T) {
 		t.Fatalf("unexpected error %s", err)
 	}
 
-	if len(gen.Accounts) != 1 {
+	if len(gen.Accounts) != 3 {
 		t.Fatal("unexpected number of accounts")
 	}
 

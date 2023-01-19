@@ -8,30 +8,25 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-
+	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/container"
 	"github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/enclave"
-
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-
-	"github.com/obscuronet/go-obscuro/go/wallet"
-
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/integration"
-
+	"github.com/obscuronet/go-obscuro/go/enclave"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
+	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
 const (
@@ -41,7 +36,8 @@ const (
 
 func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
 	// Create the in memory obscuro nodes, each connect each to a geth node
-	obscuroNodes := make([]host.Host, params.NumberOfNodes)
+	obscuroNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
+	obscuroHosts := make([]host.Host, params.NumberOfNodes)
 	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
@@ -62,16 +58,22 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			params.L1SetupData.MessageBusAddr,
 			params.L1SetupData.ObscuroStartBlock,
 		)
+		obscuroHosts[i] = obscuroNodes[i].Host()
 	}
 	// make sure the aggregators can talk to each other
 	for i := 0; i < params.NumberOfNodes; i++ {
-		p2pLayers[i].Nodes = obscuroNodes
+		p2pLayers[i].Nodes = obscuroHosts
 	}
 
 	// start each obscuro node
 	for _, m := range obscuroNodes {
 		t := m
-		go t.Start()
+		go func() {
+			err := t.Start()
+			if err != nil {
+				panic(err)
+			}
+		}()
 	}
 
 	// Create a handle to each node

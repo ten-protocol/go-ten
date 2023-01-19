@@ -1,0 +1,31 @@
+{
+    "localGeth": {
+      "url": "http://127.0.0.1:8025",
+      "accounts": [
+        "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
+      ]
+    },
+    "localObscuro": {
+      "chainId": 777,
+      "url": "http://127.0.0.1:3000",
+      "obscuroEncRpcUrl": "ws://host.docker.internal:13001",
+      "gasPrice": 2000000000,
+      "accounts": [
+        "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"
+      ]
+    },
+    "hardhat": {
+      "deploy": [
+        "deployment_scripts/layer1/",
+        "deployment_scripts/testnet/"
+      ],
+      "chainId": 1337,
+      "accounts": [
+        {
+          "privateKey": "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
+          "balance": "174165200000000000"
+        }
+      ]
+    }
+  }
+  

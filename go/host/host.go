@@ -133,12 +133,12 @@ func NewHost(
 }
 
 // Start validates the host config and starts the Host in a go routine - immediately returns after
-func (h *host) Start() {
+func (h *host) Start() error {
 	h.validateConfig()
 
 	tomlConfig, err := toml.Marshal(h.config)
 	if err != nil {
-		h.logger.Crit("could not print host config")
+		return fmt.Errorf("could not print host config - %w", err)
 	}
 	h.logger.Info("Host started with following config", log.CfgKey, string(tomlConfig))
 
@@ -165,6 +165,8 @@ func (h *host) Start() {
 		// start the host's main processing loop
 		h.startProcessing()
 	}()
+
+	return nil
 }
 
 func (h *host) broadcastSecret() error {
@@ -195,6 +197,11 @@ func (h *host) broadcastSecret() error {
 		HostAddress:   h.config.P2PPublicAddress,
 	}
 	initialiseSecretTx := h.mgmtContractLib.CreateInitializeSecret(l1tx, h.ethWallet.GetNonceAndIncrement())
+	initialiseSecretTx, err = h.ethClient.EstimateGasAndGasPrice(initialiseSecretTx, h.ethWallet.Address())
+	if err != nil {
+		h.ethWallet.SetNonce(h.ethWallet.GetNonce() - 1)
+		return err
+	}
 	// we block here until we confirm a successful receipt. It is important this is published before the initial rollup.
 	err = h.signAndBroadcastL1Tx(initialiseSecretTx, l1TxTriesSecret, true)
 	if err != nil {
@@ -504,11 +511,18 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 		}})
 
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
+	rollupTx, err = h.ethClient.EstimateGasAndGasPrice(rollupTx, h.ethWallet.Address())
+	if err != nil {
+		// todo review this nonce management approach
+		h.ethWallet.SetNonce(h.ethWallet.GetNonce() - 1)
+		h.logger.Error("could not estimate rollup tx", log.ErrKey, err)
+		return
+	}
 
 	// fire-and-forget (track the receipt asynchronously)
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup, false)
 	if err != nil {
-		h.logger.Error("could not broadcast rollup", log.ErrKey, err)
+		h.logger.Error("could not issue rollup tx", log.ErrKey, err)
 	}
 }
 
@@ -613,6 +627,11 @@ func (h *host) requestSecret() error {
 		panic(fmt.Errorf("could not fetch head L1 block. Cause: %w", err))
 	}
 	requestSecretTx := h.mgmtContractLib.CreateRequestSecret(l1tx, h.ethWallet.GetNonceAndIncrement())
+	requestSecretTx, err = h.ethClient.EstimateGasAndGasPrice(requestSecretTx, h.ethWallet.Address())
+	if err != nil {
+		h.ethWallet.SetNonce(h.ethWallet.GetNonce() - 1)
+		return err
+	}
 	// we wait until the secret req transaction has succeeded before we start polling for the secret
 	err = h.signAndBroadcastL1Tx(requestSecretTx, l1TxTriesSecret, true)
 	if err != nil {
@@ -642,6 +661,8 @@ func (h *host) handleStoreSecretTx(t *ethadapter.L1RespondSecretTx) bool {
 }
 
 func (h *host) publishSharedSecretResponses(scrtResponses []*common.ProducedSecretResponse) error {
+	var err error
+
 	for _, scrtResponse := range scrtResponses {
 		// todo: implement proper protocol so only one host responds to this secret requests initially
 		// 	for now we just have the genesis host respond until protocol implemented
@@ -659,9 +680,14 @@ func (h *host) publishSharedSecretResponses(scrtResponses []*common.ProducedSecr
 		}
 		// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 		respondSecretTx := h.mgmtContractLib.CreateRespondSecret(l1tx, h.ethWallet.GetNonceAndIncrement(), false)
+		respondSecretTx, err = h.ethClient.EstimateGasAndGasPrice(respondSecretTx, h.ethWallet.Address())
+		if err != nil {
+			h.ethWallet.SetNonce(h.ethWallet.GetNonce() - 1)
+			return err
+		}
 		h.logger.Trace("Broadcasting secret response L1 tx.", "requester", scrtResponse.RequesterID)
 		// fire-and-forget (track the receipt asynchronously)
-		err := h.signAndBroadcastL1Tx(respondSecretTx, l1TxTriesSecret, false)
+		err = h.signAndBroadcastL1Tx(respondSecretTx, l1TxTriesSecret, false)
 		if err != nil {
 			return fmt.Errorf("could not broadcast secret response. Cause %w", err)
 		}

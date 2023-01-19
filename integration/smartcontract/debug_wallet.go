@@ -26,6 +26,13 @@ func newDebugWallet(w wallet.Wallet) *debugWallet {
 
 // AwaitedSignAndSendTransaction signs a tx, issues the tx and awaits the tx to be minted into a block
 func (w *debugWallet) AwaitedSignAndSendTransaction(client ethadapter.EthClient, txData types.TxData) (*types.Transaction, *types.Receipt, error) {
+	var err error
+
+	txData, err = client.EstimateGasAndGasPrice(txData, w.Address())
+	if err != nil {
+		w.SetNonce(w.GetNonce() - 1)
+		return nil, nil, err
+	}
 	signedTx, err := w.SignAndSendTransaction(client, txData)
 	if err != nil {
 		return nil, nil, err

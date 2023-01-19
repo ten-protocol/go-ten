@@ -19,7 +19,7 @@ type Host interface {
 	EnclaveClient() common.Enclave
 
 	// Start initializes the main loop of the host.
-	Start()
+	Start() error
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
 	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
 	// ReceiveTx processes a transaction received from a peer host.

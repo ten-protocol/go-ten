@@ -6,12 +6,10 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
-
+	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-
-	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // MockP2P - models a full network of in memory nodes including artificial random latencies
