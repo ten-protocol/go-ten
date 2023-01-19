@@ -229,20 +229,18 @@ func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 	return encryptedLogsByID, nil
 }
 
-// Extracts the user addresses from the topics.
+// Of the log's topics, returns those that are (potentially) user addresses. A topic is considered a user address if:
+//   - It has 12 leading zero bytes (since addresses are 20 bytes long, while hashes are 32)
+//   - It has a non-zero nonce (to prevent accidental or malicious creation of the address matching a given topic,
+//     forcing its events to become permanently private
+//   - It does not have associated code (meaning it's a smart-contract address)
 func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 	var userAddrs []string
 
-	for idx, topic := range log.Topics {
-		// The first topic is always the hash of the event.
-		if idx == 0 {
-			continue
-		}
-
+	// We skip over the first topic, which is always the hash of the event.
+	for _, topic := range log.Topics[1:len(log.Topics)] {
 		potentialAddr := gethcommon.HexToAddress(topic.Hex())
 
-		// A user address must have (at least) 12 leading zero bytes, since addresses are 20 bytes long, while hashes
-		// are 32.
 		if topic.Hex()[2:len(zeroBytesHex)+2] != zeroBytesHex {
 			continue
 		}
@@ -296,32 +294,25 @@ func (s *SubscriptionManager) getNumberOfSubsThreadsafe() int {
 	return len(s.subscriptions)
 }
 
-// Indicates whether the log is relevant for the subscription.
+// Indicates whether BOTH of the following apply:
+//   - One of the log's user addresses matches the subscription's account
+//   - The log matches the filter
 func isRelevant(logItem *types.Log, userAddrs []string, account *gethcommon.Address, filter *filters.FilterCriteria) bool {
-	return userAddrsContainAccount(account, userAddrs) && logMatchesFilter(logItem, filter)
-}
+	filteredLogs := filterLogs([]*types.Log{logItem}, filter.FromBlock, filter.ToBlock, filter.Addresses, filter.Topics)
+	logMatchesFilter := len(filteredLogs) != 0
 
-// Indicates whether the account is contained in the user addresses.
-func userAddrsContainAccount(account *gethcommon.Address, userAddrs []string) bool {
-	// If there are no potential user addresses, this is a lifecycle event, and is therefore relevant to everyone.
+	// If there are no user addresses, this is a lifecycle event, and is therefore relevant to everyone.
 	if len(userAddrs) == 0 {
-		return true
+		return logMatchesFilter
 	}
 
 	for _, addr := range userAddrs {
 		if addr == account.Hex() {
-			return true
+			return logMatchesFilter
 		}
 	}
 
 	return false
-}
-
-// Applies `filterLogs`, below, to determine whether the log should be filtered out based on the user's subscription
-// criteria.
-func logMatchesFilter(log *types.Log, filterCriteria *filters.FilterCriteria) bool {
-	filteredLogs := filterLogs([]*types.Log{log}, filterCriteria.FromBlock, filterCriteria.ToBlock, filterCriteria.Addresses, filterCriteria.Topics)
-	return len(filteredLogs) != 0
 }
 
 // Lifted from eth/filters/filter.go in the go-ethereum repository.
