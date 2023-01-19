@@ -84,7 +84,7 @@ type RollupHeader struct {
 	BatchHash          common.Hash                           // The latest batch included in this rollup.
 
 	// The block hash of the latest block that has been scanned for cross chain messages.
-	LatestInboudCrossChainHash common.Hash `json:"inboundCrossChainHash"`
+	LatestInboundCrossChainHash common.Hash `json:"inboundCrossChainHash"`
 
 	// The block height of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int `json:"inboundCrossChainHeight"`
@@ -136,7 +136,7 @@ func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 		S:                             b.S,
 		Withdrawals:                   b.Withdrawals,
 		CrossChainMessages:            b.CrossChainMessages,
-		LatestInboudCrossChainHash:    b.LatestInboudCrossChainHash,
+		LatestInboundCrossChainHash:   b.LatestInboudCrossChainHash,
 		LatestInboundCrossChainHeight: b.LatestInboundCrossChainHeight,
 	}
 }
@@ -179,7 +179,7 @@ func (r *RollupHeader) ToBatchHeader() *BatchHeader {
 		S:                             r.S,
 		Withdrawals:                   r.Withdrawals,
 		CrossChainMessages:            r.CrossChainMessages,
-		LatestInboudCrossChainHash:    r.LatestInboudCrossChainHash,
+		LatestInboudCrossChainHash:    r.LatestInboundCrossChainHash,
 		LatestInboundCrossChainHeight: r.LatestInboundCrossChainHeight,
 	}
 }
