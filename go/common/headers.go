@@ -62,7 +62,6 @@ type RollupHeader struct {
 	UncleHash   common.Hash    `json:"sha3Uncles"`
 	Coinbase    common.Address `json:"miner"`
 	Root        StateRoot      `json:"stateRoot"`
-	TxHash      common.Hash    `json:"transactionsRoot"` // todo - include the synthetic deposits
 	ReceiptHash common.Hash    `json:"receiptsRoot"`
 	Bloom       types.Bloom    `json:"logsBloom"`
 	Difficulty  *big.Int
@@ -82,6 +81,7 @@ type RollupHeader struct {
 	// TODO: mark as deprecated Withdrawals are now contained within cross chain messages.
 	Withdrawals        []Withdrawal
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
+	HeadBatchHash      common.Hash                           // The latest batch included in this rollup.
 
 	// The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHash common.Hash `json:"inboundCrossChainHash"`
@@ -113,11 +113,12 @@ func (b *BatchHeader) Hash() L2RootHash {
 
 func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 	return &RollupHeader{
-		ParentHash:                    b.ParentHash,
-		UncleHash:                     b.UncleHash,
-		Coinbase:                      b.Coinbase,
-		Root:                          b.Root,
-		TxHash:                        b.TxHash,
+		ParentHash: b.ParentHash,
+		UncleHash:  b.UncleHash,
+		Coinbase:   b.Coinbase,
+		Root:       b.Root,
+		// TODO - #718 - Once there are multiple batches per rollup, this conversion will no longer be possible.
+		HeadBatchHash:                 b.TxHash,
 		ReceiptHash:                   b.ReceiptHash,
 		Bloom:                         b.Bloom,
 		Difficulty:                    b.Difficulty,
@@ -155,11 +156,12 @@ func (r *RollupHeader) Hash() L2RootHash {
 
 func (r *RollupHeader) ToBatchHeader() *BatchHeader {
 	return &BatchHeader{
-		ParentHash:                    r.ParentHash,
-		UncleHash:                     r.UncleHash,
-		Coinbase:                      r.Coinbase,
-		Root:                          r.Root,
-		TxHash:                        r.TxHash,
+		ParentHash: r.ParentHash,
+		UncleHash:  r.UncleHash,
+		Coinbase:   r.Coinbase,
+		Root:       r.Root,
+		// TODO - #718 - Once there are multiple batches per rollup, this conversion will no longer be possible.
+		TxHash:                        r.HeadBatchHash,
 		ReceiptHash:                   r.ReceiptHash,
 		Bloom:                         r.Bloom,
 		Difficulty:                    r.Difficulty,
