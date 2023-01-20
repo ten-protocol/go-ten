@@ -4,7 +4,7 @@ import (
 	"sync/atomic"
 )
 
-// ExtRollup is an encrypted form of rollup used when passing the rollup around outside of an enclave.
+// ExtRollup is an encrypted form of rollup used when passing the rollup around outside an enclave.
 type ExtRollup struct {
 	Header *RollupHeader
 	// TODO - #718 - Consider compressing these batches before submitting to the L1.
