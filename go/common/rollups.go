@@ -6,7 +6,8 @@ import (
 
 // ExtRollup is an encrypted form of rollup used when passing the rollup around outside of an enclave.
 type ExtRollup struct {
-	Header  *RollupHeader
+	Header *RollupHeader
+	// TODO - #718 - Consider compressing these batches before submitting to the L1.
 	Batches []*ExtBatch // The batches included in the rollup, in external/encrypted form.
 	hash    atomic.Value
 }
