@@ -50,8 +50,14 @@ func (r *Rollup) ToExtRollup(txBlobCrypto crypto.TransactionBlobCrypto) *common.
 	}
 }
 
-func ToRollup(encryptedRollup *common.ExtRollup) *Rollup {
+func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
+	batches := make([]*Batch, len(encryptedRollup.Batches))
+	for idx, extBatch := range encryptedRollup.Batches {
+		batches[idx] = ToBatch(extBatch, txBlobCrypto)
+	}
+
 	return &Rollup{
-		Header: encryptedRollup.Header,
+		Header:  encryptedRollup.Header,
+		Batches: batches,
 	}
 }
