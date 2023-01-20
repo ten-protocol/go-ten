@@ -1,4 +1,4 @@
-package gethnetwork
+package eth2network
 
 import (
 	"testing"
@@ -7,7 +7,11 @@ import (
 )
 
 func TestStartEth2Network(t *testing.T) {
-	network := NewEth2Network(8545, 2)
+	_, err := EnsureBinariesExist()
+	if err != nil {
+		return
+	}
+	network := NewEth2Network(8545, 2, 444)
 	assert.Nil(t, network.Start())
 
 	defer network.Stop()

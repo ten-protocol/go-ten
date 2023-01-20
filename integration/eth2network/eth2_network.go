@@ -1,4 +1,4 @@
-package gethnetwork
+package eth2network
 
 import (
 	"context"
@@ -16,7 +16,12 @@ import (
 )
 
 const (
-	dataDirFlag = "--datadir"
+	_dataDirFlag                     = "--datadir"
+	_eth2BinariesRelPath             = "../.build/eth2_bin"
+	_gethFileNameVersion             = "geth-v1.10.26"
+	_prysmBeaconChainFileNameVersion = "beacon-chain-v3.2.0"
+	_prysmCTLFileNameVersion         = "prysmctl-v3.2.0"
+	_prysmValidatorFileNameVersion   = "validator-v3.2.0"
 )
 
 type Eth2Network struct {
@@ -41,7 +46,7 @@ func NewEth2Network(
 	httpPortStart int,
 	// websocketPortStart int,
 	numNodes int,
-	// blockTimeSecs int,
+	blockTimeSecs int,
 	// preFundedAddrs []string,
 ) *Eth2Network {
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
@@ -49,14 +54,44 @@ func NewEth2Network(
 	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
 	binDir := path.Join(basepath, "../.build/eth2_bin")
 
-	gethGenesisPath := path.Join(binDir, "genesis.json")
-	prysmGenesisPath := path.Join(binDir, "genesis.ssz")
-	gethBinaryPath := path.Join(binDir, "geth-v1.10.26")
-	prysmBeaconBinaryPath := path.Join(binDir, "beacon-chain-v3.2.0-darwin-arm64")
-	prysmBinaryPath := path.Join(binDir, "prysmctl-v3.2.0-darwin-arm64")
-	prysmConfigPath := path.Join(binDir, "prysm_chain_config.yml")
-	prysmValidatorBinaryPath := path.Join(binDir, "validator-v3.2.0-darwin-arm64")
-	preloadScriptPath := path.Join(binDir, "preload-script.js")
+	gethGenesisPath := path.Join(buildDir, "genesis.json")
+	gethPreloadScriptPath := path.Join(buildDir, "preload-script.js")
+	prysmGenesisPath := path.Join(buildDir, "genesis.ssz")
+	prysmConfigPath := path.Join(buildDir, "prysm_chain_config.yml")
+	logPath := path.Join(buildDir, "node_logs.txt")
+
+	gethBinaryPath := path.Join(binDir, _gethFileNameVersion)
+	prysmBeaconBinaryPath := path.Join(binDir, _prysmBeaconChainFileNameVersion)
+	prysmBinaryPath := path.Join(binDir, _prysmCTLFileNameVersion)
+	prysmValidatorBinaryPath := path.Join(binDir, _prysmValidatorFileNameVersion)
+
+	// Nodes logs and execution related files are writen in the build folder
+	err := os.MkdirAll(buildDir, os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+
+	// Generate and write genesis file
+	genesisStr, err := generateGenesis(blockTimeSecs, nil)
+	if err != nil {
+		panic(err)
+	}
+	err = os.WriteFile(gethGenesisPath, []byte(genesisStr), 0777)
+	if err != nil {
+		panic(err)
+	}
+
+	// Write beacon config
+	err = os.WriteFile(prysmConfigPath, []byte(beaconConfig), 0777)
+	if err != nil {
+		panic(err)
+	}
+
+	// Write geth js script
+	err = os.WriteFile(gethPreloadScriptPath, []byte(gethPreloadJsonScript), 0777)
+	if err != nil {
+		panic(err)
+	}
 
 	// Each node has a temp directory
 	nodesDir, err := os.MkdirTemp("", timestamp)
@@ -73,14 +108,7 @@ func NewEth2Network(
 		nodePorts[i] = httpPortStart + i
 	}
 
-	// Nodes logs are written to the build directory
-	err = os.MkdirAll(buildDir, os.ModePerm)
-	if err != nil {
-		panic(err)
-	}
-
-	// TODO HOOK LOGS
-	logPath := path.Join(binDir, "node_logs.txt")
+	// create the log file
 	logFile, err := os.Create(logPath)
 	if err != nil {
 		panic(err)
@@ -99,7 +127,7 @@ func NewEth2Network(
 		gethGenesisPath:          gethGenesisPath,
 		prysmGenesisPath:         prysmGenesisPath,
 		logFile:                  logFile,
-		preloadScriptPath:        preloadScriptPath,
+		preloadScriptPath:        gethPreloadScriptPath,
 	}
 }
 
@@ -192,7 +220,7 @@ func (n *Eth2Network) Stop() {
 }
 
 func (n *Eth2Network) gethInitGenesisData(dataDirPath string) error {
-	args := []string{dataDirFlag, dataDirPath, "init", n.gethGenesisPath}
+	args := []string{_dataDirFlag, dataDirPath, "init", n.gethGenesisPath}
 	fmt.Printf("gethInitGenesisData: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
 	cmd.Stdout = n.logFile
@@ -229,7 +257,7 @@ func (n *Eth2Network) gethStartNode(executionPort, networkPort, httpPort int, da
 		"--http", "--http.port", fmt.Sprintf("%d", httpPort), "--http.api", "miner,engine,personal,eth,net,web3,debug",
 		"--authrpc.port", fmt.Sprintf("%d", executionPort),
 		"--port", fmt.Sprintf("%d", networkPort),
-		dataDirFlag, dataDirPath,
+		_dataDirFlag, dataDirPath,
 		"--allow-insecure-unlock",
 		"--nodiscover", "--syncmode", "full",
 		"--networkid", "32382",
