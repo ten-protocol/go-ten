@@ -2,7 +2,6 @@ package eth2network
 
 import (
 	"encoding/json"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const gethPreloadJsonScript = `
@@ -33,7 +32,7 @@ ALTAIR_FORK_VERSION: 0x20000090
 # Merge
 BELLATRIX_FORK_EPOCH: 4
 BELLATRIX_FORK_VERSION: 0x20000091
-TERMINAL_TOTAL_DIFFICULTY: 3
+TERMINAL_TOTAL_DIFFICULTY: 2
 
 # Time parameters
 SECONDS_PER_SLOT: 6
@@ -68,7 +67,7 @@ const baseGenesis = `{
       "period": 1,
       "epoch": 30000
     },
-    "terminalTotalDifficulty": 3
+    "terminalTotalDifficulty": 2
   },
   "difficulty": "1",
   "gasLimit": "30000000",
@@ -147,7 +146,7 @@ const baseGenesis = `{
   }
 }`
 
-func generateGenesis(blockTimeSecs int, accounts []gethcommon.Address) (string, error) {
+func generateGenesis(blockTimeSecs int, accounts []string) (string, error) {
 	var genesisJson map[string]interface{}
 
 	err := json.Unmarshal([]byte(baseGenesis), &genesisJson)
@@ -157,7 +156,7 @@ func generateGenesis(blockTimeSecs int, accounts []gethcommon.Address) (string, 
 
 	// add the prefunded accounts
 	for _, account := range accounts {
-		genesisJson["alloc"].(map[string]string)[account.Hex()] = "10000000000000000000000"
+		genesisJson["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "10000000000000000000000"}
 	}
 
 	// set the block prod speed
