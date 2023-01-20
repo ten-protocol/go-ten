@@ -91,8 +91,8 @@ jobs:
         run: |
           docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
           docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
-          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
+          docker build -t ${{env.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
+          docker push ${{env.L2_HOST_DOCKER_BUILD_TAG}}
           docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
           docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
           docker build -t ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/hardhatdeployer.Dockerfile .
@@ -229,6 +229,7 @@ jobs:
                --pocerc20addr=${{needs.build.outputs.POC_ERC20_ADDR}} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --sequencerID=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
+               --dev_testnet=${{ github.event.inputs.testnet_type  != 'testnet' }} \
                --p2p_public_address=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
 
 
@@ -285,7 +286,6 @@ jobs:
         shell: bash
         run: |
           ./testnet/testnet-deploy-l2-contracts.sh --l2host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com  --docker_image=${{needs.build.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
-
 
   deploy-faucet:
     runs-on: ubuntu-latest

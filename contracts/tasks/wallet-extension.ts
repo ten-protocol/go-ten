@@ -138,7 +138,7 @@ task("obscuro:wallet-extension:add-key", "Creates a viewing key for a specifiec 
             const data = {"address": address}
     
             const req = http.request({
-                host: 'localhost',
+                host: '127.0.0.1',
                 port: 3000,
                 path: '/generateviewingkey/',
                 method: 'post',
@@ -171,7 +171,7 @@ task("obscuro:wallet-extension:add-key", "Creates a viewing key for a specifiec 
     async function submitKey(signedData: SignedData) : Promise<number> {
         return await new Promise(async (resolve, fail)=>{ 
             const req = http.request({
-                host: 'localhost',
+                host: '127.0.0.1',
                 port: 3000,
                 path: '/submitviewingkey/',
                 method: 'post',

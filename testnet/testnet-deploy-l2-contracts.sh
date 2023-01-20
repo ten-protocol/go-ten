@@ -89,4 +89,5 @@ docker run --name=hh-l2-deployer \
     -e NETWORK_JSON="${network_cfg}" \
     "${docker_image}" \
     obscuro:deploy \
-    --network layer2
+    --network layer2 \
+    --verbose
