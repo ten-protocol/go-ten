@@ -913,7 +913,7 @@ func (rc *RollupChain) checkRollupAgainstBatches(rollup *core.Rollup) error {
 		return fmt.Errorf("could not retrieve batch for rollup. Cause: %w", err)
 	}
 
-	// TODO - #718 - We'll require a different check once there are multiple batches for a single rollup.
+	// TODO - #718 - Implement a better check (e.g. that all batches have been rolled up, and in the correct order).
 	if batch.Number().Cmp(rollup.Number()) != 0 {
 		return fmt.Errorf("batch and rollup numbers did not match")
 	}
