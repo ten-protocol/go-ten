@@ -3,6 +3,7 @@ package eth2network
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -76,7 +77,7 @@ func EnsureBinariesExist() (string, error) {
 	}
 
 	// download prysm files
-	for fileName, downloadUrl := range map[string]string{
+	for fileName, downloadURL := range map[string]string{
 		_prysmBeaconChainFileNameVersion: fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/v3.2.0/beacon-chain-v3.2.0-%s-%s", runtime.GOOS, goarch),
 		_prysmCTLFileNameVersion:         fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/v3.2.0/prysmctl-v3.2.0-%s-%s", runtime.GOOS, goarch),
 		_prysmValidatorFileNameVersion:   fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/v3.2.0/validator-v3.2.0-%s-%s", runtime.GOOS, goarch),
@@ -84,7 +85,7 @@ func EnsureBinariesExist() (string, error) {
 		expectedFilePath := path.Join(basepath, _eth2BinariesRelPath, fileName)
 		if !fileExists(expectedFilePath) {
 			// download tar file
-			err := downloadFile(expectedFilePath, downloadUrl)
+			err := downloadFile(expectedFilePath, downloadURL)
 			if err != nil {
 				return "", err
 			}
@@ -105,14 +106,14 @@ func fileExists(filename string) bool {
 
 func downloadFile(filepath string, url string) error {
 	// Create the file
-	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
+	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o777)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
 
 	// Get the data
-	resp, err := http.Get(url)
+	resp, err := http.Get(url) //nolint: gosec, noctx
 	if err != nil {
 		return err
 	}
@@ -150,9 +151,8 @@ func untar(dst string, path string) error {
 		header, err := tr.Next()
 
 		switch {
-
 		// if no more files are found return
-		case err == io.EOF:
+		case errors.Is(err, io.EOF):
 			return nil
 
 		// return any other error
@@ -178,7 +178,7 @@ func untar(dst string, path string) error {
 			}
 
 			// copy over contents
-			if _, err := io.Copy(f, tr); err != nil {
+			if _, err := io.Copy(f, tr); err != nil { //nolint: gosec
 				return err
 			}
 

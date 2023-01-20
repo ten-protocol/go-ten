@@ -3,13 +3,12 @@ package eth2network
 import (
 	"context"
 	"fmt"
+	"math/big"
+	"testing"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-	"math/big"
-	"testing"
-	"time"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,10 +45,9 @@ func isAddressPrefunded(t *testing.T, addr gethcommon.Address) {
 	at, err := conn.BalanceAt(context.Background(), addr, nil)
 	assert.Nil(t, err)
 
-	assert.True(t, at.Cmp(big.NewInt(1)) > 1)
+	assert.True(t, at.Cmp(big.NewInt(1)) == 1)
 }
 
 func genesisParamsAreUsed(t *testing.T, network *Eth2Network) {
-	time.Sleep(10 * time.Second)
 	fmt.Println("Stopping now")
 }

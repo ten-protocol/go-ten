@@ -71,7 +71,7 @@ func NewEth2Network(
 	prysmBinaryPath := path.Join(binDir, _prysmCTLFileNameVersion)
 	prysmValidatorBinaryPath := path.Join(binDir, _prysmValidatorFileNameVersion)
 
-	// Nodes logs and execution related files are writen in the build folder
+	// Nodes logs and execution related files are written in the build folder
 	err := os.MkdirAll(buildDir, os.ModePerm)
 	if err != nil {
 		panic(err)
@@ -82,19 +82,19 @@ func NewEth2Network(
 	if err != nil {
 		panic(err)
 	}
-	err = os.WriteFile(gethGenesisPath, []byte(genesisStr), 0777)
+	err = os.WriteFile(gethGenesisPath, []byte(genesisStr), 0o600)
 	if err != nil {
 		panic(err)
 	}
 
 	// Write beacon config
-	err = os.WriteFile(prysmConfigPath, []byte(beaconConfig), 0777)
+	err = os.WriteFile(prysmConfigPath, []byte(beaconConfig), 0o600)
 	if err != nil {
 		panic(err)
 	}
 
 	// Write geth js script
-	err = os.WriteFile(gethPreloadScriptPath, []byte(gethPreloadJsonScript), 0777)
+	err = os.WriteFile(gethPreloadScriptPath, []byte(gethPreloadJSONScript), 0o600)
 	if err != nil {
 		panic(err)
 	}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 )
 
-const gethPreloadJsonScript = `
+const gethPreloadJSONScript = `
 key = "2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622";
 pwd = "password";
 
@@ -147,22 +147,22 @@ const baseGenesis = `{
 }`
 
 func generateGenesis(blockTimeSecs int, accounts []string) (string, error) {
-	var genesisJson map[string]interface{}
+	var genesisJSON map[string]interface{}
 
-	err := json.Unmarshal([]byte(baseGenesis), &genesisJson)
+	err := json.Unmarshal([]byte(baseGenesis), &genesisJSON)
 	if err != nil {
 		return "", err
 	}
 
 	// add the prefunded accounts
 	for _, account := range accounts {
-		genesisJson["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "10000000000000000000000"}
+		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "10000000000000000000000"}
 	}
 
 	// set the block prod speed
-	genesisJson["config"].(map[string]interface{})["clique"].(map[string]interface{})["period"] = blockTimeSecs
+	genesisJSON["config"].(map[string]interface{})["clique"].(map[string]interface{})["period"] = blockTimeSecs
 
-	genesisBytes, err := json.MarshalIndent(genesisJson, "", " ")
+	genesisBytes, err := json.MarshalIndent(genesisJSON, "", " ")
 	if err != nil {
 		return "", err
 	}
