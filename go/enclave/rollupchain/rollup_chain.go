@@ -841,9 +841,9 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 		return fmt.Errorf("could not fetch current L2 head rollup")
 	}
 
-	// We retrieve the block's rollups, ordered by number.
 	rollups := rc.bridge.ExtractRollups(block, rc.storage)
 	sort.Slice(rollups, func(i, j int) bool {
+		// Ascending order sort.
 		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
 	})
 

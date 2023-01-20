@@ -1,6 +1,7 @@
 package common
 
 import (
+	"sort"
 	"sync/atomic"
 )
 
@@ -23,11 +24,16 @@ func (r *ExtRollup) Hash() L2RootHash {
 	return v
 }
 
-// ExtRollupFromExtBatches converts a set of ExtBatch into an ExtRollup. The head batch is the one stored in the
-// ExtRollup header's `HeadBatchHash` field.
-func ExtRollupFromExtBatches(headBatch *ExtBatch, additionalBatches []*ExtBatch) *ExtRollup {
+// ExtRollupFromExtBatches converts a set of ExtBatch into an ExtRollup. The hash of the head batch (the one with the
+// highest number) is stored in the ExtRollup header's `HeadBatchHash` field.
+func ExtRollupFromExtBatches(batches []*ExtBatch) *ExtRollup {
+	sort.Slice(batches, func(i, j int) bool {
+		// Ascending order sort.
+		return batches[i].Header.Number.Cmp(batches[j].Header.Number) < 0
+	})
+
 	return &ExtRollup{
-		Header:  headBatch.Header.ToRollupHeader(),
-		Batches: append(additionalBatches, headBatch),
+		Header:  batches[len(batches)-1].Header.ToRollupHeader(),
+		Batches: batches,
 	}
 }
