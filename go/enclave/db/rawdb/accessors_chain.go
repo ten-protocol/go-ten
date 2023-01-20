@@ -284,8 +284,7 @@ func writeRollupHeader(db ethdb.KeyValueWriter, header *common.RollupHeader) err
 	return nil
 }
 
-// todo - joel - pass in slice of references to hashes?
-func writeRollupBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []common.L2RootHash) error {
+func writeRollupBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []*common.L2RootHash) error {
 	data, err := rlp.EncodeToBytes(body)
 	if err != nil {
 		return fmt.Errorf("could not encode batch hashes. Cause: %w", err)
@@ -337,13 +336,12 @@ func readRollupHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.Raw
 }
 
 // Retrieves the rollup body corresponding to the hash.
-// todo - joel - return slice of references to hashes?
-func readRollupBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]common.L2RootHash, error) {
+func readRollupBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2RootHash, error) {
 	data, err := readRollupBodyRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read batch hashes. Cause: %w", err)
 	}
-	body := new([]common.L2RootHash)
+	body := new([]*common.L2RootHash)
 	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
 		return nil, fmt.Errorf("could not decode batch hashes. Cause: %w", err)
 	}

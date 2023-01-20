@@ -8,7 +8,7 @@ import (
 // TODO - #718 - This structure can now be deleted, since there is no private information in the "vanilla" rollup (as rollups no longer contain transactions).
 type ExtRollup struct {
 	Header      *RollupHeader
-	BatchHashes []L2RootHash // The hashes of the batches included in the rollup
+	BatchHashes []*L2RootHash // The hashes of the batches included in the rollup
 	hash        atomic.Value
 }
 

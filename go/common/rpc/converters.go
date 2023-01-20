@@ -339,9 +339,10 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 	}
 
 	// We recreate the transaction hashes.
-	batchHashes := make([]gethcommon.Hash, len(msg.BatchHashes))
+	batchHashes := make([]*common.L2RootHash, len(msg.BatchHashes))
 	for idx, bytes := range msg.BatchHashes {
-		batchHashes[idx] = gethcommon.BytesToHash(bytes)
+		batchHash := gethcommon.BytesToHash(bytes)
+		batchHashes[idx] = &batchHash
 	}
 
 	return &common.ExtRollup{

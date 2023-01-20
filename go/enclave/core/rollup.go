@@ -9,7 +9,7 @@ import (
 
 type Rollup struct {
 	Header      *common.RollupHeader
-	BatchHashes []common.L2RootHash // todo - joel - references?
+	BatchHashes []*common.L2RootHash
 	hash        atomic.Value
 }
 
