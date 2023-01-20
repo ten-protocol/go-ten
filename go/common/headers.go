@@ -113,11 +113,10 @@ func (b *BatchHeader) Hash() L2RootHash {
 
 func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 	return &RollupHeader{
-		ParentHash: b.ParentHash,
-		UncleHash:  b.UncleHash,
-		Coinbase:   b.Coinbase,
-		Root:       b.Root,
-		// TODO - #718 - Once there are multiple batches per rollup, this conversion will no longer be possible.
+		ParentHash:                    b.ParentHash,
+		UncleHash:                     b.UncleHash,
+		Coinbase:                      b.Coinbase,
+		Root:                          b.Root,
 		HeadBatchHash:                 b.TxHash,
 		ReceiptHash:                   b.ReceiptHash,
 		Bloom:                         b.Bloom,
