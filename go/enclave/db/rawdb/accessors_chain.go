@@ -67,8 +67,8 @@ func ReadRollup(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Rollup, 
 	}
 
 	return &core.Rollup{
-		Header:       header,
-		Transactions: body,
+		Header:      header,
+		BatchHashes: body,
 	}, nil
 }
 
@@ -76,7 +76,7 @@ func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 	if err := writeRollupHeader(db, rollup.Header); err != nil {
 		return fmt.Errorf("could not write header. Cause: %w", err)
 	}
-	if err := writeRollupBody(db, *rollup.Hash(), rollup.Transactions); err != nil {
+	if err := writeRollupBody(db, *rollup.Hash(), rollup.BatchHashes); err != nil {
 		return fmt.Errorf("could not write body. Cause: %w", err)
 	}
 	return nil
@@ -284,13 +284,14 @@ func writeRollupHeader(db ethdb.KeyValueWriter, header *common.RollupHeader) err
 	return nil
 }
 
-func writeRollupBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []*common.L2Tx) error {
+// todo - joel - pass in slice of references to hashes?
+func writeRollupBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []common.L2RootHash) error {
 	data, err := rlp.EncodeToBytes(body)
 	if err != nil {
-		return fmt.Errorf("could not encode L2 transactions. Cause: %w", err)
+		return fmt.Errorf("could not encode batch hashes. Cause: %w", err)
 	}
 	if err = writeRollupBodyRLP(db, hash, data); err != nil {
-		return fmt.Errorf("could not write L2 transactions. Cause: %w", err)
+		return fmt.Errorf("could not write batch hashes. Cause: %w", err)
 	}
 	return nil
 }
@@ -336,14 +337,15 @@ func readRollupHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.Raw
 }
 
 // Retrieves the rollup body corresponding to the hash.
-func readRollupBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
+// todo - joel - return slice of references to hashes?
+func readRollupBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]common.L2RootHash, error) {
 	data, err := readRollupBodyRLP(db, hash)
 	if err != nil {
-		return nil, fmt.Errorf("could not read body. Cause: %w", err)
+		return nil, fmt.Errorf("could not read batch hashes. Cause: %w", err)
 	}
-	body := new([]*common.L2Tx)
+	body := new([]common.L2RootHash)
 	if err := rlp.Decode(bytes.NewReader(data), body); err != nil {
-		return nil, fmt.Errorf("could not decode L2 transactions. Cause: %w", err)
+		return nil, fmt.Errorf("could not decode batch hashes. Cause: %w", err)
 	}
 	return *body, nil
 }

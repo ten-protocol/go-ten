@@ -278,8 +278,7 @@ message BatchHeaderMsg {
 
 message ExtRollupMsg {
   RollupHeaderMsg header = 1;
-  repeated bytes txHashes = 2;
-  bytes txs = 3;
+  repeated bytes batchHashes = 2;
 }
 
 message RollupHeaderMsg {

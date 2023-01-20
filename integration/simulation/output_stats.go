@@ -17,11 +17,10 @@ import (
 type OutputStats struct {
 	simulation *Simulation
 
-	l2RollupCountInHeaders    int // Number of rollups counted while node rollup header traversing
-	l2RollupCountInL1Blocks   int // Number of rollups counted while traversing the node block header and searching the txs
-	l2RollupTxCountInL1Blocks int // Number of rollup Txs counted while traversing the node block header
-	l1Height                  int // Last known l1 block height
-	l2Height                  int // Last known l2 block height
+	l2RollupCountInHeaders  int // Number of rollups counted while node rollup header traversing
+	l2RollupCountInL1Blocks int // Number of rollups counted while traversing the node block header and searching the txs
+	l1Height                int // Last known l1 block height
+	l2Height                int // Last known l2 block height
 
 	canonicalERC20DepositCount int // Number of erc20 deposits on the canonical chain
 }
@@ -89,7 +88,6 @@ func (o *OutputStats) countBlockChain() {
 				}
 				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
 					o.l2RollupCountInL1Blocks++
-					o.l2RollupTxCountInL1Blocks += len(r.EncryptedTxBlob)
 				}
 
 			case *ethadapter.L1DepositTx:
@@ -108,7 +106,6 @@ func (o *OutputStats) String() string {
 		"totalL2Blocks: %v\n"+
 		"l2RollupCountInHeaders: %d\n"+
 		"l2RollupCountInL1Blocks: %d\n"+
-		"l2RollupTxCountInL1Blocks: %d\n"+
 		"maxRollupsPerBlock: %d \n"+
 		"nrEmptyBlocks: %d\n"+
 		"noL1Reorgs: %+v\n"+
@@ -125,7 +122,6 @@ func (o *OutputStats) String() string {
 		o.simulation.Stats.NoL2Blocks,
 		o.l2RollupCountInHeaders,
 		o.l2RollupCountInL1Blocks,
-		o.l2RollupTxCountInL1Blocks,
 		o.simulation.Stats.MaxRollupsPerBlock,
 		o.simulation.Stats.NrEmptyBlocks,
 		o.simulation.Stats.NoL1Reorgs,

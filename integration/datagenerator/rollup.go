@@ -21,8 +21,7 @@ func RandomRollup(block *types.Block) common.ExtRollup {
 			Number:      big.NewInt(int64(RandomUInt64())),
 			Withdrawals: randomWithdrawals(10),
 		},
-		TxHashes:        []gethcommon.Hash{randomHash()},
-		EncryptedTxBlob: RandomBytes(10),
+		BatchHashes: []gethcommon.Hash{randomHash()},
 	}
 
 	if block != nil {
