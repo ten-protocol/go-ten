@@ -151,7 +151,7 @@ func ToExtBatchMsg(batch *common.ExtBatch) generated.ExtBatchMsg {
 	return generated.ExtBatchMsg{Header: ToBatchHeaderMsg(batch.Header), TxHashes: txHashBytes, Txs: batch.EncryptedTxBlob}
 }
 
-func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
+func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg { //nolint:dupl
 	if header == nil {
 		return nil
 	}
@@ -279,7 +279,7 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), BatchHashes: batchHashBytes}
 }
 
-func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
+func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg { //nolint:dupl
 	if header == nil {
 		return nil
 	}
