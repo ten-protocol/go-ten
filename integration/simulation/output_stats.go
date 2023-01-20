@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
@@ -49,7 +51,7 @@ func (o *OutputStats) populateHeights() {
 	o.l2Height = int(getHeadRollupHeader(obscuroClient, 0).Number.Uint64())
 }
 
-func (o *OutputStats) countBlockChain() { //nolint:gocognit
+func (o *OutputStats) countBlockChain() {
 	l1Node := o.simulation.RPCHandles.EthClients[0]
 	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
 
@@ -70,33 +72,37 @@ func (o *OutputStats) countBlockChain() { //nolint:gocognit
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for headBlock, _ := l1Node.FetchHeadBlock(); headBlock != nil && !bytes.Equal(headBlock.Hash().Bytes(), (common.L1RootHash{}).Bytes()); headBlock, _ = l1Node.BlockByHash(headBlock.ParentHash()) {
-		for _, tx := range headBlock.Transactions() {
-			t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
-			if t == nil {
-				t = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
-			}
+	for block, _ := l1Node.FetchHeadBlock(); block != nil && !bytes.Equal(block.Hash().Bytes(), (common.L1RootHash{}).Bytes()); block, _ = l1Node.BlockByHash(block.ParentHash()) {
+		o.incrementStats(block, l1Node)
+	}
+}
 
-			if t == nil {
-				continue
-			}
+func (o *OutputStats) incrementStats(block *types.Block, l1Node ethadapter.EthClient) {
+	for _, tx := range block.Transactions() {
+		t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
+		if t == nil {
+			t = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
+		}
 
-			switch l1Tx := t.(type) {
-			case *ethadapter.L1RollupTx:
-				r, err := common.DecodeRollup(l1Tx.Rollup)
-				if err != nil {
-					testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
+		if t == nil {
+			continue
+		}
+
+		switch l1Tx := t.(type) {
+		case *ethadapter.L1RollupTx:
+			r, err := common.DecodeRollup(l1Tx.Rollup)
+			if err != nil {
+				testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
+			}
+			if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {
+				o.l2RollupCountInL1Blocks++
+				for _, batch := range r.Batches {
+					o.l2RollupTxCountInL1Blocks += len(batch.TxHashes)
 				}
-				if l1Node.IsBlockAncestor(headBlock, r.Header.L1Proof) {
-					o.l2RollupCountInL1Blocks++
-					for _, batch := range r.Batches {
-						o.l2RollupTxCountInL1Blocks += len(batch.TxHashes)
-					}
-				}
-
-			case *ethadapter.L1DepositTx:
-				o.canonicalERC20DepositCount++
 			}
+
+		case *ethadapter.L1DepositTx:
+			o.canonicalERC20DepositCount++
 		}
 	}
 }
