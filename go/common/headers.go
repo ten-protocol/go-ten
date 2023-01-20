@@ -154,36 +154,6 @@ func (r *RollupHeader) Hash() L2RootHash {
 	return hash
 }
 
-func (r *RollupHeader) ToBatchHeader() *BatchHeader {
-	return &BatchHeader{
-		ParentHash: r.ParentHash,
-		UncleHash:  r.UncleHash,
-		Coinbase:   r.Coinbase,
-		Root:       r.Root,
-		// TODO - #718 - Once there are multiple batches per rollup, this conversion will no longer be possible.
-		TxHash:                        r.HeadBatchHash,
-		ReceiptHash:                   r.ReceiptHash,
-		Bloom:                         r.Bloom,
-		Difficulty:                    r.Difficulty,
-		Number:                        r.Number,
-		GasLimit:                      r.GasLimit,
-		GasUsed:                       r.GasUsed,
-		Time:                          r.Time,
-		Extra:                         r.Extra,
-		MixDigest:                     r.MixDigest,
-		Nonce:                         r.Nonce,
-		BaseFee:                       r.BaseFee,
-		Agg:                           r.Agg,
-		L1Proof:                       r.L1Proof,
-		R:                             r.R,
-		S:                             r.S,
-		Withdrawals:                   r.Withdrawals,
-		CrossChainMessages:            r.CrossChainMessages,
-		LatestInboudCrossChainHash:    r.LatestInboundCrossChainHash,
-		LatestInboundCrossChainHeight: r.LatestInboundCrossChainHeight,
-	}
-}
-
 // Encodes value, hashes the encoded bytes and returns the hash.
 func rlpHash(value interface{}) (common.Hash, error) {
 	var hash common.Hash

@@ -28,9 +28,8 @@ func (b *ExtBatch) Hash() L2RootHash {
 
 func (b *ExtBatch) ToExtRollup() *ExtRollup {
 	return &ExtRollup{
-		Header:          b.Header.ToRollupHeader(),
-		TxHashes:        b.TxHashes,
-		EncryptedTxBlob: b.EncryptedTxBlob,
+		Header:  b.Header.ToRollupHeader(),
+		Batches: []*ExtBatch{b},
 	}
 }
 

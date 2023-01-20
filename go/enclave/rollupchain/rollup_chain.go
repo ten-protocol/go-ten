@@ -905,20 +905,17 @@ func (rc *RollupChain) checkRollupsCorrectlyChained(rollup *core.Rollup, previou
 	return nil
 }
 
-// TODO - #718 - Additional validation of the rollup against the batch.
-// TODO - #718 - Refactor this logic once there are multiple batches for a single rollup.
+// Validates the rollup against the stored batches.
 func (rc *RollupChain) checkRollupAgainstBatches(rollup *core.Rollup) error {
-	// We validate the rollup against the corresponding batch.
-	// TODO - #718 - Handle case where rollup is received ahead of batch (currently, we simply log an error in the
-	//  calling method).
-	batch, err := rc.storage.FetchBatch(*rollup.Hash())
+	// TODO - #718 - Handle case where rollup is received ahead of batch.
+	batch, err := rc.storage.FetchBatch(rollup.Header.HeadBatchHash)
 	if err != nil {
 		return fmt.Errorf("could not retrieve batch for rollup. Cause: %w", err)
 	}
-	for i, tx := range rollup.Transactions {
-		if tx != batch.Transactions[i] {
-			return fmt.Errorf("mismatch between rollup and batch transactions")
-		}
+
+	// TODO - #718 - Implement a better check (e.g. that all batches have been rolled up, and in the correct order).
+	if batch.Number().Cmp(rollup.Number()) != 0 {
+		return fmt.Errorf("batch and rollup numbers did not match")
 	}
 
 	return nil

@@ -4,12 +4,12 @@ import (
 	"sync/atomic"
 )
 
-// ExtRollup is an encrypted form of rollup used when passing the rollup around outside of an enclave.
+// ExtRollup is an encrypted form of rollup used when passing the rollup around outside an enclave.
 type ExtRollup struct {
-	Header          *RollupHeader
-	TxHashes        []TxHash // The hashes of the transactions included in the rollup
-	EncryptedTxBlob EncryptedTransactions
-	hash            atomic.Value
+	Header *RollupHeader
+	// TODO - #718 - Consider compressing these batches before submitting to the L1.
+	Batches []*ExtBatch // The batches included in the rollup, in external/encrypted form.
+	hash    atomic.Value
 }
 
 // Hash returns the keccak256 hash of the rollup's header.
