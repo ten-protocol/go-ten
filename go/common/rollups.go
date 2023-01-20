@@ -22,3 +22,12 @@ func (r *ExtRollup) Hash() L2RootHash {
 	r.hash.Store(v)
 	return v
 }
+
+// ExtRollupFromExtBatches converts a set of ExtBatch into an ExtRollup. The head batch is the one stored in the
+// ExtRollup header's `HeadBatchHash` field.
+func ExtRollupFromExtBatches(headBatch *ExtBatch, additionalBatches []*ExtBatch) *ExtRollup {
+	return &ExtRollup{
+		Header:  headBatch.Header.ToRollupHeader(),
+		Batches: append(additionalBatches, headBatch),
+	}
+}
