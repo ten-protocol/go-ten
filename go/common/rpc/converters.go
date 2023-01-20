@@ -271,12 +271,13 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 		return generated.ExtRollupMsg{}
 	}
 
-	batchHashBytes := make([][]byte, len(rollup.BatchHashes))
-	for idx, batchHash := range rollup.BatchHashes {
-		batchHashBytes[idx] = batchHash.Bytes()
+	batchMsgs := make([]*generated.ExtBatchMsg, len(rollup.Batches))
+	for idx, batch := range rollup.Batches {
+		extBatchMsg := ToExtBatchMsg(batch)
+		batchMsgs[idx] = &extBatchMsg
 	}
 
-	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), BatchHashes: batchHashBytes}
+	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), Batches: batchMsgs}
 }
 
 func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg { //nolint:dupl
@@ -338,16 +339,16 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 		}
 	}
 
-	// We recreate the transaction hashes.
-	batchHashes := make([]*common.L2RootHash, len(msg.BatchHashes))
-	for idx, bytes := range msg.BatchHashes {
-		batchHash := gethcommon.BytesToHash(bytes)
-		batchHashes[idx] = &batchHash
+	// We recreate the batches.
+	batches := make([]*common.ExtBatch, len(msg.Batches))
+	for idx, batchMsg := range msg.Batches {
+		batch := FromExtBatchMsg(batchMsg)
+		batches[idx] = batch
 	}
 
 	return &common.ExtRollup{
-		Header:      FromRollupHeaderMsg(msg.Header),
-		BatchHashes: batchHashes,
+		Header:  FromRollupHeaderMsg(msg.Header),
+		Batches: batches,
 	}
 }
 

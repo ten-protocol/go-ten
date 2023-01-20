@@ -278,7 +278,7 @@ message BatchHeaderMsg {
 
 message ExtRollupMsg {
   RollupHeaderMsg header = 1;
-  repeated bytes batchHashes = 2;
+  repeated ExtBatchMsg batches = 2;
 }
 
 message RollupHeaderMsg {

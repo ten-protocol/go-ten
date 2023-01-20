@@ -4,13 +4,15 @@ import (
 	"math/big"
 	"sync/atomic"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 type Rollup struct {
-	Header      *common.RollupHeader
-	BatchHashes []*common.L2RootHash
-	hash        atomic.Value
+	Header  *common.RollupHeader
+	Batches []*Batch
+	hash    atomic.Value
 }
 
 // Hash returns the keccak256 hash of b's header.
@@ -36,10 +38,15 @@ func (r *Rollup) IsGenesis() bool {
 	return r.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
 
-func (r *Rollup) ToExtRollup() *common.ExtRollup {
+func (r *Rollup) ToExtRollup(txBlobCrypto crypto.TransactionBlobCrypto) *common.ExtRollup {
+	extBatches := make([]*common.ExtBatch, len(r.Batches))
+	for idx, batch := range r.Batches {
+		extBatches[idx] = batch.ToExtBatch(txBlobCrypto)
+	}
+
 	return &common.ExtRollup{
-		Header:      r.Header,
-		BatchHashes: r.BatchHashes,
+		Header:  r.Header,
+		Batches: extBatches,
 	}
 }
 
