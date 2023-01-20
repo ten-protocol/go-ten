@@ -513,8 +513,11 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 		return err
 	}
 
-	genesisRollup := dummyRollup(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
-	genesisBatch := genesisRollup.ToBatch()
+	genesisBatch := dummyBatch(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
+	genesisRollup := &core.Rollup{
+		Header:      genesisBatch.Header.ToRollupHeader(),
+		BatchHashes: []common.L2RootHash{*genesisBatch.Hash()},
+	}
 
 	// We update the database
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(genesisRollup); err != nil {
@@ -573,8 +576,11 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 		return err
 	}
 
-	rollup := dummyRollup(blk.Hash(), headRollup.NumberU64()+1, stateDB)
-	batch := rollup.ToBatch()
+	batch := dummyBatch(blk.Hash(), headRollup.NumberU64()+1, stateDB)
+	rollup := &core.Rollup{
+		Header:      batch.Header.ToRollupHeader(),
+		BatchHashes: []common.L2RootHash{*batch.Hash()},
+	}
 
 	// We update the database.
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(rollup); err != nil {
@@ -607,8 +613,8 @@ func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber,
 	return nil
 }
 
-func dummyRollup(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Rollup {
-	h := common.RollupHeader{
+func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Batch {
+	h := common.BatchHeader{
 		Agg:         gethcommon.HexToAddress("0x0"),
 		ParentHash:  common.L1RootHash{},
 		L1Proof:     blkHash,
@@ -618,7 +624,7 @@ func dummyRollup(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *
 		ReceiptHash: types.EmptyRootHash,
 		Time:        uint64(time.Now().Unix()),
 	}
-	return &core.Rollup{
+	return &core.Batch{
 		Header:       &h,
 		Transactions: []*common.L2Tx{},
 	}
