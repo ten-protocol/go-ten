@@ -37,13 +37,15 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	}
 	subscription := notifier.CreateSubscription()
 
-	matchedLogs := make(chan []byte)
-	err := api.host.Subscribe(subscription.ID, encryptedParams, matchedLogs)
+	logsFromSubscription := make(chan []byte)
+	err := api.host.Subscribe(subscription.ID, encryptedParams, logsFromSubscription)
 	if err != nil {
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}
 
-	// We return the ID of the newly-created subscription, before returning any log events.
+	// We send the ID of the newly-created subscription, before sending any log events. This is because the wallet
+	// extension needs to return the subscription ID to the end client, but this information is not exposed to it
+	// (since the subscription ID is automatically converted to a subscription object).
 	err = notifier.Notify(subscription.ID, common.IDAndEncLog{
 		SubID: subscription.ID,
 	})
@@ -55,7 +57,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	go func() {
 		for {
 			select {
-			case encryptedLog := <-matchedLogs:
+			case encryptedLog := <-logsFromSubscription:
 				idAndEncLog := common.IDAndEncLog{
 					SubID:  subscription.ID,
 					EncLog: encryptedLog,
