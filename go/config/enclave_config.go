@@ -35,8 +35,6 @@ type EnclaveConfig struct {
 	SpeculativeExecution bool
 	// The management contract address on the L1 network
 	ManagementContractAddress gethcommon.Address
-	// The addresses of ERC20 contracts to monitor on the L1 network
-	ERC20ContractAddresses []*gethcommon.Address
 	// LogLevel determines the verbosity of output logs
 	LogLevel int
 	// The path that the enclave's logs are written to
@@ -74,7 +72,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		GenesisJSON:               nil,
 		SpeculativeExecution:      false,
 		ManagementContractAddress: gethcommon.BytesToAddress([]byte("")),
-		ERC20ContractAddresses:    []*gethcommon.Address{},
 		LogLevel:                  int(gethlog.LvlInfo),
 		LogPath:                   log.SysOut,
 		UseInMemoryDB:             true, // todo: persistence should be on by default before production release

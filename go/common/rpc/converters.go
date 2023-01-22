@@ -156,11 +156,6 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg { //
 		return nil
 	}
 	var headerMsg generated.BatchHeaderMsg
-	withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
-	for _, withdrawal := range header.Withdrawals {
-		withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount.Bytes(), Recipient: withdrawal.Recipient.Bytes(), Contract: withdrawal.Contract.Bytes()}
-		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
-	}
 
 	diff := uint64(0)
 	if header.Difficulty != nil {
@@ -183,7 +178,6 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg { //
 		Extra:                       header.Extra,
 		R:                           header.R.Bytes(),
 		S:                           header.S.Bytes(),
-		Withdrawals:                 withdrawalMsgs,
 		UncleHash:                   header.UncleHash.Bytes(),
 		Coinbase:                    header.Coinbase.Bytes(),
 		Difficulty:                  diff,
@@ -227,14 +221,6 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader { 
 	if header == nil {
 		return nil
 	}
-	withdrawals := make([]common.Withdrawal, 0)
-	for _, withdrawalMsg := range header.Withdrawals {
-		recipient := gethcommon.BytesToAddress(withdrawalMsg.Recipient)
-		contract := gethcommon.BytesToAddress(withdrawalMsg.Contract)
-		amount := big.NewInt(0).SetBytes(withdrawalMsg.Amount)
-		withdrawal := common.Withdrawal{Amount: amount, Recipient: recipient, Contract: contract}
-		withdrawals = append(withdrawals, withdrawal)
-	}
 
 	r := &big.Int{}
 	s := &big.Int{}
@@ -251,7 +237,6 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader { 
 		Extra:                         header.Extra,
 		R:                             r.SetBytes(header.R),
 		S:                             s.SetBytes(header.S),
-		Withdrawals:                   withdrawals,
 		UncleHash:                     gethcommon.BytesToHash(header.UncleHash),
 		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
 		Difficulty:                    big.NewInt(int64(header.Difficulty)),
@@ -285,11 +270,6 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		return nil
 	}
 	var headerMsg generated.RollupHeaderMsg
-	withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
-	for _, withdrawal := range header.Withdrawals {
-		withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount.Bytes(), Recipient: withdrawal.Recipient.Bytes(), Contract: withdrawal.Contract.Bytes()}
-		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
-	}
 
 	diff := uint64(0)
 	if header.Difficulty != nil {
@@ -312,7 +292,6 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		Extra:                       header.Extra,
 		R:                           header.R.Bytes(),
 		S:                           header.S.Bytes(),
-		Withdrawals:                 withdrawalMsgs,
 		UncleHash:                   header.UncleHash.Bytes(),
 		Coinbase:                    header.Coinbase.Bytes(),
 		Difficulty:                  diff,
@@ -356,14 +335,6 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 	if header == nil {
 		return nil
 	}
-	withdrawals := make([]common.Withdrawal, 0)
-	for _, withdrawalMsg := range header.Withdrawals {
-		recipient := gethcommon.BytesToAddress(withdrawalMsg.Recipient)
-		contract := gethcommon.BytesToAddress(withdrawalMsg.Contract)
-		amount := big.NewInt(0).SetBytes(withdrawalMsg.Amount)
-		withdrawal := common.Withdrawal{Amount: amount, Recipient: recipient, Contract: contract}
-		withdrawals = append(withdrawals, withdrawal)
-	}
 
 	r := &big.Int{}
 	s := &big.Int{}
@@ -380,7 +351,6 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		Extra:                         header.Extra,
 		R:                             r.SetBytes(header.R),
 		S:                             s.SetBytes(header.S),
-		Withdrawals:                   withdrawals,
 		UncleHash:                     gethcommon.BytesToHash(header.UncleHash),
 		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
 		Difficulty:                    big.NewInt(int64(header.Difficulty)),

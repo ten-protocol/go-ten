@@ -5,8 +5,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
-
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
@@ -62,17 +60,4 @@ func (m *txInjectorTracker) GetL1Transactions() []ethadapter.L1Transaction {
 // GetL2Transactions returns all generated non-WithdrawalTx transactions, excluding prefund and ERC20 deploy transactions.
 func (m *txInjectorTracker) GetL2Transactions() ([]*common.L2Tx, []*common.L2Tx, []*common.L2Tx) {
 	return m.TransferL2Transactions, m.WithdrawalL2Transactions, m.NativeValueTransferL2Transactions
-}
-
-// GetL2WithdrawalRequests returns generated stored WithdrawalTx transactions, excluding prefund and ERC20 deploy transactions.
-func (m *txInjectorTracker) GetL2WithdrawalRequests() []common.Withdrawal {
-	withdrawals := make([]common.Withdrawal, 0)
-	for _, req := range m.WithdrawalL2Transactions {
-		found, address, amount := erc20contractlib.DecodeTransferTx(req, nil)
-		if !found {
-			panic("Should not happen")
-		}
-		withdrawals = append(withdrawals, common.Withdrawal{Amount: amount, Recipient: *address})
-	}
-	return withdrawals
 }

@@ -39,7 +39,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -70,7 +69,6 @@ type enclaveImpl struct {
 	// speculativeWorkOutCh chan speculativeWork
 
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
-	erc20ContractLib    erc20contractlib.ERC20ContractLib
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
 
 	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
@@ -88,14 +86,8 @@ func NewEnclave(
 	config config.EnclaveConfig,
 	genesis *genesis.Genesis,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	logger gethlog.Logger,
 ) common.Enclave {
-	if len(config.ERC20ContractAddresses) < 2 {
-		logger.Crit("failed to initialise enclave. At least two ERC20 contract addresses are required - the HOC " +
-			"ERC20 address and the POC ERC20 address")
-	}
-
 	// todo - add the delay: N hashes
 
 	var prof *profiler.Profiler
@@ -169,15 +161,13 @@ func NewEnclave(
 	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl(logger)
 
 	obscuroBridge := bridge.New(
-		config.ERC20ContractAddresses[0],
-		config.ERC20ContractAddresses[1],
 		mgmtContractLib,
-		erc20ContractLib,
 		transactionBlobCrypto,
 		config.ObscuroChainID,
 		config.L1ChainID,
 		logger,
 	)
+
 	memp := mempool.New(config.ObscuroChainID)
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
@@ -214,7 +204,6 @@ func NewEnclave(
 		txCh:                  make(chan *common.L2Tx),
 		exitCh:                make(chan bool),
 		mgmtContractLib:       mgmtContractLib,
-		erc20ContractLib:      erc20ContractLib,
 		attestationProvider:   attestationProvider,
 		enclaveKey:            enclaveKey,
 		enclavePubKey:         serializedEnclavePubKey,

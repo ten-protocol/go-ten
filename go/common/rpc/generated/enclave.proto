@@ -261,19 +261,18 @@ message BatchHeaderMsg {
   bytes Extra = 10;
   bytes R = 11;
   bytes S = 12;
-  repeated WithdrawalMsg Withdrawals = 13;
-  bytes UncleHash = 14;
-  bytes Coinbase = 15;
-  uint64 Difficulty = 16;
-  uint64 GasLimit = 17;
-  uint64 GasUsed = 18;
-  uint64 Time = 19;
-  bytes MixDigest = 20;
-  uint64 BaseFee = 21;
-  uint64 RollupNonce = 22;
-  bytes LatestInboundCrossChainHeight = 23;
-  bytes LatestInboundCrossChainHash = 24;
-  repeated CrossChainMsg CrossChainMessages = 25;
+  bytes UncleHash = 13;
+  bytes Coinbase = 14;
+  uint64 Difficulty = 15;
+  uint64 GasLimit = 16;
+  uint64 GasUsed = 17;
+  uint64 Time = 18;
+  bytes MixDigest = 19;
+  uint64 BaseFee = 20;
+  uint64 RollupNonce = 21;
+  bytes LatestInboundCrossChainHeight = 22;
+  bytes LatestInboundCrossChainHash = 23;
+  repeated CrossChainMsg CrossChainMessages = 24;
 }
 
 message ExtRollupMsg {
@@ -294,19 +293,18 @@ message RollupHeaderMsg {
   bytes Extra = 10;
   bytes R = 11;
   bytes S = 12;
-  repeated WithdrawalMsg Withdrawals = 13;
-  bytes UncleHash = 14;
-  bytes Coinbase = 15;
-  uint64 Difficulty = 16;
-  uint64 GasLimit = 17;
-  uint64 GasUsed = 18;
-  uint64 Time = 19;
-  bytes MixDigest = 20;
-  uint64 BaseFee = 21;
-  uint64 RollupNonce = 22;
-  bytes LatestInboundCrossChainHeight = 23;
-  bytes LatestInboundCrossChainHash = 24;
-  repeated CrossChainMsg CrossChainMessages = 25;
+  bytes UncleHash = 13;
+  bytes Coinbase = 14;
+  uint64 Difficulty = 15;
+  uint64 GasLimit = 16;
+  uint64 GasUsed = 17;
+  uint64 Time = 18;
+  bytes MixDigest = 19;
+  uint64 BaseFee = 20;
+  uint64 RollupNonce = 21;
+  bytes LatestInboundCrossChainHeight = 22;
+  bytes LatestInboundCrossChainHash = 23;
+  repeated CrossChainMsg CrossChainMessages = 24;
 }
 
 message SecretResponseMsg {

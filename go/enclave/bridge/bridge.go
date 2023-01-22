@@ -3,12 +3,7 @@ package bridge
 // TODO: once the cross chain messages based bridge is implemented remove this completely.
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
-	"math/big"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -19,13 +14,11 @@ import (
 	crypto2 "github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
@@ -77,12 +70,8 @@ type ERC20Mapping struct {
 
 // Bridge encapsulates all logic around processing the interactions with an L1
 type Bridge struct {
-	SupportedTokens map[ERC20]*ERC20Mapping
 	// BridgeAddress The address the bridge on the L2
-	BridgeAddress gethcommon.Address
-
-	MgmtContractLib  mgmtcontractlib.MgmtContractLib
-	Erc20ContractLib erc20contractlib.ERC20ContractLib
+	MgmtContractLib mgmtcontractlib.MgmtContractLib
 
 	TransactionBlobCrypto crypto2.TransactionBlobCrypto
 
@@ -93,68 +82,19 @@ type Bridge struct {
 }
 
 func New(
-	hocAddress *gethcommon.Address,
-	pocAddress *gethcommon.Address,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	transactionBlobCrypto crypto2.TransactionBlobCrypto,
 	obscuroChainID int64,
 	ethereumChainID int64,
 	logger gethlog.Logger,
 ) *Bridge {
-	tokens := make(map[ERC20]*ERC20Mapping, 0)
-
-	tokens[HOC] = &ERC20Mapping{
-		Name:      HOC,
-		L1Address: hocAddress,
-		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), HOCOwner, logger),
-		L2Address: &HOCContract,
-	}
-
-	tokens[POC] = &ERC20Mapping{
-		Name:      POC,
-		L1Address: pocAddress,
-		Owner:     wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), POCOwner, logger),
-		L2Address: &POCContract,
-	}
-
 	return &Bridge{
-		SupportedTokens:       tokens,
-		BridgeAddress:         BridgeAddress,
 		MgmtContractLib:       mgmtContractLib,
-		Erc20ContractLib:      erc20ContractLib,
 		TransactionBlobCrypto: transactionBlobCrypto,
 		ObscuroChainID:        obscuroChainID,
 		EthereumChainID:       ethereumChainID,
 		logger:                logger,
 	}
-}
-
-func (bridge *Bridge) IsWithdrawal(address gethcommon.Address) bool {
-	return bytes.Equal(address.Bytes(), bridge.BridgeAddress.Bytes())
-}
-
-// L1Address - returns the L1 address of a token based on the mapping
-func (bridge *Bridge) L1Address(l2Address *gethcommon.Address) *gethcommon.Address {
-	if l2Address == nil {
-		return nil
-	}
-	for _, t := range bridge.SupportedTokens {
-		if bytes.Equal(l2Address.Bytes(), t.L2Address.Bytes()) {
-			return t.L1Address
-		}
-	}
-	return nil
-}
-
-// GetMapping - finds the mapping based on the address that was called in an L1 transaction
-func (bridge *Bridge) GetMapping(l1ContractAddress *gethcommon.Address) *ERC20Mapping {
-	for _, t := range bridge.SupportedTokens {
-		if bytes.Equal(t.L1Address.Bytes(), l1ContractAddress.Bytes()) {
-			return t
-		}
-	}
-	return nil
 }
 
 // ExtractRollups - returns a list of the rollups published in this block
@@ -186,123 +126,4 @@ func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResol
 		}
 	}
 	return rollups
-}
-
-// NewDepositTx creates a synthetic Obscuro transfer transaction based on deposits into the L1 bridge.
-// Todo - has to go through a few more iterations
-func (bridge *Bridge) NewDepositTx(contract *gethcommon.Address, address gethcommon.Address, amount *big.Int, rollupState *state.StateDB, adjustNonce uint64) *common.L2Tx {
-	transferERC20data := erc20contractlib.CreateTransferTxData(address, amount)
-	signer := types.NewLondonSigner(big.NewInt(bridge.ObscuroChainID))
-
-	token := bridge.GetMapping(contract)
-	if token == nil {
-		bridge.logger.Crit("This should not happen as we don't generate deposits on unsupported tokens.")
-		return nil
-	}
-
-	// The nonce is adjusted with the number of deposits added to the rollup already.
-	storedNonce := rollupState.GetNonce(token.Owner.Address())
-	nonce := storedNonce + adjustNonce
-
-	tx := types.NewTx(&types.LegacyTx{
-		Nonce:    nonce,
-		Value:    gethcommon.Big0,
-		Gas:      1_000_000,
-		GasPrice: gethcommon.Big1,
-		Data:     transferERC20data,
-		To:       token.L2Address,
-	})
-
-	newTx, err := types.SignTx(tx, signer, token.Owner.PrivateKey())
-	if err != nil {
-		bridge.logger.Crit("could not sign synthetic deposit tx.", log.ErrKey, err)
-		return nil
-	}
-	return newTx
-}
-
-// ExtractDeposits returns a list of L2 deposit transactions generated from the L1 deposit transactions
-// starting with the proof of the parent rollup(exclusive) to the proof of the current rollup
-func (bridge *Bridge) ExtractDeposits(
-	fromBlock *types.Block,
-	toBlock *types.Block,
-	blockResolver db.BlockResolver,
-	rollupState *state.StateDB,
-) []*common.L2Tx {
-	from := fromBlock.Hash()
-	height := fromBlock.NumberU64()
-	if !blockResolver.IsAncestor(toBlock, fromBlock) {
-		bridge.logger.Crit("Deposits can't be processed because the rollups are not on the same Ethereum fork. This should not happen.")
-		return nil
-	}
-
-	fromL1Deposits := make([]uint64, 0)
-	allDeposits := make([]*common.L2Tx, 0)
-	b := toBlock
-	for {
-		if bytes.Equal(b.Hash().Bytes(), from.Bytes()) {
-			break
-		}
-		for _, tx := range b.Transactions() {
-			t := bridge.Erc20ContractLib.DecodeTx(tx)
-			if t == nil {
-				continue
-			}
-
-			if depositTx, ok := t.(*ethadapter.L1DepositTx); ok {
-				// todo - the adjust has to be per token
-				depL2Tx := bridge.NewDepositTx(depositTx.TokenContract, *depositTx.Sender, depositTx.Amount, rollupState, uint64(len(allDeposits)))
-				allDeposits = append(allDeposits, depL2Tx)
-				fromL1Deposits = append(fromL1Deposits, common.ShortHash(tx.Hash()))
-			}
-		}
-		if b.NumberU64() < height {
-			bridge.logger.Crit("block height is less than genesis height")
-			return nil
-		}
-		p, err := blockResolver.FetchBlock(b.ParentHash())
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				bridge.logger.Crit("deposits can't be processed because the rollups are not on the same Ethereum fork")
-			}
-			bridge.logger.Crit("deposits can't be processed because the parent block could not be retrieved", log.ErrKey, err)
-			return nil
-		}
-		b = p
-	}
-
-	bridge.logger.Trace(fmt.Sprintf("Extracted deposits %d ->%d: %v -> %v", fromBlock.NumberU64(), toBlock.NumberU64(), fromL1Deposits, allDeposits))
-	return allDeposits
-}
-
-// Todo - this has to be implemented differently based on how we define the ObsERC20
-func (bridge *Bridge) BatchPostProcessingWithdrawals(newHeadBatch *core.Batch, state *state.StateDB, receiptsMap map[gethcommon.Hash]*types.Receipt) []common.Withdrawal {
-	w := make([]common.Withdrawal, 0)
-	// go through each transaction and check if the withdrawal was processed correctly
-	for _, t := range newHeadBatch.Transactions {
-		found, address, amount := erc20contractlib.DecodeTransferTx(t, bridge.logger)
-
-		supportedTokenAddress := bridge.L1Address(t.To())
-		if found && supportedTokenAddress != nil && bridge.IsWithdrawal(*address) {
-			receipt := receiptsMap[t.Hash()]
-			if receipt != nil && receipt.Status == types.ReceiptStatusSuccessful {
-				signer := types.NewLondonSigner(big.NewInt(bridge.ObscuroChainID))
-				from, err := types.Sender(signer, t)
-				if err != nil {
-					bridge.logger.Crit("Error retrieving the sender from the signature", log.ErrKey, err)
-					return nil
-				}
-				state.Logs()
-				w = append(w, common.Withdrawal{
-					Contract:  *supportedTokenAddress,
-					Amount:    amount,
-					Recipient: from,
-				})
-			}
-		}
-	}
-
-	// TODO - fix the withdrawals logic
-	// clearWithdrawals(state, withdrawalTxs)
-	return w
 }

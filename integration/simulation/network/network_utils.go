@@ -87,14 +87,13 @@ func createInMemObscuroNode(
 		ValidateL1Blocks:          validateBlocks,
 		GenesisJSON:               genesisJSON,
 		UseInMemoryDB:             true,
-		ERC20ContractAddresses:    wallets.AllEthAddresses(),
 		MinGasPrice:               big.NewInt(1),
 		MessageBusAddress:         *l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
-	enclaveClient := enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, mgmtContractLib, stableTokenContractLib, enclaveLogger)
+	enclaveClient := enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, mgmtContractLib, enclaveLogger)
 
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)

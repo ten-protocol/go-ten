@@ -427,7 +427,6 @@ func (rc *RollupChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Bat
 			Root:        *preFundGenesisState,
 			TxHash:      types.EmptyRootHash,
 			Number:      big.NewInt(int64(0)),
-			Withdrawals: []common.Withdrawal{},
 			ReceiptHash: types.EmptyRootHash,
 			Time:        uint64(time.Now().Unix()),
 		},
@@ -491,30 +490,6 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 		rc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
 	}
 
-	// TODO: Remove this depositing logic once the new bridge is added.
-	depositTxs := rc.bridge.ExtractDeposits(
-		parentProof,
-		batchProof,
-		rc.storage,
-		stateDB,
-	)
-
-	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, batch.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
-	depositReceipts := make([]*types.Receipt, len(depositResponses))
-	if len(depositResponses) != len(depositTxs) {
-		rc.logger.Crit("Sanity check. Some deposit transactions failed.")
-	}
-	i := 0
-	for _, resp := range depositResponses {
-		rec, ok := resp.(*types.Receipt)
-		if !ok {
-			// TODO - Handle the case of an error (e.g. insufficient funds).
-			rc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
-		}
-		depositReceipts[i] = rec
-		i++
-	}
-
 	messages := rc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, batchProof, stateDB)
 	transactions := rc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, rc.storage, rc.chainConfig, len(executedTransactions), rc.logger)
@@ -523,7 +498,7 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 		rc.logger.Crit("Sanity check. Some synthetic transactions failed.")
 	}
 
-	i = 0
+	i := 0
 	for _, resp := range syntheticTransactionsResponses {
 		rec, ok := resp.(*types.Receipt)
 		if !ok { // Еxtract reason for failing deposit.
@@ -561,10 +536,9 @@ func (rc *RollupChain) processState(batch *core.Batch, txs []*common.L2Tx, state
 	}
 
 	sort.Sort(sortByTxIndex(txReceipts))
-	sort.Sort(sortByTxIndex(depositReceipts))
 
 	// todo - handle the tx execution logs
-	return rootHash, executedTransactions, txReceipts, depositReceipts
+	return rootHash, executedTransactions, txReceipts, synthReceipts
 }
 
 // Checks the internal validity of the batch.
@@ -585,15 +559,6 @@ func (rc *RollupChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
 		return nil, fmt.Errorf("verify batch b_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
 			common.ShortHash(*batch.Hash()), rootHash, batch.Header.Root, batch.Header.Number, core.PrintTxs(batch.Transactions), dump, depositReceipts)
-	}
-
-	// Check that the withdrawals in the header match the withdrawals as calculated.
-	withdrawals := rc.bridge.BatchPostProcessingWithdrawals(batch, stateDB, toReceiptMap(txReceipts))
-	for i, w := range withdrawals {
-		hw := batch.Header.Withdrawals[i]
-		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			return nil, fmt.Errorf("verify batch r_%d: Withdrawals don't match", common.ShortHash(*batch.Hash()))
-		}
 	}
 
 	// Check that the receipts bloom in the header matches the receipts bloom as calculated.
@@ -757,9 +722,6 @@ func (rc *RollupChain) produceBatch(block *types.Block, genesisBatchStored bool)
 	batch.Header.Root = rootHash
 	batch.Transactions = successfulTxs
 
-	// Postprocessing - withdrawals
-	txReceiptsMap := toReceiptMap(txReceipts)
-	batch.Header.Withdrawals = rc.bridge.BatchPostProcessingWithdrawals(batch, newBatchState, txReceiptsMap)
 	crossChainMessages, err := rc.crossChainProcessors.Local.ExtractOutboundMessages(txReceipts)
 	if err != nil {
 		rc.logger.Crit("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
@@ -767,8 +729,8 @@ func (rc *RollupChain) produceBatch(block *types.Block, genesisBatchStored bool)
 
 	batch.Header.CrossChainMessages = crossChainMessages
 
-	rc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch. Equivalent withdrawals in header - %d",
-		len(batch.Header.CrossChainMessages), len(batch.Header.Withdrawals)), log.CmpKey, log.CrossChainCmp)
+	rc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
+		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
 
 	crossChainBind, err := rc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {

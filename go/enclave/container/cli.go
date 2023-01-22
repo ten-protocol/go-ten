@@ -102,7 +102,6 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	cfg.ValidateL1Blocks = *validateL1Blocks
 	cfg.SpeculativeExecution = *speculativeExecution
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(*managementContractAddress)
-	cfg.ERC20ContractAddresses = erc20contractAddresses
 	cfg.LogLevel = *loglevel
 	cfg.LogPath = *logPath
 	cfg.UseInMemoryDB = *useInMemoryDB
@@ -152,7 +151,6 @@ func fileBasedConfig(configPath string) (config.EnclaveConfig, error) {
 		ValidateL1Blocks:          tomlConfig.ValidateL1Blocks,
 		SpeculativeExecution:      tomlConfig.SpeculativeExecution,
 		ManagementContractAddress: gethcommon.HexToAddress(tomlConfig.ManagementContractAddress),
-		ERC20ContractAddresses:    erc20contractAddresses,
 		LogLevel:                  tomlConfig.LogLevel,
 		LogPath:                   tomlConfig.LogPath,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
