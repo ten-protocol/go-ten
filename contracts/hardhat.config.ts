@@ -4,7 +4,10 @@ import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-abi-exporter";
 import "@solidstate/hardhat-bytecode-exporter";
 
+// Hardhat-deploy plugin - https://www.npmjs.com/package/hardhat-deploy
 import 'hardhat-deploy';
+// Hardhat ignore warnings plugin - https://www.npmjs.com/package/hardhat-ignore-warnings
+import 'hardhat-ignore-warnings';
 
 import './tasks/wallet-extension';
 import * as abigen from './tasks/abigen';
@@ -47,6 +50,13 @@ const config: HardhatUserConfig = {
     pocowner: {
         default: 2,
     },
+  },
+  // For help configuring - https://www.npmjs.com/package/hardhat-ignore-warnings
+  warnings : {
+    '*' : {
+      default: 'warn',
+      'unused-param' : 'off'
+    }
   }
 };
 
