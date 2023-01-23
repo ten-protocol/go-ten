@@ -151,7 +151,7 @@ func ToExtBatchMsg(batch *common.ExtBatch) generated.ExtBatchMsg {
 	return generated.ExtBatchMsg{Header: ToBatchHeaderMsg(batch.Header), TxHashes: txHashBytes, Txs: batch.EncryptedTxBlob}
 }
 
-func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
+func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg { //nolint:dupl
 	if header == nil {
 		return nil
 	}
@@ -271,15 +271,16 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 		return generated.ExtRollupMsg{}
 	}
 
-	txHashBytes := make([][]byte, len(rollup.TxHashes))
-	for idx, txHash := range rollup.TxHashes {
-		txHashBytes[idx] = txHash.Bytes()
+	batchMsgs := make([]*generated.ExtBatchMsg, len(rollup.Batches))
+	for idx, batch := range rollup.Batches {
+		extBatchMsg := ToExtBatchMsg(batch)
+		batchMsgs[idx] = &extBatchMsg
 	}
 
-	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), TxHashes: txHashBytes, Txs: rollup.EncryptedTxBlob}
+	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), Batches: batchMsgs}
 }
 
-func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
+func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg { //nolint:dupl
 	if header == nil {
 		return nil
 	}
@@ -304,7 +305,7 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		Nonce:                       []byte{},
 		Proof:                       header.L1Proof.Bytes(),
 		Root:                        header.Root.Bytes(),
-		TxHash:                      header.TxHash.Bytes(),
+		HeadBatchHash:               header.HeadBatchHash.Bytes(),
 		Number:                      header.Number.Uint64(),
 		Bloom:                       header.Bloom.Bytes(),
 		ReceiptHash:                 header.ReceiptHash.Bytes(),
@@ -321,7 +322,7 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		MixDigest:                   header.MixDigest.Bytes(),
 		BaseFee:                     baseFee,
 		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
-		LatestInboundCrossChainHash: header.LatestInboudCrossChainHash.Bytes(),
+		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
 	}
 
 	if header.LatestInboundCrossChainHeight != nil {
@@ -338,16 +339,16 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 		}
 	}
 
-	// We recreate the transaction hashes.
-	txHashes := make([]gethcommon.Hash, len(msg.TxHashes))
-	for idx, bytes := range msg.TxHashes {
-		txHashes[idx] = gethcommon.BytesToHash(bytes)
+	// We recreate the batches.
+	batches := make([]*common.ExtBatch, len(msg.Batches))
+	for idx, batchMsg := range msg.Batches {
+		batch := FromExtBatchMsg(batchMsg)
+		batches[idx] = batch
 	}
 
 	return &common.ExtRollup{
-		Header:          FromRollupHeaderMsg(msg.Header),
-		TxHashes:        txHashes,
-		EncryptedTxBlob: msg.Txs,
+		Header:  FromRollupHeaderMsg(msg.Header),
+		Batches: batches,
 	}
 }
 
@@ -372,7 +373,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		Nonce:                         types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),
 		L1Proof:                       gethcommon.BytesToHash(header.Proof),
 		Root:                          gethcommon.BytesToHash(header.Root),
-		TxHash:                        gethcommon.BytesToHash(header.TxHash),
+		HeadBatchHash:                 gethcommon.BytesToHash(header.HeadBatchHash),
 		Number:                        big.NewInt(int64(header.Number)),
 		Bloom:                         types.BytesToBloom(header.Bloom),
 		ReceiptHash:                   gethcommon.BytesToHash(header.ReceiptHash),
@@ -389,7 +390,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		MixDigest:                     gethcommon.BytesToHash(header.MixDigest),
 		BaseFee:                       big.NewInt(int64(header.BaseFee)),
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
-		LatestInboudCrossChainHash:    gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
+		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
 		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),
 	}
 }
