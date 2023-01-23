@@ -53,9 +53,8 @@ const config: HardhatUserConfig = {
   },
   // For help configuring - https://www.npmjs.com/package/hardhat-ignore-warnings
   warnings : {
-    'src/management/**' : {
-      default: 'warn',
-      'unused-param' : 'off'
+    '*' : {
+      default: 'error'
     }
   }
 };
