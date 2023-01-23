@@ -27,3 +27,13 @@ The command internally uses the abi and bytecode exporter plugins and searches t
 
 
 Additionally you can pass the `noCompile` flag which will disable running the contract compilation beforehand. This allows to build go bindings for abi/bins where the actual solidity source files are missing.
+
+## Compilation
+
+The following command compiles the solidity contracts and produces artifacts for them:
+
+```shell
+npx hardhat compile
+```
+
+[https://www.npmjs.com/package/hardhat-ignore-warnings](The ignore warnings plugin) can be used to configure the behavior of the `compile` task in regards to warnings and errors.

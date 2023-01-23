@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -36,7 +38,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
@@ -59,7 +60,7 @@ type enclaveImpl struct {
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
-	chain *rollupchain.RollupChain
+	chain *l2chain.L2Chain
 
 	txCh   chan *common.L2Tx
 	exitCh chan bool
@@ -129,7 +130,7 @@ func NewEnclave(
 		if config.GenesisJSON == nil {
 			logger.Crit("enclave is configured to validate blocks, but genesis JSON is nil")
 		}
-		l1Blockchain = rollupchain.NewL1Blockchain(config.GenesisJSON, logger)
+		l1Blockchain = l2chain.NewL1Blockchain(config.GenesisJSON, logger)
 	} else {
 		logger.Info("validateBlocks is set to false. L1 blocks will not be validated.")
 	}
@@ -173,7 +174,7 @@ func NewEnclave(
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
-	chain := rollupchain.New(
+	chain := l2chain.New(
 		config.HostID,
 		config.NodeType,
 		storage,

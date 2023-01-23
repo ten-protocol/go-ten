@@ -520,6 +520,8 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	}
 
 	// fire-and-forget (track the receipt asynchronously)
+	// TODO - #718 - Now we have a single sequencer, it is problematic if rollup publication fails. Handle this case
+	//  better.
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup, false)
 	if err != nil {
 		h.logger.Error("could not issue rollup tx", log.ErrKey, err)
@@ -574,7 +576,7 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt 
 	// else just watch for receipt asynchronously and log if it fails
 	go func() {
 		// todo: consider how to handle the various ways that L1 transactions could fail to improve node operator QoL
-		err := h.waitForReceipt(signedTx.Hash())
+		err = h.waitForReceipt(signedTx.Hash())
 		if err != nil {
 			h.logger.Error("L1 transaction failed", log.ErrKey, err)
 		}

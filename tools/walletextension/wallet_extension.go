@@ -408,6 +408,7 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 
 // Config contains the configuration required by the WalletExtension.
 type Config struct {
+	WalletExtensionHost     string
 	WalletExtensionPort     int
 	WalletExtensionPortWS   int
 	NodeRPCHTTPAddress      string
