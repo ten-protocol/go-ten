@@ -314,15 +314,8 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
-	batchHeader, err := e.chain.UpdateL2Chain(batch)
-	if err != nil {
+	if err := e.chain.UpdateL2Chain(batch); err != nil {
 		return fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err)
-	}
-
-	// We remove any transactions considered immune to re-orgs from the mempool.
-	err = e.removeOldMempoolTxs(batchHeader)
-	if err != nil {
-		e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
 	}
 
 	return nil

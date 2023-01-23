@@ -114,22 +114,22 @@ func (lc *L2Chain) ProcessL1Block(block types.Block, receipts types.Receipts, is
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
-func (lc *L2Chain) UpdateL2Chain(batch *core.Batch) (*common.BatchHeader, error) {
+func (lc *L2Chain) UpdateL2Chain(batch *core.Batch) error {
 	lc.blockProcessingMutex.Lock()
 	defer lc.blockProcessingMutex.Unlock()
 
 	if err := lc.checkAndStoreBatch(batch); err != nil {
-		return nil, err
+		return err
 	}
 
 	// If this is the genesis batch, we commit the genesis state.
 	if batch.IsGenesis() {
 		if err := lc.genesis.CommitGenesisState(lc.storage); err != nil {
-			return nil, fmt.Errorf("could not apply genesis state. Cause: %w", err)
+			return fmt.Errorf("could not apply genesis state. Cause: %w", err)
 		}
 	}
 
-	return batch.Header, nil
+	return nil
 }
 
 func (lc *L2Chain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
