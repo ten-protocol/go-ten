@@ -834,6 +834,7 @@ func (rc *RollupChain) isAccountContractAtBlock(accountAddr gethcommon.Address, 
 }
 
 // Validates and stores the rollup in a given block.
+// TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
 func (rc *RollupChain) processRollups(block *common.L1Block) error {
 	l1ParentHash := block.ParentHash()
 	currentHeadRollup, err := rc.storage.FetchHeadRollupForBlock(&l1ParentHash)
