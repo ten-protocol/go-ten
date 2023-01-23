@@ -58,7 +58,7 @@ func main() {
 	walletExtension := walletextension.NewWalletExtension(config, logger)
 	defer walletExtension.Shutdown()
 
-	go walletExtension.Serve(common.Localhost, config.WalletExtensionPort, config.WalletExtensionPortWS)
+	go walletExtension.Serve(config.WalletExtensionHost, config.WalletExtensionPort, config.WalletExtensionPortWS)
 
 	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPort)
 	fmt.Printf("💡 Wallet extension started - visit http://%s/viewingkeys/ to generate an ephemeral viewing key.\n", walletExtensionAddr)
