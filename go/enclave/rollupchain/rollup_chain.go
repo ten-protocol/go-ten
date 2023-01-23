@@ -873,9 +873,6 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 			}
 		}
 
-		// TODO - #718 - Design and introduce an asynchronous mechanism for determining that batches are being
-		//  confirmed in a timely way.
-
 		if err = rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
