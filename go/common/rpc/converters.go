@@ -151,16 +151,11 @@ func ToExtBatchMsg(batch *common.ExtBatch) generated.ExtBatchMsg {
 	return generated.ExtBatchMsg{Header: ToBatchHeaderMsg(batch.Header), TxHashes: txHashBytes, Txs: batch.EncryptedTxBlob}
 }
 
-func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
+func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg { //nolint:dupl
 	if header == nil {
 		return nil
 	}
 	var headerMsg generated.BatchHeaderMsg
-	withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
-	for _, withdrawal := range header.Withdrawals {
-		withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount.Bytes(), Recipient: withdrawal.Recipient.Bytes(), Contract: withdrawal.Contract.Bytes()}
-		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
-	}
 
 	diff := uint64(0)
 	if header.Difficulty != nil {
@@ -183,7 +178,6 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 		Extra:                       header.Extra,
 		R:                           header.R.Bytes(),
 		S:                           header.S.Bytes(),
-		Withdrawals:                 withdrawalMsgs,
 		UncleHash:                   header.UncleHash.Bytes(),
 		Coinbase:                    header.Coinbase.Bytes(),
 		Difficulty:                  diff,
@@ -227,14 +221,6 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader { 
 	if header == nil {
 		return nil
 	}
-	withdrawals := make([]common.Withdrawal, 0)
-	for _, withdrawalMsg := range header.Withdrawals {
-		recipient := gethcommon.BytesToAddress(withdrawalMsg.Recipient)
-		contract := gethcommon.BytesToAddress(withdrawalMsg.Contract)
-		amount := big.NewInt(0).SetBytes(withdrawalMsg.Amount)
-		withdrawal := common.Withdrawal{Amount: amount, Recipient: recipient, Contract: contract}
-		withdrawals = append(withdrawals, withdrawal)
-	}
 
 	r := &big.Int{}
 	s := &big.Int{}
@@ -251,7 +237,6 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader { 
 		Extra:                         header.Extra,
 		R:                             r.SetBytes(header.R),
 		S:                             s.SetBytes(header.S),
-		Withdrawals:                   withdrawals,
 		UncleHash:                     gethcommon.BytesToHash(header.UncleHash),
 		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
 		Difficulty:                    big.NewInt(int64(header.Difficulty)),
@@ -271,24 +256,20 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 		return generated.ExtRollupMsg{}
 	}
 
-	txHashBytes := make([][]byte, len(rollup.TxHashes))
-	for idx, txHash := range rollup.TxHashes {
-		txHashBytes[idx] = txHash.Bytes()
+	batchMsgs := make([]*generated.ExtBatchMsg, len(rollup.Batches))
+	for idx, batch := range rollup.Batches {
+		extBatchMsg := ToExtBatchMsg(batch)
+		batchMsgs[idx] = &extBatchMsg
 	}
 
-	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), TxHashes: txHashBytes, Txs: rollup.EncryptedTxBlob}
+	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), Batches: batchMsgs}
 }
 
-func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
+func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg { //nolint:dupl
 	if header == nil {
 		return nil
 	}
 	var headerMsg generated.RollupHeaderMsg
-	withdrawalMsgs := make([]*generated.WithdrawalMsg, 0)
-	for _, withdrawal := range header.Withdrawals {
-		withdrawalMsg := generated.WithdrawalMsg{Amount: withdrawal.Amount.Bytes(), Recipient: withdrawal.Recipient.Bytes(), Contract: withdrawal.Contract.Bytes()}
-		withdrawalMsgs = append(withdrawalMsgs, &withdrawalMsg)
-	}
 
 	diff := uint64(0)
 	if header.Difficulty != nil {
@@ -311,7 +292,6 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		Extra:                       header.Extra,
 		R:                           header.R.Bytes(),
 		S:                           header.S.Bytes(),
-		Withdrawals:                 withdrawalMsgs,
 		UncleHash:                   header.UncleHash.Bytes(),
 		Coinbase:                    header.Coinbase.Bytes(),
 		Difficulty:                  diff,
@@ -338,30 +318,22 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 		}
 	}
 
-	// We recreate the transaction hashes.
-	txHashes := make([]gethcommon.Hash, len(msg.TxHashes))
-	for idx, bytes := range msg.TxHashes {
-		txHashes[idx] = gethcommon.BytesToHash(bytes)
+	// We recreate the batches.
+	batches := make([]*common.ExtBatch, len(msg.Batches))
+	for idx, batchMsg := range msg.Batches {
+		batch := FromExtBatchMsg(batchMsg)
+		batches[idx] = batch
 	}
 
 	return &common.ExtRollup{
-		Header:          FromRollupHeaderMsg(msg.Header),
-		TxHashes:        txHashes,
-		EncryptedTxBlob: msg.Txs,
+		Header:  FromRollupHeaderMsg(msg.Header),
+		Batches: batches,
 	}
 }
 
 func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader { //nolint:dupl
 	if header == nil {
 		return nil
-	}
-	withdrawals := make([]common.Withdrawal, 0)
-	for _, withdrawalMsg := range header.Withdrawals {
-		recipient := gethcommon.BytesToAddress(withdrawalMsg.Recipient)
-		contract := gethcommon.BytesToAddress(withdrawalMsg.Contract)
-		amount := big.NewInt(0).SetBytes(withdrawalMsg.Amount)
-		withdrawal := common.Withdrawal{Amount: amount, Recipient: recipient, Contract: contract}
-		withdrawals = append(withdrawals, withdrawal)
 	}
 
 	r := &big.Int{}
@@ -379,7 +351,6 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		Extra:                         header.Extra,
 		R:                             r.SetBytes(header.R),
 		S:                             s.SetBytes(header.S),
-		Withdrawals:                   withdrawals,
 		UncleHash:                     gethcommon.BytesToHash(header.UncleHash),
 		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
 		Difficulty:                    big.NewInt(int64(header.Difficulty)),

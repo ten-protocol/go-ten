@@ -87,9 +87,5 @@ docker run --name=hh-l1-deployer \
 # The standard output from the hh deploy plugin looks like
 #  deploying "ManagementContract" (tx: 0xcb6e341c9f30e1b86214542bcd1c930f202201b4483801df5cd3c1f53c4b55f8)...: deployed at 0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF with 2533700 gas
 mgmtContractAddr=$(docker logs --tail 5 hh-l1-deployer | grep -e 'ManagementContract' | cut -c 121-162)
-pocErc20Addr=$(docker logs --tail 5 hh-l1-deployer | grep -e 'deploying "POC' | cut -c 111-152)
-hocErc20Addr=$(docker logs --tail 5 hh-l1-deployer | grep -e 'deploying "HOC' | cut -c 111-152)
 
 echo "MGMTCONTRACTADDR=${mgmtContractAddr}" > "${testnet_path}/.env"
-echo "HOCERC20ADDR=${hocErc20Addr}" >> "${testnet_path}/.env"
-echo "POCERC20ADDR=${pocErc20Addr}" >> "${testnet_path}/.env"

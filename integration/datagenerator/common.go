@@ -39,21 +39,6 @@ func RandomUInt64() uint64 {
 	return val.Uint64()
 }
 
-func randomWithdrawal() common.Withdrawal {
-	return common.Withdrawal{
-		Amount:    common.ValueInWei(big.NewInt(int64(RandomUInt64()))),
-		Recipient: RandomAddress(),
-	}
-}
-
-func randomWithdrawals(length int) []common.Withdrawal {
-	withdrawals := make([]common.Withdrawal, length)
-	for i := 0; i < length; i++ {
-		withdrawals[i] = randomWithdrawal()
-	}
-	return withdrawals
-}
-
 // CreateL2Tx Creates a dummy L2Tx for testing
 func CreateL2Tx() *common.L2Tx {
 	return types.NewTx(CreateL2TxData())

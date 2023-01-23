@@ -13,18 +13,14 @@ help_and_exit() {
     echo ""
     echo "Usage: "
     echo "   ex: (run locally to internal l1 on local SGX NON capable hardware)"
-    echo "      -  $(basename "${0}") --sgx_enabled=false --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true --node_type=sequencer"
+    echo "      -  $(basename "${0}") --sgx_enabled=false --l1host=gethnetwork --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --is_genesis=true --node_type=sequencer"
     echo ""
     echo "   ex: (run connected to an external l1 on local SGX capable hardware)"
-    echo "      -  $(basename "${0}") --sgx_enabled=true --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --node_type=sequencer"
+    echo "      -  $(basename "${0}") --sgx_enabled=true --l1host=testnet-gethnetwork-18.uksouth.azurecontainer.io --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --node_type=sequencer"
     echo ""
     echo "  l1host             *Required* Set the l1 host address"
     echo ""
     echo "  mgmtcontractaddr   *Required* Set the management contract address"
-    echo ""
-    echo "  hocerc20addr       *Required* Set the erc20 contract address for HOC"
-    echo ""
-    echo "  pocerc20addr       *Required* Set the erc20 contract address for POC"
     echo ""
     echo "  sgx_enabled        *Required* Set the execution to run with sgx enabled"
     echo ""
@@ -89,7 +85,6 @@ do
             --l1port)                   l1_port=${value} ;;
             --host_id)                  host_id=${value} ;;
             --mgmtcontractaddr)         mgmt_contract_addr=${value} ;;
-            --hocerc20addr)             hoc_erc20_addr=${value} ;;
             --pocerc20addr)             poc_erc20_addr=${value} ;;
             --pkstring)                 pk_string=${value} ;;
             --sgx_enabled)              sgx_enabled=${value} ;;
@@ -109,7 +104,7 @@ do
     esac
 done
 
-if [[ -z ${l1_host:-} || -z ${mgmt_contract_addr:-} || -z ${hoc_erc20_addr:-} || -z ${poc_erc20_addr:-} || -z ${sgx_enabled:-} ]];
+if [[ -z ${l1_host:-} || -z ${mgmt_contract_addr:-} || -z ${sgx_enabled:-} ]];
 then
     help_and_exit
 fi
@@ -122,8 +117,6 @@ echo "" > "${testnet_path}/.env"
 echo "PKSTRING=${pk_string}" >> "${testnet_path}/.env"
 echo "HOSTID=${host_id}"  >> "${testnet_path}/.env"
 echo "MGMTCONTRACTADDR=${mgmt_contract_addr}"  >> "${testnet_path}/.env"
-echo "HOCERC20ADDR=${hoc_erc20_addr}"  >> "${testnet_path}/.env"
-echo "POCERC20ADDR=${poc_erc20_addr}"  >> "${testnet_path}/.env"
 echo "L1HOST=${l1_host}" >> "${testnet_path}/.env"
 echo "L1PORT=${l1_port}" >> "${testnet_path}/.env"
 echo "ISGENESIS=${is_genesis}" >> "${testnet_path}/.env"

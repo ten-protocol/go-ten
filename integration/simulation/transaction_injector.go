@@ -8,14 +8,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -241,101 +239,12 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
-	var err error
-
-	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		v := testcommon.RndBtw(1, 100)
-		ethClient := ti.rpcHandles.RndEthClient()
-		ethWallet := ti.rndEthWallet()
-		addr := ethWallet.Address()
-		txData := &ethadapter.L1DepositTx{
-			Amount:        common.ValueInWei(big.NewInt(int64(v))),
-			To:            ti.mgmtContractAddr,
-			TokenContract: ti.wallets.Tokens[bridge.HOC].L1ContractAddress,
-			Sender:        &addr,
-		}
-		tx := ti.erc20ContractLib.CreateDepositTx(txData, ethWallet.GetNonceAndIncrement())
-		tx, err = ethClient.EstimateGasAndGasPrice(tx, addr)
-		if err != nil {
-			// todo review this nonce management, updating the nonce with a failed tx bug took WAY longer to find than expected
-			ethWallet.SetNonce(ethWallet.GetNonce() - 1)
-			sleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
-			continue
-		}
-		signedTx, err := ethWallet.SignTransaction(tx)
-		if err != nil {
-			panic(err)
-		}
-		ti.logger.Info(fmt.Sprintf(
-			"Deposit transaction injected into L1. Hash: %d. From address: %d",
-			common.ShortHash(signedTx.Hash()),
-			common.ShortAddress(ethWallet.Address()),
-		))
-		err = ethClient.SendTransaction(signedTx)
-		if err != nil {
-			panic(err)
-		}
-
-		// TODO: Add better tx tracking and display revert reasons
-		ti.stats.Deposit(common.ValueInWei(big.NewInt(int64(v))))
-
-		go ti.TxTracker.trackL1Tx(txData)
-		sleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
-	}
+	// TODO: Rework this when old contract deployer is phased out?
 }
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
-	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		v := testcommon.RndBtw(1, 100)
-		obsWallet := ti.rndObsWallet()
-		tx := ti.newObscuroWithdrawalTx(obsWallet, v)
-		signedTx, err := obsWallet.SignTransaction(tx)
-		if err != nil {
-			panic(err)
-		}
-		ti.logger.Info(fmt.Sprintf(
-			"Withdrawal transaction injected into L2. Hash: %d. From address: %d",
-			common.ShortHash(signedTx.Hash()),
-			common.ShortAddress(obsWallet.Address()),
-		))
-
-		err = ti.rpcHandles.ObscuroWalletRndClient(obsWallet).SendTransaction(ti.ctx, signedTx)
-		if err != nil {
-			ti.logger.Warn("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
-			continue
-		}
-
-		go func() {
-			time.Sleep(5 * time.Second)
-			receipt, err := ti.rpcHandles.ObscuroWalletRndClient(obsWallet).TransactionReceipt(ti.ctx, signedTx.Hash())
-			if err != nil {
-				ti.logger.Error(fmt.Sprintf("Withdrawal %s ERROR - %+v", signedTx.Hash(), err))
-			}
-			if receipt.Status == 1 {
-				return
-			}
-
-			rpc := ti.rpcHandles.ObscuroWalletRndClient(obsWallet)
-			_, err = rpc.CallContract(ti.ctx, ethereum.CallMsg{
-				From:       obsWallet.Address(),
-				To:         signedTx.To(),
-				Gas:        signedTx.Gas(),
-				GasPrice:   big.NewInt(20000000000),
-				GasTipCap:  big.NewInt(0),
-				Value:      signedTx.Value(),
-				Data:       signedTx.Data(),
-				AccessList: signedTx.AccessList(),
-			}, receipt.BlockNumber)
-			if err != nil {
-				ti.logger.Error(fmt.Sprintf("Withdrawal %s ERROR - %+v", signedTx.Hash(), err))
-			}
-		}()
-
-		ti.stats.Withdrawal(common.ValueInWei(big.NewInt(int64(v))))
-		go ti.TxTracker.trackWithdrawalL2Tx(signedTx)
-		sleepRndBtw(ti.avgBlockDuration, ti.avgBlockDuration*2)
-	}
+	// TODO: Rework this when old contract deployer is phased out?
 }
 
 // issueInvalidL2Txs creates and issues invalidly-signed L2 transactions proportional to the simulation time.
@@ -380,22 +289,13 @@ func (ti *TransactionInjector) rndObsWallet() wallet.Wallet {
 	return ti.wallets.SimObsWallets[rand.Intn(len(ti.wallets.SimObsWallets))] //nolint:gosec
 }
 
-func (ti *TransactionInjector) rndEthWallet() wallet.Wallet {
-	return ti.wallets.SimEthWallets[rand.Intn(len(ti.wallets.SimEthWallets))] //nolint:gosec
-}
-
 func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, common.ValueInWei(big.NewInt(int64(amount))))
 	return ti.newTx(data, from.GetNonceAndIncrement())
 }
 
-func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64) types.TxData {
-	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
-	return ti.newTx(transferERC20data, from.GetNonceAndIncrement())
-}
-
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
-	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
+	transferERC20data := erc20contractlib.CreateTransferTxData(rollupextractor.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
 	return ti.newTx(transferERC20data, 1)
 }
 
@@ -412,7 +312,7 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     data,
-		To:       ti.wallets.Tokens[bridge.HOC].L2ContractAddress,
+		To:       ti.wallets.Tokens[rollupextractor.HOC].L2ContractAddress,
 	}
 }
 

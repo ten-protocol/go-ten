@@ -459,15 +459,12 @@ func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wal
 
 // createTestEnclave returns a test instance of the enclave
 func createTestEnclave(prefundedAddresses []genesis.Account) (common.Enclave, error) {
-	rndAddr := gethcommon.HexToAddress("contract1")
-	rndAddr2 := gethcommon.HexToAddress("contract2")
 	enclaveConfig := config.EnclaveConfig{
-		L1ChainID:              integration.EthereumChainID,
-		ObscuroChainID:         integration.ObscuroChainID,
-		WillAttest:             false,
-		UseInMemoryDB:          true,
-		ERC20ContractAddresses: []*gethcommon.Address{&rndAddr, &rndAddr2},
-		MinGasPrice:            big.NewInt(1),
+		L1ChainID:      integration.EthereumChainID,
+		ObscuroChainID: integration.ObscuroChainID,
+		WillAttest:     false,
+		UseInMemoryDB:  true,
+		MinGasPrice:    big.NewInt(1),
 	}
 	logger := log.New(log.TestLogCmp, int(gethlog.LvlError), log.SysOut)
 
@@ -475,7 +472,7 @@ func createTestEnclave(prefundedAddresses []genesis.Account) (common.Enclave, er
 	if len(prefundedAddresses) > 0 {
 		obsGenesis = &genesis.Genesis{Accounts: prefundedAddresses}
 	}
-	enclave := NewEnclave(enclaveConfig, obsGenesis, nil, nil, logger)
+	enclave := NewEnclave(enclaveConfig, obsGenesis, nil, logger)
 
 	_, err := enclave.GenerateSecret()
 	if err != nil {
@@ -513,8 +510,11 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 		return err
 	}
 
-	genesisRollup := dummyRollup(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
-	genesisBatch := genesisRollup.ToBatch()
+	genesisBatch := dummyBatch(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
+	genesisRollup := &core.Rollup{
+		Header:  genesisBatch.Header.ToRollupHeader(),
+		Batches: []*core.Batch{genesisBatch},
+	}
 
 	// We update the database
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(genesisRollup); err != nil {
@@ -573,8 +573,11 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 		return err
 	}
 
-	rollup := dummyRollup(blk.Hash(), headRollup.NumberU64()+1, stateDB)
-	batch := rollup.ToBatch()
+	batch := dummyBatch(blk.Hash(), headRollup.NumberU64()+1, stateDB)
+	rollup := &core.Rollup{
+		Header:  batch.Header.ToRollupHeader(),
+		Batches: []*core.Batch{batch},
+	}
 
 	// We update the database.
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(rollup); err != nil {
@@ -607,18 +610,17 @@ func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber,
 	return nil
 }
 
-func dummyRollup(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Rollup {
-	h := common.RollupHeader{
+func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Batch {
+	h := common.BatchHeader{
 		Agg:         gethcommon.HexToAddress("0x0"),
 		ParentHash:  common.L1RootHash{},
 		L1Proof:     blkHash,
 		Root:        state.IntermediateRoot(true),
 		Number:      big.NewInt(int64(height)),
-		Withdrawals: []common.Withdrawal{},
 		ReceiptHash: types.EmptyRootHash,
 		Time:        uint64(time.Now().Unix()),
 	}
-	return &core.Rollup{
+	return &core.Batch{
 		Header:       &h,
 		Transactions: []*common.L2Tx{},
 	}

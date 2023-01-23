@@ -6,19 +6,13 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
-// Rollup Data structure only for the internal use of the enclave since transactions are in clear
-// Making changes to this struct will require GRPC + GRPC Converters regen
 type Rollup struct {
-	Header *common.RollupHeader
-
-	hash atomic.Value
-	// size   atomic.Value
-
-	Transactions []*common.L2Tx
+	Header  *common.RollupHeader
+	Batches []*Batch
+	hash    atomic.Value
 }
 
 // Hash returns the keccak256 hash of b's header.
@@ -44,29 +38,26 @@ func (r *Rollup) IsGenesis() bool {
 	return r.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
 
-func (r *Rollup) ToExtRollup(transactionBlobCrypto crypto.TransactionBlobCrypto) *common.ExtRollup {
-	txHashes := make([]gethcommon.Hash, len(r.Transactions))
-	for idx, tx := range r.Transactions {
-		txHashes[idx] = tx.Hash()
+func (r *Rollup) ToExtRollup(txBlobCrypto crypto.TransactionBlobCrypto) *common.ExtRollup {
+	extBatches := make([]*common.ExtBatch, len(r.Batches))
+	for idx, batch := range r.Batches {
+		extBatches[idx] = batch.ToExtBatch(txBlobCrypto)
 	}
 
 	return &common.ExtRollup{
-		Header:          r.Header,
-		TxHashes:        txHashes,
-		EncryptedTxBlob: transactionBlobCrypto.Encrypt(r.Transactions),
+		Header:  r.Header,
+		Batches: extBatches,
 	}
 }
 
-func ToRollup(encryptedRollup *common.ExtRollup, transactionBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
+func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
+	batches := make([]*Batch, len(encryptedRollup.Batches))
+	for idx, extBatch := range encryptedRollup.Batches {
+		batches[idx] = ToBatch(extBatch, txBlobCrypto)
+	}
+
 	return &Rollup{
-		Header:       encryptedRollup.Header,
-		Transactions: transactionBlobCrypto.Decrypt(encryptedRollup.EncryptedTxBlob),
-	}
-}
-
-func (r *Rollup) ToBatch() *Batch {
-	return &Batch{
-		Header:       r.Header.ToBatchHeader(),
-		Transactions: r.Transactions,
+		Header:  encryptedRollup.Header,
+		Batches: batches,
 	}
 }

@@ -26,14 +26,6 @@ func (b *ExtBatch) Hash() L2RootHash {
 	return v
 }
 
-func (b *ExtBatch) ToExtRollup() *ExtRollup {
-	return &ExtRollup{
-		Header:          b.Header.ToRollupHeader(),
-		TxHashes:        b.TxHashes,
-		EncryptedTxBlob: b.EncryptedTxBlob,
-	}
-}
-
 // BatchRequest is used when requesting a range of batches from a peer.
 type BatchRequest struct {
 	Requester        string

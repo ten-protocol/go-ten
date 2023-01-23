@@ -48,12 +48,10 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			isGenesis,
 			GetNodeType(i),
 			params.MgmtContractLib,
-			params.ERC20ContractLib,
 			true,
 			genesisJSON,
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
-			params.Wallets,
 			p2pLayers[i],
 			params.L1SetupData.MessageBusAddr,
 			params.L1SetupData.ObscuroStartBlock,
@@ -188,22 +186,21 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
 
 		enclaveConfig := config.EnclaveConfig{
-			HostID:                 gethcommon.BigToAddress(big.NewInt(int64(i))),
-			HostAddress:            hostAddr,
-			Address:                enclaveAddr,
-			NodeType:               GetNodeType(i),
-			L1ChainID:              integration.EthereumChainID,
-			ObscuroChainID:         integration.ObscuroChainID,
-			ValidateL1Blocks:       false,
-			WillAttest:             false,
-			GenesisJSON:            nil,
-			UseInMemoryDB:          false,
-			ERC20ContractAddresses: params.Wallets.AllEthAddresses(),
-			MinGasPrice:            big.NewInt(1),
-			MessageBusAddress:      *params.L1SetupData.MessageBusAddr,
+			HostID:            gethcommon.BigToAddress(big.NewInt(int64(i))),
+			HostAddress:       hostAddr,
+			Address:           enclaveAddr,
+			NodeType:          GetNodeType(i),
+			L1ChainID:         integration.EthereumChainID,
+			ObscuroChainID:    integration.ObscuroChainID,
+			ValidateL1Blocks:  false,
+			WillAttest:        false,
+			GenesisJSON:       nil,
+			UseInMemoryDB:     false,
+			MinGasPrice:       big.NewInt(1),
+			MessageBusAddress: *params.L1SetupData.MessageBusAddr,
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
-		encl := enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, params.MgmtContractLib, params.ERC20ContractLib, enclaveLogger)
+		encl := enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, params.MgmtContractLib, enclaveLogger)
 		enclaveContainer := enclavecontainer.EnclaveContainer{
 			Enclave:   encl,
 			RPCServer: enclave.NewEnclaveRPCServer(enclaveConfig.Address, encl, enclaveLogger),
