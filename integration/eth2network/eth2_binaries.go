@@ -31,10 +31,10 @@ var (
 // EnsureBinariesExist makes sure node binaries exist, returns the base path where binaries exist
 // Downloads any missing binaries
 func EnsureBinariesExist() (string, error) {
-	// don't download binaries on each CI
-	if os.Getenv(_envUseGethBinary) == "true" {
-		return path.Join(basepath, _ciBinariesRelPath), nil
-	}
+	//// don't download binaries on each CI
+	//if os.Getenv(_envUseGethBinary) == "true" {
+	//	return path.Join(basepath, _ciBinariesRelPath), nil
+	//}
 
 	// bin folder should exist
 	err := os.MkdirAll(path.Join(basepath, _eth2BinariesRelPath), os.ModePerm)

@@ -22,7 +22,7 @@ mkdir -p "${generated_path}"
 
 # generate the abi
 solc --base-path "${script_path}" --include-path "${libs_path}" --abi -o "${abi_path}" "${contract_path}" --overwrite
-solc --base-path "${script_path}" --include-path "${libs_path}" --bin -o "${bin_path}" "${contract_path}" --overwrite
+solc --base-path "${script_path}" --include-path "${libs_path}" --ci_bin -o "${bin_path}" "${contract_path}" --overwrite
 
 # generates the golang package
-abigen --abi="${abi_path}/${contract_name}.abi" --bin="${bin_path}/${contract_name}.bin" --pkg="${contract_name}" --out="${generated_path}/${contract_name}.go"
+abigen --abi="${abi_path}/${contract_name}.abi" --ci_bin="${bin_path}/${contract_name}.bin" --pkg="${contract_name}" --out="${generated_path}/${contract_name}.go"

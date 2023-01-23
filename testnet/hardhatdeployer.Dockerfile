@@ -21,7 +21,7 @@ COPY . /home/go-obscuro
 
 # build the contract deployer exec
 WORKDIR /home/go-obscuro/tools/walletextension/main
-RUN go build -o ../bin/wallet_extension_linux
+RUN go build -o ../ci_bin/wallet_extension_linux
 WORKDIR /home/go-obscuro/tools/walletextension/bin
 
 FROM node:lts-alpine

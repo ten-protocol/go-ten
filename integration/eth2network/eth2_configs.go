@@ -65,7 +65,7 @@ const baseGenesis = `{
     "grayGlacierBlock": 0,
     "clique": {
       "period": 1,
-      "epoch": 30000
+      "epoch": 1000
     },
     "terminalTotalDifficulty": 2
   },
@@ -146,7 +146,7 @@ const baseGenesis = `{
   }
 }`
 
-func generateGenesis(blockTimeSecs int, accounts []string) (string, error) {
+func generateGenesis(blockTimeSecs int, chainID int, accounts []string) (string, error) {
 	var genesisJSON map[string]interface{}
 
 	err := json.Unmarshal([]byte(baseGenesis), &genesisJSON)
@@ -161,6 +161,9 @@ func generateGenesis(blockTimeSecs int, accounts []string) (string, error) {
 
 	// set the block prod speed
 	genesisJSON["config"].(map[string]interface{})["clique"].(map[string]interface{})["period"] = blockTimeSecs
+
+	// set the network id
+	genesisJSON["config"].(map[string]interface{})["chainId"] = chainID
 
 	genesisBytes, err := json.MarshalIndent(genesisJSON, "", " ")
 	if err != nil {

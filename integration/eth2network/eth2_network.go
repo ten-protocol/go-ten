@@ -2,8 +2,11 @@ package eth2network
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -44,6 +47,7 @@ type Eth2Network struct {
 	gethProcesses            []*exec.Cmd
 	prysmBeaconProcesses     []*exec.Cmd
 	prysmValidatorProcesses  []*exec.Cmd
+	chainID                  int
 }
 
 func NewEth2Network(
@@ -52,6 +56,7 @@ func NewEth2Network(
 	gethWSPortStart int,
 	prysmExecPortStart int,
 	gethNetworkPortStart int,
+	chainID int,
 	numNodes int,
 	blockTimeSecs int,
 	preFundedAddrs []string,
@@ -78,7 +83,7 @@ func NewEth2Network(
 	}
 
 	// Generate and write genesis file
-	genesisStr, err := generateGenesis(blockTimeSecs, preFundedAddrs)
+	genesisStr, err := generateGenesis(blockTimeSecs, chainID, preFundedAddrs)
 	if err != nil {
 		panic(err)
 	}
@@ -133,6 +138,7 @@ func NewEth2Network(
 		buildDir:                 buildDir,
 		binDir:                   binDir,
 		dataDirs:                 dataDirs,
+		chainID:                  chainID,
 		gethProcesses:            gethProcesses,
 		prysmBeaconProcesses:     prysmBeaconProcesses,
 		prysmValidatorProcesses:  prysmValidatorProcesses,
@@ -195,6 +201,20 @@ func (n *Eth2Network) Start() error {
 	err = eg.Wait()
 	if err != nil {
 		panic(err)
+	}
+
+	// import any other nodes
+	var enodes []string
+	for i := 1; i < len(n.dataDirs); i++ {
+		enode, err := n.gethGetEnode(i)
+		if err != nil {
+			return err
+		}
+		enodes = append(enodes, enode)
+	}
+	err = n.gethImportEnodes(enodes)
+	if err != nil {
+		return err
 	}
 
 	// import miner account that helps to reach to POS on node 0
@@ -279,14 +299,18 @@ func (n *Eth2Network) gethImportMinerAccount(nodeID int) error {
 
 func (n *Eth2Network) gethStartNode(executionPort, networkPort, httpPort, wsPort int, dataDirPath string) (*exec.Cmd, error) {
 	args := []string{
-		"--http", "--http.port", fmt.Sprintf("%d", httpPort), "--http.api", "miner,engine,personal,eth,net,web3,debug",
-		"--ws", "--ws.port", fmt.Sprintf("%d", wsPort),
+		_dataDirFlag, dataDirPath,
+		"--http",
+		"--http.port", fmt.Sprintf("%d", httpPort),
+		"--http.api", "admin,miner,engine,personal,eth,net,web3,debug",
+		"--ws",
+		"--ws.port", fmt.Sprintf("%d", wsPort),
 		"--authrpc.port", fmt.Sprintf("%d", executionPort),
 		"--port", fmt.Sprintf("%d", networkPort),
-		_dataDirFlag, dataDirPath,
+		"--networkid", fmt.Sprintf("%d", n.chainID),
+		"--syncmode", "full",
 		"--allow-insecure-unlock",
-		"--nodiscover", "--syncmode", "full",
-		"--networkid", "32382",
+		//"--nodiscover",
 	}
 	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
@@ -357,7 +381,7 @@ func (n *Eth2Network) prysmStartValidator(rpcPort int, nodeDataDir string) (*exe
 }
 
 func (n *Eth2Network) waitForMergeEvent(startTime time.Time) error {
-	dial, err := ethclient.Dial("http://127.0.0.1:8545")
+	dial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[0]))
 	if err != nil {
 		return err
 	}
@@ -390,4 +414,57 @@ func (n *Eth2Network) waitForNodeUp(nodeID int, timeout time.Duration) error {
 	}
 
 	return fmt.Errorf("node not responsive after %s", timeout)
+}
+
+func (n *Eth2Network) gethGetEnode(i int) (string, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost,
+		fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[i]),
+		strings.NewReader(`{"jsonrpc": "2.0", "method": "admin_nodeInfo", "params": [], "id": 1}`))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	var res map[string]interface{}
+	err = json.Unmarshal(body, &res)
+	if err != nil {
+		return "", err
+	}
+	return res["result"].(map[string]interface{})["enode"].(string), nil
+}
+
+func (n *Eth2Network) gethImportEnodes(enodes []string) error {
+	for _, enode := range enodes {
+		req, err := http.NewRequestWithContext(
+			context.Background(),
+			http.MethodPost,
+			fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[0]),
+			strings.NewReader(
+				fmt.Sprintf(`{"jsonrpc": "2.0", "method": "admin_addPeer", "params": ["%s"], "id": 1}`, enode),
+			),
+		)
+		if err != nil {
+			return err
+		}
+
+		req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+
+		client := &http.Client{}
+		response, err := client.Do(req)
+		if err != nil {
+			return err
+		}
+		defer response.Body.Close()
+	}
+	return nil
 }
