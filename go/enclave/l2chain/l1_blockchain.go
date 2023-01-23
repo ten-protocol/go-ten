@@ -1,4 +1,4 @@
-package rollupchain
+package l2chain
 
 import (
 	"os"
