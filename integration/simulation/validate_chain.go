@@ -142,8 +142,6 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	deposits, rollups, _, blockCount, _ := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
-	//	totalDepositedLogged, eventCount := ExtractCrossChainDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s)
-
 	if len(findHashDups(deposits)) > 0 {
 		dups := findHashDups(deposits)
 		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeIdx, dups)
