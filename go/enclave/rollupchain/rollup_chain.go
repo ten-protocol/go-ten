@@ -118,20 +118,13 @@ func (rc *RollupChain) UpdateL2Chain(batch *core.Batch) (*common.BatchHeader, er
 	rc.blockProcessingMutex.Lock()
 	defer rc.blockProcessingMutex.Unlock()
 
-	batchTxReceipts, err := rc.validateBatch(batch)
-	if err != nil {
-		return nil, fmt.Errorf("failed to validate batch. Cause: %w", err)
-	}
-	if err = rc.storage.StoreBatch(batch, batchTxReceipts); err != nil {
-		return nil, fmt.Errorf("failed to store batch. Cause: %w", err)
-	}
-	if err = rc.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, batchTxReceipts); err != nil {
-		return nil, fmt.Errorf("could not store new L2 head. Cause: %w", err)
+	if err := rc.checkAndStoreBatch(batch); err != nil {
+		return nil, err
 	}
 
 	// If this is the genesis batch, we commit the genesis state.
 	if batch.IsGenesis() {
-		if err = rc.genesis.CommitGenesisState(rc.storage); err != nil {
+		if err := rc.genesis.CommitGenesisState(rc.storage); err != nil {
 			return nil, fmt.Errorf("could not apply genesis state. Cause: %w", err)
 		}
 	}
@@ -635,29 +628,6 @@ func (rc *RollupChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error
 	return txReceipts, nil
 }
 
-// Checks that the batch is valid, both internally and relative to the previously-stored batches.
-func (rc *RollupChain) validateBatch(batch *core.Batch) ([]*types.Receipt, error) {
-	// TODO - #718 - Determine what level of checking we should perform on the genesis batch.
-	if batch.IsGenesis() {
-		return nil, nil
-	}
-
-	// We check that the batch is internally valid (e.g. its header matches its contents).
-	txReceipts, err := rc.isInternallyValidBatch(batch)
-	if err != nil {
-		return nil, fmt.Errorf("batch was invalid. Cause: %w", err)
-	}
-
-	// We check that we've stored the batch's parent.
-	if _, err = rc.storage.FetchBatch(batch.Header.ParentHash); err != nil {
-		return nil, fmt.Errorf("could not retrieve parent batch. Cause: %w", err)
-	}
-
-	// TODO - #718 - Check that the transactions in the batch are unique
-
-	return txReceipts, nil
-}
-
 func (rc *RollupChain) signBatch(batch *core.Batch) error {
 	var err error
 	h := batch.Hash()
@@ -868,6 +838,12 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 			}
 		}
 
+		for _, batch := range rollup.Batches {
+			if err = rc.checkAndStoreBatch(batch); err != nil {
+				return fmt.Errorf("could not store batch. Cause: %w", err)
+			}
+		}
+
 		if err = rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
@@ -905,6 +881,47 @@ func (rc *RollupChain) checkRollupsCorrectlyChained(rollup *core.Rollup, previou
 	if len(rollup.Batches) != 0 && previousRollup.Header.HeadBatchHash != rollup.Batches[0].Header.ParentHash {
 		return fmt.Errorf("found gap in rollup batches. Batches in rollup %d did not chain to batches in rollup %d",
 			rollup.Header.Number, previousRollup.Header.Number)
+	}
+
+	return nil
+}
+
+// Checks the batch. If we've not seen a batch at this height before, we store it. If we have seen a batch at this
+// height before, we validate it against the other received batch at the same height.
+func (rc *RollupChain) checkAndStoreBatch(batch *core.Batch) error {
+	// We check the batch.
+	var txReceipts types.Receipts
+	// TODO - #718 - Determine what level of checking we should perform on the genesis batch.
+	if !batch.IsGenesis() {
+		var err error
+		txReceipts, err = rc.isInternallyValidBatch(batch)
+		if err != nil {
+			return fmt.Errorf("batch was invalid. Cause: %w", err)
+		}
+
+		// We check that we've stored the batch's parent.
+		if _, err = rc.storage.FetchBatch(batch.Header.ParentHash); err != nil {
+			return fmt.Errorf("could not retrieve parent batch. Cause: %w", err)
+		}
+	}
+
+	// If we've stored a batch at this height before, we ensure that it has the same transactions.
+	_, err := rc.storage.FetchBatchByHeight(batch.NumberU64())
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("could not fetch batch. Cause: %w", err)
+	}
+	// TODO - #718 - Once the sequencer includes transactions deterministically (i.e. a batch of a given height always
+	//  contains the same transactions, regardless of reorgs), uncomment this check.
+	//if err == nil && batch.Header.TxHash != storedBatch.Header.TxHash {
+	//	return fmt.Errorf("two batches at same height did not have the same transactions")
+	//}
+
+	// We store the batch and update the head batch for that L1 block.
+	if err = rc.storage.StoreBatch(batch, txReceipts); err != nil {
+		return fmt.Errorf("failed to store batch. Cause: %w", err)
+	}
+	if err = rc.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, txReceipts); err != nil {
+		return fmt.Errorf("could not store new L2 head. Cause: %w", err)
 	}
 
 	return nil
