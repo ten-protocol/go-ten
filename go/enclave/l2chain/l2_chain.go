@@ -916,12 +916,16 @@ func (lc *L2Chain) checkAndStoreBatch(batch *core.Batch) error {
 	//	return fmt.Errorf("two batches at same height did not have the same transactions")
 	//}
 
-	// We store the batch and update the head batch for that L1 block.
-	if err = lc.storage.StoreBatch(batch, txReceipts); err != nil {
-		return fmt.Errorf("failed to store batch. Cause: %w", err)
-	}
-	if err = lc.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, txReceipts); err != nil {
-		return fmt.Errorf("could not store new L2 head. Cause: %w", err)
+	// If we haven't stored the batch before, we store it and update the head batch for that L1 block.
+	// TODO - FetchBatch should return errutil.ErrNotFound for unstored batches, so we can handle that type of error
+	//  separately.
+	if _, err = lc.storage.FetchBatch(*batch.Hash()); err != nil {
+		if err = lc.storage.StoreBatch(batch, txReceipts); err != nil {
+			return fmt.Errorf("failed to store batch. Cause: %w", err)
+		}
+		if err = lc.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, txReceipts); err != nil {
+			return fmt.Errorf("could not store new L2 head. Cause: %w", err)
+		}
 	}
 
 	return nil
