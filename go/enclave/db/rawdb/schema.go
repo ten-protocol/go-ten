@@ -13,10 +13,11 @@ var (
 	attestationKeyPrefix           = []byte("oAK")  // attestationKeyPrefix + address -> key
 	syntheticTransactionsKeyPrefix = []byte("oSTX") // attestationKeyPrefix + address -> key
 
-	batchHeaderPrefix            = []byte("oh")  // batchHeaderPrefix + num (uint64 big endian) + hash -> header
-	batchHashSuffix              = []byte("on")  // batchHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
-	batchBodyPrefix              = []byte("ob")  // batchBodyPrefix + num (uint64 big endian) + hash -> batch body
-	batchNumberPrefix            = []byte("oH")  // batchNumberPrefix + hash -> num (uint64 big endian)
+	batchHeaderPrefix            = []byte("oh") // batchHeaderPrefix + num (uint64 big endian) + hash -> header
+	batchHashSuffix              = []byte("on") // batchHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
+	batchBodyPrefix              = []byte("ob") // batchBodyPrefix + num (uint64 big endian) + hash -> batch body
+	batchNumberPrefix            = []byte("oH") // batchNumberPrefix + hash -> num (uint64 big endian)
+	batchConfirmationPrefix      = []byte("oc")
 	rollupHeaderPrefix           = []byte("rh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
 	rollupBodyPrefix             = []byte("rb")  // rollupBodyPrefix + num (uint64 big endian) + hash -> batch body
 	rollupNumberPrefix           = []byte("rn")  // rollupNumberPrefix + hash -> num (uint64 big endian)
@@ -43,6 +44,11 @@ func batchHeaderKey(hash common.L2RootHash) []byte {
 // For storing and fetching a batch body by batch hash.
 func batchBodyKey(hash common.L2RootHash) []byte {
 	return append(batchBodyPrefix, hash.Bytes()...)
+}
+
+// For storing and fetching the confirmation status of a batch.
+func batchConfirmationKey(hash *common.L2RootHash) []byte {
+	return append(batchConfirmationPrefix, hash.Bytes()...)
 }
 
 // For storing and fetching a batch number by batch hash.

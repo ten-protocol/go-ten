@@ -39,6 +39,8 @@ type BatchResolver interface {
 	FetchHeadBatch() (*core.Batch, error)
 	// StoreBatch stores a batch.
 	StoreBatch(batch *core.Batch, receipts []*types.Receipt) error
+	// ConfirmBatch marks a batch as confirmed.
+	ConfirmBatch(batch *core.Batch) error
 }
 
 type RollupResolver interface {

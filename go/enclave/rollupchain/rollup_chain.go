@@ -867,10 +867,14 @@ func (rc *RollupChain) processRollups(block *common.L1Block) error {
 			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
-		if err = rc.checkRollupAgainstBatches(rollup); err != nil {
-			// TODO - #718 - Determine how to handle this critical error case.
-			rc.logger.Error("could not check rollups against batches", log.ErrKey, err)
+		for _, batch := range rollup.Batches {
+			if err = rc.storage.ConfirmBatch(batch); err != nil {
+				return fmt.Errorf("could not confirm batch. Cause: %w", err)
+			}
 		}
+
+		// TODO - #718 - Design and introduce an asynchronous mechanism for determining that batches are being
+		//  confirmed in a timely way.
 
 		if err = rc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
@@ -902,22 +906,6 @@ func (rc *RollupChain) checkRollupsCorrectlyChained(rollup *core.Rollup, previou
 		return fmt.Errorf("found gap in block rollups. Rollup %d did not reference rollup %d by hash",
 			previousRollup.Header.Number, rollup.Header.Number)
 	}
-	return nil
-}
-
-// Validates the rollup against the stored batches.
-func (rc *RollupChain) checkRollupAgainstBatches(rollup *core.Rollup) error {
-	// TODO - #718 - Handle case where rollup is received ahead of batch.
-	batch, err := rc.storage.FetchBatch(rollup.Header.HeadBatchHash)
-	if err != nil {
-		return fmt.Errorf("could not retrieve batch for rollup. Cause: %w", err)
-	}
-
-	// TODO - #718 - Implement a better check (e.g. that all batches have been rolled up, and in the correct order).
-	if batch.Number().Cmp(rollup.Number()) != 0 {
-		return fmt.Errorf("batch and rollup numbers did not match")
-	}
-
 	return nil
 }
 

@@ -15,6 +15,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
+// Indicates that a batch has been confirmed.
+const batchConfirmed byte = 1
+
 func ReadBatch(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Batch, error) {
 	header, err := readBatchHeader(db, hash)
 	if err != nil {
@@ -51,6 +54,14 @@ func WriteBatch(db ethdb.KeyValueWriter, batch *core.Batch) error {
 	}
 	if err := writeBatchBody(db, *batch.Hash(), batch.Transactions); err != nil {
 		return fmt.Errorf("could not write body. Cause: %w", err)
+	}
+	return nil
+}
+
+func ConfirmBatch(db ethdb.KeyValueWriter, batch *core.Batch) error {
+	key := batchConfirmationKey(batch.Hash())
+	if err := db.Put(key, []byte{batchConfirmed}); err != nil {
+		return fmt.Errorf("could not put batch confirmation in DB. Cause: %w", err)
 	}
 	return nil
 }

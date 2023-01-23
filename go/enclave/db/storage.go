@@ -323,6 +323,19 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) e
 	return nil
 }
 
+func (s *storageImpl) ConfirmBatch(batch *core.Batch) error {
+	dbBatch := s.db.NewBatch()
+
+	if err := obscurorawdb.ConfirmBatch(dbBatch, batch); err != nil {
+		return fmt.Errorf("could not write write confirmed batch to storage . Cause: %w", err)
+	}
+
+	if err := dbBatch.Write(); err != nil {
+		return fmt.Errorf("could not write confirmed batch to storage. Cause: %w", err)
+	}
+	return nil
+}
+
 func (s *storageImpl) StoreL1Messages(blockHash common.L1RootHash, messages common.CrossChainMessages) error {
 	return obscurorawdb.StoreL1Messages(s.db, blockHash, messages, s.logger)
 }
