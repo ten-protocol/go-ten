@@ -46,7 +46,7 @@ type L2Chain struct {
 
 	storage              db.Storage
 	l1Blockchain         *gethcore.BlockChain
-	bridge               *rollupextractor.RollupExtractor
+	rollupExtractor      *rollupextractor.RollupExtractor
 	mempool              mempool.Manager
 	genesis              *genesis.Genesis
 	crossChainProcessors *crosschain.Processors
@@ -80,7 +80,7 @@ func New(
 		nodeType:             nodeType,
 		storage:              storage,
 		l1Blockchain:         l1Blockchain,
-		bridge:               bridge,
+		rollupExtractor:      bridge,
 		mempool:              mempool,
 		crossChainProcessors: crossChainProcessors,
 		enclavePrivateKey:    privateKey,
@@ -774,7 +774,7 @@ func (lc *L2Chain) processRollups(block *common.L1Block) error {
 		return fmt.Errorf("could not fetch current L2 head rollup")
 	}
 
-	rollups := lc.bridge.ExtractRollups(block, lc.storage)
+	rollups := lc.rollupExtractor.ExtractRollups(block, lc.storage)
 	sort.Slice(rollups, func(i, j int) bool {
 		// Ascending order sort.
 		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0

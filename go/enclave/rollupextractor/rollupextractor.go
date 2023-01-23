@@ -68,9 +68,9 @@ type ERC20Mapping struct {
 	L2Address *gethcommon.Address
 }
 
-// RollupExtractor encapsulates all logic around processing the interactions with an L1
+// RollupExtractor encapsulates the logic of decoding rollup transactions submitted to the L1 and resolving them
+// to rollups that the enclave can process.
 type RollupExtractor struct {
-	// BridgeAddress The address the bridge on the L2
 	MgmtContractLib mgmtcontractlib.MgmtContractLib
 
 	TransactionBlobCrypto crypto2.TransactionBlobCrypto
