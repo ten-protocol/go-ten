@@ -9,6 +9,9 @@ import (
 
 const (
 	// Flag names, defaults and usages.
+	walletExtensionHostName    = "host"
+	walletExtensionHostDefault = "127.0.0.1"
+	walletExtensionHostUsage   = "The host where the wallet extension should open the port."
 	walletExtensionPortName    = "port"
 	walletExtensionPortDefault = 3000
 	walletExtensionPortUsage   = "The port on which to serve the wallet extension. Default: 3000."
@@ -39,6 +42,7 @@ const (
 )
 
 func parseCLIArgs() walletextension.Config {
+	walletExtensionHost := flag.String(walletExtensionHostName, walletExtensionHostDefault, walletExtensionHostUsage)
 	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
 	walletExtensionPortWS := flag.Int(walletExtensionPortWSName, walletExtensionPortWSDefault, walletExtensionPortWSUsage)
 	nodeHost := flag.String(nodeHostName, nodeHostDefault, nodeHostUsage)
@@ -49,6 +53,7 @@ func parseCLIArgs() walletextension.Config {
 	flag.Parse()
 
 	return walletextension.Config{
+		WalletExtensionHost:     *walletExtensionHost,
 		WalletExtensionPort:     *walletExtensionPort,
 		WalletExtensionPortWS:   *walletExtensionPortWS,
 		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
