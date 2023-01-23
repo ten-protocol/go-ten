@@ -1,0 +1,45 @@
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {DeployFunction} from 'hardhat-deploy/types';
+
+const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+    const { 
+        deployments, 
+        getNamedAccounts
+    } = hre;
+
+    // L2 address of a prefunded deployer account to be used in smart contracts
+    const accountsL2 = await getNamedAccounts();
+    const accountsL1 = await hre.companionNetworks.layer1.getNamedAccounts();
+
+    // L1 Cross Chain Messenger Deployment.
+    const messengerL1 = await hre.companionNetworks.layer1.deployments.get("CrossChainMessenger");
+
+    // We deploy the layer 1 part of the bridge.
+    const layer1BridgeDeployment = await hre.companionNetworks.layer1.deployments.deploy('ObscuroBridge', {
+        from: accountsL1.deployer,
+        args: [ messengerL1.address ],
+        log: true,
+    });
+
+    // We get the Cross chain messenger deployment on the layer 2 network.
+    const messengerL2 = await deployments.get("CrossChainMessenger");
+
+    // Deploy the layer 2 part of the bridge and instruct it to use the address of the L2 cross chain messenger to enable functionality
+    // and be subordinate of the L1 ObscuroBridge
+    const layer2BridgeDeployment = await deployments.deploy('EthereumBridge', {
+        from: accountsL2.deployer,
+        args: [ messengerL2.address, layer1BridgeDeployment.address ],
+        log: true,
+    });
+
+    await hre.companionNetworks.layer1.deployments.execute("ObscuroBridge", {
+        from: accountsL1.deployer, 
+        log: true,
+    }, "setRemoteBridge", layer2BridgeDeployment.address);
+};
+
+export default func;
+func.tags = ['EthereumBridge', 'EthereumBridge_deploy'];
+
+// This should only be deployed after the L2 CrossChainMessenger
+func.dependencies = ['CrossChainMessenger'];
