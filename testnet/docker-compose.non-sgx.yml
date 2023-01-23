@@ -46,8 +46,6 @@ services:
       - "6060:6060"
     environment:
      - MGMTCONTRACTADDR=some_address
-     - HOCERC20ADDR=some_address
-     - POCERC20ADDR=some_address
      - HOSTID=some_address
      - NODETYPE=some_string
      - PROFILERENABLED=some_bool
@@ -63,7 +61,6 @@ services:
                  "--useInMemoryDB=false",
                  "--sqliteDBPath=/data/sqlite.db",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
-                 "--erc20ContractAddresses=$HOCERC20ADDR,$POCERC20ADDR",
                  "--hostAddress=host:10000",
                  "--profilerEnabled=$PROFILERENABLED",
                  "--hostAddress=$P2PPUBLICADDRESS",

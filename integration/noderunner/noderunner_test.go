@@ -20,8 +20,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/config"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -71,8 +69,6 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.HostID = hostAddress
 	enclaveConfig.Address = enclaveAddr
-	dummyContractAddress := common.BytesToAddress([]byte("AA"))
-	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
 	enclaveConfig.ProfilerEnabled = true
 	enclaveConfig.LogPath = testlog.LogFile()
 

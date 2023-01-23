@@ -13,12 +13,11 @@ import (
 func RandomRollup(block *types.Block) common.ExtRollup {
 	extRollup := common.ExtRollup{
 		Header: &common.RollupHeader{
-			ParentHash:  randomHash(),
-			Agg:         RandomAddress(),
-			L1Proof:     randomHash(),
-			Root:        randomHash(),
-			Number:      big.NewInt(int64(RandomUInt64())),
-			Withdrawals: randomWithdrawals(10),
+			ParentHash: randomHash(),
+			Agg:        RandomAddress(),
+			L1Proof:    randomHash(),
+			Root:       randomHash(),
+			Number:     big.NewInt(int64(RandomUInt64())),
 		},
 	}
 

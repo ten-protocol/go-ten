@@ -104,13 +104,9 @@ jobs:
         run: |
           ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1_HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} --docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
           source ./testnet/.env
-          echo "Contracts deployed to $MGMTCONTRACTADDR and $HOCERC20ADDR and $POCERC20ADDR"
+          echo "Contracts deployed to $MGMTCONTRACTADDR"
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
-          echo "HOC_ERC20_ADDR=$HOCERC20ADDR" >> $GITHUB_ENV
-          echo "POC_ERC20_ADDR=$POCERC20ADDR" >> $GITHUB_ENV
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_OUTPUT
-          echo "HOC_ERC20_ADDR=$HOCERC20ADDR" >> $GITHUB_OUTPUT
-          echo "POC_ERC20_ADDR=$POCERC20ADDR" >> $GITHUB_OUTPUT
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
       - name: 'Delete deployed VMs'
@@ -225,8 +221,6 @@ jobs:
                --host_id=${{ secrets[matrix.node_pk_addr] }} \
                --l1host=${{needs.build.outputs.L1_HOST}} \
                --mgmtcontractaddr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
-               --hocerc20addr=${{needs.build.outputs.HOC_ERC20_ADDR}} \
-               --pocerc20addr=${{needs.build.outputs.POC_ERC20_ADDR}} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --sequencerID=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
                --dev_testnet=${{ github.event.inputs.testnet_type  == 'dev-testnet' }} \

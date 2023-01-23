@@ -459,15 +459,12 @@ func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wal
 
 // createTestEnclave returns a test instance of the enclave
 func createTestEnclave(prefundedAddresses []genesis.Account) (common.Enclave, error) {
-	rndAddr := gethcommon.HexToAddress("contract1")
-	rndAddr2 := gethcommon.HexToAddress("contract2")
 	enclaveConfig := config.EnclaveConfig{
-		L1ChainID:              integration.EthereumChainID,
-		ObscuroChainID:         integration.ObscuroChainID,
-		WillAttest:             false,
-		UseInMemoryDB:          true,
-		ERC20ContractAddresses: []*gethcommon.Address{&rndAddr, &rndAddr2},
-		MinGasPrice:            big.NewInt(1),
+		L1ChainID:      integration.EthereumChainID,
+		ObscuroChainID: integration.ObscuroChainID,
+		WillAttest:     false,
+		UseInMemoryDB:  true,
+		MinGasPrice:    big.NewInt(1),
 	}
 	logger := log.New(log.TestLogCmp, int(gethlog.LvlError), log.SysOut)
 
@@ -475,7 +472,7 @@ func createTestEnclave(prefundedAddresses []genesis.Account) (common.Enclave, er
 	if len(prefundedAddresses) > 0 {
 		obsGenesis = &genesis.Genesis{Accounts: prefundedAddresses}
 	}
-	enclave := NewEnclave(enclaveConfig, obsGenesis, nil, nil, logger)
+	enclave := NewEnclave(enclaveConfig, obsGenesis, nil, logger)
 
 	_, err := enclave.GenerateSecret()
 	if err != nil {
@@ -620,7 +617,6 @@ func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *c
 		L1Proof:     blkHash,
 		Root:        state.IntermediateRoot(true),
 		Number:      big.NewInt(int64(height)),
-		Withdrawals: []common.Withdrawal{},
 		ReceiptHash: types.EmptyRootHash,
 		Time:        uint64(time.Now().Unix()),
 	}

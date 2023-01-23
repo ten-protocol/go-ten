@@ -14,7 +14,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -134,7 +134,7 @@ func (s *Simulation) trackLogs() {
 
 			// To exercise the filtering mechanism, we subscribe for HOC events only, ignoring POC events.
 			hocFilter := filters.FilterCriteria{
-				Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + bridge.HOCAddr)},
+				Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + rollupextractor.HOCAddr)},
 			}
 			sub, err := client.SubscribeFilterLogs(context.Background(), hocFilter, channel)
 			if err != nil {
@@ -157,12 +157,12 @@ func (s *Simulation) prefundObscuroAccounts() {
 
 // This deploys an ERC20 contract on Obscuro, which is used for token arithmetic.
 func (s *Simulation) deployObscuroERC20s() {
-	tokens := []bridge.ERC20{bridge.HOC, bridge.POC}
+	tokens := []rollupextractor.ERC20{rollupextractor.HOC, rollupextractor.POC}
 
 	wg := sync.WaitGroup{}
 	for _, token := range tokens {
 		wg.Add(1)
-		go func(token bridge.ERC20) {
+		go func(token rollupextractor.ERC20) {
 			defer wg.Done()
 			owner := s.Params.Wallets.Tokens[token].L2Owner
 			// 0x526c84529b2b8c11f57d93d3f5537aca3aecef9b - this is the address of the L2 contract which is currently hardcoded.
@@ -198,12 +198,12 @@ func (s *Simulation) prefundL1Accounts() {
 	for _, w := range s.Params.Wallets.SimEthWallets {
 		ethClient := s.RPCHandles.RndEthClient()
 		receiver := w.Address()
-		tokenOwner := s.Params.Wallets.Tokens[bridge.HOC].L1Owner
+		tokenOwner := s.Params.Wallets.Tokens[rollupextractor.HOC].L1Owner
 		ownerAddr := tokenOwner.Address()
 		txData := &ethadapter.L1DepositTx{
 			Amount:        initialBalance,
 			To:            &receiver,
-			TokenContract: s.Params.Wallets.Tokens[bridge.HOC].L1ContractAddress,
+			TokenContract: s.Params.Wallets.Tokens[rollupextractor.HOC].L1ContractAddress,
 			Sender:        &ownerAddr,
 		}
 		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData, tokenOwner.GetNonceAndIncrement())
