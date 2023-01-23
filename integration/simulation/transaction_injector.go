@@ -289,18 +289,9 @@ func (ti *TransactionInjector) rndObsWallet() wallet.Wallet {
 	return ti.wallets.SimObsWallets[rand.Intn(len(ti.wallets.SimObsWallets))] //nolint:gosec
 }
 
-func (ti *TransactionInjector) rndEthWallet() wallet.Wallet {
-	return ti.wallets.SimEthWallets[rand.Intn(len(ti.wallets.SimEthWallets))] //nolint:gosec
-}
-
 func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, common.ValueInWei(big.NewInt(int64(amount))))
 	return ti.newTx(data, from.GetNonceAndIncrement())
-}
-
-func (ti *TransactionInjector) newObscuroWithdrawalTx(from wallet.Wallet, amount uint64) types.TxData {
-	transferERC20data := erc20contractlib.CreateTransferTxData(bridge.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
-	return ti.newTx(transferERC20data, from.GetNonceAndIncrement())
 }
 
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {

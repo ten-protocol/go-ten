@@ -13,7 +13,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/host/p2p"
@@ -23,7 +22,6 @@ import (
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -56,12 +54,10 @@ func createInMemObscuroNode(
 	isGenesis bool,
 	nodeType common.NodeType,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	stableTokenContractLib erc20contractlib.ERC20ContractLib,
 	validateBlocks bool,
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
-	wallets *params.SimWallets,
 	mockP2P *simp2p.MockP2P,
 	l1BusAddress *gethcommon.Address,
 	l1StartBlk gethcommon.Hash,

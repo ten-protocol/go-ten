@@ -34,12 +34,6 @@ func (m *txInjectorTracker) trackL1Tx(tx ethadapter.L1Transaction) {
 	m.L1Transactions = append(m.L1Transactions, tx)
 }
 
-func (m *txInjectorTracker) trackWithdrawalL2Tx(tx *common.L2Tx) {
-	m.l2TransactionsLock.Lock()
-	defer m.l2TransactionsLock.Unlock()
-	m.WithdrawalL2Transactions = append(m.WithdrawalL2Transactions, tx)
-}
-
 func (m *txInjectorTracker) trackTransferL2Tx(tx *common.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()

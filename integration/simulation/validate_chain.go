@@ -359,7 +359,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 
 	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
 
-	totalSuccessfullyWithdrawn, _ := extractWithdrawals(t, obscuroClient, nodeIdx)
+	totalSuccessfullyWithdrawn := extractWithdrawals(t, obscuroClient, nodeIdx)
 
 	totalAmountLogged := getLoggedWithdrawals(minObscuroHeight, obscuroClient, headRollupHeader)
 	if totalAmountLogged.Cmp(totalSuccessfullyWithdrawn) != 0 {
@@ -386,7 +386,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the sum of all balances matches the total amount of money that must be in the system
-	//totalAmountInSystem := big.NewInt(0).Sub(s.Stats.TotalDepositedAmount, totalSuccessfullyWithdrawn)
+	// totalAmountInSystem := big.NewInt(0).Sub(s.Stats.TotalDepositedAmount, totalSuccessfullyWithdrawn)
 	total := big.NewInt(0)
 	for _, wallet := range s.Params.Wallets.SimObsWallets {
 		client := rpcHandles.ObscuroWalletClient(wallet.Address(), nodeIdx)
@@ -509,7 +509,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 	}
 }
 
-func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int, numberOfWithdrawalRequests int) {
+func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int) {
 	totalSuccessfullyWithdrawn = big.NewInt(0)
 	header := getHeadRollupHeader(obscuroClient, nodeIdx)
 	if header == nil {
