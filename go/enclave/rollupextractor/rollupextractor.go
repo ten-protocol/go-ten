@@ -1,4 +1,4 @@
-package bridge
+package rollupextractor
 
 // TODO: once the cross chain messages based bridge is implemented remove this completely.
 
@@ -68,8 +68,8 @@ type ERC20Mapping struct {
 	L2Address *gethcommon.Address
 }
 
-// Bridge encapsulates all logic around processing the interactions with an L1
-type Bridge struct {
+// RollupExtractor encapsulates all logic around processing the interactions with an L1
+type RollupExtractor struct {
 	// BridgeAddress The address the bridge on the L2
 	MgmtContractLib mgmtcontractlib.MgmtContractLib
 
@@ -87,8 +87,8 @@ func New(
 	obscuroChainID int64,
 	ethereumChainID int64,
 	logger gethlog.Logger,
-) *Bridge {
-	return &Bridge{
+) *RollupExtractor {
+	return &RollupExtractor{
 		MgmtContractLib:       mgmtContractLib,
 		TransactionBlobCrypto: transactionBlobCrypto,
 		ObscuroChainID:        obscuroChainID,
@@ -98,7 +98,7 @@ func New(
 }
 
 // ExtractRollups - returns a list of the rollups published in this block
-func (bridge *Bridge) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
+func (bridge *RollupExtractor) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
 	rollups := make([]*core.Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions

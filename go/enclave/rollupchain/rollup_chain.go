@@ -22,13 +22,13 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 	"github.com/status-im/keycard-go/hexutils"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -46,7 +46,7 @@ type RollupChain struct {
 
 	storage              db.Storage
 	l1Blockchain         *gethcore.BlockChain
-	bridge               *bridge.Bridge
+	bridge               *rollupextractor.RollupExtractor
 	mempool              mempool.Manager
 	genesis              *genesis.Genesis
 	crossChainProcessors *crosschain.Processors
@@ -66,7 +66,7 @@ func New(
 	nodeType common.NodeType,
 	storage db.Storage,
 	l1Blockchain *gethcore.BlockChain,
-	bridge *bridge.Bridge,
+	bridge *rollupextractor.RollupExtractor,
 	crossChainProcessors *crosschain.Processors,
 	mempool mempool.Manager,
 	privateKey *ecdsa.PrivateKey,
