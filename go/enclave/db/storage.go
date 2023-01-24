@@ -171,14 +171,14 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 }
 
 func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error {
-	batch := s.db.NewBatch()
+	dbBatch := s.db.NewBatch()
 
-	if err := obscurorawdb.WriteL2HeadBatch(batch, l1Head, *l2Head.Hash()); err != nil {
+	if err := obscurorawdb.WriteL2HeadBatch(dbBatch, l1Head, *l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
 	// We update the canonical hash of the batch at this height.
-	if err := obscurorawdb.WriteCanonicalHash(batch, l2Head); err != nil {
+	if err := obscurorawdb.WriteCanonicalHash(dbBatch, l2Head); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
 	}
 
@@ -187,31 +187,31 @@ func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Bat
 	for _, receipt := range receipts {
 		logs = append(logs, receipt.Logs...)
 	}
-	if err := obscurorawdb.WriteBlockLogs(batch, l1Head, logs); err != nil {
+	if err := obscurorawdb.WriteBlockLogs(dbBatch, l1Head, logs); err != nil {
 		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
 
-	if err := batch.Write(); err != nil {
+	if err := dbBatch.Write(); err != nil {
 		return fmt.Errorf("could not save new head. Cause: %w", err)
 	}
 	return nil
 }
 
 func (s *storageImpl) UpdateHeadRollup(l1Head *common.L1RootHash, l2Head *common.L2RootHash) error {
-	batch := s.db.NewBatch()
-	if err := obscurorawdb.WriteL2HeadRollup(batch, l1Head, l2Head); err != nil {
+	dbBatch := s.db.NewBatch()
+	if err := obscurorawdb.WriteL2HeadRollup(dbBatch, l1Head, l2Head); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
-	if err := batch.Write(); err != nil {
+	if err := dbBatch.Write(); err != nil {
 		return fmt.Errorf("could not save new head. Cause: %w", err)
 	}
 	return nil
 }
 
 func (s *storageImpl) UpdateL1Head(l1Head common.L1RootHash) error {
-	batch := s.db.NewBatch()
-	rawdb.WriteHeadHeaderHash(batch, l1Head)
-	if err := batch.Write(); err != nil {
+	dbBatch := s.db.NewBatch()
+	rawdb.WriteHeadHeaderHash(dbBatch, l1Head)
+	if err := dbBatch.Write(); err != nil {
 		return fmt.Errorf("could not save new L1 head. Cause: %w", err)
 	}
 	return nil
@@ -332,13 +332,13 @@ func (s *storageImpl) GetL1Messages(blockHash common.L1RootHash) (common.CrossCh
 }
 
 func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
-	batch := s.db.NewBatch()
+	dbBatch := s.db.NewBatch()
 
-	if err := obscurorawdb.WriteRollup(batch, rollup); err != nil {
+	if err := obscurorawdb.WriteRollup(dbBatch, rollup); err != nil {
 		return fmt.Errorf("could not write rollup. Cause: %w", err)
 	}
 
-	if err := batch.Write(); err != nil {
+	if err := dbBatch.Write(); err != nil {
 		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
 	}
 	return nil
