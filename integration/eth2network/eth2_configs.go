@@ -4,6 +4,11 @@ import (
 	"encoding/json"
 )
 
+//
+// These are base configurations to enable a clique network that after the merge block becomes a POS network
+// Any change to these configurations should be using a pattern similar to the generateGenesis method.
+//
+
 const gethPreloadJSONScript = `
 key = "2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622";
 pwd = "password";

@@ -204,7 +204,7 @@ func (n *Eth2Network) Start() error {
 		return err
 	}
 
-	// link nodes together by providing the enode node 0
+	// link nodes together by providing node 0 the enode (eth node address) of the other nodes
 	var enodes []string
 	for i := 1; i < len(n.dataDirs); i++ {
 		enode, err := n.gethGetEnode(i)
@@ -276,6 +276,7 @@ func (n *Eth2Network) Stop() {
 }
 
 func (n *Eth2Network) gethInitGenesisData(dataDirPath string) error {
+	// full command list at https://geth.ethereum.org/docs/fundamentals/command-line-options
 	args := []string{_dataDirFlag, dataDirPath, "init", n.gethGenesisPath}
 	fmt.Printf("gethInitGenesisData: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
@@ -286,6 +287,7 @@ func (n *Eth2Network) gethInitGenesisData(dataDirPath string) error {
 }
 
 func (n *Eth2Network) gethImportMinerAccount(nodeID int) error {
+	// full command list at https://geth.ethereum.org/docs/fundamentals/command-line-options
 	args := []string{
 		"--exec", fmt.Sprintf("loadScript('%s');", n.preloadScriptPath),
 		"attach", fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[nodeID]),
@@ -299,6 +301,7 @@ func (n *Eth2Network) gethImportMinerAccount(nodeID int) error {
 }
 
 func (n *Eth2Network) gethStartNode(executionPort, networkPort, httpPort, wsPort int, dataDirPath string) (*exec.Cmd, error) {
+	// full command list at https://geth.ethereum.org/docs/fundamentals/command-line-options
 	args := []string{
 		_dataDirFlag, dataDirPath,
 		"--http",
@@ -309,9 +312,9 @@ func (n *Eth2Network) gethStartNode(executionPort, networkPort, httpPort, wsPort
 		"--authrpc.port", fmt.Sprintf("%d", executionPort),
 		"--port", fmt.Sprintf("%d", networkPort),
 		"--networkid", fmt.Sprintf("%d", n.chainID),
-		"--syncmode", "full",
-		"--allow-insecure-unlock",
-		"--nodiscover",
+		"--syncmode", "full", // sync mode to download and test all blocks and txs
+		"--allow-insecure-unlock", // allows to use personal accounts over http/ws
+		"--nodiscover",            // don't try and discover peers
 	}
 	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
@@ -322,6 +325,7 @@ func (n *Eth2Network) gethStartNode(executionPort, networkPort, httpPort, wsPort
 }
 
 func (n *Eth2Network) prysmGenerateGenesis() error {
+	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
 		"testnet", "generate-genesis",
 		"--num-validators", "64", "--output-ssz", n.prysmGenesisPath,
@@ -336,6 +340,7 @@ func (n *Eth2Network) prysmGenerateGenesis() error {
 }
 
 func (n *Eth2Network) prysmStartBeaconNode(executionPort, p2pPort, rpcPort int, nodeDataDir string) (*exec.Cmd, error) {
+	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
 		"--rpc-port", fmt.Sprintf("%d", rpcPort),
@@ -362,6 +367,7 @@ func (n *Eth2Network) prysmStartBeaconNode(executionPort, p2pPort, rpcPort int, 
 }
 
 func (n *Eth2Network) prysmStartValidator(rpcPort int, nodeDataDir string) (*exec.Cmd, error) {
+	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "validator"),
 		"--accept-terms-of-use",
@@ -381,6 +387,7 @@ func (n *Eth2Network) prysmStartValidator(rpcPort int, nodeDataDir string) (*exe
 	return cmd, cmd.Start()
 }
 
+// waitForMergeEvent connects to the geth node and waits until block 2 (the merge block) is reached
 func (n *Eth2Network) waitForMergeEvent(startTime time.Time) error {
 	dial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[0]))
 	if err != nil {
@@ -402,6 +409,7 @@ func (n *Eth2Network) waitForMergeEvent(startTime time.Time) error {
 	return nil
 }
 
+// waitForNodeUp retries continuously for the node to respond to a http request
 func (n *Eth2Network) waitForNodeUp(nodeID int, timeout time.Duration) error {
 	for startTime := time.Now(); time.Now().Before(startTime.Add(timeout)); time.Sleep(time.Second) {
 		dial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[nodeID]))
