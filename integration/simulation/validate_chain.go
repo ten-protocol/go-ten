@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -27,7 +26,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -54,15 +52,16 @@ const (
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
-	checkTransactionsInjected(t, s)
+	checkTransactionsWereInjected(t, s)
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
 	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
 	checkReceivedLogs(t, s)
 	checkObscuroscan(t, s)
 }
 
-// Ensures that L1 and L2 txs were actually issued.
-func checkTransactionsInjected(t *testing.T, s *Simulation) {
+// Ensures that the transaction injector actually injected some minimum amount of transactions (to avoid edge-cases
+// where zero or very few transactions were injected, and thus the L1 and L2 are trivially aligned).
+func checkTransactionsWereInjected(t *testing.T, s *Simulation) {
 	if len(s.TxInjector.TxTracker.L1Transactions) < txThreshold {
 		t.Errorf("Simulation only issued %d L1 transactions. At least %d expected", len(s.TxInjector.TxTracker.L1Transactions), txThreshold)
 	}
@@ -184,59 +183,9 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		}
 	}
 
+	checkInjectedTxsInRollups(t, s, nodeIdx, rollups)
+
 	return height
-}
-
-func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation) (*big.Int, uint64) {
-	client := node.EthClient()
-	if client == nil {
-		return nil, 0
-	}
-
-	messageBusABI, err := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	if err != nil {
-		panic(err) // panic?
-	}
-
-	eventTopic := messageBusABI.Events["LogMessagePublished"].ID
-	var topics [][]gethcommon.Hash
-	topics = append(topics, []gethcommon.Hash{eventTopic})
-
-	logs, err := node.EthClient().FilterLogs(context.Background(), ethereum.FilterQuery{
-		FromBlock: startBlock.Number(),
-		ToBlock:   endBlock.Number(),
-		Topics:    topics,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	contractAbi, err := abi.JSON(strings.NewReader(erc20.EthERC20MetaData.ABI))
-	if err != nil {
-		panic(err)
-	}
-
-	events := make([]*MessageBus.MessageBusLogMessagePublished, 0)
-	totalDeposited := big.NewInt(0)
-	for _, log := range logs {
-		var event MessageBus.MessageBusLogMessagePublished
-		err := messageBusABI.UnpackIntoInterface(&event, "LogMessagePublished", log.Data)
-		if err != nil { // shouldn't happen since we query by event type so we shouldn't have foreign events
-			panic(err)
-		}
-		events = append(events, &event)
-
-		transfer := map[string]interface{}{}
-		err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, event.Payload) // can't figure out how to unpack it without cheating, geth is kinda clunky
-		if err != nil {
-			panic(err)
-		}
-
-		amount := transfer["amount"].(*big.Int)
-		totalDeposited = totalDeposited.Add(totalDeposited, amount)
-	}
-
-	return totalDeposited, uint64(len(events))
 }
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
@@ -287,6 +236,49 @@ func ExtractDataFromEthereumChain(
 		}
 	}
 	return deposits, rollups, totalDeposited, len(blockchain), succesfulDeposits
+}
+
+// Check all the injected L2 transactions were included in the rollups.
+func checkInjectedTxsInRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
+	rollupTxs := make(map[common.TxHash]bool)
+	for _, rollup := range rollups {
+		for _, batch := range rollup.Batches {
+			for _, tx := range batch.TxHashes {
+				rollupTxs[tx] = true
+			}
+		}
+	}
+
+	transferTxs, withdrawalTxs, nativeTransferTxs := s.TxInjector.TxTracker.GetL2Transactions()
+	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := 0, 0, 0
+	for _, tx := range transferTxs {
+		if _, found := rollupTxs[tx.Hash()]; !found {
+			notFoundTransfers++
+		}
+	}
+	for _, tx := range withdrawalTxs {
+		if _, found := rollupTxs[tx.Hash()]; !found {
+			notFoundWithdrawals++
+		}
+	}
+	for _, tx := range nativeTransferTxs {
+		if _, found := rollupTxs[tx.Hash()]; !found {
+			notFoundNativeTransfers++
+		}
+	}
+
+	if notFoundTransfers > 0 {
+		t.Errorf("Node %d: %d out of %d Transfer Txs not found in rollups",
+			nodeIdx, notFoundTransfers, len(s.TxInjector.TxTracker.TransferL2Transactions))
+	}
+	if notFoundWithdrawals > 0 {
+		t.Errorf("Node %d: %d out of %d Withdrawal Txs not found in rollups",
+			nodeIdx, notFoundWithdrawals, len(s.TxInjector.TxTracker.WithdrawalL2Transactions))
+	}
+	if notFoundNativeTransfers > 0 {
+		t.Errorf("Node %d: %d out of %d Native Transfer Txs not found in rollups",
+			nodeIdx, notFoundNativeTransfers, len(s.TxInjector.TxTracker.NativeValueTransferL2Transactions))
+	}
 }
 
 func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {

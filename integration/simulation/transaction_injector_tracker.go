@@ -51,7 +51,7 @@ func (m *txInjectorTracker) GetL1Transactions() []ethadapter.L1Transaction {
 	return m.L1Transactions
 }
 
-// GetL2Transactions returns all generated non-WithdrawalTx transactions, excluding prefund and ERC20 deploy transactions.
+// GetL2Transactions returns all generated transactions, excluding prefund and ERC20 deploy transactions.
 func (m *txInjectorTracker) GetL2Transactions() ([]*common.L2Tx, []*common.L2Tx, []*common.L2Tx) {
 	return m.TransferL2Transactions, m.WithdrawalL2Transactions, m.NativeValueTransferL2Transactions
 }
