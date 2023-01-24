@@ -1,25 +1,33 @@
 # runs obscuro scan
 #
-FROM golang:1.17-alpine
+FROM golang:1.17-alpine as system
 
 # set the base libs to build / run
 RUN apk add build-base bash git
 ENV CGO_ENABLED=1
 
+# Standard build stage that initializes the go dependencies
+FROM system as get-dependencies
 # create the base directory
-RUN mkdir /home/go-obscuro
+# setup container data structure
+RUN mkdir -p /home/obscuro/go-obscuro
 
-# cache the go mod packaging
-COPY ./go.mod /home/go-obscuro
-COPY ./go.sum /home/go-obscuro
-WORKDIR /home/go-obscuro
-RUN go get -d -v ./...
+# Ensures container layer caching when dependencies are not changed
+WORKDIR /home/obscuro/go-obscuro
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
 
+FROM get-dependencies as build-obscuroscan
 # make sure the geth network code is available
-COPY . /home/go-obscuro
+COPY . /home/obscuro/go-obscuro
 
 # build the contract deployer exec
-WORKDIR /home/go-obscuro/tools/obscuroscan/main
-RUN go build
+WORKDIR /home/obscuro/go-obscuro/tools/obscuroscan/main
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    go build
 
-WORKDIR /home/go-obscuro
+FROM alpine:3.17
+
+COPY --from=build-obscuroscan /home/obscuro/go-obscuro/tools/obscuroscan/main /home/obscuro/go-obscuro/tools/obscuroscan/main
+WORKDIR /home/obscuro/go-obscuro

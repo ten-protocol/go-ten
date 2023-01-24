@@ -38,7 +38,7 @@ services:
         ]
     image: testnetobscuronet.azurecr.io/obscuronet/host:latest
     entrypoint: [
-      "/home/go-obscuro/go/host/main/main",
+      "/home/obscuro/go-obscuro/go/host/main/main",
       "--l1NodeHost=$L1HOST",
       "--l1NodePort=$L1PORT",
       "--enclaveRPCAddress=enclave:11000",

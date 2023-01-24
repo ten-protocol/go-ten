@@ -1,33 +1,56 @@
 # build a network of geth nodes
 # please check the workflows/manual-deploy-testnet-l1.yml for more info
 #
-FROM golang:1.17-alpine
+FROM golang:1.17-alpine as system
 
 # set the base libs to build / run
 RUN apk add build-base bash git linux-headers
 ENV CGO_ENABLED=1
 
+
+# Build stage for downloading dependencies based on the core defined system
+FROM system as get-dependencies
 # create the base directory
-RUN mkdir /home/go-obscuro
+# setup container data structure
+RUN mkdir -p /home/obscuro/go-obscuro
 
-# cache the go mod packaging
-COPY ./go.mod /home/go-obscuro
-COPY ./go.sum /home/go-obscuro
-WORKDIR /home/go-obscuro
-RUN go get -d -v ./...
+# Ensures container layer caching when dependencies are not changed
+WORKDIR /home/obscuro/go-obscuro
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
 
+# Build stage for building the geth binary. This runs in parallel to get-dependencies as it does not depend on it.
+FROM system as build-geth-binary
 # make sure the geth network code is available
-COPY . /home/go-obscuro
+COPY ./integration/gethnetwork/ /home/obscuro/go-obscuro/integration/gethnetwork/
 
 # reset any previous geth build
-WORKDIR /home/go-obscuro/integration/gethnetwork/
-RUN rm -rf /home/go-obscuro/integration/.build/geth_bin/ && rm -rf /home/go-obscuro/integration/gethnetwork/geth_bin/
+WORKDIR /home/obscuro/go-obscuro/integration/gethnetwork/
+RUN rm -rf /home/obscuro/go-obscuro/integration/.build/geth_bin/ && rm -rf /home/obscuro/go-obscuro/integration/gethnetwork/geth_bin/
 RUN ./build_geth_binary.sh --version=v1.10.17
 
+
+# Build stage for building the geth network runners. Will run in parallel and block on COPY if the build-geth-binary stage has not completed. 
+FROM get-dependencies as build-geth-network
+
+COPY . /home/obscuro/go-obscuro
+
 # build the gethnetwork exec
-WORKDIR /home/go-obscuro/integration/gethnetwork/main
-RUN go build
+WORKDIR /home/obscuro/go-obscuro/integration/gethnetwork/main
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    go build
+
+# Use core system as gethnetwork requires access to the golang environment.
+FROM system
+
+#Move over from the finalized build 
+COPY --from=build-geth-network \
+    /home/obscuro/go-obscuro/integration/gethnetwork /home/obscuro/go-obscuro/integration/gethnetwork
+
+COPY --from=build-geth-binary \
+    /home/obscuro/go-obscuro/integration/.build/geth_bin/ /home/obscuro/go-obscuro/integration/.build/geth_bin/
 
 # expose the http and the ws ports to the host
 EXPOSE 8025 8026 9000 9001
-ENTRYPOINT ["/home/go-obscuro/integration/gethnetwork/main/main", "--numNodes=2", "--startPort=8000","--websocketStartPort=9000"]
+ENTRYPOINT ["/home/obscuro/go-obscuro/integration/gethnetwork/main/main", "--numNodes=2", "--startPort=8000","--websocketStartPort=9000"]
