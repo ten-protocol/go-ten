@@ -336,7 +336,6 @@ func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*
 	// We process the rollups, updating the head rollup associated with the L1 block as we go.
 	if err := lc.processRollups(block); err != nil {
 		// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
-		println("jjj err")
 		lc.logger.Error("could not process rollups", log.ErrKey, err)
 	}
 
@@ -362,32 +361,14 @@ func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*
 	var producedBatch *core.Batch
 	var producedRollup *core.Rollup
 	if lc.nodeType == common.Sequencer && isLatestBlock {
-		headBatch, l2HeadTxReceipts, err = lc.produceAndStoreBatch(block, genesisBatchStored)
+		producedBatch, l2HeadTxReceipts, err = lc.produceAndStoreBatch(block, genesisBatchStored)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
 		}
-		producedBatch = headBatch
+		headBatch = producedBatch
 
-		// We produce the rollup.
-		// todo - joel - handle err
-		parentRollup, err := lc.storage.FetchHeadRollupForBlock(&block.Header().ParentHash)
-		var parentRollupHeader *common.RollupHeader
-		if parentRollup != nil {
-			parentRollupHeader = parentRollup.Header
-		}
-		producedRollup = &core.Rollup{
-			Header:  producedBatch.Header.ToRollupHeader(parentRollupHeader),
-			Batches: []*core.Batch{producedBatch},
-		}
-		if err = lc.signRollup(producedRollup); err != nil {
-			panic("joel ok change this")
-		}
-		if err = lc.storage.StoreRollup(producedRollup); err != nil {
-			panic("joel ok change this")
-		}
-		blockHash := block.Hash()
-		if err = lc.storage.UpdateHeadRollup(&blockHash, producedRollup.Hash()); err != nil {
-			panic("joel ok change this")
+		if producedRollup, err = lc.produceAndStoreRollup(block, producedBatch); err != nil {
+			return nil, nil, nil, fmt.Errorf("could not produce and store new rollup. Cause: %w", err)
 		}
 	}
 
@@ -428,6 +409,36 @@ func (lc *L2Chain) produceAndStoreBatch(block *common.L1Block, genesisBatchStore
 	}
 
 	return l2Head, l2HeadTxReceipts, nil
+}
+
+// Produces a new rollup, signs it and stores it.
+func (lc *L2Chain) produceAndStoreRollup(block *types.Block, producedBatch *core.Batch) (*core.Rollup, error) {
+	parentRollup, err := lc.storage.FetchHeadRollupForBlock(&block.Header().ParentHash)
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
+	}
+	var parentRollupHeader *common.RollupHeader
+	if parentRollup != nil {
+		parentRollupHeader = parentRollup.Header
+	}
+
+	producedRollup := &core.Rollup{
+		Header:  producedBatch.Header.ToRollupHeader(parentRollupHeader),
+		Batches: []*core.Batch{producedBatch},
+	}
+
+	if err = lc.signRollup(producedRollup); err != nil {
+		return nil, fmt.Errorf("could not sign produced rollup. Cause: %w", err)
+	}
+	if err = lc.storage.StoreRollup(producedRollup); err != nil {
+		return nil, fmt.Errorf("could not store produced rollup. Cause: %w", err)
+	}
+	blockHash := block.Hash()
+	if err = lc.storage.UpdateHeadRollup(&blockHash, producedRollup.Hash()); err != nil {
+		return nil, fmt.Errorf("could not update head rollup for produced rollup. Cause: %w", err)
+	}
+
+	return producedRollup, nil
 }
 
 // Creates a genesis batch linked to the provided L1 block and signs it.
