@@ -22,8 +22,10 @@ COPY . /home/go-obscuro
 WORKDIR /home/go-obscuro/go/host/main
 RUN go build
 
+# Trigger another build stage to remove unnecessary files.
 FROM golang:1.17-alpine
 
+# Copy over just the binary from the previous build stage into this one.
 COPY --from=0 /home/go-obscuro/go/host/main/main /home/go-obscuro/go/host/main/main
 WORKDIR /home/go-obscuro/go/host/main
 

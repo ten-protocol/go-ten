@@ -21,7 +21,10 @@ COPY . .
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 RUN ego-go build && ego sign main
 
-FROM ghcr.io/edgelesssys/ego-dev:latest
+# Trigger a new build stage and use the smaller ego version
+FROM ghcr.io/edgelesssys/ego-deploy:latest
+
+# Copy just the binary for the enclave into this build stage
 COPY --from=0 /home/obscuro/go-obscuro/go/enclave/main/main home/obscuro/go-obscuro/go/enclave/main/main
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 
