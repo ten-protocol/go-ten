@@ -36,7 +36,7 @@ services:
             ]
           }
         ]
-    image: testnetobscuronet.azurecr.io/obscuronet/host:latest
+    image: "${DOCKER_HOST_IMAGE}"
     entrypoint: [
       "/home/go-obscuro/go/host/main/main",
       "--l1NodeHost=$L1HOST",
@@ -71,7 +71,7 @@ services:
       - LOGLEVEL=some_int
       - SEQUENCERID=some_address
       - PCCS_ADDR
-    image: testnetobscuronet.azurecr.io/obscuronet/enclave:latest
+    image: "${DOCKER_ENCLAVE_IMAGE}"
     entrypoint: [
               "/home/obscuro/go-obscuro/go/enclave/main/entry.sh",
               "ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",

@@ -71,7 +71,8 @@ host_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
 log_level=4
 sequencer_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
-
+docker_host_image=testnetobscuronet.azurecr.io/obscuronet/host:latest
+docker_enclave_image=testnetobscuronet.azurecr.io/obscuronet/enclave:latest
 
 # Fetch options
 for argument in "$@"
@@ -107,6 +108,14 @@ then
     help_and_exit
 fi
 
+if ${dev_testnet} ;
+then
+  echo "Enclave and host with dev testnet images..."
+  docker_host_image=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest
+  docker_enclave_image=testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest
+  exit 0
+fi
+
 
 # reset any data in the env file
 echo "" > "${testnet_path}/.env"
@@ -123,6 +132,8 @@ echo "LOGLEVEL=${log_level}" >> "${testnet_path}/.env"
 echo "PROFILERENABLED=${profiler_enabled}" >> "${testnet_path}/.env"
 echo "P2PPUBLICADDRESS=${p2p_public_address}" >> "${testnet_path}/.env"
 echo "SEQUENCERID=${sequencer_id}" >> "${testnet_path}/.env"
+echo "DOCKER_HOST_IMAGE=${docker_host_image}" >> "${testnet_path}/.env"
+echo "DOCKER_ENCLAVE_IMAGE=${docker_enclave_image}" >> "${testnet_path}/.env"
 
 # only set the env var if it's defined
 if [ -z ${pccs_addr+x} ];
@@ -136,13 +147,6 @@ if ${debug_enclave} ;
 then
   echo "Starting DEBUG enclave and host..."
   docker compose -f docker-compose.debug.yml up enclave host -d
-  exit 0
-fi
-
-if ${dev_testnet} ;
-then
-  echo "Starting enclave and host with dev testnet images..."
-  docker compose -f docker-compose.dev-testnet.yml up enclave host edgelessdb -d
   exit 0
 fi
 
