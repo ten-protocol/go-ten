@@ -15,11 +15,6 @@ import (
 	"sync"
 )
 
-const (
-	_envUseGethBinary  = "USE_GETH_BINARY"
-	_ciBinariesRelPath = "./ci_bin"
-)
-
 var (
 	// prevents issues when calling from different packages/directories
 	_, b, _, _ = runtime.Caller(0)
@@ -31,11 +26,6 @@ var (
 // EnsureBinariesExist makes sure node binaries exist, returns the base path where binaries exist
 // Downloads any missing binaries
 func EnsureBinariesExist() (string, error) {
-	//// don't download binaries on each CI
-	//if os.Getenv(_envUseGethBinary) == "true" {
-	//	return path.Join(basepath, _ciBinariesRelPath), nil
-	//}
-
 	// bin folder should exist
 	err := os.MkdirAll(path.Join(basepath, _eth2BinariesRelPath), os.ModePerm)
 	if err != nil {

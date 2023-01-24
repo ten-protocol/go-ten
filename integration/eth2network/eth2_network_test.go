@@ -14,15 +14,15 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
-	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/stretchr/testify/assert"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (
