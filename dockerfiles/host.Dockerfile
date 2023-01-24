@@ -22,5 +22,10 @@ COPY . /home/go-obscuro
 WORKDIR /home/go-obscuro/go/host/main
 RUN go build
 
+FROM golang:1.17-alpine
+
+COPY --from=0 /home/go-obscuro/go/host/main/main /home/go-obscuro/go/host/main/main
+WORKDIR /home/go-obscuro/go/host/main
+
 # expose the http and the ws ports to the host
 EXPOSE 8025 9000

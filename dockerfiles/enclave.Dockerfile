@@ -21,6 +21,10 @@ COPY . .
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 RUN ego-go build && ego sign main
 
+FROM ghcr.io/edgelesssys/ego-dev:latest
+COPY --from=0 /home/obscuro/go-obscuro/go/enclave/main/main home/obscuro/go-obscuro/go/enclave/main/main
+WORKDIR /home/obscuro/go-obscuro/go/enclave/main
+
 # simulation mode is ACTIVE by default
 ENV OE_SIMULATION=1
 EXPOSE 11000
