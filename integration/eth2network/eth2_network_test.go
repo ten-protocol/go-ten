@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"strings"
@@ -100,7 +100,7 @@ func numberOfNodes(t *testing.T) {
 	assert.Nil(t, err)
 
 	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	assert.Nil(t, err)
 
 	var res map[string]interface{}
