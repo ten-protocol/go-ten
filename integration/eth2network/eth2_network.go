@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"io"
 	"net/http"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -301,10 +301,10 @@ func (n *Eth2Network) gethImportMinerAccount(nodeID int) error {
 
 	// full command list at https://geth.ethereum.org/docs/fundamentals/command-line-options
 	args := []string{
-		"--exec", fmt.Sprintf("%s", startScript),
+		"--exec", startScript,
 		"attach", fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[nodeID]),
 	}
-	//fmt.Printf("gethImportMinerAccount: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
+
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
 	cmd.Stdout = n.logFile
 	cmd.Stderr = n.logFile
