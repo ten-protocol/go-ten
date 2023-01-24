@@ -146,6 +146,7 @@ const baseGenesis = `{
   }
 }`
 
+// generateGenesis returns a genesis with specified params
 func generateGenesis(blockTimeSecs int, chainID int, accounts []string) (string, error) {
 	var genesisJSON map[string]interface{}
 

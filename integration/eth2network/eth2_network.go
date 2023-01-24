@@ -20,10 +20,10 @@ import (
 const (
 	_dataDirFlag                     = "--datadir"
 	_eth2BinariesRelPath             = "../.build/eth2_bin"
-	_gethFileNameVersion             = "geth-v1.10.26"
-	_prysmBeaconChainFileNameVersion = "beacon-chain-v3.2.0"
-	_prysmCTLFileNameVersion         = "prysmctl-v3.2.0"
-	_prysmValidatorFileNameVersion   = "validator-v3.2.0"
+	_gethFileNameVersion             = "geth-" + _gethVersion
+	_prysmBeaconChainFileNameVersion = "beacon-chain-" + _prysmVersion
+	_prysmCTLFileNameVersion         = "prysmctl-" + _prysmVersion
+	_prysmValidatorFileNameVersion   = "validator-" + _prysmVersion
 )
 
 type Eth2Network struct {
@@ -33,12 +33,12 @@ type Eth2Network struct {
 	gethBinaryPath           string
 	prysmBinaryPath          string
 	prysmBeaconBinaryPath    string
-	logFile                  io.Writer
 	gethGenesisPath          string
 	preloadScriptPath        string
 	prysmGenesisPath         string
 	prysmConfigPath          string
 	prysmValidatorBinaryPath string
+	chainID                  int
 	gethHTTPPorts            []int
 	gethWSPorts              []int
 	gethNetworkPorts         []int
@@ -46,7 +46,7 @@ type Eth2Network struct {
 	gethProcesses            []*exec.Cmd
 	prysmBeaconProcesses     []*exec.Cmd
 	prysmValidatorProcesses  []*exec.Cmd
-	chainID                  int
+	logFile                  io.Writer
 }
 
 func NewEth2Network(
@@ -62,8 +62,9 @@ func NewEth2Network(
 ) *Eth2Network {
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
 	timestamp := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
 
+	// set the paths
+	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
 	gethGenesisPath := path.Join(buildDir, "genesis.json")
 	gethPreloadScriptPath := path.Join(buildDir, "preload-script.js")
 	prysmGenesisPath := path.Join(buildDir, "genesis.ssz")
@@ -157,6 +158,7 @@ func NewEth2Network(
 	}
 }
 
+// Start starts the network
 func (n *Eth2Network) Start() error {
 	startTime := time.Now()
 	var eg errgroup.Group
@@ -199,10 +201,10 @@ func (n *Eth2Network) Start() error {
 	}
 	err = eg.Wait()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	// import any other nodes
+	// link nodes together by providing the enode node 0
 	var enodes []string
 	for i := 1; i < len(n.dataDirs); i++ {
 		enode, err := n.gethGetEnode(i)
@@ -309,7 +311,7 @@ func (n *Eth2Network) gethStartNode(executionPort, networkPort, httpPort, wsPort
 		"--networkid", fmt.Sprintf("%d", n.chainID),
 		"--syncmode", "full",
 		"--allow-insecure-unlock",
-		//"--nodiscover",
+		"--nodiscover",
 	}
 	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint

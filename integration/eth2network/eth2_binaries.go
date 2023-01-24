@@ -15,6 +15,11 @@ import (
 	"sync"
 )
 
+const (
+	_gethVersion  = "1.10.26"
+	_prysmVersion = "v3.2.0"
+)
+
 var (
 	// prevents issues when calling from different packages/directories
 	_, b, _, _ = runtime.Caller(0)
@@ -52,7 +57,7 @@ func EnsureBinariesExist() (string, error) {
 
 		// download tar file
 		downloadFilePath := path.Join(tempFolder, "geth.tar.gz")
-		downloadLink := fmt.Sprintf("https://gethstore.blob.core.windows.net/builds/geth-%s-%s-1.10.26-e5eb32ac.tar.gz", runtime.GOOS, goarch)
+		downloadLink := fmt.Sprintf("https://gethstore.blob.core.windows.net/builds/geth-%s-%s-%s-e5eb32ac.tar.gz", runtime.GOOS, goarch, _gethVersion)
 		err = downloadFile(downloadFilePath, downloadLink)
 		if err != nil {
 			return "", err
@@ -68,9 +73,9 @@ func EnsureBinariesExist() (string, error) {
 
 	// download prysm files
 	for fileName, downloadURL := range map[string]string{
-		_prysmBeaconChainFileNameVersion: fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/v3.2.0/beacon-chain-v3.2.0-%s-%s", runtime.GOOS, goarch),
-		_prysmCTLFileNameVersion:         fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/v3.2.0/prysmctl-v3.2.0-%s-%s", runtime.GOOS, goarch),
-		_prysmValidatorFileNameVersion:   fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/v3.2.0/validator-v3.2.0-%s-%s", runtime.GOOS, goarch),
+		_prysmBeaconChainFileNameVersion: fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/beacon-chain-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, goarch),
+		_prysmCTLFileNameVersion:         fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/prysmctl-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, goarch),
+		_prysmValidatorFileNameVersion:   fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/validator-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, goarch),
 	} {
 		expectedFilePath := path.Join(basepath, _eth2BinariesRelPath, fileName)
 		if !fileExists(expectedFilePath) {
