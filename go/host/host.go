@@ -490,6 +490,8 @@ func (h *host) processL1BlockTransactions(b *types.Block) {
 
 // Publishes a rollup to the L1.
 func (h *host) publishRollup(producedRollup *common.ExtRollup) {
+	println(fmt.Sprintf("jjj publishing rollup with hash %s and parent hash %s", producedRollup.Hash(), producedRollup.Header.ParentHash))
+
 	encodedRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
 		h.logger.Crit("could not encode rollup.", log.ErrKey, err)

@@ -95,22 +95,23 @@ func New(
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (lc *L2Chain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Batch, error) {
+func (lc *L2Chain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Batch, *core.Rollup, error) {
 	lc.blockProcessingMutex.Lock()
 	defer lc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
 	err := lc.updateL1State(block, receipts, isLatest)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// We update the L1 and L2 chain heads.
-	newL2Head, producedBatch, err := lc.updateL1AndL2Heads(&block, isLatest)
+	headBatchHash, producedBatch, producedRollup, err := lc.updateL1AndL2Heads(&block, isLatest)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return newL2Head, producedBatch, nil
+
+	return headBatchHash, producedBatch, producedRollup, nil
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
@@ -330,20 +331,21 @@ func (lc *L2Chain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*b
 	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-// Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
-func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*common.L2RootHash, *core.Batch, error) {
+// Updates the L1 and L2 chain heads, and returns the new head batch hash and the produced batch and rollup (if applicable).
+func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*common.L2RootHash, *core.Batch, *core.Rollup, error) {
 	// We process the rollups, updating the head rollup associated with the L1 block as we go.
 	if err := lc.processRollups(block); err != nil {
 		// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
+		println("jjj err")
 		lc.logger.Error("could not process rollups", log.ErrKey, err)
 	}
 
 	// We determine whether we have produced a genesis batch yet.
 	genesisBatchStored := true
-	l2Head, err := lc.storage.FetchHeadBatchForBlock(block.ParentHash())
+	headBatch, err := lc.storage.FetchHeadBatchForBlock(block.ParentHash())
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
-			return nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
+			return nil, nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
 		}
 		genesisBatchStored = false
 	}
@@ -351,36 +353,59 @@ func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*
 	// If there is an L2 head, we retrieve its stored receipts.
 	var l2HeadTxReceipts types.Receipts
 	if genesisBatchStored {
-		if l2HeadTxReceipts, err = lc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
-			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
+		if l2HeadTxReceipts, err = lc.storage.GetReceiptsByHash(*headBatch.Hash()); err != nil {
+			return nil, nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
 		}
 	}
 
 	// If we're the sequencer and we're on the latest block, we produce a new L2 head to replace the old one.
 	var producedBatch *core.Batch
+	var producedRollup *core.Rollup
 	if lc.nodeType == common.Sequencer && isLatestBlock {
-		l2Head, l2HeadTxReceipts, err = lc.produceAndStoreBatch(block, genesisBatchStored)
+		headBatch, l2HeadTxReceipts, err = lc.produceAndStoreBatch(block, genesisBatchStored)
 		if err != nil {
-			return nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
+			return nil, nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
 		}
-		producedBatch = l2Head
+		producedBatch = headBatch
+
+		// We produce the rollup.
+		// todo - joel - handle err
+		parentRollup, err := lc.storage.FetchHeadRollupForBlock(&block.Header().ParentHash)
+		var parentRollupHeader *common.RollupHeader
+		if parentRollup != nil {
+			parentRollupHeader = parentRollup.Header
+		}
+		producedRollup = &core.Rollup{
+			Header:  producedBatch.Header.ToRollupHeader(parentRollupHeader),
+			Batches: []*core.Batch{producedBatch},
+		}
+		if err = lc.signRollup(producedRollup); err != nil {
+			panic("joel ok change this")
+		}
+		if err = lc.storage.StoreRollup(producedRollup); err != nil {
+			panic("joel ok change this")
+		}
+		blockHash := block.Hash()
+		if err = lc.storage.UpdateHeadRollup(&blockHash, producedRollup.Hash()); err != nil {
+			panic("joel ok change this")
+		}
 	}
 
 	// We update the L1 and L2 chain heads.
-	if l2Head != nil {
-		if err = lc.storage.UpdateHeadBatch(block.Hash(), l2Head, l2HeadTxReceipts); err != nil {
-			return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
+	if headBatch != nil {
+		if err = lc.storage.UpdateHeadBatch(block.Hash(), headBatch, l2HeadTxReceipts); err != nil {
+			return nil, nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
 		}
 		if err = lc.storage.UpdateL1Head(block.Hash()); err != nil {
-			return nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
+			return nil, nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 		}
 	}
 
-	var l2HeadHash *gethcommon.Hash
-	if l2Head != nil {
-		l2HeadHash = l2Head.Hash()
+	var headBatchHash *gethcommon.Hash
+	if headBatch != nil {
+		headBatchHash = headBatch.Hash()
 	}
-	return l2HeadHash, producedBatch, nil
+	return headBatchHash, producedBatch, producedRollup, nil
 }
 
 // Produces a new batch, signs it and stores it.
@@ -603,6 +628,16 @@ func (lc *L2Chain) signBatch(batch *core.Batch) error {
 	return nil
 }
 
+func (lc *L2Chain) signRollup(rollup *core.Rollup) error {
+	var err error
+	h := rollup.Hash()
+	rollup.Header.R, rollup.Header.S, err = ecdsa.Sign(rand.Reader, lc.enclavePrivateKey, h[:])
+	if err != nil {
+		return fmt.Errorf("could not sign rollup. Cause: %w", err)
+	}
+	return nil
+}
+
 // Checks that the header is signed validly by the sequencer.
 func (lc *L2Chain) checkSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
@@ -707,7 +742,7 @@ func (lc *L2Chain) produceBatch(block *types.Block, genesisBatchStored bool) (*c
 		lc.logger.Crit("Failed to extract batch proof that should exist!")
 	}
 
-	batch.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
+	batch.Header.LatestInboundCrossChainHash = crossChainBind.Hash()
 	batch.Header.LatestInboundCrossChainHeight = crossChainBind.Number()
 
 	receipts := allReceipts(txReceipts, depositReceipts)
@@ -765,7 +800,7 @@ func (lc *L2Chain) isAccountContractAtBlock(accountAddr gethcommon.Address, bloc
 	return len(chainState.GetCode(accountAddr)) > 0, nil
 }
 
-// Validates and stores the rollup in a given block.
+// Validates and stores the rollup in a given block, and returns the new head rollup's hash.
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
 func (lc *L2Chain) processRollups(block *common.L1Block) error {
 	l1ParentHash := block.ParentHash()
@@ -815,7 +850,7 @@ func (lc *L2Chain) processRollups(block *common.L1Block) error {
 	if len(rollups) > 0 {
 		newHeadRollup = rollups[len(rollups)-1]
 	}
-	if newHeadRollup != nil {
+	if newHeadRollup != nil && lc.nodeType != common.Sequencer {
 		l1Head := block.Hash()
 		if err = lc.storage.UpdateHeadRollup(&l1Head, newHeadRollup.Hash()); err != nil {
 			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)

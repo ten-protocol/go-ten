@@ -46,7 +46,7 @@ type BatchHeader struct {
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 
 	// The block hash of the latest block that has been scanned for cross chain messages.
-	LatestInboudCrossChainHash common.Hash `json:"inboundCrossChainHash"`
+	LatestInboundCrossChainHash common.Hash `json:"inboundCrossChainHash"`
 
 	// The block height of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int `json:"inboundCrossChainHeight"`
@@ -99,17 +99,14 @@ func (b *BatchHeader) Hash() L2RootHash {
 	return hash
 }
 
-func (b *BatchHeader) ToRollupHeader() *RollupHeader {
-	return &RollupHeader{
-		ParentHash:                    b.ParentHash,
+func (b *BatchHeader) ToRollupHeader(parentRollupHeader *RollupHeader) *RollupHeader {
+	header := &RollupHeader{
 		UncleHash:                     b.UncleHash,
 		Coinbase:                      b.Coinbase,
 		Root:                          b.Root,
-		HeadBatchHash:                 b.TxHash,
 		ReceiptHash:                   b.ReceiptHash,
 		Bloom:                         b.Bloom,
 		Difficulty:                    b.Difficulty,
-		Number:                        b.Number,
 		GasLimit:                      b.GasLimit,
 		GasUsed:                       b.GasUsed,
 		Time:                          b.Time,
@@ -122,9 +119,22 @@ func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 		R:                             b.R,
 		S:                             b.S,
 		CrossChainMessages:            b.CrossChainMessages,
-		LatestInboundCrossChainHash:   b.LatestInboudCrossChainHash,
+		LatestInboundCrossChainHash:   b.LatestInboundCrossChainHash,
 		LatestInboundCrossChainHeight: b.LatestInboundCrossChainHeight,
+
+		HeadBatchHash: b.TxHash,
 	}
+
+	if parentRollupHeader != nil {
+		header.ParentHash = parentRollupHeader.Hash()
+		header.Number = big.NewInt(0).Add(parentRollupHeader.Number, big.NewInt(1))
+	} else {
+		// todo - joel - clean up handling of genesis block
+		header.ParentHash = L2RootHash{}
+		header.Number = big.NewInt(int64(L2GenesisHeight))
+	}
+
+	return header
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
