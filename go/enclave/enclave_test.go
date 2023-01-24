@@ -517,9 +517,6 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 	}
 
 	// We update the database
-	if err = enclave.(*enclaveImpl).storage.StoreRollup(genesisRollup); err != nil {
-		return err
-	}
 	if err = enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch, nil); err != nil {
 		return err
 	}
@@ -580,9 +577,6 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 	}
 
 	// We update the database.
-	if err = enclave.(*enclaveImpl).storage.StoreRollup(rollup); err != nil {
-		return err
-	}
 	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, nil); err != nil {
 		return err
 	}

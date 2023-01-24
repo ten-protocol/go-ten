@@ -805,10 +805,6 @@ func (lc *L2Chain) processRollups(block *common.L1Block) error {
 				return fmt.Errorf("could not store batch. Cause: %w", err)
 			}
 		}
-
-		if err = lc.storage.StoreRollup(rollup); err != nil {
-			return fmt.Errorf("could not store rollup. Cause: %w", err)
-		}
 	}
 
 	newHeadRollup := currentHeadRollup
