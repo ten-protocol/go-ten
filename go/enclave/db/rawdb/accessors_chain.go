@@ -176,6 +176,9 @@ func readBatchBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawV
 }
 
 func WriteL2HeadBatch(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
+	if err := db.Put(headBatchHash, l2Head.Bytes()); err != nil {
+		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
+	}
 	if err := db.Put(headBatchAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
 		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
 	}
@@ -189,7 +192,16 @@ func WriteL2HeadRollup(db ethdb.KeyValueWriter, l1Head *common.L1RootHash, l2Hea
 	return nil
 }
 
-func ReadL2HeadBatch(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
+func ReadL2HeadBatch(kv ethdb.KeyValueReader) (*common.L2RootHash, error) {
+	data, err := kv.Get(headBatchHash)
+	if err != nil {
+		return nil, errutil.ErrNotFound
+	}
+	l2Head := gethcommon.BytesToHash(data)
+	return &l2Head, nil
+}
+
+func ReadL2HeadBatchForBlock(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
 	data, err := kv.Get(headBatchAfterL1BlockKey(l1Head))
 	if err != nil {
 		return nil, errutil.ErrNotFound
