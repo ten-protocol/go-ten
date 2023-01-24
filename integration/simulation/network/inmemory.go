@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
@@ -37,9 +37,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyOBXAddress := datagenerator.RandomAddress()
-	params.Wallets.Tokens[bridge.HOC].L1ContractAddress = &dummyOBXAddress
+	params.Wallets.Tokens[rollupextractor.HOC].L1ContractAddress = &dummyOBXAddress
 	dummyETHAddress := datagenerator.RandomAddress()
-	params.Wallets.Tokens[bridge.POC].L1ContractAddress = &dummyETHAddress
+	params.Wallets.Tokens[rollupextractor.POC].L1ContractAddress = &dummyETHAddress
 	disabledBus := common.BigToAddress(common.Big0)
 
 	for i := 0; i < params.NumberOfNodes; i++ {
@@ -54,12 +54,10 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			isGenesis,
 			GetNodeType(i),
 			params.MgmtContractLib,
-			params.ERC20ContractLib,
 			false,
 			nil,
 			params.Wallets.NodeWallets[i],
 			miner,
-			params.Wallets,
 			p2pLayers[i],
 			&disabledBus,
 			common.Hash{},

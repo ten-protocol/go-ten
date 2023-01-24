@@ -46,8 +46,6 @@ chmod +x start-obscuro-node.sh \
   --host_id=PublicKeyAddress \
   --l1host="testnet-gethnetwork.uksouth.azurecontainer.io" \
   --mgmtcontractaddr="0xF886d9e52d38f3C7BEd96B1F45e366C459886694" \
-  --hocerc20addr="0xc559903C00ed55d43021cf4ea49f5924BF8b5A4B" \
-  --pocerc20addr="0xB46213b1755545261Ce32e8b46B300fB01663889" \
   --pkstring="PrivateKeyString" \
   --p2p_public_address="HOST:10000"
 ```

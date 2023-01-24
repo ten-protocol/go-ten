@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"strings"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
@@ -26,7 +25,6 @@ type EnclaveConfigToml struct {
 	ValidateL1Blocks          bool
 	SpeculativeExecution      bool
 	ManagementContractAddress string
-	ERC20ContractAddresses    []string
 	LogLevel                  int
 	LogPath                   string
 	UseInMemoryDB             bool
@@ -57,7 +55,6 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	validateL1Blocks := flag.Bool(validateL1BlocksName, cfg.ValidateL1Blocks, flagUsageMap[validateL1BlocksName])
 	speculativeExecution := flag.Bool(speculativeExecutionName, cfg.SpeculativeExecution, flagUsageMap[speculativeExecutionName])
 	managementContractAddress := flag.String(ManagementContractAddressName, cfg.ManagementContractAddress.Hex(), flagUsageMap[ManagementContractAddressName])
-	erc20ContractAddrs := flag.String(Erc20ContractAddrsName, "", flagUsageMap[Erc20ContractAddrsName])
 	loglevel := flag.Int(logLevelName, cfg.LogLevel, flagUsageMap[logLevelName])
 	logPath := flag.String(logPathName, cfg.LogPath, flagUsageMap[logPathName])
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
@@ -75,18 +72,6 @@ func ParseConfig() (config.EnclaveConfig, error) {
 		return fileBasedConfig(*configPath)
 	}
 
-	parsedERC20ContractAddrs := strings.Split(*erc20ContractAddrs, ",")
-	erc20contractAddresses := make([]*gethcommon.Address, len(parsedERC20ContractAddrs))
-	if *erc20ContractAddrs != "" {
-		for i, addr := range parsedERC20ContractAddrs {
-			hexAddr := gethcommon.HexToAddress(addr)
-			erc20contractAddresses[i] = &hexAddr
-		}
-	} else {
-		// We handle the special case of an empty list.
-		erc20contractAddresses = []*gethcommon.Address{}
-	}
-
 	nodeType, err := common.ToNodeType(*nodeTypeStr)
 	if err != nil {
 		return config.EnclaveConfig{}, fmt.Errorf("unrecognised node type '%s'", *nodeTypeStr)
@@ -102,7 +87,6 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	cfg.ValidateL1Blocks = *validateL1Blocks
 	cfg.SpeculativeExecution = *speculativeExecution
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(*managementContractAddress)
-	cfg.ERC20ContractAddresses = erc20contractAddresses
 	cfg.LogLevel = *loglevel
 	cfg.LogPath = *logPath
 	cfg.UseInMemoryDB = *useInMemoryDB
@@ -130,12 +114,6 @@ func fileBasedConfig(configPath string) (config.EnclaveConfig, error) {
 		panic(fmt.Sprintf("could not read config file at %s. Cause: %s", configPath, err))
 	}
 
-	erc20contractAddresses := make([]*gethcommon.Address, len(tomlConfig.ERC20ContractAddresses))
-	for i, addr := range tomlConfig.ERC20ContractAddresses {
-		hexAddr := gethcommon.HexToAddress(addr)
-		erc20contractAddresses[i] = &hexAddr
-	}
-
 	nodeType, err := common.ToNodeType(tomlConfig.NodeType)
 	if err != nil {
 		return config.EnclaveConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
@@ -152,7 +130,6 @@ func fileBasedConfig(configPath string) (config.EnclaveConfig, error) {
 		ValidateL1Blocks:          tomlConfig.ValidateL1Blocks,
 		SpeculativeExecution:      tomlConfig.SpeculativeExecution,
 		ManagementContractAddress: gethcommon.HexToAddress(tomlConfig.ManagementContractAddress),
-		ERC20ContractAddresses:    erc20contractAddresses,
 		LogLevel:                  tomlConfig.LogLevel,
 		LogPath:                   tomlConfig.LogPath,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,

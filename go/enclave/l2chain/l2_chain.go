@@ -22,13 +22,13 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 	"github.com/status-im/keycard-go/hexutils"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -46,7 +46,7 @@ type L2Chain struct {
 
 	storage              db.Storage
 	l1Blockchain         *gethcore.BlockChain
-	bridge               *bridge.Bridge
+	rollupExtractor      *rollupextractor.RollupExtractor
 	mempool              mempool.Manager
 	genesis              *genesis.Genesis
 	crossChainProcessors *crosschain.Processors
@@ -66,7 +66,7 @@ func New(
 	nodeType common.NodeType,
 	storage db.Storage,
 	l1Blockchain *gethcore.BlockChain,
-	bridge *bridge.Bridge,
+	bridge *rollupextractor.RollupExtractor,
 	crossChainProcessors *crosschain.Processors,
 	mempool mempool.Manager,
 	privateKey *ecdsa.PrivateKey,
@@ -80,7 +80,7 @@ func New(
 		nodeType:             nodeType,
 		storage:              storage,
 		l1Blockchain:         l1Blockchain,
-		bridge:               bridge,
+		rollupExtractor:      bridge,
 		mempool:              mempool,
 		crossChainProcessors: crossChainProcessors,
 		enclavePrivateKey:    privateKey,
@@ -114,22 +114,22 @@ func (lc *L2Chain) ProcessL1Block(block types.Block, receipts types.Receipts, is
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
-func (lc *L2Chain) UpdateL2Chain(batch *core.Batch) (*common.BatchHeader, error) {
+func (lc *L2Chain) UpdateL2Chain(batch *core.Batch) error {
 	lc.blockProcessingMutex.Lock()
 	defer lc.blockProcessingMutex.Unlock()
 
 	if err := lc.checkAndStoreBatch(batch); err != nil {
-		return nil, err
+		return err
 	}
 
 	// If this is the genesis batch, we commit the genesis state.
 	if batch.IsGenesis() {
 		if err := lc.genesis.CommitGenesisState(lc.storage); err != nil {
-			return nil, fmt.Errorf("could not apply genesis state. Cause: %w", err)
+			return fmt.Errorf("could not apply genesis state. Cause: %w", err)
 		}
 	}
 
-	return batch.Header, nil
+	return nil
 }
 
 func (lc *L2Chain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
@@ -420,7 +420,6 @@ func (lc *L2Chain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, 
 			Root:        *preFundGenesisState,
 			TxHash:      types.EmptyRootHash,
 			Number:      big.NewInt(int64(0)),
-			Withdrawals: []common.Withdrawal{},
 			ReceiptHash: types.EmptyRootHash,
 			Time:        uint64(time.Now().Unix()),
 		},
@@ -484,30 +483,6 @@ func (lc *L2Chain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *
 		lc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
 	}
 
-	// TODO: Remove this depositing logic once the new bridge is added.
-	depositTxs := lc.bridge.ExtractDeposits(
-		parentProof,
-		batchProof,
-		lc.storage,
-		stateDB,
-	)
-
-	depositResponses := evm.ExecuteTransactions(depositTxs, stateDB, batch.Header, lc.storage, lc.chainConfig, len(executedTransactions), lc.logger)
-	depositReceipts := make([]*types.Receipt, len(depositResponses))
-	if len(depositResponses) != len(depositTxs) {
-		lc.logger.Crit("Sanity check. Some deposit transactions failed.")
-	}
-	i := 0
-	for _, resp := range depositResponses {
-		rec, ok := resp.(*types.Receipt)
-		if !ok {
-			// TODO - Handle the case of an error (e.g. insufficient funds).
-			lc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
-		}
-		depositReceipts[i] = rec
-		i++
-	}
-
 	messages := lc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, batchProof, stateDB)
 	transactions := lc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, lc.storage, lc.chainConfig, len(executedTransactions), lc.logger)
@@ -516,7 +491,7 @@ func (lc *L2Chain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *
 		lc.logger.Crit("Sanity check. Some synthetic transactions failed.")
 	}
 
-	i = 0
+	i := 0
 	for _, resp := range syntheticTransactionsResponses {
 		rec, ok := resp.(*types.Receipt)
 		if !ok { // Еxtract reason for failing deposit.
@@ -554,10 +529,9 @@ func (lc *L2Chain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *
 	}
 
 	sort.Sort(sortByTxIndex(txReceipts))
-	sort.Sort(sortByTxIndex(depositReceipts))
 
 	// todo - handle the tx execution logs
-	return rootHash, executedTransactions, txReceipts, depositReceipts
+	return rootHash, executedTransactions, txReceipts, synthReceipts
 }
 
 // Checks the internal validity of the batch.
@@ -578,15 +552,6 @@ func (lc *L2Chain) isInternallyValidBatch(batch *core.Batch) (types.Receipts, er
 		dump := strings.Replace(string(stateDB.Dump(&state.DumpConfig{})), "\n", "", -1)
 		return nil, fmt.Errorf("verify batch b_%d: Calculated a different state. This should not happen as there are no malicious actors yet. \nGot: %s\nExp: %s\nHeight:%d\nTxs:%v\nState: %s.\nDeposits: %+v",
 			common.ShortHash(*batch.Hash()), rootHash, batch.Header.Root, batch.Header.Number, core.PrintTxs(batch.Transactions), dump, depositReceipts)
-	}
-
-	// Check that the withdrawals in the header match the withdrawals as calculated.
-	withdrawals := lc.bridge.BatchPostProcessingWithdrawals(batch, stateDB, toReceiptMap(txReceipts))
-	for i, w := range withdrawals {
-		hw := batch.Header.Withdrawals[i]
-		if hw.Amount.Cmp(w.Amount) != 0 || hw.Recipient != w.Recipient || hw.Contract != w.Contract {
-			return nil, fmt.Errorf("verify batch r_%d: Withdrawals don't match", common.ShortHash(*batch.Hash()))
-		}
 	}
 
 	// Check that the receipts bloom in the header matches the receipts bloom as calculated.
@@ -727,9 +692,6 @@ func (lc *L2Chain) produceBatch(block *types.Block, genesisBatchStored bool) (*c
 	batch.Header.Root = rootHash
 	batch.Transactions = successfulTxs
 
-	// Postprocessing - withdrawals
-	txReceiptsMap := toReceiptMap(txReceipts)
-	batch.Header.Withdrawals = lc.bridge.BatchPostProcessingWithdrawals(batch, newBatchState, txReceiptsMap)
 	crossChainMessages, err := lc.crossChainProcessors.Local.ExtractOutboundMessages(txReceipts)
 	if err != nil {
 		lc.logger.Crit("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
@@ -737,8 +699,8 @@ func (lc *L2Chain) produceBatch(block *types.Block, genesisBatchStored bool) (*c
 
 	batch.Header.CrossChainMessages = crossChainMessages
 
-	lc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch. Equivalent withdrawals in header - %d",
-		len(batch.Header.CrossChainMessages), len(batch.Header.Withdrawals)), log.CmpKey, log.CrossChainCmp)
+	lc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
+		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
 
 	crossChainBind, err := lc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {
@@ -812,7 +774,7 @@ func (lc *L2Chain) processRollups(block *common.L1Block) error {
 		return fmt.Errorf("could not fetch current L2 head rollup")
 	}
 
-	rollups := lc.bridge.ExtractRollups(block, lc.storage)
+	rollups := lc.rollupExtractor.ExtractRollups(block, lc.storage)
 	sort.Slice(rollups, func(i, j int) bool {
 		// Ascending order sort.
 		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
@@ -936,14 +898,6 @@ type sortByTxIndex []*types.Receipt
 func (c sortByTxIndex) Len() int           { return len(c) }
 func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }
-
-func toReceiptMap(txReceipts []*types.Receipt) map[gethcommon.Hash]*types.Receipt {
-	receiptMap := make(map[gethcommon.Hash]*types.Receipt, 0)
-	for _, receipt := range txReceipts {
-		receiptMap[receipt.TxHash] = receipt
-	}
-	return receiptMap
-}
 
 func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {
 	return append(txReceipts, depositReceipts...)
