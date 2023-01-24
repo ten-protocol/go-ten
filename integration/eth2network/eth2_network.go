@@ -35,7 +35,6 @@ type Eth2Network struct {
 	prysmBinaryPath          string
 	prysmBeaconBinaryPath    string
 	gethGenesisPath          string
-	preloadScriptPath        string
 	prysmGenesisPath         string
 	prysmConfigPath          string
 	prysmValidatorBinaryPath string
@@ -69,7 +68,6 @@ func NewEth2Network(
 	// set the paths
 	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
 	gethGenesisPath := path.Join(buildDir, "genesis.json")
-	gethPreloadScriptPath := path.Join(buildDir, "preload-script.js")
 	prysmGenesisPath := path.Join(buildDir, "genesis.ssz")
 	prysmConfigPath := path.Join(buildDir, "prysm_chain_config.yml")
 	logPath := path.Join(buildDir, "node_logs.txt")
@@ -105,12 +103,6 @@ func NewEth2Network(
 
 	// Write beacon config
 	err = os.WriteFile(prysmConfigPath, []byte(beaconConfig), 0o600)
-	if err != nil {
-		panic(err)
-	}
-
-	// Write geth js script
-	err = os.WriteFile(gethPreloadScriptPath, []byte(gethPreloadJSONScript), 0o600)
 	if err != nil {
 		panic(err)
 	}
@@ -165,7 +157,6 @@ func NewEth2Network(
 		gethGenesisPath:          gethGenesisPath,
 		prysmGenesisPath:         prysmGenesisPath,
 		logFile:                  logFile,
-		preloadScriptPath:        gethPreloadScriptPath,
 		preFundedMinerAddrs:      preFundedMinerAddrs,
 		preFundedMinerPKs:        preFundedMinerPKs,
 	}
@@ -313,7 +304,7 @@ func (n *Eth2Network) gethImportMinerAccount(nodeID int) error {
 		"--exec", fmt.Sprintf("%s", startScript),
 		"attach", fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[nodeID]),
 	}
-	fmt.Printf("gethImportMinerAccount: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
+	//fmt.Printf("gethImportMinerAccount: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
 	cmd.Stdout = n.logFile
 	cmd.Stderr = n.logFile
