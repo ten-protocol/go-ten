@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"io"
 	"net/http"
 	"os"
@@ -47,6 +48,8 @@ type Eth2Network struct {
 	prysmBeaconProcesses     []*exec.Cmd
 	prysmValidatorProcesses  []*exec.Cmd
 	logFile                  io.Writer
+	preFundedMinerAddrs      []string
+	preFundedMinerPKs        []string
 }
 
 func NewEth2Network(
@@ -82,8 +85,16 @@ func NewEth2Network(
 		panic(err)
 	}
 
+	// Generate pk pairs for miners
+	preFundedMinerAddrs := make([]string, numNodes)
+	preFundedMinerPKs := make([]string, numNodes)
+	for i := 0; i < numNodes; i++ {
+		w := datagenerator.RandomWallet(int64(chainID))
+		preFundedMinerAddrs[i] = w.Address().Hex()
+		preFundedMinerPKs[i] = fmt.Sprintf("%x", w.PrivateKey().D.Bytes())
+	}
 	// Generate and write genesis file
-	genesisStr, err := generateGenesis(blockTimeSecs, chainID, preFundedAddrs)
+	genesisStr, err := generateGenesis(blockTimeSecs, chainID, preFundedMinerAddrs, append(preFundedAddrs, preFundedMinerAddrs...))
 	if err != nil {
 		panic(err)
 	}
@@ -155,6 +166,8 @@ func NewEth2Network(
 		prysmGenesisPath:         prysmGenesisPath,
 		logFile:                  logFile,
 		preloadScriptPath:        gethPreloadScriptPath,
+		preFundedMinerAddrs:      preFundedMinerAddrs,
+		preFundedMinerPKs:        preFundedMinerPKs,
 	}
 }
 
@@ -218,8 +231,14 @@ func (n *Eth2Network) Start() error {
 		return err
 	}
 
-	// import miner account that helps to reach to POS on node 0
-	err = n.gethImportMinerAccount(0)
+	// import prefunded key to each node and start mining
+	for i := range n.dataDirs {
+		nodeID := i
+		eg.Go(func() error {
+			return n.gethImportMinerAccount(nodeID)
+		})
+	}
+	err = eg.Wait()
 	if err != nil {
 		return err
 	}
@@ -287,9 +306,11 @@ func (n *Eth2Network) gethInitGenesisData(dataDirPath string) error {
 }
 
 func (n *Eth2Network) gethImportMinerAccount(nodeID int) error {
+	startScript := fmt.Sprintf(gethStartupScriptJS, n.preFundedMinerPKs[nodeID])
+
 	// full command list at https://geth.ethereum.org/docs/fundamentals/command-line-options
 	args := []string{
-		"--exec", fmt.Sprintf("loadScript('%s');", n.preloadScriptPath),
+		"--exec", fmt.Sprintf("%s", startScript),
 		"attach", fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[nodeID]),
 	}
 	fmt.Printf("gethImportMinerAccount: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))

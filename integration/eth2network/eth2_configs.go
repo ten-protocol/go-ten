@@ -2,12 +2,29 @@ package eth2network
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 )
 
 //
 // These are base configurations to enable a clique network that after the merge block becomes a POS network
 // Any change to these configurations should be using a pattern similar to the generateGenesis method.
 //
+
+const gethStartupScriptJS = `
+key = "%s";
+pwd = "password";
+
+personal.importRawKey(key, pwd);
+accts = personal.listAccounts;
+
+personal.unlockAccount(accts[0], pwd, 0);
+console.log("Unlocked account");
+miner.setEtherbase(accts[0]);
+
+miner.start();
+console.log("Miner Started");
+`
 
 const gethPreloadJSONScript = `
 key = "2e0834786285daccd064ca17f1654f67b4aef298acbb82cef9ec422fb4975622";
@@ -152,7 +169,7 @@ const baseGenesis = `{
 }`
 
 // generateGenesis returns a genesis with specified params
-func generateGenesis(blockTimeSecs int, chainID int, accounts []string) (string, error) {
+func generateGenesis(blockTimeSecs int, chainID int, signerAddrs, prefundedAddrs []string) (string, error) {
 	var genesisJSON map[string]interface{}
 
 	err := json.Unmarshal([]byte(baseGenesis), &genesisJSON)
@@ -160,8 +177,8 @@ func generateGenesis(blockTimeSecs int, chainID int, accounts []string) (string,
 		return "", err
 	}
 
-	// add the prefunded accounts
-	for _, account := range accounts {
+	// add the prefunded prefundedAddrs
+	for _, account := range prefundedAddrs {
 		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "10000000000000000000000"}
 	}
 
@@ -170,6 +187,12 @@ func generateGenesis(blockTimeSecs int, chainID int, accounts []string) (string,
 
 	// set the network id
 	genesisJSON["config"].(map[string]interface{})["chainId"] = chainID
+
+	// set the signers addrs + remove the 0x
+	for i := range signerAddrs {
+		signerAddrs[i] = signerAddrs[i][2:]
+	}
+	genesisJSON["extradata"] = fmt.Sprintf("0x0000000000000000000000000000000000000000000000000000000000000000%s0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", strings.Join(signerAddrs, ""))
 
 	genesisBytes, err := json.MarshalIndent(genesisJSON, "", " ")
 	if err != nil {
