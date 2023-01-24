@@ -261,26 +261,36 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
 	}
-
 	decryptedTx, err := rpc.ExtractTx(encodedTx)
 	if err != nil {
 		e.logger.Info("could not decrypt transaction. ", log.ErrKey, err)
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
 
-	isSyntheticTx := e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx)
-	if isSyntheticTx {
+	if e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx) {
 		return nil, fmt.Errorf("synthetic transaction coming from external rpc")
 	}
-
-	err = e.checkGas(decryptedTx)
-	if err != nil {
+	if err = e.checkGas(decryptedTx); err != nil {
 		e.logger.Info("", log.ErrKey, err.Error())
 		return nil, err
 	}
 
-	err = e.mempool.AddMempoolTx(decryptedTx)
+	txHashBytes := []byte(decryptedTx.Hash().Hex())
+	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
 	if err != nil {
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
+	}
+	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txHashBytes)
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
+	}
+
+	// Only the sequencer needs to maintain a transaction mempool. Other node types can return early.
+	if e.config.NodeType != common.Sequencer {
+		return encryptedResult, nil
+	}
+
+	if err = e.mempool.AddMempoolTx(decryptedTx); err != nil {
 		return nil, err
 	}
 
@@ -288,31 +298,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		e.txCh <- decryptedTx
 	}
 
-	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
-	}
-
-	txHashBytes := []byte(decryptedTx.Hash().Hex())
-	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txHashBytes)
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
-	}
-
 	return encryptedResult, nil
 }
 
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
-	batchHeader, err := e.chain.UpdateL2Chain(batch)
-	if err != nil {
+	if err := e.chain.UpdateL2Chain(batch); err != nil {
 		return fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err)
-	}
-
-	// We remove any transactions considered immune to re-orgs from the mempool.
-	err = e.removeOldMempoolTxs(batchHeader)
-	if err != nil {
-		e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
 	}
 
 	return nil
