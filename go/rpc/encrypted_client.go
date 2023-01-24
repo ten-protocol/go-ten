@@ -166,6 +166,9 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namesp
 		return nil, err
 	}
 
+	// We need to return the subscription ID, to allow unsubscribing. However, the client API has already converted
+	// from a subscription ID to a subscription object under the hood, so we can't retrieve the subscription ID.
+	// To hack around this, we always return the subscription ID as the first message on the newly-created subscription.
 	err = c.setResultToSubID(clientChannel, result, subscription)
 	if err != nil {
 		subscription.Unsubscribe()
@@ -232,7 +235,7 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 
 	// TODO - Consider switching to using the common.FilterCriteriaJSON type. Should allow us to avoid RLP serialisation.
 	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
-	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
+	// because the filter criteria arrives as a map, and there is no way to convert it from a map directly into a
 	// FilterCriteria.
 	filterCriteriaJSON, err := json.Marshal(args[1])
 	if err != nil {

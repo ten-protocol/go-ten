@@ -1,15 +1,16 @@
 package common
 
 import (
+	"sort"
 	"sync/atomic"
 )
 
-// ExtRollup is an encrypted form of rollup used when passing the rollup around outside of an enclave.
+// ExtRollup is an encrypted form of rollup used when passing the rollup around outside an enclave.
 type ExtRollup struct {
-	Header          *RollupHeader
-	TxHashes        []TxHash // The hashes of the transactions included in the rollup
-	EncryptedTxBlob EncryptedTransactions
-	hash            atomic.Value
+	Header *RollupHeader
+	// TODO - #718 - Consider compressing these batches before submitting to the L1.
+	Batches []*ExtBatch // The batches included in the rollup, in external/encrypted form.
+	hash    atomic.Value
 }
 
 // Hash returns the keccak256 hash of the rollup's header.
@@ -21,4 +22,18 @@ func (r *ExtRollup) Hash() L2RootHash {
 	v := r.Header.Hash()
 	r.hash.Store(v)
 	return v
+}
+
+// ExtRollupFromExtBatches converts a set of ExtBatch into an ExtRollup. The hash of the head batch (the one with the
+// highest number) is stored in the ExtRollup header's `HeadBatchHash` field.
+func ExtRollupFromExtBatches(batches []*ExtBatch) *ExtRollup {
+	sort.Slice(batches, func(i, j int) bool {
+		// Ascending order sort.
+		return batches[i].Header.Number.Cmp(batches[j].Header.Number) < 0
+	})
+
+	return &ExtRollup{
+		Header:  batches[len(batches)-1].Header.ToRollupHeader(),
+		Batches: batches,
+	}
 }

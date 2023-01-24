@@ -257,7 +257,8 @@ func performHandshake(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*Edgeles
 	if err != nil {
 		return nil, err
 	}
-	err = egoutils.SealAndPersist(string(edbCredsJSON), edbCredentialsFilepath)
+	// todo: #1377 the credentials must be sealed with the enclave unique ID in production, not just the product key
+	err = egoutils.SealAndPersist(string(edbCredsJSON), edbCredentialsFilepath, true)
 	if err != nil {
 		return nil, err
 	}

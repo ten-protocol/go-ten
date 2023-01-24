@@ -20,8 +20,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/config"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -71,8 +69,6 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	enclaveConfig := config.DefaultEnclaveConfig()
 	enclaveConfig.HostID = hostAddress
 	enclaveConfig.Address = enclaveAddr
-	dummyContractAddress := common.BytesToAddress([]byte("AA"))
-	enclaveConfig.ERC20ContractAddresses = []*common.Address{&dummyContractAddress, &dummyContractAddress}
 	enclaveConfig.ProfilerEnabled = true
 	enclaveConfig.LogPath = testlog.LogFile()
 
@@ -132,10 +128,10 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 
 	counter := 0
-	// We retry 20 times to check if the network has produced any rollups, sleeping half a second between each attempt.
+	// We retry 20 times to check if the network has produced any rollups, sleeping one second between each attempt.
 	for counter < 20 {
 		counter++
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(time.Second)
 
 		var rollupNumber hexutil.Uint64
 		err = obscuroClient.Call(&rollupNumber, rpc.RollupNumber)

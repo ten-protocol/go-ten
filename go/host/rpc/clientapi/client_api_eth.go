@@ -208,7 +208,6 @@ func headerToMap(header *common.BatchHeader) map[string]interface{} {
 		// The custom Obscuro fields.
 		"agg":                     header.Agg,
 		"l1Proof":                 header.L1Proof,
-		"withdrawals":             header.Withdrawals,
 		"crossChainMessages":      header.CrossChainMessages,
 		"inboundCrossChainHash":   header.LatestInboudCrossChainHash,
 		"inboundCrossChainHeight": header.LatestInboundCrossChainHeight,

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -31,15 +33,13 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/enclave/bridge"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupchain"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -56,11 +56,11 @@ type enclaveImpl struct {
 	mempool              mempool.Manager
 	l1Blockchain         *gethcore.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
-	bridge               *bridge.Bridge
+	bridge               *rollupextractor.RollupExtractor
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
-	chain *rollupchain.RollupChain
+	chain *l2chain.L2Chain
 
 	txCh   chan *common.L2Tx
 	exitCh chan bool
@@ -70,7 +70,6 @@ type enclaveImpl struct {
 	// speculativeWorkOutCh chan speculativeWork
 
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
-	erc20ContractLib    erc20contractlib.ERC20ContractLib
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
 
 	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
@@ -88,14 +87,8 @@ func NewEnclave(
 	config config.EnclaveConfig,
 	genesis *genesis.Genesis,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	logger gethlog.Logger,
 ) common.Enclave {
-	if len(config.ERC20ContractAddresses) < 2 {
-		logger.Crit("failed to initialise enclave. At least two ERC20 contract addresses are required - the HOC " +
-			"ERC20 address and the POC ERC20 address")
-	}
-
 	// todo - add the delay: N hashes
 
 	var prof *profiler.Profiler
@@ -137,7 +130,7 @@ func NewEnclave(
 		if config.GenesisJSON == nil {
 			logger.Crit("enclave is configured to validate blocks, but genesis JSON is nil")
 		}
-		l1Blockchain = rollupchain.NewL1Blockchain(config.GenesisJSON, logger)
+		l1Blockchain = l2chain.NewL1Blockchain(config.GenesisJSON, logger)
 	} else {
 		logger.Info("validateBlocks is set to false. L1 blocks will not be validated.")
 	}
@@ -168,22 +161,20 @@ func NewEnclave(
 
 	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl(logger)
 
-	obscuroBridge := bridge.New(
-		config.ERC20ContractAddresses[0],
-		config.ERC20ContractAddresses[1],
+	obscuroBridge := rollupextractor.New(
 		mgmtContractLib,
-		erc20ContractLib,
 		transactionBlobCrypto,
 		config.ObscuroChainID,
 		config.L1ChainID,
 		logger,
 	)
+
 	memp := mempool.New(config.ObscuroChainID)
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
-	chain := rollupchain.New(
+	chain := l2chain.New(
 		config.HostID,
 		config.NodeType,
 		storage,
@@ -214,7 +205,6 @@ func NewEnclave(
 		txCh:                  make(chan *common.L2Tx),
 		exitCh:                make(chan bool),
 		mgmtContractLib:       mgmtContractLib,
-		erc20ContractLib:      erc20ContractLib,
 		attestationProvider:   attestationProvider,
 		enclaveKey:            enclaveKey,
 		enclavePubKey:         serializedEnclavePubKey,
@@ -271,26 +261,36 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
 	}
-
 	decryptedTx, err := rpc.ExtractTx(encodedTx)
 	if err != nil {
 		e.logger.Info("could not decrypt transaction. ", log.ErrKey, err)
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
 
-	isSyntheticTx := e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx)
-	if isSyntheticTx {
+	if e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx) {
 		return nil, fmt.Errorf("synthetic transaction coming from external rpc")
 	}
-
-	err = e.checkGas(decryptedTx)
-	if err != nil {
+	if err = e.checkGas(decryptedTx); err != nil {
 		e.logger.Info("", log.ErrKey, err.Error())
 		return nil, err
 	}
 
-	err = e.mempool.AddMempoolTx(decryptedTx)
+	txHashBytes := []byte(decryptedTx.Hash().Hex())
+	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
 	if err != nil {
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
+	}
+	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txHashBytes)
+	if err != nil {
+		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
+	}
+
+	// Only the sequencer needs to maintain a transaction mempool. Other node types can return early.
+	if e.config.NodeType != common.Sequencer {
+		return encryptedResult, nil
+	}
+
+	if err = e.mempool.AddMempoolTx(decryptedTx); err != nil {
 		return nil, err
 	}
 
@@ -298,31 +298,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		e.txCh <- decryptedTx
 	}
 
-	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
-	}
-
-	txHashBytes := []byte(decryptedTx.Hash().Hex())
-	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txHashBytes)
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
-	}
-
 	return encryptedResult, nil
 }
 
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
-	batchHeader, err := e.chain.UpdateL2Chain(batch)
-	if err != nil {
+	if err := e.chain.UpdateL2Chain(batch); err != nil {
 		return fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err)
-	}
-
-	// We remove any transactions considered immune to re-orgs from the mempool.
-	err = e.removeOldMempoolTxs(batchHeader)
-	if err != nil {
-		e.logger.Crit("Could not remove transactions from mempool.", log.ErrKey, err)
 	}
 
 	return nil
@@ -1062,7 +1044,7 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head 
 	var producedExtRollup *common.ExtRollup
 	if producedBatch != nil {
 		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
-		producedExtRollup = producedExtBatch.ToExtRollup()
+		producedExtRollup = common.ExtRollupFromExtBatches([]*common.ExtBatch{producedExtBatch})
 	}
 
 	return &common.BlockSubmissionResponse{

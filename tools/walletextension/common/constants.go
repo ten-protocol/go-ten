@@ -1,7 +1,7 @@
 package common
 
 const (
-	Localhost = "0.0.0.0"
+	Localhost = "127.0.0.1"
 
 	JSONKeyAddress      = "address"
 	JSONKeyData         = "data"

@@ -13,7 +13,6 @@ const (
 	validateL1BlocksName          = "validateL1Blocks"
 	speculativeExecutionName      = "speculativeExecution"
 	ManagementContractAddressName = "managementContractAddress"
-	Erc20ContractAddrsName        = "erc20ContractAddresses"
 	logLevelName                  = "logLevel"
 	logPathName                   = "logPath"
 	useInMemoryDBName             = "useInMemoryDB"
@@ -41,7 +40,6 @@ func getFlagUsageMap() map[string]string {
 		validateL1BlocksName:          "Whether to validate incoming blocks using the hardcoded L1 genesis.json config",
 		speculativeExecutionName:      "Whether to enable speculative execution",
 		ManagementContractAddressName: "The management contract address on the L1",
-		Erc20ContractAddrsName:        "The ERC20 contract addresses to monitor on the L1",
 		logLevelName:                  "The verbosity level of logs. (Defaults to Info)",
 		logPathName:                   "The path to use for the enclave service's log file",
 		useInMemoryDBName:             "Whether the enclave will use an in-memory DB rather than persist data",

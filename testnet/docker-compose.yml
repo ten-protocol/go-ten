@@ -64,8 +64,6 @@ services:
     environment:
       - OE_SIMULATION=0
       - MGMTCONTRACTADDR=some_address
-      - HOCERC20ADDR=some_address
-      - POCERC20ADDR=some_address
       - HOSTID=some_address
       - NODETYPE=some_string
       - PROFILERENABLED=some_bool
@@ -81,7 +79,6 @@ services:
                  "--address=:11000",
                  "--nodeType=$NODETYPE",
                  "--managementContractAddress=$MGMTCONTRACTADDR",
-                 "--erc20ContractAddresses=$HOCERC20ADDR,$POCERC20ADDR",
                  "--hostAddress=host:10000",
                  "--willAttest",
                  "--useInMemoryDB=false",

@@ -40,11 +40,9 @@ type BatchHeader struct {
 	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
-	Agg     common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
-	L1Proof L1RootHash     // the L1 block used by the enclave to generate the current batch
-	R, S    *big.Int       // signature values
-	// TODO: mark as deprecated Withdrawals are now contained within cross chain messages.
-	Withdrawals        []Withdrawal
+	Agg                common.Address                        // TODO - Can this be removed and replaced with the `Coinbase` field?
+	L1Proof            L1RootHash                            // the L1 block used by the enclave to generate the current batch
+	R, S               *big.Int                              // signature values
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 
 	// The block hash of the latest block that has been scanned for cross chain messages.
@@ -62,7 +60,6 @@ type RollupHeader struct {
 	UncleHash   common.Hash    `json:"sha3Uncles"`
 	Coinbase    common.Address `json:"miner"`
 	Root        StateRoot      `json:"stateRoot"`
-	TxHash      common.Hash    `json:"transactionsRoot"` // todo - include the synthetic deposits
 	ReceiptHash common.Hash    `json:"receiptsRoot"`
 	Bloom       types.Bloom    `json:"logsBloom"`
 	Difficulty  *big.Int
@@ -76,26 +73,17 @@ type RollupHeader struct {
 	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
-	Agg     common.Address // TODO - Can this be removed and replaced with the `Coinbase` field?
-	L1Proof L1RootHash     // the L1 block used by the enclave to generate the current rollup
-	R, S    *big.Int       // signature values
-	// TODO: mark as deprecated Withdrawals are now contained within cross chain messages.
-	Withdrawals        []Withdrawal
+	Agg                common.Address                        // TODO - Can this be removed and replaced with the `Coinbase` field?
+	L1Proof            L1RootHash                            // the L1 block used by the enclave to generate the current rollup
+	R, S               *big.Int                              // signature values
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
+	HeadBatchHash      common.Hash                           // The latest batch included in this rollup.
 
 	// The block hash of the latest block that has been scanned for cross chain messages.
-	LatestInboudCrossChainHash common.Hash `json:"inboundCrossChainHash"`
+	LatestInboundCrossChainHash common.Hash `json:"inboundCrossChainHash"`
 
 	// The block height of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int `json:"inboundCrossChainHeight"`
-}
-
-// Withdrawal - this is the withdrawal instruction that is included in the rollup header.
-type Withdrawal struct {
-	// Type      uint8 // the type of withdrawal. For now only ERC20. Todo - add this once more ERCs are supported
-	Amount    *big.Int
-	Recipient common.Address // the user account that will receive the money
-	Contract  common.Address // the contract
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
@@ -117,7 +105,7 @@ func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 		UncleHash:                     b.UncleHash,
 		Coinbase:                      b.Coinbase,
 		Root:                          b.Root,
-		TxHash:                        b.TxHash,
+		HeadBatchHash:                 b.TxHash,
 		ReceiptHash:                   b.ReceiptHash,
 		Bloom:                         b.Bloom,
 		Difficulty:                    b.Difficulty,
@@ -133,9 +121,8 @@ func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 		L1Proof:                       b.L1Proof,
 		R:                             b.R,
 		S:                             b.S,
-		Withdrawals:                   b.Withdrawals,
 		CrossChainMessages:            b.CrossChainMessages,
-		LatestInboudCrossChainHash:    b.LatestInboudCrossChainHash,
+		LatestInboundCrossChainHash:   b.LatestInboudCrossChainHash,
 		LatestInboundCrossChainHeight: b.LatestInboundCrossChainHeight,
 	}
 }
@@ -151,35 +138,6 @@ func (r *RollupHeader) Hash() L2RootHash {
 		panic("err hashing rollup header")
 	}
 	return hash
-}
-
-func (r *RollupHeader) ToBatchHeader() *BatchHeader {
-	return &BatchHeader{
-		ParentHash:                    r.ParentHash,
-		UncleHash:                     r.UncleHash,
-		Coinbase:                      r.Coinbase,
-		Root:                          r.Root,
-		TxHash:                        r.TxHash,
-		ReceiptHash:                   r.ReceiptHash,
-		Bloom:                         r.Bloom,
-		Difficulty:                    r.Difficulty,
-		Number:                        r.Number,
-		GasLimit:                      r.GasLimit,
-		GasUsed:                       r.GasUsed,
-		Time:                          r.Time,
-		Extra:                         r.Extra,
-		MixDigest:                     r.MixDigest,
-		Nonce:                         r.Nonce,
-		BaseFee:                       r.BaseFee,
-		Agg:                           r.Agg,
-		L1Proof:                       r.L1Proof,
-		R:                             r.R,
-		S:                             r.S,
-		Withdrawals:                   r.Withdrawals,
-		CrossChainMessages:            r.CrossChainMessages,
-		LatestInboudCrossChainHash:    r.LatestInboudCrossChainHash,
-		LatestInboundCrossChainHeight: r.LatestInboundCrossChainHeight,
-	}
 }
 
 // Encodes value, hashes the encoded bytes and returns the hash.
