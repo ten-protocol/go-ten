@@ -30,6 +30,13 @@ Additionally you can pass the `noCompile` flag which will disable running the co
 
 ## Deploying
 
+### Deployment Scripts folder structure
+
+ * core - Scripts required to be predeployed for Obscuro to start.
+ * bridge - Scripts that deploy/upgrade ONLY the bridge.
+ * messenger - Scripts that enable the relayer functionality. Can contain predeployed libraries too in the future.
+ * testnet - Scripts that should only be deployed on the testnet. Tokens, "dev tooling" scripts, etc.
+
 For deployments, we use the hardhat-deploy plugin. It provides the `deploy` task, which determines what folders with deployment scripts need to be executed for the current selected network. Additionally there is the `obscuro:deploy` task that will launch a wallet extension.
 For the wallet extension to work, the network needs to have configured the `url` to 127.0.0.1:3000 and the additional `obscuroEncRpcUrl` property to the rpc endpoint of the obscuro node the wallet will connect to.
 

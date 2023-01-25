@@ -1,6 +1,11 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 
+/*
+    This deployment script instantiates the Management Contract and additionally reads and prints
+    out the message bus address to be used in CI/CD!
+*/
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { 
         deployments, 
@@ -21,6 +26,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
     const busAddress = await deployments.read('ManagementContract', 'messageBus');
 
+    // This is required in CI/CD - look at testnet-deploy-contracts.sh for more information.
+    // depends on grep -e MessageBusAddress and a positional cut of the address
     console.log(`MessageBusAddress= ${busAddress}`);
 };
 

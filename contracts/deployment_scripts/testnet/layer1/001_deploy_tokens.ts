@@ -1,6 +1,12 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 
+/* 
+    This script instantiates the L1 side of the HOC and POC tokens.
+    It is equivalent to what the old contract deployer was doing, except for
+    address prefunding.
+*/
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { 
         deployments, 

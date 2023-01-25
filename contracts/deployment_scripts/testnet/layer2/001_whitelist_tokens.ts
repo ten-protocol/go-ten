@@ -2,6 +2,11 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import { Receipt } from 'hardhat-deploy/dist/types';
 
+/* This script whitelists the L1 tokens through the bridge and makes sure their wrapped
+   versions are created on the L2.
+   This is the new version of the HOC and POC on the L2. 
+*/
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const l1Network = hre.companionNetworks.layer1;
     const l2Network = hre; 

@@ -2,6 +2,12 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import 'process';
 
+/*
+    This script deploys the CrossChainMessenger contract on the L1. 
+    It depends on knowing the address of the message bus from the management contract predeployment.
+    This is passed using the environment variables.
+*/
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const deployments = hre.companionNetworks.layer1.deployments;
 

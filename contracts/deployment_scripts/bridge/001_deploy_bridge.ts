@@ -1,6 +1,12 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 
+
+/* 
+    This deployment script deploys the Obscuro Bridge smart contracts on both L1 and L2
+    and links them together using the 'setRemoteBridge' call.
+*/
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { 
         deployments, 
