@@ -73,6 +73,7 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: 'Build and push image'
+        #DOCKER_BUILDKIT=1 will enable  the new docker build kit that allows us to use build only caches on RUN commands. 
         run: |
           DOCKER_BUILDKIT=1 docker build -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/gethnetwork.Dockerfile  .
           docker push ${{env.L1_DOCKER_BUILD_TAG}}

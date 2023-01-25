@@ -1,6 +1,13 @@
 # build a network of geth nodes
 # please check the workflows/manual-deploy-testnet-l1.yml for more info
-#
+
+# Build Stages:
+# system = prepares the "OS" by downloading required binaries
+# get-dependencies = downloads the go modules using the prepared system
+# build-geth-binary = runs the build_geth_binary script once 'system' stage is finished
+# build-geth-network = compiles the gethnetwork obscuro project when 'get-dependencies' stage is finished
+# final = copies over the executables from the 'build-*' stages and prepares the final image.
+
 FROM golang:1.17-alpine as system
 
 # set the base libs to build / run

@@ -1,14 +1,10 @@
-FROM golang:1.17-alpine as system
+# Build stages:
+# system = prepares the "OS" by downloading required binaries, installs dlv.
+# get-dependencies = using the "system" downloads the go modules.
+# build-enclave = copies over the source and builds the enclave using a go compiler cache
+# final = using the base system copies over only the enclave executable and creates the final image without source and dependencies. 
 
-# Debug image which installs and runs delve and runs the enclave package without eGo
-#
-# on the container:
-#   /data                    contains working files for the enclave
-#   /home/obscuro/go-obscuro contains the src
-#
-# Note: ego uses a virtual file system mount to map data directory to /data inside the enclave,
-#   for this non-ego build I'm using /data as the data dir to preserve /data folder in paths inside enclave
-#
+FROM golang:1.17-alpine as system
 
 # install build utils
 RUN apk add build-base
@@ -35,6 +31,15 @@ WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
     go build
 
+# Debug image which installs and runs delve and runs the enclave package without eGo
+#
+# Final container folder structure:
+#   /data                    contains working files for the enclave
+#   /home/obscuro/go-obscuro contains the src
+#
+# Note: ego uses a virtual file system mount to map data directory to /data inside the enclave,
+#   for this non-ego build I'm using /data as the data dir to preserve /data folder in paths inside enclave
+#
 FROM system
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 COPY --from=build-enclave \

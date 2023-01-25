@@ -1,5 +1,12 @@
-# deploys one contract and outputs the address
-#
+# Build Stages:
+# system = prepares the "OS" by downloading required binaries
+# get-dependencies = downloads the go modules using the prepared system
+# build-wallet = copies over the source code and builds the wallet binaries using a compiler cache
+# install-npm-deps = copies over the package.json and starts downloading dependencies. 
+#                    This does not depend on other stages and is executed in parallel.
+# final = copies over the solidity/hardhat source, takes the installed project from the 'install-npm-deps' and the final wallet executable
+#         in a lightweight image.
+
 FROM golang:1.17-alpine as system
 
 # set the base libs to build / run

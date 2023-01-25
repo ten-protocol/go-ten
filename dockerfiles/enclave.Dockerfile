@@ -1,8 +1,10 @@
+# Build Stages:
+# build-base = downloads modules and prepares the directory for compilation. Based on the ego-dev image
+# build-enclave = copies over the actual source code of the project and builds it using a compiler cache
+# deploy = copies over only the enclave executable without the source
+#          in a lightweight base image specialized for deployment and prepares the /data/ folder.
+
 FROM ghcr.io/edgelesssys/ego-dev:latest AS build-base
-# on the container:
-#   /home/obscuro/data       contains working files for the enclave
-#   /home/obscuro/go-obscuro contains the src
-#
 
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
@@ -27,7 +29,11 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Sign the enclave executable
 RUN ego sign main
 
-# Trigger a new build stage and use the smaller ego version
+# Final container folder structure:
+#   /home/obscuro/data                          contains working files for the enclave
+#   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
+#
+# Trigger a new build stage and use the smaller ego version:
 FROM ghcr.io/edgelesssys/ego-deploy:latest
 
 # Copy just the binary for the enclave into this build stage
