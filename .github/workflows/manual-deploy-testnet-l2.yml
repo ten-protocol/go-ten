@@ -254,7 +254,7 @@ jobs:
               --resource-group Testnet \
               --lb-name ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-loadbalancer
 
-  wait-node-up:
+  check-node-up:
     needs:
       - build
       - deploy
@@ -270,7 +270,7 @@ jobs:
   deploy-l2-contracts:
     needs:
       - build
-      - wait-node-up
+      - check-node-up
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
