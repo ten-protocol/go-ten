@@ -73,6 +73,8 @@ log_level=4
 sequencer_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 msg_bus_addr=0xFD03804faCA2538F4633B3EBdfEfc38adafa259B
 
+docker_host_image=testnetobscuronet.azurecr.io/obscuronet/host:latest
+docker_enclave_image=testnetobscuronet.azurecr.io/obscuronet/enclave:latest
 
 # Fetch options
 for argument in "$@"
@@ -109,6 +111,13 @@ then
     help_and_exit
 fi
 
+if ${dev_testnet} ;
+then
+  echo "Enclave and host with dev testnet images..."
+  docker_host_image=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest
+  docker_enclave_image=testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest
+fi
+
 
 # reset any data in the env file
 echo "" > "${testnet_path}/.env"
@@ -126,6 +135,8 @@ echo "PROFILERENABLED=${profiler_enabled}" >> "${testnet_path}/.env"
 echo "P2PPUBLICADDRESS=${p2p_public_address}" >> "${testnet_path}/.env"
 echo "SEQUENCERID=${sequencer_id}" >> "${testnet_path}/.env"
 echo "MSGBUSCONTRACTADDR=${msg_bus_addr}" >> "${testnet_path}/.env"
+echo "DOCKER_HOST_IMAGE=${docker_host_image}" >> "${testnet_path}/.env"
+echo "DOCKER_ENCLAVE_IMAGE=${docker_enclave_image}" >> "${testnet_path}/.env"
 
 # only set the env var if it's defined
 if [ -z ${pccs_addr+x} ];
@@ -142,13 +153,6 @@ then
   exit 0
 fi
 
-if ${dev_testnet} ;
-then
-  echo "Starting enclave and host with dev testnet images..."
-  docker compose -f docker-compose.dev-testnet.yml up enclave host edgelessdb -d
-  exit 0
-fi
-
 if ${sgx_enabled} ;
 then
   echo "Starting enclave with enabled SGX and host..."
@@ -158,7 +162,3 @@ fi
 
 echo "Starting enclave with DISABLED SGX and host..."
 docker compose -f docker-compose.non-sgx.yml up enclave host -d
-
-echo "Waiting 20s for the node to be up..."
-sleep 20
-echo "Node should be up and running"
