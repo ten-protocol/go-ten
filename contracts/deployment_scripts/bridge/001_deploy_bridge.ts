@@ -42,6 +42,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         from: accountsL1.deployer, 
         log: true,
     }, "setRemoteBridge", layer2BridgeDeployment.address);
+
+    console.log(` Bridge deployed with from L1 address=${accountsL1.deployer} L2 Address=${accountsL2.deployer}`);
 };
 
 export default func;

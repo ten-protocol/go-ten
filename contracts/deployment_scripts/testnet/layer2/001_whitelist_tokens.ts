@@ -18,6 +18,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const HOCDeployment = await l1Network.deployments.get("HOCERC20");
     const POCDeployment = await l1Network.deployments.get("POCERC20");
 
+    console.log(` Using deployers for bridge interaction L1 address=${l1Accounts.deployer} L2 Address=${l2Accounts.deployer}`);
+
     // Tell the bridge to whitelist the address of HOC token. This generates a cross chain message.
     let hocResult = await l1Network.deployments.execute("ObscuroBridge", {
         from: l1Accounts.deployer, 
