@@ -55,7 +55,7 @@ docker run --name=obscuroscan \
     --detach \
     --network=node_network \
     -p $receivingPort:$receivingPort \
-    --entrypoint /home/go-obscuro/tools/obscuroscan/main/main \
+    --entrypoint /home/obscuro/go-obscuro/tools/obscuroscan/main/main \
     "${docker_image}" \
     --address='0.0.0.0:'$receivingPort \
     --rpcServerAddress=${rpcServerAddress}

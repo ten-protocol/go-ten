@@ -1,32 +1,45 @@
-FROM ghcr.io/edgelesssys/ego-dev:latest
-# on the container:
-#   /home/obscuro/data       contains working files for the enclave
-#   /home/obscuro/go-obscuro contains the src
-#
+# Build Stages:
+# build-base = downloads modules and prepares the directory for compilation. Based on the ego-dev image
+# build-enclave = copies over the actual source code of the project and builds it using a compiler cache
+# deploy = copies over only the enclave executable without the source
+#          in a lightweight base image specialized for deployment and prepares the /data/ folder.
+
+FROM ghcr.io/edgelesssys/ego-dev:latest AS build-base
 
 # setup container data structure
-RUN mkdir -p /home/obscuro/data && mkdir -p /home/obscuro/go-obscuro
+RUN mkdir -p /home/obscuro/go-obscuro
 
 # Ensures container layer caching when dependencies are not changed
 WORKDIR /home/obscuro/go-obscuro
 COPY go.mod .
 COPY go.sum .
-RUN go mod download
+RUN ego-go mod download
 
-# COPY the source code as the last step
+
+# Trigger new build stage for compiling the enclave
+FROM build-base as build-enclave
 COPY . .
 
-# build binary
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
-RUN ego-go build
+
+# Build the enclave using the cross image build cache.
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    ego-go build
+
+# Sign the enclave executable
 RUN ego sign main
 
-# Trigger a new build stage and use the smaller ego version
+# Final container folder structure:
+#   /home/obscuro/data                          contains working files for the enclave
+#   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
+#
+# Trigger a new build stage and use the smaller ego version:
 FROM ghcr.io/edgelesssys/ego-deploy:latest
 
 # Copy just the binary for the enclave into this build stage
-COPY --from=0 /home/obscuro/go-obscuro/go/enclave/main/main home/obscuro/go-obscuro/go/enclave/main/main
-COPY --from=0 /home/obscuro/go-obscuro/go/enclave/main/entry.sh home/obscuro/go-obscuro/go/enclave/main/entry.sh
+COPY --from=build-enclave \
+    /home/obscuro/go-obscuro/go/enclave/main home/obscuro/go-obscuro/go/enclave/main
+    
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 RUN mkdir -p /home/obscuro/data
 
