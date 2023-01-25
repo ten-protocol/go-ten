@@ -113,7 +113,6 @@ then
   echo "Enclave and host with dev testnet images..."
   docker_host_image=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest
   docker_enclave_image=testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest
-  exit 0
 fi
 
 
