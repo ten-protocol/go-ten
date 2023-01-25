@@ -129,7 +129,6 @@ docker run --name=hh-l2-deployer \
     --network=node_network \
     -e NETWORK_JSON="${network_cfg}" \
     -e MESSAGE_BUS_ADDRESS="${message_bus}" \
-    -v deploymentsvol:/home/go-obscuro/contracts/deployments \
     "${docker_image}" \
     obscuro:deploy \
     --network layer2 \
