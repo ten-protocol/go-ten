@@ -224,7 +224,7 @@ jobs:
                --host_id=${{ secrets[matrix.node_pk_addr] }} \
                --l1host=${{needs.build.outputs.L1_HOST}} \
                --mgmtcontractaddr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
-               --mgmtcontractaddr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
+               --msg_bus_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
                --pkstring=${{ secrets[matrix.node_pk_str] }} \
                --sequencerID=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
                --dev_testnet=${{ github.event.inputs.testnet_type  == 'dev-testnet' }} \
