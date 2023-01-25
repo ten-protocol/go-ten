@@ -62,9 +62,7 @@ network_cfg='{
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
-                "deployment_scripts/core/layer1", 
-                "deployment_scripts/testnet/layer1",
-                "deployment_scripts/bridge/layer1"
+                "deployment_scripts/core"
             ],
             "accounts": [ "'${pkstring}'" ]
         }

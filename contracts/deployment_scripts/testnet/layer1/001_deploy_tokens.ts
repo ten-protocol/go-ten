@@ -5,7 +5,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { 
         deployments, 
         getNamedAccounts
-    } = hre;
+    } = hre.companionNetworks.layer1;
 
     const {deployer} = await getNamedAccounts();
 

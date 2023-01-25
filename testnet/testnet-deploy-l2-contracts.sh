@@ -25,6 +25,9 @@ help_and_exit() {
     echo "  docker_image       *Optional* Sets the docker image to use. Defaults to testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest"
     echo ""
     echo ""
+    echo "  message_bus        *Required* Sets the cross chain messenger to the message bus address of the l1 management contract"
+    echo ""
+    echo ""
     echo ""
     exit 1  # Exit with error explicitly
 }
@@ -49,6 +52,7 @@ deployer_pkstring="8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a050
 hocpkstring="6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 pocpkstring="4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
 docker_image="testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
+message_bus="0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"
 
 # Fetch options
 for argument in "$@"
@@ -66,6 +70,7 @@ do
             --hocpkstring)              hocpkstring=${value} ;;
             --pocpkstring)              pocpkstring=${value} ;;
             --docker_image)             docker_image=${value} ;;
+            --message_bus)              message_bus=${value} ;;
             --help)                     help_and_exit ;;
             *)
     esac
@@ -88,9 +93,7 @@ network_cfg='{
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
-                "deployment_scripts/core/layer1", 
-                "deployment_scripts/testnet/layer1",
-                "deployment_scripts/bridge/layer1"
+                "deployment_scripts/core"
             ],
             "accounts": [ 
                 "'${pkstring}'"
@@ -103,8 +106,10 @@ network_cfg='{
             "saveDeployments" : true,
             "companionNetworks" : { "layer1" : "layer1" },
             "deploy": [ 
-                "deployment_scripts/core/layer2/",
-                "deployment_scripts/bridge/layer2/",
+                "deployment_scripts/messenger/layer1",
+                "deployment_scripts/messenger/layer2",
+                "deployment_scripts/bridge/",
+                "deployment_scripts/testnet/layer1/",
                 "deployment_scripts/testnet/layer2/"
             ],
             "accounts": [ 
@@ -123,6 +128,7 @@ echo "Deploying contracts to Layer 2 using obscuro hardhat container..."
 docker run --name=hh-l2-deployer \
     --network=node_network \
     -e NETWORK_JSON="${network_cfg}" \
+    -e MESSAGE_BUS_ADDRESS="${message_bus}" \
     -v deploymentsvol:/home/go-obscuro/contracts/deployments \
     "${docker_image}" \
     obscuro:deploy \
