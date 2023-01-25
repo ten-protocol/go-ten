@@ -131,5 +131,4 @@ docker run --name=hh-l2-deployer \
     -e MESSAGE_BUS_ADDRESS="${message_bus}" \
     "${docker_image}" \
     obscuro:deploy \
-    --network layer2 \
-    --verbose
+    --network layer2
