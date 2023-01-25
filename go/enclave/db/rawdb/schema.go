@@ -8,7 +8,8 @@ import (
 )
 
 var (
-	sharedSecret = []byte("SharedSecret")
+	sharedSecret  = []byte("SharedSecret")
+	headBatchHash = []byte("HeadBatch") // headBatchHashPrefix -> curr L2 head batch hash
 
 	attestationKeyPrefix           = []byte("oAK")  // attestationKeyPrefix + address -> key
 	syntheticTransactionsKeyPrefix = []byte("oSTX") // attestationKeyPrefix + address -> key

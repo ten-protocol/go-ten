@@ -44,11 +44,14 @@ func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logge
 }
 
 func (s *storageImpl) FetchHeadBatch() (*core.Batch, error) {
-	l1Head := rawdb.ReadHeadHeaderHash(s.db)
-	if (bytes.Equal(l1Head.Bytes(), gethcommon.Hash{}.Bytes())) {
+	headHash, err := obscurorawdb.ReadL2HeadBatch(s.db)
+	if err != nil {
+		return nil, err
+	}
+	if (bytes.Equal(headHash.Bytes(), gethcommon.Hash{}.Bytes())) {
 		return nil, fmt.Errorf("could not fetch L1 head hash")
 	}
-	return s.FetchHeadBatchForBlock(l1Head)
+	return s.FetchBatch(*headHash)
 }
 
 func (s *storageImpl) FetchBatch(hash common.L2RootHash) (*core.Batch, error) {
@@ -146,7 +149,7 @@ func (s *storageImpl) assertSecretAvailable() {
 }
 
 func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1RootHash) (*core.Batch, error) {
-	l2HeadBatch, err := obscurorawdb.ReadL2HeadBatch(s.db, blockHash)
+	l2HeadBatch, err := obscurorawdb.ReadL2HeadBatchForBlock(s.db, blockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read L2 head batch for block. Cause: %w", err)
 	}
