@@ -26,6 +26,7 @@ FROM ghcr.io/edgelesssys/ego-deploy:latest
 
 # Copy just the binary for the enclave into this build stage
 COPY --from=0 /home/obscuro/go-obscuro/go/enclave/main/main home/obscuro/go-obscuro/go/enclave/main/main
+COPY --from=0 /home/obscuro/go-obscuro/go/enclave/main/entry.sh home/obscuro/go-obscuro/go/enclave/main/entry.sh
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 RUN mkdir -p /home/obscuro/data
 
