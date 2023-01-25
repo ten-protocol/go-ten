@@ -340,7 +340,7 @@ func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*
 
 	// We determine whether we have produced a genesis batch yet.
 	genesisBatchStored := true
-	l2Head, err := lc.storage.FetchHeadBatch()
+	l2Head, err := lc.storage.FetchHeadBatchForBlock(block.ParentHash())
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
@@ -662,7 +662,7 @@ func (lc *L2Chain) produceBatch(block *types.Block, genesisBatchStored bool) (*c
 		return lc.produceGenesisBatch(block.Hash())
 	}
 
-	headBatch, err := lc.storage.FetchHeadBatch()
+	headBatch, err := lc.storage.FetchHeadBatchForBlock(block.ParentHash())
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 	}
