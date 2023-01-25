@@ -279,7 +279,7 @@ jobs:
         id: deployL2Contracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-l2-contracts.sh --l2host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com --l1host=${{ needs.build.outputs.L1_HOST }} --docker_image=${{needs.build.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+          ./testnet/testnet-deploy-l2-contracts.sh --l2host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com --l1host=${{ needs.build.outputs.L1_HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} --docker_image=${{needs.build.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
 
   deploy-faucet:
     runs-on: ubuntu-latest
