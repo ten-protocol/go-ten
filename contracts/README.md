@@ -42,14 +42,6 @@ For the wallet extension to work, the network needs to have configured the `url`
 
 Scripts are taken from `deployment_scripts` and executed in alphabetic order. Each folder, as ordered in the network config and then inside of it alphabetically. Notice that `func.dependencies = []` defined in deployment functions has the ability to escape the default ordering. If such a deployment function/script is reached, the deploy plugin will first deploy its dependency if it hasn't already.
 
-## Using hardhat node instead of a geth network
-
-The command `npx hardhat node` will run a hardhat node and automatically deploy the L1 bits to it. They will also match the expected addresses.
-This allows to start an obscuro node against this node. The following modification of the parameters of the testnet script should work with the default node on macOS: 
-
-```shell
-./start-obscuro-node.sh --sgx_enabled=false --l1host=host.docker.internal --l1port=8545 --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true --node_type=sequencer
-```
 ## Compilation
 
 The following command compiles the solidity contracts and produces artifacts for them:
