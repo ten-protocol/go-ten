@@ -127,7 +127,7 @@ jobs:
               docker compose up host enclave
             '
 
-  wait-node-up:
+  check-obscuro-is-healthy:
     needs:
       - build
       - deploy
