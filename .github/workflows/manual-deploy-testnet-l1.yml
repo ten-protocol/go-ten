@@ -73,8 +73,9 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: 'Build and push image'
+        #DOCKER_BUILDKIT=1 will enable  the new docker build kit that allows us to use build only caches on RUN commands. 
         run: |
-          docker build -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/gethnetwork.Dockerfile  .
+          DOCKER_BUILDKIT=1 docker build -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/gethnetwork.Dockerfile  .
           docker push ${{env.L1_DOCKER_BUILD_TAG}}
 
       - name: 'Deploy L1 to Azure Container Instances'
@@ -89,7 +90,7 @@ jobs:
           name: ${{env.L1_CONTAINER_NAME}}
           location: 'uksouth'
           restart-policy: 'Never'
-          command-line: /home/go-obscuro/integration/gethnetwork/main/main --blockTimeSecs=15 --numNodes=2 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
+          command-line: /home/obscuro/go-obscuro/integration/gethnetwork/main/main --blockTimeSecs=15 --numNodes=2 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
           # Ports start at 9000 for Websockets and 8000 for Start port and 80025 for Http Port
           # Each node has Port + id
           ports: '8025 8026 9000 9001'

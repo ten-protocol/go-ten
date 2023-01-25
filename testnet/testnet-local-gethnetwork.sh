@@ -58,7 +58,7 @@ docker network create --driver bridge node_network || true
 docker run --name=gethnetwork -d \
   --network=node_network \
   -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 \
-  --entrypoint /home/go-obscuro/integration/gethnetwork/main/main \
+  --entrypoint /home/obscuro/go-obscuro/integration/gethnetwork/main/main \
    testnetobscuronet.azurecr.io/obscuronet/gethnetwork:latest \
   --numNodes=3 \
   --startPort=${port} \
