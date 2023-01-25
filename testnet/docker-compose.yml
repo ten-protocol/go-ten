@@ -87,7 +87,8 @@ services:
                  "--hostAddress=$P2PPUBLICADDRESS",
                  "--logPath=sys_out",
                  "--logLevel=$LOGLEVEL",
-                 "--sequencerID=$SEQUENCERID"
+                 "--sequencerID=$SEQUENCERID",
+                 "--messageBusAddress=$MSGBUSCONTRACTADDR"
     ]
 
   edgelessdb:
