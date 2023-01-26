@@ -100,13 +100,13 @@ func (lc *L2Chain) ProcessL1Block(block types.Block, receipts types.Receipts, is
 	defer lc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
-	err := lc.updateL1State(block, receipts, isLatest)
+	l1IngestionType, err := lc.updateL1State(block, receipts, isLatest)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// We update the L1 and L2 chain heads.
-	newL2Head, producedBatch, err := lc.updateL1AndL2Heads(&block, isLatest)
+	newL2Head, producedBatch, err := lc.updateL1AndL2Heads(&block, l1IngestionType)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -241,27 +241,27 @@ func (lc *L2Chain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transactio
 	return result, nil
 }
 
-func (lc *L2Chain) updateL1State(block types.Block, receipts types.Receipts, isLatest bool) error {
+func (lc *L2Chain) updateL1State(block types.Block, receipts types.Receipts, isLatest bool) (*blockIngestionType, error) {
 	// We check whether we've already processed the block.
 	_, err := lc.storage.FetchBlock(block.Hash())
 	if err == nil {
-		return common.ErrBlockAlreadyProcessed
+		return nil, common.ErrBlockAlreadyProcessed
 	}
 	if !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not retrieve block. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 	}
 
 	// Reject block if not provided with matching receipts.
 	// This needs to happen before saving the block as otherwise it will be considered as processed.
 	if lc.crossChainProcessors.Enabled() && !crosschain.VerifyReceiptHash(&block, receipts) {
-		return errors.New("receipts do not match receipt_root in block")
+		return nil, errors.New("receipts do not match receipt_root in block")
 	}
 
 	// We insert the block into the L1 chain and store it.
 	ingestionType, err := lc.insertBlockIntoL1Chain(&block, isLatest)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
-		return err
+		return nil, err
 	}
 	lc.logger.Trace("block inserted successfully",
 		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
@@ -271,10 +271,10 @@ func (lc *L2Chain) updateL1State(block types.Block, receipts types.Receipts, isL
 	// This requires block to be stored first ... but can permanently fail a block
 	err = lc.crossChainProcessors.Remote.StoreCrossChainMessages(&block, receipts)
 	if err != nil {
-		return errors.New("failed to process cross chain messages")
+		return nil, errors.New("failed to process cross chain messages")
 	}
 
-	return nil
+	return ingestionType, nil
 }
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block
@@ -292,7 +292,7 @@ func (lc *L2Chain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*b
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
-			return &blockIngestionType{latest: isLatest, fork: false, preGenesis: true}, nil
+			return &blockIngestionType{isLatest: isLatest, fork: false, preGenesis: true}, nil
 		}
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 
@@ -323,15 +323,24 @@ func (lc *L2Chain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*b
 		}
 
 		// ingested block is on a different branch to the previously ingested block - we may have to rewind L2 state
-		return &blockIngestionType{latest: isLatest, fork: true, preGenesis: false}, nil
+		return &blockIngestionType{isLatest: isLatest, fork: true, preGenesis: false}, nil
 	}
 
 	// this is the typical, happy-path case. The ingested block's parent was the previously ingested block.
-	return &blockIngestionType{latest: isLatest, fork: false, preGenesis: false}, nil
+	return &blockIngestionType{isLatest: isLatest, fork: false, preGenesis: false}, nil
 }
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
-func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*common.L2RootHash, *core.Batch, error) {
+func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2RootHash, *core.Batch, error) {
+	// before proceeding we check if L2 needs to be rolled back because of the L1 block
+	// (eventually this will be unnecessary because batches will be tied to the L1 message data rather than the blocks)
+	if ingestionType.fork {
+		err := lc.rollbackL2ToLatestValidBatch(block)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	// We process the rollups, updating the head rollup associated with the L1 block as we go.
 	if err := lc.processRollups(block); err != nil {
 		// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
@@ -340,7 +349,7 @@ func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*
 
 	// We determine whether we have produced a genesis batch yet.
 	genesisBatchStored := true
-	l2Head, err := lc.storage.FetchHeadBatchForBlock(block.ParentHash())
+	l2Head, err := lc.storage.FetchHeadBatch()
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
@@ -358,7 +367,7 @@ func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, isLatestBlock bool) (*
 
 	// If we're the sequencer and we're on the latest block, we produce a new L2 head to replace the old one.
 	var producedBatch *core.Batch
-	if lc.nodeType == common.Sequencer && isLatestBlock {
+	if lc.nodeType == common.Sequencer && ingestionType.isLatest {
 		l2Head, l2HeadTxReceipts, err = lc.produceAndStoreBatch(block, genesisBatchStored)
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
@@ -662,7 +671,7 @@ func (lc *L2Chain) produceBatch(block *types.Block, genesisBatchStored bool) (*c
 		return lc.produceGenesisBatch(block.Hash())
 	}
 
-	headBatch, err := lc.storage.FetchHeadBatchForBlock(block.ParentHash())
+	headBatch, err := lc.storage.FetchHeadBatch()
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 	}
@@ -891,6 +900,49 @@ func (lc *L2Chain) checkAndStoreBatch(batch *core.Batch) error {
 	}
 
 	return nil
+}
+
+// rollbackL2ToLatestValidBatch is called when the currHead's L1 proof block is no longer on the canonical fork
+// it will scan back through batch chain until it finds a batch associated with the canonical L1 chain
+func (lc *L2Chain) rollbackL2ToLatestValidBatch(newL1Head *types.Block) error {
+	currHead, err := lc.storage.FetchHeadBatch()
+	if err != nil {
+		return fmt.Errorf("l2 rollback after fork: unable to fetch head batch - %w", err)
+	}
+	latestValidBatch := currHead
+	// check if batch is tied to the new L1 head or an ancestor of it
+	for !lc.isBatchLinkedToCanonicalL1Block(latestValidBatch, newL1Head) {
+		// if not then roll back the
+		latestValidBatch, err = lc.storage.FetchBatch(latestValidBatch.Header.ParentHash)
+		if err != nil {
+			return fmt.Errorf("l2 rollback after fork: could not find parent batch - %w", err)
+		}
+	}
+	if latestValidBatch.Hash() != currHead.Hash() {
+		err := lc.storage.SetHeadBatchPointer(latestValidBatch)
+		lc.logger.Info("L2 chain head has been rolled back",
+			"height", latestValidBatch.Header.Number, latestValidBatch.Hash(), "hash", latestValidBatch.Hash(),
+			"prevHeight", currHead.Header.Number, "prevHash", currHead.Hash())
+		if err != nil {
+			return fmt.Errorf("l2 rollback after fork: could not update head batch pointer - %w", err)
+		}
+	}
+	return nil
+}
+
+func (lc *L2Chain) isBatchLinkedToCanonicalL1Block(batch *core.Batch, head *types.Block) bool {
+	l1ProofBlock, err := lc.storage.FetchBlock(batch.Header.L1Proof)
+	if err != nil {
+		return false // proof block couldn't be found for some reason
+	}
+	latestCommonAncestor, err := gethutil.LCA(l1ProofBlock, head, lc.storage)
+	if err != nil {
+		return false // couldn't find common ancestor
+	}
+
+	// if the latest common ancestor hash is the proof block's hash then the proof block is on the same fork as the head
+	// (also check if LCA is head for completeness in case the ordering is wrong somehow)
+	return latestCommonAncestor.Hash() == l1ProofBlock.Hash() || latestCommonAncestor.Hash() == head.Hash()
 }
 
 type sortByTxIndex []*types.Receipt

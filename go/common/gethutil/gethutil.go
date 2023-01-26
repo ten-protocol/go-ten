@@ -11,7 +11,7 @@ import (
 
 // Utilities for working with geth structures
 
-// LCA - returns the least common ancestor of the 2 blocks or an error if no common ancestor is found
+// LCA - returns the latest common ancestor of the 2 blocks or an error if no common ancestor is found
 func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) (*types.Block, error) {
 	if blockA.NumberU64() == common.L1GenesisHeight || blockB.NumberU64() == common.L1GenesisHeight {
 		return blockA, nil
