@@ -912,7 +912,11 @@ func (lc *L2Chain) rollbackL2ToLatestValidBatch(newL1Head *types.Block) error {
 	latestValidBatch := currHead
 	// check if batch is tied to the new L1 head or an ancestor of it
 	for !lc.isBatchLinkedToCanonicalL1Block(latestValidBatch, newL1Head) {
-		// if not then roll back the
+		if latestValidBatch.Header.Number.Cmp(big.NewInt(1)) <= 0 {
+			// reached genesis without finding a canonical L1 block, something has gone critically wrong
+			lc.logger.Crit("reached genesis batch without finding a batch linked to canonical L1 block, aborting...")
+		}
+		// if not then move to the parent batch to check if that is L1-canonical
 		latestValidBatch, err = lc.storage.FetchBatch(latestValidBatch.Header.ParentHash)
 		if err != nil {
 			return fmt.Errorf("l2 rollback after fork: could not find parent batch - %w", err)
