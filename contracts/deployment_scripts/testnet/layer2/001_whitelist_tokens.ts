@@ -7,6 +7,13 @@ import { Receipt } from 'hardhat-deploy/dist/types';
    This is the new version of the HOC and POC on the L2. 
 */
 
+
+function sleep(ms) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+}
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const l1Network = hre.companionNetworks.layer1;
     const l2Network = hre; 
@@ -83,8 +90,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     let messages = getXChainMessages(hocResult);
     messages = messages.concat(getXChainMessages(pocResult));
 
-    // Freeze until the enclave processes the blocks and picks up the messages that have been carried over.
-    await new Promise(resolve=>setTimeout(resolve, 2_000));
+    // Poll message submission 
+    await new Promise(async (resolve, fail)=> { 
+        setTimeout(fail, 10_000)
+        const messageBusContract = (await hre.ethers.getContractAt('MessageBus', '0x526c84529b2b8c11f57d93d3f5537aca3aecef9b'));
+        while (await messageBusContract.callStatic.verifyMessageFinalized(messages[1]) != true) {
+            console.log(`Messages not stored on L2 yet, retrying...`);
+            sleep(1_000);
+        }
+        resolve(true);
+    });
     
     // Perform message relay. This will forward the whitelist command to the L2 subordinate bridge.
     console.log(`Relaying messages using account ${l2Accounts.deployer}`);
