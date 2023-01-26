@@ -22,6 +22,9 @@ help_and_exit() {
     echo ""
     echo "  mgmtcontractaddr   *Required* Set the management contract address"
     echo ""
+    echo ""
+    echo "  msg_bus_addr       *Required* Provide the address of the message bus to initialize the cross chain messenger and bridge"
+    echo ""
     echo "  sgx_enabled        *Required* Set the execution to run with sgx enabled"
     echo ""
     echo "  sequencerID        *Optional* Set the sequencer address. Defaults to 0x0654D8B60033144D567f25bF41baC1FB0D60F23B"
@@ -71,6 +74,8 @@ host_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
 pk_string=8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
 log_level=4
 sequencer_id=0x0654D8B60033144D567f25bF41baC1FB0D60F23B
+msg_bus_addr=0xFD03804faCA2538F4633B3EBdfEfc38adafa259B
+
 docker_host_image=testnetobscuronet.azurecr.io/obscuronet/host:latest
 docker_enclave_image=testnetobscuronet.azurecr.io/obscuronet/enclave:latest
 
@@ -97,6 +102,7 @@ do
             --dev_testnet)              dev_testnet=${value} ;;
             --sequencerID)              sequencer_id=${value} ;;
             --pccs_addr)                pccs_addr=${value} ;;
+            --msg_bus_addr)             msg_bus_addr=${value} ;;
 
             --help)                     help_and_exit ;;
             *)
@@ -131,6 +137,7 @@ echo "LOGLEVEL=${log_level}" >> "${testnet_path}/.env"
 echo "PROFILERENABLED=${profiler_enabled}" >> "${testnet_path}/.env"
 echo "P2PPUBLICADDRESS=${p2p_public_address}" >> "${testnet_path}/.env"
 echo "SEQUENCERID=${sequencer_id}" >> "${testnet_path}/.env"
+echo "MSGBUSCONTRACTADDR=${msg_bus_addr}" >> "${testnet_path}/.env"
 echo "DOCKER_HOST_IMAGE=${docker_host_image}" >> "${testnet_path}/.env"
 echo "DOCKER_ENCLAVE_IMAGE=${docker_enclave_image}" >> "${testnet_path}/.env"
 
