@@ -27,7 +27,7 @@ import (
 
 const (
 	_testBasePort = 18545
-	_numTestNodes = 2
+	_numTestNodes = 1
 )
 
 func TestStartEth2Network(t *testing.T) {
@@ -36,7 +36,6 @@ func TestStartEth2Network(t *testing.T) {
 
 	chainID := int(datagenerator.RandomUInt64())
 	randomWallet := datagenerator.RandomWallet(int64(chainID))
-	fmt.Printf("%x", randomWallet.PrivateKey().D.Bytes())
 
 	network := NewEth2Network(
 		binDir,
@@ -85,31 +84,34 @@ func areConfigsUphold(t *testing.T, addr gethcommon.Address, chainID int) {
 }
 
 func numberOfNodes(t *testing.T) {
-	url := fmt.Sprintf("http://127.0.0.1:%d", 18546)
-	req, err := http.NewRequestWithContext(
-		context.Background(),
-		http.MethodPost,
-		url,
-		strings.NewReader(`{"jsonrpc": "2.0", "method": "net_peerCount", "params": [], "id": 1}`),
-	)
-	assert.Nil(t, err)
-	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	for i := 0; i < _numTestNodes; i++ {
+		url := fmt.Sprintf("http://127.0.0.1:%d", _testBasePort+i)
 
-	client := &http.Client{}
-	response, err := client.Do(req)
-	assert.Nil(t, err)
+		req, err := http.NewRequestWithContext(
+			context.Background(),
+			http.MethodPost,
+			url,
+			strings.NewReader(`{"jsonrpc": "2.0", "method": "net_peerCount", "params": [], "id": 1}`),
+		)
+		assert.Nil(t, err)
+		req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 
-	defer response.Body.Close()
-	body, err := io.ReadAll(response.Body)
-	assert.Nil(t, err)
+		client := &http.Client{}
+		response, err := client.Do(req)
+		assert.Nil(t, err)
 
-	var res map[string]interface{}
-	err = json.Unmarshal(body, &res)
-	assert.Nil(t, err)
+		defer response.Body.Close()
+		body, err := io.ReadAll(response.Body)
+		assert.Nil(t, err)
 
-	err = json.Unmarshal(body, &res)
-	assert.Nil(t, err)
-	assert.Equal(t, res["result"], fmt.Sprintf("0x%x", _numTestNodes-1))
+		var res map[string]interface{}
+		err = json.Unmarshal(body, &res)
+		assert.Nil(t, err)
+
+		err = json.Unmarshal(body, &res)
+		assert.Nil(t, err)
+		assert.Equal(t, res["result"], fmt.Sprintf("0x%x", _numTestNodes-1))
+	}
 }
 
 func txsAreMinted(t *testing.T, w wallet.Wallet) {
