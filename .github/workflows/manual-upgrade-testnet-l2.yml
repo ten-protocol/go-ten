@@ -30,8 +30,6 @@ jobs:
     outputs:
       L2_ENCLAVE_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG }}
       L2_HOST_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HOST_DOCKER_BUILD_TAG }}
-      L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG }}
-      L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }}
       RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
       RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
@@ -49,8 +47,6 @@ jobs:
         run: |
           echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/enclave:latest" >> $GITHUB_ENV
           echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/host:latest" >> $GITHUB_ENV
-          echo "L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest" >> $GITHUB_ENV
-          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
@@ -60,8 +56,6 @@ jobs:
         run: |
           echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest" >> $GITHUB_ENV
           echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest" >> $GITHUB_ENV
-          echo "L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_contractdeployer:latest" >> $GITHUB_ENV
-          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_hardhatdeployer:latest" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
@@ -71,8 +65,6 @@ jobs:
         run: |
           echo "L2_ENCLAVE_DOCKER_BUILD_TAG=${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
           echo "L2_HOST_DOCKER_BUILD_TAG=${{env.L2_HOST_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG=${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TAG_NAME=${{env.RESOURCE_TAG_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
@@ -90,10 +82,6 @@ jobs:
           docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
           docker build -t ${{env.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
           docker push ${{env.L2_HOST_DOCKER_BUILD_TAG}}
-          docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
-          docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
-          docker build -t ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/hardhatdeployer.Dockerfile .
-          docker push ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
 
   deploy:
     needs: build
@@ -127,7 +115,7 @@ jobs:
               docker compose up host enclave
             '
 
-  wait-node-up:
+  check-obscuro-is-healthy:
     needs:
       - build
       - deploy

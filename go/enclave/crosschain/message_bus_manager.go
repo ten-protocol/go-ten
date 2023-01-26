@@ -19,7 +19,7 @@ import (
 )
 
 // TODO: Cryptography epic remove this.
-const (
+const ( // DO NOT USE OR CHANGE THIS KEY IN THE REST OF THE CODEBASE
 	ownerKeyHex = "6e384a07a01263518a18a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 )
 
