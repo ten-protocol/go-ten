@@ -17,7 +17,7 @@ help_and_exit() {
     echo "  l2port             *Optional* Set the l2 port. Defaults to 10000"
     echo ""
     echo ""
-    echo "  l1port             *Optional* Set the l1 port. Defaults to 10000"
+    echo "  l1port             *Optional* Set the l1 port. Defaults to 8025"
     echo ""
     echo ""
     echo "  l1host             *Required* Set the l1 host address"
