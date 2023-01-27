@@ -90,17 +90,17 @@ This document will not go into the details of the Ethereum proof-of-stake protoc
 ### Weak subjectivity attacks against a TEE
 
 Assumptions:
-The current version of the enclave starts with a "weak subjectivity checkpoint" as part of its Attestation, which is the same as any beacon chain client.
+1. The current version of the enclave starts with a "weak subjectivity checkpoint" as part of its Attestation, which is the same as any beacon chain client.
 Note: this first assumption leads to an interesting recursivity which we'll analyze below.
 
-The attackers are part of the original validator set but only control a low amount of the total stake. 
+2. The attackers are part of the original validator set but only control a low amount of the total stake. 
 Note: an attacker controlling a super-majority of the total Ethereum stake will be able to break the mechanism. 
 
-The attackers aim to convince the enclave to upgrade itself to a malicious version without public scrutiny.
+3. The attackers aim to convince the enclave to upgrade itself to a malicious version without public scrutiny.
 
-The enclave can execute the proof-of-stake protocol and asses the finality of blocks.
+4. The enclave can execute the proof-of-stake protocol and asses the finality of blocks.
 
-During any upgrade, the current enclave will share some secrets with the future enclave. 
+5. During any upgrade, the current enclave will share some secrets with the future enclave. 
 
 #### Inactivity leak attack
 
