@@ -333,7 +333,7 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
 func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2RootHash, *core.Batch, error) {
 	// before proceeding we check if L2 needs to be rolled back because of the L1 block
-	// (eventually this will be unnecessary because batches will be tied to the L1 message data rather than the blocks)
+	// (eventually this will be bound to just the hash of L1 message data rather than L1 block hashes - so less likely to reorg)
 	if ingestionType.fork {
 		err := oc.rollbackL2ToLatestValidBatch(block)
 		if err != nil {
@@ -909,23 +909,24 @@ func (oc *ObscuroChain) rollbackL2ToLatestValidBatch(newL1Head *types.Block) err
 	if err != nil {
 		return fmt.Errorf("l2 rollback after fork: unable to fetch head batch - %w", err)
 	}
+	// after the for loop, this latestValidBatch variable will point to the latest batch processed that was not reorganised by the L1
 	latestValidBatch := currHead
-	// check if batch is tied to the new L1 head or an ancestor of it
-	for !oc.isBatchLinkedToCanonicalL1Block(latestValidBatch, newL1Head) {
+	for !oc.isBatchLinkedToAncestorOf(latestValidBatch, newL1Head) {
 		if latestValidBatch.Header.Number.Cmp(big.NewInt(1)) <= 0 {
 			// reached genesis without finding a canonical L1 block, something has gone critically wrong
 			oc.logger.Crit("reached genesis batch without finding a batch linked to canonical L1 block, aborting...")
 		}
-		// if not then move to the parent batch to check if that is L1-canonical
+		// batch was linked to an L1 block that is no-longer canonical, move down to its parent batch
 		latestValidBatch, err = oc.storage.FetchBatch(latestValidBatch.Header.ParentHash)
 		if err != nil {
 			return fmt.Errorf("l2 rollback after fork: could not find parent batch - %w", err)
 		}
 	}
+	// we check if the batch has had to roll back from its current head, if it has then we update the head batch and log the rollback
 	if latestValidBatch.Hash() != currHead.Hash() {
 		err := oc.storage.SetHeadBatchPointer(latestValidBatch)
 		oc.logger.Info("L2 chain head has been rolled back",
-			"height", latestValidBatch.Header.Number, latestValidBatch.Hash(), "hash", latestValidBatch.Hash(),
+			"height", latestValidBatch.Header.Number, "hash", latestValidBatch.Hash(),
 			"prevHeight", currHead.Header.Number, "prevHash", currHead.Hash())
 		if err != nil {
 			return fmt.Errorf("l2 rollback after fork: could not update head batch pointer - %w", err)
@@ -934,7 +935,8 @@ func (oc *ObscuroChain) rollbackL2ToLatestValidBatch(newL1Head *types.Block) err
 	return nil
 }
 
-func (oc *ObscuroChain) isBatchLinkedToCanonicalL1Block(batch *core.Batch, head *types.Block) bool {
+// we find the L1 block associated with the batch, and we check if it is on the same fork as the provided block
+func (oc *ObscuroChain) isBatchLinkedToAncestorOf(batch *core.Batch, head *types.Block) bool {
 	l1ProofBlock, err := oc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {
 		return false // proof block couldn't be found for some reason
@@ -944,8 +946,9 @@ func (oc *ObscuroChain) isBatchLinkedToCanonicalL1Block(batch *core.Batch, head 
 		return false // couldn't find common ancestor
 	}
 
-	// if the latest common ancestor hash is the proof block's hash then the proof block is on the same fork as the head
-	// (also check if LCA is head for completeness in case the ordering is wrong somehow)
+	// If two blocks are on the same fork of a chain then their "latest common ancestor" will be one of the two blocks (the lower).
+	// So, if l1Proof and head are on the same chain then the LCA hash should match one of them
+	// (we expect head to be ahead of the l1ProofBlock, but we check both cases for completeness).
 	return latestCommonAncestor.Hash() == l1ProofBlock.Hash() || latestCommonAncestor.Hash() == head.Hash()
 }
 
