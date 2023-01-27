@@ -65,8 +65,8 @@ This mechanism has several advantages:
 Because of the many advantages, Obscuro decided to implement the transparent, smart-contract-driven upgrade process. 
 
 The design needs two key ingredients:
-The enclave must understand the outputs of the smart contract.
-The upgrader must convince the enclave that the data it feeds is the actual Etherem canonical chain. 
+1. The enclave must understand the outputs of the smart contract.
+2. The upgrader must convince the enclave that the data it feeds is the actual Etherem canonical chain. 
 
 The first part is straightforward because the enclave can interpret and authenticate events emitted on Ethereum against a chain. This functionality is already required for cross-chain messaging and authenticating rollups.
 
