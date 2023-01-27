@@ -1,7 +1,7 @@
 # How the transition of Ethereum to "Proof of Stake" affects Obscuro?
 
 There are subtle but meaningful differences between the proof-of-work and proof-of-stake protocols.
-This most significant difference is relevant when you consider the upgradeability of a privacy L2. 
+The most significant difference is relevant when you consider the upgradeability of a privacy L2. 
 
 ## Upgradability of Obscuro
 
