@@ -37,8 +37,8 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
-// L2Chain represents the canonical chain, and manages the state.
-type L2Chain struct {
+// ObscuroChain represents the canonical L2 chain, and manages the state.
+type ObscuroChain struct {
 	hostID      gethcommon.Address
 	nodeType    common.NodeType
 	chainConfig *params.ChainConfig
@@ -74,8 +74,8 @@ func New(
 	sequencerID gethcommon.Address,
 	genesis *genesis.Genesis,
 	logger gethlog.Logger,
-) *L2Chain {
-	return &L2Chain{
+) *ObscuroChain {
+	return &ObscuroChain{
 		hostID:               hostID,
 		nodeType:             nodeType,
 		storage:              storage,
@@ -95,18 +95,18 @@ func New(
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (lc *L2Chain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Batch, error) {
-	lc.blockProcessingMutex.Lock()
-	defer lc.blockProcessingMutex.Unlock()
+func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Batch, error) {
+	oc.blockProcessingMutex.Lock()
+	defer oc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
-	l1IngestionType, err := lc.updateL1State(block, receipts, isLatest)
+	l1IngestionType, err := oc.updateL1State(block, receipts, isLatest)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// We update the L1 and L2 chain heads.
-	newL2Head, producedBatch, err := lc.updateL1AndL2Heads(&block, l1IngestionType)
+	newL2Head, producedBatch, err := oc.updateL1AndL2Heads(&block, l1IngestionType)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -114,17 +114,17 @@ func (lc *L2Chain) ProcessL1Block(block types.Block, receipts types.Receipts, is
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
-func (lc *L2Chain) UpdateL2Chain(batch *core.Batch) error {
-	lc.blockProcessingMutex.Lock()
-	defer lc.blockProcessingMutex.Unlock()
+func (oc *ObscuroChain) UpdateL2Chain(batch *core.Batch) error {
+	oc.blockProcessingMutex.Lock()
+	defer oc.blockProcessingMutex.Unlock()
 
-	if err := lc.checkAndStoreBatch(batch); err != nil {
+	if err := oc.checkAndStoreBatch(batch); err != nil {
 		return err
 	}
 
 	// If this is the genesis batch, we commit the genesis state.
 	if batch.IsGenesis() {
-		if err := lc.genesis.CommitGenesisState(lc.storage); err != nil {
+		if err := oc.genesis.CommitGenesisState(oc.storage); err != nil {
 			return fmt.Errorf("could not apply genesis state. Cause: %w", err)
 		}
 	}
@@ -132,15 +132,15 @@ func (lc *L2Chain) UpdateL2Chain(batch *core.Batch) error {
 	return nil
 }
 
-func (lc *L2Chain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
+func (oc *ObscuroChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
 	// get account balance at certain block/height
-	balance, err := lc.GetBalanceAtBlock(accountAddress, blockNumber)
+	balance, err := oc.GetBalanceAtBlock(accountAddress, blockNumber)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// check if account is a contract
-	isAddrContract, err := lc.isAccountContractAtBlock(accountAddress, blockNumber)
+	isAddrContract, err := oc.isAccountContractAtBlock(accountAddress, blockNumber)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -149,15 +149,15 @@ func (lc *L2Chain) GetBalance(accountAddress gethcommon.Address, blockNumber *ge
 	address := accountAddress
 	// If the accountAddress is a contract, encrypt with the address of the contract owner
 	if isAddrContract {
-		txHash, err := lc.storage.GetContractCreationTx(accountAddress)
+		txHash, err := oc.storage.GetContractCreationTx(accountAddress)
 		if err != nil {
 			return nil, nil, err
 		}
-		transaction, _, _, _, err := lc.storage.GetTransaction(*txHash)
+		transaction, _, _, _, err := oc.storage.GetTransaction(*txHash)
 		if err != nil {
 			return nil, nil, err
 		}
-		signer := types.NewLondonSigner(lc.chainConfig.ChainID)
+		signer := types.NewLondonSigner(oc.chainConfig.ChainID)
 
 		sender, err := signer.Sender(transaction)
 		if err != nil {
@@ -170,8 +170,8 @@ func (lc *L2Chain) GetBalance(accountAddress gethcommon.Address, blockNumber *ge
 }
 
 // GetBalanceAtBlock returns the balance of an account at a certain height
-func (lc *L2Chain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
-	chainState, err := lc.getChainStateAtBlock(blockNumber)
+func (oc *ObscuroChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
+	chainState, err := oc.getChainStateAtBlock(blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
@@ -180,43 +180,43 @@ func (lc *L2Chain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber
 }
 
 // ExecuteOffChainTransaction executes non-state changing transactions at a given block height (eth_call)
-func (lc *L2Chain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
-	result, err := lc.ExecuteOffChainTransactionAtBlock(apiArgs, blockNumber)
+func (oc *ObscuroChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+	result, err := oc.ExecuteOffChainTransactionAtBlock(apiArgs, blockNumber)
 	if err != nil {
-		lc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, err.Error())
+		oc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, err.Error())
 		return nil, err
 	}
 
 	// the execution might have succeeded (err == nil) but the evm contract logic might have failed (result.Failed() == true)
 	if result.Failed() {
-		lc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, result.Err)
+		oc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, result.Err)
 		return nil, result.Err
 	}
 
-	lc.logger.Trace(fmt.Sprintf("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData)))
+	oc.logger.Trace(fmt.Sprintf("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData)))
 
 	return result, nil
 }
 
-func (lc *L2Chain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+func (oc *ObscuroChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
 	// TODO review this during gas mechanics implementation
-	callMsg, err := apiArgs.ToMessage(lc.GlobalGasCap, lc.BaseFee)
+	callMsg, err := apiArgs.ToMessage(oc.GlobalGasCap, oc.BaseFee)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
 	}
 
 	// fetch the chain state at given batch
-	blockState, err := lc.getChainStateAtBlock(blockNumber)
+	blockState, err := oc.getChainStateAtBlock(blockNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	batch, err := lc.getBatch(*blockNumber)
+	batch, err := oc.getBatch(*blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
 
-	lc.logger.Trace(
+	oc.logger.Trace(
 		fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, batch=b_%d, state=%s",
 			callMsg.To(),
 			callMsg.From(),
@@ -225,7 +225,7 @@ func (lc *L2Chain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transactio
 			batch.Header.Root.Hex()),
 	)
 
-	result, err := evm.ExecuteOffChainCall(&callMsg, blockState, batch.Header, lc.storage, lc.chainConfig, lc.logger)
+	result, err := evm.ExecuteOffChainCall(&callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err
@@ -235,15 +235,15 @@ func (lc *L2Chain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Transactio
 	if result.Failed() {
 		// do not return an error
 		// the result object should be evaluated upstream
-		lc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
+		oc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
 	}
 
 	return result, nil
 }
 
-func (lc *L2Chain) updateL1State(block types.Block, receipts types.Receipts, isLatest bool) (*blockIngestionType, error) {
+func (oc *ObscuroChain) updateL1State(block types.Block, receipts types.Receipts, isLatest bool) (*blockIngestionType, error) {
 	// We check whether we've already processed the block.
-	_, err := lc.storage.FetchBlock(block.Hash())
+	_, err := oc.storage.FetchBlock(block.Hash())
 	if err == nil {
 		return nil, common.ErrBlockAlreadyProcessed
 	}
@@ -253,23 +253,23 @@ func (lc *L2Chain) updateL1State(block types.Block, receipts types.Receipts, isL
 
 	// Reject block if not provided with matching receipts.
 	// This needs to happen before saving the block as otherwise it will be considered as processed.
-	if lc.crossChainProcessors.Enabled() && !crosschain.VerifyReceiptHash(&block, receipts) {
+	if oc.crossChainProcessors.Enabled() && !crosschain.VerifyReceiptHash(&block, receipts) {
 		return nil, errors.New("receipts do not match receipt_root in block")
 	}
 
 	// We insert the block into the L1 chain and store it.
-	ingestionType, err := lc.insertBlockIntoL1Chain(&block, isLatest)
+	ingestionType, err := oc.insertBlockIntoL1Chain(&block, isLatest)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
 		return nil, err
 	}
-	lc.logger.Trace("block inserted successfully",
+	oc.logger.Trace("block inserted successfully",
 		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
 
-	lc.storage.StoreBlock(&block)
+	oc.storage.StoreBlock(&block)
 
 	// This requires block to be stored first ... but can permanently fail a block
-	err = lc.crossChainProcessors.Remote.StoreCrossChainMessages(&block, receipts)
+	err = oc.crossChainProcessors.Remote.StoreCrossChainMessages(&block, receipts)
 	if err != nil {
 		return nil, errors.New("failed to process cross chain messages")
 	}
@@ -279,15 +279,15 @@ func (lc *L2Chain) updateL1State(block types.Block, receipts types.Receipts, isL
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block
 // note: this method shouldn't be called for blocks we've seen before
-func (lc *L2Chain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*blockIngestionType, error) {
-	if lc.l1Blockchain != nil {
-		_, err := lc.l1Blockchain.InsertChain(types.Blocks{block})
+func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*blockIngestionType, error) {
+	if oc.l1Blockchain != nil {
+		_, err := oc.l1Blockchain.InsertChain(types.Blocks{block})
 		if err != nil {
 			return nil, fmt.Errorf("block was invalid: %w", err)
 		}
 	}
 	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	prevL1Head, err := lc.storage.FetchHeadBlock()
+	prevL1Head, err := oc.storage.FetchHeadBlock()
 
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -298,11 +298,11 @@ func (lc *L2Chain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*b
 
 		// we do a basic sanity check, comparing the received block to the head block on the chain
 	} else if block.ParentHash() != prevL1Head.Hash() {
-		lcaBlock, err := gethutil.LCA(block, prevL1Head, lc.storage)
+		lcaBlock, err := gethutil.LCA(block, prevL1Head, oc.storage)
 		if err != nil {
 			return nil, common.ErrBlockAncestorNotFound
 		}
-		lc.logger.Trace("parent not found",
+		oc.logger.Trace("parent not found",
 			"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
 			"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
 			"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
@@ -314,7 +314,7 @@ func (lc *L2Chain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*b
 			//   then why is ingested block's parent not the prev l1 head
 			// lca > prevL1Head:
 			//   this would imply ingested block is earlier on the same branch as l1 head, but ingested block should not have been seen before
-			lc.logger.Error("unexpected blockchain state, incoming block is not child of L1 head and not an earlier fork of L1 head",
+			oc.logger.Error("unexpected blockchain state, incoming block is not child of L1 head and not an earlier fork of L1 head",
 				"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
 				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
 				"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
@@ -331,25 +331,25 @@ func (lc *L2Chain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*b
 }
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
-func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2RootHash, *core.Batch, error) {
+func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2RootHash, *core.Batch, error) {
 	// before proceeding we check if L2 needs to be rolled back because of the L1 block
 	// (eventually this will be unnecessary because batches will be tied to the L1 message data rather than the blocks)
 	if ingestionType.fork {
-		err := lc.rollbackL2ToLatestValidBatch(block)
+		err := oc.rollbackL2ToLatestValidBatch(block)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
 
 	// We process the rollups, updating the head rollup associated with the L1 block as we go.
-	if err := lc.processRollups(block); err != nil {
+	if err := oc.processRollups(block); err != nil {
 		// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
-		lc.logger.Error("could not process rollups", log.ErrKey, err)
+		oc.logger.Error("could not process rollups", log.ErrKey, err)
 	}
 
 	// We determine whether we have produced a genesis batch yet.
 	genesisBatchStored := true
-	l2Head, err := lc.storage.FetchHeadBatch()
+	l2Head, err := oc.storage.FetchHeadBatch()
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
@@ -360,15 +360,15 @@ func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIn
 	// If there is an L2 head, we retrieve its stored receipts.
 	var l2HeadTxReceipts types.Receipts
 	if genesisBatchStored {
-		if l2HeadTxReceipts, err = lc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
+		if l2HeadTxReceipts, err = oc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
 			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
 		}
 	}
 
 	// If we're the sequencer and we're on the latest block, we produce a new L2 head to replace the old one.
 	var producedBatch *core.Batch
-	if lc.nodeType == common.Sequencer && ingestionType.isLatest {
-		l2Head, l2HeadTxReceipts, err = lc.produceAndStoreBatch(block, genesisBatchStored)
+	if oc.nodeType == common.Sequencer && ingestionType.isLatest {
+		l2Head, l2HeadTxReceipts, err = oc.produceAndStoreBatch(block, genesisBatchStored)
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
 		}
@@ -377,10 +377,10 @@ func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIn
 
 	// We update the L1 and L2 chain heads.
 	if l2Head != nil {
-		if err = lc.storage.UpdateHeadBatch(block.Hash(), l2Head, l2HeadTxReceipts); err != nil {
+		if err = oc.storage.UpdateHeadBatch(block.Hash(), l2Head, l2HeadTxReceipts); err != nil {
 			return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
 		}
-		if err = lc.storage.UpdateL1Head(block.Hash()); err != nil {
+		if err = oc.storage.UpdateL1Head(block.Hash()); err != nil {
 			return nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 		}
 	}
@@ -393,21 +393,21 @@ func (lc *L2Chain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIn
 }
 
 // Produces a new batch, signs it and stores it.
-func (lc *L2Chain) produceAndStoreBatch(block *common.L1Block, genesisBatchStored bool) (*core.Batch, types.Receipts, error) {
-	l2Head, err := lc.produceBatch(block, genesisBatchStored)
+func (oc *ObscuroChain) produceAndStoreBatch(block *common.L1Block, genesisBatchStored bool) (*core.Batch, types.Receipts, error) {
+	l2Head, err := oc.produceBatch(block, genesisBatchStored)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
 	}
 
-	if err = lc.signBatch(l2Head); err != nil {
+	if err = oc.signBatch(l2Head); err != nil {
 		return nil, nil, fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
 
-	l2HeadTxReceipts, err := lc.getTxReceipts(l2Head)
+	l2HeadTxReceipts, err := oc.getTxReceipts(l2Head)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not get batch transaction receipts. Cause: %w", err)
 	}
-	if err = lc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
+	if err = oc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
 		return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
@@ -415,15 +415,15 @@ func (lc *L2Chain) produceAndStoreBatch(block *common.L1Block, genesisBatchStore
 }
 
 // Creates a genesis batch linked to the provided L1 block and signs it.
-func (lc *L2Chain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, error) {
-	preFundGenesisState, err := lc.genesis.GetGenesisRoot(lc.storage)
+func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, error) {
+	preFundGenesisState, err := oc.genesis.GetGenesisRoot(oc.storage)
 	if err != nil {
 		return nil, err
 	}
 
 	genesisBatch := &core.Batch{
 		Header: &common.BatchHeader{
-			Agg:         lc.hostID,
+			Agg:         oc.hostID,
 			ParentHash:  common.L2RootHash{},
 			L1Proof:     blkHash,
 			Root:        *preFundGenesisState,
@@ -436,18 +436,18 @@ func (lc *L2Chain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, 
 	}
 
 	// TODO: Figure out a better way to bootstrap the system contracts.
-	deployTx, err := lc.crossChainProcessors.Local.GenerateMessageBusDeployTx()
+	deployTx, err := oc.crossChainProcessors.Local.GenerateMessageBusDeployTx()
 	if err != nil {
-		lc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
+		oc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
 	}
 
 	// Add transaction to mempool so it gets processed when it can.
 	// Should be the first transaction to be processed.
-	if err := lc.mempool.AddMempoolTx(deployTx); err != nil {
-		lc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
+	if err := oc.mempool.AddMempoolTx(deployTx); err != nil {
+		oc.logger.Crit("Cannot create synthetic transaction for deploying the message bus contract on :|")
 	}
 
-	if err = lc.genesis.CommitGenesisState(lc.storage); err != nil {
+	if err = oc.genesis.CommitGenesisState(oc.storage); err != nil {
 		return nil, fmt.Errorf("could not apply genesis preallocation. Cause: %w", err)
 	}
 	return genesisBatch, nil
@@ -456,15 +456,15 @@ func (lc *L2Chain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, 
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a message bus embedded in the platform, and this method is responsible for transferring messages as well.
 // The batch can be a final batch as received from peers or the batch under construction.
-func (lc *L2Chain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, lc.storage, lc.chainConfig, 0, lc.logger)
+	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, oc.storage, oc.chainConfig, 0, oc.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
-			lc.logger.Crit("There should be an entry for each transaction ")
+			oc.logger.Crit("There should be an entry for each transaction ")
 		}
 		rec, foundReceipt := result.(*types.Receipt)
 		if foundReceipt {
@@ -472,32 +472,32 @@ func (lc *L2Chain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
-			lc.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*batch.Hash()), result))
+			oc.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*batch.Hash()), result))
 		}
 	}
 
 	// always process deposits last, either on top of the rollup produced speculatively or the newly created rollup
 	// process deposits from the fromBlock of the parent to the current block (which is the fromBlock of the new rollup)
-	parent, err := lc.storage.FetchBatch(batch.Header.ParentHash)
+	parent, err := oc.storage.FetchBatch(batch.Header.ParentHash)
 	if err != nil {
-		lc.logger.Crit("Sanity check. Rollup has no parent.", log.ErrKey, err)
+		oc.logger.Crit("Sanity check. Rollup has no parent.", log.ErrKey, err)
 	}
 
-	parentProof, err := lc.storage.FetchBlock(parent.Header.L1Proof)
+	parentProof, err := oc.storage.FetchBlock(parent.Header.L1Proof)
 	if err != nil {
-		lc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
+		oc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
 	}
-	batchProof, err := lc.storage.FetchBlock(batch.Header.L1Proof)
+	batchProof, err := oc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {
-		lc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
+		oc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", batch.Hash()), log.ErrKey, err)
 	}
 
-	messages := lc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, batchProof, stateDB)
-	transactions := lc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
-	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, lc.storage, lc.chainConfig, len(executedTransactions), lc.logger)
+	messages := oc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, batchProof, stateDB)
+	transactions := oc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
+	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, oc.storage, oc.chainConfig, len(executedTransactions), oc.logger)
 	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
 	if len(syntheticTransactionsResponses) != len(transactions) {
-		lc.logger.Crit("Sanity check. Some synthetic transactions failed.")
+		oc.logger.Crit("Sanity check. Some synthetic transactions failed.")
 	}
 
 	i := 0
@@ -505,15 +505,15 @@ func (lc *L2Chain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *
 		rec, ok := resp.(*types.Receipt)
 		if !ok { // Еxtract reason for failing deposit.
 			// TODO - Handle the case of an error (e.g. insufficient funds).
-			lc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
+			oc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
 		}
 
 		if rec.Status == 0 { // Synthetic transactions should not fail. In case of failure get the revert reason.
 			failingTx := transactions[i]
 			txCallMessage := types.NewMessage(
-				lc.crossChainProcessors.Local.GetOwner(),
+				oc.crossChainProcessors.Local.GetOwner(),
 				failingTx.To(),
-				stateDB.GetNonce(lc.crossChainProcessors.Local.GetOwner()),
+				stateDB.GetNonce(oc.crossChainProcessors.Local.GetOwner()),
 				failingTx.Value(),
 				failingTx.Gas(),
 				gethcommon.Big0,
@@ -524,8 +524,8 @@ func (lc *L2Chain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *
 				false)
 
 			clonedDB := stateDB.Copy()
-			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, batch.Header, lc.storage, lc.chainConfig, lc.logger)
-			lc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
+			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, batch.Header, oc.storage, oc.chainConfig, oc.logger)
+			oc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
 		}
 
 		synthReceipts[i] = rec
@@ -534,7 +534,7 @@ func (lc *L2Chain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *
 
 	rootHash, err := stateDB.Commit(true)
 	if err != nil {
-		lc.logger.Crit("could not commit to state DB. ", log.ErrKey, err)
+		oc.logger.Crit("could not commit to state DB. ", log.ErrKey, err)
 	}
 
 	sort.Sort(sortByTxIndex(txReceipts))
@@ -544,14 +544,14 @@ func (lc *L2Chain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *
 }
 
 // Checks the internal validity of the batch.
-func (lc *L2Chain) isInternallyValidBatch(batch *core.Batch) (types.Receipts, error) {
-	stateDB, err := lc.storage.CreateStateDB(batch.Header.ParentHash)
+func (oc *ObscuroChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts, error) {
+	stateDB, err := oc.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
 	// calculate the state to compare with what is in the batch
-	rootHash, executedTxs, txReceipts, depositReceipts := lc.processState(batch, batch.Transactions, stateDB)
+	rootHash, executedTxs, txReceipts, depositReceipts := oc.processState(batch, batch.Transactions, stateDB)
 	if len(executedTxs) != len(batch.Transactions) {
 		return nil, fmt.Errorf("all transactions that are included in a batch must be executed")
 	}
@@ -577,7 +577,7 @@ func (lc *L2Chain) isInternallyValidBatch(batch *core.Batch) (types.Receipts, er
 	}
 
 	// Check that the signature is valid.
-	if err = lc.checkSequencerSignature(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
+	if err = oc.checkSequencerSignature(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
 		return nil, fmt.Errorf("verify batch r_%d: invalid signature. Cause: %w", common.ShortHash(*batch.Hash()), err)
 	}
 
@@ -587,25 +587,25 @@ func (lc *L2Chain) isInternallyValidBatch(batch *core.Batch) (types.Receipts, er
 }
 
 // Returns the receipts for the transactions in the batch.
-func (lc *L2Chain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error) {
+func (oc *ObscuroChain) getTxReceipts(batch *core.Batch) ([]*types.Receipt, error) {
 	if batch.IsGenesis() {
 		return nil, nil
 	}
 
-	stateDB, err := lc.storage.CreateStateDB(batch.Header.ParentHash)
+	stateDB, err := oc.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
 	// calculate the state to compare with what is in the batch
-	_, _, txReceipts, _ := lc.processState(batch, batch.Transactions, stateDB) //nolint:dogsled
+	_, _, txReceipts, _ := oc.processState(batch, batch.Transactions, stateDB) //nolint:dogsled
 	return txReceipts, nil
 }
 
-func (lc *L2Chain) signBatch(batch *core.Batch) error {
+func (oc *ObscuroChain) signBatch(batch *core.Batch) error {
 	var err error
 	h := batch.Hash()
-	batch.Header.R, batch.Header.S, err = ecdsa.Sign(rand.Reader, lc.enclavePrivateKey, h[:])
+	batch.Header.R, batch.Header.S, err = ecdsa.Sign(rand.Reader, oc.enclavePrivateKey, h[:])
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
@@ -613,18 +613,18 @@ func (lc *L2Chain) signBatch(batch *core.Batch) error {
 }
 
 // Checks that the header is signed validly by the sequencer.
-func (lc *L2Chain) checkSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
+func (oc *ObscuroChain) checkSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
 	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
-	if !bytes.Equal(aggregator.Bytes(), lc.sequencerID.Bytes()) {
-		return fmt.Errorf("expected batch to be produced by sequencer %s, but was produced by %s", lc.sequencerID.Hex(), aggregator.Hex())
+	if !bytes.Equal(aggregator.Bytes(), oc.sequencerID.Bytes()) {
+		return fmt.Errorf("expected batch to be produced by sequencer %s, but was produced by %s", oc.sequencerID.Hex(), aggregator.Hex())
 	}
 
 	if sigR == nil || sigS == nil {
 		return fmt.Errorf("missing signature on batch")
 	}
 
-	pubKey, err := lc.storage.FetchAttestedKey(*aggregator)
+	pubKey, err := oc.storage.FetchAttestedKey(*aggregator)
 	if err != nil {
 		return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", aggregator, err)
 	}
@@ -636,11 +636,11 @@ func (lc *L2Chain) checkSequencerSignature(headerHash *gethcommon.Hash, aggregat
 }
 
 // Retrieves the batch with the given height, with special handling for earliest/latest/pending .
-func (lc *L2Chain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error) {
+func (oc *ObscuroChain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error) {
 	var batch *core.Batch
 	switch height {
 	case gethrpc.EarliestBlockNumber:
-		genesisBatch, err := lc.storage.FetchBatchByHeight(0)
+		genesisBatch, err := oc.storage.FetchBatchByHeight(0)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
@@ -649,13 +649,13 @@ func (lc *L2Chain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error) {
 		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
-		headBatch, err := lc.storage.FetchHeadBatch()
+		headBatch, err := oc.storage.FetchHeadBatch()
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)
 		}
 		batch = headBatch
 	default:
-		maybeBatch, err := lc.storage.FetchBatchByHeight(uint64(height))
+		maybeBatch, err := oc.storage.FetchBatchByHeight(uint64(height))
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d could not be retrieved. Cause: %w", height, err)
 		}
@@ -665,13 +665,13 @@ func (lc *L2Chain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error) {
 }
 
 // Creates either a genesis or regular (i.e. post-genesis) batch.
-func (lc *L2Chain) produceBatch(block *types.Block, genesisBatchStored bool) (*core.Batch, error) {
+func (oc *ObscuroChain) produceBatch(block *types.Block, genesisBatchStored bool) (*core.Batch, error) {
 	// We handle producing the genesis batch as a special case.
 	if !genesisBatchStored {
-		return lc.produceGenesisBatch(block.Hash())
+		return oc.produceGenesisBatch(block.Hash())
 	}
 
-	headBatch, err := lc.storage.FetchHeadBatch()
+	headBatch, err := oc.storage.FetchHeadBatch()
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 	}
@@ -681,39 +681,39 @@ func (lc *L2Chain) produceBatch(block *types.Block, genesisBatchStored bool) (*c
 	var newBatchState *state.StateDB
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch, err := core.EmptyBatch(lc.hostID, headBatch.Header, block.Hash())
+	batch, err := core.EmptyBatch(oc.hostID, headBatch.Header, block.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create batch. Cause: %w", err)
 	}
 
-	newBatchTxs, err = lc.mempool.CurrentTxs(headBatch, lc.storage)
+	newBatchTxs, err = oc.mempool.CurrentTxs(headBatch, oc.storage)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve current transactions. Cause: %w", err)
 	}
 
-	newBatchState, err = lc.storage.CreateStateDB(batch.Header.ParentHash)
+	newBatchState, err = oc.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
-	rootHash, successfulTxs, txReceipts, depositReceipts := lc.processState(batch, newBatchTxs, newBatchState)
+	rootHash, successfulTxs, txReceipts, depositReceipts := oc.processState(batch, newBatchTxs, newBatchState)
 
 	batch.Header.Root = rootHash
 	batch.Transactions = successfulTxs
 
-	crossChainMessages, err := lc.crossChainProcessors.Local.ExtractOutboundMessages(txReceipts)
+	crossChainMessages, err := oc.crossChainProcessors.Local.ExtractOutboundMessages(txReceipts)
 	if err != nil {
-		lc.logger.Crit("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
+		oc.logger.Crit("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
 	}
 
 	batch.Header.CrossChainMessages = crossChainMessages
 
-	lc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
+	oc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
 
-	crossChainBind, err := lc.storage.FetchBlock(batch.Header.L1Proof)
+	crossChainBind, err := oc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {
-		lc.logger.Crit("Failed to extract batch proof that should exist!")
+		oc.logger.Crit("Failed to extract batch proof that should exist!")
 	}
 
 	batch.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
@@ -733,7 +733,7 @@ func (lc *L2Chain) produceBatch(block *types.Block, genesisBatchStored bool) (*c
 		batch.Header.TxHash = types.DeriveSha(types.Transactions(successfulTxs), trie.NewStackTrie(nil))
 	}
 
-	lc.logger.Trace("Create batch.",
+	oc.logger.Trace("Create batch.",
 		"State", gethlog.Lazy{Fn: func() string {
 			return strings.Replace(string(newBatchState.Dump(&state.DumpConfig{})), "\n", "", -1)
 		}},
@@ -744,15 +744,15 @@ func (lc *L2Chain) produceBatch(block *types.Block, genesisBatchStored bool) (*c
 
 // Returns the state of the chain at height
 // TODO make this cacheable
-func (lc *L2Chain) getChainStateAtBlock(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
+func (oc *ObscuroChain) getChainStateAtBlock(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
 	// We retrieve the batch of interest.
-	batch, err := lc.getBatch(*blockNumber)
+	batch, err := oc.getBatch(*blockNumber)
 	if err != nil {
 		return nil, err
 	}
 
 	// We get that of the chain at that height
-	blockchainState, err := lc.storage.CreateStateDB(*batch.Hash())
+	blockchainState, err := oc.storage.CreateStateDB(*batch.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
@@ -765,8 +765,8 @@ func (lc *L2Chain) getChainStateAtBlock(blockNumber *gethrpc.BlockNumber) (*stat
 }
 
 // Returns the whether the account is a contract or not at a certain height
-func (lc *L2Chain) isAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
-	chainState, err := lc.getChainStateAtBlock(blockNumber)
+func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
+	chainState, err := oc.getChainStateAtBlock(blockNumber)
 	if err != nil {
 		return false, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
@@ -776,14 +776,14 @@ func (lc *L2Chain) isAccountContractAtBlock(accountAddr gethcommon.Address, bloc
 
 // Validates and stores the rollup in a given block.
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
-func (lc *L2Chain) processRollups(block *common.L1Block) error {
+func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 	l1ParentHash := block.ParentHash()
-	currentHeadRollup, err := lc.storage.FetchHeadRollupForBlock(&l1ParentHash)
+	currentHeadRollup, err := oc.storage.FetchHeadRollupForBlock(&l1ParentHash)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not fetch current L2 head rollup")
 	}
 
-	rollups := lc.rollupExtractor.ExtractRollups(block, lc.storage)
+	rollups := oc.rollupExtractor.ExtractRollups(block, oc.storage)
 	sort.Slice(rollups, func(i, j int) bool {
 		// Ascending order sort.
 		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
@@ -795,7 +795,7 @@ func (lc *L2Chain) processRollups(block *common.L1Block) error {
 	}
 
 	for idx, rollup := range rollups {
-		if err = lc.checkSequencerSignature(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+		if err = oc.checkSequencerSignature(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
 			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
@@ -804,18 +804,18 @@ func (lc *L2Chain) processRollups(block *common.L1Block) error {
 			if idx != 0 {
 				previousRollup = rollups[idx-1]
 			}
-			if err = lc.checkRollupsCorrectlyChained(rollup, previousRollup); err != nil {
+			if err = oc.checkRollupsCorrectlyChained(rollup, previousRollup); err != nil {
 				return err
 			}
 		}
 
 		for _, batch := range rollup.Batches {
-			if err = lc.checkAndStoreBatch(batch); err != nil {
+			if err = oc.checkAndStoreBatch(batch); err != nil {
 				return fmt.Errorf("could not store batch. Cause: %w", err)
 			}
 		}
 
-		if err = lc.storage.StoreRollup(rollup); err != nil {
+		if err = oc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
 	}
@@ -826,7 +826,7 @@ func (lc *L2Chain) processRollups(block *common.L1Block) error {
 	}
 	if newHeadRollup != nil {
 		l1Head := block.Hash()
-		if err = lc.storage.UpdateHeadRollup(&l1Head, newHeadRollup.Hash()); err != nil {
+		if err = oc.storage.UpdateHeadRollup(&l1Head, newHeadRollup.Hash()); err != nil {
 			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 		}
 	}
@@ -838,7 +838,7 @@ func (lc *L2Chain) processRollups(block *common.L1Block) error {
 //   - Has a number exactly 1 higher than the previous rollup
 //   - Links to the previous rollup by hash
 //   - Has a first batch whose parent is the head batch of the previous rollup
-func (lc *L2Chain) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRollup *core.Rollup) error {
+func (oc *ObscuroChain) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRollup *core.Rollup) error {
 	if big.NewInt(0).Sub(rollup.Header.Number, previousRollup.Header.Number).Cmp(big.NewInt(1)) != 0 {
 		return fmt.Errorf("found gap in rollups between rollup %d and rollup %d",
 			previousRollup.Header.Number, rollup.Header.Number)
@@ -859,25 +859,25 @@ func (lc *L2Chain) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRol
 
 // Checks the batch. If we've not seen a batch at this height before, we store it. If we have seen a batch at this
 // height before, we validate it against the other received batch at the same height.
-func (lc *L2Chain) checkAndStoreBatch(batch *core.Batch) error {
+func (oc *ObscuroChain) checkAndStoreBatch(batch *core.Batch) error {
 	// We check the batch.
 	var txReceipts types.Receipts
 	// TODO - #718 - Determine what level of checking we should perform on the genesis batch.
 	if !batch.IsGenesis() {
 		var err error
-		txReceipts, err = lc.isInternallyValidBatch(batch)
+		txReceipts, err = oc.isInternallyValidBatch(batch)
 		if err != nil {
 			return fmt.Errorf("batch was invalid. Cause: %w", err)
 		}
 
 		// We check that we've stored the batch's parent.
-		if _, err = lc.storage.FetchBatch(batch.Header.ParentHash); err != nil {
+		if _, err = oc.storage.FetchBatch(batch.Header.ParentHash); err != nil {
 			return fmt.Errorf("could not retrieve parent batch. Cause: %w", err)
 		}
 	}
 
 	// If we've stored a batch at this height before, we ensure that it has the same transactions.
-	_, err := lc.storage.FetchBatchByHeight(batch.NumberU64())
+	_, err := oc.storage.FetchBatchByHeight(batch.NumberU64())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not fetch batch. Cause: %w", err)
 	}
@@ -890,11 +890,11 @@ func (lc *L2Chain) checkAndStoreBatch(batch *core.Batch) error {
 	// If we haven't stored the batch before, we store it and update the head batch for that L1 block.
 	// TODO - FetchBatch should return errutil.ErrNotFound for unstored batches, so we can handle that type of error
 	//  separately.
-	if _, err = lc.storage.FetchBatch(*batch.Hash()); err != nil {
-		if err = lc.storage.StoreBatch(batch, txReceipts); err != nil {
+	if _, err = oc.storage.FetchBatch(*batch.Hash()); err != nil {
+		if err = oc.storage.StoreBatch(batch, txReceipts); err != nil {
 			return fmt.Errorf("failed to store batch. Cause: %w", err)
 		}
-		if err = lc.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, txReceipts); err != nil {
+		if err = oc.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, txReceipts); err != nil {
 			return fmt.Errorf("could not store new L2 head. Cause: %w", err)
 		}
 	}
@@ -904,27 +904,27 @@ func (lc *L2Chain) checkAndStoreBatch(batch *core.Batch) error {
 
 // rollbackL2ToLatestValidBatch is called when the currHead's L1 proof block is no longer on the canonical fork
 // it will scan back through batch chain until it finds a batch associated with the canonical L1 chain
-func (lc *L2Chain) rollbackL2ToLatestValidBatch(newL1Head *types.Block) error {
-	currHead, err := lc.storage.FetchHeadBatch()
+func (oc *ObscuroChain) rollbackL2ToLatestValidBatch(newL1Head *types.Block) error {
+	currHead, err := oc.storage.FetchHeadBatch()
 	if err != nil {
 		return fmt.Errorf("l2 rollback after fork: unable to fetch head batch - %w", err)
 	}
 	latestValidBatch := currHead
 	// check if batch is tied to the new L1 head or an ancestor of it
-	for !lc.isBatchLinkedToCanonicalL1Block(latestValidBatch, newL1Head) {
+	for !oc.isBatchLinkedToCanonicalL1Block(latestValidBatch, newL1Head) {
 		if latestValidBatch.Header.Number.Cmp(big.NewInt(1)) <= 0 {
 			// reached genesis without finding a canonical L1 block, something has gone critically wrong
-			lc.logger.Crit("reached genesis batch without finding a batch linked to canonical L1 block, aborting...")
+			oc.logger.Crit("reached genesis batch without finding a batch linked to canonical L1 block, aborting...")
 		}
 		// if not then move to the parent batch to check if that is L1-canonical
-		latestValidBatch, err = lc.storage.FetchBatch(latestValidBatch.Header.ParentHash)
+		latestValidBatch, err = oc.storage.FetchBatch(latestValidBatch.Header.ParentHash)
 		if err != nil {
 			return fmt.Errorf("l2 rollback after fork: could not find parent batch - %w", err)
 		}
 	}
 	if latestValidBatch.Hash() != currHead.Hash() {
-		err := lc.storage.SetHeadBatchPointer(latestValidBatch)
-		lc.logger.Info("L2 chain head has been rolled back",
+		err := oc.storage.SetHeadBatchPointer(latestValidBatch)
+		oc.logger.Info("L2 chain head has been rolled back",
 			"height", latestValidBatch.Header.Number, latestValidBatch.Hash(), "hash", latestValidBatch.Hash(),
 			"prevHeight", currHead.Header.Number, "prevHash", currHead.Hash())
 		if err != nil {
@@ -934,12 +934,12 @@ func (lc *L2Chain) rollbackL2ToLatestValidBatch(newL1Head *types.Block) error {
 	return nil
 }
 
-func (lc *L2Chain) isBatchLinkedToCanonicalL1Block(batch *core.Batch, head *types.Block) bool {
-	l1ProofBlock, err := lc.storage.FetchBlock(batch.Header.L1Proof)
+func (oc *ObscuroChain) isBatchLinkedToCanonicalL1Block(batch *core.Batch, head *types.Block) bool {
+	l1ProofBlock, err := oc.storage.FetchBlock(batch.Header.L1Proof)
 	if err != nil {
 		return false // proof block couldn't be found for some reason
 	}
-	latestCommonAncestor, err := gethutil.LCA(l1ProofBlock, head, lc.storage)
+	latestCommonAncestor, err := gethutil.LCA(l1ProofBlock, head, oc.storage)
 	if err != nil {
 		return false // couldn't find common ancestor
 	}

@@ -22,7 +22,7 @@ func TestInvalidBlocksAreRejected(t *testing.T) {
 		t.Errorf("could not parse genesis JSON: %v", err)
 	}
 	logger := log.New(log.DeployerCmp, int(gethlog.LvlDebug), log.SysOut)
-	chain := L2Chain{l1Blockchain: NewL1Blockchain(genesisJSON, logger)}
+	chain := ObscuroChain{l1Blockchain: NewL1Blockchain(genesisJSON, logger)}
 
 	invalidHeaders := []types.Header{
 		{ParentHash: common.HexToHash("0x0")},                                                            // Unknown ancestor.
