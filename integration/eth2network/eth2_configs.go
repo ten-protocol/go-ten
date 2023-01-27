@@ -40,7 +40,7 @@ ALTAIR_FORK_VERSION: 0x20000090
 # Merge
 BELLATRIX_FORK_EPOCH: 4
 BELLATRIX_FORK_VERSION: 0x20000091
-TERMINAL_TOTAL_DIFFICULTY: 2
+TERMINAL_TOTAL_DIFFICULTY: 10
 
 # Time parameters
 SECONDS_PER_SLOT: 2
@@ -75,7 +75,7 @@ const baseGenesis = `{
       "period": 1,
       "epoch": 1000
     },
-    "terminalTotalDifficulty": 2
+    "terminalTotalDifficulty": 10
   },
   "difficulty": "1",
   "gasLimit": "30000000",

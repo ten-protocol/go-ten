@@ -589,7 +589,7 @@ func (h *host) waitForReceipt(txHash common.TxHash) error {
 	err = retry.Do(
 		func() error {
 			receipt, err = h.ethClient.TransactionReceipt(txHash)
-			return err
+			return fmt.Errorf("unable to get receipt for tx: %s - %w", txHash.Hex(), err)
 		},
 		retry.NewTimeoutStrategy(maxWaitForL1Receipt, retryIntervalForL1Receipt),
 	)
