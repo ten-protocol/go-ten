@@ -176,7 +176,10 @@ func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, erro
 func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error {
 	dbBatch := s.db.NewBatch()
 
-	if err := obscurorawdb.WriteL2HeadBatch(dbBatch, l1Head, *l2Head.Hash()); err != nil {
+	if err := obscurorawdb.SetL2HeadBatch(dbBatch, *l2Head.Hash()); err != nil {
+		return fmt.Errorf("could not write block state. Cause: %w", err)
+	}
+	if err := obscurorawdb.WriteL1ToL2BatchMapping(dbBatch, l1Head, *l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
@@ -194,6 +197,19 @@ func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Bat
 		return fmt.Errorf("could not write block logs. Cause: %w", err)
 	}
 
+	if err := dbBatch.Write(); err != nil {
+		return fmt.Errorf("could not save new head. Cause: %w", err)
+	}
+	return nil
+}
+
+func (s *storageImpl) SetHeadBatchPointer(l2Head *core.Batch) error {
+	dbBatch := s.db.NewBatch()
+
+	// We update the canonical hash of the batch at this height.
+	if err := obscurorawdb.SetL2HeadBatch(dbBatch, *l2Head.Hash()); err != nil {
+		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
+	}
 	if err := dbBatch.Write(); err != nil {
 		return fmt.Errorf("could not save new head. Cause: %w", err)
 	}
