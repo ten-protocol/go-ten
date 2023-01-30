@@ -111,7 +111,8 @@ func NewEth2Network(
 	}
 
 	// Write beacon config
-	err = os.WriteFile(prysmConfigPath, []byte(beaconConfig), 0o600)
+	beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID)
+	err = os.WriteFile(prysmConfigPath, []byte(beaconConf), 0o600)
 	if err != nil {
 		panic(err)
 	}
@@ -339,7 +340,9 @@ func (n *Eth2NetworkImpl) gethStartNode(executionPort, networkPort, httpPort, ws
 		"--http.api", "admin,miner,engine,personal,eth,net,web3,debug",
 		"--ws",
 		"--ws.port", fmt.Sprintf("%d", wsPort),
+		"--authrpc.addr", "0.0.0.0",
 		"--authrpc.port", fmt.Sprintf("%d", executionPort),
+		"--authrpc.jwtsecret", path.Join(dataDirPath, "geth", "jwtsecret"),
 		"--port", fmt.Sprintf("%d", networkPort),
 		"--networkid", fmt.Sprintf("%d", n.chainID),
 		"--syncmode", "full", // sync mode to download and test all blocks and txs
@@ -358,7 +361,9 @@ func (n *Eth2NetworkImpl) prysmGenerateGenesis() error {
 	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
 		"testnet", "generate-genesis",
-		"--num-validators", "64", "--output-ssz", n.prysmGenesisPath,
+		"--num-validators", "64",
+		"--output-ssz", n.prysmGenesisPath,
+		"--config-name", "interop",
 		"--chain-config-file", n.prysmConfigPath,
 	}
 	fmt.Printf("prysmGenerateGenesis: %s %s\n", n.prysmBinaryPath, strings.Join(args, " "))
@@ -375,10 +380,9 @@ func (n *Eth2NetworkImpl) prysmStartBeaconNode(executionPort, p2pPort, rpcPort i
 		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
 		"--rpc-port", fmt.Sprintf("%d", rpcPort),
 		"--p2p-udp-port", fmt.Sprintf("%d", p2pPort),
-		"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)),
+		"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)-1),
 		"--interop-genesis-state", n.prysmGenesisPath,
 		"--interop-eth1data-votes",
-		"--bootstrap-node", "",
 		"--chain-config-file", n.prysmConfigPath,
 		"--config-file", n.prysmConfigPath,
 		"--chain-id", fmt.Sprintf("%d", n.chainID),
@@ -404,6 +408,7 @@ func (n *Eth2NetworkImpl) prysmStartValidator(rpcPort int, nodeDataDir string) (
 		"--interop-num-validators", "64",
 		"--interop-start-index", "0",
 		"--force-clear-db",
+		"--disable-account-metrics",
 		"--beacon-rpc-gateway-provider", fmt.Sprintf("%d", rpcPort+100),
 		"--chain-config-file", n.prysmConfigPath,
 		"--config-file", n.prysmConfigPath,
@@ -428,7 +433,7 @@ func (n *Eth2NetworkImpl) waitForMergeEvent(startTime time.Time) error {
 		return err
 	}
 
-	for ; number != 2; time.Sleep(time.Second) {
+	for ; number != 10; time.Sleep(time.Second) {
 		number, err = dial.BlockNumber(context.Background())
 		if err != nil {
 			return err
@@ -514,6 +519,33 @@ func (n *Eth2NetworkImpl) gethImportEnodes(enodes []string) error {
 				return err
 			}
 		}
+		time.Sleep(time.Second)
 	}
 	return nil
+}
+
+func (n *Eth2NetworkImpl) prysmGetENR(nodeIdx int) (string, error) {
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet,
+		fmt.Sprintf("http://localhost:%d/eth/v1/node/identity", 4000+nodeIdx+100), nil)
+	if err != nil {
+		return "", err
+	}
+
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	var res map[string]interface{}
+	err = json.Unmarshal(body, &res)
+	if err != nil {
+		return "", err
+	}
+
+	return res["data"].(map[string]interface{})["enr"].(string), nil
 }

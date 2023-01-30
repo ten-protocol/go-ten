@@ -27,6 +27,7 @@ import (
 
 const (
 	_testBasePort = 18545
+	// TODO ensure it works with more than 1 node
 	_numTestNodes = 1
 )
 
@@ -130,7 +131,7 @@ func txsAreMinted(t *testing.T, wallets []wallet.Wallet) {
 	}
 
 	for i := 0; i < _numTestNodes; i++ {
-		ethClient := ethclients[0]
+		ethClient := ethclients[i]
 		w := wallets[i]
 
 		toAddr := datagenerator.RandomAddress()
@@ -147,12 +148,12 @@ func txsAreMinted(t *testing.T, wallets []wallet.Wallet) {
 		err = ethClient.SendTransaction(signedTx)
 		assert.Nil(t, err)
 
-		fmt.Printf("Created Tx: %s on node %d\n", signedTx.Hash().Hex(), 0)
+		fmt.Printf("Created Tx: %s on node %d\n", signedTx.Hash().Hex(), i)
 		// make sure it's mined into a block within an acceptable time and avail in all nodes
-		for j := 0; j < _numTestNodes; j++ {
+		for j := i; j < _numTestNodes; j++ {
 			fmt.Printf("Checking for tx receipt for %s on node %d\n", signedTx.Hash(), j)
 			var receipt *types.Receipt
-			for start := time.Now(); time.Since(start) < 30*time.Minute; time.Sleep(time.Second) {
+			for start := time.Now(); time.Since(start) < 30*time.Second; time.Sleep(time.Second) {
 				receipt, err = ethclients[j].TransactionReceipt(signedTx.Hash())
 				if err == nil {
 					break
