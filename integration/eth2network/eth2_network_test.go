@@ -57,7 +57,7 @@ func TestStartEth2Network(t *testing.T) {
 	// wait until the merge has happened
 	assert.Nil(t, network.Start())
 
-	defer network.Stop()
+	defer network.Stop() //nolint: errcheck
 
 	// test input configurations
 	t.Run("areConfigsUphold", func(t *testing.T) {
