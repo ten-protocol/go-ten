@@ -55,7 +55,9 @@ type HeadsAfterL1BlockStorage interface {
 	UpdateL1Head(l1Head common.L1RootHash) error
 	// UpdateHeadBatch updates the canonical L2 head batch for a given L1 block.
 	UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error
-	// UpdateHeadRollup updates the canonical L2 head rollup for a given L1 block.
+	// SetHeadBatchPointer updates the canonical L2 head batch for a given L1 block.
+	SetHeadBatchPointer(l2Head *core.Batch) error
+	// UpdateHeadRollup just updates the canonical L2 head batch, leaving data untouched (used to rewind after L1 fork or data corruption)
 	UpdateHeadRollup(l1Head *common.L1RootHash, l2Head *common.L2RootHash) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)

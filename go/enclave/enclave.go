@@ -60,7 +60,7 @@ type enclaveImpl struct {
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
-	chain *l2chain.L2Chain
+	chain *l2chain.ObscuroChain
 
 	txCh   chan *common.L2Tx
 	exitCh chan bool
