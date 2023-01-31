@@ -129,7 +129,6 @@ func (b *BatchHeader) ToRollupHeader(parentRollupHeader *RollupHeader) *RollupHe
 	}
 
 	// We set the parent hash to the genesis hash, or to the parent hash if one is provided.
-	// todo - joel - is this the correct handling of the genesis rollup?
 	header.ParentHash = L2RootHash{}
 	header.Number = big.NewInt(int64(L2GenesisHeight))
 	if parentRollupHeader != nil {
