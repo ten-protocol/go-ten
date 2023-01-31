@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -27,7 +26,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -189,58 +187,6 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	return height
 }
 
-func ExtractCrossChainDataFromEthereumChain(startBlock *types.Block, endBlock *types.Block, node ethadapter.EthClient, s *Simulation) (*big.Int, uint64) {
-	client := node.EthClient()
-	if client == nil {
-		return nil, 0
-	}
-
-	messageBusABI, err := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	if err != nil {
-		panic(err) // panic?
-	}
-
-	eventTopic := messageBusABI.Events["LogMessagePublished"].ID
-	var topics [][]gethcommon.Hash
-	topics = append(topics, []gethcommon.Hash{eventTopic})
-
-	logs, err := node.EthClient().FilterLogs(context.Background(), ethereum.FilterQuery{
-		FromBlock: startBlock.Number(),
-		ToBlock:   endBlock.Number(),
-		Topics:    topics,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	contractAbi, err := abi.JSON(strings.NewReader(erc20.EthERC20MetaData.ABI))
-	if err != nil {
-		panic(err)
-	}
-
-	events := make([]*MessageBus.MessageBusLogMessagePublished, 0)
-	totalDeposited := big.NewInt(0)
-	for _, log := range logs {
-		var event MessageBus.MessageBusLogMessagePublished
-		err := messageBusABI.UnpackIntoInterface(&event, "LogMessagePublished", log.Data)
-		if err != nil { // shouldn't happen since we query by event type so we shouldn't have foreign events
-			panic(err)
-		}
-		events = append(events, &event)
-
-		transfer := map[string]interface{}{}
-		err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, event.Payload) // can't figure out how to unpack it without cheating, geth is kinda clunky
-		if err != nil {
-			panic(err)
-		}
-
-		amount := transfer["amount"].(*big.Int)
-		totalDeposited = totalDeposited.Add(totalDeposited, amount)
-	}
-
-	return totalDeposited, uint64(len(events))
-}
-
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
 // between the start block and the end block.
 func ExtractDataFromEthereumChain(
@@ -255,7 +201,7 @@ func ExtractDataFromEthereumChain(
 	totalDeposited := big.NewInt(0)
 
 	blockchain := node.BlocksBetween(startBlock, endBlock)
-	succesfulDeposits := uint64(0)
+	successfulDeposits := uint64(0)
 	for _, block := range blockchain {
 		for _, tx := range block.Transactions() {
 			t := s.Params.ERC20ContractLib.DecodeTx(tx)
@@ -272,7 +218,7 @@ func ExtractDataFromEthereumChain(
 				if receipt, err := node.TransactionReceipt(tx.Hash()); err == nil && receipt.Status == 1 {
 					deposits = append(deposits, tx.Hash())
 					totalDeposited.Add(totalDeposited, l1tx.Amount)
-					succesfulDeposits++
+					successfulDeposits++
 				}
 			case *ethadapter.L1RollupTx:
 				r, err := common.DecodeRollup(l1tx.Rollup)
@@ -288,7 +234,7 @@ func ExtractDataFromEthereumChain(
 			}
 		}
 	}
-	return deposits, rollups, totalDeposited, len(blockchain), succesfulDeposits
+	return deposits, rollups, totalDeposited, len(blockchain), successfulDeposits
 }
 
 // Check all the injected L2 transactions were included in the rollups.

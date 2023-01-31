@@ -761,7 +761,7 @@ func (oc *ObscuroChain) produceBatch(block *types.Block, genesisBatchStored bool
 		oc.logger.Crit("Failed to extract batch proof that should exist!")
 	}
 
-	batch.Header.LatestInboudCrossChainHash = crossChainBind.Hash()
+	batch.Header.LatestInboundCrossChainHash = crossChainBind.Hash()
 	batch.Header.LatestInboundCrossChainHeight = crossChainBind.Number()
 
 	receipts := allReceipts(txReceipts, depositReceipts)

@@ -26,7 +26,7 @@ func RandomBatch(block *types.Block) common.ExtBatch {
 
 	if block != nil {
 		extBatch.Header.LatestInboundCrossChainHeight = block.Number()
-		extBatch.Header.LatestInboudCrossChainHash = block.Hash()
+		extBatch.Header.LatestInboundCrossChainHash = block.Hash()
 	}
 
 	return extBatch
