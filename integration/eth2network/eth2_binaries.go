@@ -100,6 +100,7 @@ func fileExists(filename string) bool {
 }
 
 func downloadFile(filepath string, url string) error {
+	fmt.Printf("Downloading: %s\n", url)
 	// Create the file
 	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o777)
 	if err != nil {

@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	_testBasePort = 18545
+	_testBasePort = 18000
 	// TODO ensure it works with more than 1 node
 	_numTestNodes = 1
 )
@@ -49,6 +49,7 @@ func TestStartEth2Network(t *testing.T) {
 		_testBasePort+100,
 		_testBasePort+200,
 		_testBasePort+300,
+		_testBasePort+400,
 		chainID,
 		_numTestNodes,
 		1,

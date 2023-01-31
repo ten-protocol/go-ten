@@ -53,7 +53,7 @@ SLOTS_PER_EPOCH: 2
 DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
 `
 
-const baseGenesis = `{
+const _baseGenesis = `{
   "config": {
     "ChainName": "l1_chain",
     "chainId": 32382,
@@ -95,7 +95,7 @@ const baseGenesis = `{
 func generateGenesis(blockTimeSecs int, chainID int, signerAddrs, prefundedAddrs []string) (string, error) {
 	var genesisJSON map[string]interface{}
 
-	err := json.Unmarshal([]byte(baseGenesis), &genesisJSON)
+	err := json.Unmarshal([]byte(_baseGenesis), &genesisJSON)
 	if err != nil {
 		return "", err
 	}

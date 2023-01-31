@@ -25,6 +25,7 @@ const (
 	_prysmBeaconChainFileNameVersion = "beacon-chain-" + _prysmVersion
 	_prysmCTLFileNameVersion         = "prysmctl-" + _prysmVersion
 	_prysmValidatorFileNameVersion   = "validator-" + _prysmVersion
+	_prysmBeaconP2PPort              = 13000
 )
 
 type Impl struct {
@@ -42,12 +43,14 @@ type Impl struct {
 	gethHTTPPorts            []int
 	gethWSPorts              []int
 	gethNetworkPorts         []int
-	prysmExecPorts           []int
+	gethAuthRPCPorts         []int
+	prysmBeaconHTTPPorts     []int
 	gethProcesses            []*exec.Cmd
 	prysmBeaconProcesses     []*exec.Cmd
 	prysmValidatorProcesses  []*exec.Cmd
 	gethLogFile              io.Writer
-	prysmLogFile             io.Writer
+	prysmBeaconLogFile       io.Writer
+	prysmValidtorLogFile     io.Writer
 	preFundedMinerAddrs      []string
 	preFundedMinerPKs        []string
 	gethGenesisBytes         []byte
@@ -63,8 +66,9 @@ func NewEth2Network(
 	binDir string,
 	gethHTTPPortStart int,
 	gethWSPortStart int,
-	prysmExecPortStart int,
+	gethAuthRPCPortStart int,
 	gethNetworkPortStart int,
+	prysmBeaconHTTPPortStart int,
 	chainID int,
 	numNodes int,
 	blockTimeSecs int,
@@ -79,7 +83,8 @@ func NewEth2Network(
 	prysmGenesisPath := path.Join(buildDir, "genesis.ssz")
 	prysmConfigPath := path.Join(buildDir, "prysm_chain_config.yml")
 	gethLogPath := path.Join(buildDir, "geth_logs.txt")
-	prysmLogPath := path.Join(buildDir, "prysm_logs.txt")
+	prysmBeaconLogPath := path.Join(buildDir, "prysm_beacon_logs.txt")
+	prysmValidatorLogPath := path.Join(buildDir, "prysm_validator_logs.txt")
 
 	gethBinaryPath := path.Join(binDir, _gethFileNameVersion)
 	prysmBeaconBinaryPath := path.Join(binDir, _prysmBeaconChainFileNameVersion)
@@ -125,14 +130,16 @@ func NewEth2Network(
 	dataDirs := make([]string, numNodes)
 	gethHTTPPorts := make([]int, numNodes)
 	gethWSPorts := make([]int, numNodes)
-	prysmExecPorts := make([]int, numNodes)
+	gethAuthRPCPorts := make([]int, numNodes)
 	gethNetworkPorts := make([]int, numNodes)
+	prysmBeaconHTTPPorts := make([]int, numNodes)
 	for i := 0; i < numNodes; i++ {
 		dataDirs[i] = path.Join(buildDir, "n"+strconv.Itoa(i))
 		gethHTTPPorts[i] = gethHTTPPortStart + i
 		gethWSPorts[i] = gethWSPortStart + i
-		prysmExecPorts[i] = prysmExecPortStart + i
+		gethAuthRPCPorts[i] = gethAuthRPCPortStart + i
 		gethNetworkPorts[i] = gethNetworkPortStart + i
+		prysmBeaconHTTPPorts[i] = prysmBeaconHTTPPortStart + i
 	}
 
 	// create the log files
@@ -140,7 +147,11 @@ func NewEth2Network(
 	if err != nil {
 		panic(err)
 	}
-	prysmLogFile, err := os.Create(prysmLogPath)
+	prysmBeaconLogFile, err := os.Create(prysmBeaconLogPath)
+	if err != nil {
+		panic(err)
+	}
+	prysmValidatorLogFile, err := os.Create(prysmValidatorLogPath)
 	if err != nil {
 		panic(err)
 	}
@@ -156,7 +167,8 @@ func NewEth2Network(
 		gethHTTPPorts:            gethHTTPPorts,
 		gethWSPorts:              gethWSPorts,
 		gethNetworkPorts:         gethNetworkPorts,
-		prysmExecPorts:           prysmExecPorts,
+		gethAuthRPCPorts:         gethAuthRPCPorts,
+		prysmBeaconHTTPPorts:     prysmBeaconHTTPPorts,
 		gethBinaryPath:           gethBinaryPath,
 		prysmBinaryPath:          prysmBinaryPath,
 		prysmBeaconBinaryPath:    prysmBeaconBinaryPath,
@@ -165,7 +177,8 @@ func NewEth2Network(
 		gethGenesisPath:          gethGenesisPath,
 		prysmGenesisPath:         prysmGenesisPath,
 		gethLogFile:              gethLogFile,
-		prysmLogFile:             prysmLogFile,
+		prysmBeaconLogFile:       prysmBeaconLogFile,
+		prysmValidtorLogFile:     prysmValidatorLogFile,
 		preFundedMinerAddrs:      preFundedMinerAddrs,
 		preFundedMinerPKs:        preFundedMinerPKs,
 		gethGenesisBytes:         []byte(genesisStr),
@@ -195,7 +208,7 @@ func (n *Impl) Start() error {
 		nodeID := i
 		go func() {
 			n.gethProcesses[nodeID], err = n.gethStartNode(
-				n.prysmExecPorts[nodeID],
+				n.gethAuthRPCPorts[nodeID],
 				n.gethNetworkPorts[nodeID],
 				n.gethHTTPPorts[nodeID],
 				n.gethWSPorts[nodeID],
@@ -254,11 +267,17 @@ func (n *Impl) Start() error {
 		nodeID := i
 		dataDir := nodeDataDir
 		go func() {
-			n.prysmBeaconProcesses[nodeID], err = n.prysmStartBeaconNode(n.prysmExecPorts[nodeID], 12000+nodeID, 4000+nodeID, dataDir)
+			n.prysmBeaconProcesses[nodeID], err = n.prysmStartBeaconNode(
+				n.gethAuthRPCPorts[nodeID],
+				n.prysmBeaconHTTPPorts[nodeID],
+				_prysmBeaconP2PPort+nodeID,
+				dataDir,
+			)
 			if err != nil {
 				panic(err)
 			}
 		}()
+		time.Sleep(2 * time.Second)
 	}
 
 	// start each of the validator nodes
@@ -266,7 +285,7 @@ func (n *Impl) Start() error {
 		nodeID := i
 		dataDir := nodeDataDir
 		go func() {
-			n.prysmValidatorProcesses[nodeID], err = n.prysmStartValidator(4000+nodeID, dataDir)
+			n.prysmValidatorProcesses[nodeID], err = n.prysmStartValidator(n.prysmBeaconHTTPPorts[nodeID], dataDir)
 			if err != nil {
 				panic(err)
 			}
@@ -336,9 +355,13 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 	args := []string{
 		_dataDirFlag, dataDirPath,
 		"--http",
+		"--http.addr", "0.0.0.0",
+		"--http.vhosts", "*",
 		"--http.port", fmt.Sprintf("%d", httpPort),
+		"--http.corsdomain", "*",
 		"--http.api", "admin,miner,engine,personal,eth,net,web3,debug",
 		"--ws",
+		"--ws.addr", "0.0.0.0",
 		"--ws.port", fmt.Sprintf("%d", wsPort),
 		"--authrpc.addr", "0.0.0.0",
 		"--authrpc.port", fmt.Sprintf("%d", executionPort),
@@ -361,63 +384,65 @@ func (n *Impl) prysmGenerateGenesis() error {
 	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
 		"testnet", "generate-genesis",
-		"--num-validators", "64",
+		"--num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--output-ssz", n.prysmGenesisPath,
 		"--config-name", "interop",
 		"--chain-config-file", n.prysmConfigPath,
 	}
 	fmt.Printf("prysmGenerateGenesis: %s %s\n", n.prysmBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.prysmBinaryPath, args...) //nolint
-	cmd.Stdout = n.prysmLogFile
-	cmd.Stderr = n.prysmLogFile
+	cmd.Stdout = n.prysmBeaconLogFile
+	cmd.Stderr = n.prysmBeaconLogFile
 
 	return cmd.Run()
 }
 
-func (n *Impl) prysmStartBeaconNode(executionPort, p2pPort, rpcPort int, nodeDataDir string) (*exec.Cmd, error) {
+func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeDataDir string) (*exec.Cmd, error) {
 	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
+		"--interop-eth1data-votes",
+		"--accept-terms-of-use",
 		"--rpc-port", fmt.Sprintf("%d", rpcPort),
 		"--p2p-udp-port", fmt.Sprintf("%d", p2pPort),
 		"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)-1),
 		"--interop-genesis-state", n.prysmGenesisPath,
-		"--interop-eth1data-votes",
 		"--chain-config-file", n.prysmConfigPath,
 		"--config-file", n.prysmConfigPath,
 		"--chain-id", fmt.Sprintf("%d", n.chainID),
-		"--grpc-gateway-port", fmt.Sprintf("%d", rpcPort+100),
-		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", executionPort),
-		"--accept-terms-of-use",
+		"--grpc-gateway-corsdomain", "*",
+		"--grpc-gateway-port", fmt.Sprintf("%d", rpcPort+10),
+		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethAuthRPCPort),
 		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
 	}
 
 	fmt.Printf("prysmStartBeaconNode: %s %s\n", n.prysmBeaconBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.prysmBeaconBinaryPath, args...) //nolint
-	cmd.Stdout = n.prysmLogFile
-	cmd.Stderr = n.prysmLogFile
+	cmd.Stdout = n.prysmBeaconLogFile
+	cmd.Stderr = n.prysmBeaconLogFile
 
 	return cmd, cmd.Start()
 }
 
-func (n *Impl) prysmStartValidator(rpcPort int, nodeDataDir string) (*exec.Cmd, error) {
+func (n *Impl) prysmStartValidator(prysmBeaconHTTPPort int, nodeDataDir string) (*exec.Cmd, error) {
 	// full command list at https://docs.prylabs.network/docs/prysm-usage/parameters
 	args := []string{
 		"--datadir", path.Join(nodeDataDir, "prysm", "validator"),
-		"--accept-terms-of-use",
-		"--interop-num-validators", "64",
+		"--beacon-rpc-gateway-provider", fmt.Sprintf("127.0.0.1:%d", prysmBeaconHTTPPort+10),
+		"--beacon-rpc-provider", fmt.Sprintf("127.0.0.1:%d", prysmBeaconHTTPPort),
+		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--interop-start-index", "0",
-		"--force-clear-db",
-		"--disable-account-metrics",
-		"--beacon-rpc-gateway-provider", fmt.Sprintf("%d", rpcPort+100),
 		"--chain-config-file", n.prysmConfigPath,
 		"--config-file", n.prysmConfigPath,
+		"--force-clear-db",
+		"--disable-account-metrics",
+		"--accept-terms-of-use",
 	}
 
 	fmt.Printf("prysmStartValidator: %s %s\n", n.prysmValidatorBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.prysmValidatorBinaryPath, args...) //nolint
-	cmd.Stdout = n.prysmLogFile
-	cmd.Stderr = n.prysmLogFile
+	cmd.Stdout = n.prysmValidtorLogFile
+	cmd.Stderr = n.prysmValidtorLogFile
 
 	return cmd, cmd.Start()
 }
@@ -433,7 +458,7 @@ func (n *Impl) waitForMergeEvent(startTime time.Time) error {
 		return err
 	}
 
-	for ; number != 10; time.Sleep(time.Second) {
+	for ; number != 7; time.Sleep(time.Second) {
 		number, err = dial.BlockNumber(context.Background())
 		if err != nil {
 			return err
