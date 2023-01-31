@@ -277,9 +277,9 @@ func (n *Impl) Start() error {
 				panic(err)
 			}
 		}()
-		time.Sleep(2 * time.Second)
 	}
 
+	time.Sleep(5 * time.Second)
 	// start each of the validator nodes
 	for i, nodeDataDir := range n.dataDirs {
 		nodeID := i
@@ -406,6 +406,7 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 		"--rpc-port", fmt.Sprintf("%d", rpcPort),
 		"--p2p-udp-port", fmt.Sprintf("%d", p2pPort),
 		"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)-1),
+		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--interop-genesis-state", n.prysmGenesisPath,
 		"--chain-config-file", n.prysmConfigPath,
 		"--config-file", n.prysmConfigPath,
@@ -414,6 +415,8 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 		"--grpc-gateway-port", fmt.Sprintf("%d", rpcPort+10),
 		"--execution-endpoint", fmt.Sprintf("http://127.0.0.1:%d", gethAuthRPCPort),
 		"--jwt-secret", path.Join(nodeDataDir, "geth", "jwtsecret"),
+		"--contract-deployment-block", "0",
+		"--verbosity", "debug",
 	}
 
 	fmt.Printf("prysmStartBeaconNode: %s %s\n", n.prysmBeaconBinaryPath, strings.Join(args, " "))

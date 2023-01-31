@@ -26,7 +26,8 @@ miner.start();
 console.log("Miner Started");
 `
 
-const _beaconConfig = `CONFIG_NAME: interop
+const _beaconConfig = `
+CONFIG_NAME: interop
 PRESET_BASE: interop
 
 DEPOSIT_CHAIN_ID: %d
@@ -34,7 +35,7 @@ DEPOSIT_NETWORK_ID: %d
 
 # Genesis
 GENESIS_FORK_VERSION: 0x20000089
-GENESIS_DELAY: 1
+
 
 # Altair
 ALTAIR_FORK_EPOCH: 2

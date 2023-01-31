@@ -68,7 +68,7 @@ func EnsureBinariesExist() (string, error) {
 			return "", err
 		}
 
-		fmt.Printf("Downloaded -  %s\n", _gethFileNameVersion)
+		fmt.Printf("Downloaded - %s\n", _gethFileNameVersion)
 	}
 
 	// download prysm files
