@@ -777,7 +777,7 @@ func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address,
 // Validates and stores the rollup in a given block.
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
 func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
-	latestRollup, err := oc.getLatestRollup(block)
+	latestRollup, err := oc.getLatestRollupBeforeBlock(block)
 	if err != nil {
 		return fmt.Errorf("could not retrieve latest rollup for block. Cause: %w", err)
 	}
@@ -828,7 +828,7 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 }
 
 // Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
-func (oc *ObscuroChain) getLatestRollup(block *common.L1Block) (*core.Rollup, error) {
+func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
 	for {
 		// We've reached the genesis block, so we cannot go back any further.
 		if block.Number().Cmp(big.NewInt(0)) == 0 {
