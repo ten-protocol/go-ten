@@ -378,6 +378,7 @@ func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *bl
 	// next L2 head batch and rollup in the chain.
 	var producedBatch *core.Batch
 	var producedRollup *core.Rollup
+	// todo - joel - use field to store whether we're waiting for a rollup to come back, and which hash
 	if oc.nodeType == common.Sequencer && ingestionType.isLatest && (rollupsInBlock || !genesisBatchAlreadyStored) {
 		l2Head, l2HeadTxReceipts, err = oc.produceAndStoreBatch(block, genesisBatchAlreadyStored)
 		if err != nil {
