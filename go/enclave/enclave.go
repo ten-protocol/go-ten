@@ -243,6 +243,9 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 
 	// We prepare the block submission response.
 	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch, producedRollup)
+	if blockSubmissionResponse.ProducedRollup != nil {
+		println("jjj produced a rollup")
+	}
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	// We remove any transactions considered immune to re-orgs from the mempool.

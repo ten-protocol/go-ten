@@ -341,35 +341,45 @@ func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *bl
 		}
 	}
 
+	if oc.nodeType == common.Sequencer {
+		println("jjj here 1")
+	}
+
 	// We process the rollups, updating the head rollup associated with the L1 block as we go.
-	if err := oc.processRollups(block); err != nil {
+	rollupsInBlock, err := oc.processRollups(block)
+	if err != nil {
 		// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
 		oc.logger.Error("could not process rollups", log.ErrKey, err)
 	}
 
+	if oc.nodeType == common.Sequencer && rollupsInBlock {
+		println("jjj here 2")
+	}
+
 	// We determine whether we have produced a genesis batch yet.
-	genesisBatchStored := true
+	genesisBatchAlreadyStored := true
 	l2Head, err := oc.storage.FetchHeadBatch()
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
 		}
-		genesisBatchStored = false
+		genesisBatchAlreadyStored = false
 	}
 
 	// If there is an L2 head, we retrieve its stored receipts.
 	var l2HeadTxReceipts types.Receipts
-	if genesisBatchStored {
+	if genesisBatchAlreadyStored {
 		if l2HeadTxReceipts, err = oc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
 			return nil, nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
 		}
 	}
 
-	// If we're the sequencer and we're on the latest block, we produce a new L2 head to replace the old one.
+	// If we're the sequencer and we're on the latest block and the block contained one or more rollups, we produce the
+	// next L2 head batch and rollup in the chain.
 	var producedBatch *core.Batch
 	var producedRollup *core.Rollup
-	if oc.nodeType == common.Sequencer && ingestionType.isLatest {
-		l2Head, l2HeadTxReceipts, err = oc.produceAndStoreBatch(block, genesisBatchStored)
+	if oc.nodeType == common.Sequencer && ingestionType.isLatest && (rollupsInBlock || !genesisBatchAlreadyStored) {
+		l2Head, l2HeadTxReceipts, err = oc.produceAndStoreBatch(block, genesisBatchAlreadyStored)
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
 		}
@@ -821,11 +831,11 @@ func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address,
 
 // Validates and stores the rollup in a given block.
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
-func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
+func (oc *ObscuroChain) processRollups(block *common.L1Block) (bool, error) {
 	l1ParentHash := block.ParentHash()
 	currentHeadRollup, err := oc.storage.FetchHeadRollupForBlock(&l1ParentHash)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not fetch current L2 head rollup")
+		return false, fmt.Errorf("could not fetch current L2 head rollup")
 	}
 
 	rollups := oc.rollupExtractor.ExtractRollups(block, oc.storage)
@@ -836,12 +846,13 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 
 	// If this is the first rollup we've ever received, we check that it's the genesis rollup.
 	if currentHeadRollup == nil && len(rollups) != 0 && !rollups[0].IsGenesis() {
-		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
+		return false, fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
 	}
 
 	for idx, rollup := range rollups {
+		println(fmt.Sprintf("jjj in block %d processing rollup %d with hash %s", block.NumberU64(), rollup.NumberU64(), rollup.Hash()))
 		if err = oc.checkSequencerSignature(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
-			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
+			return false, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
 		if !rollup.IsGenesis() {
@@ -850,33 +861,31 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 				previousRollup = rollups[idx-1]
 			}
 			if err = oc.checkRollupsCorrectlyChained(rollup, previousRollup); err != nil {
-				return err
+				panic(fmt.Errorf("badly chained: %v", err)) // todo - joel - revert
 			}
 		}
 
 		for _, batch := range rollup.Batches {
 			if err = oc.checkAndStoreBatch(batch); err != nil {
-				return fmt.Errorf("could not store batch. Cause: %w", err)
+				return false, fmt.Errorf("could not store batch. Cause: %w", err)
 			}
 		}
 
 		if err = oc.storage.StoreRollup(rollup); err != nil {
-			return fmt.Errorf("could not store rollup. Cause: %w", err)
+			return false, fmt.Errorf("could not store rollup. Cause: %w", err)
+		}
+
+		currentHeadRollup = rollup
+	}
+
+	if currentHeadRollup != nil {
+		blockHash := block.Hash()
+		if err = oc.storage.UpdateHeadRollup(&blockHash, currentHeadRollup.Hash()); err != nil {
+			return false, fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
 		}
 	}
 
-	newHeadRollup := currentHeadRollup
-	if len(rollups) > 0 {
-		newHeadRollup = rollups[len(rollups)-1]
-	}
-	if newHeadRollup != nil {
-		l1Head := block.Hash()
-		if err = oc.storage.UpdateHeadRollup(&l1Head, newHeadRollup.Hash()); err != nil {
-			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
-		}
-	}
-
-	return nil
+	return len(rollups) > 0, nil
 }
 
 // Checks that the rollup:
@@ -894,7 +903,7 @@ func (oc *ObscuroChain) checkRollupsCorrectlyChained(rollup *core.Rollup, previo
 			rollup.Header.Number, previousRollup.Header.Number)
 	}
 
-	if len(rollup.Batches) != 0 && previousRollup.Header.HeadBatchHash != rollup.Batches[0].Header.ParentHash {
+	if len(rollup.Batches) != 0 && previousRollup.Batches[len(previousRollup.Batches)-1].Hash().Hex() != rollup.Batches[0].Header.ParentHash.Hex() {
 		return fmt.Errorf("found gap in rollup batches. Batches in rollup %d did not chain to batches in rollup %d",
 			rollup.Header.Number, previousRollup.Header.Number)
 	}
