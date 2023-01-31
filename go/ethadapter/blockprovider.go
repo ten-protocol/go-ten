@@ -153,11 +153,11 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(ctx context.Context, fromHeig
 func (e *EthBlockProvider) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block, error) {
 	blk, err := e.ethClient.BlockByHash(blkHash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to fetch L1 block with hash=%s - %w", blkHash, err)
 	}
 	canonAtSameHeight, err := e.ethClient.BlockByNumber(blk.Number())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to fetch L1 block at height=%d - %w", blk.Number(), err)
 	}
 	if blk.Hash() != canonAtSameHeight.Hash() {
 		return e.latestCanonAncestor(blk.ParentHash())
