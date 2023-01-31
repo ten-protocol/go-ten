@@ -209,7 +209,7 @@ func headerToMap(header *common.BatchHeader) map[string]interface{} {
 		"agg":                     header.Agg,
 		"l1Proof":                 header.L1Proof,
 		"crossChainMessages":      header.CrossChainMessages,
-		"inboundCrossChainHash":   header.LatestInboudCrossChainHash,
+		"inboundCrossChainHash":   header.LatestInboundCrossChainHash,
 		"inboundCrossChainHeight": header.LatestInboundCrossChainHeight,
 	}
 }

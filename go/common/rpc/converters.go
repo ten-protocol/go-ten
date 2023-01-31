@@ -187,7 +187,7 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg { //
 		MixDigest:                   header.MixDigest.Bytes(),
 		BaseFee:                     baseFee,
 		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
-		LatestInboundCrossChainHash: header.LatestInboudCrossChainHash.Bytes(),
+		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
 	}
 
 	if header.LatestInboundCrossChainHeight != nil {
@@ -246,7 +246,7 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader { 
 		MixDigest:                     gethcommon.BytesToHash(header.MixDigest),
 		BaseFee:                       big.NewInt(int64(header.BaseFee)),
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
-		LatestInboudCrossChainHash:    gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
+		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
 		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),
 	}
 }
