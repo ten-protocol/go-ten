@@ -32,5 +32,5 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build
 
 # expose the http and the ws ports to the host
-EXPOSE 8025 8026 9000 9001
-ENTRYPOINT ["/home/obscuro/go-obscuro/integration/eth2network/main/main", "--numNodes=1", "--startPort=8000","--websocketStartPort=9000"]
+EXPOSE 12000 12100 12200 12300 12400
+ENTRYPOINT ["/home/obscuro/go-obscuro/integration/eth2network/main/main", "--numNodes=1"]
