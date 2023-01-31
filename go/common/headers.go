@@ -99,17 +99,16 @@ func (b *BatchHeader) Hash() L2RootHash {
 	return hash
 }
 
-func (b *BatchHeader) ToRollupHeader() *RollupHeader {
-	return &RollupHeader{
+func (b *BatchHeader) ToRollupHeader(parentRollupHeader *RollupHeader) *RollupHeader {
+	header := &RollupHeader{
+		// The fields copied directly from the batch header.
 		ParentHash:                    b.ParentHash,
 		UncleHash:                     b.UncleHash,
 		Coinbase:                      b.Coinbase,
 		Root:                          b.Root,
-		HeadBatchHash:                 b.TxHash,
 		ReceiptHash:                   b.ReceiptHash,
 		Bloom:                         b.Bloom,
 		Difficulty:                    b.Difficulty,
-		Number:                        b.Number,
 		GasLimit:                      b.GasLimit,
 		GasUsed:                       b.GasUsed,
 		Time:                          b.Time,
@@ -124,7 +123,21 @@ func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 		CrossChainMessages:            b.CrossChainMessages,
 		LatestInboundCrossChainHash:   b.LatestInboudCrossChainHash,
 		LatestInboundCrossChainHeight: b.LatestInboundCrossChainHeight,
+
+		// The fields that differ from the batch header.
+		HeadBatchHash: b.TxHash,
 	}
+
+	// We set the parent hash to the genesis hash, or to the parent hash if one is provided.
+	// todo - joel - is this the correct handling of the genesis rollup?
+	header.ParentHash = L2RootHash{}
+	header.Number = big.NewInt(int64(L2GenesisHeight))
+	if parentRollupHeader != nil {
+		header.ParentHash = parentRollupHeader.Hash()
+		header.Number = big.NewInt(0).Add(parentRollupHeader.Number, big.NewInt(1))
+	}
+
+	return header
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
