@@ -40,9 +40,5 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Note: ego uses a virtual file system mount to map data directory to /data inside the enclave,
 #   for this non-ego build I'm using /data as the data dir to preserve /data folder in paths inside enclave
 #
-FROM system
-WORKDIR /home/obscuro/go-obscuro/go/enclave/main
-COPY --from=build-enclave \
-    /home/obscuro/go-obscuro/go/enclave/main /home/obscuro/go-obscuro/go/enclave/main
 
 EXPOSE 11000
