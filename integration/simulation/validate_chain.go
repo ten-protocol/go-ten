@@ -184,6 +184,8 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		}
 	}
 
+	checkInjectedTxsInRollups(t, s, nodeIdx, rollups)
+
 	return height
 }
 
@@ -287,6 +289,49 @@ func ExtractDataFromEthereumChain(
 		}
 	}
 	return deposits, rollups, totalDeposited, len(blockchain), succesfulDeposits
+}
+
+// Check all the injected L2 transactions were included in the rollups.
+func checkInjectedTxsInRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
+	rollupTxs := make(map[common.TxHash]bool)
+	for _, rollup := range rollups {
+		for _, batch := range rollup.Batches {
+			for _, tx := range batch.TxHashes {
+				rollupTxs[tx] = true
+			}
+		}
+	}
+
+	transferTxs, withdrawalTxs, nativeTransferTxs := s.TxInjector.TxTracker.GetL2Transactions()
+	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := 0, 0, 0
+	for _, tx := range transferTxs {
+		if _, found := rollupTxs[tx.Hash()]; !found {
+			notFoundTransfers++
+		}
+	}
+	for _, tx := range withdrawalTxs {
+		if _, found := rollupTxs[tx.Hash()]; !found {
+			notFoundWithdrawals++
+		}
+	}
+	for _, tx := range nativeTransferTxs {
+		if _, found := rollupTxs[tx.Hash()]; !found {
+			notFoundNativeTransfers++
+		}
+	}
+
+	if notFoundTransfers > 0 {
+		t.Errorf("Node %d: %d out of %d Transfer Txs not found in rollups",
+			nodeIdx, notFoundTransfers, len(s.TxInjector.TxTracker.TransferL2Transactions))
+	}
+	if notFoundWithdrawals > 0 {
+		t.Errorf("Node %d: %d out of %d Withdrawal Txs not found in rollups",
+			nodeIdx, notFoundWithdrawals, len(s.TxInjector.TxTracker.WithdrawalL2Transactions))
+	}
+	if notFoundNativeTransfers > 0 {
+		t.Errorf("Node %d: %d out of %d Native Transfer Txs not found in rollups",
+			nodeIdx, notFoundNativeTransfers, len(s.TxInjector.TxTracker.NativeValueTransferL2Transactions))
+	}
 }
 
 func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {

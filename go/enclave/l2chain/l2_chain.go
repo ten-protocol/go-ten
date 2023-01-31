@@ -95,22 +95,22 @@ func New(
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Batch, error) {
+func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Batch, *core.Rollup, error) {
 	oc.blockProcessingMutex.Lock()
 	defer oc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
 	l1IngestionType, err := oc.updateL1State(block, receipts, isLatest)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// We update the L1 and L2 chain heads.
-	newL2Head, producedBatch, err := oc.updateL1AndL2Heads(&block, l1IngestionType)
+	newL2Head, producedBatch, producedRollup, err := oc.updateL1AndL2Heads(&block, l1IngestionType)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return newL2Head, producedBatch, nil
+	return newL2Head, producedBatch, producedRollup, nil
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
@@ -330,14 +330,14 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 	return &blockIngestionType{isLatest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-// Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
-func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2RootHash, *core.Batch, error) {
+// Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch and rollup, if there is one.
+func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2RootHash, *core.Batch, *core.Rollup, error) {
 	// before proceeding we check if L2 needs to be rolled back because of the L1 block
 	// (eventually this will be bound to just the hash of L1 message data rather than L1 block hashes - so less likely to reorg)
 	if ingestionType.fork {
 		err := oc.rollbackL2ToLatestValidBatch(block)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 
@@ -352,7 +352,7 @@ func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *bl
 	l2Head, err := oc.storage.FetchHeadBatch()
 	if err != nil {
 		if !errors.Is(err, errutil.ErrNotFound) {
-			return nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
+			return nil, nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
 		}
 		genesisBatchStored = false
 	}
@@ -361,27 +361,32 @@ func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *bl
 	var l2HeadTxReceipts types.Receipts
 	if genesisBatchStored {
 		if l2HeadTxReceipts, err = oc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
-			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
+			return nil, nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
 		}
 	}
 
 	// If we're the sequencer and we're on the latest block, we produce a new L2 head to replace the old one.
 	var producedBatch *core.Batch
+	var producedRollup *core.Rollup
 	if oc.nodeType == common.Sequencer && ingestionType.isLatest {
 		l2Head, l2HeadTxReceipts, err = oc.produceAndStoreBatch(block, genesisBatchStored)
 		if err != nil {
-			return nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
+			return nil, nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
 		}
 		producedBatch = l2Head
+
+		if producedRollup, err = oc.produceAndStoreRollup(block, producedBatch); err != nil {
+			return nil, nil, nil, fmt.Errorf("could not produce and store new rollup. Cause: %w", err)
+		}
 	}
 
 	// We update the L1 and L2 chain heads.
 	if l2Head != nil {
 		if err = oc.storage.UpdateHeadBatch(block.Hash(), l2Head, l2HeadTxReceipts); err != nil {
-			return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
+			return nil, nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
 		}
 		if err = oc.storage.UpdateL1Head(block.Hash()); err != nil {
-			return nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
+			return nil, nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
 		}
 	}
 
@@ -389,7 +394,7 @@ func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *bl
 	if l2Head != nil {
 		l2HeadHash = l2Head.Hash()
 	}
-	return l2HeadHash, producedBatch, nil
+	return l2HeadHash, producedBatch, producedRollup, nil
 }
 
 // Produces a new batch, signs it and stores it.
@@ -412,6 +417,36 @@ func (oc *ObscuroChain) produceAndStoreBatch(block *common.L1Block, genesisBatch
 	}
 
 	return l2Head, l2HeadTxReceipts, nil
+}
+
+// Produces a new rollup, signs it and stores it.
+func (oc *ObscuroChain) produceAndStoreRollup(block *types.Block, producedBatch *core.Batch) (*core.Rollup, error) {
+	parentRollup, err := oc.storage.FetchHeadRollupForBlock(&block.Header().ParentHash)
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return nil, fmt.Errorf("could not retrieve head rollup. Cause: %w", err)
+	}
+	var parentRollupHeader *common.RollupHeader
+	if parentRollup != nil {
+		parentRollupHeader = parentRollup.Header
+	}
+
+	producedRollup := &core.Rollup{
+		Header:  producedBatch.Header.ToRollupHeader(parentRollupHeader),
+		Batches: []*core.Batch{producedBatch},
+	}
+
+	if err = oc.signRollup(producedRollup); err != nil {
+		return nil, fmt.Errorf("could not sign produced rollup. Cause: %w", err)
+	}
+	if err = oc.storage.StoreRollup(producedRollup); err != nil {
+		return nil, fmt.Errorf("could not store produced rollup. Cause: %w", err)
+	}
+	blockHash := block.Hash()
+	if err = oc.storage.UpdateHeadRollup(&blockHash, producedRollup.Hash()); err != nil {
+		return nil, fmt.Errorf("could not update head rollup for produced rollup. Cause: %w", err)
+	}
+
+	return producedRollup, nil
 }
 
 // Creates a genesis batch linked to the provided L1 block and signs it.
@@ -608,6 +643,16 @@ func (oc *ObscuroChain) signBatch(batch *core.Batch) error {
 	batch.Header.R, batch.Header.S, err = ecdsa.Sign(rand.Reader, oc.enclavePrivateKey, h[:])
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
+	}
+	return nil
+}
+
+func (oc *ObscuroChain) signRollup(rollup *core.Rollup) error {
+	var err error
+	h := rollup.Hash()
+	rollup.Header.R, rollup.Header.S, err = ecdsa.Sign(rand.Reader, oc.enclavePrivateKey, h[:])
+	if err != nil {
+		return fmt.Errorf("could not sign rollup. Cause: %w", err)
 	}
 	return nil
 }
