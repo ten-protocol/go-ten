@@ -39,9 +39,9 @@ const (
 	// The threshold number of transactions below which we consider the simulation to have failed. We generally expect far
 	// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
 	// type, for example.
-	txThreshold = 5
-	// As above, but for the number of logs received via subscriptions.
-	logsThreshold = 5
+	txThreshold     = 5
+	rollupThreshold = 5 // As above, but for rollups.
+	logsThreshold   = 5 // As above, but for the number of logs received via subscriptions.
 	// The maximum number of blocks an Obscuro node can fall behind
 	maxBlockDelay = 5
 	// The leading zero bytes in a hash indicating that it is possibly an address, since it only has 20 bytes of data.
@@ -180,6 +180,11 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		if network.GetNodeType(int(nodeID)) != common.Sequencer {
 			t.Errorf("Node %d: Found rollup produced by non-sequencer %d", nodeIdx, nodeID)
 		}
+	}
+
+	// Check sufficient rollups were produced.
+	if len(rollups) < rollupThreshold {
+		t.Errorf("Node %d: Only %d rollups found. At least %d expected", nodeIdx, len(rollups), rollupThreshold)
 	}
 
 	checkInjectedTxsInRollups(t, s, nodeIdx, rollups)
