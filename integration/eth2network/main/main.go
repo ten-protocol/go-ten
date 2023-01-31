@@ -44,7 +44,11 @@ func handleInterrupt(network eth2network.Eth2Network) {
 	interruptChannel := make(chan os.Signal, 1)
 	signal.Notify(interruptChannel, os.Interrupt, syscall.SIGTERM)
 	<-interruptChannel
-	network.Stop()
+	err := network.Stop()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
 	fmt.Println("eth2 network stopping...")
 	os.Exit(1)
 }
