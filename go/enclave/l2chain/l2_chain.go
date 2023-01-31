@@ -779,7 +779,7 @@ func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address,
 func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 	latestRollup, err := oc.getLatestRollup(block)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not retrieve latest rollup for block. Cause: %w", err)
 	}
 
 	rollups := oc.rollupExtractor.ExtractRollups(block, oc.storage)
