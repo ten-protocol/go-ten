@@ -19,7 +19,7 @@ func main() {
 	}
 
 	if config.onlyDownload {
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	eth2Network := eth2network.NewEth2Network(
@@ -52,8 +52,8 @@ func handleInterrupt(network eth2network.Eth2Network) {
 	err := network.Stop()
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(0)
+		os.Exit(1)
 	}
 	fmt.Println("eth2 network stopping...")
-	os.Exit(1)
+	os.Exit(0)
 }
