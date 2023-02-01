@@ -777,10 +777,9 @@ func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address,
 // Validates and stores the rollup in a given block.
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
 func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
-	l1ParentHash := block.ParentHash()
-	currentHeadRollup, err := oc.storage.FetchHeadRollupForBlock(&l1ParentHash)
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not fetch current L2 head rollup")
+	latestRollup, err := oc.getLatestRollupBeforeBlock(block)
+	if err != nil {
+		return fmt.Errorf("could not retrieve latest rollup for block. Cause: %w", err)
 	}
 
 	rollups := oc.rollupExtractor.ExtractRollups(block, oc.storage)
@@ -790,7 +789,7 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 	})
 
 	// If this is the first rollup we've ever received, we check that it's the genesis rollup.
-	if currentHeadRollup == nil && len(rollups) != 0 && !rollups[0].IsGenesis() {
+	if latestRollup == nil && len(rollups) != 0 && !rollups[0].IsGenesis() {
 		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
 	}
 
@@ -800,7 +799,7 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 		}
 
 		if !rollup.IsGenesis() {
-			previousRollup := currentHeadRollup
+			previousRollup := latestRollup
 			if idx != 0 {
 				previousRollup = rollups[idx-1]
 			}
@@ -818,20 +817,38 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 		if err = oc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
-	}
 
-	newHeadRollup := currentHeadRollup
-	if len(rollups) > 0 {
-		newHeadRollup = rollups[len(rollups)-1]
-	}
-	if newHeadRollup != nil {
-		l1Head := block.Hash()
-		if err = oc.storage.UpdateHeadRollup(&l1Head, newHeadRollup.Hash()); err != nil {
-			return fmt.Errorf("could not update L2 head rollup. Cause: %w", err)
+		blockHash := block.Hash()
+		if err = oc.storage.UpdateHeadRollup(&blockHash, rollup.Hash()); err != nil {
+			return fmt.Errorf("could not update head rollup. Cause: %w", err)
 		}
 	}
 
 	return nil
+}
+
+// Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
+func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
+	for {
+		// We've reached the genesis block, so we cannot go back any further.
+		if block.Number().Cmp(big.NewInt(0)) == 0 {
+			return nil, nil //nolint:nilnil
+		}
+
+		blockParentHash := block.ParentHash()
+		latestRollup, err := oc.storage.FetchHeadRollupForBlock(&blockParentHash)
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			return nil, fmt.Errorf("could not fetch current L2 head rollup")
+		}
+		if latestRollup != nil {
+			return latestRollup, nil
+		}
+
+		block, err = oc.storage.FetchBlock(block.ParentHash())
+		if err != nil {
+			return nil, fmt.Errorf("could not fetch parent block")
+		}
+	}
 }
 
 // Checks that the rollup:
