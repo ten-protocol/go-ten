@@ -37,6 +37,7 @@ func main() {
 
 	err = eth2Network.Start()
 	if err != nil {
+		fmt.Println(err)
 		panic(err)
 	}
 	fmt.Println("eth 2 network started..")
