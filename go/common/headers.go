@@ -46,7 +46,7 @@ type BatchHeader struct {
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 
 	// The block hash of the latest block that has been scanned for cross chain messages.
-	LatestInboudCrossChainHash common.Hash `json:"inboundCrossChainHash"`
+	LatestInboundCrossChainHash common.Hash `json:"inboundCrossChainHash"`
 
 	// The block height of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int `json:"inboundCrossChainHeight"`
@@ -122,7 +122,7 @@ func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 		R:                             b.R,
 		S:                             b.S,
 		CrossChainMessages:            b.CrossChainMessages,
-		LatestInboundCrossChainHash:   b.LatestInboudCrossChainHash,
+		LatestInboundCrossChainHash:   b.LatestInboundCrossChainHash,
 		LatestInboundCrossChainHeight: b.LatestInboundCrossChainHeight,
 	}
 }

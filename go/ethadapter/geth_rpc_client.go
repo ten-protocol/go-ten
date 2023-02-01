@@ -147,7 +147,7 @@ func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscripti
 	err = retry.Do(func() error {
 		sub, err = e.client.SubscribeNewHead(ctx, ch)
 		if err != nil {
-			e.logger.Warn("could not subscribe for new head blocks")
+			e.logger.Warn("could not subscribe for new head blocks", log.ErrKey, err)
 		}
 		return err
 	}, retry.NewTimeoutStrategy(connRetryMaxWait, connRetryInterval))
