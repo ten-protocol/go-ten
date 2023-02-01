@@ -13,9 +13,8 @@ import (
 )
 
 const (
-	_gethVersion       = "1.10.26"
-	_prysmVersion      = "v3.2.0"
-	_gethScriptPathRel = "./build_geth_binary.sh"
+	_gethVersion  = "1.10.26"
+	_prysmVersion = "v3.2.0"
 )
 
 var (
@@ -38,7 +37,7 @@ func EnsureBinariesExist() (string, error) {
 		panic(err)
 	}
 
-	gethScript := path.Join(basepath, _gethScriptPathRel)
+	gethScript := path.Join(basepath, "./build_geth_binary.sh")
 	cmd := exec.Command("bash", gethScript, fmt.Sprintf("%s=%s", "--version", "v"+_gethVersion))
 	cmd.Stderr = os.Stderr
 
@@ -55,7 +54,6 @@ func EnsureBinariesExist() (string, error) {
 	} {
 		expectedFilePath := path.Join(basepath, _eth2BinariesRelPath, fileName)
 		if !fileExists(expectedFilePath) {
-			// download tar file
 			err := downloadFile(expectedFilePath, downloadURL)
 			if err != nil {
 				return "", err

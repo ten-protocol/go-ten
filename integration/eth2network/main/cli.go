@@ -35,6 +35,9 @@ const (
 	blockTimeSecsName  = "blockTimeSecs"
 	blockTimeSecsUsage = "The block time in seconds"
 
+	chainIDName  = "chainId"
+	chainIDUsage = "The chain Id to use by the eth2 network"
+
 	logLevelName  = "logLevel"
 	logLevelUsage = "logLevel"
 
@@ -49,14 +52,16 @@ type ethConfig struct {
 	gethAuthRPCStartPort    int
 	gethNetworkStartPort    int
 	prysmBeaconRPCStartPort int
-	prefundedAddrs          []string
 	blockTimeSecs           int
 	logLevel                int
+	chainID                 int
 	logPath                 string
+	prefundedAddrs          []string
 }
 
 func defaultConfig() *ethConfig {
 	return &ethConfig{
+		chainID:                 1337,
 		numNodes:                1,
 		gethHTTPStartPort:       12000,
 		gethWSStartPort:         12100,
@@ -80,6 +85,7 @@ func parseCLIArgs() *ethConfig {
 	blockTimeSecs := flag.Int(blockTimeSecsName, defaultConfig.blockTimeSecs, blockTimeSecsUsage)
 	logLevel := flag.Int(logLevelName, defaultConfig.logLevel, logLevelUsage)
 	logPath := flag.String(logPathName, defaultConfig.logPath, logPathUsage)
+	chainID := flag.Int(chainIDName, defaultConfig.chainID, chainIDUsage)
 
 	gethAuthRPCStartPort := flag.Int(gethAuthRPCStartPortName, defaultConfig.gethAuthRPCStartPort, gethAuthRPCStartPortUsage)
 	gethNetworkStartPort := flag.Int(gethNetworkStartPortName, defaultConfig.gethNetworkStartPort, gethNetworkStartPortUsage)
@@ -101,6 +107,7 @@ func parseCLIArgs() *ethConfig {
 
 	return &ethConfig{
 		numNodes:                *numNodes,
+		chainID:                 *chainID,
 		gethHTTPStartPort:       *startPort,
 		gethWSStartPort:         *websocketStartPort,
 		prefundedAddrs:          parsedPrefundedAddrs,

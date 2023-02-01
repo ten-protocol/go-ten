@@ -24,8 +24,8 @@ func main() {
 		config.gethAuthRPCStartPort,
 		config.gethNetworkStartPort,
 		config.prysmBeaconRPCStartPort,
-		1337,
-		1,
+		config.chainID,
+		config.numNodes,
 		config.blockTimeSecs,
 		config.prefundedAddrs,
 	)
