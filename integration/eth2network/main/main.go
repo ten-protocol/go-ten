@@ -17,6 +17,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	if config.onlyDownload {
+		os.Exit(1)
+	}
+
 	eth2Network := eth2network.NewEth2Network(
 		binariesPath,
 		config.gethHTTPStartPort,

@@ -38,6 +38,9 @@ const (
 	chainIDName  = "chainId"
 	chainIDUsage = "The chain Id to use by the eth2 network"
 
+	onlyDownloadName  = "onlyDownload"
+	onlyDownloadUsage = "Only downloads the necessary files doesn't start the network"
+
 	logLevelName  = "logLevel"
 	logLevelUsage = "logLevel"
 
@@ -55,6 +58,7 @@ type ethConfig struct {
 	blockTimeSecs           int
 	logLevel                int
 	chainID                 int
+	onlyDownload            bool
 	logPath                 string
 	prefundedAddrs          []string
 }
@@ -68,6 +72,7 @@ func defaultConfig() *ethConfig {
 		gethAuthRPCStartPort:    12200,
 		gethNetworkStartPort:    12300,
 		prysmBeaconRPCStartPort: 12400,
+		onlyDownload:            false,
 		prefundedAddrs:          []string{},
 		blockTimeSecs:           1,
 		logPath:                 log.SysOut,
@@ -78,6 +83,7 @@ func defaultConfig() *ethConfig {
 func parseCLIArgs() *ethConfig {
 	defaultConfig := defaultConfig()
 
+	onlyDownload := flag.Bool(onlyDownloadName, defaultConfig.onlyDownload, onlyDownloadUsage)
 	numNodes := flag.Int(numNodesName, defaultConfig.numNodes, numNodesUsage)
 	startPort := flag.Int(gethHTTPStartPortName, defaultConfig.gethHTTPStartPort, gethHTTPStartPortUsage)
 	websocketStartPort := flag.Int(websocketStartPortName, defaultConfig.gethWSStartPort, websocketStartPortUsage)
@@ -117,5 +123,6 @@ func parseCLIArgs() *ethConfig {
 		gethAuthRPCStartPort:    *gethAuthRPCStartPort,
 		gethNetworkStartPort:    *gethNetworkStartPort,
 		prysmBeaconRPCStartPort: *prysmBeaconRPCStartPort,
+		onlyDownload:            *onlyDownload,
 	}
 }

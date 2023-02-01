@@ -95,4 +95,4 @@ jobs:
           # Each node has Port + id
           ports: '8025 8026 9000 9001'
           cpu: 2
-          memory: 4
+          memory: 8

@@ -31,6 +31,9 @@ WORKDIR /home/obscuro/go-obscuro/integration/eth2network/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
     go build
 
+# Download the eth2network required artifacts
+RUN ./main --onlyDownload=true
+
 # expose the http and the ws ports to the host
 EXPOSE 12000 12100 12200 12300 12400
 ENTRYPOINT ["/home/obscuro/go-obscuro/integration/eth2network/main/main", "--numNodes=1"]
