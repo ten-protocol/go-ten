@@ -553,7 +553,7 @@ func (oc *ObscuroChain) ResyncStateDB() error {
 			oc.logger.Info("no head batch found in DB after restart", log.ErrKey, err)
 			return nil
 		}
-		return fmt.Errorf("unexpected error fetching head batch - %w", err)
+		return fmt.Errorf("unexpected error fetching head batch to resync- %w", err)
 	}
 	if !stateDBAvailableForBatch(oc.storage, batch.Hash()) {
 		oc.logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
@@ -571,7 +571,7 @@ func (oc *ObscuroChain) ResyncStateDB() error {
 func (oc *ObscuroChain) replayBatchesToValidState() error {
 	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
 	// todo: consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
-	batchesToReplay := make([]*core.Batch, 0)
+	var batchesToReplay []*core.Batch
 	// `batchToReplayFrom` variable will eventually be the latest batch for which we are able to produce a StateDB
 	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
 	batchToReplayFrom, err := oc.storage.FetchHeadBatch()
