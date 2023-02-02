@@ -616,6 +616,10 @@ func (oc *ObscuroChain) replayBatchesToValidState() error {
 	return nil
 }
 
+// The enclave caches a stateDB instance against each batch hash, this is the input state when producing the following
+// batch in the chain and is used to query state at a certain height.
+//
+// This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
 func stateDBAvailableForBatch(storage db.Storage, hash *common.L2RootHash) bool {
 	_, err := storage.CreateStateDB(*hash)
 	return err == nil
