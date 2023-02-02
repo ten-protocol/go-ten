@@ -18,10 +18,8 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-func TestNewEth2Network(t *testing.T) {
+func TestIssueTxWaitReceipt(t *testing.T) {
 	//t.Skip("manual tests should not be used for unit testing")
-
-	var err error
 
 	w := wallet.NewInMemoryWalletFromConfig(
 		"5d1cffab85ddad285de2485ff09339e66e1e0acbfb9960c0df8231a1deb4994a",
@@ -30,10 +28,15 @@ func TestNewEth2Network(t *testing.T) {
 	host := "dev-testnet-eth2network.uksouth.azurecontainer.io"
 	port := 9000
 
+	var err error
 	ethClient, err := ethadapter.NewEthClient(host, uint(port), 30*time.Second, common.L2Address{}, gethlog.New())
 	assert.Nil(t, err)
 
 	toAddr := datagenerator.RandomAddress()
+	nonce, err := ethClient.Nonce(w.Address())
+	assert.Nil(t, err)
+
+	w.SetNonce(nonce)
 	estimatedTx, err := ethClient.EstimateGasAndGasPrice(&types.LegacyTx{
 		Nonce: w.GetNonceAndIncrement(),
 		To:    &toAddr,
