@@ -548,8 +548,12 @@ func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stat
 func (oc *ObscuroChain) ResyncStateDB() error {
 	batch, err := oc.storage.FetchHeadBatch()
 	if err != nil {
-		oc.logger.Info("no head batch found in DB after restart", log.ErrKey, err)
-		return nil
+		if errors.Is(err, errutil.ErrNotFound) {
+			// there is no head batch, this is probably a new node - there is no state to rebuild
+			oc.logger.Info("no head batch found in DB after restart", log.ErrKey, err)
+			return nil
+		}
+		return fmt.Errorf("unexpected error fetching head batch - %w", err)
 	}
 	if !stateDBAvailableForBatch(oc.storage, batch.Hash()) {
 		oc.logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
