@@ -188,6 +188,11 @@ func NewEnclave(
 		genesis,
 		logger,
 	)
+	// ensure cached chain state data is up-to-date using the persisted batch data
+	err = chain.ResyncStateDB()
+	if err != nil {
+		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
+	}
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
