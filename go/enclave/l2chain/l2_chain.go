@@ -543,6 +543,89 @@ func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stat
 	return rootHash, executedTransactions, txReceipts, synthReceipts
 }
 
+// ResyncStateDB can be called to ensure stateDB data is available for the canonical L2 batch chain
+// After an (ungraceful) shutdown this method must be called to rebuild the stateDB data based on the persisted batches
+func (oc *ObscuroChain) ResyncStateDB() error {
+	batch, err := oc.storage.FetchHeadBatch()
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			// there is no head batch, this is probably a new node - there is no state to rebuild
+			oc.logger.Info("no head batch found in DB after restart", log.ErrKey, err)
+			return nil
+		}
+		return fmt.Errorf("unexpected error fetching head batch to resync- %w", err)
+	}
+	if !stateDBAvailableForBatch(oc.storage, batch.Hash()) {
+		oc.logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
+		err = oc.replayBatchesToValidState()
+		if err != nil {
+			return fmt.Errorf("unable to replay batches to restore valid state - %w", err)
+		}
+	}
+	return nil
+}
+
+// replayBatchesToValidState is used to repopulate the stateDB cache with data from persisted batches. Two step process:
+// 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
+// 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
+// todo: get unit test coverage around this (and L2 Chain code more widely, see ticket #1416 )
+func (oc *ObscuroChain) replayBatchesToValidState() error {
+	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
+	// todo: consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
+	var batchesToReplay []*core.Batch
+	// `batchToReplayFrom` variable will eventually be the latest batch for which we are able to produce a StateDB
+	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
+	batchToReplayFrom, err := oc.storage.FetchHeadBatch()
+	if err != nil {
+		return fmt.Errorf("no head batch found in DB but expected to replay batches - %w", err)
+	}
+	// loop backwards building a slice of all batches that don't have cached stateDB data available
+	for !stateDBAvailableForBatch(oc.storage, batchToReplayFrom.Hash()) {
+		batchesToReplay = append(batchesToReplay, batchToReplayFrom)
+		if batchToReplayFrom.NumberU64() == 0 {
+			// no more parents to check, replaying from genesis
+			break
+		}
+		batchToReplayFrom, err = oc.storage.FetchBatch(batchToReplayFrom.Header.ParentHash)
+		if err != nil {
+			return fmt.Errorf("unable to fetch previous batch while rolling back to stable state - %w", err)
+		}
+	}
+	oc.logger.Info("replaying batch data into stateDB cache", "fromBatch", batchesToReplay[len(batchesToReplay)-1].NumberU64(),
+		"toBatch", batchesToReplay[0].NumberU64())
+	// loop through the slice of batches without stateDB data (starting with the oldest) and reprocess them to update cache
+	for i := len(batchesToReplay) - 1; i >= 0; i-- {
+		batch := batchesToReplay[i]
+
+		// if genesis batch then create the genesis state before continuing on with remaining batches
+		if batch.NumberU64() == 0 {
+			err := oc.genesis.CommitGenesisState(oc.storage)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		prevState, err := oc.storage.CreateStateDB(batch.Header.ParentHash)
+		if err != nil {
+			return err
+		}
+		// we don't need the return values, just want the post-batch state to be cached
+		oc.processState(batch, batch.Transactions, prevState)
+	}
+
+	return nil
+}
+
+// The enclave caches a stateDB instance against each batch hash, this is the input state when producing the following
+// batch in the chain and is used to query state at a certain height.
+//
+// This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
+func stateDBAvailableForBatch(storage db.Storage, hash *common.L2RootHash) bool {
+	_, err := storage.CreateStateDB(*hash)
+	return err == nil
+}
+
 // Checks the internal validity of the batch.
 func (oc *ObscuroChain) isInternallyValidBatch(batch *core.Batch) (types.Receipts, error) {
 	stateDB, err := oc.storage.CreateStateDB(batch.Header.ParentHash)
