@@ -566,8 +566,9 @@ func (oc *ObscuroChain) ResyncStateDB() error {
 }
 
 // replayBatchesToValidState is used to repopulate the stateDB cache with data from persisted batches. Two step process:
-// 1. step backwards from head batch until we find a batch that is already in stateDB catch, builds list of batches to replay
+// 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
 // 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
+// todo: get unit test coverage around this (and L2 Chain code more widely, see ticket #1416
 func (oc *ObscuroChain) replayBatchesToValidState() error {
 	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
 	// todo: consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
