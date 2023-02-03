@@ -23,7 +23,6 @@ type EnclaveConfigToml struct {
 	ObscuroChainID            int64
 	WillAttest                bool
 	ValidateL1Blocks          bool
-	SpeculativeExecution      bool
 	ManagementContractAddress string
 	LogLevel                  int
 	LogPath                   string
@@ -53,7 +52,6 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	obscuroChainID := flag.Int64(obscuroChainIDName, cfg.ObscuroChainID, flagUsageMap[obscuroChainIDName])
 	willAttest := flag.Bool(willAttestName, cfg.WillAttest, flagUsageMap[willAttestName])
 	validateL1Blocks := flag.Bool(validateL1BlocksName, cfg.ValidateL1Blocks, flagUsageMap[validateL1BlocksName])
-	speculativeExecution := flag.Bool(speculativeExecutionName, cfg.SpeculativeExecution, flagUsageMap[speculativeExecutionName])
 	managementContractAddress := flag.String(ManagementContractAddressName, cfg.ManagementContractAddress.Hex(), flagUsageMap[ManagementContractAddressName])
 	loglevel := flag.Int(logLevelName, cfg.LogLevel, flagUsageMap[logLevelName])
 	logPath := flag.String(logPathName, cfg.LogPath, flagUsageMap[logPathName])
@@ -85,7 +83,6 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	cfg.ObscuroChainID = *obscuroChainID
 	cfg.WillAttest = *willAttest
 	cfg.ValidateL1Blocks = *validateL1Blocks
-	cfg.SpeculativeExecution = *speculativeExecution
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(*managementContractAddress)
 	cfg.LogLevel = *loglevel
 	cfg.LogPath = *logPath
@@ -128,7 +125,6 @@ func fileBasedConfig(configPath string) (config.EnclaveConfig, error) {
 		ObscuroChainID:            tomlConfig.ObscuroChainID,
 		WillAttest:                tomlConfig.WillAttest,
 		ValidateL1Blocks:          tomlConfig.ValidateL1Blocks,
-		SpeculativeExecution:      tomlConfig.SpeculativeExecution,
 		ManagementContractAddress: gethcommon.HexToAddress(tomlConfig.ManagementContractAddress),
 		LogLevel:                  tomlConfig.LogLevel,
 		LogPath:                   tomlConfig.LogPath,

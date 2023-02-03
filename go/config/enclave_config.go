@@ -31,8 +31,6 @@ type EnclaveConfig struct {
 	ValidateL1Blocks bool
 	// When validating incoming blocks, the genesis config for the L1 chain
 	GenesisJSON []byte
-	// Toggles the speculative execution background process
-	SpeculativeExecution bool
 	// The management contract address on the L1 network
 	ManagementContractAddress gethcommon.Address
 	// LogLevel determines the verbosity of output logs
@@ -70,7 +68,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		WillAttest:                false, // todo: attestation should be on by default before production release
 		ValidateL1Blocks:          false,
 		GenesisJSON:               nil,
-		SpeculativeExecution:      false,
 		ManagementContractAddress: gethcommon.BytesToAddress([]byte("")),
 		LogLevel:                  int(gethlog.LvlInfo),
 		LogPath:                   log.SysOut,

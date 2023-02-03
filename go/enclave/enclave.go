@@ -62,13 +62,6 @@ type enclaveImpl struct {
 
 	chain *l2chain.ObscuroChain
 
-	txCh   chan *common.L2Tx
-	exitCh chan bool
-
-	// Todo - disabled temporarily until TN1 is released
-	// speculativeWorkInCh  chan bool
-	// speculativeWorkOutCh chan speculativeWork
-
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
 
@@ -207,8 +200,6 @@ func NewEnclave(
 		subscriptionManager:   subscriptionManager,
 		crossChainProcessors:  crossChainProcessors,
 		chain:                 chain,
-		txCh:                  make(chan *common.L2Tx),
-		exitCh:                make(chan bool),
 		mgmtContractLib:       mgmtContractLib,
 		attestationProvider:   attestationProvider,
 		enclaveKey:            enclaveKey,
@@ -297,9 +288,6 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
 	}
 
-	if e.config.SpeculativeExecution {
-		e.txCh <- decryptedTx
-	}
 	return encryptedResult, nil
 }
 
@@ -643,10 +631,6 @@ func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) error {
 }
 
 func (e *enclaveImpl) Stop() error {
-	if e.config.SpeculativeExecution {
-		e.exitCh <- true
-	}
-
 	if e.profiler != nil {
 		return e.profiler.Stop()
 	}
@@ -1084,24 +1068,3 @@ func (e *enclaveImpl) rejectBlockErr(cause error) *common.BlockRejectError {
 		Wrapped: cause,
 	}
 }
-
-// Todo - reinstate speculative execution after TN1
-/*
-// internal structure to pass information.
-type speculativeWork struct {
-	found bool
-	r     *obscurocore.Rollup
-	s     *state.StateDB
-	h     *nodecommon.Header
-	txs   []*nodecommon.L2Tx
-}
-
-// internal structure used for the speculative execution.
-type processingEnvironment struct {
-	headRollup      *obscurocore.Rollup              // the current head rollup, which will be the parent of the new rollup
-	header          *nodecommon.Header               // the header of the new rollup
-	processedTxs    []*nodecommon.L2Tx               // txs that were already processed
-	processedTxsMap map[common.Hash]*nodecommon.L2Tx // structure used to prevent duplicates
-	state           *state.StateDB                   // the state as calculated from the previous rollup and the processed transactions
-}
-*/
