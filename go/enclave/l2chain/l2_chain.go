@@ -913,11 +913,6 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 // Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
 func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
 	for {
-		// We've reached the genesis block, so we cannot go back any further.
-		if block.Number().Cmp(big.NewInt(0)) == 0 {
-			return nil, nil //nolint:nilnil
-		}
-
 		blockParentHash := block.ParentHash()
 		latestRollup, err := oc.storage.FetchHeadRollupForBlock(&blockParentHash)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -929,7 +924,9 @@ func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core
 
 		block, err = oc.storage.FetchBlock(block.ParentHash())
 		if err != nil {
-			return nil, fmt.Errorf("could not fetch parent block")
+			// No rollup found - no more blocks available (enclave does not read the L1 chain from genesis if it knows
+			// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
+			return nil, nil //nolint:nilnil
 		}
 	}
 }
