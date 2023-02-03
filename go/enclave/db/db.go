@@ -25,8 +25,8 @@ func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (ethdb.
 	if !cfg.WillAttest {
 		// persistent but not secure in an enclave, we'll connect to a throwaway sqlite DB and test out persistence/sql implementations
 		logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
-		// todo: for now we pass in an empty dbPath which will provide a throwaway temp file,
-		// 		when we want to test persistence after node restart we should change this path to be config driven
+		// when we want to test persistence after node restart the SqliteDBPath should be set
+		// (if empty string then a temp db file will be created for the lifetime of the enclave)
 		return sql.CreateTemporarySQLiteDB(cfg.SqliteDBPath, logger)
 	}
 
