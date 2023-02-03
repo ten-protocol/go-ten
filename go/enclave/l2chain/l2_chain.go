@@ -37,6 +37,8 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
+var errNoRollupFound = errors.New("no rollups found")
+
 // ObscuroChain represents the canonical L2 chain, and manages the state.
 type ObscuroChain struct {
 	hostID      gethcommon.Address
@@ -910,15 +912,13 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 	return nil
 }
 
-var errNoRollupFound = errors.New("no rollups found")
-
 // Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
 func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
 	for {
 		blockParentHash := block.ParentHash()
 		latestRollup, err := oc.storage.FetchHeadRollupForBlock(&blockParentHash)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("could not fetch current L2 head rollup")
+			return nil, fmt.Errorf("could not fetch current L2 head rollup - %w", err)
 		}
 		if latestRollup != nil {
 			return latestRollup, nil
@@ -926,9 +926,13 @@ func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core
 
 		block, err = oc.storage.FetchBlock(block.ParentHash())
 		if err != nil {
-			// No rollup found - no more blocks available (enclave does not read the L1 chain from genesis if it knows
-			// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
-			return nil, errNoRollupFound
+			if errors.Is(err, errutil.ErrNotFound) {
+				// No more blocks available (enclave does not read the L1 chain from genesis if it knows
+				// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
+				// We have now checked through the entire (relevant) history of the L1 and no rollups were found.
+				return nil, errNoRollupFound
+			}
+			return nil, fmt.Errorf("could not fetch prev block - %w", err)
 		}
 	}
 }
