@@ -6,7 +6,6 @@ l1ChainID = 1377
 obscuroChainID = 777
 willAttest = false
 validateL1Blocks = false
-speculativeExecution = false
 managementContractAddress = "0x0000000000000000000000000000000000000000"
 logLevel = 3
 logPath = "enclave_logs.txt"
