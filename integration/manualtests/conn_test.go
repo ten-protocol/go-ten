@@ -19,7 +19,7 @@ import (
 )
 
 func TestConn_CanConnect(t *testing.T) {
-	//t.Skip("manual tests should not be used for unit testing")
+	t.Skip("manual tests should not be used for unit testing")
 
 	w := wallet.NewInMemoryWalletFromConfig(
 		"5d1cffab85ddad285de2485ff09339e66e1e0acbfb9960c0df8231a1deb4994a",
