@@ -861,7 +861,7 @@ func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address,
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
 func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 	latestRollup, err := oc.getLatestRollupBeforeBlock(block)
-	if err != nil && !errors.Is(err, noRollupFoundError) {
+	if err != nil && !errors.Is(err, errNoRollupFound) {
 		return fmt.Errorf("unexpected error retrieving latest rollup for block. Cause: %w", err)
 	}
 
@@ -910,7 +910,7 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 	return nil
 }
 
-var noRollupFoundError = errors.New("no rollups found")
+var errNoRollupFound = errors.New("no rollups found")
 
 // Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
 func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
@@ -928,7 +928,7 @@ func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core
 		if err != nil {
 			// No rollup found - no more blocks available (enclave does not read the L1 chain from genesis if it knows
 			// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
-			return nil, noRollupFoundError
+			return nil, errNoRollupFound
 		}
 	}
 }
