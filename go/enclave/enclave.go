@@ -62,6 +62,9 @@ type enclaveImpl struct {
 
 	chain *l2chain.ObscuroChain
 
+	txCh   chan *common.L2Tx
+	exitCh chan bool
+
 	// Todo - disabled temporarily until TN1 is released
 	// speculativeWorkInCh  chan bool
 	// speculativeWorkOutCh chan speculativeWork
@@ -204,6 +207,8 @@ func NewEnclave(
 		subscriptionManager:   subscriptionManager,
 		crossChainProcessors:  crossChainProcessors,
 		chain:                 chain,
+		txCh:                  make(chan *common.L2Tx),
+		exitCh:                make(chan bool),
 		mgmtContractLib:       mgmtContractLib,
 		attestationProvider:   attestationProvider,
 		enclaveKey:            enclaveKey,
@@ -292,6 +297,9 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
 	}
 
+	if e.config.SpeculativeExecution {
+		e.txCh <- decryptedTx
+	}
 	return encryptedResult, nil
 }
 
@@ -635,6 +643,10 @@ func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) error {
 }
 
 func (e *enclaveImpl) Stop() error {
+	if e.config.SpeculativeExecution {
+		e.exitCh <- true
+	}
+
 	if e.profiler != nil {
 		return e.profiler.Stop()
 	}

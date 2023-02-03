@@ -11,6 +11,7 @@ const (
 	obscuroChainIDName            = "obscuroChainID"
 	willAttestName                = "willAttest"
 	validateL1BlocksName          = "validateL1Blocks"
+	speculativeExecutionName      = "speculativeExecution"
 	ManagementContractAddressName = "managementContractAddress"
 	logLevelName                  = "logLevel"
 	logPathName                   = "logPath"
@@ -37,6 +38,7 @@ func getFlagUsageMap() map[string]string {
 		obscuroChainIDName:            "An integer representing the unique chain id of the Obscuro chain (default 777)",
 		willAttestName:                "Whether the enclave will produce a verified attestation report",
 		validateL1BlocksName:          "Whether to validate incoming blocks using the hardcoded L1 genesis.json config",
+		speculativeExecutionName:      "Whether to enable speculative execution",
 		ManagementContractAddressName: "The management contract address on the L1",
 		logLevelName:                  "The verbosity level of logs. (Defaults to Info)",
 		logPathName:                   "The path to use for the enclave service's log file",
