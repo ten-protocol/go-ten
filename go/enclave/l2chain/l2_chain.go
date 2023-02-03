@@ -932,7 +932,7 @@ func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core
 				// We have now checked through the entire (relevant) history of the L1 and no rollups were found.
 				return nil, errNoRollupFound
 			}
-			return nil, fmt.Errorf("could not fetch prev block - %w", err)
+			return nil, fmt.Errorf("could not fetch parent block - %w", err)
 		}
 	}
 }
