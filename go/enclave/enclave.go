@@ -62,9 +62,6 @@ type enclaveImpl struct {
 
 	chain *l2chain.ObscuroChain
 
-	txCh   chan *common.L2Tx
-	exitCh chan bool
-
 	// Todo - disabled temporarily until TN1 is released
 	// speculativeWorkInCh  chan bool
 	// speculativeWorkOutCh chan speculativeWork
@@ -207,8 +204,6 @@ func NewEnclave(
 		subscriptionManager:   subscriptionManager,
 		crossChainProcessors:  crossChainProcessors,
 		chain:                 chain,
-		txCh:                  make(chan *common.L2Tx),
-		exitCh:                make(chan bool),
 		mgmtContractLib:       mgmtContractLib,
 		attestationProvider:   attestationProvider,
 		enclaveKey:            enclaveKey,
@@ -280,6 +275,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, err
 	}
 
+	// Only the sequencer needs to maintain a transaction mempool. Other node types can return early.
+	if e.config.NodeType == common.Sequencer {
+		if err = e.mempool.AddMempoolTx(decryptedTx); err != nil {
+			return nil, err
+		}
+	}
+
 	txHashBytes := []byte(decryptedTx.Hash().Hex())
 	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
 	if err != nil {
@@ -288,19 +290,6 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txHashBytes)
 	if err != nil {
 		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
-	}
-
-	// Only the sequencer needs to maintain a transaction mempool. Other node types can return early.
-	if e.config.NodeType != common.Sequencer {
-		return encryptedResult, nil
-	}
-
-	if err = e.mempool.AddMempoolTx(decryptedTx); err != nil {
-		return nil, err
-	}
-
-	if e.config.SpeculativeExecution {
-		e.txCh <- decryptedTx
 	}
 
 	return encryptedResult, nil
@@ -646,10 +635,6 @@ func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) error {
 }
 
 func (e *enclaveImpl) Stop() error {
-	if e.config.SpeculativeExecution {
-		e.exitCh <- true
-	}
-
 	if e.profiler != nil {
 		return e.profiler.Stop()
 	}
