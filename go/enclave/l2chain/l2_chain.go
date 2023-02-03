@@ -37,7 +37,7 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
-var errNoRollupFound = errors.New("no rollups found")
+var errNoRollupFound = errors.New("no rollup found")
 
 // ObscuroChain represents the canonical L2 chain, and manages the state.
 type ObscuroChain struct {
