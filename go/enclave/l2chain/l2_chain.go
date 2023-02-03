@@ -37,6 +37,8 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
+var errNoRollupFound = errors.New("no rollup found")
+
 // ObscuroChain represents the canonical L2 chain, and manages the state.
 type ObscuroChain struct {
 	hostID      gethcommon.Address
@@ -861,8 +863,8 @@ func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address,
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
 func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 	latestRollup, err := oc.getLatestRollupBeforeBlock(block)
-	if err != nil {
-		return fmt.Errorf("could not retrieve latest rollup for block %s. Cause: %w", block.Hash(), err)
+	if err != nil && !errors.Is(err, errNoRollupFound) {
+		return fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
 	}
 
 	rollups := oc.rollupExtractor.ExtractRollups(block, oc.storage)
@@ -913,15 +915,10 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 // Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
 func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
 	for {
-		// We've reached the genesis block, so we cannot go back any further.
-		if block.Number().Cmp(big.NewInt(0)) == 0 {
-			return nil, nil //nolint:nilnil
-		}
-
 		blockParentHash := block.ParentHash()
 		latestRollup, err := oc.storage.FetchHeadRollupForBlock(&blockParentHash)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("could not fetch current L2 head rollup")
+			return nil, fmt.Errorf("could not fetch current L2 head rollup - %w", err)
 		}
 		if latestRollup != nil {
 			return latestRollup, nil
@@ -929,7 +926,13 @@ func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core
 
 		block, err = oc.storage.FetchBlock(block.ParentHash())
 		if err != nil {
-			return nil, fmt.Errorf("could not fetch parent block")
+			if errors.Is(err, errutil.ErrNotFound) {
+				// No more blocks available (enclave does not read the L1 chain from genesis if it knows
+				// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
+				// We have now checked through the entire (relevant) history of the L1 and no rollups were found.
+				return nil, errNoRollupFound
+			}
+			return nil, fmt.Errorf("could not fetch parent block - %w", err)
 		}
 	}
 }
