@@ -188,6 +188,11 @@ func NewEnclave(
 		genesis,
 		logger,
 	)
+	// ensure cached chain state data is up-to-date using the persisted batch data
+	err = chain.ResyncStateDB()
+	if err != nil {
+		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
+	}
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
@@ -275,6 +280,13 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, err
 	}
 
+	// Only the sequencer needs to maintain a transaction mempool. Other node types can return early.
+	if e.config.NodeType == common.Sequencer {
+		if err = e.mempool.AddMempoolTx(decryptedTx); err != nil {
+			return nil, err
+		}
+	}
+
 	txHashBytes := []byte(decryptedTx.Hash().Hex())
 	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
 	if err != nil {
@@ -285,19 +297,9 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
 	}
 
-	// Only the sequencer needs to maintain a transaction mempool. Other node types can return early.
-	if e.config.NodeType != common.Sequencer {
-		return encryptedResult, nil
-	}
-
-	if err = e.mempool.AddMempoolTx(decryptedTx); err != nil {
-		return nil, err
-	}
-
 	if e.config.SpeculativeExecution {
 		e.txCh <- decryptedTx
 	}
-
 	return encryptedResult, nil
 }
 

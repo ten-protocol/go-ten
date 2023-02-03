@@ -49,7 +49,7 @@ func (s *storageImpl) FetchHeadBatch() (*core.Batch, error) {
 		return nil, err
 	}
 	if (bytes.Equal(headHash.Bytes(), gethcommon.Hash{}.Bytes())) {
-		return nil, fmt.Errorf("could not fetch L1 head hash")
+		return nil, errutil.ErrNotFound
 	}
 	return s.FetchBatch(*headHash)
 }

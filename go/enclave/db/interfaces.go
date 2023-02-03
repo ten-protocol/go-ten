@@ -49,7 +49,8 @@ type RollupResolver interface {
 type HeadsAfterL1BlockStorage interface {
 	// FetchHeadBatchForBlock returns the hash of the head batch at a given L1 block.
 	FetchHeadBatchForBlock(blockHash common.L1RootHash) (*core.Batch, error)
-	// FetchHeadRollupForBlock returns the hash of the head rollup at a given L1 block.
+	// FetchHeadRollupForBlock returns the hash of the latest (i.e. highest-numbered) rollup in the given L1 block, or
+	// nil if the block contains no rollups.
 	FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*core.Rollup, error)
 	// UpdateL1Head updates the L1 head.
 	UpdateL1Head(l1Head common.L1RootHash) error

@@ -44,6 +44,7 @@ services:
     ports:
       - "6060:6060"
       - "2345:2345"
+      - "11000:11000"
     environment:
       - MGMTCONTRACTADDR=some_address
       - HOSTID=some_address
@@ -63,7 +64,7 @@ services:
       "/home/obscuro/go-obscuro/go/enclave/main",
       "--",
       "--hostID=$HOSTID",
-      "--address=:11000",
+      "--address=0.0.0.0:11000",
       "--nodeType=$NODETYPE",
       "--useInMemoryDB=false",
       "--sqliteDBPath=/data/sqlite.db",
