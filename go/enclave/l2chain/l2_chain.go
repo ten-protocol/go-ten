@@ -697,6 +697,16 @@ func (oc *ObscuroChain) signBatch(batch *core.Batch) error {
 	return nil
 }
 
+func (oc *ObscuroChain) SignRollup(header *common.RollupHeader) error {
+	var err error
+	h := header.Hash()
+	header.R, header.S, err = ecdsa.Sign(rand.Reader, oc.enclavePrivateKey, h[:])
+	if err != nil {
+		return fmt.Errorf("could not sign rollup. Cause: %w", err)
+	}
+	return nil
+}
+
 // Checks that the header is signed validly by the sequencer.
 func (oc *ObscuroChain) checkSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
