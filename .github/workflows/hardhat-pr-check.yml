@@ -24,7 +24,12 @@ jobs:
 
       - name: Install dependencies
         run: cd contracts && npm install
-      - name: Generate Solidity Contract Bindings
-        run: cd contracts && npx hardhat generate-abi-bindings --output-dir generated
+
+      - name: Check contracts match committed bytecode
+        run: |
+          cd contracts
+          npx hardhat generate-abi-bindings --output-dir generated
+          [$(git diff | wc -c) -eq 0] || exit 1
+      
       - name: Hardhat test
         run: cd contracts && npx hardhat test
