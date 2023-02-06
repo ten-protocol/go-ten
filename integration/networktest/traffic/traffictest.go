@@ -49,9 +49,3 @@ func (t *durationTrafficTest) Run(network networktest.NetworkConnector) error {
 func (t *durationTrafficTest) Name() string {
 	return fmt.Sprintf("traffic-%s", t.runner.Name())
 }
-
-// WithVerifier is a construction Option for the DurationTest that allows you to override the ver
-func WithVerifiers(verifiers []RunVerifier) TestOpt {
-	return func(test *durationTrafficTest) {
-	}
-}

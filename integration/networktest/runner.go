@@ -21,10 +21,10 @@ func Run(t *testing.T, env Environment, test NetworkTest) {
 		t.Fatal(err)
 	}
 	defer envCleanup()
-	fmt.Println("Preparing to run test:", test.Name())
+	fmt.Println("Started test:", test.Name())
 	err = test.Run(network)
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Println("Test succeeded:", test.Name())
+	fmt.Println("Finished test:", test.Name())
 }

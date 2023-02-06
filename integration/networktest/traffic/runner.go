@@ -10,7 +10,6 @@ import (
 
 // Runner is used to simulate traffic against a durationTrafficTest network
 // When Start() is called then simulated traffic will begin against the provided NetworkConnector, until Stop() is called.
-// Then Verify() can be used to check the simulation worked as expected (it might check receipts, balances, response times etc.)
 type Runner interface {
 	// Start is only expected to be called once for the lifetime of the Runner
 	Start(network networktest.NetworkConnector) error

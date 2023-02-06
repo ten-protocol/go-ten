@@ -38,7 +38,7 @@ func (t *testnetConnector) AllocateFaucetFunds(account gethcommon.Address) error
 		return fmt.Errorf("unable to make http faucet request - %w", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	if resp.StatusCode != 200 {
 		return fmt.Errorf("unexpected status of http faucet request, code=%d status=%s", resp.StatusCode, resp.Status)
 	}
 	return nil
