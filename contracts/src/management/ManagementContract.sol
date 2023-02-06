@@ -154,7 +154,7 @@ contract ManagementContract {
         // TODO: Add a check that ensures the cross messages are coming from the correct fork using block hashes.
 
         // revert if the AggregatorID is not attested
-        require(attested[r.AggregatorID], "aggregator not attested");
+        require(attested[r.AggregatorID], "aggregator nt attested");
 
         // if this is the first element initialize the tree structure
         // TODO this should be moved to the network initialization
