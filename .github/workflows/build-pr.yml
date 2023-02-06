@@ -19,7 +19,7 @@ jobs:
         with:
           node-version: 18
       - name: Install abigen
-        run: add-apt-repository -y ppa:ethereum/ethereum && apt-get update && apt-get install ethereum-dev
+        run: sudo add-apt-repository -y ppa:ethereum/ethereum && apt-get update && apt-get install ethereum-dev
 
       - name: Install dependencies
         run: cd contracts && npm install
