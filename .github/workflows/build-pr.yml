@@ -26,7 +26,7 @@ jobs:
 
       - name: Install dependencies
         run: cd contracts && npm install
-      - name: Hardhat test
+      - name: Generate Solidity Contract Bindings
         run: cd contracts && npx hardhat generate-abi-bindings --output-dir generated
       
       - name: Set up Go
