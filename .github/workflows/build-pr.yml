@@ -33,9 +33,10 @@ jobs:
       - name: Store simulation logs
         uses: actions/upload-artifact@v3
         with:
-          name: sim-logs
+          name: ci-logs
           path: |
             integration/.build/simulations/sim-log-*.txt
             integration/.build/noderunner/noderunner-*.txt
             integration/.build/wallet_extension/wal-ext-*.txt
+            integration/.build/eth2/*
         if: always() # Ensures the artifacts are created even if the tests fail.

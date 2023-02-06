@@ -26,12 +26,16 @@ miner.start();
 console.log("Miner Started");
 `
 
-const beaconConfig = `CONFIG_NAME: interop
+const _beaconConfig = `
+CONFIG_NAME: interop
 PRESET_BASE: interop
+
+DEPOSIT_CHAIN_ID: %d
+DEPOSIT_NETWORK_ID: %d
 
 # Genesis
 GENESIS_FORK_VERSION: 0x20000089
-GENESIS_DELAY: 1
+
 
 # Altair
 ALTAIR_FORK_EPOCH: 2
@@ -40,7 +44,7 @@ ALTAIR_FORK_VERSION: 0x20000090
 # Merge
 BELLATRIX_FORK_EPOCH: 4
 BELLATRIX_FORK_VERSION: 0x20000091
-TERMINAL_TOTAL_DIFFICULTY: 2
+TERMINAL_TOTAL_DIFFICULTY: 10
 
 # Time parameters
 SECONDS_PER_SLOT: 2
@@ -50,7 +54,7 @@ SLOTS_PER_EPOCH: 2
 DEPOSIT_CONTRACT_ADDRESS: 0x4242424242424242424242424242424242424242
 `
 
-const baseGenesis = `{
+const _baseGenesis = `{
   "config": {
     "ChainName": "l1_chain",
     "chainId": 32382,
@@ -75,7 +79,7 @@ const baseGenesis = `{
       "period": 1,
       "epoch": 1000
     },
-    "terminalTotalDifficulty": 2
+    "terminalTotalDifficulty": 10
   },
   "difficulty": "1",
   "gasLimit": "30000000",
@@ -92,7 +96,7 @@ const baseGenesis = `{
 func generateGenesis(blockTimeSecs int, chainID int, signerAddrs, prefundedAddrs []string) (string, error) {
 	var genesisJSON map[string]interface{}
 
-	err := json.Unmarshal([]byte(baseGenesis), &genesisJSON)
+	err := json.Unmarshal([]byte(_baseGenesis), &genesisJSON)
 	if err != nil {
 		return "", err
 	}
