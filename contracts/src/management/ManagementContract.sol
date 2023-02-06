@@ -146,7 +146,8 @@ contract ManagementContract {
         }
     }
 
-    function AddRollup(Structs.MetaRollup calldata r, string calldata /* rollupData */, Structs.HeaderCrossChainData calldata crossChainData) public {
+    // solc-ignore-next-line unused-param
+    function AddRollup(Structs.MetaRollup calldata r, string calldata  _rollupData, Structs.HeaderCrossChainData calldata crossChainData) public {
         // TODO How to ensure the sender without hashing the calldata ?
         // bytes32 derp = keccak256(abi.encodePacked(ParentHash, AggregatorID, L1Block, Number, rollupData));
 
@@ -180,7 +181,8 @@ contract ManagementContract {
     }
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
-    function InitializeNetworkSecret(address _aggregatorID, bytes calldata /* _initSecret */, string memory _hostAddress, string calldata /* _genesisAttestation */) public {
+    // solc-ignore-next-line unused-param
+    function InitializeNetworkSecret(address _aggregatorID, bytes calldata  _initSecret, string memory _hostAddress, string calldata _genesisAttestation) public {
         require(!networkSecretInitialized);
 
         // network can no longer be initialized
