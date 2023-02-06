@@ -1031,7 +1031,10 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head 
 	if producedBatch != nil {
 		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
 		producedExtRollup = common.ExtRollupFromExtBatches([]*common.ExtBatch{producedExtBatch})
-		e.chain.SignRollup(producedExtRollup.Header)
+		err := e.chain.SignRollup(producedExtRollup.Header)
+		if err != nil {
+			panic(err) // This should never happen!
+		}
 	}
 
 	return &common.BlockSubmissionResponse{
