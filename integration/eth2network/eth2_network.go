@@ -371,6 +371,7 @@ func (n *Impl) gethStartNode(executionPort, networkPort, httpPort, wsPort int, d
 		"--syncmode", "full", // sync mode to download and test all blocks and txs
 		"--allow-insecure-unlock", // allows to use personal accounts over http/ws
 		"--nodiscover",            // don't try and discover peers
+		"--ipcdisable",            // avoid geth erroring bc the ipc path is too long
 	}
 	fmt.Printf("gethStartNode: %s %s\n", n.gethBinaryPath, strings.Join(args, " "))
 	cmd := exec.Command(n.gethBinaryPath, args...) //nolint
