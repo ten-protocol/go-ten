@@ -19,7 +19,7 @@ help_and_exit() {
     echo ""
     echo "  wsport             *Optional* Set web socket start port. Defaults to 9000"
     echo ""
-    echo "  port               *Optional* Set geth port. Defaults to 8000"
+    echo "  port               *Optional* Set geth http port. Defaults to 8025"
     echo ""
     echo ""
     echo ""
@@ -30,7 +30,7 @@ set -euo pipefail
 
 # Set default options
 wsport=9000
-port=8000
+port=8025
 
 # Fetch options
 for argument in "$@"
