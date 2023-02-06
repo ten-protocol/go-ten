@@ -113,7 +113,7 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostConta
 	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, metricsService.Registry())
 	rpcServer := clientrpc.NewServer(cfg, logger)
 
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.RollupContractAddress, logger)
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)
 
 	return NewHostContainer(cfg, aggP2P, l1Client, enclaveClient, mgmtContractLib, ethWallet, rpcServer, logger, metricsService)
 }
