@@ -16,8 +16,20 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 18
+      - name: Install abigen
+        run: |
+          sudo add-apt-repository -y ppa:ethereum/ethereum
+          sudo apt-get update
+          sudo apt-get -y install ethereum
 
       - name: Install dependencies
         run: cd contracts && npm install
+
+      - name: Check contracts match committed bytecode
+        run: |
+          cd contracts
+          npx hardhat generate-abi-bindings --output-dir generated
+          [ $(git diff | wc -c) -eq "0" ] || exit 1 
+      
       - name: Hardhat test
         run: cd contracts && npx hardhat test
