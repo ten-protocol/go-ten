@@ -38,6 +38,7 @@ const (
 	erc20ParamThree               = "1000000000000000000"
 	testLogs                      = "../.build/noderunner/"
 	receiptTimeout                = 30 * time.Second // The time to wait for a receipt for a transaction.
+	_portOffset                   = 100
 )
 
 var (
@@ -63,7 +64,7 @@ func init() { //nolint:gochecknoinits
 }
 
 func TestCanDeployLayer2ERC20Contract(t *testing.T) {
-	createObscuroNetwork(t)
+	createObscuroNetwork(t, integration.StartPortContractDeployerTest)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
 	time.Sleep(2 * time.Second)
 	contractAddr, err := contractdeployer.Deploy(config, testlog.Logger())
@@ -86,7 +87,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 }
 
 func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
-	createObscuroNetwork(t)
+	createObscuroNetwork(t, integration.StartPortContractDeployerTest+_portOffset)
 
 	faucetWallet := getWallet(genesis.TestnetPrefundedPK)
 	faucetClient := getClient(faucetWallet)
@@ -132,7 +133,7 @@ func getWallet(privateKeyHex string) wallet.Wallet {
 }
 
 // Creates a single-node Obscuro network for testing.
-func createObscuroNetwork(t *testing.T) {
+func createObscuroNetwork(t *testing.T, startPort int) {
 	// Create the Obscuro network.
 	numberOfNodes := 1
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
@@ -142,7 +143,7 @@ func createObscuroNetwork(t *testing.T) {
 		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,
-		StartPort:        integration.StartPortContractDeployerTest,
+		StartPort:        startPort,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
