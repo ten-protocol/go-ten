@@ -18,6 +18,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/stretchr/testify/assert"
 
@@ -26,7 +27,7 @@ import (
 )
 
 const (
-	_testBasePort = 18000
+	_startPort = integration.StartPortEth2NetworkTests
 	// TODO ensure it works with more than 1 node
 	_numTestNodes = 1
 )
@@ -45,11 +46,12 @@ func TestStartEth2Network(t *testing.T) {
 
 	network := NewEth2Network(
 		binDir,
-		_testBasePort,
-		_testBasePort+100,
-		_testBasePort+200,
-		_testBasePort+300,
-		_testBasePort+400,
+		_startPort,
+		_startPort+integration.DefaultGethWSPortOffset,
+		_startPort+integration.DefaultGethAUTHPortOffset,
+		_startPort+integration.DefaultGethNetworkPortOffset,
+		_startPort+integration.DefaultPrysmHTTPPortOffset,
+		_startPort+integration.DefaultPrysmP2PPortOffset,
 		chainID,
 		_numTestNodes,
 		1,
@@ -77,7 +79,7 @@ func TestStartEth2Network(t *testing.T) {
 }
 
 func areConfigsUphold(t *testing.T, addr gethcommon.Address, chainID int) {
-	url := fmt.Sprintf("http://127.0.0.1:%d", _testBasePort)
+	url := fmt.Sprintf("http://127.0.0.1:%d", _startPort)
 	conn, err := ethclient.Dial(url)
 	assert.Nil(t, err)
 
@@ -92,7 +94,7 @@ func areConfigsUphold(t *testing.T, addr gethcommon.Address, chainID int) {
 
 func numberOfNodes(t *testing.T) {
 	for i := 0; i < _numTestNodes; i++ {
-		url := fmt.Sprintf("http://127.0.0.1:%d", _testBasePort+i)
+		url := fmt.Sprintf("http://127.0.0.1:%d", _startPort+i)
 
 		req, err := http.NewRequestWithContext(
 			context.Background(),
@@ -127,7 +129,7 @@ func txsAreMinted(t *testing.T, wallets []wallet.Wallet) {
 
 	ethclients := make([]ethadapter.EthClient, _numTestNodes)
 	for i := 0; i < _numTestNodes; i++ {
-		ethclients[i], err = ethadapter.NewEthClient("127.0.0.1", uint(_testBasePort+100+i), 30*time.Second, common.L2Address{}, gethlog.New())
+		ethclients[i], err = ethadapter.NewEthClient("127.0.0.1", uint(_startPort+100+i), 30*time.Second, common.L2Address{}, gethlog.New())
 		assert.Nil(t, err)
 	}
 

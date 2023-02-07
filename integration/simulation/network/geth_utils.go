@@ -13,12 +13,11 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
-	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/integration/eth2network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -28,9 +27,9 @@ const (
 	// TODO - Also prefund the L1 HOC and POC addresses used for the end-to-end tests when run locally.
 )
 
-func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, blockDurationSeconds int) (*params.L1SetupData, []ethadapter.EthClient, *gethnetwork.GethNetwork) {
+func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, blockDurationSeconds int) (*params.L1SetupData, []ethadapter.EthClient, eth2network.Eth2Network) {
 	// make sure the geth network binaries exist
-	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
+	path, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		panic(err)
 	}
@@ -42,10 +41,26 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 	}
 
 	// kickoff the network with the prefunded wallet addresses
-	gethNetwork := gethnetwork.NewGethNetwork(StartPort, StartPort+DefaultWsPortOffset, path, nrNodes, blockDurationSeconds, walletAddresses, "", int(gethlog.LvlDebug))
+	eth2Network := eth2network.NewEth2Network(
+		path,
+		startPort,
+		startPort+integration.DefaultGethWSPortOffset,
+		startPort+integration.DefaultGethAUTHPortOffset,
+		startPort+integration.DefaultGethNetworkPortOffset,
+		startPort+integration.DefaultPrysmHTTPPortOffset,
+		startPort+integration.DefaultPrysmP2PPortOffset,
+		1337,
+		1,
+		blockDurationSeconds,
+		walletAddresses,
+	)
 
+	err = eth2Network.Start()
+	if err != nil {
+		panic(err)
+	}
 	// connect to the first host to deploy
-	tmpEthClient, err := ethadapter.NewEthClient(Localhost, gethNetwork.WebSocketPorts[0], DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
+	tmpEthClient, err := ethadapter.NewEthClient(Localhost, uint(startPort+100), DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
 		panic(err)
 	}
@@ -74,7 +89,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 
 	ethClients := make([]ethadapter.EthClient, nrNodes)
 	for i := 0; i < nrNodes; i++ {
-		ethClients[i] = createEthClientConnection(int64(i), gethNetwork.WebSocketPorts[i])
+		ethClients[i] = createEthClientConnection(int64(i), uint(startPort+100))
 	}
 
 	l1Data := &params.L1SetupData{
@@ -85,10 +100,10 @@ func SetUpGethNetwork(wallets *params.SimWallets, StartPort int, nrNodes int, bl
 		MessageBusAddr:      &l1BusAddress,
 	}
 
-	return l1Data, ethClients, gethNetwork
+	return l1Data, ethClients, eth2Network
 }
 
-func StopGethNetwork(clients []ethadapter.EthClient, netw *gethnetwork.GethNetwork) {
+func StopEth2Network(clients []ethadapter.EthClient, netw eth2network.Eth2Network) {
 	// Stop the clients first
 	for _, c := range clients {
 		if c != nil {
@@ -97,7 +112,10 @@ func StopGethNetwork(clients []ethadapter.EthClient, netw *gethnetwork.GethNetwo
 	}
 	// Stop the nodes second
 	if netw != nil { // If network creation failed, we may be attempting to tear down the Geth network before it even exists.
-		netw.StopNodes()
+		err := netw.Stop()
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 

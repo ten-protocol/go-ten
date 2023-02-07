@@ -55,6 +55,7 @@ type ethConfig struct {
 	gethAuthRPCStartPort    int
 	gethNetworkStartPort    int
 	prysmBeaconRPCStartPort int
+	prysmBeaconP2PStartPort int
 	blockTimeSecs           int
 	logLevel                int
 	chainID                 int
@@ -72,6 +73,7 @@ func defaultConfig() *ethConfig {
 		gethAuthRPCStartPort:    12200,
 		gethNetworkStartPort:    12300,
 		prysmBeaconRPCStartPort: 12400,
+		prysmBeaconP2PStartPort: 12500,
 		onlyDownload:            false,
 		prefundedAddrs:          []string{},
 		blockTimeSecs:           1,
