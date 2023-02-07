@@ -18,11 +18,9 @@ import (
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/gorilla/websocket"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -30,27 +28,20 @@ import (
 	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
-const (
-	jsonID = "1"
-)
+const jsonID = "1"
 
-var (
-	walExtPort   = integration.StartPortWalletExtensionUnitTest
-	walExtPortWS = integration.StartPortWalletExtensionUnitTest + 1
-	walExtAddr   = fmt.Sprintf("http://%s:%d", common.Localhost, walExtPort)
-	walExtAddrWS = fmt.Sprintf("ws://%s:%d", common.Localhost, walExtPortWS)
-	nodePortWS   = integration.StartPortWalletExtensionUnitTest + 2
-	dummyAPI     = NewDummyAPI()
-)
+var dummyAPI = NewDummyAPI()
 
-func createWalExtCfg() *walletextension.Config {
+func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *walletextension.Config {
 	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {
 		panic("could not create persistence file for wallet extension tests")
 	}
 	return &walletextension.Config{
-		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", nodePortWS),
+		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", connectPort),
 		PersistencePathOverride: testPersistencePath.Name(),
+		WalletExtensionPort:     wallHTTPPort,
+		WalletExtensionPortWS:   wallWSPort,
 	}
 }
 
@@ -60,9 +51,9 @@ func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
 
 	walExt := walletextension.NewWalletExtension(*walExtCfg, logger)
 	t.Cleanup(walExt.Shutdown)
-	go walExt.Serve(common.Localhost, walExtPort, walExtPortWS)
+	go walExt.Serve(common.Localhost, walExtCfg.WalletExtensionPort, walExtCfg.WalletExtensionPortWS)
 
-	err := waitForEndpoint(walExtAddr + walletextension.PathReady)
+	err := waitForEndpoint(fmt.Sprintf("http://%s:%d%s", common.Localhost, walExtCfg.WalletExtensionPort, walletextension.PathReady))
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -71,10 +62,10 @@ func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
 }
 
 // Creates an RPC layer that the wallet extension can connect to. Returns a handle to shut down the host.
-func createDummyHost(t *testing.T) {
+func createDummyHost(t *testing.T, wsRPCPort int) {
 	cfg := gethnode.Config{
 		WSHost:    common.Localhost,
-		WSPort:    nodePortWS,
+		WSPort:    wsRPCPort,
 		WSOrigins: []string{"*"},
 	}
 	rpcServerNode, err := gethnode.New(&cfg)
@@ -120,15 +111,15 @@ func waitForEndpoint(addr string) error {
 }
 
 // Makes an Ethereum JSON RPC request over HTTP and returns the response body.
-func makeHTTPEthJSONReq(method string, params interface{}) []byte {
+func makeHTTPEthJSONReq(port int, method string, params interface{}) []byte {
 	reqBody := prepareRequestBody(method, params)
-	return makeRequestHTTP(walExtAddr, reqBody)
+	return makeRequestHTTP(fmt.Sprintf("http://%s:%d", common.Localhost, port), reqBody)
 }
 
 // Makes an Ethereum JSON RPC request over websockets and returns the response body.
-func makeWSEthJSONReq(method string, params interface{}) ([]byte, *websocket.Conn) {
+func makeWSEthJSONReq(port int, method string, params interface{}) ([]byte, *websocket.Conn) {
 	reqBody := prepareRequestBody(method, params)
-	return makeRequestWS(walExtAddrWS, reqBody)
+	return makeRequestWS(fmt.Sprintf("ws://%s:%d", common.Localhost, port), reqBody)
 }
 
 // Formats a method and its parameters as a Ethereum JSON RPC request.
@@ -146,22 +137,22 @@ func prepareRequestBody(method string, params interface{}) []byte {
 }
 
 // Generates a new account and registers it with the node.
-func registerPrivateKey(t *testing.T, useWS bool) (gethcommon.Address, []byte) {
+func registerPrivateKey(t *testing.T, walletHTTPPort, walletWSPort int, useWS bool) []byte {
 	accountPrivateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	accountAddr := crypto.PubkeyToAddress(accountPrivateKey.PublicKey)
 
-	viewingKeyBytes := generateViewingKey(accountAddr.String(), useWS)
+	viewingKeyBytes := generateViewingKey(walletHTTPPort, walletWSPort, accountAddr.String(), useWS)
 	signature := signViewingKey(accountPrivateKey, viewingKeyBytes)
-	submitViewingKey(accountAddr.String(), signature, useWS)
+	submitViewingKey(accountAddr.String(), walletHTTPPort, walletWSPort, signature, useWS)
 
-	return accountAddr, viewingKeyBytes
+	return viewingKeyBytes
 }
 
 // Generates a viewing key.
-func generateViewingKey(accountAddress string, useWS bool) []byte {
+func generateViewingKey(wallHTTPPort, wallWSPort int, accountAddress string, useWS bool) []byte {
 	generateViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		common.JSONKeyAddress: accountAddress,
 	})
@@ -170,10 +161,10 @@ func generateViewingKey(accountAddress string, useWS bool) []byte {
 	}
 
 	if useWS {
-		viewingKeyBytes, _ := makeRequestWS(walExtAddrWS+walletextension.PathGenerateViewingKey, generateViewingKeyBodyBytes)
+		viewingKeyBytes, _ := makeRequestWS(fmt.Sprintf("ws://%s:%d%s", common.Localhost, wallWSPort, walletextension.PathGenerateViewingKey), generateViewingKeyBodyBytes)
 		return viewingKeyBytes
 	}
-	return makeRequestHTTP(walExtAddr+walletextension.PathGenerateViewingKey, generateViewingKeyBodyBytes)
+	return makeRequestHTTP(fmt.Sprintf("http://%s:%d%s", common.Localhost, wallHTTPPort, walletextension.PathGenerateViewingKey), generateViewingKeyBodyBytes)
 }
 
 // Signs a viewing key.
@@ -192,7 +183,7 @@ func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
 }
 
 // Submits a viewing key.
-func submitViewingKey(accountAddr string, signature []byte, useWS bool) {
+func submitViewingKey(accountAddr string, wallHTTPPort, wallWSPort int, signature []byte, useWS bool) {
 	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
 		common.JSONKeySignature: hex.EncodeToString(signature),
 		common.JSONKeyAddress:   accountAddr,
@@ -202,9 +193,9 @@ func submitViewingKey(accountAddr string, signature []byte, useWS bool) {
 	}
 
 	if useWS {
-		makeRequestWS(walExtAddrWS+walletextension.PathSubmitViewingKey, submitViewingKeyBodyBytes)
+		makeRequestWS(fmt.Sprintf("ws://%s:%d%s", common.Localhost, wallWSPort, walletextension.PathSubmitViewingKey), submitViewingKeyBodyBytes)
 	} else {
-		makeRequestHTTP(walExtAddr+walletextension.PathSubmitViewingKey, submitViewingKeyBodyBytes)
+		makeRequestHTTP(fmt.Sprintf("http://%s:%d%s", common.Localhost, wallHTTPPort, walletextension.PathSubmitViewingKey), submitViewingKeyBodyBytes)
 	}
 }
 
