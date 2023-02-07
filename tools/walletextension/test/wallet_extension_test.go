@@ -26,7 +26,7 @@ const (
 	magicNumber      = 123789
 	jsonKeyTopics    = "topics"
 	_hostWSPort      = integration.StartPortWalletExtensionUnitTest
-	_testOffset      = 100
+	_testOffset      = 100 // offset each test by a multiplier of the offset to avoid port colision. ie: 	hostPort := _hostWSPort + _testOffset*2
 )
 
 var dummyHash = gethcommon.BigToHash(big.NewInt(magicNumber))
