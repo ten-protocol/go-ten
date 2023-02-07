@@ -21,7 +21,6 @@ import (
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -138,7 +137,7 @@ func prepareRequestBody(method string, params interface{}) []byte {
 }
 
 // Generates a new account and registers it with the node.
-func registerPrivateKey(t *testing.T, walletHTTPPort, walletWSPort int, useWS bool) (gethcommon.Address, []byte) {
+func registerPrivateKey(t *testing.T, walletHTTPPort, walletWSPort int, useWS bool) []byte {
 	accountPrivateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -149,7 +148,7 @@ func registerPrivateKey(t *testing.T, walletHTTPPort, walletWSPort int, useWS bo
 	signature := signViewingKey(accountPrivateKey, viewingKeyBytes)
 	submitViewingKey(accountAddr.String(), walletHTTPPort, walletWSPort, signature, useWS)
 
-	return accountAddr, viewingKeyBytes
+	return viewingKeyBytes
 }
 
 // Generates a viewing key.

@@ -4,21 +4,20 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"math/big"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/common"
-	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/tools/walletextension"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
+	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 )
 
 const (
@@ -72,7 +71,7 @@ func canInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T, testHelper *tes
 }
 
 func canInvokeSensitiveMethodsWithViewingKey(t *testing.T, testHelper *testHelper) {
-	_, viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
+	viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	for _, method := range rpc.SensitiveMethods {
@@ -118,7 +117,7 @@ func canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.T, t
 	// We submit viewing keys for ten arbitrary accounts.
 	var viewingKeys [][]byte
 	for i := 0; i < 10; i++ {
-		_, viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
+		viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
 		viewingKeys = append(viewingKeys, viewingKeyBytes)
 	}
 
@@ -143,7 +142,7 @@ func cannotSubscribeOverHTTP(t *testing.T, testHelper *testHelper) {
 }
 
 func canRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T, testHelper *testHelper) {
-	_, viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, true)
+	viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, true)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	for _, method := range rpc.SensitiveMethods {
@@ -189,7 +188,7 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	walExtCfg := createWalExtCfg(hostPort, walletHTTPPort, walletWSPort)
 	shutdown := createWalExt(t, walExtCfg)
 
-	_, viewingKeyBytes := registerPrivateKey(t, walletHTTPPort, walletWSPort, false)
+	viewingKeyBytes := registerPrivateKey(t, walletHTTPPort, walletWSPort, false)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	// We shut down the wallet extension and restart it with the same config, forcing the viewing keys to be reloaded.
@@ -212,7 +211,7 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	createDummyHost(t, hostPort)
 	createWalExt(t, createWalExtCfg(hostPort, walletHTTPPort, walletWSPort))
 
-	_, viewingKeyBytes := registerPrivateKey(t, walletHTTPPort, walletWSPort, false)
+	viewingKeyBytes := registerPrivateKey(t, walletHTTPPort, walletWSPort, false)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	filter := common.FilterCriteriaJSON{Topics: []interface{}{dummyHash}}
