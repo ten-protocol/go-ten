@@ -94,15 +94,15 @@ func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadap
 		isGenesis := i == 0
 
 		// We use the convention to determine the rpc ports of the node
-		nodeRPCPortHTTP := params.StartPort + DefaultHostRPCHTTPOffset + i
-		nodeRPCPortWS := params.StartPort + DefaultHostRPCWSOffset + i
+		nodeRPCPortHTTP := params.StartPort + integration.DefaultHostRPCHTTPOffset + i
+		nodeRPCPortWS := params.StartPort + integration.DefaultHostRPCWSOffset + i
 
 		// create an Obscuro node
 		obscuroNodes[i] = createSocketObscuroHostContainer(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
-			fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i),
+			fmt.Sprintf("%s:%d", Localhost, params.StartPort+integration.DefaultHostP2pOffset+i),
 			enclaveAddresses[i],
 			Localhost,
 			uint64(nodeRPCPortHTTP),
@@ -182,8 +182,8 @@ func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 func startRemoteEnclaveServers(params *params.SimParams) {
 	for i := 0; i < params.NumberOfNodes; i++ {
 		// create a remote enclave server
-		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultEnclaveOffset+i)
-		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+DefaultHostP2pOffset+i)
+		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+integration.DefaultEnclaveOffset+i)
+		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+integration.DefaultHostP2pOffset+i)
 
 		enclaveConfig := config.EnclaveConfig{
 			HostID:            gethcommon.BigToAddress(big.NewInt(int64(i))),
