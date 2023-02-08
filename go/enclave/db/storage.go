@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -24,6 +25,10 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
+
+// ErrNoRollups is returned if no rollups have been published yet in the history of the network
+// Note: this is not just "not found", we cache at every L1 block what rollup we are up to so we also record that we haven't seen one yet
+var ErrNoRollups = errors.New("no rollups have been published")
 
 // TODO - Consistency around whether we assert the secret is available or not.
 
@@ -160,6 +165,9 @@ func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*co
 	l2HeadBatch, err := obscurorawdb.ReadL2HeadRollup(s.db, blockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read L2 head rollup for block. Cause: %w", err)
+	}
+	if l2HeadBatch == (&gethcommon.Hash{}) { // empty hash ==> no rollups yet up to this block
+		return nil, ErrNoRollups
 	}
 	return obscurorawdb.ReadRollup(s.db, *l2HeadBatch)
 }

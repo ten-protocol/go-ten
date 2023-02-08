@@ -37,8 +37,6 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
-var errNoRollupFound = errors.New("no rollup found")
-
 // ObscuroChain represents the canonical L2 chain, and manages the state.
 type ObscuroChain struct {
 	hostID      gethcommon.Address
@@ -863,7 +861,7 @@ func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address,
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
 func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 	latestRollup, err := oc.getLatestRollupBeforeBlock(block)
-	if err != nil && !errors.Is(err, errNoRollupFound) {
+	if err != nil && !errors.Is(err, db.ErrNoRollups) {
 		return fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
 	}
 
@@ -878,6 +876,7 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
 	}
 
+	blockHash := block.Hash()
 	for idx, rollup := range rollups {
 		if err = oc.checkSequencerSignature(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
 			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
@@ -902,11 +901,18 @@ func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
 		if err = oc.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
+	}
 
-		blockHash := block.Hash()
-		if err = oc.storage.UpdateHeadRollup(&blockHash, rollup.Hash()); err != nil {
-			return fmt.Errorf("could not update head rollup. Cause: %w", err)
-		}
+	// we record the latest rollup published against this L1 block hash
+	// note: if no rollup published yet then we record the empty hash as a marker
+	rollupHash := &gethcommon.Hash{}
+	if latestRollup != nil {
+		rollupHash = latestRollup.Hash()
+	}
+
+	err = oc.storage.UpdateHeadRollup(&blockHash, rollupHash)
+	if err != nil {
+		return fmt.Errorf("unable to update head rollup - %w", err)
 	}
 
 	return nil
@@ -924,13 +930,15 @@ func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core
 			return latestRollup, nil
 		}
 
+		// we scan backwards now to the prev block in the chain and we will lookup to see if that has an entry
+		// todo: is this still required for safety, even though we're storing an entry for every L1 block?
 		block, err = oc.storage.FetchBlock(block.ParentHash())
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				// No more blocks available (enclave does not read the L1 chain from genesis if it knows
 				// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
 				// We have now checked through the entire (relevant) history of the L1 and no rollups were found.
-				return nil, errNoRollupFound
+				return nil, db.ErrNoRollups
 			}
 			return nil, fmt.Errorf("could not fetch parent block - %w", err)
 		}
