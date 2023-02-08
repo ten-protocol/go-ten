@@ -30,8 +30,6 @@ import (
 
 const jsonID = "1"
 
-var dummyAPI = NewDummyAPI()
-
 func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *walletextension.Config {
 	testPersistencePath, err := os.CreateTemp("", "")
 	if err != nil {
@@ -50,7 +48,6 @@ func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
 	logger := log.New(log.WalletExtCmp, int(gethlog.LvlInfo), log.SysOut)
 
 	walExt := walletextension.NewWalletExtension(*walExtCfg, logger)
-	t.Cleanup(walExt.Shutdown)
 	go walExt.Serve(common.Localhost, walExtCfg.WalletExtensionPort, walExtCfg.WalletExtensionPortWS)
 
 	err := waitForEndpoint(fmt.Sprintf("http://%s:%d%s", common.Localhost, walExtCfg.WalletExtensionPort, walletextension.PathReady))
@@ -62,7 +59,8 @@ func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
 }
 
 // Creates an RPC layer that the wallet extension can connect to. Returns a handle to shut down the host.
-func createDummyHost(t *testing.T, wsRPCPort int) {
+func createDummyHost(t *testing.T, wsRPCPort int) (*DummyAPI, func() error) {
+	dummyAPI := NewDummyAPI()
 	cfg := gethnode.Config{
 		WSHost:    common.Localhost,
 		WSPort:    wsRPCPort,
@@ -92,6 +90,8 @@ func createDummyHost(t *testing.T, wsRPCPort int) {
 	if err != nil {
 		t.Fatalf(fmt.Sprintf("could not create new client server. Cause: %s", err))
 	}
+	t.Logf("started dummy host rpc server at %s:%d", common.Localhost, wsRPCPort)
+	return dummyAPI, rpcServerNode.Close
 }
 
 // Waits for the endpoint to be available. Times out after three seconds.
@@ -120,6 +120,25 @@ func makeHTTPEthJSONReq(port int, method string, params interface{}) []byte {
 func makeWSEthJSONReq(port int, method string, params interface{}) ([]byte, *websocket.Conn) {
 	reqBody := prepareRequestBody(method, params)
 	return makeRequestWS(fmt.Sprintf("ws://%s:%d", common.Localhost, port), reqBody)
+}
+
+func makeWSEthJSONReqWithConn(conn *websocket.Conn, method string, params interface{}) []byte {
+	reqBody := prepareRequestBody(method, params)
+	return issueRequestWS(conn, reqBody)
+}
+
+func openWSConn(port int) (*websocket.Conn, error) {
+	conn, dialResp, err := websocket.DefaultDialer.Dial(fmt.Sprintf("ws://%s:%d", common.Localhost, port), nil)
+	if dialResp != nil && dialResp.Body != nil {
+		defer dialResp.Body.Close()
+	}
+	if err != nil {
+		if conn != nil {
+			conn.Close()
+		}
+		panic(fmt.Errorf("received error response from wallet extension: %w", err))
+	}
+	return conn, err
 }
 
 // Formats a method and its parameters as a Ethereum JSON RPC request.
@@ -229,7 +248,12 @@ func makeRequestWS(url string, body []byte) ([]byte, *websocket.Conn) {
 		panic(fmt.Errorf("received error response from wallet extension: %w", err))
 	}
 
-	err = conn.WriteMessage(websocket.TextMessage, body)
+	return issueRequestWS(conn, body), conn
+}
+
+// issues request on an existing ws connection
+func issueRequestWS(conn *websocket.Conn, body []byte) []byte {
+	err := conn.WriteMessage(websocket.TextMessage, body)
 	if err != nil {
 		panic(err)
 	}
@@ -238,7 +262,7 @@ func makeRequestWS(url string, body []byte) ([]byte, *websocket.Conn) {
 	if err != nil {
 		panic(err)
 	}
-	return reqResp, conn
+	return reqResp
 }
 
 // Reads messages from the connection for the provided duration, and returns the read messages.
