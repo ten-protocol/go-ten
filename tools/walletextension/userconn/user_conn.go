@@ -103,7 +103,6 @@ func (w *userConnWS) ReadRequest() ([]byte, error) {
 	if err != nil {
 		if websocket.IsCloseError(err) {
 			w.isClosed = true
-			return nil, err
 		}
 		wrappedErr := fmt.Errorf("could not read request: %w", err)
 		w.HandleError(wrappedErr.Error())

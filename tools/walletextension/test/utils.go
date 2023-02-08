@@ -90,7 +90,6 @@ func createDummyHost(t *testing.T, wsRPCPort int) (*DummyAPI, func() error) {
 	if err != nil {
 		t.Fatalf(fmt.Sprintf("could not create new client server. Cause: %s", err))
 	}
-	t.Logf("started dummy host rpc server at %s:%d", common.Localhost, wsRPCPort)
 	return dummyAPI, rpcServerNode.Close
 }
 

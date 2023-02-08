@@ -4,19 +4,20 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/common"
-	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"math/big"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 )
 
 const (
@@ -64,7 +65,7 @@ func TestWalletExtension(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
-		i += 1
+		i++
 	}
 }
 
@@ -178,7 +179,7 @@ func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	walletWSPort := hostPort + 2
 
 	_, shutdownHost := createDummyHost(t, hostPort)
-	defer shutdownHost()
+	defer shutdownHost() //nolint: errcheck
 
 	shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, walletHTTPPort, walletWSPort))
 	defer shutdownWallet()
@@ -207,7 +208,7 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	walletWSPort := hostPort + 2
 
 	dummyAPI, shutdownHost := createDummyHost(t, hostPort)
-	defer shutdownHost()
+	defer shutdownHost() //nolint: errcheck
 	walExtCfg := createWalExtCfg(hostPort, walletHTTPPort, walletWSPort)
 	shutdownWallet := createWalExt(t, walExtCfg)
 
@@ -235,7 +236,7 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	dummyHash := gethcommon.BigToHash(big.NewInt(1234))
 
 	dummyAPI, shutdownHost := createDummyHost(t, hostPort)
-	defer shutdownHost()
+	defer shutdownHost() //nolint: errcheck
 	shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, walletHTTPPort, walletWSPort))
 	defer shutdownWallet()
 
