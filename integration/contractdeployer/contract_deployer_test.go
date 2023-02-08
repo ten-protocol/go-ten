@@ -167,7 +167,7 @@ func getClient(hostWSPort int, wallet wallet.Wallet) *rpc.EncRPCClient {
 	if err != nil {
 		panic(err)
 	}
-	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s:%d", "127.0.0.1", hostWSPort), viewingKey, testlog.Logger())
+	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s:%d", network.Localhost, hostWSPort), viewingKey, testlog.Logger())
 	if err != nil {
 		panic(err)
 	}
