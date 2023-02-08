@@ -3,7 +3,6 @@ package network
 import (
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration"
 	"math/big"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/erc20contract"
 	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
