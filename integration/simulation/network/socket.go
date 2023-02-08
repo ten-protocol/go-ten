@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/integration"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -55,7 +56,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 
 	n.enclaveAddresses = make([]string, simParams.NumberOfNodes)
 	for i := 0; i < simParams.NumberOfNodes; i++ {
-		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, simParams.StartPort+DefaultEnclaveOffset+i)
+		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, simParams.StartPort+integration.DefaultEnclaveOffset+i)
 	}
 
 	l2Clients, hostRPCAddresses := startStandaloneObscuroNodes(simParams, n.gethClients, n.enclaveAddresses)

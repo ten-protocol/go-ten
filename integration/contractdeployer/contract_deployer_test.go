@@ -7,26 +7,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-
-	"github.com/obscuronet/go-obscuro/tools/contractdeployer"
-
 	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/tools/contractdeployer"
+
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 )
 
 const (
@@ -59,7 +54,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 
 	config := &contractdeployer.Config{
 		NodeHost:          network.Localhost,
-		NodePort:          uint(startPort + integration.DefaultHostRPCWSOffset),
+		NodePort:          uint(hostWSPort),
 		IsL1Deployment:    false,
 		PrivateKey:        contractDeployerPrivateKeyHex,
 		ChainID:           big.NewInt(integration.ObscuroChainID),
