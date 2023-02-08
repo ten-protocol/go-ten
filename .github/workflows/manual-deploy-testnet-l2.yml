@@ -164,6 +164,12 @@ jobs:
         run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF_NAME})"
         id: extract_branch
 
+        # The Azure API will sometimes supersede PUT requests that come in close together. This sleep will stagger the VM requests.
+        # It expects host_id to be an int and then multiplies it by 30s (i.e. host 0: sleep 0, host 1: sleep 30,...)
+      - name: 'Stagger VM creation'
+        shell: bash
+        run: sleep `expr ${matrix.host_id} \* 30`
+
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
