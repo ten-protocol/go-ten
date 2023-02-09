@@ -9,12 +9,12 @@ import (
 // These are the keys of the log entries
 const (
 	ErrKey         = "err"
-	SubIDKey       = "subId"
+	SubIDKey       = "subscription_id"
 	CfgKey         = "cfg"
 	TxKey          = "tx"
-	CmpKey         = "cmp"
+	CmpKey         = "component"
 	NodeIDKey      = "node_id"
-	NetworkIDKey   = "netw_id"
+	NetworkIDKey   = "network_id"
 	BlockHeightKey = "block_height"
 	BlockHashKey   = "block_hash"
 )
