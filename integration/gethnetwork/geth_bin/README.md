@@ -1,1 +1,0 @@
-A pre-built Geth Linux binary for use in CI. Downloaded from https://geth.ethereum.org/downloads/.

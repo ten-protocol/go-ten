@@ -37,13 +37,16 @@ func EnsureBinariesExist() (string, error) {
 		panic(err)
 	}
 
-	gethScript := path.Join(basepath, "./build_geth_binary.sh")
-	cmd := exec.Command("bash", gethScript, fmt.Sprintf("%s=%s", "--version", "v"+_gethVersion))
-	cmd.Stderr = os.Stderr
+	// build geth
+	if !fileExists(path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)) {
+		gethScript := path.Join(basepath, "./build_geth_binary.sh")
+		cmd := exec.Command("bash", gethScript, fmt.Sprintf("%s=%s", "--version", "v"+_gethVersion))
+		cmd.Stderr = os.Stderr
 
-	if out, err := cmd.Output(); err != nil {
-		fmt.Printf("%s\n", out)
-		return "", err
+		if out, err := cmd.Output(); err != nil {
+			fmt.Printf("%s\n", out)
+			return "", err
+		}
 	}
 
 	// download prysm files

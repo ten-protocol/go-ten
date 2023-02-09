@@ -25,8 +25,8 @@ func TestIssueTxWaitReceipt(t *testing.T) {
 		"5d1cffab85ddad285de2485ff09339e66e1e0acbfb9960c0df8231a1deb4994a",
 		1337,
 		gethlog.New())
-	host := "dev-testnet-eth2network.uksouth.azurecontainer.io"
-	port := 9000
+	host := "localhost"
+	port := 38000
 
 	var err error
 	ethClient, err := ethadapter.NewEthClient(host, uint(port), 30*time.Second, common.L2Address{}, gethlog.New())

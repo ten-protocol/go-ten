@@ -58,7 +58,7 @@ jobs:
 #        with:
 #          push: true
 #          tags: obscuronet/testnet_l1network:latest
-#          file: ./testnet/gethnetwork.Dockerfile
+#          file: ./testnet/eth2network.Dockerfile
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1

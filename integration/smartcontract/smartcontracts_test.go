@@ -5,33 +5,32 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
-	"github.com/ethereum/go-ethereum/log"
-
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/constants"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
+	"github.com/obscuronet/go-obscuro/integration/eth2network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/stretchr/testify/assert"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
+
+const _startPort = integration.StartPortSmartContractTests
 
 // netInfo is a bag holder struct for output data from the execution/run of a network
 type netInfo struct {
 	ethClients  []ethadapter.EthClient
 	wallets     []wallet.Wallet
-	gethNetwork *gethnetwork.GethNetwork
+	eth2Network eth2network.Eth2Network
 }
 
 var testLogs = "../.build/noderunner/"
@@ -48,7 +47,7 @@ func init() { //nolint:gochecknoinits
 // runGethNetwork runs a geth network with one prefunded wallet
 func runGethNetwork(t *testing.T) *netInfo {
 	// make sure the geth network binaries exist
-	path, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
+	path, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,25 +56,41 @@ func runGethNetwork(t *testing.T) *netInfo {
 	workerWallet := datagenerator.RandomWallet(integration.EthereumChainID)
 
 	// define + run the network
-	gethNetwork := gethnetwork.NewGethNetwork(integration.StartPortSmartContractTests, integration.StartPortSmartContractTests+100, path, 3, 1, []string{workerWallet.Address().String()}, "", int(log.LvlInfo))
+	eth2Network := eth2network.NewEth2Network(
+		path,
+		_startPort,
+		_startPort+integration.DefaultGethWSPortOffset,
+		_startPort+integration.DefaultGethAUTHPortOffset,
+		_startPort+integration.DefaultGethNetworkPortOffset,
+		_startPort+integration.DefaultPrysmHTTPPortOffset,
+		_startPort+integration.DefaultPrysmP2PPortOffset,
+		1337,
+		1,
+		1,
+		[]string{workerWallet.Address().String()},
+	)
+
+	if err = eth2Network.Start(); err != nil {
+		t.Fatal(err)
+	}
 
 	// create a client that is connected to node 0 of the network
-	client, err := ethadapter.NewEthClient("127.0.0.1", gethNetwork.WebSocketPorts[0], 30*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
+	client, err := ethadapter.NewEthClient("127.0.0.1", integration.StartPortSmartContractTests+100, 30*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
 	if err != nil {
-		return nil
+		t.Fatal(err)
 	}
 
 	return &netInfo{
 		ethClients:  []ethadapter.EthClient{client},
 		wallets:     []wallet.Wallet{workerWallet},
-		gethNetwork: gethNetwork,
+		eth2Network: eth2Network,
 	}
 }
 
 func TestManagementContract(t *testing.T) {
 	// run tests on one network
 	sim := runGethNetwork(t)
-	defer sim.gethNetwork.StopNodes()
+	defer sim.eth2Network.Stop() //nolint: errcheck
 
 	// setup the client and the (debug) wallet
 	client := sim.ethClients[0]
