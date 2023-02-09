@@ -32,6 +32,11 @@ const (
 	_numTestNodes = 1
 )
 
+func TestEnsureBinariesAreAvail(t *testing.T) {
+	_, err := EnsureBinariesExist()
+	assert.Nil(t, err)
+}
+
 func TestStartEth2Network(t *testing.T) {
 	binDir, err := EnsureBinariesExist()
 	assert.Nil(t, err)
