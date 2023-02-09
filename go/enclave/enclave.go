@@ -248,8 +248,8 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	// We remove any transactions considered immune to re-orgs from the mempool.
 	if blockSubmissionResponse.ProducedBatch != nil {
 		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedBatch.Header)
-		e.logger.Error("removeOldMempoolTxs fail", "blk", block.Number(), "blkHash", block.Hash(), log.ErrKey, err)
 		if err != nil {
+			e.logger.Error("removeOldMempoolTxs fail", "blk", block.Number(), "blkHash", block.Hash(), log.ErrKey, err)
 			return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
 		}
 	}
