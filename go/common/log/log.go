@@ -15,6 +15,8 @@ const (
 	CmpKey       = "cmp"
 	NodeIDKey    = "node_id"
 	NetworkIDKey = "netw_id"
+	BlockHeight  = "block_height"
+	BlockHash    = "block_hash"
 )
 
 // Logging is grouped by the component where it was initialised

@@ -229,26 +229,26 @@ func (e *enclaveImpl) StopClient() error {
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
-	e.logger.Info("SubmitL1Block", "blk", block.Number(), "blkHash", block.Hash())
+	e.logger.Info("SubmitL1Block", log.BlockHeight, block.Number(), log.BlockHash, block.Hash())
 	// We update the enclave state based on the L1 block.
 	newL2Head, producedBatch, err := e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
-		e.logger.Info("ProcessL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
+		e.logger.Info("ProcessL1Block failed", log.BlockHeight, block.Number(), log.BlockHash, block.Hash(), log.ErrKey, err)
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
-	e.logger.Info("ProcessL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
+	e.logger.Info("ProcessL1Block successful", log.BlockHeight, block.Number(), log.BlockHash, block.Hash())
 
 	// We prepare the block submission response.
 	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
 
-	e.logger.Info("produceBlockSubmissionResponse successful", "blk", block.Number(), "blkHash", block.Hash(),
+	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeight, block.Number(), log.BlockHash, block.Hash(),
 		"newBatch", describeBSR(blockSubmissionResponse))
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	// We remove any transactions considered immune to re-orgs from the mempool.
 	if blockSubmissionResponse.ProducedBatch != nil {
 		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedBatch.Header)
-		e.logger.Error("removeOldMempoolTxs fail", "blk", block.Number(), "blkHash", block.Hash(), log.ErrKey, err)
+		e.logger.Error("removeOldMempoolTxs fail", log.BlockHeight, block.Number(), log.BlockHash, block.Hash(), log.ErrKey, err)
 		if err != nil {
 			return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
 		}
@@ -864,7 +864,7 @@ func (e *enclaveImpl) HealthCheck() (bool, error) {
 	storageHealthy, err := e.storage.HealthCheck()
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
-		e.logger.Error("unable to HealthCheck enclave storage", "err", err)
+		e.logger.Error("unable to HealthCheck enclave storage", log.ErrKey, err)
 		return false, nil
 	}
 	// TODO enclave healthcheck operations

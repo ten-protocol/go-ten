@@ -100,14 +100,14 @@ func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipt
 	defer oc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
-	oc.logger.Info("updateL1State (entered mutex)", "blk", block.NumberU64(), "blkHash", block.Hash())
+	oc.logger.Info("updateL1State (entered mutex)", log.BlockHeight, block.NumberU64(), log.BlockHash, block.Hash())
 	l1IngestionType, err := oc.updateL1State(block, receipts, isLatest)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// We update the L1 and L2 chain heads.
-	oc.logger.Info("updateL1AndL2Heads", "blk", block.NumberU64(), "blkHash", block.Hash())
+	oc.logger.Info("updateL1AndL2Heads", log.BlockHeight, block.NumberU64(), log.BlockHash, block.Hash())
 	newL2Head, producedBatch, err := oc.updateL1AndL2Heads(&block, l1IngestionType)
 	if err != nil {
 		return nil, nil, err
@@ -305,7 +305,7 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 			return nil, common.ErrBlockAncestorNotFound
 		}
 		oc.logger.Trace("parent not found",
-			"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
+			"blkHeight", block.NumberU64(), log.BlockHash, block.Hash(),
 			"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
 			"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
 		)
@@ -317,7 +317,7 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 			// lca > prevL1Head:
 			//   this would imply ingested block is earlier on the same branch as l1 head, but ingested block should not have been seen before
 			oc.logger.Error("unexpected blockchain state, incoming block is not child of L1 head and not an earlier fork of L1 head",
-				"blkHeight", block.NumberU64(), "blkHash", block.Hash(),
+				"blkHeight", block.NumberU64(), log.BlockHash, block.Hash(),
 				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
 				"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
 			)
