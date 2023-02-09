@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -137,7 +138,7 @@ func (w *userConnWS) HandleError(msg string) {
 
 	err = w.conn.WriteMessage(websocket.TextMessage, errMsg)
 	if err != nil {
-		if websocket.IsCloseError(err) {
+		if websocket.IsCloseError(err) || strings.Contains(msg, "EOF") {
 			w.isClosed = true
 		}
 		w.logger.Error("could not write error message to websocket", log.ErrKey, err)
