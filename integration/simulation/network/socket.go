@@ -6,17 +6,13 @@ import (
 
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/eth2network"
-
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
-
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
