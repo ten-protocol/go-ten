@@ -166,7 +166,7 @@ func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*co
 	if err != nil {
 		return nil, fmt.Errorf("could not read L2 head rollup for block. Cause: %w", err)
 	}
-	if l2HeadBatch == (&gethcommon.Hash{}) { // empty hash ==> no rollups yet up to this block
+	if *l2HeadBatch == (gethcommon.Hash{}) { // empty hash ==> no rollups yet up to this block
 		return nil, ErrNoRollups
 	}
 	return obscurorawdb.ReadRollup(s.db, *l2HeadBatch)
