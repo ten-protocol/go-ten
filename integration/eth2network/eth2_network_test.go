@@ -35,7 +35,7 @@ const (
 func TestEnsureBinariesAreAvail(t *testing.T) {
 	path, err := EnsureBinariesExist()
 	assert.Nil(t, err)
-	t.Log("Successfully downloaded files to %s", path)
+	t.Logf("Successfully downloaded files to %s", path)
 }
 
 func TestStartEth2Network(t *testing.T) {
