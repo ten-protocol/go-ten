@@ -7,23 +7,20 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-
-	obscurorawdb "github.com/obscuronet/go-obscuro/go/enclave/db/rawdb"
-
-	"github.com/ethereum/go-ethereum/params"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	obscurorawdb "github.com/obscuronet/go-obscuro/go/enclave/db/rawdb"
 )
 
 // ErrNoRollups is returned if no rollups have been published yet in the history of the network
@@ -140,7 +137,7 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 func (s *storageImpl) HealthCheck() (bool, error) {
 	headBatch, err := s.FetchHeadBatch()
 	if err != nil {
-		s.logger.Error("unable to HealthCheck storage", "err", err)
+		s.logger.Error("unable to HealthCheck storage", log.ErrKey, err)
 		return false, err
 	}
 	return headBatch != nil, nil
