@@ -38,7 +38,8 @@ func EnsureBinariesExist() (string, error) {
 	}
 
 	// build geth
-	if !fileExists(path.Join(basepath, _eth2BinariesRelPath, "v"+_gethVersion)) {
+	if !fileExists(path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)) {
+
 		gethScript := path.Join(basepath, "./build_geth_binary.sh")
 		cmd := exec.Command("bash", gethScript, fmt.Sprintf("%s=%s", "--version", "v"+_gethVersion))
 		cmd.Stderr = os.Stderr
