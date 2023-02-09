@@ -91,9 +91,8 @@ func (p *p2pImpl) StartListening(callback host.Host) {
 }
 
 func (p *p2pImpl) StopListening() error {
-	atomic.StoreInt32(p.listenerInterrupt, 1)
-
 	if p.listener != nil {
+		atomic.StoreInt32(p.listenerInterrupt, 1)
 		return p.listener.Close()
 	}
 	return nil

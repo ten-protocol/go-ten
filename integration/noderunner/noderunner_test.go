@@ -48,7 +48,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig := config.DefaultHostParsedConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveRPCAddress = enclaveAddr
-	hostConfig.ClientRPCPortWS = _startPort + integration.DefaultGethWSPortOffset
+	hostConfig.HasClientRPCHTTP = false
+	hostConfig.ClientRPCPortWS = _startPort + integration.DefaultHostRPCWSOffset
 	hostConfig.L1NodeWebsocketPort = uint(_startPort + integration.DefaultGethWSPortOffset)
 	hostConfig.ProfilerEnabled = true
 	hostConfig.P2PBindAddress = fmt.Sprintf("0.0.0.0:%d", _startPort+integration.DefaultHostP2pOffset)
