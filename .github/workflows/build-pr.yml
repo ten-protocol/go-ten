@@ -26,7 +26,7 @@ jobs:
 
       # Makes sure the binaries for the eth2network are avail for all other tests
       - name: Download eth2network binaries
-        run: go test ./... -run TestEnsureBinariesAreAvail -count=1
+        run: go test ./... -v -count=1 -run TestEnsureBinariesAreAvail
 
       - name: Test
         run: go test --failfast -v ./... -count=1
