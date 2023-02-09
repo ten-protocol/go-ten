@@ -8,15 +8,15 @@ import (
 
 // These are the keys of the log entries
 const (
-	ErrKey       = "err"
-	SubIDKey     = "subId"
-	CfgKey       = "cfg"
-	TxKey        = "tx"
-	CmpKey       = "cmp"
-	NodeIDKey    = "node_id"
-	NetworkIDKey = "netw_id"
-	BlockHeight  = "block_height"
-	BlockHash    = "block_hash"
+	ErrKey         = "err"
+	SubIDKey       = "subId"
+	CfgKey         = "cfg"
+	TxKey          = "tx"
+	CmpKey         = "cmp"
+	NodeIDKey      = "node_id"
+	NetworkIDKey   = "netw_id"
+	BlockHeightKey = "block_height"
+	BlockHashKey   = "block_hash"
 )
 
 // Logging is grouped by the component where it was initialised
