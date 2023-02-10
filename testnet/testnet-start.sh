@@ -16,6 +16,7 @@ ${testnet_path}/testnet-local-build_images.sh
 
 echo Starting up the L1 network
 ${testnet_path}/testnet-local-eth2network.sh --pkaddresses=0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944,0x0654D8B60033144D567f25bF41baC1FB0D60F23B
+sleep 75
 
 echo Deploying the l1 contracts
 ${testnet_path}/testnet-deploy-contracts.sh --l1host=-eth2network -pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
