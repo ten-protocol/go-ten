@@ -11,11 +11,6 @@ set -euo pipefail
 start_path="$(cd "$(dirname "${0}")" && pwd)"
 testnet_path="${start_path}"
 
-echo [`date +"%T"`] "Clean all running docker containers"
-for i in `docker ps -a | awk '{ print $1 } ' | grep -v CONTAINER`; do
-  docker stop $i && docker rm $i;
-done
-
 echo [`date +"%T"`] "Building the required docker images"
 ${testnet_path}/testnet-local-build_images.sh
 
