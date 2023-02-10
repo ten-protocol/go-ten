@@ -17,7 +17,7 @@ const (
 	enclaveRPCTimeoutSecsName    = "enclaveRPCTimeoutSecs"
 	l1RPCTimeoutSecsName         = "l1RPCTimeoutSecs"
 	p2pConnectionTimeoutSecsName = "p2pConnectionTimeoutSecs"
-	rollupContractAddrName       = "rollupContractAddress"
+	managementContractAddrName   = "managementContractAddress"
 	logLevelName                 = "logLevel"
 	logPathName                  = "logPath"
 	privateKeyName               = "privateKey"
@@ -48,7 +48,7 @@ func getFlagUsageMap() map[string]string {
 		enclaveRPCTimeoutSecsName:    "The timeout for host <-> enclave RPC communication",
 		l1RPCTimeoutSecsName:         "The timeout for connecting to, and communicating with, the Ethereum client",
 		p2pConnectionTimeoutSecsName: "The timeout for host <-> host P2P messaging",
-		rollupContractAddrName:       "The management contract address on the L1",
+		managementContractAddrName:   "The management contract address on the L1",
 		logLevelName:                 "The verbosity level of logs. (Defaults to Info)",
 		logPathName:                  "The path to use for the host's log file",
 		privateKeyName:               "The private key for the L1 host account",

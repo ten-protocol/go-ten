@@ -48,7 +48,7 @@ type HostInputConfig struct {
 	// Timeout duration for messaging between hosts.
 	P2PConnectionTimeout time.Duration
 	// The rollup contract address on the L1 network
-	RollupContractAddress gethcommon.Address
+	ManagementContractAddress gethcommon.Address
 	// LogLevel determines the verbosity of output logs
 	LogLevel int
 	// The path that the node's logs are written to
@@ -74,32 +74,32 @@ type HostInputConfig struct {
 // ToHostConfig returns a HostConfig given a HostInputConfig
 func (p HostInputConfig) ToHostConfig() *HostConfig {
 	return &HostConfig{
-		IsGenesis:              p.IsGenesis,
-		NodeType:               p.NodeType,
-		HasClientRPCHTTP:       p.HasClientRPCHTTP,
-		ClientRPCPortHTTP:      p.ClientRPCPortHTTP,
-		HasClientRPCWebsockets: p.HasClientRPCWebsockets,
-		ClientRPCPortWS:        p.ClientRPCPortWS,
-		ClientRPCHost:          p.ClientRPCHost,
-		EnclaveRPCAddress:      p.EnclaveRPCAddress,
-		P2PBindAddress:         p.P2PBindAddress,
-		P2PPublicAddress:       p.P2PPublicAddress,
-		L1NodeHost:             p.L1NodeHost,
-		L1NodeWebsocketPort:    p.L1NodeWebsocketPort,
-		EnclaveRPCTimeout:      p.EnclaveRPCTimeout,
-		L1RPCTimeout:           p.L1RPCTimeout,
-		P2PConnectionTimeout:   p.P2PConnectionTimeout,
-		RollupContractAddress:  p.RollupContractAddress,
-		LogLevel:               p.LogLevel,
-		LogPath:                p.LogPath,
-		PrivateKeyString:       p.PrivateKeyString,
-		L1ChainID:              p.L1ChainID,
-		ObscuroChainID:         p.ObscuroChainID,
-		ProfilerEnabled:        p.ProfilerEnabled,
-		L1StartHash:            p.L1StartHash,
-		ID:                     gethcommon.Address{},
-		MetricsEnabled:         p.MetricsEnabled,
-		MetricsHTTPPort:        p.MetricsHTTPPort,
+		IsGenesis:                 p.IsGenesis,
+		NodeType:                  p.NodeType,
+		HasClientRPCHTTP:          p.HasClientRPCHTTP,
+		ClientRPCPortHTTP:         p.ClientRPCPortHTTP,
+		HasClientRPCWebsockets:    p.HasClientRPCWebsockets,
+		ClientRPCPortWS:           p.ClientRPCPortWS,
+		ClientRPCHost:             p.ClientRPCHost,
+		EnclaveRPCAddress:         p.EnclaveRPCAddress,
+		P2PBindAddress:            p.P2PBindAddress,
+		P2PPublicAddress:          p.P2PPublicAddress,
+		L1NodeHost:                p.L1NodeHost,
+		L1NodeWebsocketPort:       p.L1NodeWebsocketPort,
+		EnclaveRPCTimeout:         p.EnclaveRPCTimeout,
+		L1RPCTimeout:              p.L1RPCTimeout,
+		P2PConnectionTimeout:      p.P2PConnectionTimeout,
+		ManagementContractAddress: p.ManagementContractAddress,
+		LogLevel:                  p.LogLevel,
+		LogPath:                   p.LogPath,
+		PrivateKeyString:          p.PrivateKeyString,
+		L1ChainID:                 p.L1ChainID,
+		ObscuroChainID:            p.ObscuroChainID,
+		ProfilerEnabled:           p.ProfilerEnabled,
+		L1StartHash:               p.L1StartHash,
+		ID:                        gethcommon.Address{},
+		MetricsEnabled:            p.MetricsEnabled,
+		MetricsHTTPPort:           p.MetricsHTTPPort,
 	}
 }
 
@@ -136,7 +136,7 @@ type HostConfig struct {
 	// Timeout duration for messaging between hosts.
 	P2PConnectionTimeout time.Duration
 	// The rollup contract address on the L1 network
-	RollupContractAddress gethcommon.Address
+	ManagementContractAddress gethcommon.Address
 	// LogLevel determines the verbosity of output logs
 	LogLevel int
 	// The path that the node's logs are written to
@@ -165,30 +165,30 @@ type HostConfig struct {
 // DefaultHostParsedConfig returns a HostConfig with default values.
 func DefaultHostParsedConfig() *HostInputConfig {
 	return &HostInputConfig{
-		IsGenesis:              true,
-		NodeType:               common.Sequencer,
-		HasClientRPCHTTP:       true,
-		ClientRPCPortHTTP:      13000,
-		HasClientRPCWebsockets: true,
-		ClientRPCPortWS:        13001,
-		ClientRPCHost:          "127.0.0.1",
-		EnclaveRPCAddress:      "127.0.0.1:11000",
-		P2PBindAddress:         "0.0.0.0:10000",
-		P2PPublicAddress:       "127.0.0.1:10000",
-		L1NodeHost:             "127.0.0.1",
-		L1NodeWebsocketPort:    8546,
-		EnclaveRPCTimeout:      time.Duration(defaultRPCTimeoutSecs) * time.Second,
-		L1RPCTimeout:           time.Duration(defaultL1RPCTimeoutSecs) * time.Second,
-		P2PConnectionTimeout:   time.Duration(defaultP2PTimeoutSecs) * time.Second,
-		RollupContractAddress:  gethcommon.BytesToAddress([]byte("")),
-		LogLevel:               int(log.LvlInfo),
-		LogPath:                "",
-		PrivateKeyString:       "0000000000000000000000000000000000000000000000000000000000000001",
-		L1ChainID:              1337,
-		ObscuroChainID:         777,
-		ProfilerEnabled:        false,
-		L1StartHash:            common.L1RootHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
-		MetricsEnabled:         true,
-		MetricsHTTPPort:        14000,
+		IsGenesis:                 true,
+		NodeType:                  common.Sequencer,
+		HasClientRPCHTTP:          true,
+		ClientRPCPortHTTP:         13000,
+		HasClientRPCWebsockets:    true,
+		ClientRPCPortWS:           13001,
+		ClientRPCHost:             "127.0.0.1",
+		EnclaveRPCAddress:         "127.0.0.1:11000",
+		P2PBindAddress:            "0.0.0.0:10000",
+		P2PPublicAddress:          "127.0.0.1:10000",
+		L1NodeHost:                "127.0.0.1",
+		L1NodeWebsocketPort:       8546,
+		EnclaveRPCTimeout:         time.Duration(defaultRPCTimeoutSecs) * time.Second,
+		L1RPCTimeout:              time.Duration(defaultL1RPCTimeoutSecs) * time.Second,
+		P2PConnectionTimeout:      time.Duration(defaultP2PTimeoutSecs) * time.Second,
+		ManagementContractAddress: gethcommon.BytesToAddress([]byte("")),
+		LogLevel:                  int(log.LvlInfo),
+		LogPath:                   "",
+		PrivateKeyString:          "0000000000000000000000000000000000000000000000000000000000000001",
+		L1ChainID:                 1337,
+		ObscuroChainID:            777,
+		ProfilerEnabled:           false,
+		L1StartHash:               common.L1RootHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
+		MetricsEnabled:            true,
+		MetricsHTTPPort:           14000,
 	}
 }

@@ -60,13 +60,13 @@ func createInMemObscuroNode(
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
 	hostConfig := &config.HostConfig{
-		ID:                    gethcommon.BigToAddress(big.NewInt(id)),
-		IsGenesis:             isGenesis,
-		NodeType:              nodeType,
-		HasClientRPCHTTP:      false,
-		P2PPublicAddress:      fmt.Sprintf("%d", id),
-		L1StartHash:           l1StartBlk,
-		RollupContractAddress: *mgtContractAddress,
+		ID:                        gethcommon.BigToAddress(big.NewInt(id)),
+		IsGenesis:                 isGenesis,
+		NodeType:                  nodeType,
+		HasClientRPCHTTP:          false,
+		P2PPublicAddress:          fmt.Sprintf("%d", id),
+		L1StartHash:               l1StartBlk,
+		ManagementContractAddress: *mgtContractAddress,
 	}
 
 	enclaveConfig := config.EnclaveConfig{
@@ -111,22 +111,22 @@ func createSocketObscuroHostContainer(
 	l1StartBlk gethcommon.Hash,
 ) *container.HostContainer {
 	hostConfig := &config.HostConfig{
-		ID:                     gethcommon.BigToAddress(big.NewInt(id)),
-		IsGenesis:              isGenesis,
-		NodeType:               nodeType,
-		HasClientRPCHTTP:       true,
-		ClientRPCPortHTTP:      clientRPCPortHTTP,
-		HasClientRPCWebsockets: true,
-		ClientRPCPortWS:        clientRPCPortWS,
-		ClientRPCHost:          clientRPCHost,
-		EnclaveRPCTimeout:      EnclaveClientRPCTimeout,
-		EnclaveRPCAddress:      enclaveAddr,
-		P2PBindAddress:         p2pAddr,
-		P2PPublicAddress:       p2pAddr,
-		L1ChainID:              integration.EthereumChainID,
-		ObscuroChainID:         integration.ObscuroChainID,
-		L1StartHash:            l1StartBlk,
-		RollupContractAddress:  *mgmtContractLib.GetContractAddr(),
+		ID:                        gethcommon.BigToAddress(big.NewInt(id)),
+		IsGenesis:                 isGenesis,
+		NodeType:                  nodeType,
+		HasClientRPCHTTP:          true,
+		ClientRPCPortHTTP:         clientRPCPortHTTP,
+		HasClientRPCWebsockets:    true,
+		ClientRPCPortWS:           clientRPCPortWS,
+		ClientRPCHost:             clientRPCHost,
+		EnclaveRPCTimeout:         EnclaveClientRPCTimeout,
+		EnclaveRPCAddress:         enclaveAddr,
+		P2PBindAddress:            p2pAddr,
+		P2PPublicAddress:          p2pAddr,
+		L1ChainID:                 integration.EthereumChainID,
+		ObscuroChainID:            integration.ObscuroChainID,
+		L1StartHash:               l1StartBlk,
+		ManagementContractAddress: *mgmtContractLib.GetContractAddr(),
 	}
 
 	// TODO change this to use the NewHostContainerFromConfig - depends on https://github.com/obscuronet/obscuro-internal/issues/1303
