@@ -297,7 +297,7 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 	enclaveHealthy, err := h.enclaveClient.HealthCheck()
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
-		h.logger.Error("unable to HealthCheck enclave", "err", err)
+		h.logger.Error("unable to HealthCheck enclave", log.ErrKey, err)
 	}
 
 	// Overall health is achieved when all parts are healthy
@@ -397,7 +397,7 @@ func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostco
 		h.logger.Warn("Error processing block.", log.ErrKey, err)
 		return stream
 	}
-	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, "blk", processedBlock.Hash(), "blkHeight", processedBlock.Number())
+	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, log.BlockHashKey, processedBlock.Hash(), log.BlockHeightKey, processedBlock.Number())
 	if errors.Is(rejErr, common.ErrBlockAlreadyProcessed) {
 		// resetting stream after rejection for duplicate is a possible optimisation in future but it's rarely an expensive case and
 		// it's a risky optimisation (need to ensure it can't get stuck in a loop)
@@ -589,6 +589,10 @@ func (h *host) waitForReceipt(txHash common.TxHash) error {
 	err = retry.Do(
 		func() error {
 			receipt, err = h.ethClient.TransactionReceipt(txHash)
+			if err != nil {
+				// adds more info on the error
+				return fmt.Errorf("unable to get receipt for tx: %s - %w", txHash.Hex(), err)
+			}
 			return err
 		},
 		retry.NewTimeoutStrategy(maxWaitForL1Receipt, retryIntervalForL1Receipt),
@@ -600,7 +604,7 @@ func (h *host) waitForReceipt(txHash common.TxHash) error {
 	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
 		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
 	}
-	h.logger.Trace("Successful L1 transaction receipt found.", "blk", receipt.BlockNumber, "blkHash", receipt.BlockHash)
+	h.logger.Trace("Successful L1 transaction receipt found.", log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
 	return nil
 }
 

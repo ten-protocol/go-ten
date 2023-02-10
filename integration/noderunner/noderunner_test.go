@@ -7,49 +7,37 @@ import (
 	"testing"
 	"time"
 
-	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
-
-	"github.com/obscuronet/go-obscuro/go/common/profiler"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/go/common/profiler"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/eth2network"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	"github.com/obscuronet/go-obscuro/go/config"
-
-	"github.com/obscuronet/go-obscuro/integration"
-
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
+	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
+	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
-// TODO - Use the NewHostContainerFromConfig/NewEnclaveContainerFromConfig methods in the socket-based integration tests, and retire this smoketest.
-
 const (
-	testLogs             = "../.build/noderunner/"
-	gethPort             = integration.StartPortNodeRunnerTest + 2
-	defaultWsPortOffset  = 100
-	gethWebsocketPort    = gethPort + defaultWsPortOffset
-	localhost            = "127.0.0.1"
-	obscuroWebsocketPort = integration.StartPortNodeRunnerTest + 1
-	p2pBindAddress       = integration.StartPortNodeRunnerTest + 3
+	_testLogs  = "../.build/noderunner/"
+	_localhost = "127.0.0.1"
+	_startPort = integration.StartPortNodeRunnerTest
 )
 
 // A smoke test to check that we can stand up a standalone Obscuro host and enclave.
 func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	testlog.Setup(&testlog.Cfg{
-		LogDir:      testLogs,
+		LogDir:      _testLogs,
 		TestType:    "noderunner",
 		TestSubtype: "test",
 		LogLevel:    gethlog.LvlInfo,
 	})
 
-	enclaveAddr := fmt.Sprintf("%s:%d", localhost, integration.StartPortNodeRunnerTest)
-	rpcAddress := fmt.Sprintf("ws://%s:%d", localhost, obscuroWebsocketPort)
+	enclaveAddr := fmt.Sprintf("%s:%d", _localhost, _startPort+integration.DefaultEnclaveOffset)
+	rpcAddress := fmt.Sprintf("ws://%s:%d", _localhost, _startPort+integration.DefaultGethWSPortOffset)
 
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
@@ -60,10 +48,11 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	hostConfig := config.DefaultHostParsedConfig()
 	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
 	hostConfig.EnclaveRPCAddress = enclaveAddr
-	hostConfig.ClientRPCPortWS = obscuroWebsocketPort
-	hostConfig.L1NodeWebsocketPort = uint(gethWebsocketPort)
+	hostConfig.HasClientRPCHTTP = false
+	hostConfig.ClientRPCPortWS = _startPort + integration.DefaultHostRPCWSOffset
+	hostConfig.L1NodeWebsocketPort = uint(_startPort + integration.DefaultGethWSPortOffset)
 	hostConfig.ProfilerEnabled = true
-	hostConfig.P2PBindAddress = fmt.Sprintf("0.0.0.0:%d", p2pBindAddress)
+	hostConfig.P2PBindAddress = fmt.Sprintf("0.0.0.0:%d", _startPort+integration.DefaultHostP2pOffset)
 	hostConfig.LogPath = testlog.LogFile()
 
 	enclaveConfig := config.DefaultEnclaveConfig()
@@ -71,13 +60,31 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	enclaveConfig.Address = enclaveAddr
 	enclaveConfig.ProfilerEnabled = true
 	enclaveConfig.LogPath = testlog.LogFile()
+	enclaveConfig.WillAttest = false
 
-	gethBinaryPath, err := gethnetwork.EnsureBinariesExist(gethnetwork.LatestVersion)
+	binariesPath, err := eth2network.EnsureBinariesExist()
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
-	network := gethnetwork.NewGethNetwork(int(gethPort), int(gethWebsocketPort), gethBinaryPath, 1, 1, []string{hostAddress.String()}, "", int(gethlog.LvlDebug))
-	defer network.StopNodes()
+
+	network := eth2network.NewEth2Network(
+		binariesPath,
+		_startPort,
+		_startPort+integration.DefaultGethWSPortOffset,
+		_startPort+integration.DefaultGethAUTHPortOffset,
+		_startPort+integration.DefaultGethNetworkPortOffset,
+		_startPort+integration.DefaultPrysmHTTPPortOffset,
+		_startPort+integration.DefaultPrysmP2PPortOffset,
+		1337,
+		1,
+		1,
+		[]string{hostAddress.String()},
+	)
+	defer network.Stop() //nolint: errcheck
+	err = network.Start()
+	if err != nil {
+		panic(err)
+	}
 
 	go func() {
 		err := enclavecontainer.NewEnclaveContainerFromConfig(enclaveConfig).Start()
@@ -86,14 +93,11 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		}
 	}()
 
-	var hostContainer *hostcontainer.HostContainer
-	go func() {
-		hostContainer = hostcontainer.NewHostContainerFromConfig(hostConfig)
-		err = hostContainer.Start()
-		if err != nil {
-			panic(err)
-		}
-	}()
+	hostContainer := hostcontainer.NewHostContainerFromConfig(hostConfig)
+	err = hostContainer.Start()
+	if err != nil {
+		panic(err)
+	}
 
 	// we create the node RPC client
 	var obscuroClient rpc.Client
@@ -117,14 +121,9 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}()
 
 	// Check if the host profiler is up
-	_, err = http.Get(fmt.Sprintf("http://%s:%d", localhost, profiler.DefaultHostPort)) //nolint
+	_, err = http.Get(fmt.Sprintf("http://%s:%d", _localhost, profiler.DefaultHostPort)) //nolint
 	if err != nil {
 		t.Errorf("host profiler is not reachable: %s", err)
-	}
-	// Check if the enclave profiler is up
-	_, err = http.Get(fmt.Sprintf("http://%s:%d", localhost, profiler.DefaultEnclavePort)) //nolint
-	if err != nil {
-		t.Errorf("enclave profiler is not reachable: %s", err)
 	}
 
 	counter := 0

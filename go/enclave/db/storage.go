@@ -3,27 +3,29 @@ package db
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-
-	obscurorawdb "github.com/obscuronet/go-obscuro/go/enclave/db/rawdb"
-
-	"github.com/ethereum/go-ethereum/params"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	obscurorawdb "github.com/obscuronet/go-obscuro/go/enclave/db/rawdb"
 )
+
+// ErrNoRollups is returned if no rollups have been published yet in the history of the network
+// Note: this is not just "not found", we cache at every L1 block what rollup we are up to so we also record that we haven't seen one yet
+var ErrNoRollups = errors.New("no rollups have been published")
 
 // TODO - Consistency around whether we assert the secret is available or not.
 
@@ -135,7 +137,7 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 func (s *storageImpl) HealthCheck() (bool, error) {
 	headBatch, err := s.FetchHeadBatch()
 	if err != nil {
-		s.logger.Error("unable to HealthCheck storage", "err", err)
+		s.logger.Error("unable to HealthCheck storage", log.ErrKey, err)
 		return false, err
 	}
 	return headBatch != nil, nil
@@ -160,6 +162,9 @@ func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*co
 	l2HeadBatch, err := obscurorawdb.ReadL2HeadRollup(s.db, blockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read L2 head rollup for block. Cause: %w", err)
+	}
+	if *l2HeadBatch == (gethcommon.Hash{}) { // empty hash ==> no rollups yet up to this block
+		return nil, ErrNoRollups
 	}
 	return obscurorawdb.ReadRollup(s.db, *l2HeadBatch)
 }

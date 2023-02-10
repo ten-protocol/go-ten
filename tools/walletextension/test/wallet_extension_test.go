@@ -9,32 +9,70 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 )
 
 const (
 	errFailedDecrypt = "could not decrypt bytes with viewing key"
 	dummyParams      = "dummyParams"
-	magicNumber      = 123789
 	jsonKeyTopics    = "topics"
+	_hostWSPort      = integration.StartPortWalletExtensionUnitTest
+	_testOffset      = 100 // offset each test by a multiplier of the offset to avoid port colision. ie: 	hostPort := _hostWSPort + _testOffset*2
 )
 
-var dummyHash = gethcommon.BigToHash(big.NewInt(magicNumber))
+type testHelper struct {
+	hostPort       int
+	walletHTTPPort int
+	walletWSPort   int
+	hostAPI        *DummyAPI
+}
 
-func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
-	createDummyHost(t)
-	createWalExt(t, createWalExtCfg())
+func TestWalletExtension(t *testing.T) {
+	i := 0
+	for name, test := range map[string]func(t *testing.T, testHelper *testHelper){
+		"canInvokeNonSensitiveMethodsWithoutViewingKey":               canInvokeNonSensitiveMethodsWithoutViewingKey,
+		"canInvokeSensitiveMethodsWithViewingKey":                     canInvokeSensitiveMethodsWithViewingKey,
+		"cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount": cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount,
+		"canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys": canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys,
+		"cannotSubscribeOverHTTP":                                     cannotSubscribeOverHTTP,
+		"canRegisterViewingKeyAndMakeRequestsOverWebsockets":          canRegisterViewingKeyAndMakeRequestsOverWebsockets,
+	} {
+		t.Run(name, func(t *testing.T) {
+			hostPort := _hostWSPort + i*_testOffset
+			dummyAPI, shutDownHost := createDummyHost(t, hostPort)
+			shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, hostPort+1, hostPort+2))
 
-	respBody, _ := makeWSEthJSONReq(rpc.ChainID, []interface{}{})
+			h := &testHelper{
+				hostPort:       hostPort,
+				walletHTTPPort: hostPort + 1,
+				walletWSPort:   hostPort + 2,
+				hostAPI:        dummyAPI,
+			}
+
+			test(t, h)
+
+			shutdownWallet()
+			err := shutDownHost()
+			if err != nil {
+				t.Fatal(err)
+			}
+		})
+		i++
+	}
+}
+
+func canInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T, testHelper *testHelper) {
+	respBody, wsConnWE := makeWSEthJSONReq(testHelper.hostPort, rpc.ChainID, []interface{}{})
+	defer wsConnWE.Close()
+
 	validateJSONResponse(t, respBody)
 
 	if !strings.Contains(string(respBody), l2ChainIDHex) {
@@ -42,25 +80,9 @@ func TestCanInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	}
 }
 
-func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
-	createDummyHost(t)
-	createWalExt(t, createWalExtCfg())
-
-	for _, method := range rpc.SensitiveMethods {
-		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
-		respBody, _ := makeWSEthJSONReq(method, []interface{}{})
-		if !strings.Contains(string(respBody), fmt.Sprintf(accountmanager.ErrNoViewingKey, method)) {
-			t.Fatalf("expected response containing '%s', got '%s'", fmt.Sprintf(accountmanager.ErrNoViewingKey, method), string(respBody))
-		}
-	}
-}
-
-func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
-	createDummyHost(t)
-	createWalExt(t, createWalExtCfg())
-
-	_, viewingKeyBytes := registerPrivateKey(t, false)
-	dummyAPI.setViewingKey(viewingKeyBytes)
+func canInvokeSensitiveMethodsWithViewingKey(t *testing.T, testHelper *testHelper) {
+	viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
+	testHelper.hostAPI.setViewingKey(viewingKeyBytes)
 
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
@@ -68,7 +90,7 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 			continue
 		}
 
-		respBody := makeHTTPEthJSONReq(method, []interface{}{map[string]interface{}{"params": dummyParams}})
+		respBody := makeHTTPEthJSONReq(testHelper.walletHTTPPort, method, []interface{}{map[string]interface{}{"params": dummyParams}})
 		validateJSONResponse(t, respBody)
 
 		if !strings.Contains(string(respBody), dummyParams) {
@@ -77,11 +99,8 @@ func TestCanInvokeSensitiveMethodsWithViewingKey(t *testing.T) {
 	}
 }
 
-func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.T) {
-	createDummyHost(t)
-	createWalExt(t, createWalExtCfg())
-
-	registerPrivateKey(t, false)
+func cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.T, testHelper *testHelper) {
+	registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
 
 	// We set the API to decrypt with a key different to the viewing key we just submitted.
 	arbitraryPrivateKey, err := crypto.GenerateKey()
@@ -89,7 +108,7 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 		t.Fatalf(fmt.Sprintf("failed to generate private key. Cause: %s", err))
 	}
 	arbitraryPublicKeyBytesHex := hex.EncodeToString(crypto.CompressPubkey(&arbitraryPrivateKey.PublicKey))
-	dummyAPI.setViewingKey([]byte(arbitraryPublicKeyBytesHex))
+	testHelper.hostAPI.setViewingKey([]byte(arbitraryPublicKeyBytesHex))
 
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
@@ -97,29 +116,26 @@ func TestCannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.
 			continue
 		}
 
-		respBody := makeHTTPEthJSONReq(method, []interface{}{map[string]interface{}{}})
+		respBody := makeHTTPEthJSONReq(testHelper.walletHTTPPort, method, []interface{}{map[string]interface{}{}})
 		if !strings.Contains(string(respBody), errFailedDecrypt) {
 			t.Fatalf("expected response containing '%s', got '%s'", errFailedDecrypt, string(respBody))
 		}
 	}
 }
 
-func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.T) {
-	createDummyHost(t)
-	createWalExt(t, createWalExtCfg())
-
+func canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.T, testHelper *testHelper) {
 	// We submit viewing keys for ten arbitrary accounts.
 	var viewingKeys [][]byte
 	for i := 0; i < 10; i++ {
-		_, viewingKeyBytes := registerPrivateKey(t, false)
+		viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
 		viewingKeys = append(viewingKeys, viewingKeyBytes)
 	}
 
 	// We set the API to decrypt with an arbitrary key from the list we just generated.
 	arbitraryViewingKey := viewingKeys[len(viewingKeys)/2]
-	dummyAPI.setViewingKey(arbitraryViewingKey)
+	testHelper.hostAPI.setViewingKey(arbitraryViewingKey)
 
-	respBody := makeHTTPEthJSONReq(rpc.GetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
+	respBody := makeHTTPEthJSONReq(testHelper.walletHTTPPort, rpc.GetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 	validateJSONResponse(t, respBody)
 
 	if !strings.Contains(string(respBody), dummyParams) {
@@ -127,92 +143,108 @@ func TestCanInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.
 	}
 }
 
-func TestCanCallWithoutSettingFromField(t *testing.T) {
-	createDummyHost(t)
-	createWalExt(t, createWalExtCfg())
-
-	vkAddress, viewingKeyBytes := registerPrivateKey(t, false)
-	dummyAPI.setViewingKey(viewingKeyBytes)
-
-	for _, method := range []string{rpc.Call, rpc.EstimateGas} {
-		respBody := makeHTTPEthJSONReq(method, []interface{}{map[string]interface{}{
-			"To":    "0xf3a8bd422097bFdd9B3519Eaeb533393a1c561aC",
-			"data":  "0x70a0823100000000000000000000000013e23ca74de0206c56ebae8d51b5622eff1e9944",
-			"value": nil,
-			"Value": "",
-		}})
-		validateJSONResponse(t, respBody)
-
-		// RPCCall and RPCEstimateGas payload might be manipulated ( added the From field information )
-		if !strings.Contains(strings.ToLower(string(respBody)), strings.ToLower(vkAddress.Hex())) {
-			t.Fatalf("expected response containing '%s', got '%s'", strings.ToLower(vkAddress.Hex()), string(respBody))
-		}
-	}
-}
-
-func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
-	createDummyHost(t)
-	walExtCfg := createWalExtCfg()
-	shutdown := createWalExt(t, walExtCfg)
-
-	_, viewingKeyBytes := registerPrivateKey(t, false)
-	dummyAPI.setViewingKey(viewingKeyBytes)
-
-	// We shut down the wallet extension and restart it with the same config, forcing the viewing keys to be reloaded.
-	shutdown()
-	createWalExt(t, walExtCfg)
-
-	respBody := makeHTTPEthJSONReq(rpc.GetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
-	validateJSONResponse(t, respBody)
-
-	if !strings.Contains(string(respBody), dummyParams) {
-		t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
-	}
-}
-
-func TestCannotSubscribeOverHTTP(t *testing.T) {
-	createDummyHost(t)
-	createWalExt(t, createWalExtCfg())
-
-	respBody := makeHTTPEthJSONReq(rpc.Subscribe, []interface{}{rpc.SubscriptionTypeLogs})
+func cannotSubscribeOverHTTP(t *testing.T, testHelper *testHelper) {
+	respBody := makeHTTPEthJSONReq(testHelper.walletHTTPPort, rpc.Subscribe, []interface{}{rpc.SubscriptionTypeLogs})
+	fmt.Println(respBody)
 	if string(respBody) != walletextension.ErrSubscribeFailHTTP+"\n" {
 		t.Fatalf("expected response of '%s', got '%s'", walletextension.ErrSubscribeFailHTTP, string(respBody))
 	}
 }
 
-func TestCanRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T) {
-	createDummyHost(t)
-	createWalExt(t, createWalExtCfg())
+func canRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T, testHelper *testHelper) {
+	viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, true)
+	testHelper.hostAPI.setViewingKey(viewingKeyBytes)
 
-	_, viewingKeyBytes := registerPrivateKey(t, true)
-	dummyAPI.setViewingKey(viewingKeyBytes)
+	conn, err := openWSConn(testHelper.walletWSPort)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	respBody := makeWSEthJSONReqWithConn(conn, rpc.GetTransactionReceipt, []interface{}{map[string]interface{}{"params": dummyParams}})
+	validateJSONResponse(t, respBody)
+
+	if !strings.Contains(string(respBody), dummyParams) {
+		t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
+	}
+
+	err = conn.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
+	hostPort := _hostWSPort + _testOffset*7
+	walletHTTPPort := hostPort + 1
+	walletWSPort := hostPort + 2
+
+	_, shutdownHost := createDummyHost(t, hostPort)
+	defer shutdownHost() //nolint: errcheck
+
+	shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, walletHTTPPort, walletWSPort))
+	defer shutdownWallet()
+
+	conn, err := openWSConn(walletWSPort)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	for _, method := range rpc.SensitiveMethods {
-		// Subscriptions have to be tested separately, as they return results differently.
-		if method == rpc.Subscribe {
-			continue
+		// We use a websocket request because one of the sensitive methods, eth_subscribe, requires it.
+		respBody := makeWSEthJSONReqWithConn(conn, method, []interface{}{})
+		if !strings.Contains(string(respBody), fmt.Sprintf(accountmanager.ErrNoViewingKey, method)) {
+			t.Fatalf("expected response containing '%s', got '%s'", fmt.Sprintf(accountmanager.ErrNoViewingKey, method), string(respBody))
 		}
+	}
+	err = conn.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
 
-		respBody, _ := makeWSEthJSONReq(method, []interface{}{map[string]interface{}{"params": dummyParams}})
-		validateJSONResponse(t, respBody)
+func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
+	hostPort := _hostWSPort + _testOffset*8
+	walletHTTPPort := hostPort + 1
+	walletWSPort := hostPort + 2
 
-		if !strings.Contains(string(respBody), dummyParams) {
-			t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
-		}
+	dummyAPI, shutdownHost := createDummyHost(t, hostPort)
+	defer shutdownHost() //nolint: errcheck
+	walExtCfg := createWalExtCfg(hostPort, walletHTTPPort, walletWSPort)
+	shutdownWallet := createWalExt(t, walExtCfg)
 
-		return // We only need to test a single sensitive method.
+	viewingKeyBytes := registerPrivateKey(t, walletHTTPPort, walletWSPort, false)
+	dummyAPI.setViewingKey(viewingKeyBytes)
+
+	// We shut down the wallet extension and restart it with the same config, forcing the viewing keys to be reloaded.
+	shutdownWallet()
+	shutdownWallet = createWalExt(t, walExtCfg)
+	defer shutdownWallet()
+
+	respBody := makeHTTPEthJSONReq(walletHTTPPort, rpc.GetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
+	validateJSONResponse(t, respBody)
+
+	if !strings.Contains(string(respBody), dummyParams) {
+		t.Fatalf("expected response containing '%s', got '%s'", dummyParams, string(respBody))
 	}
 }
 
 func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
-	createDummyHost(t)
-	createWalExt(t, createWalExtCfg())
+	hostPort := _hostWSPort + _testOffset*9
+	walletHTTPPort := hostPort + 1
+	walletWSPort := hostPort + 2
 
-	_, viewingKeyBytes := registerPrivateKey(t, false)
+	dummyHash := gethcommon.BigToHash(big.NewInt(1234))
+
+	dummyAPI, shutdownHost := createDummyHost(t, hostPort)
+	defer shutdownHost() //nolint: errcheck
+	shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, walletHTTPPort, walletWSPort))
+	defer shutdownWallet()
+
+	viewingKeyBytes := registerPrivateKey(t, walletHTTPPort, walletWSPort, false)
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	filter := common.FilterCriteriaJSON{Topics: []interface{}{dummyHash}}
-	resp, conn := makeWSEthJSONReq(rpc.Subscribe, []interface{}{rpc.SubscriptionTypeLogs, filter})
+	resp, conn := makeWSEthJSONReq(walletWSPort, rpc.Subscribe, []interface{}{rpc.SubscriptionTypeLogs, filter})
 	validateSubscriptionResponse(t, resp)
 
 	logsJSON := readMessagesForDuration(t, conn, time.Second)

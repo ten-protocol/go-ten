@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -52,7 +53,13 @@ type WalletExtension struct {
 	serverWSShutdown   func(ctx context.Context) error
 	persistence        *persistence.Persistence
 	logger             gethlog.Logger
+	isShutDown         atomicBool
 }
+
+type atomicBool int32
+
+func (b *atomicBool) isSet() bool { return atomic.LoadInt32((*int32)(b)) != 0 }
+func (b *atomicBool) setTrue()    { atomic.StoreInt32((*int32)(b), 1) }
 
 func NewWalletExtension(config Config, logger gethlog.Logger) *WalletExtension {
 	unauthedClient, err := rpc.NewNetworkClient(wsProtocol + config.NodeRPCWebsocketAddress)
@@ -102,6 +109,7 @@ func (we *WalletExtension) Serve(host string, httpPort int, wsPort int) {
 }
 
 func (we *WalletExtension) Shutdown() {
+	we.isShutDown.setTrue()
 	if we.serverHTTPShutdown != nil {
 		err := we.serverHTTPShutdown(context.Background())
 		if err != nil {
@@ -185,6 +193,9 @@ func (we *WalletExtension) handleSubmitViewingKeyWS(resp http.ResponseWriter, re
 
 // Creates an HTTP connection to handle the request.
 func (we *WalletExtension) handleRequestHTTP(resp http.ResponseWriter, req *http.Request, fun func(conn userconn.UserConn)) {
+	if we.isShutDown.isSet() {
+		return
+	}
 	if httputil.EnableCORS(resp, req) {
 		return
 	}
@@ -194,6 +205,9 @@ func (we *WalletExtension) handleRequestHTTP(resp http.ResponseWriter, req *http
 
 // Creates a websocket connection to handle the request.
 func (we *WalletExtension) handleRequestWS(resp http.ResponseWriter, req *http.Request, fun func(conn userconn.UserConn)) {
+	if we.isShutDown.isSet() {
+		return
+	}
 	userConn, err := userconn.NewUserConnWS(resp, req, we.logger)
 	if err != nil {
 		return

@@ -1,15 +1,15 @@
 # Deploys a L1 network on Azure for Testnet / Dev-Testnet
 # Builds the l1 network image, kills any running container, pushes the image to dockerhub and starts the l1 network on azure
 #
-# The L1 network is a docker container that runs 2 geth nodes
+# The L1 network is a docker container that runs 1 x (eth node + prysm beacon + prysm validator)
 # It exposes the following ports:
 # HTTP:       8025, 8026
 # WebSocket:  9000, 9001
 #
 # Exposes the following addresses: (only accessible internally)
-#  testnet-gethnetwork-DEPLOYNUMBER.uksouth.azurecontainer.io
+#  testnet-eth2network-DEPLOYNUMBER.uksouth.azurecontainer.io
 # or
-#  dev-testnet-gethnetwork-DEPLOYNUMBER.uksouth.azurecontainer.io
+#  dev-testnet-eth2network-DEPLOYNUMBER.uksouth.azurecontainer.io
 
 name: '[M] Deploy Testnet L1'
 
@@ -38,13 +38,13 @@ jobs:
         if: ${{ github.event.inputs.testnet_type == 'testnet' }}
         run: |
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/testnet_l1network:latest" >> $GITHUB_ENV
-          echo "L1_CONTAINER_NAME=testnet-gethnetwork" >> $GITHUB_ENV
+          echo "L1_CONTAINER_NAME=testnet-eth2network" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-tesnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_testnet_l1network:latest" >> $GITHUB_ENV
-          echo "L1_CONTAINER_NAME=dev-testnet-gethnetwork" >> $GITHUB_ENV
+          echo "L1_CONTAINER_NAME=dev-testnet-eth2network" >> $GITHUB_ENV
 
 # to be used when our dockerhub account is fixed
 #      - name: Login to DockerHub
@@ -58,7 +58,7 @@ jobs:
 #        with:
 #          push: true
 #          tags: obscuronet/testnet_l1network:latest
-#          file: ./testnet/gethnetwork.Dockerfile
+#          file: ./testnet/eth2network.Dockerfile
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -75,7 +75,7 @@ jobs:
       - name: 'Build and push image'
         #DOCKER_BUILDKIT=1 will enable  the new docker build kit that allows us to use build only caches on RUN commands. 
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/gethnetwork.Dockerfile  .
+          DOCKER_BUILDKIT=1 docker build -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/eth2network.Dockerfile  .
           docker push ${{env.L1_DOCKER_BUILD_TAG}}
 
       - name: 'Deploy L1 to Azure Container Instances'
@@ -90,9 +90,9 @@ jobs:
           name: ${{env.L1_CONTAINER_NAME}}
           location: 'uksouth'
           restart-policy: 'Never'
-          command-line: /home/obscuro/go-obscuro/integration/gethnetwork/main/main --blockTimeSecs=15 --numNodes=2 --startPort=8000 --websocketStartPort=9000 --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
+          command-line: /home/obscuro/go-obscuro/integration/eth2network/main/main --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
           # Ports start at 9000 for Websockets and 8000 for Start port and 80025 for Http Port
           # Each node has Port + id
           ports: '8025 8026 9000 9001'
           cpu: 2
-          memory: 4
+          memory: 8

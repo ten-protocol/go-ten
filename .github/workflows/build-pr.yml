@@ -15,7 +15,6 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v2
-      
       - name: Set up Go
         uses: actions/setup-go@v2
         with:
@@ -25,17 +24,20 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      # Makes sure the binaries for the eth2network are avail for all other tests
+      - name: Download eth2network binaries
+        run: go test ./... -v -count=1 -run TestEnsureBinariesAreAvail
+
       - name: Test
         run: go test --failfast -v ./... -count=1
-        env:
-          USE_GETH_BINARY: true
 
       - name: Store simulation logs
         uses: actions/upload-artifact@v3
         with:
-          name: sim-logs
+          name: ci-logs
           path: |
             integration/.build/simulations/sim-log-*.txt
             integration/.build/noderunner/noderunner-*.txt
             integration/.build/wallet_extension/wal-ext-*.txt
+            integration/.build/eth2/*
         if: always() # Ensures the artifacts are created even if the tests fail.

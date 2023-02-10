@@ -54,7 +54,7 @@ jobs:
           echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
-          echo "L1_HOST=testnet-gethnetwork.uksouth.azurecontainer.io" >> $GITHUB_ENV
+          echo "L1_HOST=testnet-eth2network.uksouth.azurecontainer.io" >> $GITHUB_ENV
           
       - name: 'Sets env vars for dev-tesnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
@@ -66,7 +66,7 @@ jobs:
           echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
-          echo "L1_HOST=dev-testnet-gethnetwork.uksouth.azurecontainer.io" >> $GITHUB_ENV
+          echo "L1_HOST=dev-testnet-eth2network.uksouth.azurecontainer.io" >> $GITHUB_ENV
           
       - name: 'Output env vars'
         id: outputVars
@@ -163,6 +163,12 @@ jobs:
         shell: bash
         run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF_NAME})"
         id: extract_branch
+
+        # The Azure API will sometimes supersede PUT requests that come in close together. This sleep will stagger the VM requests.
+        # It expects host_id to be an int and then multiplies it by 30s (i.e. host 0: sleep 0, host 1: sleep 30,...)
+      - name: 'Stagger VM creation'
+        shell: bash
+        run: sleep `expr ${{matrix.host_id}} \* 30`
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1

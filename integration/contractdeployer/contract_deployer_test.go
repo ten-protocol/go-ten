@@ -7,26 +7,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-
-	"github.com/obscuronet/go-obscuro/tools/contractdeployer"
-
 	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	"github.com/obscuronet/go-obscuro/tools/contractdeployer"
+
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 )
 
 const (
@@ -38,19 +33,7 @@ const (
 	erc20ParamThree               = "1000000000000000000"
 	testLogs                      = "../.build/noderunner/"
 	receiptTimeout                = 30 * time.Second // The time to wait for a receipt for a transaction.
-)
-
-var (
-	config = &contractdeployer.Config{
-		NodeHost:          network.Localhost,
-		NodePort:          integration.StartPortContractDeployerTest + network.DefaultHostRPCWSOffset,
-		IsL1Deployment:    false,
-		PrivateKey:        contractDeployerPrivateKeyHex,
-		ChainID:           big.NewInt(integration.ObscuroChainID),
-		ContractName:      contractdeployer.Layer2Erc20Contract,
-		ConstructorParams: []string{erc20ParamOne, erc20ParamTwo, erc20ParamThree},
-	}
-	nodeAddress = fmt.Sprintf("ws://%s:%d", config.NodeHost, config.NodePort)
+	_portOffset                   = 100
 )
 
 func init() { //nolint:gochecknoinits
@@ -63,16 +46,29 @@ func init() { //nolint:gochecknoinits
 }
 
 func TestCanDeployLayer2ERC20Contract(t *testing.T) {
-	createObscuroNetwork(t)
+	startPort := integration.StartPortContractDeployerTest
+	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
+	createObscuroNetwork(t, startPort)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
 	time.Sleep(2 * time.Second)
+
+	config := &contractdeployer.Config{
+		NodeHost:          network.Localhost,
+		NodePort:          uint(hostWSPort),
+		IsL1Deployment:    false,
+		PrivateKey:        contractDeployerPrivateKeyHex,
+		ChainID:           big.NewInt(integration.ObscuroChainID),
+		ContractName:      contractdeployer.Layer2Erc20Contract,
+		ConstructorParams: []string{erc20ParamOne, erc20ParamTwo, erc20ParamThree},
+	}
+
 	contractAddr, err := contractdeployer.Deploy(config, testlog.Logger())
 	if err != nil {
 		panic(err)
 	}
 
 	contractDeployerWallet := getWallet(contractDeployerPrivateKeyHex)
-	contractDeployerClient := getClient(contractDeployerWallet)
+	contractDeployerClient := getClient(hostWSPort, contractDeployerWallet)
 
 	var deployedCode string
 	err = contractDeployerClient.Call(&deployedCode, rpc.GetCode, contractAddr, latestBlock)
@@ -86,10 +82,12 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 }
 
 func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
-	createObscuroNetwork(t)
+	startPort := integration.StartPortContractDeployerTest + _portOffset
+	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
+	createObscuroNetwork(t, startPort)
 
 	faucetWallet := getWallet(genesis.TestnetPrefundedPK)
-	faucetClient := getClient(faucetWallet)
+	faucetClient := getClient(hostWSPort, faucetWallet)
 
 	contractDeployerWallet := getWallet(contractDeployerPrivateKeyHex)
 	// We send more than enough to the contract deployer, to make sure prefunding won't be needed.
@@ -104,6 +102,16 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 		panic(err)
 	}
 
+	config := &contractdeployer.Config{
+		NodeHost:          network.Localhost,
+		NodePort:          uint(startPort + integration.DefaultHostRPCWSOffset),
+		IsL1Deployment:    false,
+		PrivateKey:        contractDeployerPrivateKeyHex,
+		ChainID:           big.NewInt(integration.ObscuroChainID),
+		ContractName:      contractdeployer.Layer2Erc20Contract,
+		ConstructorParams: []string{erc20ParamOne, erc20ParamTwo, erc20ParamThree},
+	}
+
 	_, err = contractdeployer.Deploy(config, testlog.Logger())
 	if err != nil {
 		panic(err)
@@ -111,7 +119,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 
 	var faucetBalanceAfterDeploy string
 	// We create a new faucet client because deploying the contract will have overwritten the faucet's viewing key on the node.
-	faucetClient = getClient(faucetWallet)
+	faucetClient = getClient(hostWSPort, faucetWallet)
 	err = faucetClient.Call(&faucetBalanceAfterDeploy, rpc.GetBalance, faucetWallet.Address().Hex(), latestBlock)
 	if err != nil {
 		panic(err)
@@ -127,12 +135,12 @@ func getWallet(privateKeyHex string) wallet.Wallet {
 	if err != nil {
 		panic("could not initialise faucet private key")
 	}
-	faucetWallet := wallet.NewInMemoryWalletFromPK(config.ChainID, faucetPrivKey, testlog.Logger())
+	faucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), faucetPrivKey, testlog.Logger())
 	return faucetWallet
 }
 
 // Creates a single-node Obscuro network for testing.
-func createObscuroNetwork(t *testing.T) {
+func createObscuroNetwork(t *testing.T, startPort int) {
 	// Create the Obscuro network.
 	numberOfNodes := 1
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
@@ -142,7 +150,7 @@ func createObscuroNetwork(t *testing.T) {
 		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,
-		StartPort:        integration.StartPortContractDeployerTest,
+		StartPort:        startPort,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 	obscuroNetwork := network.NewNetworkOfSocketNodes(wallets)
@@ -154,12 +162,12 @@ func createObscuroNetwork(t *testing.T) {
 }
 
 // Returns a viewing-key client with a registered viewing key.
-func getClient(wallet wallet.Wallet) *rpc.EncRPCClient {
+func getClient(hostWSPort int, wallet wallet.Wallet) *rpc.EncRPCClient {
 	viewingKey, err := rpc.GenerateAndSignViewingKey(wallet)
 	if err != nil {
 		panic(err)
 	}
-	client, err := rpc.NewEncNetworkClient(nodeAddress, viewingKey, testlog.Logger())
+	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s:%d", network.Localhost, hostWSPort), viewingKey, testlog.Logger())
 	if err != nil {
 		panic(err)
 	}

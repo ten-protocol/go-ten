@@ -4,18 +4,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/integration/gethnetwork"
-
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/eth2network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 )
 
@@ -26,7 +23,7 @@ type networkOfSocketNodes struct {
 	enclaveAddresses []string
 
 	// geth
-	gethNetwork *gethnetwork.GethNetwork
+	eth2Network eth2network.Eth2Network
 	gethClients []ethadapter.EthClient
 	wallets     *params.SimWallets
 }
@@ -39,7 +36,7 @@ func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 
 func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
-	simParams.L1SetupData, n.gethClients, n.gethNetwork = SetUpGethNetwork(
+	simParams.L1SetupData, n.gethClients, n.eth2Network = SetUpGethNetwork(
 		n.wallets,
 		simParams.StartPort,
 		simParams.NumberOfNodes,
@@ -55,7 +52,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 
 	n.enclaveAddresses = make([]string, simParams.NumberOfNodes)
 	for i := 0; i < simParams.NumberOfNodes; i++ {
-		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, simParams.StartPort+DefaultEnclaveOffset+i)
+		n.enclaveAddresses[i] = fmt.Sprintf("%s:%d", Localhost, simParams.StartPort+integration.DefaultEnclaveOffset+i)
 	}
 
 	l2Clients, hostRPCAddresses := startStandaloneObscuroNodes(simParams, n.gethClients, n.enclaveAddresses)
@@ -92,6 +89,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 func (n *networkOfSocketNodes) TearDown() {
 	// Stop the Obscuro nodes first (each host will attempt to shut down its enclave as part of shutdown).
 	StopObscuroNodes(n.l2Clients)
-	StopGethNetwork(n.gethClients, n.gethNetwork)
+	StopEth2Network(n.gethClients, n.eth2Network)
 	CheckHostRPCServersStopped(n.hostRPCAddresses)
 }

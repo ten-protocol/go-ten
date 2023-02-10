@@ -1,17 +1,14 @@
 package eth2network
 
 import (
-	"archive/tar"
-	"compress/gzip"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 )
 
@@ -31,55 +28,35 @@ var (
 // EnsureBinariesExist makes sure node binaries exist, returns the base path where binaries exist
 // Downloads any missing binaries
 func EnsureBinariesExist() (string, error) {
+	creationLock.Lock()
+	defer creationLock.Unlock()
+
 	// bin folder should exist
 	err := os.MkdirAll(path.Join(basepath, _eth2BinariesRelPath), os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
 
-	creationLock.Lock()
-	defer creationLock.Unlock()
-
-	goarch := runtime.GOARCH
-
-	// check if the required execs exist, download then otherwise
+	// build geth
 	if !fileExists(path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)) {
-		// geth does not exist
-		if runtime.GOARCH == "arm64" {
-			goarch = "amd64"
-		}
+		gethScript := path.Join(basepath, "./build_geth_binary.sh")
+		cmd := exec.Command("bash", gethScript, fmt.Sprintf("%s=%s", "--version", "v"+_gethVersion))
+		cmd.Stderr = os.Stderr
 
-		// tmp download location
-		tempFolder, err := os.MkdirTemp("", "")
-		if err != nil {
+		if out, err := cmd.Output(); err != nil {
+			fmt.Printf("%s\n", out)
 			return "", err
 		}
-
-		// download tar file
-		downloadFilePath := path.Join(tempFolder, "geth.tar.gz")
-		downloadLink := fmt.Sprintf("https://gethstore.blob.core.windows.net/builds/geth-%s-%s-%s-e5eb32ac.tar.gz", runtime.GOOS, goarch, _gethVersion)
-		err = downloadFile(downloadFilePath, downloadLink)
-		if err != nil {
-			return "", err
-		}
-
-		err = untar(path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion), downloadFilePath)
-		if err != nil {
-			return "", err
-		}
-
-		fmt.Printf("Downloaded -  %s\n", _gethFileNameVersion)
 	}
 
 	// download prysm files
 	for fileName, downloadURL := range map[string]string{
-		_prysmBeaconChainFileNameVersion: fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/beacon-chain-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, goarch),
-		_prysmCTLFileNameVersion:         fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/prysmctl-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, goarch),
-		_prysmValidatorFileNameVersion:   fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/validator-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, goarch),
+		_prysmBeaconChainFileNameVersion: fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/beacon-chain-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, runtime.GOARCH),
+		_prysmCTLFileNameVersion:         fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/prysmctl-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, runtime.GOARCH),
+		_prysmValidatorFileNameVersion:   fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/validator-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, runtime.GOARCH),
 	} {
 		expectedFilePath := path.Join(basepath, _eth2BinariesRelPath, fileName)
 		if !fileExists(expectedFilePath) {
-			// download tar file
 			err := downloadFile(expectedFilePath, downloadURL)
 			if err != nil {
 				return "", err
@@ -100,6 +77,7 @@ func fileExists(filename string) bool {
 }
 
 func downloadFile(filepath string, url string) error {
+	fmt.Printf("Downloading: %s\n", url)
 	// Create the file
 	out, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o777)
 	if err != nil {
@@ -126,58 +104,4 @@ func downloadFile(filepath string, url string) error {
 	}
 
 	return nil
-}
-
-func untar(dst string, path string) error {
-	openFile, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-
-	gzr, err := gzip.NewReader(openFile)
-	if err != nil {
-		return err
-	}
-	defer gzr.Close()
-
-	tr := tar.NewReader(gzr)
-
-	for {
-		header, err := tr.Next()
-
-		switch {
-		// if no more files are found return
-		case errors.Is(err, io.EOF):
-			return nil
-
-		// return any other error
-		case err != nil:
-			return err
-
-		// if the header is nil, just skip it (not sure how this happens)
-		case header == nil:
-			continue
-		}
-
-		// ignore non files
-		if header.Typeflag != tar.TypeReg {
-			continue
-		}
-
-		// it's a file create it
-		fileName := strings.Split(header.Name, "/")[1]
-		if fileName == "geth" {
-			f, err := os.OpenFile(dst, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return err
-			}
-
-			// copy over contents
-			if _, err := io.Copy(f, tr); err != nil { //nolint: gosec
-				return err
-			}
-
-			f.Close()
-		}
-	}
 }

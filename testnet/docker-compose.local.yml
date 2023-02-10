@@ -3,10 +3,10 @@
 version: '3.9'
 services:
   gethnetwork:
-    image: "testnetobscuronet.azurecr.io/obscuronet/gethnetwork:latest"
+    image: "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./testnet/gethnetwork.Dockerfile
+      dockerfile: ./testnet/eth2network.Dockerfile
   host:
     image: "testnetobscuronet.azurecr.io/obscuronet/host:latest"
     build:

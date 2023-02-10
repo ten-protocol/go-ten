@@ -229,27 +229,50 @@ func (e *enclaveImpl) StopClient() error {
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
+	e.logger.Info("SubmitL1Block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 	// We update the enclave state based on the L1 block.
 	newL2Head, producedBatch, err := e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
-		e.logger.Trace("SubmitL1Block failed", "blk", block.Number(), "blkHash", block.Hash(), "err", err)
+		e.logger.Info("ProcessL1Block failed", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
-	e.logger.Trace("SubmitL1Block successful", "blk", block.Number(), "blkHash", block.Hash())
+	e.logger.Info("ProcessL1Block successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 
 	// We prepare the block submission response.
 	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
+
+	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(),
+		"newBatch", describeBSR(blockSubmissionResponse))
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
 
 	// We remove any transactions considered immune to re-orgs from the mempool.
 	if blockSubmissionResponse.ProducedBatch != nil {
 		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedBatch.Header)
 		if err != nil {
+			e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
 			return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
 		}
 	}
 
 	return blockSubmissionResponse, nil
+}
+
+// useful description of the BSR for debugging
+func describeBSR(response *common.BlockSubmissionResponse) string {
+	if response.RejectError != nil {
+		return fmt.Sprintf("BlockSubmissionResponse failed with err=%s", response.RejectError.Error())
+	}
+	producedBatch := "no batch produced"
+	if response.ProducedBatch != nil {
+		producedBatch = fmt.Sprintf("newBatch{num=%d, numTx=%d, hash=%s}",
+			response.ProducedBatch.Header.Number, len(response.ProducedBatch.TxHashes), response.ProducedBatch.Hash())
+	}
+	producedRollup := "no rollup produced"
+	if response.ProducedRollup != nil {
+		producedBatch = fmt.Sprintf("newRollup{num=%d, numBatches=%d, hash=%s}",
+			response.ProducedRollup.Header.Number, len(response.ProducedRollup.Batches), response.ProducedRollup.Hash())
+	}
+	return fmt.Sprintf("%s, %s", producedBatch, producedRollup)
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -292,6 +315,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 }
 
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
+	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
 	if err := e.chain.UpdateL2Chain(batch); err != nil {
 		return fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err)
@@ -840,7 +864,7 @@ func (e *enclaveImpl) HealthCheck() (bool, error) {
 	storageHealthy, err := e.storage.HealthCheck()
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
-		e.logger.Error("unable to HealthCheck enclave storage", "err", err)
+		e.logger.Error("unable to HealthCheck enclave storage", log.ErrKey, err)
 		return false, nil
 	}
 	// TODO enclave healthcheck operations

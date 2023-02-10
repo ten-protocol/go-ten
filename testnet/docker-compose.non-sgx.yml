@@ -44,6 +44,7 @@ services:
       - default
     ports:
       - "6060:6060"
+      - "11000:11000"
     environment:
      - MGMTCONTRACTADDR=some_address
      - HOSTID=some_address
