@@ -21,7 +21,7 @@ echo [`date +"%T"`] "Sleeping to wait for L1 network to be up"
 sleep 75
 
 echo [`date +"%T"`] "Deploying the l1 contracts"
-${testnet_path}/testnet-deploy-contracts.sh --l1host=-eth2network -pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
+${testnet_path}/testnet-deploy-contracts.sh --l1host=eth2network -pkstring=f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
 
 echo [`date +"%T"`] "Starting up the Obscuro node"
 ${testnet_path}/start-obscuro-node.sh --sgx_enabled=false --l1host=eth2network --mgmtcontractaddr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF --hocerc20addr=0xC0370e0b5C1A41D447BDdA655079A1B977C71aA9 --pocerc20addr=0x51D43a3Ca257584E770B6188232b199E76B022A2 --is_genesis=true --node_type=sequencer
