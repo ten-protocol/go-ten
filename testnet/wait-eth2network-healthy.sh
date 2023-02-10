@@ -61,16 +61,16 @@ while [ $attempts -lt $max_attempts ]; do
   if [ $status ]; then
     result=$(echo $response | grep -oE '0x[0-9a-fA-F]+')
     if [ -n "$result" ] && [ $((16#${result:2})) -gt $merge_block_height ]; then
-      echo "Successful request, response is 200 OK and 'result' is greater than $merge_block_height"
+      echo "Success: Response is 200 OK and block height is greater than $merge_block_height"
       break
     else
-      echo "Failed: 'result' field not found or is not greater than $merge_block_height"
+      echo "Failed: block height field not found or is not greater than $merge_block_height"
       echo "Response: $response"
       attempts=$((attempts + 1))
       sleep 1
     fi
   else
-      echo "Request failed, response is not 200 OK"
+      echo "Failed: No 200 OK from the eth2network"
       attempts=$((attempts + 1))
       sleep 1
     fi
