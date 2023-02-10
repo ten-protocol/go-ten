@@ -53,7 +53,7 @@ then
 fi
 
 # start the geth network
-echo "Starting the gethnetwork.."
+echo "Starting the eth2network.."
 docker network create --driver bridge node_network || true
 docker run --name=eth2network -d \
   --network=node_network \
