@@ -47,7 +47,7 @@ func init() { //nolint:gochecknoinits
 
 func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 	startPort := integration.StartPortContractDeployerTest
-	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
+	hostWSPort := startPort + integration.DefaultHostRPCWSOffset + 1 // use the validators port
 	createObscuroNetwork(t, startPort)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
 	time.Sleep(2 * time.Second)
@@ -83,7 +83,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 
 func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	startPort := integration.StartPortContractDeployerTest + _portOffset
-	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
+	hostWSPort := startPort + integration.DefaultHostRPCWSOffset + 1 // use the validators port
 	createObscuroNetwork(t, startPort)
 
 	faucetWallet := getWallet(genesis.TestnetPrefundedPK)
@@ -104,7 +104,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 
 	config := &contractdeployer.Config{
 		NodeHost:          network.Localhost,
-		NodePort:          uint(startPort + integration.DefaultHostRPCWSOffset),
+		NodePort:          uint(hostWSPort),
 		IsL1Deployment:    false,
 		PrivateKey:        contractDeployerPrivateKeyHex,
 		ChainID:           big.NewInt(integration.ObscuroChainID),
@@ -142,7 +142,7 @@ func getWallet(privateKeyHex string) wallet.Wallet {
 // Creates a single-node Obscuro network for testing.
 func createObscuroNetwork(t *testing.T, startPort int) {
 	// Create the Obscuro network.
-	numberOfNodes := 1
+	numberOfNodes := 2
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    numberOfNodes,

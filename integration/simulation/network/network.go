@@ -53,7 +53,8 @@ func (n *RPCHandles) RndEthClient() ethadapter.EthClient {
 func (n *RPCHandles) ObscuroWalletRndClient(wallet wallet.Wallet) *obsclient.AuthObsClient {
 	addr := wallet.Address().String()
 	clients := n.AuthObsClients[addr]
-	return clients[rand.Intn(len(clients))] //nolint:gosec
+	// don't return the sequencer connection for tx issuance
+	return clients[rand.Intn(len(clients)-1)+1] //nolint:gosec
 }
 
 // ObscuroWalletClient fetches a client for a given wallet address, for a specific node

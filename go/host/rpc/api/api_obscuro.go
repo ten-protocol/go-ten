@@ -1,4 +1,4 @@
-package clientapi
+package api
 
 import (
 	"github.com/obscuronet/go-obscuro/go/common/host"

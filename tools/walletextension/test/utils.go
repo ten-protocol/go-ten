@@ -18,6 +18,7 @@ import (
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/gorilla/websocket"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/api"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
@@ -25,7 +26,6 @@ import (
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	enclaverpc "github.com/obscuronet/go-obscuro/go/enclave/rpc"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
 const jsonID = "1"
@@ -69,14 +69,14 @@ func createDummyHost(t *testing.T, wsRPCPort int) (*DummyAPI, func() error) {
 	rpcServerNode, err := gethnode.New(&cfg)
 	rpcServerNode.RegisterAPIs([]gethrpc.API{
 		{
-			Namespace: hostcontainer.APINamespaceObscuro,
-			Version:   hostcontainer.APIVersion1,
+			Namespace: api.APINamespaceObscuro,
+			Version:   api.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},
 		{
-			Namespace: hostcontainer.APINamespaceEth,
-			Version:   hostcontainer.APIVersion1,
+			Namespace: api.APINamespaceEth,
+			Version:   api.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},

@@ -1,12 +1,20 @@
-package clientrpc
+package server
 
 import (
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
+)
 
-	gethlog "github.com/ethereum/go-ethereum/log"
+const (
+	APIVersion1             = "1.0"
+	APINamespaceObscuro     = "obscuro"
+	APINamespaceEth         = "eth"
+	APINamespaceObscuroScan = "obscuroscan"
+	APINamespaceNetwork     = "net"
+	APINamespaceTest        = "test"
 )
 
 const (

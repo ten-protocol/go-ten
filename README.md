@@ -215,8 +215,8 @@ root
 │   │   ├── <a href="./go/host/node">node</a>: The host implementation.
 │   │   ├── <a href="./go/host/p2p">p2p</a>: The P2P communication implementation.
 │   │   └── <a href="./go/host/rpc">rpc</a>: RPC communications with the enclave and the client.
-│   │       ├── <a href="./go/host/rpc/clientapi">clientapi</a>: The API for RPC communications with the client.
-│   │       ├── <a href="./go/host/rpc/clientrpc">clientrpc</a>: The RPC server for communications with the client.
+│   │       ├── <a href="./go/host/rpc/api">clientapi</a>: The API for RPC communications with the client.
+│   │       ├── <a href="./go/host/rpc/server">clientrpc</a>: The RPC server for communications with the client.
 │   │       └── <a href="./go/host/enclaverpc">enclaverpc</a>: The RPC client for communications with the enclave.
 │   ├── <a href="./go/rpc">rpcclientlib</a>: Library to allow go applications to connect to a host via RPC.
 │   └── <a href="./go/wallet">wallet</a>: Logic around wallets. Used both by the node, which is an ethereum wallet, and by the tests

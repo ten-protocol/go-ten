@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/api"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -13,7 +14,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/host/container"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
@@ -29,11 +29,11 @@ const (
 
 // An in-memory implementation of `rpc.Client` that speaks directly to the node.
 type inMemObscuroClient struct {
-	obscuroAPI       *clientapi.ObscuroAPI
-	ethAPI           *clientapi.EthereumAPI
-	filterAPI        *clientapi.FilterAPI
-	obscuroScanAPI   *clientapi.ObscuroScanAPI
-	testAPI          *clientapi.TestAPI
+	obscuroAPI       *api.ObscuroAPI
+	ethAPI           *api.EthereumAPI
+	filterAPI        *api.FilterAPI
+	obscuroScanAPI   *api.ObscuroScanAPI
+	testAPI          *api.TestAPI
 	enclavePublicKey *ecies.PublicKey
 }
 
@@ -47,11 +47,11 @@ func NewInMemObscuroClient(hostContainer *container.HostContainer) rpc.Client {
 	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
 
 	return &inMemObscuroClient{
-		obscuroAPI:       clientapi.NewObscuroAPI(hostContainer.Host()),
-		ethAPI:           clientapi.NewEthereumAPI(hostContainer.Host(), logger),
-		filterAPI:        clientapi.NewFilterAPI(hostContainer.Host(), logger),
-		obscuroScanAPI:   clientapi.NewObscuroScanAPI(hostContainer.Host()),
-		testAPI:          clientapi.NewTestAPI(hostContainer),
+		obscuroAPI:       api.NewObscuroAPI(hostContainer.Host()),
+		ethAPI:           api.NewValidatorEthAPI(hostContainer.Host(), logger),
+		filterAPI:        api.NewFilterAPI(hostContainer.Host(), logger),
+		obscuroScanAPI:   api.NewObscuroScanAPI(hostContainer.Host()),
+		testAPI:          api.NewTestAPI(hostContainer),
 		enclavePublicKey: enclPubKey,
 	}
 }

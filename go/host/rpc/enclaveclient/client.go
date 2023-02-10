@@ -1,4 +1,4 @@
-package enclaverpc
+package enclaveclient
 
 import (
 	"bytes"

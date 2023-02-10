@@ -1,4 +1,4 @@
-package clientapi
+package api
 
 import (
 	"context"

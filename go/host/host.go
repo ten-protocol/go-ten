@@ -224,6 +224,10 @@ func (h *host) EnclaveClient() common.Enclave {
 }
 
 func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
+	if h.config.NodeType == common.Sequencer {
+		return nil, fmt.Errorf("sequecer cannot directly recieve txs")
+	}
+
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
 	encryptedResponse, err := h.enclaveClient.SubmitTx(encryptedTx)
@@ -231,11 +235,9 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 		return nil, fmt.Errorf("could not submit transaction. Cause: %w", err)
 	}
 
-	if h.config.NodeType != common.Sequencer {
-		err = h.p2p.SendTxToSequencer(encryptedTx)
-		if err != nil {
-			return nil, fmt.Errorf("could not broadcast transaction to sequencer. Cause: %w", err)
-		}
+	err = h.p2p.SendTxToSequencer(encryptedTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not broadcast transaction to sequencer. Cause: %w", err)
 	}
 
 	return encryptedResponse, nil
