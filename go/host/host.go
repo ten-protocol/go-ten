@@ -225,7 +225,7 @@ func (h *host) EnclaveClient() common.Enclave {
 
 func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
 	if h.config.NodeType == common.Sequencer {
-		return nil, fmt.Errorf("sequecer cannot directly recieve txs")
+		return nil, fmt.Errorf("sequecer cannot directly receive txs")
 	}
 
 	encryptedTx := common.EncryptedTx(encryptedParams)

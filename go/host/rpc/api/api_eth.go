@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/api"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -14,6 +13,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/host/container"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/api"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
