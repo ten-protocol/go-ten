@@ -6,12 +6,12 @@ The mechanism by which an upgrade is validated is covered in the "Upgrading_on_p
 We'll start by identifying the types of scenarios that will require a software upgrade, and next, we'll propose the 
 procedures and the technical changes required to achieve them. 
 
-Note: This document is written with the single aggregator model, but it should apply equally to the decentralised POBI.
+Note: This document is written with the single aggregator model, but it applies to the decentralised POBI as well.
 
 ## Prerequisites
 
 Upgradeability is a very complex topic. We'll start by listing the concerns specific to Obscuro and by creating 
-some classifications.
+some useful classifications to be able to reason about the problems.
 
 ### Obscuro secrets
 
@@ -29,7 +29,7 @@ Both secrets are sealed locally with a key derived from the current measurement 
 
 - The privacy of the ledger data is guaranteed by the security of the local secrets.
 - The main reason for a "privacy" upgrade is the discovery of a vulnerability that can leak data.
-- Most upgrades will hopefully be for mundane reasons such as improvements. 
+- Most upgrades will hopefully be for mundane reasons such as new features or general improvements. 
 - Obscuro is an L2 with a governance mechanism that takes place on the Ethereum Management Contract (MC). The decisions made by 
 the governance contract must be understood and enforced by the enclave. See more details in the "Upgrading_on_pos.md" document. 
 
@@ -115,19 +115,14 @@ In this section, we'll look at the architecture and analyse how upgrading differ
 
 Any change to this codebase will have to go through the attestation whitelisting process.
 
-Note that not all changes must be treated as a consensus upgrade. 
-It is possible to make a pure performance improvement change which is optional.
+Note that some changes can be local only such as a release that only contains a performance improvement.
 
-Allowing multiple approved versions in the period between two blocks will require some extra logic.
-
-Note: It is critical to design an upgrading mechanism in phase 1.
+Note that Obscuro will allow multiple approved versions in the period between two blocks heights.
 
 ### Host
 
 Changes to the host component will most likely be for usability and performance reasons.
 Some upgrades could be consensus upgrades as well, for example, on a change of protocol.
-
-Note: Not critical for an upgrading mechanism to be present in phase 1.
 
 ### The Wallet extension
 
@@ -135,30 +130,107 @@ This is the component installed by end users which communicates with Obscuro nod
 For a good UX, Obscuro nodes must be backwards compatible and support even older versions of the Wallet extension.
 There must be warnings and mechanisms to help users upgrade to the latest version.
 
-Note: Not critical for an upgrading mechanism to be present in phase 1.
 
-## Attestation whitelisting
+## Upgrade Process
 
-The management contract will not support direct attestation verification, which means it has to whitelist a genesis enclave, 
-by relying on incentivising users and researchers to make sure that the attestation is the right code running on secure hardware.
+TEE attestation verification is a complex and computationally expensive process that is difficult to implement in a smart contract.
+It is more practical to limit attestation verification to external tooling and enclaves, and design incentive mechanisms in the smart conract.
 
-The genesis enclave for each new version must be published and whitelisted by the contract, together with a link to the source
-code that produces that binary image.
+The management contract will not support direct attestation verification. 
+It will accept and record publishing requests that contain attestations which will be verified by incentived users and 
+researchers.
 
-This is the format of the event produced by the Management contract when the lifecycle is finalised.
+The attestation for each new version of an enclave must be published, together with a link to the source code that produces that binary image.
+
+At the end of a successful whitelisting lifecycle, the MC will produce an UpgradeEvent like this:
 
 ```
  UpgradeEvent(
-   - WhitelistedGenesisAttestation // a node installed with the new version
-   - EnforcedHeight                // the rollup height from which only the new version will move forward. It can be -1 if not applicable.
-   - RotateMasterSeed              // boolean indicating whether 
-   - Attributes                    // a map of attributes that will be understood by the current version of the enclave.  
+   - MajorVersion   : Number       // The major version of this upgrade. 
+   - MinorVersion   : Number       // The minor version of this upgrade.
+   - GenesisEnclave : Attestation  // The attestation of a node installed with the new version.
+   - StartAtHeight  : Number       // The rollup height from which only the new version will move forward. It can be nil if not applicable.
+   - Attributes     : Map          // A map of attributes that will be understood by the current version of the enclave.  
    )
 ```
 
-Note: In phase 1, the event can be emitted when the administrator of the contract calls an "approveVersion" function.
-This will give the upgrading power to the administrator, but in a transparent way.
+When `MinorVersion` is `0`, the `StartAtHeight` field is mandatory. 
+This means that each time a major version is released, it must specify the `StartAtHeight` field.
+A major release is a consensus release that will rotate the master seed.
 
+The minor versions will inherit the rollup interval.
+There could be multiple minor releases for each major release, all of them perfectly compatible with each other and will share the master seed.
+
+In phase 1, the event will be emitted when the administrator of the contract calls an "approveVersion" function.
+This will give the upgrading power to the administrator, but in a transparent way. In phase 2, we'll implement
+the decentralised mechanism described in the relevant design document.
+
+The diagram below depicts various events happening during the normal functioning of the network.
+Notice that between height 0 and 199 - version 1.x is active. 
+Between 200 and 1099 - version 2.x is active.
+After 1100  - version 3.x is active.
+
+
+```plantuml
+@startuml
+[Before Genesis] --> [Rollup 0]    
+[Rollup 0] --> [Rollup 100]    
+[Rollup 100] --> [Rollup 200]    
+[Rollup 200] --> [Rollup 250]    
+[Rollup 250] --> [Rollup 300]    
+[Rollup 300] --> [...]    
+[...] --> [Rollup 1000]     
+[Rollup 1000] --> [Rollup 1100]    
+[Rollup 1100] --> [....]    
+     
+note right of [Before Genesis]: Upgrade event emitted for genesis 1.0 version.     
+note right of [Rollup 0]: Genesis. First rollup created by version 1.0.     
+note right of [Rollup 100]: Upgrade event emitted for 2.0 to start at 200.     
+note right of [Rollup 200]: Version 2.0 starts here. End of 1.x.     
+note right of [Rollup 250]: Upgrade event for 2.1     
+note right of [Rollup 300]: Upgrade event for 2.2     
+note right of [...]: Versions 2.0, 2.1 and 2.2 working and sharing the secret.     
+note right of [Rollup 1000]: Upgrade event for 3.0, 3.1. Start at 1100.    
+note right of [Rollup 1100]: Start version 3.0.  End of 2.x.   
+@enduml
+```
+
+Below is an operational view of the actions that the various actors in the system will perform.
+There are two developers (Dev1 and Dev2) who will develop and publish major version v1 and v2.
+Notice that before publishing those versions, they have to first install them on an enclave to fetch the attestation.
+
+This diagram depicts the phase 1 setup where an Admin will manually whitelist that version.
+And then, once the Upgrade Event is emitted and authenticated by the first version, it will release its secrets to the new version.
+
+There are two groups of related events prefixed with roman numerals
+
+```plantuml
+@startuml 
+
+component Management_Contract {
+  portin Publish_Major
+  portin Publish_Minor
+  portin Approve
+  portout Upgrade_Event
+}
+
+actor Dev1
+actor Dev2
+actor Admin
+
+Dev1 -----> [TEE_v1] : I.1. Install
+Dev1 ---> Publish_Major :I.2. Publish v1 {Attestation TEE_v1}
+Admin -> Approve: I.3.  v1
+Upgrade_Event --> [TEE_v1]: I.4. Genesis of Network
+
+Dev2 -----> [TEE_v2] : II.1. Install
+Dev2 ---> Publish_Major :II.2. Publish v2 {Attestation TEE_v2}
+Admin --> Approve: II.3.  v2
+Upgrade_Event --> [TEE_v2]: II.4. Activation
+Upgrade_Event --> [TEE_v1]: II.5. Update
+[TEE_v1] --> [TEE_v2]: II.6. Release secrets
+@enduml
+```
 
 ## Minimum viable upgrade mechanism
 
@@ -169,28 +241,46 @@ this luxury.
 Without a mechanism put in place in the initial release, the enclave cannot be upgraded at all because any other version will
 not be able to read the data.
 
-This is only a concern for the Obscuro enclave, as the upgrading of the Host component can be designed afterwards.
+Upgradability in phase 1 is only a concern for the Obscuro enclave, as the upgrading of the "Host" component can be designed afterwards.
 
 ### High-level tasks
+
+This is the list of tasks that we have to implement before the initial mainnet release to support the flow depicted in
+the diagrams above.
 
 #### Management contract
 
 - Create the UpgradeEvent.
-- Add a function to publish metadata about a release.
+- Add the "Publish major" and "Publish minor" functions to publish metadata about a release.
 - Add a function callable only by the admin to approve one of the published releases.
 
 #### Enclave 
 
 1. Implement the UpgradeEvent authentication mechanism.
-   - Logic to understand the beacon chain canonical chain
+   - Basic logic to understand the beacon canonical chain
    - Minimal heuristics to mitigate "Weak subjectivity."
 
-2. Implement logic to verify an attestation against the approved version.
+2. Implement logic to verify an attestation against the approved version based on the current rollup height.
 
 3. Create an RPC endpoint to hand over secrets to an approved version, encrypted with the key.
 
 4. Logic to stop operating at the block height specified in the UpgradeEvent.
 
+The enclave must maintain an internal structure like the one below created from authenticate Upgrade Events, and always
+perform validity checks against all secret requests or incoming data. 
+
+```golang
+   type MinorVersion struct{
+       version int
+       AttestationConstraints Constraints
+   } 
+
+   type MajorVersion struct{
+        version int
+        minorVersions []MinorVersion
+        startAtHeight int
+   } 
+```
 
 #### Host level
 Doesn't require any special functionality in phase 1.
@@ -198,11 +288,12 @@ Doesn't require any special functionality in phase 1.
 
 ### Process
 
-1. The whitelisting of the enclave is performed on the MC, and Upgrade Event (UE) is emitted.
-2. During normal operation, the current version of the Enclave (CE) will consume and authenticate the UE.
-3. The operator will call the RPC endpoint, which will hand over secrets encrypted with the key of the New Enclave(NE).
-4. The NE will start up and will run in the backwards compatibility mode until the block number mentioned in the UE is reached.
-5. The CE will continue operating until the block height in the UE is reached when it will exit. By now, it will assume that the NE has taken over.
+1. Developer creates new version, installs it on a TEE and obtains an Attestation Report. This is the New Enclave (NE)
+1. The whitelisting of the new attestation is performed on the MC, and an Upgrade Event (UE) is emitted.
+1. During normal operation, the current version of the Enclave (CE) will consume and authenticate the UE.
+1. The operator will call the RPC endpoint, which will hand over secrets encrypted with the key of the NE.
+1. The NE will start up and will run in the backwards compatibility mode until the block number mentioned in the UE is reached.
+1. The CE can continue operating until the block height in the UE is reached when it will exit. By now, it will assume that the NE has taken over.
 
 #### The Sequencer
 
@@ -211,15 +302,93 @@ The CE will continue to produce batches/rollups until the specified block.
 
 All the other nodes will use the UpgradeEvents to identify the sequencer between any two block heights. 
 
+In phase1, the Sequencer will always be the node that was whitelisted for both major and minor upgrades.
+In phase2, there will be a more elaborate mechanism in place.
 
 #### The Genesis Upgrade Event
 
-The "UpgradeEvent" mechanism can be used for the genesis as well.
+The "UpgradeEvent" mechanism can be used for the genesis as well. 
+As depicted in the diagram, the first UpgradeEvent will act as the activation signal.
 
+
+#### Replacing an upgrade
+
+It is possible that a whitelisted version contains a bug which will surface when running in compatibility mode before 
+taking over.
+If this bug does not compromise the privacy, it is possible to release a minor upgrade.
+If it compromises privacy, a major upgrade must be released starting from the same block height. The logic inside the
+enclave must recognise this and prioritize the latest version.
+
+
+## Handling catastrophic events
+
+Obscuro is facing more risk than a transparent network during unforseen situations.
+With traditional software, if there is a bug that is preventing all nodes from starting up, the developers can quickly fix
+the bug, release the version, and the network will proceed. This works because there is no visibility restrictions on the existing data.
+As long as the data was not corrupted beyond recovery, there is always a path forward.
+
+The problem with TEE software is that upgrading must be very restricted for privacy reasons.
+If the rules are too strict, they could combine with a software bug and leave the network completely bricked. 
+For example, during an upgrade, the old version will stop working at block 1000, but the new version is unable to start either,
+because it crashes.
+Or, it is possible that all nodes spontaneously crash during normal operation, before having the chance to hand over 
+the secret to an upgrade that fixes the bug.
+
+One way to mitigate this is diversity in software. This would ensure that not all implementations are hit by the same problem.
+To reach software diversity will take a period of time.
+
+Another option to mitigate the problem is to relax the security constraints at the cost of risking compromising privacy 
+at least for some parties. 
+For example, by allowing the developer of the original application to unilaterally upgrade to a new version.
+
+The preferred option is to create a "Safe mode", a very simplified code path inside the enclave whose only task it to hand out
+the current Master Secret to an approved new version.
+This will be started in command line only, will receive the upgrade proof and the attestation, and will output the secrets.
+
+### Responsibilities:
+
+1. Interpret command line parameters.
+1. Verify an attestation.
+1. Verify the upgrade proof.
+1. Unseal the master seed.
+1. Encrypt master seed with key from attestation.
+
+All steps except the third are relatively straight forward. We can use established well tested libraries, and very little 
+custom logic. 
+
+### Verifying the upgrade proof
+
+The decentralised mechanism described in the "Weak subjectivity" document requires the enclave code to understand the consensus
+protocol of the beacon chain. That is complex code which can go wrong in unforseen ways.
+
+Ideas:
+We need an alternative simpler mechanism for this exceptional situation.
+Ideally a mechanism that relies on verifying digital signatures and Merkle Trees.
+
+To reduce the scope of abuse, we propose that, during phase 1, only the sequencer has the capability to enter "Safe mode".
+
+Upgrade proof signed by an ad-hoc "upgrade oracle" composed of a majority of the Obscuro node operators at the time
+of each version. The public keys of all these nodes will be included in the image
+
+
+### Backup Key
+
+Given there are still risks even with a "Safe Mode", the safest way is to start the network with "training wheels" on.
+This means that there should be as little code as possible to minimise the risks.
+
+On a high level, the solution is to encrypt the master seed of each major version using "Threshold encryption".
+The participants in this group encryption scheme need to be chosen from the initial node operators.
+
+Each participant will publish a public key to the management contract, and will receive back their encrypted share of the master seed
+split up using Shamir's Secret Sharing algorithm.
+
+In phase 1, the first enclave for each new major version will create this backup.
+
+In case something goes wrong catastrophically, the participants in this group will collaborate and restore the functionality.
 
 ## Phase 2 
 
 In this section, we'll analyse what an actual upgrade will look like from v1 to v2 and from v2 to v3.
-And some thoughts about how to handle 
+ 
 
 
