@@ -83,9 +83,6 @@ func NewEth2Network(
 	gethGenesisPath := path.Join(buildDir, "genesis.json")
 	prysmGenesisPath := path.Join(buildDir, "genesis.ssz")
 	prysmConfigPath := path.Join(buildDir, "prysm_chain_config.yml")
-	gethLogPath := path.Join(buildDir, "geth_logs.txt")
-	prysmBeaconLogPath := path.Join(buildDir, "prysm_beacon_logs.txt")
-	prysmValidatorLogPath := path.Join(buildDir, "prysm_validator_logs.txt")
 
 	gethBinaryPath := path.Join(binDir, _gethFileNameVersion)
 	prysmBeaconBinaryPath := path.Join(binDir, _prysmBeaconChainFileNameVersion)
@@ -147,15 +144,15 @@ func NewEth2Network(
 	}
 
 	// create the log files
-	gethLogFile, err := os.Create(gethLogPath)
+	gethLogFile, err := NewRotatingLogWriter(buildDir, "geth_logs", 10*1024*1024, 5)
 	if err != nil {
 		panic(err)
 	}
-	prysmBeaconLogFile, err := os.Create(prysmBeaconLogPath)
+	prysmBeaconLogFile, err := NewRotatingLogWriter(buildDir, "prysm_beacon_logs", 10*1024*1024, 5)
 	if err != nil {
 		panic(err)
 	}
-	prysmValidatorLogFile, err := os.Create(prysmValidatorLogPath)
+	prysmValidatorLogFile, err := NewRotatingLogWriter(buildDir, "prysm_validator_logs", 10*1024*1024, 5)
 	if err != nil {
 		panic(err)
 	}
