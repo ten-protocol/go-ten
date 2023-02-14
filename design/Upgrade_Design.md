@@ -24,6 +24,12 @@ There are two main secrets on an Obscuro node :
 Access to these secrets will allow attackers to read private user data.
 Both secrets are sealed locally with a key derived from the current measurement of the enclave.
 
+We'll see that during the upgrade, the secrets will be handed over to another enclave that is able to prove attestation
+against a whitelisted upgrade. Handing over the secrets means encrypting them with the attestation key of the new
+version. 
+Note that the database secret is containing a key that allows a TLS connection to the database. The new enclave
+can connect to the same database if it passes the attestation requirements it has hardcoded.
+
 
 ### Random notes
 
@@ -135,9 +141,8 @@ There must be warnings and mechanisms to help users upgrade to the latest versio
 TEE attestation verification is a complex and computationally expensive process that is difficult to implement in a smart contract.
 It is more practical to limit attestation verification to external tooling and enclaves and design incentive mechanisms in the smart contract.
 
-The management contract will not support direct attestation verification.
-It will accept and record publishing requests that contain attestations which will be verified by incentivised users and
-researchers.
+The management contract will not support direct attestation verification. It will instead accept and record publishing 
+requests that contain attestations which will be verified by incentivised users and researchers.
 
 The attestation for each new version of an enclave must be published, together with a link to the source code that produces that binary image.
 
@@ -280,8 +285,12 @@ perform validity checks against all secret requests or incoming data.
         version int
         minorVersions []MinorVersion
         startAtHeight int
+		masterSeed    []bytes
    } 
 ```
+
+Note that an enclave must receive and store all the historical master seeds. As part of the secret sharing from the previous
+version, it will receive the entire history of seeds. This is required to understand the data stored in the availability layer. 
 
 #### Host level
 Doesn't require any special functionality in phase 1.
@@ -293,6 +302,8 @@ Doesn't require any special functionality in phase 1.
 1. The whitelisting of the new attestation is performed on the MC, and an Upgrade Event (UE) is emitted.
 1. During normal operation, the current version of the Enclave (CE) will consume and authenticate the UE.
 1. The operator will call the RPC endpoint, which will hand over secrets encrypted with the key of the NE.
+The operator will present the attestation of a TEE installed with the new software. The CE will verify that attestation
+against the latest UE, will encrypt the secrets with the key from the attestation, and return it.
 1. The NE will start up and will run in the backwards compatibility mode until the block number mentioned in the UE is reached.
 1. The CE can continue operating until the block height in the UE is reached, when it will exit. By now, it will assume that the NE has taken over.
 
@@ -382,7 +393,10 @@ The participants in this group encryption scheme must be chosen from the initial
 Each participant will publish a public key to the management contract and will receive back their encrypted share of the master seed
 split up using Shamir's Secret Sharing algorithm.
 
-In phase 1, the first enclave for each new major version will create this backup.
+It is assumed that each participant has a secure process in place using HSMs where they generate and guard the key material
+used for this scheme.
+
+In phase 1, the first enclave for each new major version will create this backup before it starts producing rollups.
 
 In case something goes wrong catastrophically, the participants in this group will collaborate and restore the functionality.
 
@@ -400,4 +414,14 @@ In the next stage, we will implement the mechanism based on incentives.
 
 ### Backup key
 We will move to the safe mode described above and, ideally to a multi-software, multi-manufacturer setup, which will
-further, reduce the chance of the same error happening everywhere. 
+further reduce the chance of the same error happening everywhere. 
+
+### Joining the network 
+
+There will be mechanisms in place to prevent users from starting a non-current version of an Obscuro Node.
+These mechanisms are necessary to prevent exploiting of already fixed privacy vulnerabilities. 
+
+This means that a node joining the network must do so with the latest version which must contain all the compatibility modes
+to execute transactions from genesis.
+
+It should be possible to request an encrypted database dump (checkpoint) from another node to speed up bootstrapping.
