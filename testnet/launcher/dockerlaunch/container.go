@@ -1,24 +1,25 @@
-package launcher
+package dockerlaunch
 
 import (
 	"context"
 	"fmt"
-	"github.com/docker/go-connections/nat"
 	"io"
 	"os"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/docker/go-connections/nat"
 )
 
-func startNewContainer(containerName, image string, cmds []string, ports []int) error {
+func StartNewContainer(containerName, image string, cmds []string, ports []int, envs map[string]string) (string, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer cli.Close()
 
@@ -46,21 +47,30 @@ func startNewContainer(containerName, image string, cmds []string, ports []int) 
 		fmt.Printf("Image %s found locally.\n", image)
 	}
 
-	exposedPort := nat.PortMap{}
+	// convert env vars
+	var envVars []string
+	for k, v := range envs {
+		envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
+	}
+	// expose ports
+	portBindings := nat.PortMap{}
+	exposedPorts := nat.PortSet{}
 	for _, port := range ports {
-		exposedPort[nat.Port(fmt.Sprintf("%d", port))] = []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: fmt.Sprintf("%d", port)}}
+		portBindings[nat.Port(fmt.Sprintf("%d/tcp", port))] = []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: fmt.Sprintf("%d", port)}}
+		exposedPorts[nat.Port(fmt.Sprintf("%d/tcp", port))] = struct{}{}
 	}
 
-	hostConfig := &container.HostConfig{
-		PortBindings: exposedPort,
-	}
-
+	// create the container
 	resp, err := cli.ContainerCreate(ctx, &container.Config{
-		Image:      image,
-		Entrypoint: cmds,
-		Tty:        false,
+		Image:        image,
+		Entrypoint:   cmds,
+		Tty:          false,
+		ExposedPorts: exposedPorts,
+		Env:          envVars,
 	},
-		hostConfig,
+		&container.HostConfig{
+			PortBindings: portBindings,
+		},
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
 				"node_network": {
@@ -75,15 +85,6 @@ func startNewContainer(containerName, image string, cmds []string, ports []int) 
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
 		panic(err)
 	}
-	//
-	//statusCh, errCh := cli.ContainerWait(ctx, resp.ID, container.WaitConditionNotRunning)
-	//select {
-	//case err := <-errCh:
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//case <-statusCh:
-	//}
 
 	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStderr: true, ShowStdout: true})
 	if err != nil {
@@ -91,5 +92,30 @@ func startNewContainer(containerName, image string, cmds []string, ports []int) 
 	}
 
 	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	return resp.ID, nil
+}
+
+func WaitForContainerToFinish(containerID string, timeout time.Duration) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	// Wait for the container to finish with a timeout of one minute
+	statusCh, errCh := cli.ContainerWait(context.Background(), containerID, container.WaitConditionNotRunning)
+	select {
+	case err := <-errCh:
+		if err != nil {
+			return err
+		}
+	case status := <-statusCh:
+		if status.StatusCode != 0 {
+			panic("Container exited with non-zero status code")
+		}
+	case <-time.After(timeout):
+		panic("Timeout waiting for container to finish")
+	}
+
 	return nil
 }

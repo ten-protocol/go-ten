@@ -2,15 +2,22 @@ package launcher
 
 import (
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/node"
 	"github.com/obscuronet/go-obscuro/testnet/launcher/eth2network"
-	l1cd "github.com/obscuronet/go-obscuro/testnet/launcher/l1contractdeployer"
-	"testing"
 
+	l1cd "github.com/obscuronet/go-obscuro/testnet/launcher/l1contractdeployer"
 	l2cd "github.com/obscuronet/go-obscuro/testnet/launcher/l2contractdeployer"
 )
 
-func TestName(t *testing.T) {
+type Testnet struct{}
+
+func NewTestnetLauncher() *Testnet {
+	// todo bind testnet specific options like number of nodes, etc
+	return &Testnet{}
+}
+
+func (t *Testnet) Start() error {
 	eth2Network, err := eth2network.NewDockerEth2Network(
 		eth2network.NewEth2NetworkConfig(
 			eth2network.WithGethHTTPStartPort(8025),
@@ -19,19 +26,20 @@ func TestName(t *testing.T) {
 		),
 	)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to configure eth2network - %w", err)
+
 	}
 
 	err = eth2Network.Start()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to start eth2network - %w", err)
 	}
 
 	err = eth2Network.IsReady()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("eth2network not ready in time - %w", err)
 	}
-	fmt.Println("L1 network is ready...")
+	fmt.Println("Eth2 network is ready...")
 
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
 		l1cd.NewContractDeployerConfig(
@@ -41,18 +49,19 @@ func TestName(t *testing.T) {
 		),
 	)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to configure l1 contract deployer - %w", err)
 	}
 
 	err = l1ContractDeployer.Start()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to start l1 contract deployer - %w", err)
 	}
 
 	managementContractAddr, messageBusContractAddr, err := l1ContractDeployer.RetrieveL1ContractAddresses()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to fetch l1 contract addresses - %w", err)
 	}
+	fmt.Println("L1 Contracts were successfully deployed...")
 
 	nodeCfg := node.NewNodeConfig(
 		node.WithNodeType("sequencer"),
@@ -74,13 +83,14 @@ func TestName(t *testing.T) {
 
 	dockerNode, err := node.NewDockerNode(nodeCfg)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to configure the obscuro node - %w", err)
 	}
 
 	err = dockerNode.Start()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to start the obscuro node - %w", err)
 	}
+	fmt.Println("Obscuro node was successfully started...")
 
 	l2ContractDeployer, err := l2cd.NewDockerContractDeployer(
 		l2cd.NewContractDeployerConfig(
@@ -96,17 +106,14 @@ func TestName(t *testing.T) {
 		),
 	)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to configure the l2 contract deployer - %w", err)
 	}
 
 	err = l2ContractDeployer.Start()
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("unable to start the l2 contract deployer - %w", err)
 	}
+	fmt.Println("L2 Contracts were successfully deployed...")
 
-	fmt.Println(err)
-	//managementContractAddr, messageBusContractAddr, err = l1ContractDeployer.RetrieveL1ContractAddresses()
-	//if err != nil {
-	//	panic(err)
-	//}
+	return nil
 }

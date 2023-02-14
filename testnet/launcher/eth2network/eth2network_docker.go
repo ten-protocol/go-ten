@@ -1,19 +1,20 @@
-package launcher
+package eth2network
 
 import (
 	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/obscuronet/go-obscuro/testnet/launcher/dockerlaunch"
 	"strings"
 	"time"
 )
 
 type Eth2Network struct {
-	cfg *Eth2NetworkConfig
+	cfg *Config
 }
 
-func NewDockerEth2Network(cfg *Eth2NetworkConfig) (*Eth2Network, error) {
+func NewDockerEth2Network(cfg *Config) (*Eth2Network, error) {
 	return &Eth2Network{
 		cfg: cfg,
 	}, nil // todo: add validation
@@ -41,7 +42,8 @@ func (n *Eth2Network) Start() error {
 	}
 	fmt.Println(cmds)
 
-	return startNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts)
+	_, err := dockerlaunch.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil)
+	return err
 }
 
 func (n *Eth2Network) IsReady() error {
