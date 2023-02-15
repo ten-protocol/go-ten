@@ -45,7 +45,7 @@ func main() {
 		envFile := fmt.Sprintf("MGMTCONTRACTADDR=%s\nMSGBUSCONTRACTADDR=%s\n", managementContractAddr, messageBusContractAddr)
 
 		// Write the content to a new file or override the existing file
-		err := ioutil.WriteFile(cliConfig.contractEnvFile, []byte(envFile), 0644)
+		err = ioutil.WriteFile(cliConfig.contractEnvFile, []byte(envFile), 0o644) //nolint:gosec
 		if err != nil {
 			fmt.Println("Error writing file:", err)
 			os.Exit(1)

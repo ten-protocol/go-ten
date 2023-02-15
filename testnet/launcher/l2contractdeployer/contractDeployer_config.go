@@ -42,7 +42,7 @@ func WithL1PrivateKey(s string) Option {
 	}
 }
 
-func WithL2Port(i int) Option {
+func WithL2WSPort(i int) Option {
 	return func(c *Config) {
 		c.l2Port = i
 	}
