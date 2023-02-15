@@ -7,7 +7,7 @@ name: '[M] Deploy Testnet L2'
 
 on:
   schedule:
-    - cron: '10 2 * * *'
+    - cron: '05 4 * * *'
   workflow_dispatch:
     inputs:
       testnet_type:
