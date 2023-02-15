@@ -19,6 +19,7 @@ type Config struct {
 	managementContractAddr    string
 	enclaveWSPort             int
 	l1WSPort                  int
+	hostP2PAddr               string
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -118,5 +119,11 @@ func WithL1Host(s string) Option {
 func WithHostP2PPort(i int) Option {
 	return func(c *Config) {
 		c.hostP2PPort = i
+	}
+}
+
+func WithHostP2PAddr(s string) Option {
+	return func(c *Config) {
+		c.hostP2PAddr = s
 	}
 }

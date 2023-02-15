@@ -44,7 +44,7 @@ func (d *DockerNode) startHost() error {
 		"-isGenesis", fmt.Sprintf("%t", d.cfg.isGenesis),
 		"-nodeType", d.cfg.nodeType,
 		"-profilerEnabled", "false",
-		"-p2pPublicAddress", fmt.Sprintf("0.0.0.0:%d", d.cfg.hostP2PPort),
+		"-p2pPublicAddress", fmt.Sprintf("%s:%d", d.cfg.hostP2PAddr, d.cfg.hostP2PPort),
 	}
 
 	_, err := docker.StartNewContainer("host", d.cfg.hostImage, cmd, nil, nil)

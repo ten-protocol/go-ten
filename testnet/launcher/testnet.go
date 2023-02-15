@@ -3,10 +3,9 @@ package launcher
 import (
 	"fmt"
 
-	node2 "github.com/obscuronet/go-obscuro/go/node"
-
 	"github.com/obscuronet/go-obscuro/testnet/launcher/eth2network"
 
+	node2 "github.com/obscuronet/go-obscuro/go/node"
 	l1cd "github.com/obscuronet/go-obscuro/testnet/launcher/l1contractdeployer"
 	l2cd "github.com/obscuronet/go-obscuro/testnet/launcher/l2contractdeployer"
 )

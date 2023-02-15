@@ -31,11 +31,11 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 			return "", err
 		}
 
-		fmt.Printf("Image %s not found locally. Pulling from remote...\n", image)
 		// Pull the image from remote
+		fmt.Printf("Image %s not found locally. Pulling from remote...\n", image)
 		pullReader, err := cli.ImagePull(context.Background(), image, types.ImagePullOptions{})
 		if err != nil {
-			panic(err)
+			return "", err
 		}
 		defer pullReader.Close()
 		go func() {
@@ -80,7 +80,7 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 			},
 		}, containerName)
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
@@ -89,7 +89,7 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 
 	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStderr: true, ShowStdout: true})
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	_, _ = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
@@ -112,10 +112,10 @@ func WaitForContainerToFinish(containerID string, timeout time.Duration) error {
 		}
 	case status := <-statusCh:
 		if status.StatusCode != 0 {
-			panic("Container exited with non-zero status code")
+			return fmt.Errorf("container exited with non-zero status code")
 		}
 	case <-time.After(timeout):
-		panic("Timeout waiting for container to finish")
+		return fmt.Errorf("timeout waiting for container to finish")
 	}
 
 	return nil

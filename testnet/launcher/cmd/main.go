@@ -11,6 +11,7 @@ import (
 
 func main() {
 	// TODO add config parsing
+	fmt.Println("Starting a testnet with all the defaults...")
 	testnet := launcher.NewTestnetLauncher()
 	err := testnet.Start()
 	if err != nil {
@@ -18,7 +19,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("Testnet start successfully")
+	fmt.Println("Testnet start successfully!")
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 	fmt.Println("Press ctrl+c to stop...")

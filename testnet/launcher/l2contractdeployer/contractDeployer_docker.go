@@ -99,7 +99,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (string, string, error)
 	// Read the container logs
 	out, err := cli.ContainerLogs(context.Background(), n.containerID, logsOptions)
 	if err != nil {
-		panic(err)
+		return "", "", err
 	}
 	defer out.Close()
 
@@ -107,7 +107,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (string, string, error)
 	var buf bytes.Buffer
 	_, err = io.Copy(&buf, out)
 	if err != nil {
-		panic(err)
+		return "", "", err
 	}
 
 	// Get the last two lines
