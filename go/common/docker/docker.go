@@ -16,6 +16,8 @@ import (
 	"github.com/docker/go-connections/nat"
 )
 
+const _networkName = "node_network"
+
 func StartNewContainer(containerName, image string, cmds []string, ports []int, envs map[string]string) (string, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv)
@@ -32,38 +34,18 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 			return "", err
 		}
 
-		// Pull the image from remote
-		fmt.Printf("Image %s not found locally. Pulling from remote...\n", image)
-		pullReader, err := cli.ImagePull(context.Background(), image, types.ImagePullOptions{})
+		err = waitAndPullRemoteImage(image, cli)
 		if err != nil {
 			return "", err
 		}
-		defer pullReader.Close()
-		go func() {
-			_, err = io.Copy(os.Stdout, pullReader)
-			if err != nil {
-				fmt.Println(err)
-			}
-		}()
-
-		// Wait until the image is available in the local Docker image cache
-		imageFilter := filters.NewArgs()
-		imageFilter.Add("reference", image)
-		imageListOptions := types.ImageListOptions{Filters: imageFilter}
-		for {
-			imageSummaries, err := cli.ImageList(context.Background(), imageListOptions)
-			if err != nil {
-				return "", err
-			}
-			if len(imageSummaries) > 0 {
-				break
-			}
-		}
-
-		// Image is available
-		fmt.Printf("Image %s is available!\n", image)
 	} else {
 		fmt.Printf("Image %s found locally.\n", image)
+	}
+
+	// Check if the network already exists
+	err = createNetwork(_networkName, cli)
+	if err != nil {
+		return "", err
 	}
 
 	// convert env vars
@@ -92,8 +74,8 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 		},
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
-				"node_network": {
-					NetworkID: "node_network",
+				_networkName: {
+					NetworkID: _networkName,
 				},
 			},
 		}, containerName)
@@ -112,6 +94,67 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 
 	_, _ = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
 	return resp.ID, nil
+}
+
+func createNetwork(networkName string, cli *client.Client) error {
+	// Check if the network already exists
+	networkFilter := types.NetworkListOptions{Filters: filters.NewArgs()}
+	networkFilter.Filters.Add("name", networkName)
+	existingNetworks, err := cli.NetworkList(context.Background(), networkFilter)
+	if err != nil {
+		return err
+	}
+
+	if len(existingNetworks) == 0 {
+		// Create the network if it doesn't exist
+		_, err = cli.NetworkCreate(
+			context.Background(),
+			networkName,
+			types.NetworkCreate{
+				Driver:     "bridge",
+				Attachable: true,
+				Ingress:    false,
+			},
+		)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func waitAndPullRemoteImage(image string, cli *client.Client) error {
+	// Pull the image from remote
+	fmt.Printf("Image %s not found locally. Pulling from remote...\n", image)
+	pullReader, err := cli.ImagePull(context.Background(), image, types.ImagePullOptions{})
+	if err != nil {
+		return err
+	}
+	defer pullReader.Close()
+	go func() {
+		_, err = io.Copy(os.Stdout, pullReader)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}()
+
+	// Wait until the image is available in the local Docker image cache
+	imageFilter := filters.NewArgs()
+	imageFilter.Add("reference", image)
+	imageListOptions := types.ImageListOptions{Filters: imageFilter}
+	for {
+		imageSummaries, err := cli.ImageList(context.Background(), imageListOptions)
+		if err != nil {
+			return err
+		}
+		if len(imageSummaries) > 0 {
+			break
+		}
+	}
+
+	// Image is available
+	fmt.Printf("Image %s is available!\n", image)
+	return nil
 }
 
 func WaitForContainerToFinish(containerID string, timeout time.Duration) error {

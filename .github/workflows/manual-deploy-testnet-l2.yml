@@ -215,7 +215,7 @@ jobs:
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
             && sudo apt-get update \
             && sudo apt-get install -y jq \
-            && sudo snap install --channel=1.17 go --classic \
+            && sudo snap refresh && sudo snap install --channel=1.17 go --classic \
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
             && docker network create --driver bridge node_network || true \
             && docker run -d --name datadog-agent \
@@ -231,8 +231,8 @@ jobs:
                -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
                datadog/agent:latest \
-            && cd /home/obscuro/go-obscuro/testnet/ \
-            && sudo go run /home/obscuro/go-obscuro/go/node/cmd/main  \
+            && cd /home/obscuro/go-obscuro/ \
+            && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
                -is_genesis=${{ matrix.is_genesis }} \
                -node_type=${{ matrix.node_type }} \
                -is_sgx_enabled=true \
@@ -244,8 +244,8 @@ jobs:
                -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
                -host_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
                -host_p2p_port=10000 \
-               -enclave_docker_image=${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
-               -host_docker_image=${{env.L2_HOST_DOCKER_BUILD_TAG}}'
+               -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
+               -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}}'
 
 
   update-loadbalancer:
