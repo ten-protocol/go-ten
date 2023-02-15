@@ -3,11 +3,12 @@ package eth2network
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/testnet/launcher/dockerlaunch"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/obscuronet/go-obscuro/go/common/docker"
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 )
 
 type Eth2Network struct {
@@ -42,7 +43,7 @@ func (n *Eth2Network) Start() error {
 	}
 	fmt.Println(cmds)
 
-	_, err := dockerlaunch.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil)
+	_, err := docker.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil)
 	return err
 }
 

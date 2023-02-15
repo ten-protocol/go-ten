@@ -1,4 +1,4 @@
-package dockerlaunch
+package docker
 
 import (
 	"context"

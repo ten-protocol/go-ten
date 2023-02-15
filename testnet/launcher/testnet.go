@@ -2,8 +2,8 @@ package launcher
 
 import (
 	"fmt"
+	node2 "github.com/obscuronet/go-obscuro/go/node"
 
-	"github.com/obscuronet/go-obscuro/node"
 	"github.com/obscuronet/go-obscuro/testnet/launcher/eth2network"
 
 	l1cd "github.com/obscuronet/go-obscuro/testnet/launcher/l1contractdeployer"
@@ -63,25 +63,25 @@ func (t *Testnet) Start() error {
 	}
 	fmt.Println("L1 Contracts were successfully deployed...")
 
-	nodeCfg := node.NewNodeConfig(
-		node.WithNodeType("sequencer"),
-		node.WithGenesis(true),
-		node.WithSGXEnabled(false),
-		node.WithEnclaveImage("local_enclave"),
-		node.WithHostImage("local_host"),
-		node.WithL1Host("eth2network"),
-		node.WithL1WSPort(9000),
-		node.WithHostP2PPort(14000),
-		node.WithEnclaveHTTPPort(13000),
-		node.WithEnclaveWSPort(13001),
-		node.WithPrivateKey("8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"),
-		node.WithHostID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
-		node.WithSequencerID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
-		node.WithManagementContractAddress(managementContractAddr),
-		node.WithMessageBusContractAddress(messageBusContractAddr),
+	nodeCfg := node2.NewNodeConfig(
+		node2.WithNodeType("sequencer"),
+		node2.WithGenesis(true),
+		node2.WithSGXEnabled(false),
+		node2.WithEnclaveImage("local_enclave"),
+		node2.WithHostImage("local_host"),
+		node2.WithL1Host("eth2network"),
+		node2.WithL1WSPort(9000),
+		node2.WithHostP2PPort(14000),
+		node2.WithEnclaveHTTPPort(13000),
+		node2.WithEnclaveWSPort(13001),
+		node2.WithPrivateKey("8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"),
+		node2.WithHostID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
+		node2.WithSequencerID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
+		node2.WithManagementContractAddress(managementContractAddr),
+		node2.WithMessageBusContractAddress(messageBusContractAddr),
 	)
 
-	dockerNode, err := node.NewDockerNode(nodeCfg)
+	dockerNode, err := node2.NewDockerNode(nodeCfg)
 	if err != nil {
 		return fmt.Errorf("unable to configure the obscuro node - %w", err)
 	}
