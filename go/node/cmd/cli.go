@@ -22,18 +22,13 @@ type NodeConfigCLI struct {
 	sequencerID            string
 	managementContractAddr string
 	messageBusContractAddr string
-}
-
-func DefaultNodeConfigCLI() *NodeConfigCLI {
-	return &NodeConfigCLI{
-		nodeType:  "sequencer",
-		isGenesis: true,
-	}
+	pccsAddr               string
+	edgelessDBImage        string
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
 func ParseConfigCLI() *NodeConfigCLI {
-	cfg := DefaultNodeConfigCLI()
+	cfg := &NodeConfigCLI{}
 	flagUsageMap := getFlagUsageMap()
 
 	nodeType := flag.String(nodeTypeFlag, "", flagUsageMap[nodeTypeFlag])
@@ -52,6 +47,8 @@ func ParseConfigCLI() *NodeConfigCLI {
 	sequencerID := flag.String(sequencerIDFlag, "", flagUsageMap[sequencerIDFlag])
 	managementContractAddr := flag.String(managementContractAddrFlag, "", flagUsageMap[managementContractAddrFlag])
 	messageBusContractAddr := flag.String(messageBusContractAddrFlag, "", flagUsageMap[messageBusContractAddrFlag])
+	pccsAddr := flag.String(pccsAddrFlag, "", flagUsageMap[pccsAddrFlag])
+	edgelessDBImage := flag.String(edgelessDBImageFlag, "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2", flagUsageMap[edgelessDBImageFlag])
 
 	flag.Parse()
 	cfg.nodeType = *nodeType
@@ -70,6 +67,8 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.sequencerID = *sequencerID
 	cfg.managementContractAddr = *managementContractAddr
 	cfg.messageBusContractAddr = *messageBusContractAddr
+	cfg.pccsAddr = *pccsAddr
+	cfg.edgelessDBImage = *edgelessDBImage
 
 	return cfg
 }

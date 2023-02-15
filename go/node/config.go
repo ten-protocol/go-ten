@@ -20,6 +20,8 @@ type Config struct {
 	enclaveWSPort             int
 	l1WSPort                  int
 	hostP2PAddr               string
+	pccsAddr                  string
+	edgelessDBImage           string
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -125,5 +127,17 @@ func WithHostP2PPort(i int) Option {
 func WithHostP2PAddr(s string) Option {
 	return func(c *Config) {
 		c.hostP2PAddr = s
+	}
+}
+
+func WithEdgelessDBImage(s string) Option {
+	return func(c *Config) {
+		c.edgelessDBImage = s
+	}
+}
+
+func WithPCCSAddr(s string) Option {
+	return func(c *Config) {
+		c.pccsAddr = s
 	}
 }

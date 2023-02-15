@@ -17,7 +17,12 @@ func NewDockerNode(cfg *Config) (*DockerNode, error) {
 }
 
 func (d *DockerNode) Start() error {
-	err := d.startEnclave()
+	err := d.startEdgelessDB()
+	if err != nil {
+		return err
+	}
+
+	err = d.startEnclave()
 	if err != nil {
 		return err
 	}
@@ -71,5 +76,24 @@ func (d *DockerNode) startEnclave() error {
 	}
 
 	_, err := docker.StartNewContainer("enclave", d.cfg.enclaveImage, cmd, nil, nil)
+	return err
+}
+
+func (d *DockerNode) startEdgelessDB() error {
+	if !d.cfg.sgxEnabled {
+		return nil
+	}
+
+	envs := map[string]string{
+		"EDG_EDB_CERT_DNS": "edgelessdb",
+	}
+
+	// only set the pccsAddr env var if it's defined
+	if d.cfg.pccsAddr != "" {
+		envs["PCCS_ADDR"] = d.cfg.pccsAddr
+	}
+
+	_, err := docker.StartNewContainer("host", d.cfg.edgelessDBImage, nil, nil, envs)
+
 	return err
 }

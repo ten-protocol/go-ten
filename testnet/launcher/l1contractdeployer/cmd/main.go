@@ -41,11 +41,11 @@ func main() {
 	fmt.Printf("MSGBUSCONTRACTADDR=%s\n", messageBusContractAddr)
 
 	// the responsibility of writing to disk is outside the deployers domain
-	if cliConfig.contractEnvFile != "" {
+	if cliConfig.contractsEnvFile != "" {
 		envFile := fmt.Sprintf("MGMTCONTRACTADDR=%s\nMSGBUSCONTRACTADDR=%s\n", managementContractAddr, messageBusContractAddr)
 
 		// Write the content to a new file or override the existing file
-		err = ioutil.WriteFile(cliConfig.contractEnvFile, []byte(envFile), 0o644) //nolint:gosec
+		err = ioutil.WriteFile(cliConfig.contractsEnvFile, []byte(envFile), 0o644) //nolint:gosec
 		if err != nil {
 			fmt.Println("Error writing file:", err)
 			os.Exit(1)
