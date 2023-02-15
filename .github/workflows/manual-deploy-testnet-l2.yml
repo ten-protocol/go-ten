@@ -1,10 +1,14 @@
 # Deploys an Obscuro network on Azure for Testnet and Dev Testnet
 #
-# The Obscuro network is composed of 2 obscuro nodes running on individual vms with SGX
+# The Obscuro network is composed of 2 obscuro nodes running on individual vms with SGX. At the moment the workflow
+# can either be triggered manually as a workflow dispatch, or as a scheduled task. When manually triggered the
+# testnet type (dev-testnet or testnet) can be supplied as an input argument. When triggered as a scheduled task,
+# we always default to a dev-testnet deployment. A scheduled deployment of dev-testnet will additionally kick off
+# the E2E tests via a repository dispatch.
 #
 
 name: '[M] Deploy Testnet L2'
-
+run-name: [M] Deploy Testnet L2 (${{ github.event_name }})
 on:
   schedule:
     - cron: '05 4 * * *'
@@ -313,7 +317,7 @@ jobs:
     needs:
       - deploy-faucet
     steps:
-      - name: 'Run E2E tests on schedule trigger after successful deployment'
-        if: ${{ success() && github.event_name == 'schedule' }}
+      - name: 'Run E2E tests on schedule trigger after successful deployment of dev-testnet'
+        if: ${{ github.event_name == 'schedule' }}
         run: |
            curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "scheduled_deployment", "client_payload": { "ref": "main", "env": : "dev-testnet" }'
