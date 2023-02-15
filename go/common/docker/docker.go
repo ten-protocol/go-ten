@@ -9,6 +9,7 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
@@ -44,6 +45,23 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 				fmt.Println(err)
 			}
 		}()
+
+		// Wait until the image is available in the local Docker image cache
+		imageFilter := filters.NewArgs()
+		imageFilter.Add("reference", image)
+		imageListOptions := types.ImageListOptions{Filters: imageFilter}
+		for {
+			imageSummaries, err := cli.ImageList(context.Background(), imageListOptions)
+			if err != nil {
+				return "", err
+			}
+			if len(imageSummaries) > 0 {
+				break
+			}
+		}
+
+		// Image is available
+		fmt.Printf("Image %s is available!\n", image)
 	} else {
 		fmt.Printf("Image %s found locally.\n", image)
 	}
