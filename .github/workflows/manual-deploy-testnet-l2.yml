@@ -8,7 +8,6 @@
 #
 
 name: '[M] Deploy Testnet L2'
-run-name: [M] Deploy Testnet L2 (${{ github.event_name }})
 on:
   schedule:
     - cron: '05 4 * * *'
