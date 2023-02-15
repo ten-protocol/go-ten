@@ -52,12 +52,17 @@ func (d *DockerNode) startHost() error {
 		"-p2pPublicAddress", fmt.Sprintf("%s:%d", d.cfg.hostP2PAddr, d.cfg.hostP2PPort),
 	}
 
-	_, err := docker.StartNewContainer("host", d.cfg.hostImage, cmd, nil, nil)
+	_, err := docker.StartNewContainer("host", d.cfg.hostImage, cmd, nil, nil, nil)
 
 	return err
 }
 
 func (d *DockerNode) startEnclave() error {
+	devices := map[string]string{}
+	envs := map[string]string{
+		"OE_SIMULATION": "0",
+	}
+
 	cmd := []string{
 		"ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
 		"-hostID", d.cfg.hostID,
@@ -75,7 +80,14 @@ func (d *DockerNode) startEnclave() error {
 		"-messageBusAddress", d.cfg.messageBusContractAddress,
 	}
 
-	_, err := docker.StartNewContainer("enclave", d.cfg.enclaveImage, cmd, nil, nil)
+	if d.cfg.sgxEnabled {
+		devices["/dev/sgx_enclave"] = "/dev/sgx_enclave"
+		devices["/dev/sgx_provision"] = "/dev/sgx_provision"
+
+		envs["OE_SIMULATION"] = "1"
+	}
+
+	_, err := docker.StartNewContainer("enclave", d.cfg.enclaveImage, cmd, nil, envs, devices)
 	return err
 }
 
@@ -88,12 +100,17 @@ func (d *DockerNode) startEdgelessDB() error {
 		"EDG_EDB_CERT_DNS": "edgelessdb",
 	}
 
+	devices := map[string]string{
+		"/dev/sgx_enclave":   "/dev/sgx_enclave",
+		"/dev/sgx_provision": "/dev/sgx_provision",
+	}
+
 	// only set the pccsAddr env var if it's defined
 	if d.cfg.pccsAddr != "" {
 		envs["PCCS_ADDR"] = d.cfg.pccsAddr
 	}
 
-	_, err := docker.StartNewContainer("host", d.cfg.edgelessDBImage, nil, nil, envs)
+	_, err := docker.StartNewContainer("edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices)
 
 	return err
 }

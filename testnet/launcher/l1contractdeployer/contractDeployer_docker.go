@@ -47,7 +47,7 @@ func (n *ContractDeployer) Start() error {
 `, n.cfg.l1Host, n.cfg.l1Port, n.cfg.privateKey),
 	}
 
-	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, nil, envs)
+	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, nil, envs, nil)
 	if err != nil {
 		return err
 	}

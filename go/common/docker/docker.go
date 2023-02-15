@@ -18,7 +18,7 @@ import (
 
 const _networkName = "node_network"
 
-func StartNewContainer(containerName, image string, cmds []string, ports []int, envs map[string]string) (string, error) {
+func StartNewContainer(containerName, image string, cmds []string, ports []int, envs, devices map[string]string) (string, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -48,11 +48,22 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 		return "", err
 	}
 
+	// convert devices
+	deviceMapping := make([]container.DeviceMapping, 0, len(devices))
+	for k, v := range devices {
+		deviceMapping = append(deviceMapping, container.DeviceMapping{
+			PathOnHost:        k,
+			PathInContainer:   v,
+			CgroupPermissions: "rwm",
+		})
+	}
+
 	// convert env vars
 	envVars := make([]string, 0, len(envs))
 	for k, v := range envs {
 		envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
 	}
+
 	// expose ports
 	portBindings := nat.PortMap{}
 	exposedPorts := nat.PortSet{}
@@ -71,6 +82,7 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 	},
 		&container.HostConfig{
 			PortBindings: portBindings,
+			Resources:    container.Resources{Devices: deviceMapping},
 		},
 		&network.NetworkingConfig{
 			EndpointsConfig: map[string]*network.EndpointSettings{
@@ -167,7 +179,7 @@ func WaitForContainerToFinish(containerID string, timeout time.Duration) error {
 	// Wait for the container to finish with a timeout of one minute
 	statusCh, errCh := cli.ContainerWait(context.Background(), containerID, container.WaitConditionNotRunning)
 	select {
-	case err := <-errCh:
+	case err = <-errCh:
 		if err != nil {
 			return err
 		}

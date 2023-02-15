@@ -41,9 +41,8 @@ func (n *Eth2Network) Start() error {
 		cmds = append(cmds, "-gethWSStartPort", fmt.Sprintf("%d", n.cfg.gethWSPort))
 		exposedPorts = append(exposedPorts, n.cfg.gethWSPort)
 	}
-	fmt.Println(cmds)
 
-	_, err := docker.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil)
+	_, err := docker.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil, nil)
 	return err
 }
 
