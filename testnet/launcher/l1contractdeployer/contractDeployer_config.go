@@ -3,9 +3,10 @@ package l1contractdeployer
 type Option = func(c *Config)
 
 type Config struct {
-	l1Host     string
-	privateKey string
-	l1Port     int
+	l1Host      string
+	privateKey  string
+	l1Port      int
+	dockerImage string
 }
 
 func NewContractDeployerConfig(opts ...Option) *Config {
@@ -33,5 +34,11 @@ func WithL1Port(i int) Option {
 func WithPrivateKey(s string) Option {
 	return func(c *Config) {
 		c.privateKey = s
+	}
+}
+
+func WithDockerImage(s string) Option {
+	return func(c *Config) {
+		c.dockerImage = s
 	}
 }

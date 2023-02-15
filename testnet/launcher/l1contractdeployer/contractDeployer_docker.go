@@ -47,7 +47,7 @@ func (n *ContractDeployer) Start() error {
 `, n.cfg.l1Host, n.cfg.l1Port, n.cfg.privateKey),
 	}
 
-	containerID, err := docker.StartNewContainer("hh-l1-deployer", "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", cmds, nil, envs)
+	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, nil, envs)
 	if err != nil {
 		return err
 	}

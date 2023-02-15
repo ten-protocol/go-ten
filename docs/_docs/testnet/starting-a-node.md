@@ -42,7 +42,7 @@ chmod +x start-obscuro-node.sh \
 && sudo ./start-obscuro-node.sh  \
   --is_genesis=false \
   --node_type="validator" \
-  --sgx_enabled="true" \
+  --is_sgx_enabled="true" \
   --host_id=PublicKeyAddress \
   --l1host="testnet-gethnetwork.uksouth.azurecontainer.io" \
   --mgmtcontractaddr="0xF886d9e52d38f3C7BEd96B1F45e366C459886694" \

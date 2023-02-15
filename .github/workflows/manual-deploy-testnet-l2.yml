@@ -39,6 +39,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.17
+
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
@@ -103,7 +107,11 @@ jobs:
         id: deployContracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1_HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} --docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+          go run /home/obscuro/go-obscuro/testnet/launcher/l1contractdeployer/cmd \
+          -l1_addr=${{ env.L1_HOST }} \
+          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
+          -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
+          -contracts_env_file=./testnet/.env
           source ./testnet/.env
           echo "Contracts deployed to $MGMTCONTRACTADDR"
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
@@ -224,7 +232,7 @@ jobs:
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/testnet/ \
-            && go run /home/obscuro/go-obscuro/go/node/cmd/main  \
+            && sudo go run /home/obscuro/go-obscuro/go/node/cmd/main  \
                -is_genesis=${{ matrix.is_genesis }} \
                -node_type=${{ matrix.node_type }} \
                -is_sgx_enabled=true \
