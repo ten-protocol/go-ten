@@ -78,7 +78,6 @@ func (n *ContractDeployer) Start() error {
 }
 
 func (n *ContractDeployer) RetrieveL1ContractAddresses() (string, string, error) {
-
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return "", "", err

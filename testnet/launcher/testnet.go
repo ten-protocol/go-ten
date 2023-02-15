@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"fmt"
+
 	node2 "github.com/obscuronet/go-obscuro/go/node"
 
 	"github.com/obscuronet/go-obscuro/testnet/launcher/eth2network"
@@ -27,7 +28,6 @@ func (t *Testnet) Start() error {
 	)
 	if err != nil {
 		return fmt.Errorf("unable to configure eth2network - %w", err)
-
 	}
 
 	err = eth2Network.Start()

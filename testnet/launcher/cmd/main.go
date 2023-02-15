@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/testnet/launcher"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/obscuronet/go-obscuro/testnet/launcher"
 )
 
 func main() {
@@ -24,5 +25,4 @@ func main() {
 	<-done // Will block here until user hits ctrl+c
 	// TODO add clean up / teardown
 	os.Exit(0)
-
 }

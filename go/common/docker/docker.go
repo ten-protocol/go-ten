@@ -26,29 +26,30 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 	// Check if the image exists locally
 	_, _, err = cli.ImageInspectWithRaw(context.Background(), image)
 	if err != nil {
-		if client.IsErrNotFound(err) {
-			fmt.Printf("Image %s not found locally. Pulling from remote...\n", image)
-			// Pull the image from remote
-			pullReader, err := cli.ImagePull(context.Background(), image, types.ImagePullOptions{})
-			if err != nil {
-				panic(err)
-			}
-			defer pullReader.Close()
-			go func() {
-				_, err = io.Copy(os.Stdout, pullReader)
-				if err != nil {
-					fmt.Println(err)
-				}
-			}()
-		} else {
+		// unexpected error
+		if !client.IsErrNotFound(err) {
+			return "", err
+		}
+
+		fmt.Printf("Image %s not found locally. Pulling from remote...\n", image)
+		// Pull the image from remote
+		pullReader, err := cli.ImagePull(context.Background(), image, types.ImagePullOptions{})
+		if err != nil {
 			panic(err)
 		}
+		defer pullReader.Close()
+		go func() {
+			_, err = io.Copy(os.Stdout, pullReader)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}()
 	} else {
 		fmt.Printf("Image %s found locally.\n", image)
 	}
 
 	// convert env vars
-	var envVars []string
+	envVars := make([]string, 0, len(envs))
 	for k, v := range envs {
 		envVars = append(envVars, fmt.Sprintf("%s=%s", k, v))
 	}
@@ -91,7 +92,7 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 		panic(err)
 	}
 
-	stdcopy.StdCopy(os.Stdout, os.Stderr, out)
+	_, _ = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
 	return resp.ID, nil
 }
 
