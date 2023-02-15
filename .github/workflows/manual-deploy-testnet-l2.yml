@@ -300,7 +300,7 @@ jobs:
         id: deployL2Contracts
         shell: bash
         run: |
-          go run testnet/launcher/l2contractdeployer/cmd \
+          go run ./testnet/launcher/l2contractdeployer/cmd \
           -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
           -l1_host=${{ needs.build.outputs.L1_HOST }} \
           -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \

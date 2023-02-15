@@ -50,6 +50,7 @@ func (d *DockerNode) startHost() error {
 		"-nodeType", d.cfg.nodeType,
 		"-profilerEnabled", "false",
 		"-p2pPublicAddress", fmt.Sprintf("%s:%d", d.cfg.hostP2PAddr, d.cfg.hostP2PPort),
+		"-p2pBindAddress", fmt.Sprintf("0.0.0.0:%d", d.cfg.hostP2PPort),
 		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.hostHTTPPort),
 		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
 	}
@@ -67,31 +68,30 @@ func (d *DockerNode) startHost() error {
 func (d *DockerNode) startEnclave() error {
 	devices := map[string]string{}
 	envs := map[string]string{
-		"OE_SIMULATION": "0",
+		"OE_SIMULATION": "1",
 	}
 
 	cmd := []string{
 		"ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
 		"-hostID", d.cfg.hostID,
-		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveHTTPPort),
+		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveHTTPPort), //todo review this 0.0.0.0 host bind
 		"-nodeType", d.cfg.nodeType,
 		"-useInMemoryDB", "false",
 		"-sqliteDBPath", "/data/sqlite.db",
 		"-managementContractAddress", d.cfg.managementContractAddr,
-		"-hostAddress", fmt.Sprintf("host:%d", d.cfg.hostHTTPPort),
-		"-profilerEnabled", "false",
 		"-hostAddress", fmt.Sprintf("host:%d", d.cfg.hostP2PPort),
-		"-logPath", "sys_out",
-		"-logLevel", "2",
 		"-sequencerID", d.cfg.sequencerID,
 		"-messageBusAddress", d.cfg.messageBusContractAddress,
+		"-profilerEnabled", "false",
+		"-logPath", "sys_out",
+		"-logLevel", "2",
 	}
 
 	if d.cfg.sgxEnabled {
 		devices["/dev/sgx_enclave"] = "/dev/sgx_enclave"
 		devices["/dev/sgx_provision"] = "/dev/sgx_provision"
 
-		envs["OE_SIMULATION"] = "1"
+		envs["OE_SIMULATION"] = "0"
 	}
 
 	_, err := docker.StartNewContainer("enclave", d.cfg.enclaveImage, cmd, nil, envs, devices)

@@ -12,6 +12,7 @@ type Config struct {
 	hocPKString       string
 	pocPKString       string
 	messageBusAddress string
+	dockerImage       string
 }
 
 func NewContractDeployerConfig(opts ...Option) *Config {
@@ -63,6 +64,12 @@ func WithMessageBusContractAddress(s string) Option {
 func WithL2PrivateKey(s string) Option {
 	return func(c *Config) {
 		c.l2PrivateKey = s
+	}
+}
+
+func WithDockerImage(s string) Option {
+	return func(c *Config) {
+		c.dockerImage = s
 	}
 }
 

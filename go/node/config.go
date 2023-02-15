@@ -14,6 +14,7 @@ type Config struct {
 	hostP2PPort               int
 	hostID                    string
 	hostHTTPPort              int
+	hostWSPort                int
 	enclaveHTTPPort           int
 	messageBusContractAddress string
 	managementContractAddr    string
@@ -22,7 +23,6 @@ type Config struct {
 	hostP2PAddr               string
 	pccsAddr                  string
 	edgelessDBImage           string
-	hostWSPort                int
 }
 
 func NewNodeConfig(opts ...Option) *Config {
