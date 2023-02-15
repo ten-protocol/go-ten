@@ -22,6 +22,7 @@ type Config struct {
 	hostP2PAddr               string
 	pccsAddr                  string
 	edgelessDBImage           string
+	hostWSPort                int
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -127,6 +128,18 @@ func WithHostP2PPort(i int) Option {
 func WithHostP2PAddr(s string) Option {
 	return func(c *Config) {
 		c.hostP2PAddr = s
+	}
+}
+
+func WithHostHTTPPort(i int) Option {
+	return func(c *Config) {
+		c.hostHTTPPort = i
+	}
+}
+
+func WithHostWSPort(i int) Option {
+	return func(c *Config) {
+		c.hostWSPort = i
 	}
 }
 

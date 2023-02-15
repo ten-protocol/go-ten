@@ -24,6 +24,8 @@ type NodeConfigCLI struct {
 	messageBusContractAddr string
 	pccsAddr               string
 	edgelessDBImage        string
+	hostHTTPPort           int
+	hostWSPort             int
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -40,6 +42,8 @@ func ParseConfigCLI() *NodeConfigCLI {
 	l1WSPort := flag.Int(l1WSPortFlag, 9000, flagUsageMap[l1WSPortFlag])
 	hostP2PPort := flag.Int(hostP2PPortFlag, 14000, flagUsageMap[hostP2PPortFlag])
 	hostP2PAddr := flag.String(hostP2PAddrFlag, "0.0.0.0", flagUsageMap[hostP2PAddrFlag])
+	hostHTTPPort := flag.Int(hostHTTPPortFlag, 12000, flagUsageMap[hostHTTPPortFlag])
+	hostWSPort := flag.Int(hostWSPortFlag, 12001, flagUsageMap[hostWSPortFlag])
 	enclaveHTTPPort := flag.Int(enclaveHTTPPortFlag, 13000, flagUsageMap[enclaveHTTPPortFlag])
 	enclaveWSPort := flag.Int(enclaveWSPortFlag, 13001, flagUsageMap[enclaveWSPortFlag])
 	privateKey := flag.String(privateKeyFlag, "", flagUsageMap[privateKeyFlag])
@@ -69,6 +73,8 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.messageBusContractAddr = *messageBusContractAddr
 	cfg.pccsAddr = *pccsAddr
 	cfg.edgelessDBImage = *edgelessDBImage
+	cfg.hostHTTPPort = *hostHTTPPort
+	cfg.hostWSPort = *hostWSPort
 
 	return cfg
 }

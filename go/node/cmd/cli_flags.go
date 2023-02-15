@@ -10,6 +10,8 @@ const (
 	hostDockerImageFlag        = "host_docker_image"
 	l1AddrFlag                 = "l1_addr"
 	l1WSPortFlag               = "l1_ws_port"
+	hostHTTPPortFlag           = "host_http_port"
+	hostWSPortFlag             = "host_ws_port"
 	hostP2PPortFlag            = "host_p2p_port"
 	hostP2PAddrFlag            = "host_p2p_addr"
 	enclaveHTTPPortFlag        = "enclave_http_port"
@@ -44,5 +46,7 @@ func getFlagUsageMap() map[string]string {
 		messageBusContractAddrFlag: "The address of the L1 message bus contract owned by the management contract.",
 		pccsAddrFlag:               "Sets the PCCS address",
 		edgelessDBImageFlag:        "Sets the edgelessdb image",
+		hostHTTPPortFlag:           "Host HTTPs bound port",
+		hostWSPortFlag:             "Host WebSocket bound port",
 	}
 }

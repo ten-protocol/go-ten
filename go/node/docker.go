@@ -50,9 +50,16 @@ func (d *DockerNode) startHost() error {
 		"-nodeType", d.cfg.nodeType,
 		"-profilerEnabled", "false",
 		"-p2pPublicAddress", fmt.Sprintf("%s:%d", d.cfg.hostP2PAddr, d.cfg.hostP2PPort),
+		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.hostHTTPPort),
+		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
 	}
 
-	_, err := docker.StartNewContainer("host", d.cfg.hostImage, cmd, nil, nil, nil)
+	exposedPorts := []int{
+		d.cfg.hostHTTPPort,
+		d.cfg.hostWSPort,
+	}
+
+	_, err := docker.StartNewContainer("host", d.cfg.hostImage, cmd, exposedPorts, nil, nil)
 
 	return err
 }

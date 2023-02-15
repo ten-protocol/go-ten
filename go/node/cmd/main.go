@@ -18,6 +18,8 @@ func main() {
 		node.WithL1WSPort(cliConfig.l1WSPort),                                // 9000
 		node.WithHostP2PPort(cliConfig.hostP2PPort),                          // 14000
 		node.WithHostP2PAddr(cliConfig.hostP2PAddr),                          // 0.0.0.0
+		node.WithHostHTTPPort(cliConfig.hostHTTPPort),                        // 12000
+		node.WithHostWSPort(cliConfig.hostWSPort),                            // 12001
 		node.WithEnclaveHTTPPort(cliConfig.enclaveHTTPPort),                  // 13000
 		node.WithEnclaveWSPort(cliConfig.enclaveWSPort),                      // 13001
 		node.WithPrivateKey(cliConfig.privateKey),                            // "8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"
