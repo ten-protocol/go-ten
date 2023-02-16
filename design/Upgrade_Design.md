@@ -1,7 +1,7 @@
 # Obscuro Upgrades
 
 This design covers the operational aspects of upgrading Obscuro.
-The mechanism by which the community validates an upgrade is covered in the [Whitelisting an upgrade](./Upgrading_on_pos.md) document.
+The mechanism by which the community validates an upgrade is covered in the [Obscuro source of truth](./Source_of_truth.md) document.
 
 We'll start by identifying the types of scenarios that will require a software upgrade, and next, we'll propose the
 procedures and the technical changes required to achieve them.
@@ -37,7 +37,7 @@ can connect to the same database if it passes the attestation requirements it ha
 - The main reason for a "privacy" upgrade is the discovery of a vulnerability that can leak data.
 - Most upgrades will hopefully be for mundane reasons such as new features or general improvements.
 - Obscuro is an L2 with a governance mechanism on the Ethereum Management Contract (MC). The decisions made by
-  the governance contract must be understood and enforced by the enclave. See more details in the "Upgrading_on_pos.md" document.
+  the governance contract must be understood and enforced by the enclave. See more details in the "Source_of_truth.md" document.
 
 
 ## Upgrade reasons for Obscuro
@@ -409,7 +409,7 @@ In the next phases, we plan to decentralise all the aspects of an upgrade.
 
 
 ### Whitelisting the upgrade
-This is covered in the [Whitelisting an upgrade](./Upgrading_on_pos.md).
+This is covered in the [Whitelisting an upgrade](./Source_of_truth.md).
 In the next stage, we will implement the mechanism based on incentives.
 
 ### Backup key
