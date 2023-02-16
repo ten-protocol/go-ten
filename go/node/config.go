@@ -15,14 +15,15 @@ type Config struct {
 	hostID                    string
 	hostHTTPPort              int
 	hostWSPort                int
-	enclaveHTTPPort           int
+	enclaveWSPort             int
 	messageBusContractAddress string
 	managementContractAddr    string
-	enclaveWSPort             int
 	l1WSPort                  int
-	hostP2PAddr               string
+	hostP2PHost               string
+	hostPublicP2PAddr         string
 	pccsAddr                  string
 	edgelessDBImage           string
+	enclaveDebug              bool
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -56,6 +57,12 @@ func WithSGXEnabled(b bool) Option {
 func WithEnclaveImage(s string) Option {
 	return func(c *Config) {
 		c.enclaveImage = s
+	}
+}
+
+func WithEnclaveDebug(b bool) Option {
+	return func(c *Config) {
+		c.enclaveDebug = b
 	}
 }
 
@@ -101,12 +108,6 @@ func WithEnclaveWSPort(i int) Option {
 	}
 }
 
-func WithEnclaveHTTPPort(i int) Option {
-	return func(c *Config) {
-		c.enclaveHTTPPort = i
-	}
-}
-
 func WithL1WSPort(i int) Option {
 	return func(c *Config) {
 		c.l1WSPort = i
@@ -125,9 +126,15 @@ func WithHostP2PPort(i int) Option {
 	}
 }
 
-func WithHostP2PAddr(s string) Option {
+func WithHostP2PHost(s string) Option {
 	return func(c *Config) {
-		c.hostP2PAddr = s
+		c.hostP2PHost = s
+	}
+}
+
+func WithHostPublicP2PAddr(s string) Option {
+	return func(c *Config) {
+		c.hostPublicP2PAddr = s
 	}
 }
 

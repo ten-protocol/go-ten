@@ -17,10 +17,10 @@ func main() {
 		node.WithL1Host(cliConfig.l1Addr),                                    // "eth2network"
 		node.WithL1WSPort(cliConfig.l1WSPort),                                // 9000
 		node.WithHostP2PPort(cliConfig.hostP2PPort),                          // 14000
-		node.WithHostP2PAddr(cliConfig.hostP2PAddr),                          // 0.0.0.0
+		node.WithHostP2PHost(cliConfig.hostP2PHost),                          // 0.0.0.0
+		node.WithHostPublicP2PAddr(cliConfig.hostP2PPublicAddr),              // node public facing ip and port
 		node.WithHostHTTPPort(cliConfig.hostHTTPPort),                        // 12000
 		node.WithHostWSPort(cliConfig.hostWSPort),                            // 12001
-		node.WithEnclaveHTTPPort(cliConfig.enclaveHTTPPort),                  // 13000
 		node.WithEnclaveWSPort(cliConfig.enclaveWSPort),                      // 13001
 		node.WithPrivateKey(cliConfig.privateKey),                            // "8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"
 		node.WithHostID(cliConfig.hostID),                                    // "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),

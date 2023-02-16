@@ -13,7 +13,8 @@ const (
 	hostHTTPPortFlag           = "host_http_port"
 	hostWSPortFlag             = "host_ws_port"
 	hostP2PPortFlag            = "host_p2p_port"
-	hostP2PAddrFlag            = "host_p2p_addr"
+	hostP2PHostFlag            = "host_p2p_host"
+	hostP2PPublicAddrFlag      = "host_public_p2p_addr"
 	enclaveHTTPPortFlag        = "enclave_http_port"
 	enclaveWSPortFlag          = "enclave_WS_port"
 	privateKeyFlag             = "private_key"
@@ -37,7 +38,8 @@ func getFlagUsageMap() map[string]string {
 		l1AddrFlag:                 "Layer 1 network host addr",
 		l1WSPortFlag:               "Layer 1 network WebSocket port",
 		hostP2PPortFlag:            "Hosts p2p bound port",
-		hostP2PAddrFlag:            "Hosts p2p bound addr",
+		hostP2PPublicAddrFlag:      "Hosts public p2p host.",
+		hostP2PHostFlag:            "Hosts p2p bound addr",
 		enclaveHTTPPortFlag:        "Enclave's http bound port",
 		enclaveWSPortFlag:          "Enclave's WS bound port",
 		privateKeyFlag:             "L1 and L2 private key used in the node",

@@ -40,7 +40,7 @@ func (d *DockerNode) startHost() error {
 		"/home/obscuro/go-obscuro/go/host/main/main",
 		"-l1NodeHost", d.cfg.l1Host,
 		"-l1NodePort", fmt.Sprintf("%d", d.cfg.l1WSPort),
-		"-enclaveRPCAddress", fmt.Sprintf("enclave:%d", d.cfg.enclaveHTTPPort),
+		"-enclaveRPCAddress", fmt.Sprintf("enclave:%d", d.cfg.enclaveWSPort),
 		"-managementContractAddress", d.cfg.managementContractAddr,
 		"-privateKey", d.cfg.privateKey,
 		"-clientRPCHost", "0.0.0.0",
@@ -49,7 +49,7 @@ func (d *DockerNode) startHost() error {
 		fmt.Sprintf("-isGenesis=%t", d.cfg.isGenesis), // boolean are a special case where the = is required
 		"-nodeType", d.cfg.nodeType,
 		"-profilerEnabled", "false",
-		"-p2pPublicAddress", fmt.Sprintf("%s:%d", d.cfg.hostP2PAddr, d.cfg.hostP2PPort),
+		"-p2pPublicAddress", fmt.Sprintf("%s:%d", d.cfg.hostP2PHost, d.cfg.hostP2PPort),
 		"-p2pBindAddress", fmt.Sprintf("0.0.0.0:%d", d.cfg.hostP2PPort),
 		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.hostHTTPPort),
 		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
@@ -67,14 +67,33 @@ func (d *DockerNode) startHost() error {
 
 func (d *DockerNode) startEnclave() error {
 	devices := map[string]string{}
+	exposedPorts := []int{}
 	envs := map[string]string{
 		"OE_SIMULATION": "1",
 	}
 
+	// default start of the enclave
 	cmd := []string{
 		"ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
+	}
+
+	if d.cfg.enclaveDebug {
+		cmd = []string{
+			"dlv",
+			"--listen=:2345",
+			"--headless=true",
+			"--log=true",
+			"--api-version=2",
+			"debug",
+			"/home/obscuro/go-obscuro/go/enclave/main",
+			"--",
+		}
+		exposedPorts = append(exposedPorts, 2345)
+	}
+
+	cmd = append(cmd,
 		"-hostID", d.cfg.hostID,
-		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveHTTPPort), // todo review this 0.0.0.0 host bind
+		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveWSPort), // todo review this 0.0.0.0 host bind
 		"-nodeType", d.cfg.nodeType,
 		"-useInMemoryDB", "false",
 		"-sqliteDBPath", "/data/sqlite.db",
@@ -85,7 +104,7 @@ func (d *DockerNode) startEnclave() error {
 		"-profilerEnabled", "false",
 		"-logPath", "sys_out",
 		"-logLevel", "2",
-	}
+	)
 
 	if d.cfg.sgxEnabled {
 		devices["/dev/sgx_enclave"] = "/dev/sgx_enclave"
@@ -94,7 +113,7 @@ func (d *DockerNode) startEnclave() error {
 		envs["OE_SIMULATION"] = "0"
 	}
 
-	_, err := docker.StartNewContainer("enclave", d.cfg.enclaveImage, cmd, nil, envs, devices)
+	_, err := docker.StartNewContainer("enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices)
 	return err
 }
 

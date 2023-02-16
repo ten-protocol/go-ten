@@ -1,7 +1,12 @@
 package launcher
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/node"
 	"github.com/obscuronet/go-obscuro/testnet/launcher/eth2network"
@@ -10,36 +15,20 @@ import (
 	l2cd "github.com/obscuronet/go-obscuro/testnet/launcher/l2contractdeployer"
 )
 
-type Testnet struct{}
+type Testnet struct {
+	cfg *Config
+}
 
-func NewTestnetLauncher(*Config) *Testnet {
+func NewTestnetLauncher(cfg *Config) *Testnet {
 	// todo bind testnet specific options like number of nodes, etc
-	return &Testnet{}
+	return &Testnet{cfg: cfg}
 }
 
 func (t *Testnet) Start() error {
-	eth2Network, err := eth2network.NewDockerEth2Network(
-		eth2network.NewEth2NetworkConfig(
-			eth2network.WithGethHTTPStartPort(8025),
-			eth2network.WithGethWSStartPort(9000),
-			eth2network.WithGethPrefundedAddrs([]string{"0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944", "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"}),
-		),
-	)
-	if err != nil {
-		return fmt.Errorf("unable to configure eth2network - %w", err)
-	}
-
-	err = eth2Network.Start()
-	if err != nil {
-		return fmt.Errorf("unable to start eth2network - %w", err)
-	}
-	fmt.Println("Eth2 network started...")
-
-	err = eth2Network.IsReady()
-	if err != nil {
-		return fmt.Errorf("eth2network not ready in time - %w", err)
-	}
-	fmt.Println("Eth2 network is ready...")
+	//err := startEth2Network()
+	//if err != nil {
+	//	return fmt.Errorf("unable to start eth2network - %w", err)
+	//}
 
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
 		l1cd.NewContractDeployerConfig(
@@ -68,15 +57,15 @@ func (t *Testnet) Start() error {
 		node.WithNodeType("sequencer"),
 		node.WithGenesis(true),
 		node.WithSGXEnabled(false),
-		node.WithEnclaveImage("testnetobscuronet.azurecr.io/obscuronet/enclave:latest"),
+		node.WithEnclaveImage(t.cfg.enclaveDockerImage),
+		node.WithEnclaveDebug(t.cfg.enclaveDebug),
 		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
 		node.WithL1Host("eth2network"),
 		node.WithL1WSPort(9000),
 		node.WithHostP2PPort(14000),
-		node.WithEnclaveHTTPPort(13000),
-		node.WithEnclaveWSPort(13001),
-		node.WithHostHTTPPort(12000),
-		node.WithHostWSPort(12000),
+		node.WithEnclaveWSPort(11000),
+		node.WithHostHTTPPort(13000),
+		node.WithHostWSPort(13001),
 		node.WithPrivateKey("8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"),
 		node.WithHostID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
 		node.WithSequencerID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
@@ -94,6 +83,12 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to start the obscuro node - %w", err)
 	}
 	fmt.Println("Obscuro node was successfully started...")
+
+	// wait until the node it healthy
+	err = waitForHealthyNode()
+	if err != nil {
+		return fmt.Errorf("obscuro node not healthy - %w", err)
+	}
 
 	l2ContractDeployer, err := l2cd.NewDockerContractDeployer(
 		l2cd.NewContractDeployerConfig(
@@ -120,4 +115,74 @@ func (t *Testnet) Start() error {
 	fmt.Println("L2 Contracts were successfully deployed...")
 
 	return nil
+}
+
+func startEth2Network() error {
+	eth2Network, err := eth2network.NewDockerEth2Network(
+		eth2network.NewEth2NetworkConfig(
+			eth2network.WithGethHTTPStartPort(8025),
+			eth2network.WithGethWSStartPort(9000),
+			eth2network.WithGethPrefundedAddrs([]string{"0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944", "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"}),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to configure eth2network - %w", err)
+	}
+
+	err = eth2Network.Start()
+	if err != nil {
+		return fmt.Errorf("unable to start eth2network - %w", err)
+	}
+	fmt.Println("Eth2 network started...")
+
+	err = eth2Network.IsReady()
+	if err != nil {
+		return fmt.Errorf("eth2network not ready in time - %w", err)
+	}
+	fmt.Println("Eth2 network is ready...")
+
+	return nil
+}
+
+// waitForHealthyNode retries continuously for the node to respond to a healthcheck http request
+func waitForHealthyNode() error { // todo: hook the cfg
+	requestURL := fmt.Sprintf("http://localhost:%d", 13000)
+	reqBody := `{"method": "obscuro_health", "id": 1}`
+
+	fmt.Println("Waiting for obscuro node to be healthy...")
+	for startTime := time.Now(); time.Now().Before(startTime.Add(2 * time.Minute)); time.Sleep(time.Second) {
+		req, err := http.NewRequest(http.MethodGet, requestURL, bytes.NewBufferString(reqBody))
+		if err != nil {
+			return fmt.Errorf("client: could not create request: %w", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			continue
+		}
+
+		resBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			continue
+		}
+
+		response := map[string]interface{}{}
+		err = json.Unmarshal(resBody, &response)
+		if err != nil {
+			continue
+		}
+
+		if r := response["result"]; r != nil {
+			if h, ok := r.(map[string]interface{}); ok {
+				if overallHealth := h["OverallHealth"]; overallHealth != nil {
+					if health, ok := overallHealth.(bool); ok && health {
+						fmt.Println("obscuro node is ready")
+						return nil
+					}
+				}
+			}
+		}
+	}
+	return fmt.Errorf("obscuro node unresponsive after timeout")
 }

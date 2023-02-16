@@ -14,7 +14,7 @@ func ParseConfigCLI() *TestnetConfigCLI {
 	cfg := &TestnetConfigCLI{}
 	flagUsageMap := getFlagUsageMap()
 
-	numberNodes := flag.Int(numberNodesFlag, 2, flagUsageMap[numberNodesFlag])
+	numberNodes := flag.Int(numberNodesFlag, 1, flagUsageMap[numberNodesFlag])
 	flag.Parse()
 
 	cfg.numberNodes = *numberNodes

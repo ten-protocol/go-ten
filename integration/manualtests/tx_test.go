@@ -1,8 +1,11 @@
 package manualtests
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 	"math/big"
 	"testing"
 	"time"
@@ -18,7 +21,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-func TestIssueTxWaitReceipt(t *testing.T) {
+func TestL1IssueTxWaitReceipt(t *testing.T) {
 	t.Skip("manual tests should not be used for unit testing")
 
 	w := wallet.NewInMemoryWalletFromConfig(
@@ -61,6 +64,60 @@ func TestIssueTxWaitReceipt(t *testing.T) {
 		if !errors.Is(err, ethereum.NotFound) {
 			t.Fatal(err)
 		}
+	}
+
+	if receipt == nil {
+		t.Fatalf("Did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
+	}
+}
+
+func TestL2IssueTxWaitReceipt(t *testing.T) {
+	//t.Skip("manual tests should not be used for unit testing")
+
+	ctx := context.Background()
+	w := wallet.NewInMemoryWalletFromConfig(
+		"4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8",
+		777,
+		gethlog.New())
+	host := "51.132.32.212"
+	port := 13001
+
+	vk, err := rpc.GenerateAndSignViewingKey(w)
+	assert.Nil(t, err)
+	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s:%d", host, port), vk, gethlog.New())
+	assert.Nil(t, err)
+	authClient := obsclient.NewAuthObsClient(client)
+
+	toAddr := datagenerator.RandomAddress()
+	nonce, err := authClient.NonceAt(ctx, nil)
+	assert.Nil(t, err)
+
+	w.SetNonce(nonce)
+	estimatedTx := authClient.EstimateGasAndGasPrice(&types.LegacyTx{
+		Nonce: w.GetNonceAndIncrement(),
+		To:    &toAddr,
+		Value: big.NewInt(100),
+	})
+	assert.Nil(t, err)
+
+	signedTx, err := w.SignTransaction(estimatedTx)
+	assert.Nil(t, err)
+
+	err = authClient.SendTransaction(ctx, signedTx)
+	assert.Nil(t, err)
+
+	fmt.Printf("Created Tx: %s \n", signedTx.Hash().Hex())
+	fmt.Printf("Checking for tx receipt for %s \n", signedTx.Hash())
+	var receipt *types.Receipt
+	for start := time.Now(); time.Since(start) < time.Minute; time.Sleep(time.Second) {
+		receipt, err = authClient.TransactionReceipt(ctx, signedTx.Hash())
+		if err == nil {
+			break
+		}
+		//if !errors.Is(err, ethereum.NotFound) {
+		//	t.Fatal(err)
+		//}
+		fmt.Printf("no tx receipt after %s - %s\n", time.Since(start), err)
 	}
 
 	if receipt == nil {

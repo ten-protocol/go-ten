@@ -14,7 +14,8 @@ type NodeConfigCLI struct {
 	l1Addr                 string
 	l1WSPort               int
 	hostP2PPort            int
-	hostP2PAddr            string
+	hostP2PHost            string
+	hostP2PPublicAddr      string
 	enclaveHTTPPort        int
 	enclaveWSPort          int
 	privateKey             string
@@ -41,7 +42,8 @@ func ParseConfigCLI() *NodeConfigCLI {
 	l1Addr := flag.String(l1AddrFlag, "eth2network", flagUsageMap[l1AddrFlag])
 	l1WSPort := flag.Int(l1WSPortFlag, 9000, flagUsageMap[l1WSPortFlag])
 	hostP2PPort := flag.Int(hostP2PPortFlag, 14000, flagUsageMap[hostP2PPortFlag])
-	hostP2PAddr := flag.String(hostP2PAddrFlag, "0.0.0.0", flagUsageMap[hostP2PAddrFlag])
+	hostP2PHost := flag.String(hostP2PHostFlag, "0.0.0.0", flagUsageMap[hostP2PHostFlag])
+	hostP2PPublicAddr := flag.String(hostP2PPublicAddrFlag, "", flagUsageMap[hostP2PPublicAddrFlag])
 	hostHTTPPort := flag.Int(hostHTTPPortFlag, 13000, flagUsageMap[hostHTTPPortFlag])
 	hostWSPort := flag.Int(hostWSPortFlag, 13001, flagUsageMap[hostWSPortFlag])
 	enclaveHTTPPort := flag.Int(enclaveHTTPPortFlag, 11000, flagUsageMap[enclaveHTTPPortFlag])
@@ -63,7 +65,8 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.l1Addr = *l1Addr
 	cfg.l1WSPort = *l1WSPort
 	cfg.hostP2PPort = *hostP2PPort
-	cfg.hostP2PAddr = *hostP2PAddr
+	cfg.hostP2PHost = *hostP2PHost
+	cfg.hostP2PPublicAddr = *hostP2PPublicAddr
 	cfg.enclaveHTTPPort = *enclaveHTTPPort
 	cfg.enclaveWSPort = *enclaveWSPort
 	cfg.privateKey = *privateKey
