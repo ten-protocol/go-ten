@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -25,10 +26,10 @@ func NewTestnetLauncher(cfg *Config) *Testnet {
 }
 
 func (t *Testnet) Start() error {
-	//err := startEth2Network()
-	//if err != nil {
-	//	return fmt.Errorf("unable to start eth2network - %w", err)
-	//}
+	err := startEth2Network()
+	if err != nil {
+		return fmt.Errorf("unable to start eth2network - %w", err)
+	}
 
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
 		l1cd.NewContractDeployerConfig(
@@ -151,7 +152,7 @@ func waitForHealthyNode() error { // todo: hook the cfg
 
 	fmt.Println("Waiting for obscuro node to be healthy...")
 	for startTime := time.Now(); time.Now().Before(startTime.Add(2 * time.Minute)); time.Sleep(time.Second) {
-		req, err := http.NewRequest(http.MethodGet, requestURL, bytes.NewBufferString(reqBody))
+		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, requestURL, bytes.NewBufferString(reqBody))
 		if err != nil {
 			return fmt.Errorf("client: could not create request: %w", err)
 		}
@@ -161,6 +162,7 @@ func waitForHealthyNode() error { // todo: hook the cfg
 		if err != nil {
 			continue
 		}
+		defer res.Body.Close()
 
 		resBody, err := ioutil.ReadAll(res.Body)
 		if err != nil {
@@ -173,7 +175,7 @@ func waitForHealthyNode() error { // todo: hook the cfg
 			continue
 		}
 
-		if r := response["result"]; r != nil {
+		if r := response["result"]; r != nil { //nolint: nestif
 			if h, ok := r.(map[string]interface{}); ok {
 				if overallHealth := h["OverallHealth"]; overallHealth != nil {
 					if health, ok := overallHealth.(bool); ok && health {

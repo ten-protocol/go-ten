@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -72,7 +73,7 @@ func TestL1IssueTxWaitReceipt(t *testing.T) {
 }
 
 func TestL2IssueTxWaitReceipt(t *testing.T) {
-	//t.Skip("manual tests should not be used for unit testing")
+	// t.Skip("manual tests should not be used for unit testing")
 
 	ctx := context.Background()
 	w := wallet.NewInMemoryWalletFromConfig(

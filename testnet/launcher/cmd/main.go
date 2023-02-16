@@ -16,8 +16,8 @@ func main() {
 	testnet := launcher.NewTestnetLauncher(
 		launcher.NewTestnetConfig(
 			launcher.WithNumberNodes(cliConfig.numberNodes), // TODO: currently ignored flag
-			//launcher.WithEnclaveDockerImage("testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest"),
-			//launcher.WithEnclaveDebug(true),
+			// launcher.WithEnclaveDockerImage("testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest"),
+			// launcher.WithEnclaveDebug(true),
 		),
 	)
 	err := testnet.Start()
