@@ -46,7 +46,7 @@ func (d *DockerNode) startHost() error {
 		"-clientRPCHost", "0.0.0.0",
 		"-logPath", "sys_out",
 		"-logLevel", "4",
-		"-isGenesis", fmt.Sprintf("%t", d.cfg.isGenesis),
+		fmt.Sprintf("-isGenesis=%t", d.cfg.isGenesis), // boolean are a special case where the = is required
 		"-nodeType", d.cfg.nodeType,
 		"-profilerEnabled", "false",
 		"-p2pPublicAddress", fmt.Sprintf("%s:%d", d.cfg.hostP2PAddr, d.cfg.hostP2PPort),

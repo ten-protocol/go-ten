@@ -34,7 +34,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	flagUsageMap := getFlagUsageMap()
 
 	nodeType := flag.String(nodeTypeFlag, "", flagUsageMap[nodeTypeFlag])
-	isGenesis := flag.Bool(isGenesisFlag, true, flagUsageMap[isGenesisFlag])
+	isGenesis := flag.Bool(isGenesisFlag, false, flagUsageMap[isGenesisFlag])
 	isSGXEnabled := flag.Bool(isSGXEnabledFlag, false, flagUsageMap[isSGXEnabledFlag])
 	enclaveDockerImage := flag.String(enclaveDockerImageFlag, "", flagUsageMap[enclaveDockerImageFlag])
 	hostDockerImage := flag.String(hostDockerImageFlag, "", flagUsageMap[hostDockerImageFlag])
