@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/integration/networktest"
@@ -55,6 +56,7 @@ func (m *MultiAction) runParallel(ctx context.Context, network networktest.Netwo
 	for _, a := range m.actions {
 		action := a
 		grp.Go(func() error {
+			// note: we cannot easily merge contexts so ctx is not modified by a parallel execution
 			if _, err = action.Run(ctx, network); err != nil {
 				return err
 			}
@@ -70,18 +72,30 @@ func (m *MultiAction) runParallel(ctx context.Context, network networktest.Netwo
 
 func (m *MultiAction) Verify(ctx context.Context, network networktest.NetworkConnector) error {
 	var actionFailures []error
+	mu := sync.Mutex{} // mutex for modifying the action failures
 
+	grp, _ := errgroup.WithContext(ctx)
+	var err error
 	for _, a := range m.actions {
-		err := a.Verify(ctx, network)
-		if err != nil {
-			actionErr := fmt.Errorf("%s failed - %w", a, err)
-			fmt.Println(actionErr)
-			actionFailures = append(actionFailures, actionErr)
-		}
+		action := a
+		grp.Go(func() error {
+			if err = action.Verify(ctx, network); err != nil {
+				actionErr := fmt.Errorf("%s failed - %w", a, err)
+				fmt.Println(actionErr)
+
+				mu.Lock()
+				actionFailures = append(actionFailures, actionErr)
+				mu.Unlock()
+
+				return err
+			}
+			return nil
+		})
 	}
-	if len(actionFailures) != 0 {
+	if err = grp.Wait(); err != nil {
 		return fmt.Errorf("series failed, %d / %d failed - %s", len(actionFailures), len(m.actions), actionFailures)
 	}
+	
 	return nil
 }
 

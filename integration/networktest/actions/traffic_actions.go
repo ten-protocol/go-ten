@@ -16,17 +16,17 @@ const _minTransferAmt = 1_000_000
 // functions in here are used to generate actions to run in parallel or series which
 // simulate "random" user activity over a period of time
 
-type parallelUserActions struct {
+type parallelFundsTransferTraffic struct {
 	txPerSec int
 	duration time.Duration
 
-	// parallelUserActions just wraps a ParallelAction, but it doesn't initialise that until Run() is called because it
+	// parallelFundsTransferTraffic just wraps a ParallelAction, but it doesn't initialise that until Run() is called because it
 	// relies on data from the context
 	parallelAction networktest.Action
 }
 
 // Run builds the parallel action series to be run before delegating its call to the parallel runner
-func (p *parallelUserActions) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+func (p *parallelFundsTransferTraffic) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 	// find number of test users available
 	numUsers, err := FetchNumberOfTestUsers(ctx)
 	if err != nil {
@@ -56,7 +56,7 @@ func (p *parallelUserActions) Run(ctx context.Context, network networktest.Netwo
 	return p.parallelAction.Run(ctx, network)
 }
 
-func (p *parallelUserActions) String() string {
+func (p *parallelFundsTransferTraffic) String() string {
 	return fmt.Sprintf("user actions - %d TPS", p.txPerSec)
 }
 
@@ -68,10 +68,10 @@ func getRandomTargetUser(numUsers int, fromUser int) int {
 	return rndIdx
 }
 
-func (p *parallelUserActions) Verify(ctx context.Context, network networktest.NetworkConnector) error {
+func (p *parallelFundsTransferTraffic) Verify(ctx context.Context, network networktest.NetworkConnector) error {
 	return p.parallelAction.Verify(ctx, network)
 }
 
 func GenerateUsersRandomisedTransferActionsInParallel(txPerSec int, duration time.Duration) networktest.Action {
-	return &parallelUserActions{txPerSec: txPerSec, duration: duration}
+	return &parallelFundsTransferTraffic{txPerSec: txPerSec, duration: duration}
 }

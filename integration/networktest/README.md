@@ -6,8 +6,10 @@ They are designed to be network agnostic, able to run against both local dev net
 ## Actions
 Tests are structured using "Actions" which can be run in series of parallel in a nested tree down to very small steps.
 
-Action's `Run()` method takes a context and a network connector, it returns a context and potential error. Actions can use 
-the context to pass values to tests that are running later in the flow.
+Action's `Run()` method takes a context and a network connector, it returns a context and potential error.
+
+Actions can use the context to pass values to tests that are running later in the flow, so properties that an action require 
+from the context are part of that action's API. We use the ActionKey type for the context keys.
 
 ## Running tests
 All tests can be found under the `/tests` directory. They are grouped into a few packages to try to keep similarly used 
