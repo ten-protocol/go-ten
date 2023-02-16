@@ -12,7 +12,7 @@ import (
 
 type Testnet struct{}
 
-func NewTestnetLauncher() *Testnet {
+func NewTestnetLauncher(*Config) *Testnet {
 	// todo bind testnet specific options like number of nodes, etc
 	return &Testnet{}
 }

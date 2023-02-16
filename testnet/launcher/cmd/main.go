@@ -10,9 +10,14 @@ import (
 )
 
 func main() {
-	// TODO add config parsing
+	cliConfig := ParseConfigCLI()
+
 	fmt.Println("Starting a testnet with all the defaults...")
-	testnet := launcher.NewTestnetLauncher()
+	testnet := launcher.NewTestnetLauncher(
+		launcher.NewTestnetConfig(
+			launcher.WithNumberNodes(cliConfig.numberNodes),
+		),
+	)
 	err := testnet.Start()
 	if err != nil {
 		fmt.Println(err)
