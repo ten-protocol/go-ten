@@ -96,16 +96,16 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-#      - name: 'Build and push obscuro node images'
-#        run: |
-#          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
-#          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-#          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
-#          docker push ${{env.L2_HOST_DOCKER_BUILD_TAG}}
-#          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
-#          docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
-#          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/hardhatdeployer.Dockerfile .
-#          docker push ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+      - name: 'Build and push obscuro node images'
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
+          docker push ${{env.L2_HOST_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
+          docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/hardhatdeployer.Dockerfile .
+          docker push ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
 
       - name: 'Deploy Contracts'
         id: deployContracts

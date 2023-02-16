@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	l1cd "github.com/obscuronet/go-obscuro/testnet/launcher/l1contractdeployer"
@@ -45,7 +44,7 @@ func main() {
 		envFile := fmt.Sprintf("MGMTCONTRACTADDR=%s\nMSGBUSCONTRACTADDR=%s\n", managementContractAddr, messageBusContractAddr)
 
 		// Write the content to a new file or override the existing file
-		err = ioutil.WriteFile(cliConfig.contractsEnvFile, []byte(envFile), 0o644) //nolint:gosec
+		err = os.WriteFile(cliConfig.contractsEnvFile, []byte(envFile), 0o644) //nolint:gosec
 		if err != nil {
 			fmt.Println("Error writing file:", err)
 			os.Exit(1)

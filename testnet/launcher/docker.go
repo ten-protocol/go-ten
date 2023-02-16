@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -164,7 +164,7 @@ func waitForHealthyNode() error { // todo: hook the cfg
 		}
 		defer res.Body.Close()
 
-		resBody, err := ioutil.ReadAll(res.Body)
+		resBody, err := io.ReadAll(res.Body)
 		if err != nil {
 			continue
 		}

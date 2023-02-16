@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
 	"testing"
 	"time"
 
@@ -22,8 +23,13 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
+const _IDEFlag = "IDE"
+
 func TestL1IssueTxWaitReceipt(t *testing.T) {
-	t.Skip("manual tests should not be used for unit testing")
+	// test is skipped by default to avoid breaking CI - set env flag in `Run Configurations` to run it in IDE
+	if os.Getenv(_IDEFlag) == "" {
+		t.Skipf("set flag %s to run this test in the IDE", _IDEFlag)
+	}
 
 	w := wallet.NewInMemoryWalletFromConfig(
 		"5d1cffab85ddad285de2485ff09339e66e1e0acbfb9960c0df8231a1deb4994a",
@@ -73,14 +79,17 @@ func TestL1IssueTxWaitReceipt(t *testing.T) {
 }
 
 func TestL2IssueTxWaitReceipt(t *testing.T) {
-	// t.Skip("manual tests should not be used for unit testing")
+	// test is skipped by default to avoid breaking CI - set env flag in `Run Configurations` to run it in IDE
+	if os.Getenv(_IDEFlag) == "" {
+		t.Skipf("set flag %s to run this test in the IDE", _IDEFlag)
+	}
 
 	ctx := context.Background()
 	w := wallet.NewInMemoryWalletFromConfig(
 		"4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8",
 		777,
 		gethlog.New())
-	host := "51.132.32.212"
+	host := "dev-testnet.obscu.ro"
 	port := 13001
 
 	vk, err := rpc.GenerateAndSignViewingKey(w)
