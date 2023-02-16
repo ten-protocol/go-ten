@@ -81,3 +81,36 @@ func (c *VerifyBalanceAfterTest) Verify(ctx context.Context, network networktest
 	}
 	return nil
 }
+
+// VerifyBalanceDiffAfterTest compares the post-test user balance with the balance at the given snapshot
+//
+// This only checks the balance against an upper bound because of unknown gas spend, it expects `currBal < snapshotBal + expectedDiff`
+type VerifyBalanceDiffAfterTest struct {
+	UserID       int
+	ExpectedDiff *big.Int
+	Snapshot     string
+}
+
+func (v *VerifyBalanceDiffAfterTest) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+	return ctx, nil
+}
+
+func (v *VerifyBalanceDiffAfterTest) Verify(ctx context.Context, network networktest.NetworkConnector) error {
+	snapshotBalance, err := FetchBalanceAtSnapshot(ctx, v.UserID, v.Snapshot)
+	if err != nil {
+		return fmt.Errorf("failed to fetch balance - %w", err)
+	}
+	user, err := FetchTestUser(ctx, v.UserID)
+	if err != nil {
+		return err
+	}
+	bal, err := user.NativeBalance(ctx)
+	if err != nil {
+		return err
+	}
+	expectedMaxBal := big.NewInt(0).Add(snapshotBalance, v.ExpectedDiff)
+	if bal.Cmp(expectedMaxBal) >= 0 {
+		return fmt.Errorf("expected balance to be lower than %d but was %d", expectedMaxBal, bal)
+	}
+	return nil
+}

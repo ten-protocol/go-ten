@@ -61,7 +61,8 @@ func CreateAndFundTestUsers(numUsers int) *MultiAction {
 		})
 	}
 	// set number of users on the context so downstream know how many test users to access if they want all of them
-	newUserActions = append(newUserActions, ContextValueAction(keyNumberOfTestUsers, numUsers))
+	newUserActions = append(newUserActions, SetContextValue(KeyNumberOfTestUsers, numUsers))
+	newUserActions = append(newUserActions, SnapshotUserBalances(SnapAfterAllocation))
 	return Series(newUserActions...)
 }
 

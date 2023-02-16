@@ -18,6 +18,8 @@ func TestNativeTransfers(t *testing.T) {
 		actions.Series(
 			actions.CreateAndFundTestUsers(2),
 			actions.GenerateUsersRandomisedTransferActionsInParallel(2, 10*time.Second),
+
+			actions.VerifyUserBalancesSanity(),
 		),
 	)
 }

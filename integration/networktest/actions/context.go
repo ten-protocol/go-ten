@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
 	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"math/big"
 )
 
-// int representing number of test users created/available (useful for tests that want to run for all users)
-var keyNumberOfTestUsers = ActionKey("numberOfTestUsers")
+var (
+	// KeyNumberOfTestUsers key to an int representing number of test users created/available
+	// (useful for test actions that want to run for all users without having to duplicate config)
+	KeyNumberOfTestUsers = ActionKey("numberOfTestUsers")
+)
 
 // ActionKey is the type for all test data stored in the context. Go documentation recommends using a typed key rather than string to avoid conflicts.
 type ActionKey string
@@ -35,7 +38,7 @@ func userKey(number int) ActionKey {
 }
 
 func FetchNumberOfTestUsers(ctx context.Context) (int, error) {
-	n := ctx.Value(keyNumberOfTestUsers)
+	n := ctx.Value(KeyNumberOfTestUsers)
 	if n == nil {
 		return 0, errors.New("expected at least one test user to be setup but number of test users was not set")
 	}
@@ -44,4 +47,16 @@ func FetchNumberOfTestUsers(ctx context.Context) (int, error) {
 		return 0, fmt.Errorf("expected number of users context value to be non-zero int but it was (%T) %v", n, n)
 	}
 	return numUsers, nil
+}
+
+func FetchBigInt(ctx context.Context, key ActionKey) (*big.Int, error) {
+	v := ctx.Value(key)
+	if v == nil {
+		return nil, fmt.Errorf("no value found for key=%s", key)
+	}
+	typedVal, ok := v.(*big.Int)
+	if !ok {
+		return nil, fmt.Errorf("expected value for key=%s to be *big.Int but was (%T) %v", key, v, v)
+	}
+	return typedVal, nil
 }

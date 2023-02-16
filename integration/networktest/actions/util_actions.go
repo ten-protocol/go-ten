@@ -8,8 +8,8 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/networktest"
 )
 
-// ContextValueAction is a simple action step that just sets a value on the context
-func ContextValueAction(key ActionKey, value interface{}) networktest.Action {
+// SetContextValue is a simple action step that just sets a value on the context
+func SetContextValue(key ActionKey, value interface{}) networktest.Action {
 	return &contextValueAction{key: key, value: value}
 }
 
@@ -57,6 +57,11 @@ type (
 // NoStateNoVerifyAction allows you to create an action quickly with an in-line function when it doesn't need state or a verify method
 func NoStateNoVerifyAction(run RunFunc) networktest.Action {
 	return &basicAction{run: run}
+}
+
+// VerifyOnlyAction allows you to create an action quickly with an in-line function when it doesn't need state or a verify method
+func VerifyOnlyAction(verify VerifyFunc) networktest.Action {
+	return &basicAction{verify: verify}
 }
 
 type basicAction struct {

@@ -75,3 +75,41 @@ func (p *parallelFundsTransferTraffic) Verify(ctx context.Context, network netwo
 func GenerateUsersRandomisedTransferActionsInParallel(txPerSec int, duration time.Duration) networktest.Action {
 	return &parallelFundsTransferTraffic{txPerSec: txPerSec, duration: duration}
 }
+
+// VerifyUserBalancesSanity expects a balances SnapAfterAllocation snapshot
+// It sums up the user balances then and now to make sure that the total hasn't increased and that it's decreased but not drastically (gas fees)
+func VerifyUserBalancesSanity() networktest.Action {
+	return VerifyOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) error {
+		numUsers, err := FetchNumberOfTestUsers(ctx)
+		if err != nil {
+			return fmt.Errorf("expected number of test users to be set - %w", err)
+		}
+		initTotalBal := big.NewInt(0)
+		currTotalBal := big.NewInt(0)
+		for i := 0; i < numUsers; i++ {
+			initBalance, err := FetchBalanceAtSnapshot(ctx, i, SnapAfterAllocation)
+			if err != nil {
+				return err
+			}
+			initTotalBal = initTotalBal.Add(initTotalBal, initBalance)
+			user, err := FetchTestUser(ctx, i)
+			if err != nil {
+				return err
+			}
+			currBal, err := user.NativeBalance(ctx)
+			if err != nil {
+				return err
+			}
+			currTotalBal = currTotalBal.Add(currTotalBal, currBal)
+		}
+
+		if currTotalBal.Cmp(initTotalBal) >= 0 {
+			return fmt.Errorf("expected total balances to have slightly decreased due to gas costs, but initTotal=%d currTotal=%d", initTotalBal, currTotalBal)
+		}
+		// this test is a bit wooly, if it starts failing in certain use cases then reconsider it but could be a useful sanity check
+		if currTotalBal.Cmp(initTotalBal.Div(initTotalBal, big.NewInt(2))) < 0 {
+			return fmt.Errorf("expected total balances to still be at least half of original balances but initTotal=%d currTotal=%d", initTotalBal, currTotalBal)
+		}
+		return nil
+	})
+}

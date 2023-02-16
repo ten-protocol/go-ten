@@ -1,10 +1,9 @@
 package helpful
 
 import (
+	"github.com/obscuronet/go-obscuro/integration/networktest/actions"
 	"math/big"
 	"testing"
-
-	"github.com/obscuronet/go-obscuro/integration/networktest/actions"
 
 	"github.com/obscuronet/go-obscuro/integration/networktest"
 	"github.com/obscuronet/go-obscuro/integration/networktest/env"
@@ -23,10 +22,15 @@ func TestExecuteNativeFundsTransfer(t *testing.T) {
 		actions.Series(
 			&actions.CreateTestUser{UserID: 0},
 			&actions.CreateTestUser{UserID: 1},
+			actions.SetContextValue(actions.KeyNumberOfTestUsers, 2),
+
 			&actions.AllocateFaucetFunds{UserID: 0},
+			actions.SnapshotUserBalances(actions.SnapAfterAllocation), // record user balances (we have no guarantee on how much the network faucet allocates)
+
 			&actions.SendNativeFunds{FromUser: 0, ToUser: 1, Amount: _transferAmount},
 
 			&actions.VerifyBalanceAfterTest{UserID: 1, ExpectedBalance: _transferAmount},
+			&actions.VerifyBalanceDiffAfterTest{UserID: 0, Snapshot: actions.SnapAfterAllocation, ExpectedDiff: big.NewInt(0).Neg(_transferAmount)},
 		),
 	)
 }
