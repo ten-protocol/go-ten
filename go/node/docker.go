@@ -74,7 +74,7 @@ func (d *DockerNode) startEnclave() error {
 	cmd := []string{
 		"ego", "run", "/home/obscuro/go-obscuro/go/enclave/main/main",
 		"-hostID", d.cfg.hostID,
-		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveHTTPPort), //todo review this 0.0.0.0 host bind
+		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveHTTPPort), // todo review this 0.0.0.0 host bind
 		"-nodeType", d.cfg.nodeType,
 		"-useInMemoryDB", "false",
 		"-sqliteDBPath", "/data/sqlite.db",
