@@ -9,7 +9,8 @@
 # f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb -> 0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944
 #
 # Prefunded PK used by the obscuro nodes for rollups issuance
-# 8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99 -> 0x0654D8B60033144D567f25bF41baC1FB0D60F23B
+# 8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99 -> 0x0654D8B60033144D567f25bF41baC1FB0D60F23B (sequencer)
+# ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89 -> 0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A (validator)
 
 help_and_exit() {
     echo ""

@@ -40,7 +40,7 @@ func (d *DockerNode) startHost() error {
 		"/home/obscuro/go-obscuro/go/host/main/main",
 		"-l1NodeHost", d.cfg.l1Host,
 		"-l1NodePort", fmt.Sprintf("%d", d.cfg.l1WSPort),
-		"-enclaveRPCAddress", fmt.Sprintf("enclave:%d", d.cfg.enclaveWSPort),
+		"-enclaveRPCAddress", fmt.Sprintf("%s:%d", d.cfg.nodeName+"-enclave", d.cfg.enclaveWSPort),
 		"-managementContractAddress", d.cfg.managementContractAddr,
 		"-privateKey", d.cfg.privateKey,
 		"-clientRPCHost", "0.0.0.0",
@@ -48,8 +48,8 @@ func (d *DockerNode) startHost() error {
 		"-logLevel", "4",
 		fmt.Sprintf("-isGenesis=%t", d.cfg.isGenesis), // boolean are a special case where the = is required
 		"-nodeType", d.cfg.nodeType,
-		"-profilerEnabled", "false",
-		"-p2pPublicAddress", fmt.Sprintf("%s:%d", d.cfg.hostP2PHost, d.cfg.hostP2PPort),
+		"-profilerEnabled=false",
+		"-p2pPublicAddress", d.cfg.hostPublicP2PAddr,
 		"-p2pBindAddress", fmt.Sprintf("0.0.0.0:%d", d.cfg.hostP2PPort),
 		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.hostHTTPPort),
 		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
@@ -60,7 +60,7 @@ func (d *DockerNode) startHost() error {
 		d.cfg.hostWSPort,
 	}
 
-	_, err := docker.StartNewContainer("host", d.cfg.hostImage, cmd, exposedPorts, nil, nil)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil)
 
 	return err
 }
@@ -95,13 +95,11 @@ func (d *DockerNode) startEnclave() error {
 		"-hostID", d.cfg.hostID,
 		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveWSPort), // todo review this 0.0.0.0 host bind
 		"-nodeType", d.cfg.nodeType,
-		"-useInMemoryDB", "false",
-		"-sqliteDBPath", "/data/sqlite.db",
 		"-managementContractAddress", d.cfg.managementContractAddr,
-		"-hostAddress", fmt.Sprintf("host:%d", d.cfg.hostP2PPort),
+		"-hostAddress", fmt.Sprintf("%s:%d", d.cfg.nodeName+"-host", d.cfg.hostP2PPort),
 		"-sequencerID", d.cfg.sequencerID,
 		"-messageBusAddress", d.cfg.messageBusContractAddress,
-		"-profilerEnabled", "false",
+		"-profilerEnabled=false",
 		"-logPath", "sys_out",
 		"-logLevel", "2",
 	)
@@ -111,9 +109,19 @@ func (d *DockerNode) startEnclave() error {
 		devices["/dev/sgx_provision"] = "/dev/sgx_provision"
 
 		envs["OE_SIMULATION"] = "0"
+		cmd = append(cmd,
+			"-edgelessDBHost", d.cfg.nodeName+"-edgelessdb",
+			"-willAttest=true",
+			"-useInMemoryDB=false",
+		)
+	} else {
+		cmd = append(cmd,
+			"-useInMemoryDB=true",
+			"-sqliteDBPath", "/data/sqlite.db",
+		)
 	}
 
-	_, err := docker.StartNewContainer("enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices)
 	return err
 }
 
@@ -136,7 +144,7 @@ func (d *DockerNode) startEdgelessDB() error {
 		envs["PCCS_ADDR"] = d.cfg.pccsAddr
 	}
 
-	_, err := docker.StartNewContainer("edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices)
 
 	return err
 }

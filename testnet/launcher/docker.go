@@ -31,42 +31,26 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to start eth2network - %w", err)
 	}
 
-	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
-		l1cd.NewContractDeployerConfig(
-			l1cd.WithL1Host("eth2network"),
-			l1cd.WithL1Port(8025),
-			l1cd.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
-			l1cd.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"),
-		),
-	)
+	managementContractAddr, messageBusContractAddr, err := deployL1Contracts()
 	if err != nil {
-		return fmt.Errorf("unable to configure l1 contract deployer - %w", err)
+		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
 
-	err = l1ContractDeployer.Start()
-	if err != nil {
-		return fmt.Errorf("unable to start l1 contract deployer - %w", err)
-	}
-
-	managementContractAddr, messageBusContractAddr, err := l1ContractDeployer.RetrieveL1ContractAddresses()
-	if err != nil {
-		return fmt.Errorf("unable to fetch l1 contract addresses - %w", err)
-	}
-	fmt.Println("L1 Contracts were successfully deployed...")
-
-	nodeCfg := node.NewNodeConfig(
+	sequencerNodeConfig := node.NewNodeConfig(
+		node.WithNodeName("sequencer"),
 		node.WithNodeType("sequencer"),
 		node.WithGenesis(true),
 		node.WithSGXEnabled(false),
-		node.WithEnclaveImage(t.cfg.enclaveDockerImage),
+		node.WithEnclaveImage("testnetobscuronet.azurecr.io/obscuronet/enclave:latest"),
 		node.WithEnclaveDebug(t.cfg.enclaveDebug),
 		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
 		node.WithL1Host("eth2network"),
 		node.WithL1WSPort(9000),
-		node.WithHostP2PPort(14000),
 		node.WithEnclaveWSPort(11000),
 		node.WithHostHTTPPort(13000),
 		node.WithHostWSPort(13001),
+		node.WithHostP2PPort(15000),
+		node.WithHostPublicP2PAddr("sequencer-host:15000"),
 		node.WithPrivateKey("8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"),
 		node.WithHostID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
 		node.WithSequencerID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
@@ -74,21 +58,60 @@ func (t *Testnet) Start() error {
 		node.WithMessageBusContractAddress(messageBusContractAddr),
 	)
 
-	dockerNode, err := node.NewDockerNode(nodeCfg)
+	sequencerNode, err := node.NewDockerNode(sequencerNodeConfig)
 	if err != nil {
 		return fmt.Errorf("unable to configure the obscuro node - %w", err)
 	}
 
-	err = dockerNode.Start()
+	err = sequencerNode.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start the obscuro node - %w", err)
 	}
 	fmt.Println("Obscuro node was successfully started...")
 
 	// wait until the node it healthy
-	err = waitForHealthyNode()
+	err = waitForHealthyNode(13000)
 	if err != nil {
-		return fmt.Errorf("obscuro node not healthy - %w", err)
+		return fmt.Errorf("sequencer obscuro node not healthy - %w", err)
+	}
+
+	validatorNodeConfig := node.NewNodeConfig(
+		node.WithNodeName("validator"),
+		node.WithNodeType("validator"),
+		node.WithGenesis(false),
+		node.WithSGXEnabled(false),
+		node.WithEnclaveImage("testnetobscuronet.azurecr.io/obscuronet/enclave:latest"),
+		node.WithEnclaveDebug(t.cfg.enclaveDebug),
+		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
+		node.WithL1Host("eth2network"),
+		node.WithL1WSPort(9000),
+		node.WithEnclaveWSPort(11010),
+		node.WithHostHTTPPort(13010),
+		node.WithHostWSPort(13011),
+		node.WithHostP2PPort(15010),
+		node.WithHostPublicP2PAddr("validator-host:15010"),
+		node.WithPrivateKey("ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89"),
+		node.WithHostID("0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A"),
+		node.WithSequencerID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
+		node.WithManagementContractAddress(managementContractAddr),
+		node.WithMessageBusContractAddress(messageBusContractAddr),
+	)
+
+	validatorNode, err := node.NewDockerNode(validatorNodeConfig)
+	if err != nil {
+		return fmt.Errorf("unable to configure the obscuro node - %w", err)
+	}
+
+	err = validatorNode.Start()
+	if err != nil {
+		return fmt.Errorf("unable to start the obscuro node - %w", err)
+	}
+	fmt.Println("Obscuro node was successfully started...")
+
+	// wait until the node it healthy
+	err = waitForHealthyNode(13010)
+	if err != nil {
+		return fmt.Errorf("validator obscuro node not healthy - %w", err)
 	}
 
 	l2ContractDeployer, err := l2cd.NewDockerContractDeployer(
@@ -123,7 +146,11 @@ func startEth2Network() error {
 		eth2network.NewEth2NetworkConfig(
 			eth2network.WithGethHTTPStartPort(8025),
 			eth2network.WithGethWSStartPort(9000),
-			eth2network.WithGethPrefundedAddrs([]string{"0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944", "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"}),
+			eth2network.WithGethPrefundedAddrs([]string{
+				"0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944", // contract deployment pk - f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
+				"0x0654D8B60033144D567f25bF41baC1FB0D60F23B", // sequencer pk - 8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
+				"0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A", // validator pk - ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89
+			}),
 		),
 	)
 	if err != nil {
@@ -145,9 +172,35 @@ func startEth2Network() error {
 	return nil
 }
 
+func deployL1Contracts() (string, string, error) {
+	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
+		l1cd.NewContractDeployerConfig(
+			l1cd.WithL1Host("eth2network"),
+			l1cd.WithL1Port(8025),
+			l1cd.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
+			l1cd.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"),
+		),
+	)
+	if err != nil {
+		return "", "", fmt.Errorf("unable to configure l1 contract deployer - %w", err)
+	}
+
+	err = l1ContractDeployer.Start()
+	if err != nil {
+		return "", "", fmt.Errorf("unable to start l1 contract deployer - %w", err)
+	}
+
+	managementContractAddr, messageBusContractAddr, err := l1ContractDeployer.RetrieveL1ContractAddresses()
+	if err != nil {
+		return "", "", fmt.Errorf("unable to fetch l1 contract addresses - %w", err)
+	}
+	fmt.Println("L1 Contracts were successfully deployed...")
+	return managementContractAddr, messageBusContractAddr, nil
+}
+
 // waitForHealthyNode retries continuously for the node to respond to a healthcheck http request
-func waitForHealthyNode() error { // todo: hook the cfg
-	requestURL := fmt.Sprintf("http://localhost:%d", 13000)
+func waitForHealthyNode(port int) error { // todo: hook the cfg
+	requestURL := fmt.Sprintf("http://localhost:%d", port)
 	reqBody := `{"method": "obscuro_health", "id": 1}`
 
 	fmt.Println("Waiting for obscuro node to be healthy...")

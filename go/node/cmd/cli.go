@@ -27,6 +27,7 @@ type NodeConfigCLI struct {
 	edgelessDBImage        string
 	hostHTTPPort           int
 	hostWSPort             int
+	nodeName               string
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -34,6 +35,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg := &NodeConfigCLI{}
 	flagUsageMap := getFlagUsageMap()
 
+	nodeName := flag.String(nodeNameFlag, "obscuronode", flagUsageMap[nodeNameFlag])
 	nodeType := flag.String(nodeTypeFlag, "", flagUsageMap[nodeTypeFlag])
 	isGenesis := flag.Bool(isGenesisFlag, false, flagUsageMap[isGenesisFlag])
 	isSGXEnabled := flag.Bool(isSGXEnabledFlag, false, flagUsageMap[isSGXEnabledFlag])
@@ -57,6 +59,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	edgelessDBImage := flag.String(edgelessDBImageFlag, "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2", flagUsageMap[edgelessDBImageFlag])
 
 	flag.Parse()
+	cfg.nodeName = *nodeName
 	cfg.nodeType = *nodeType
 	cfg.isGenesis = *isGenesis
 	cfg.isSGXEnabled = *isSGXEnabled

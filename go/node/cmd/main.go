@@ -9,6 +9,7 @@ func main() {
 	// todo: allow for multiple operation (start, stop, status)
 
 	nodeCfg := node.NewNodeConfig(
+		node.WithNodeName(cliConfig.nodeName),
 		node.WithNodeType(cliConfig.nodeType),
 		node.WithGenesis(cliConfig.isGenesis),
 		node.WithSGXEnabled(cliConfig.isSGXEnabled),

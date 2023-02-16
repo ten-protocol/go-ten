@@ -24,6 +24,7 @@ type Config struct {
 	pccsAddr                  string
 	edgelessDBImage           string
 	enclaveDebug              bool
+	nodeName                  string
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -34,6 +35,12 @@ func NewNodeConfig(opts ...Option) *Config {
 	}
 
 	return defaultConfig
+}
+
+func WithNodeName(s string) Option {
+	return func(c *Config) {
+		c.nodeName = s
+	}
 }
 
 func WithNodeType(nodeType string) Option {
