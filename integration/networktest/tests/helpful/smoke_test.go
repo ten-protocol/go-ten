@@ -1,9 +1,10 @@
 package helpful
 
 import (
-	"github.com/obscuronet/go-obscuro/integration/networktest/actions"
 	"math/big"
 	"testing"
+
+	"github.com/obscuronet/go-obscuro/integration/networktest/actions"
 
 	"github.com/obscuronet/go-obscuro/integration/networktest"
 	"github.com/obscuronet/go-obscuro/integration/networktest/env"

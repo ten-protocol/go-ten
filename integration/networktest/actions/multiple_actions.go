@@ -80,7 +80,7 @@ func (m *MultiAction) Verify(ctx context.Context, network networktest.NetworkCon
 		action := a
 		grp.Go(func() error {
 			if err = action.Verify(ctx, network); err != nil {
-				actionErr := fmt.Errorf("%s failed - %w", a, err)
+				actionErr := fmt.Errorf("%s failed - %w", action, err)
 				fmt.Println(actionErr)
 
 				mu.Lock()
@@ -95,7 +95,7 @@ func (m *MultiAction) Verify(ctx context.Context, network networktest.NetworkCon
 	if err = grp.Wait(); err != nil {
 		return fmt.Errorf("series failed, %d / %d failed - %s", len(actionFailures), len(m.actions), actionFailures)
 	}
-	
+
 	return nil
 }
 

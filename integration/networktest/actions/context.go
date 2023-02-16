@@ -4,15 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
 )
 
-var (
-	// KeyNumberOfTestUsers key to an int representing number of test users created/available
-	// (useful for test actions that want to run for all users without having to duplicate config)
-	KeyNumberOfTestUsers = ActionKey("numberOfTestUsers")
-)
+// KeyNumberOfTestUsers key to an int representing number of test users created/available
+// (useful for test actions that want to run for all users without having to duplicate config)
+var KeyNumberOfTestUsers = ActionKey("numberOfTestUsers")
 
 // ActionKey is the type for all test data stored in the context. Go documentation recommends using a typed key rather than string to avoid conflicts.
 type ActionKey string

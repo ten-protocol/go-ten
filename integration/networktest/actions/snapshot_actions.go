@@ -3,8 +3,9 @@ package actions
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/integration/networktest"
 )
 
 // standard snapshots to use as reference points across all tests
@@ -19,6 +20,7 @@ var (
 func BalanceSnapshotKey(userID int, snapshot string) ActionKey {
 	return ActionKey(fmt.Sprintf("bal-%s-%d", snapshot, userID))
 }
+
 func FetchBalanceAtSnapshot(ctx context.Context, userID int, snapshot string) (*big.Int, error) {
 	bal, err := FetchBigInt(ctx, BalanceSnapshotKey(userID, snapshot))
 	if err != nil {
