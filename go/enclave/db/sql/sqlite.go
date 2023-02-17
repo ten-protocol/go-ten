@@ -23,7 +23,7 @@ const (
 // otherwise dbPath is a filepath for the db file, allows for tests that care about persistence between restarts
 func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (ethdb.Database, error) {
 	if dbPath == "" {
-		tempPath, err := getTempDBFile()
+		tempPath, err := CreateTempDBFile()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create temp sqlite DB file - %w", err)
 		}
@@ -49,7 +49,7 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (ethdb.Databa
 	return CreateSQLEthDatabase(db, logger)
 }
 
-func getTempDBFile() (string, error) {
+func CreateTempDBFile() (string, error) {
 	tempDir := filepath.Join("/tmp", tempDirName, randomStr(5))
 	err := os.MkdirAll(tempDir, os.ModePerm)
 	if err != nil {

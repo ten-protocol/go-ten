@@ -31,7 +31,7 @@ func RndBtw(min uint64, max uint64) uint64 {
 
 func RndBtwTime(min time.Duration, max time.Duration) time.Duration {
 	if min <= 0 || max <= 0 {
-		panic("invalid durations")
+		panic(fmt.Sprintf("invalid durations min=%s max=%s", min, max))
 	}
 	return time.Duration(RndBtw(uint64(min.Nanoseconds()), uint64(max.Nanoseconds()))) * time.Nanosecond
 }

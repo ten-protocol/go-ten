@@ -1,0 +1,41 @@
+package networktest
+
+import (
+	"context"
+	"fmt"
+	"testing"
+	"time"
+)
+
+// Run provides a standardised way to run tests and provides a single place for changing logging/output styles, etc.
+//
+// The tests in `/tests` should typically only contain a single line, executing this method.
+// The Environment and NetworkTest implementations and how they're configured define the test to be run.
+//
+// Example usage:
+//
+//	networktest.Run(t, env.DevTestnet(), tests.smokeTest())
+//	networktest.Run(t, env.LocalDevNetwork(WithNumValidators(8)), traffic.RunnerTest(traffic.NativeFundsTransfers(), 30*time.Second)
+func Run(testName string, t *testing.T, env Environment, action Action) {
+	EnsureTestLogsSetUp(testName)
+	network, envCleanup, err := env.Prepare()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	defer func() {
+		envCleanup()
+		cancelCtx()
+	}()
+	fmt.Println("Started test:", testName)
+	ctx, err = action.Run(ctx, network)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("Verifying test:", testName)
+	time.Sleep(2 * time.Second) // allow time for latest test transactions to propagate todo: consider how to configure this sleep
+	err = action.Verify(ctx, network)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
