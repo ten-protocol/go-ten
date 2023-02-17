@@ -324,16 +324,14 @@ go test ./...
 ```
 
 ### Building and running a local testnet
-At the moment running a local testnet has an additional dependency on [jq](https://stedolan.github.io/jq/) and the module 
-should be additionally installed prior to starting the local testnet. See the `jq` documentation for installation
-instructions. 
-
 The testnet is constructed from docker images that have all executables built, installed and available for running. The 
 images are created from the working directory of the repository checkout. To build the images and to add them into the 
 docker images repository use;
 
 ```
-cd ./testnet && ./testnet-local-start.sh 
+./testnet/testnet-local-build_images.sh \
+&& go run ./testnet/launcher/cmd \
+&& ./testnet/start-obscuroscan.sh --rpcServerAddress=http://localhost:13000 --receivingPort=8098
 ```
 
 The above will perform all the relevant builds and ensure the images are ready for running each component. 

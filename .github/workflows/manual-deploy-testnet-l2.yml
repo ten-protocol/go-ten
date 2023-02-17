@@ -43,6 +43,10 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.17
+
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
@@ -107,7 +111,11 @@ jobs:
         id: deployContracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-contracts.sh --l1host=${{ env.L1_HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} --docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+          go run ./testnet/launcher/l1contractdeployer/cmd \
+          -l1_host=${{ env.L1_HOST }} \
+          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
+          -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
+          -contracts_env_file=./testnet/.env
           source ./testnet/.env
           echo "Contracts deployed to $MGMTCONTRACTADDR"
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
@@ -210,9 +218,9 @@ jobs:
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
             && sudo apt-get update \
-            && sudo apt-get install -y jq \
+            && sudo snap refresh && sudo snap install --channel=1.17 go --classic \
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
-             && docker network create --driver bridge node_network || true \
+            && docker network create --driver bridge node_network || true \
             && docker run -d --name datadog-agent \
                --network node_network \
                -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
@@ -226,19 +234,21 @@ jobs:
                -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
                datadog/agent:latest \
-            && cd /home/obscuro/go-obscuro/testnet/ \
-            && ./start-obscuro-node.sh \
-               --is_genesis=${{ matrix.is_genesis }} \
-               --node_type=${{ matrix.node_type }} \
-               --sgx_enabled=true \
-               --host_id=${{ secrets[matrix.node_pk_addr] }} \
-               --l1host=${{needs.build.outputs.L1_HOST}} \
-               --mgmtcontractaddr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
-               --msg_bus_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
-               --pkstring=${{ secrets[matrix.node_pk_str] }} \
-               --sequencerID=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
-               --dev_testnet=${{ (github.event.inputs.testnet_type == 'dev-testnet') || (github.event_name == 'schedule') }} \
-               --p2p_public_address=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000'
+            && cd /home/obscuro/go-obscuro/ \
+            && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
+               -is_genesis=${{ matrix.is_genesis }} \
+               -node_type=${{ matrix.node_type }} \
+               -is_sgx_enabled=true \
+               -host_id=${{ secrets[matrix.node_pk_addr] }} \
+               -l1_host=${{needs.build.outputs.L1_HOST}} \
+               -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
+               -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
+               -private_key=${{ secrets[matrix.node_pk_str] }} \
+               -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
+               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
+               -host_p2p_port=10000 \
+               -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
+               -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}}'
 
 
   update-loadbalancer:
@@ -293,7 +303,12 @@ jobs:
         id: deployL2Contracts
         shell: bash
         run: |
-          ./testnet/testnet-deploy-l2-contracts.sh --l2host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com --l1host=${{ needs.build.outputs.L1_HOST }} --pkstring=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} --message_bus=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} --docker_image=${{needs.build.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+          go run ./testnet/launcher/l2contractdeployer/cmd \
+          -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
+          -l1_host=${{ needs.build.outputs.L1_HOST }} \
+          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
+          -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
+          -docker_image=${{needs.build.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
 
   deploy-faucet:
     runs-on: ubuntu-latest
