@@ -112,7 +112,7 @@ jobs:
         shell: bash
         run: |
           go run ./testnet/launcher/l1contractdeployer/cmd \
-          -l1_addr=${{ env.L1_HOST }} \
+          -l1_host=${{ env.L1_HOST }} \
           -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
           -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
           -contracts_env_file=./testnet/.env
@@ -240,7 +240,7 @@ jobs:
                -node_type=${{ matrix.node_type }} \
                -is_sgx_enabled=true \
                -host_id=${{ secrets[matrix.node_pk_addr] }} \
-               -l1_addr=${{needs.build.outputs.L1_HOST}} \
+               -l1_host=${{needs.build.outputs.L1_HOST}} \
                -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
                -private_key=${{ secrets[matrix.node_pk_str] }} \

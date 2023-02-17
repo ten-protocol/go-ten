@@ -12,7 +12,7 @@ func main() {
 
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
 		l1cd.NewContractDeployerConfig(
-			l1cd.WithL1Host(cliConfig.l1Addr),
+			l1cd.WithL1Host(cliConfig.l1Host),
 			l1cd.WithL1Port(cliConfig.l1HTTPPort),       // 8025
 			l1cd.WithPrivateKey(cliConfig.privateKey),   //"f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1cd.WithDockerImage(cliConfig.dockerImage), //"testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"

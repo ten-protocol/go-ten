@@ -135,6 +135,9 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 		if err == nil {
 			break
 		}
+		//
+		// Currently when a receipt is not available the obscuro node is returning nil instead of err ethereum.NotFound
+		// once that's fixed this commented block should be removed
 		//if !errors.Is(err, ethereum.NotFound) {
 		//	t.Fatal(err)
 		//}

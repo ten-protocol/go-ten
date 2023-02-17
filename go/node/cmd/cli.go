@@ -11,7 +11,7 @@ type NodeConfigCLI struct {
 	isSGXEnabled           bool
 	enclaveDockerImage     string
 	hostDockerImage        string
-	l1Addr                 string
+	l1Host                 string
 	l1WSPort               int
 	hostP2PPort            int
 	hostP2PHost            string
@@ -41,7 +41,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	isSGXEnabled := flag.Bool(isSGXEnabledFlag, false, flagUsageMap[isSGXEnabledFlag])
 	enclaveDockerImage := flag.String(enclaveDockerImageFlag, "", flagUsageMap[enclaveDockerImageFlag])
 	hostDockerImage := flag.String(hostDockerImageFlag, "", flagUsageMap[hostDockerImageFlag])
-	l1Addr := flag.String(l1AddrFlag, "eth2network", flagUsageMap[l1AddrFlag])
+	l1Host := flag.String(l1HostFlag, "eth2network", flagUsageMap[l1HostFlag])
 	l1WSPort := flag.Int(l1WSPortFlag, 9000, flagUsageMap[l1WSPortFlag])
 	hostP2PPort := flag.Int(hostP2PPortFlag, 14000, flagUsageMap[hostP2PPortFlag])
 	hostP2PHost := flag.String(hostP2PHostFlag, "0.0.0.0", flagUsageMap[hostP2PHostFlag])
@@ -65,7 +65,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.isSGXEnabled = *isSGXEnabled
 	cfg.enclaveDockerImage = *enclaveDockerImage
 	cfg.hostDockerImage = *hostDockerImage
-	cfg.l1Addr = *l1Addr
+	cfg.l1Host = *l1Host
 	cfg.l1WSPort = *l1WSPort
 	cfg.hostP2PPort = *hostP2PPort
 	cfg.hostP2PHost = *hostP2PHost

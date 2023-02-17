@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/node"
 	"github.com/obscuronet/go-obscuro/testnet/launcher/eth2network"
 
@@ -206,40 +207,42 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 	reqBody := `{"method": "obscuro_health", "id": 1}`
 
 	fmt.Println("Waiting for obscuro node to be healthy...")
-	for startTime := time.Now(); time.Now().Before(startTime.Add(2 * time.Minute)); time.Sleep(time.Second) {
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, requestURL, bytes.NewBufferString(reqBody))
-		if err != nil {
-			return fmt.Errorf("client: could not create request: %w", err)
-		}
-		req.Header.Set("Content-Type", "application/json")
+	return retry.Do(
+		func() error {
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, requestURL, bytes.NewBufferString(reqBody))
+			if err != nil {
+				return fmt.Errorf("client: could not create request: %w", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
 
-		res, err := http.DefaultClient.Do(req)
-		if err != nil {
-			continue
-		}
-		defer res.Body.Close()
+			res, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return err
+			}
+			defer res.Body.Close()
 
-		resBody, err := io.ReadAll(res.Body)
-		if err != nil {
-			continue
-		}
+			resBody, err := io.ReadAll(res.Body)
+			if err != nil {
+				return err
+			}
 
-		response := map[string]interface{}{}
-		err = json.Unmarshal(resBody, &response)
-		if err != nil {
-			continue
-		}
+			response := map[string]interface{}{}
+			err = json.Unmarshal(resBody, &response)
+			if err != nil {
+				return err
+			}
 
-		if r := response["result"]; r != nil { //nolint: nestif
-			if h, ok := r.(map[string]interface{}); ok {
-				if overallHealth := h["OverallHealth"]; overallHealth != nil {
-					if health, ok := overallHealth.(bool); ok && health {
-						fmt.Println("obscuro node is ready")
-						return nil
+			if r := response["result"]; r != nil { //nolint: nestif
+				if h, ok := r.(map[string]interface{}); ok {
+					if overallHealth := h["OverallHealth"]; overallHealth != nil {
+						if health, ok := overallHealth.(bool); ok && health {
+							fmt.Println("obscuro node is ready")
+							return nil
+						}
 					}
 				}
 			}
-		}
-	}
-	return fmt.Errorf("obscuro node unresponsive after timeout")
+			return fmt.Errorf("node OverallHealth is not good yet")
+		}, retry.NewTimeoutStrategy(1*time.Second, 2*time.Minute),
+	)
 }

@@ -185,10 +185,10 @@ func WaitForContainerToFinish(containerID string, timeout time.Duration) error {
 		}
 	case status := <-statusCh:
 		if status.StatusCode != 0 {
-			return fmt.Errorf("container exited with non-zero status code")
+			return fmt.Errorf("container exited with non-zero status code - Status Code: %d", status.StatusCode)
 		}
 	case <-time.After(timeout):
-		return fmt.Errorf("timeout waiting for container to finish")
+		return fmt.Errorf("timeout after %s waiting for container to finish", timeout)
 	}
 
 	return nil

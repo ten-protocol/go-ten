@@ -15,7 +15,7 @@ func main() {
 		node.WithSGXEnabled(cliConfig.isSGXEnabled),
 		node.WithEnclaveImage(cliConfig.enclaveDockerImage),                  // "local_enclave"
 		node.WithHostImage(cliConfig.hostDockerImage),                        // "local_host"
-		node.WithL1Host(cliConfig.l1Addr),                                    // "eth2network"
+		node.WithL1Host(cliConfig.l1Host),                                    // "eth2network"
 		node.WithL1WSPort(cliConfig.l1WSPort),                                // 9000
 		node.WithHostP2PPort(cliConfig.hostP2PPort),                          // 14000
 		node.WithHostP2PHost(cliConfig.hostP2PHost),                          // 0.0.0.0

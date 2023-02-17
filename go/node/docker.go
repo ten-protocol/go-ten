@@ -133,6 +133,7 @@ func (d *DockerNode) startEnclave() error {
 
 func (d *DockerNode) startEdgelessDB() error {
 	if !d.cfg.sgxEnabled {
+		// Non-SGX hardware use sqlite database so EdgelessDB is not required.
 		return nil
 	}
 
