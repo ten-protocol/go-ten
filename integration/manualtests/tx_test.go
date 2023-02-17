@@ -9,17 +9,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/stretchr/testify/assert"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
@@ -100,15 +100,24 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 	assert.Nil(t, err)
 	authClient := obsclient.NewAuthObsClient(client)
 
+	balance, err := authClient.BalanceAt(context.Background(), nil)
+	assert.Nil(t, err)
+
+	if balance.Cmp(big.NewInt(0)) <= 0 {
+		t.Errorf("not enough balance: has %s has %s obx", w.Address().Hex(), balance.String())
+	}
+
 	toAddr := datagenerator.RandomAddress()
 	nonce, err := authClient.NonceAt(ctx, nil)
 	assert.Nil(t, err)
 
 	w.SetNonce(nonce)
 	estimatedTx := authClient.EstimateGasAndGasPrice(&types.LegacyTx{
-		Nonce: w.GetNonceAndIncrement(),
-		To:    &toAddr,
-		Value: big.NewInt(100),
+		Nonce:    w.GetNonceAndIncrement(),
+		To:       &toAddr,
+		Value:    big.NewInt(100),
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
 	})
 	assert.Nil(t, err)
 
@@ -129,6 +138,9 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 		//if !errors.Is(err, ethereum.NotFound) {
 		//	t.Fatal(err)
 		//}
+		if receipt != nil && receipt.Status == 1 {
+			break
+		}
 		fmt.Printf("no tx receipt after %s - %s\n", time.Since(start), err)
 	}
 

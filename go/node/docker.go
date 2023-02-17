@@ -100,7 +100,7 @@ func (d *DockerNode) startEnclave() error {
 		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveWSPort), // todo review this 0.0.0.0 host bind
 		"-nodeType", d.cfg.nodeType,
 		"-managementContractAddress", d.cfg.managementContractAddr,
-		"-hostAddress", fmt.Sprintf("%s:%d", d.cfg.nodeName+"-host", d.cfg.hostP2PPort),
+		"-hostAddress", d.cfg.hostPublicP2PAddr,
 		"-sequencerID", d.cfg.sequencerID,
 		"-messageBusAddress", d.cfg.messageBusContractAddress,
 		"-profilerEnabled=false",
@@ -114,6 +114,9 @@ func (d *DockerNode) startEnclave() error {
 		devices["/dev/sgx_provision"] = "/dev/sgx_provision"
 
 		envs["OE_SIMULATION"] = "0"
+
+		// prepend the entry.sh execution
+		cmd = append([]string{"/home/obscuro/go-obscuro/go/enclave/main/entry.sh"}, cmd...)
 		cmd = append(cmd,
 			"-edgelessDBHost", d.cfg.nodeName+"-edgelessdb",
 			"-willAttest=true",

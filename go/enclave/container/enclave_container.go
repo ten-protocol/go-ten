@@ -2,6 +2,7 @@ package container
 
 import (
 	"context"
+	"fmt"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -47,6 +48,10 @@ func NewEnclaveContainerFromConfig(config config.EnclaveConfig) *EnclaveContaine
 	// todo - improve this wiring, perhaps setup DB etc. at this level and inject into enclave
 	//  (at that point the WithLogger constructor could be a full DI constructor like the HostContainer tries, for testability)
 	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.HostID)
+
+	// todo - this is for debugging purposes only, should be remove in the future
+	fmt.Printf("Building enclave container with config: %+v\n", config)
+	logger.Info(fmt.Sprintf("Building enclave container with config: %+v", config))
 
 	return NewEnclaveContainerWithLogger(config, logger)
 }
