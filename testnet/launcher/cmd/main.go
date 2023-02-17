@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/obscuronet/go-obscuro/testnet/launcher"
 )
@@ -28,10 +26,4 @@ func main() {
 	}
 
 	fmt.Println("Testnet start successfully!")
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
-	fmt.Println("Press ctrl+c to stop...")
-	<-done // Will block here until user hits ctrl+c
-	// TODO add clean up / teardown
-	os.Exit(0)
 }
