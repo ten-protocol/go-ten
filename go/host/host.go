@@ -162,6 +162,11 @@ func (h *host) Start() error {
 			}
 		}
 
+		err := h.refreshP2PPeerList()
+		if err != nil {
+			h.logger.Warn("unable to sync current p2p peer list on startup - %w", err)
+		}
+
 		// start the host's main processing loop
 		h.startProcessing()
 	}()
@@ -477,11 +482,11 @@ func (h *host) processL1BlockTransactions(b *types.Block) {
 			continue
 		}
 
-		// node received a secret response, we should add them to our p2p connection pool
-		if scrtRespTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
-			err := h.processSharedSecretResponse(scrtRespTx)
+		// node received a secret response, we should make sure our p2p addresses are up-to-date
+		if _, ok := t.(*ethadapter.L1RespondSecretTx); ok {
+			err := h.refreshP2PPeerList()
 			if err != nil {
-				h.logger.Error("Failed to process shared secret response", log.ErrKey, err)
+				h.logger.Error("Failed to update p2p peer list", log.ErrKey, err)
 				continue
 			}
 		}
@@ -699,12 +704,9 @@ func (h *host) publishSharedSecretResponses(scrtResponses []*common.ProducedSecr
 	return nil
 }
 
-// Whenever we receive a new shared secret response transaction, we update our list of P2P peers, as another aggregator
-// may have joined the network.
-func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) error {
-	// We make a call to the L1 node to retrieve the new list of aggregators. An alternative would be to check that the
-	// transaction succeeded, and if so, extract the additional host address from the transaction arguments. But we
-	// believe this would be more brittle than just asking the L1 contract for its view of the current aggregators.
+// Whenever we receive a new shared secret response transaction or restart the host, we update our list of P2P peers
+func (h *host) refreshP2PPeerList() error {
+	// We make a call to the L1 node to retrieve the latest list of aggregators
 	msg, err := h.mgmtContractLib.GetHostAddresses()
 	if err != nil {
 		return err
@@ -719,27 +721,18 @@ func (h *host) processSharedSecretResponse(_ *ethadapter.L1RespondSecretTx) erro
 	}
 	hostAddresses := decodedResponse[0]
 
-	// We filter down the list of retrieved addresses.
-	var filteredHostAddresses []string //nolint:prealloc
+	// We remove any duplicate addresses and our own address from the retrieved peer list
+	var filteredHostAddresses []string
+	uniqueHostKeys := make(map[string]bool) // map to track addresses we've seen already
 	for _, hostAddress := range hostAddresses {
 		// We exclude our own address.
 		if hostAddress == h.config.P2PPublicAddress {
 			continue
 		}
-
-		// We exclude any duplicate host addresses.
-		isDup := false
-		for _, existingHostAddress := range filteredHostAddresses {
-			if hostAddress == existingHostAddress {
-				isDup = true
-				break
-			}
+		if _, found := uniqueHostKeys[hostAddress]; !found {
+			uniqueHostKeys[hostAddress] = true
+			filteredHostAddresses = append(filteredHostAddresses, hostAddress)
 		}
-		if isDup {
-			continue
-		}
-
-		filteredHostAddresses = append(filteredHostAddresses, hostAddress)
 	}
 
 	h.p2p.UpdatePeerList(filteredHostAddresses)
