@@ -23,7 +23,9 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-const _IDEFlag = "IDE"
+const (
+	_IDEFlag = "IDE"
+)
 
 func TestL1IssueTxWaitReceipt(t *testing.T) {
 	// test is skipped by default to avoid breaking CI - set env flag in `Run Configurations` to run it in IDE
@@ -89,8 +91,8 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 		"4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8",
 		777,
 		gethlog.New())
-	host := "dev-testnet.obscu.ro"
-	port := 13001
+	host := "localhost"
+	port := 13011
 
 	vk, err := rpc.GenerateAndSignViewingKey(w)
 	assert.Nil(t, err)

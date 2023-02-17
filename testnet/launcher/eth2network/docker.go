@@ -22,6 +22,8 @@ func NewDockerEth2Network(cfg *Config) (*Eth2Network, error) {
 }
 
 func (n *Eth2Network) Start() error {
+	fmt.Printf("Starting Eth2Network with config: %+v\n", n.cfg)
+
 	cmds := []string{
 		"/home/obscuro/go-obscuro/integration/eth2network/main/main",
 		"--numNodes", "1",

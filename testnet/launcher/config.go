@@ -27,6 +27,7 @@ func WithSequencerEnclaveDockerImage(s string) Option {
 		c.sequencerEnclaveDockerImage = s
 	}
 }
+
 func WithSequencerEnclaveDebug(b bool) Option {
 	return func(c *Config) {
 		c.sequencerEnclaveDebug = b
@@ -38,6 +39,7 @@ func WithValidatorEnclaveDockerImage(s string) Option {
 		c.validatorEnclaveDockerImage = s
 	}
 }
+
 func WithValidatorEnclaveDebug(b bool) Option {
 	return func(c *Config) {
 		c.validatorEnclaveDebug = b

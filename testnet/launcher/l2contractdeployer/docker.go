@@ -26,6 +26,8 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 }
 
 func (n *ContractDeployer) Start() error {
+	fmt.Printf("Starting L2ContractDeployer with config: %+v\n", n.cfg)
+
 	cmds := []string{
 		"npx", "hardhat", "obscuro:deploy",
 		"--network", "layer2",

@@ -26,6 +26,8 @@ func NewTestnetLauncher(cfg *Config) *Testnet {
 }
 
 func (t *Testnet) Start() error {
+	fmt.Printf("Starting Testnet with config: %+v\n", t.cfg)
+
 	err := startEth2Network()
 	if err != nil {
 		return fmt.Errorf("unable to start eth2network - %w", err)

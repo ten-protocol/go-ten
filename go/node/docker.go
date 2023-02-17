@@ -18,6 +18,7 @@ func NewDockerNode(cfg *Config) (Node, error) {
 
 func (d *DockerNode) Start() error {
 	// TODO this should probably be removed in the future
+	fmt.Printf("Starting Node %s with config: %+v\n", d.cfg.nodeName, d.cfg)
 
 	err := d.startEdgelessDB()
 	if err != nil {
