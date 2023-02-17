@@ -6,7 +6,10 @@ import (
 
 // TestnetConfigCLI represents the configurations passed into the testnet over CLI
 type TestnetConfigCLI struct {
-	numberNodes int
+	validatorEnclaveDockerImage string
+	validatorEnclaveDebug       bool
+	sequencerEnclaveDockerImage string
+	sequencerEnclaveDebug       bool
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -14,10 +17,16 @@ func ParseConfigCLI() *TestnetConfigCLI {
 	cfg := &TestnetConfigCLI{}
 	flagUsageMap := getFlagUsageMap()
 
-	numberNodes := flag.Int(numberNodesFlag, 1, flagUsageMap[numberNodesFlag])
+	validatorEnclaveDockerImage := flag.String(validatorEnclaveDockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", flagUsageMap[validatorEnclaveDockerImageFlag])
+	validatorEnclaveDebug := flag.Bool(validatorEnclaveDebugFlag, false, flagUsageMap[validatorEnclaveDebugFlag])
+	sequencerEnclaveDockerImage := flag.String(sequencerEnclaveDockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", flagUsageMap[sequencerEnclaveDockerImageFlag])
+	sequencerEnclaveDebug := flag.Bool(sequencerEnclaveDebugFlag, false, flagUsageMap[sequencerEnclaveDebugFlag])
 	flag.Parse()
 
-	cfg.numberNodes = *numberNodes
+	cfg.validatorEnclaveDockerImage = *validatorEnclaveDockerImage
+	cfg.sequencerEnclaveDockerImage = *sequencerEnclaveDockerImage
+	cfg.validatorEnclaveDebug = *validatorEnclaveDebug
+	cfg.sequencerEnclaveDebug = *sequencerEnclaveDebug
 
 	return cfg
 }

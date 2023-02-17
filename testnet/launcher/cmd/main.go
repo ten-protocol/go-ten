@@ -12,12 +12,13 @@ import (
 func main() {
 	cliConfig := ParseConfigCLI()
 
-	fmt.Println("Starting a testnet with all the defaults...")
+	fmt.Println("Starting a testnet with 1 sequencer and 1 validator...")
 	testnet := launcher.NewTestnetLauncher(
 		launcher.NewTestnetConfig(
-			launcher.WithNumberNodes(cliConfig.numberNodes), // TODO: currently ignored flag
-			// launcher.WithEnclaveDockerImage("testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest"),
-			// launcher.WithEnclaveDebug(true),
+			launcher.WithValidatorEnclaveDockerImage(cliConfig.validatorEnclaveDockerImage),
+			launcher.WithValidatorEnclaveDebug(cliConfig.validatorEnclaveDebug),
+			launcher.WithSequencerEnclaveDockerImage(cliConfig.sequencerEnclaveDockerImage),
+			launcher.WithSequencerEnclaveDebug(cliConfig.sequencerEnclaveDebug),
 		),
 	)
 	err := testnet.Start()

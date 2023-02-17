@@ -1,7 +1,9 @@
 package eth2network
 
+// Option is a function that applies configs to a Config Object
 type Option = func(c *Config)
 
+// Config holds the properties that configure the package
 type Config struct {
 	gethHTTPPort   int
 	gethWSPort     int

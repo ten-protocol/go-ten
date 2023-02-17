@@ -17,6 +17,8 @@ func NewDockerNode(cfg *Config) (Node, error) {
 }
 
 func (d *DockerNode) Start() error {
+	// TODO this should probably be removed in the future
+
 	err := d.startEdgelessDB()
 	if err != nil {
 		return err
@@ -58,6 +60,7 @@ func (d *DockerNode) startHost() error {
 	exposedPorts := []int{
 		d.cfg.hostHTTPPort,
 		d.cfg.hostWSPort,
+		d.cfg.hostP2PPort,
 	}
 
 	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil)
@@ -100,6 +103,7 @@ func (d *DockerNode) startEnclave() error {
 		"-sequencerID", d.cfg.sequencerID,
 		"-messageBusAddress", d.cfg.messageBusContractAddress,
 		"-profilerEnabled=false",
+		"-useInMemoryDB=false",
 		"-logPath", "sys_out",
 		"-logLevel", "2",
 	)
@@ -112,11 +116,9 @@ func (d *DockerNode) startEnclave() error {
 		cmd = append(cmd,
 			"-edgelessDBHost", d.cfg.nodeName+"-edgelessdb",
 			"-willAttest=true",
-			"-useInMemoryDB=false",
 		)
 	} else {
 		cmd = append(cmd,
-			"-useInMemoryDB=true",
 			"-sqliteDBPath", "/data/sqlite.db",
 		)
 	}
