@@ -131,7 +131,7 @@ func (d *DockerNode) startEdgelessDB() error {
 	}
 
 	envs := map[string]string{
-		"EDG_EDB_CERT_DNS": "edgelessdb",
+		"EDG_EDB_CERT_DNS": d.cfg.nodeName + "-edgelessdb",
 	}
 
 	devices := map[string]string{
