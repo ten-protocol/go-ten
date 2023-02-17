@@ -121,7 +121,7 @@ func (t *Testnet) Start() error {
 		l2cd.NewContractDeployerConfig(
 			l2cd.WithL1Host("eth2network"),
 			l2cd.WithL1Port(8025),
-			l2cd.WithL2Host("host"),
+			l2cd.WithL2Host("sequencer-host"),
 			l2cd.WithL2WSPort(13001),
 			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l2cd.WithMessageBusContractAddress("0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"),
