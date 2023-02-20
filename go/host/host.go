@@ -144,18 +144,12 @@ func (h *host) Start() error {
 
 	go func() {
 		// wait for the Enclave to be available
-		h.waitForEnclave()
+		enclStatus := h.waitForEnclave()
 
 		// TODO the host should only connect to enclaves with the same ID as the host.ID
 		// TODO Issue: https://github.com/obscuronet/obscuro-internal/issues/1265
 
-		// todo: we should try to recover the key from a previous run of the node here? Before generating or requesting the key.
-		if h.config.IsGenesis {
-			err = h.broadcastSecret()
-			if err != nil {
-				h.logger.Crit("Could not broadcast secret", log.ErrKey, err.Error())
-			}
-		} else {
+		if enclStatus == common.AwaitingSecret {
 			err = h.requestSecret()
 			if err != nil {
 				h.logger.Crit("Could not request secret", log.ErrKey, err.Error())
@@ -174,7 +168,7 @@ func (h *host) Start() error {
 	return nil
 }
 
-func (h *host) broadcastSecret() error {
+func (h *host) generateAndBroadcastSecret() error {
 	h.logger.Info("Node is genesis node. Broadcasting secret.")
 	// Create the shared secret and submit it to the management contract for storage
 	attestation, err := h.enclaveClient.Attestation()
@@ -320,9 +314,11 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 }
 
 // Waits for enclave to be available, printing a wait message every two seconds.
-func (h *host) waitForEnclave() {
+func (h *host) waitForEnclave() common.Status {
 	counter := 0
-	for _, err := h.enclaveClient.Status(); err != nil; {
+	var status common.Status
+	var err error
+	for status, err = h.enclaveClient.Status(); err != nil; {
 		if counter >= 20 {
 			h.logger.Info(fmt.Sprintf("Waiting for enclave on %s. Latest connection attempt failed", h.config.EnclaveRPCAddress), log.ErrKey, err)
 			counter = 0
@@ -331,7 +327,8 @@ func (h *host) waitForEnclave() {
 		time.Sleep(100 * time.Millisecond)
 		counter++
 	}
-	h.logger.Info("Connected to enclave service.")
+	h.logger.Info("Connected to enclave service.", "enclaveStatus", status)
+	return status
 }
 
 // starts the host main processing loop
@@ -615,6 +612,9 @@ func (h *host) waitForReceipt(txHash common.TxHash) error {
 
 // This method implements the procedure by which a node obtains the secret
 func (h *host) requestSecret() error {
+	if h.config.IsGenesis {
+		return h.generateAndBroadcastSecret()
+	}
 	h.logger.Info("Requesting secret.")
 	att, err := h.enclaveClient.Attestation()
 	if err != nil {
