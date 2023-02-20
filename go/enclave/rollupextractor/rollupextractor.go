@@ -3,70 +3,29 @@ package rollupextractor
 // TODO: once the cross chain messages based bridge is implemented remove this completely.
 
 import (
+	"errors"
 	"fmt"
+	"math/big"
+	"sort"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
+	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
 	crypto2 "github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/go-obscuro/go/wallet"
 )
-
-// Todo - remove all hardcoded values in the next iteration.
-// The Contract addresses are the result of the deploying a smart contract from hardcoded owners.
-// The "owners" are keys which are the de-facto "admins" of those erc20s and are able to transfer or mint tokens.
-// The contracts and addresses cannot be random for now, because there is hardcoded logic in the core
-// to generate synthetic "transfer" transactions for each erc20 deposit on ethereum
-// and these transactions need to be signed. Which means the platform needs to "own" ERC20s.
-
-// ERC20 - the supported ERC20 tokens. A list of made-up tokens used for testing.
-// Todo - this will be removed together will all the keys and addresses.
-type ERC20 string
-
-const (
-	HOC            ERC20 = "HOC"
-	POC            ERC20 = "POC"
-	HOCAddr              = "f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
-	pocAddr              = "9802F661d17c65527D7ABB59DAAD5439cb125a67"
-	bridgeAddr           = "deB34A740ECa1eC42C8b8204CBEC0bA34FDD27f3"
-	hocOwnerKeyHex       = "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
-	pocOwnerKeyHex       = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
-)
-
-var HOCOwner, _ = crypto.HexToECDSA(hocOwnerKeyHex)
-
-// HOCContract - address of the deployed "hocus" erc20 on the L2
-var HOCContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes(HOCAddr))
-
-var POCOwner, _ = crypto.HexToECDSA(pocOwnerKeyHex)
-
-// POCContract - address of the deployed "pocus" erc20 on the L2
-var POCContract = gethcommon.BytesToAddress(gethcommon.Hex2Bytes(pocAddr))
-
-// BridgeAddress - address of the virtual bridge
-var BridgeAddress = gethcommon.BytesToAddress(gethcommon.Hex2Bytes(bridgeAddr))
-
-// ERC20Mapping - maps an L1 Erc20 to an L2 Erc20 address
-type ERC20Mapping struct {
-	Name ERC20
-
-	// L1Owner   wallet.Wallet
-	L1Address *gethcommon.Address
-
-	Owner     wallet.Wallet // for now the wrapped L2 version is owned by a wallet, but this will change
-	L2Address *gethcommon.Address
-}
 
 // RollupExtractor encapsulates the logic of decoding rollup transactions submitted to the L1 and resolving them
 // to rollups that the enclave can process.
@@ -79,6 +38,9 @@ type RollupExtractor struct {
 	EthereumChainID int64
 
 	logger gethlog.Logger
+
+	l2chain *l2chain.ObscuroChain
+	storage db.Storage
 }
 
 func New(
@@ -86,6 +48,8 @@ func New(
 	transactionBlobCrypto crypto2.TransactionBlobCrypto,
 	obscuroChainID int64,
 	ethereumChainID int64,
+	storage db.Storage,
+	l2chain *l2chain.ObscuroChain,
 	logger gethlog.Logger,
 ) *RollupExtractor {
 	return &RollupExtractor{
@@ -94,15 +58,77 @@ func New(
 		ObscuroChainID:        obscuroChainID,
 		EthereumChainID:       ethereumChainID,
 		logger:                logger,
+		l2chain:               l2chain,
+		storage:               storage,
 	}
 }
 
+func (re *RollupExtractor) fetchLatestRollupHeader() (*core.Rollup, error) {
+	b, _ := re.storage.FetchHeadBlock()
+	if b != nil {
+		return re.getLatestRollupBeforeBlock(b)
+	} else {
+		return nil, nil
+	}
+}
+
+func (re *RollupExtractor) CreateRollup() (*core.Rollup, error) {
+	rollup, _ := re.fetchLatestRollupHeader()
+
+	hash := gethcommon.Hash{}
+	if rollup != nil {
+		hash = rollup.Header.HeadBatchHash
+	}
+
+	batches, _ := re.l2chain.BatchesAfter(hash)
+
+	headBatch := batches[len(batches)-1]
+
+	if headBatch.Header.Hash() == hash {
+		return nil, nil
+	}
+
+	rh := headBatch.Header.ToRollupHeader()
+
+	if rollup != nil {
+		rh.ParentHash = rollup.Header.Hash()
+	} else { //genesis
+		rh.ParentHash = gethcommon.Hash{}
+	}
+
+	rh.CrossChainMessages = make([]MessageBus.StructsCrossChainMessage, 0)
+	for _, b := range batches {
+		rh.CrossChainMessages = append(rh.CrossChainMessages, b.Header.CrossChainMessages...)
+	}
+
+	rollupHeight := big.NewInt(0)
+	if rollup != nil {
+		rollupHeight = rollup.Header.Number
+		rollupHeight = rollupHeight.Add(rollupHeight, gethcommon.Big1)
+	}
+
+	rh.Number = rollupHeight
+	rh.HeadBatchHash = headBatch.Header.Hash()
+
+	newRollup := &core.Rollup{
+		Header:  rh,
+		Batches: batches,
+	}
+
+	re.l2chain.SignRollup(newRollup)
+	return newRollup, nil
+}
+
+func (re *RollupExtractor) ProcessL1Block(b *types.Block) error {
+	return re.processRollups(b)
+}
+
 // ExtractRollups - returns a list of the rollups published in this block
-func (bridge *RollupExtractor) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
+func (re *RollupExtractor) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
 	rollups := make([]*core.Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
-		t := bridge.MgmtContractLib.DecodeTx(tx)
+		t := re.MgmtContractLib.DecodeTx(tx)
 		if t == nil {
 			continue
 		}
@@ -110,15 +136,15 @@ func (bridge *RollupExtractor) ExtractRollups(b *types.Block, blockResolver db.B
 		if rolTx, ok := t.(*ethadapter.L1RollupTx); ok {
 			r, err := common.DecodeRollup(rolTx.Rollup)
 			if err != nil {
-				bridge.logger.Crit("could not decode rollup.", log.ErrKey, err)
+				re.logger.Crit("could not decode rollup.", log.ErrKey, err)
 				return nil
 			}
 
 			// Ignore rollups created with proofs from different L1 blocks
 			// In case of L1 reorgs, rollups may end published on a fork
 			if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-				rollups = append(rollups, core.ToRollup(r, bridge.TransactionBlobCrypto))
-				bridge.logger.Trace(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
+				rollups = append(rollups, core.ToRollup(r, re.TransactionBlobCrypto))
+				re.logger.Trace(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
 					common.ShortHash(r.Hash()),
 					common.ShortHash(b.Hash()),
 				))
@@ -126,4 +152,118 @@ func (bridge *RollupExtractor) ExtractRollups(b *types.Block, blockResolver db.B
 		}
 	}
 	return rollups
+}
+
+// MOVED FROM L2 CHAIN
+
+// Validates and stores the rollup in a given block.
+// TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
+func (oc *RollupExtractor) processRollups(block *common.L1Block) error {
+	latestRollup, err := oc.getLatestRollupBeforeBlock(block)
+	if err != nil && !errors.Is(err, db.ErrNoRollups) {
+		return fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
+	}
+
+	rollups := oc.ExtractRollups(block, oc.storage)
+	sort.Slice(rollups, func(i, j int) bool {
+		// Ascending order sort.
+		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
+	})
+
+	// If this is the first rollup we've ever received, we check that it's the genesis rollup.
+	if latestRollup == nil && len(rollups) != 0 && !rollups[0].IsGenesis() {
+		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
+	}
+
+	if len(rollups) == 0 {
+		return nil
+	}
+
+	blockHash := block.Hash()
+	for idx, rollup := range rollups {
+		/*if err = oc.checkSequencerSignature(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
+		}*/
+
+		if !rollup.IsGenesis() {
+			previousRollup := latestRollup
+			if idx != 0 {
+				previousRollup = rollups[idx-1]
+			}
+			if err = oc.checkRollupsCorrectlyChained(rollup, previousRollup); err != nil {
+				return err
+			}
+		}
+
+		/*	for _, batch := range rollup.Batches {
+			if err = oc.checkAndStoreBatch(batch); err != nil {
+				return fmt.Errorf("could not store batch. Cause: %w", err)
+			}
+		}*/
+
+		if err = oc.storage.StoreRollup(rollup); err != nil {
+			return fmt.Errorf("could not store rollup. Cause: %w", err)
+		}
+	}
+
+	// we record the latest rollup published against this L1 block hash
+	// note: if no rollup published yet then we record the empty hash as a marker
+	rollupHash := rollups[len(rollups)-1].Header.Hash()
+
+	err = oc.storage.UpdateHeadRollup(&blockHash, &rollupHash)
+	if err != nil {
+		return fmt.Errorf("unable to update head rollup - %w", err)
+	}
+
+	return nil
+}
+
+// Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
+func (oc *RollupExtractor) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
+	for {
+		blockParentHash := block.ParentHash()
+		latestRollup, err := oc.storage.FetchHeadRollupForBlock(&blockParentHash)
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			return nil, fmt.Errorf("could not fetch current L2 head rollup - %w", err)
+		}
+		if latestRollup != nil {
+			return latestRollup, nil
+		}
+
+		// we scan backwards now to the prev block in the chain and we will lookup to see if that has an entry
+		// todo: is this still required for safety, even though we're storing an entry for every L1 block?
+		block, err = oc.storage.FetchBlock(block.ParentHash())
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				// No more blocks available (enclave does not read the L1 chain from genesis if it knows
+				// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
+				// We have now checked through the entire (relevant) history of the L1 and no rollups were found.
+				return nil, db.ErrNoRollups
+			}
+			return nil, fmt.Errorf("could not fetch parent block - %w", err)
+		}
+	}
+}
+
+// Checks that the rollup:
+//   - Has a number exactly 1 higher than the previous rollup
+//   - Links to the previous rollup by hash
+//   - Has a first batch whose parent is the head batch of the previous rollup
+func (oc *RollupExtractor) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRollup *core.Rollup) error {
+	if big.NewInt(0).Sub(rollup.Header.Number, previousRollup.Header.Number).Cmp(big.NewInt(1)) != 0 {
+		return fmt.Errorf("found gap in rollups between rollup %d and rollup %d",
+			previousRollup.Header.Number, rollup.Header.Number)
+	}
+
+	if rollup.Header.ParentHash != *previousRollup.Hash() {
+		return fmt.Errorf("found gap in rollups. Rollup %d did not reference rollup %d by hash",
+			rollup.Header.Number, previousRollup.Header.Number)
+	}
+
+	if len(rollup.Batches) != 0 && previousRollup.Header.HeadBatchHash != rollup.Batches[0].Header.ParentHash {
+		return fmt.Errorf("found gap in rollup batches. Batches in rollup %d did not chain to batches in rollup %d",
+			rollup.Header.Number, previousRollup.Header.Number)
+	}
+
+	return nil
 }

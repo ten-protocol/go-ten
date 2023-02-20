@@ -20,6 +20,99 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type CreateRollupRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+}
+
+func (x *CreateRollupRequest) Reset() {
+	*x = CreateRollupRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_enclave_proto_msgTypes[0]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CreateRollupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateRollupRequest) ProtoMessage() {}
+
+func (x *CreateRollupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_enclave_proto_msgTypes[0]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateRollupRequest.ProtoReflect.Descriptor instead.
+func (*CreateRollupRequest) Descriptor() ([]byte, []int) {
+	return file_enclave_proto_rawDescGZIP(), []int{0}
+}
+
+type CreateRollupResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Msg   *ExtRollupMsg `protobuf:"bytes,1,opt,name=msg,proto3" json:"msg,omitempty"`
+	Error string        `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+}
+
+func (x *CreateRollupResponse) Reset() {
+	*x = CreateRollupResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_enclave_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CreateRollupResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateRollupResponse) ProtoMessage() {}
+
+func (x *CreateRollupResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_enclave_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateRollupResponse.ProtoReflect.Descriptor instead.
+func (*CreateRollupResponse) Descriptor() ([]byte, []int) {
+	return file_enclave_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CreateRollupResponse) GetMsg() *ExtRollupMsg {
+	if x != nil {
+		return x.Msg
+	}
+	return nil
+}
+
+func (x *CreateRollupResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 type StatusRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -29,7 +122,7 @@ type StatusRequest struct {
 func (x *StatusRequest) Reset() {
 	*x = StatusRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[0]
+		mi := &file_enclave_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -42,7 +135,7 @@ func (x *StatusRequest) String() string {
 func (*StatusRequest) ProtoMessage() {}
 
 func (x *StatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[0]
+	mi := &file_enclave_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +148,7 @@ func (x *StatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusRequest.ProtoReflect.Descriptor instead.
 func (*StatusRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{0}
+	return file_enclave_proto_rawDescGZIP(), []int{2}
 }
 
 type StatusResponse struct {
@@ -70,7 +163,7 @@ type StatusResponse struct {
 func (x *StatusResponse) Reset() {
 	*x = StatusResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[1]
+		mi := &file_enclave_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -83,7 +176,7 @@ func (x *StatusResponse) String() string {
 func (*StatusResponse) ProtoMessage() {}
 
 func (x *StatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[1]
+	mi := &file_enclave_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -96,7 +189,7 @@ func (x *StatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusResponse.ProtoReflect.Descriptor instead.
 func (*StatusResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{1}
+	return file_enclave_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *StatusResponse) GetStatus() int32 {
@@ -122,7 +215,7 @@ type AttestationRequest struct {
 func (x *AttestationRequest) Reset() {
 	*x = AttestationRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[2]
+		mi := &file_enclave_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -135,7 +228,7 @@ func (x *AttestationRequest) String() string {
 func (*AttestationRequest) ProtoMessage() {}
 
 func (x *AttestationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[2]
+	mi := &file_enclave_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -148,7 +241,7 @@ func (x *AttestationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttestationRequest.ProtoReflect.Descriptor instead.
 func (*AttestationRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{2}
+	return file_enclave_proto_rawDescGZIP(), []int{4}
 }
 
 type AttestationResponse struct {
@@ -162,7 +255,7 @@ type AttestationResponse struct {
 func (x *AttestationResponse) Reset() {
 	*x = AttestationResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[3]
+		mi := &file_enclave_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -175,7 +268,7 @@ func (x *AttestationResponse) String() string {
 func (*AttestationResponse) ProtoMessage() {}
 
 func (x *AttestationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[3]
+	mi := &file_enclave_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -188,7 +281,7 @@ func (x *AttestationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttestationResponse.ProtoReflect.Descriptor instead.
 func (*AttestationResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{3}
+	return file_enclave_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AttestationResponse) GetAttestationReportMsg() *AttestationReportMsg {
@@ -207,7 +300,7 @@ type GenerateSecretRequest struct {
 func (x *GenerateSecretRequest) Reset() {
 	*x = GenerateSecretRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[4]
+		mi := &file_enclave_proto_msgTypes[6]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -220,7 +313,7 @@ func (x *GenerateSecretRequest) String() string {
 func (*GenerateSecretRequest) ProtoMessage() {}
 
 func (x *GenerateSecretRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[4]
+	mi := &file_enclave_proto_msgTypes[6]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -233,7 +326,7 @@ func (x *GenerateSecretRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateSecretRequest.ProtoReflect.Descriptor instead.
 func (*GenerateSecretRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{4}
+	return file_enclave_proto_rawDescGZIP(), []int{6}
 }
 
 type GenerateSecretResponse struct {
@@ -247,7 +340,7 @@ type GenerateSecretResponse struct {
 func (x *GenerateSecretResponse) Reset() {
 	*x = GenerateSecretResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[5]
+		mi := &file_enclave_proto_msgTypes[7]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -260,7 +353,7 @@ func (x *GenerateSecretResponse) String() string {
 func (*GenerateSecretResponse) ProtoMessage() {}
 
 func (x *GenerateSecretResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[5]
+	mi := &file_enclave_proto_msgTypes[7]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -273,7 +366,7 @@ func (x *GenerateSecretResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GenerateSecretResponse.ProtoReflect.Descriptor instead.
 func (*GenerateSecretResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{5}
+	return file_enclave_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *GenerateSecretResponse) GetEncryptedSharedEnclaveSecret() []byte {
@@ -294,7 +387,7 @@ type InitEnclaveRequest struct {
 func (x *InitEnclaveRequest) Reset() {
 	*x = InitEnclaveRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[6]
+		mi := &file_enclave_proto_msgTypes[8]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -307,7 +400,7 @@ func (x *InitEnclaveRequest) String() string {
 func (*InitEnclaveRequest) ProtoMessage() {}
 
 func (x *InitEnclaveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[6]
+	mi := &file_enclave_proto_msgTypes[8]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -320,7 +413,7 @@ func (x *InitEnclaveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InitEnclaveRequest.ProtoReflect.Descriptor instead.
 func (*InitEnclaveRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{6}
+	return file_enclave_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *InitEnclaveRequest) GetEncryptedSharedEnclaveSecret() []byte {
@@ -341,7 +434,7 @@ type InitEnclaveResponse struct {
 func (x *InitEnclaveResponse) Reset() {
 	*x = InitEnclaveResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[7]
+		mi := &file_enclave_proto_msgTypes[9]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -354,7 +447,7 @@ func (x *InitEnclaveResponse) String() string {
 func (*InitEnclaveResponse) ProtoMessage() {}
 
 func (x *InitEnclaveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[7]
+	mi := &file_enclave_proto_msgTypes[9]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -367,7 +460,7 @@ func (x *InitEnclaveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InitEnclaveResponse.ProtoReflect.Descriptor instead.
 func (*InitEnclaveResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{7}
+	return file_enclave_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *InitEnclaveResponse) GetError() string {
@@ -388,7 +481,7 @@ type StartRequest struct {
 func (x *StartRequest) Reset() {
 	*x = StartRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[8]
+		mi := &file_enclave_proto_msgTypes[10]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -401,7 +494,7 @@ func (x *StartRequest) String() string {
 func (*StartRequest) ProtoMessage() {}
 
 func (x *StartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[8]
+	mi := &file_enclave_proto_msgTypes[10]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -414,7 +507,7 @@ func (x *StartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartRequest.ProtoReflect.Descriptor instead.
 func (*StartRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{8}
+	return file_enclave_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *StartRequest) GetEncodedBlock() []byte {
@@ -433,7 +526,7 @@ type StartResponse struct {
 func (x *StartResponse) Reset() {
 	*x = StartResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[9]
+		mi := &file_enclave_proto_msgTypes[11]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -446,7 +539,7 @@ func (x *StartResponse) String() string {
 func (*StartResponse) ProtoMessage() {}
 
 func (x *StartResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[9]
+	mi := &file_enclave_proto_msgTypes[11]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -459,7 +552,7 @@ func (x *StartResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartResponse.ProtoReflect.Descriptor instead.
 func (*StartResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{9}
+	return file_enclave_proto_rawDescGZIP(), []int{11}
 }
 
 type SubmitBlockRequest struct {
@@ -475,7 +568,7 @@ type SubmitBlockRequest struct {
 func (x *SubmitBlockRequest) Reset() {
 	*x = SubmitBlockRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[10]
+		mi := &file_enclave_proto_msgTypes[12]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -488,7 +581,7 @@ func (x *SubmitBlockRequest) String() string {
 func (*SubmitBlockRequest) ProtoMessage() {}
 
 func (x *SubmitBlockRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[10]
+	mi := &file_enclave_proto_msgTypes[12]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -501,7 +594,7 @@ func (x *SubmitBlockRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitBlockRequest.ProtoReflect.Descriptor instead.
 func (*SubmitBlockRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{10}
+	return file_enclave_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SubmitBlockRequest) GetEncodedBlock() []byte {
@@ -536,7 +629,7 @@ type SubmitBlockResponse struct {
 func (x *SubmitBlockResponse) Reset() {
 	*x = SubmitBlockResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[11]
+		mi := &file_enclave_proto_msgTypes[13]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -549,7 +642,7 @@ func (x *SubmitBlockResponse) String() string {
 func (*SubmitBlockResponse) ProtoMessage() {}
 
 func (x *SubmitBlockResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[11]
+	mi := &file_enclave_proto_msgTypes[13]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -562,7 +655,7 @@ func (x *SubmitBlockResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitBlockResponse.ProtoReflect.Descriptor instead.
 func (*SubmitBlockResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{11}
+	return file_enclave_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SubmitBlockResponse) GetBlockSubmissionResponse() *BlockSubmissionResponseMsg {
@@ -583,7 +676,7 @@ type SubmitTxRequest struct {
 func (x *SubmitTxRequest) Reset() {
 	*x = SubmitTxRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[12]
+		mi := &file_enclave_proto_msgTypes[14]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -596,7 +689,7 @@ func (x *SubmitTxRequest) String() string {
 func (*SubmitTxRequest) ProtoMessage() {}
 
 func (x *SubmitTxRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[12]
+	mi := &file_enclave_proto_msgTypes[14]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -609,7 +702,7 @@ func (x *SubmitTxRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitTxRequest.ProtoReflect.Descriptor instead.
 func (*SubmitTxRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{12}
+	return file_enclave_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SubmitTxRequest) GetEncryptedTx() []byte {
@@ -630,7 +723,7 @@ type SubmitTxResponse struct {
 func (x *SubmitTxResponse) Reset() {
 	*x = SubmitTxResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[13]
+		mi := &file_enclave_proto_msgTypes[15]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -643,7 +736,7 @@ func (x *SubmitTxResponse) String() string {
 func (*SubmitTxResponse) ProtoMessage() {}
 
 func (x *SubmitTxResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[13]
+	mi := &file_enclave_proto_msgTypes[15]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -656,7 +749,7 @@ func (x *SubmitTxResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitTxResponse.ProtoReflect.Descriptor instead.
 func (*SubmitTxResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{13}
+	return file_enclave_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SubmitTxResponse) GetEncryptedHash() []byte {
@@ -677,7 +770,7 @@ type SubmitBatchRequest struct {
 func (x *SubmitBatchRequest) Reset() {
 	*x = SubmitBatchRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[14]
+		mi := &file_enclave_proto_msgTypes[16]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -690,7 +783,7 @@ func (x *SubmitBatchRequest) String() string {
 func (*SubmitBatchRequest) ProtoMessage() {}
 
 func (x *SubmitBatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[14]
+	mi := &file_enclave_proto_msgTypes[16]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -703,7 +796,7 @@ func (x *SubmitBatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitBatchRequest.ProtoReflect.Descriptor instead.
 func (*SubmitBatchRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{14}
+	return file_enclave_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SubmitBatchRequest) GetBatch() *ExtBatchMsg {
@@ -722,7 +815,7 @@ type SubmitBatchResponse struct {
 func (x *SubmitBatchResponse) Reset() {
 	*x = SubmitBatchResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[15]
+		mi := &file_enclave_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -735,7 +828,7 @@ func (x *SubmitBatchResponse) String() string {
 func (*SubmitBatchResponse) ProtoMessage() {}
 
 func (x *SubmitBatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[15]
+	mi := &file_enclave_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -748,7 +841,7 @@ func (x *SubmitBatchResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitBatchResponse.ProtoReflect.Descriptor instead.
 func (*SubmitBatchResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{15}
+	return file_enclave_proto_rawDescGZIP(), []int{17}
 }
 
 type OffChainRequest struct {
@@ -762,7 +855,7 @@ type OffChainRequest struct {
 func (x *OffChainRequest) Reset() {
 	*x = OffChainRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[16]
+		mi := &file_enclave_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -775,7 +868,7 @@ func (x *OffChainRequest) String() string {
 func (*OffChainRequest) ProtoMessage() {}
 
 func (x *OffChainRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[16]
+	mi := &file_enclave_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -788,7 +881,7 @@ func (x *OffChainRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OffChainRequest.ProtoReflect.Descriptor instead.
 func (*OffChainRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{16}
+	return file_enclave_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *OffChainRequest) GetEncryptedParams() []byte {
@@ -810,7 +903,7 @@ type OffChainResponse struct {
 func (x *OffChainResponse) Reset() {
 	*x = OffChainResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[17]
+		mi := &file_enclave_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -823,7 +916,7 @@ func (x *OffChainResponse) String() string {
 func (*OffChainResponse) ProtoMessage() {}
 
 func (x *OffChainResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[17]
+	mi := &file_enclave_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -836,7 +929,7 @@ func (x *OffChainResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OffChainResponse.ProtoReflect.Descriptor instead.
 func (*OffChainResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{17}
+	return file_enclave_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *OffChainResponse) GetResult() []byte {
@@ -864,7 +957,7 @@ type GetTransactionCountRequest struct {
 func (x *GetTransactionCountRequest) Reset() {
 	*x = GetTransactionCountRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[18]
+		mi := &file_enclave_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -877,7 +970,7 @@ func (x *GetTransactionCountRequest) String() string {
 func (*GetTransactionCountRequest) ProtoMessage() {}
 
 func (x *GetTransactionCountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[18]
+	mi := &file_enclave_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -890,7 +983,7 @@ func (x *GetTransactionCountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransactionCountRequest.ProtoReflect.Descriptor instead.
 func (*GetTransactionCountRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{18}
+	return file_enclave_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *GetTransactionCountRequest) GetEncryptedParams() []byte {
@@ -912,7 +1005,7 @@ type GetTransactionCountResponse struct {
 func (x *GetTransactionCountResponse) Reset() {
 	*x = GetTransactionCountResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[19]
+		mi := &file_enclave_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -925,7 +1018,7 @@ func (x *GetTransactionCountResponse) String() string {
 func (*GetTransactionCountResponse) ProtoMessage() {}
 
 func (x *GetTransactionCountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[19]
+	mi := &file_enclave_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -938,7 +1031,7 @@ func (x *GetTransactionCountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransactionCountResponse.ProtoReflect.Descriptor instead.
 func (*GetTransactionCountResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{19}
+	return file_enclave_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetTransactionCountResponse) GetResult() []byte {
@@ -964,7 +1057,7 @@ type StopRequest struct {
 func (x *StopRequest) Reset() {
 	*x = StopRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[20]
+		mi := &file_enclave_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -977,7 +1070,7 @@ func (x *StopRequest) String() string {
 func (*StopRequest) ProtoMessage() {}
 
 func (x *StopRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[20]
+	mi := &file_enclave_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -990,7 +1083,7 @@ func (x *StopRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopRequest.ProtoReflect.Descriptor instead.
 func (*StopRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{20}
+	return file_enclave_proto_rawDescGZIP(), []int{22}
 }
 
 type StopResponse struct {
@@ -1002,7 +1095,7 @@ type StopResponse struct {
 func (x *StopResponse) Reset() {
 	*x = StopResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[21]
+		mi := &file_enclave_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1015,7 +1108,7 @@ func (x *StopResponse) String() string {
 func (*StopResponse) ProtoMessage() {}
 
 func (x *StopResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[21]
+	mi := &file_enclave_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1028,7 +1121,7 @@ func (x *StopResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopResponse.ProtoReflect.Descriptor instead.
 func (*StopResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{21}
+	return file_enclave_proto_rawDescGZIP(), []int{23}
 }
 
 type GetTransactionRequest struct {
@@ -1042,7 +1135,7 @@ type GetTransactionRequest struct {
 func (x *GetTransactionRequest) Reset() {
 	*x = GetTransactionRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[22]
+		mi := &file_enclave_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1055,7 +1148,7 @@ func (x *GetTransactionRequest) String() string {
 func (*GetTransactionRequest) ProtoMessage() {}
 
 func (x *GetTransactionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[22]
+	mi := &file_enclave_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1068,7 +1161,7 @@ func (x *GetTransactionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransactionRequest.ProtoReflect.Descriptor instead.
 func (*GetTransactionRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{22}
+	return file_enclave_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetTransactionRequest) GetEncryptedParams() []byte {
@@ -1089,7 +1182,7 @@ type GetTransactionResponse struct {
 func (x *GetTransactionResponse) Reset() {
 	*x = GetTransactionResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[23]
+		mi := &file_enclave_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1102,7 +1195,7 @@ func (x *GetTransactionResponse) String() string {
 func (*GetTransactionResponse) ProtoMessage() {}
 
 func (x *GetTransactionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[23]
+	mi := &file_enclave_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1115,7 +1208,7 @@ func (x *GetTransactionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransactionResponse.ProtoReflect.Descriptor instead.
 func (*GetTransactionResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{23}
+	return file_enclave_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetTransactionResponse) GetEncryptedTx() []byte {
@@ -1136,7 +1229,7 @@ type GetTransactionReceiptRequest struct {
 func (x *GetTransactionReceiptRequest) Reset() {
 	*x = GetTransactionReceiptRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[24]
+		mi := &file_enclave_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1149,7 +1242,7 @@ func (x *GetTransactionReceiptRequest) String() string {
 func (*GetTransactionReceiptRequest) ProtoMessage() {}
 
 func (x *GetTransactionReceiptRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[24]
+	mi := &file_enclave_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1162,7 +1255,7 @@ func (x *GetTransactionReceiptRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransactionReceiptRequest.ProtoReflect.Descriptor instead.
 func (*GetTransactionReceiptRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{24}
+	return file_enclave_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetTransactionReceiptRequest) GetEncryptedParams() []byte {
@@ -1183,7 +1276,7 @@ type GetTransactionReceiptResponse struct {
 func (x *GetTransactionReceiptResponse) Reset() {
 	*x = GetTransactionReceiptResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[25]
+		mi := &file_enclave_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1196,7 +1289,7 @@ func (x *GetTransactionReceiptResponse) String() string {
 func (*GetTransactionReceiptResponse) ProtoMessage() {}
 
 func (x *GetTransactionReceiptResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[25]
+	mi := &file_enclave_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1209,7 +1302,7 @@ func (x *GetTransactionReceiptResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTransactionReceiptResponse.ProtoReflect.Descriptor instead.
 func (*GetTransactionReceiptResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{25}
+	return file_enclave_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetTransactionReceiptResponse) GetEncryptedTxReceipt() []byte {
@@ -1231,7 +1324,7 @@ type AddViewingKeyRequest struct {
 func (x *AddViewingKeyRequest) Reset() {
 	*x = AddViewingKeyRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[26]
+		mi := &file_enclave_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1244,7 +1337,7 @@ func (x *AddViewingKeyRequest) String() string {
 func (*AddViewingKeyRequest) ProtoMessage() {}
 
 func (x *AddViewingKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[26]
+	mi := &file_enclave_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1257,7 +1350,7 @@ func (x *AddViewingKeyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddViewingKeyRequest.ProtoReflect.Descriptor instead.
 func (*AddViewingKeyRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{26}
+	return file_enclave_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *AddViewingKeyRequest) GetViewingKey() []byte {
@@ -1283,7 +1376,7 @@ type AddViewingKeyResponse struct {
 func (x *AddViewingKeyResponse) Reset() {
 	*x = AddViewingKeyResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[27]
+		mi := &file_enclave_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1296,7 +1389,7 @@ func (x *AddViewingKeyResponse) String() string {
 func (*AddViewingKeyResponse) ProtoMessage() {}
 
 func (x *AddViewingKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[27]
+	mi := &file_enclave_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1309,7 +1402,7 @@ func (x *AddViewingKeyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddViewingKeyResponse.ProtoReflect.Descriptor instead.
 func (*AddViewingKeyResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{27}
+	return file_enclave_proto_rawDescGZIP(), []int{29}
 }
 
 type GetBalanceRequest struct {
@@ -1323,7 +1416,7 @@ type GetBalanceRequest struct {
 func (x *GetBalanceRequest) Reset() {
 	*x = GetBalanceRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[28]
+		mi := &file_enclave_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1336,7 +1429,7 @@ func (x *GetBalanceRequest) String() string {
 func (*GetBalanceRequest) ProtoMessage() {}
 
 func (x *GetBalanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[28]
+	mi := &file_enclave_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1349,7 +1442,7 @@ func (x *GetBalanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBalanceRequest.ProtoReflect.Descriptor instead.
 func (*GetBalanceRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{28}
+	return file_enclave_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GetBalanceRequest) GetEncryptedParams() []byte {
@@ -1370,7 +1463,7 @@ type GetBalanceResponse struct {
 func (x *GetBalanceResponse) Reset() {
 	*x = GetBalanceResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[29]
+		mi := &file_enclave_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1383,7 +1476,7 @@ func (x *GetBalanceResponse) String() string {
 func (*GetBalanceResponse) ProtoMessage() {}
 
 func (x *GetBalanceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[29]
+	mi := &file_enclave_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1396,7 +1489,7 @@ func (x *GetBalanceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBalanceResponse.ProtoReflect.Descriptor instead.
 func (*GetBalanceResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{29}
+	return file_enclave_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetBalanceResponse) GetEncryptedBalance() []byte {
@@ -1418,7 +1511,7 @@ type GetCodeRequest struct {
 func (x *GetCodeRequest) Reset() {
 	*x = GetCodeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[30]
+		mi := &file_enclave_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1431,7 +1524,7 @@ func (x *GetCodeRequest) String() string {
 func (*GetCodeRequest) ProtoMessage() {}
 
 func (x *GetCodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[30]
+	mi := &file_enclave_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1444,7 +1537,7 @@ func (x *GetCodeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCodeRequest.ProtoReflect.Descriptor instead.
 func (*GetCodeRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{30}
+	return file_enclave_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetCodeRequest) GetAddress() []byte {
@@ -1472,7 +1565,7 @@ type GetCodeResponse struct {
 func (x *GetCodeResponse) Reset() {
 	*x = GetCodeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[31]
+		mi := &file_enclave_proto_msgTypes[33]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1485,7 +1578,7 @@ func (x *GetCodeResponse) String() string {
 func (*GetCodeResponse) ProtoMessage() {}
 
 func (x *GetCodeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[31]
+	mi := &file_enclave_proto_msgTypes[33]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1498,7 +1591,7 @@ func (x *GetCodeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCodeResponse.ProtoReflect.Descriptor instead.
 func (*GetCodeResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{31}
+	return file_enclave_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *GetCodeResponse) GetCode() []byte {
@@ -1520,7 +1613,7 @@ type SubscribeRequest struct {
 func (x *SubscribeRequest) Reset() {
 	*x = SubscribeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[32]
+		mi := &file_enclave_proto_msgTypes[34]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1533,7 +1626,7 @@ func (x *SubscribeRequest) String() string {
 func (*SubscribeRequest) ProtoMessage() {}
 
 func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[32]
+	mi := &file_enclave_proto_msgTypes[34]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1546,7 +1639,7 @@ func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{32}
+	return file_enclave_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *SubscribeRequest) GetId() []byte {
@@ -1572,7 +1665,7 @@ type SubscribeResponse struct {
 func (x *SubscribeResponse) Reset() {
 	*x = SubscribeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[33]
+		mi := &file_enclave_proto_msgTypes[35]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1585,7 +1678,7 @@ func (x *SubscribeResponse) String() string {
 func (*SubscribeResponse) ProtoMessage() {}
 
 func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[33]
+	mi := &file_enclave_proto_msgTypes[35]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1598,7 +1691,7 @@ func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeResponse.ProtoReflect.Descriptor instead.
 func (*SubscribeResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{33}
+	return file_enclave_proto_rawDescGZIP(), []int{35}
 }
 
 type UnsubscribeRequest struct {
@@ -1612,7 +1705,7 @@ type UnsubscribeRequest struct {
 func (x *UnsubscribeRequest) Reset() {
 	*x = UnsubscribeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[34]
+		mi := &file_enclave_proto_msgTypes[36]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1625,7 +1718,7 @@ func (x *UnsubscribeRequest) String() string {
 func (*UnsubscribeRequest) ProtoMessage() {}
 
 func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[34]
+	mi := &file_enclave_proto_msgTypes[36]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1638,7 +1731,7 @@ func (x *UnsubscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsubscribeRequest.ProtoReflect.Descriptor instead.
 func (*UnsubscribeRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{34}
+	return file_enclave_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *UnsubscribeRequest) GetId() []byte {
@@ -1657,7 +1750,7 @@ type UnsubscribeResponse struct {
 func (x *UnsubscribeResponse) Reset() {
 	*x = UnsubscribeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[35]
+		mi := &file_enclave_proto_msgTypes[37]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1670,7 +1763,7 @@ func (x *UnsubscribeResponse) String() string {
 func (*UnsubscribeResponse) ProtoMessage() {}
 
 func (x *UnsubscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[35]
+	mi := &file_enclave_proto_msgTypes[37]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1683,7 +1776,7 @@ func (x *UnsubscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnsubscribeResponse.ProtoReflect.Descriptor instead.
 func (*UnsubscribeResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{35}
+	return file_enclave_proto_rawDescGZIP(), []int{37}
 }
 
 type EstimateGasRequest struct {
@@ -1697,7 +1790,7 @@ type EstimateGasRequest struct {
 func (x *EstimateGasRequest) Reset() {
 	*x = EstimateGasRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[36]
+		mi := &file_enclave_proto_msgTypes[38]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1710,7 +1803,7 @@ func (x *EstimateGasRequest) String() string {
 func (*EstimateGasRequest) ProtoMessage() {}
 
 func (x *EstimateGasRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[36]
+	mi := &file_enclave_proto_msgTypes[38]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1723,7 +1816,7 @@ func (x *EstimateGasRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EstimateGasRequest.ProtoReflect.Descriptor instead.
 func (*EstimateGasRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{36}
+	return file_enclave_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *EstimateGasRequest) GetEncryptedParams() []byte {
@@ -1745,7 +1838,7 @@ type EstimateGasResponse struct {
 func (x *EstimateGasResponse) Reset() {
 	*x = EstimateGasResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[37]
+		mi := &file_enclave_proto_msgTypes[39]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1758,7 +1851,7 @@ func (x *EstimateGasResponse) String() string {
 func (*EstimateGasResponse) ProtoMessage() {}
 
 func (x *EstimateGasResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[37]
+	mi := &file_enclave_proto_msgTypes[39]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1771,7 +1864,7 @@ func (x *EstimateGasResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EstimateGasResponse.ProtoReflect.Descriptor instead.
 func (*EstimateGasResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{37}
+	return file_enclave_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *EstimateGasResponse) GetEncryptedResponse() []byte {
@@ -1799,7 +1892,7 @@ type GetLogsRequest struct {
 func (x *GetLogsRequest) Reset() {
 	*x = GetLogsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[38]
+		mi := &file_enclave_proto_msgTypes[40]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1812,7 +1905,7 @@ func (x *GetLogsRequest) String() string {
 func (*GetLogsRequest) ProtoMessage() {}
 
 func (x *GetLogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[38]
+	mi := &file_enclave_proto_msgTypes[40]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1825,7 +1918,7 @@ func (x *GetLogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogsRequest.ProtoReflect.Descriptor instead.
 func (*GetLogsRequest) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{38}
+	return file_enclave_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *GetLogsRequest) GetEncryptedParams() []byte {
@@ -1846,7 +1939,7 @@ type GetLogsResponse struct {
 func (x *GetLogsResponse) Reset() {
 	*x = GetLogsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[39]
+		mi := &file_enclave_proto_msgTypes[41]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1859,7 +1952,7 @@ func (x *GetLogsResponse) String() string {
 func (*GetLogsResponse) ProtoMessage() {}
 
 func (x *GetLogsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[39]
+	mi := &file_enclave_proto_msgTypes[41]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1872,7 +1965,7 @@ func (x *GetLogsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLogsResponse.ProtoReflect.Descriptor instead.
 func (*GetLogsResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{39}
+	return file_enclave_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *GetLogsResponse) GetEncryptedResponse() []byte {
@@ -1894,7 +1987,7 @@ type HealthCheckResponse struct {
 func (x *HealthCheckResponse) Reset() {
 	*x = HealthCheckResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[40]
+		mi := &file_enclave_proto_msgTypes[42]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1907,7 +2000,7 @@ func (x *HealthCheckResponse) String() string {
 func (*HealthCheckResponse) ProtoMessage() {}
 
 func (x *HealthCheckResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[40]
+	mi := &file_enclave_proto_msgTypes[42]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1920,7 +2013,7 @@ func (x *HealthCheckResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthCheckResponse.ProtoReflect.Descriptor instead.
 func (*HealthCheckResponse) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{40}
+	return file_enclave_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *HealthCheckResponse) GetStatus() bool {
@@ -1946,7 +2039,7 @@ type EmptyArgs struct {
 func (x *EmptyArgs) Reset() {
 	*x = EmptyArgs{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[41]
+		mi := &file_enclave_proto_msgTypes[43]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1959,7 +2052,7 @@ func (x *EmptyArgs) String() string {
 func (*EmptyArgs) ProtoMessage() {}
 
 func (x *EmptyArgs) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[41]
+	mi := &file_enclave_proto_msgTypes[43]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1972,7 +2065,7 @@ func (x *EmptyArgs) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EmptyArgs.ProtoReflect.Descriptor instead.
 func (*EmptyArgs) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{41}
+	return file_enclave_proto_rawDescGZIP(), []int{43}
 }
 
 type AttestationReportMsg struct {
@@ -1989,7 +2082,7 @@ type AttestationReportMsg struct {
 func (x *AttestationReportMsg) Reset() {
 	*x = AttestationReportMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[42]
+		mi := &file_enclave_proto_msgTypes[44]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2002,7 +2095,7 @@ func (x *AttestationReportMsg) String() string {
 func (*AttestationReportMsg) ProtoMessage() {}
 
 func (x *AttestationReportMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[42]
+	mi := &file_enclave_proto_msgTypes[44]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2015,7 +2108,7 @@ func (x *AttestationReportMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttestationReportMsg.ProtoReflect.Descriptor instead.
 func (*AttestationReportMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{42}
+	return file_enclave_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *AttestationReportMsg) GetReport() []byte {
@@ -2061,7 +2154,7 @@ type BlockSubmissionResponseMsg struct {
 func (x *BlockSubmissionResponseMsg) Reset() {
 	*x = BlockSubmissionResponseMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[43]
+		mi := &file_enclave_proto_msgTypes[45]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2074,7 +2167,7 @@ func (x *BlockSubmissionResponseMsg) String() string {
 func (*BlockSubmissionResponseMsg) ProtoMessage() {}
 
 func (x *BlockSubmissionResponseMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[43]
+	mi := &file_enclave_proto_msgTypes[45]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2087,7 +2180,7 @@ func (x *BlockSubmissionResponseMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockSubmissionResponseMsg.ProtoReflect.Descriptor instead.
 func (*BlockSubmissionResponseMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{43}
+	return file_enclave_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *BlockSubmissionResponseMsg) GetProducedBatch() *ExtBatchMsg {
@@ -2137,7 +2230,7 @@ type BlockSubmissionErrorMsg struct {
 func (x *BlockSubmissionErrorMsg) Reset() {
 	*x = BlockSubmissionErrorMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[44]
+		mi := &file_enclave_proto_msgTypes[46]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2150,7 +2243,7 @@ func (x *BlockSubmissionErrorMsg) String() string {
 func (*BlockSubmissionErrorMsg) ProtoMessage() {}
 
 func (x *BlockSubmissionErrorMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[44]
+	mi := &file_enclave_proto_msgTypes[46]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2163,7 +2256,7 @@ func (x *BlockSubmissionErrorMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BlockSubmissionErrorMsg.ProtoReflect.Descriptor instead.
 func (*BlockSubmissionErrorMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{44}
+	return file_enclave_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *BlockSubmissionErrorMsg) GetCause() string {
@@ -2195,7 +2288,7 @@ type CrossChainMsg struct {
 func (x *CrossChainMsg) Reset() {
 	*x = CrossChainMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[45]
+		mi := &file_enclave_proto_msgTypes[47]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2208,7 +2301,7 @@ func (x *CrossChainMsg) String() string {
 func (*CrossChainMsg) ProtoMessage() {}
 
 func (x *CrossChainMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[45]
+	mi := &file_enclave_proto_msgTypes[47]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2221,7 +2314,7 @@ func (x *CrossChainMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CrossChainMsg.ProtoReflect.Descriptor instead.
 func (*CrossChainMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{45}
+	return file_enclave_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *CrossChainMsg) GetSender() []byte {
@@ -2272,7 +2365,7 @@ type ExtBatchMsg struct {
 func (x *ExtBatchMsg) Reset() {
 	*x = ExtBatchMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[46]
+		mi := &file_enclave_proto_msgTypes[48]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2285,7 +2378,7 @@ func (x *ExtBatchMsg) String() string {
 func (*ExtBatchMsg) ProtoMessage() {}
 
 func (x *ExtBatchMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[46]
+	mi := &file_enclave_proto_msgTypes[48]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2298,7 +2391,7 @@ func (x *ExtBatchMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtBatchMsg.ProtoReflect.Descriptor instead.
 func (*ExtBatchMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{46}
+	return file_enclave_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *ExtBatchMsg) GetHeader() *BatchHeaderMsg {
@@ -2356,7 +2449,7 @@ type BatchHeaderMsg struct {
 func (x *BatchHeaderMsg) Reset() {
 	*x = BatchHeaderMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[47]
+		mi := &file_enclave_proto_msgTypes[49]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2369,7 +2462,7 @@ func (x *BatchHeaderMsg) String() string {
 func (*BatchHeaderMsg) ProtoMessage() {}
 
 func (x *BatchHeaderMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[47]
+	mi := &file_enclave_proto_msgTypes[49]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2382,7 +2475,7 @@ func (x *BatchHeaderMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchHeaderMsg.ProtoReflect.Descriptor instead.
 func (*BatchHeaderMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{47}
+	return file_enclave_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *BatchHeaderMsg) GetParentHash() []byte {
@@ -2565,7 +2658,7 @@ type ExtRollupMsg struct {
 func (x *ExtRollupMsg) Reset() {
 	*x = ExtRollupMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[48]
+		mi := &file_enclave_proto_msgTypes[50]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2578,7 +2671,7 @@ func (x *ExtRollupMsg) String() string {
 func (*ExtRollupMsg) ProtoMessage() {}
 
 func (x *ExtRollupMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[48]
+	mi := &file_enclave_proto_msgTypes[50]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2591,7 +2684,7 @@ func (x *ExtRollupMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtRollupMsg.ProtoReflect.Descriptor instead.
 func (*ExtRollupMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{48}
+	return file_enclave_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *ExtRollupMsg) GetHeader() *RollupHeaderMsg {
@@ -2642,7 +2735,7 @@ type RollupHeaderMsg struct {
 func (x *RollupHeaderMsg) Reset() {
 	*x = RollupHeaderMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[49]
+		mi := &file_enclave_proto_msgTypes[51]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2655,7 +2748,7 @@ func (x *RollupHeaderMsg) String() string {
 func (*RollupHeaderMsg) ProtoMessage() {}
 
 func (x *RollupHeaderMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[49]
+	mi := &file_enclave_proto_msgTypes[51]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2668,7 +2761,7 @@ func (x *RollupHeaderMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollupHeaderMsg.ProtoReflect.Descriptor instead.
 func (*RollupHeaderMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{49}
+	return file_enclave_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *RollupHeaderMsg) GetParentHash() []byte {
@@ -2852,7 +2945,7 @@ type SecretResponseMsg struct {
 func (x *SecretResponseMsg) Reset() {
 	*x = SecretResponseMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[50]
+		mi := &file_enclave_proto_msgTypes[52]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2865,7 +2958,7 @@ func (x *SecretResponseMsg) String() string {
 func (*SecretResponseMsg) ProtoMessage() {}
 
 func (x *SecretResponseMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[50]
+	mi := &file_enclave_proto_msgTypes[52]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2878,7 +2971,7 @@ func (x *SecretResponseMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretResponseMsg.ProtoReflect.Descriptor instead.
 func (*SecretResponseMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{50}
+	return file_enclave_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *SecretResponseMsg) GetSecret() []byte {
@@ -2915,7 +3008,7 @@ type WithdrawalMsg struct {
 func (x *WithdrawalMsg) Reset() {
 	*x = WithdrawalMsg{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_enclave_proto_msgTypes[51]
+		mi := &file_enclave_proto_msgTypes[53]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2928,7 +3021,7 @@ func (x *WithdrawalMsg) String() string {
 func (*WithdrawalMsg) ProtoMessage() {}
 
 func (x *WithdrawalMsg) ProtoReflect() protoreflect.Message {
-	mi := &file_enclave_proto_msgTypes[51]
+	mi := &file_enclave_proto_msgTypes[53]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2941,7 +3034,7 @@ func (x *WithdrawalMsg) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WithdrawalMsg.ProtoReflect.Descriptor instead.
 func (*WithdrawalMsg) Descriptor() ([]byte, []int) {
-	return file_enclave_proto_rawDescGZIP(), []int{51}
+	return file_enclave_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *WithdrawalMsg) GetAmount() []byte {
@@ -2969,7 +3062,14 @@ var File_enclave_proto protoreflect.FileDescriptor
 
 var file_enclave_proto_rawDesc = []byte{
 	0x0a, 0x0d, 0x65, 0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12,
-	0x09, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x22, 0x0f, 0x0a, 0x0d, 0x53, 0x74,
+	0x09, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x22, 0x15, 0x0a, 0x13, 0x43, 0x72,
+	0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x22, 0x57, 0x0a, 0x14, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x6c, 0x75,
+	0x70, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x29, 0x0a, 0x03, 0x6d, 0x73, 0x67,
+	0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74,
+	0x65, 0x64, 0x2e, 0x45, 0x78, 0x74, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x4d, 0x73, 0x67, 0x52,
+	0x03, 0x6d, 0x73, 0x67, 0x12, 0x14, 0x0a, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x05, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x22, 0x0f, 0x0a, 0x0d, 0x53, 0x74,
 	0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x3e, 0x0a, 0x0e, 0x53,
 	0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x16, 0x0a,
 	0x06, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x05, 0x52, 0x06, 0x73,
@@ -3289,7 +3389,7 @@ var file_enclave_proto_rawDesc = []byte{
 	0x65, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x09, 0x72, 0x65, 0x63, 0x69, 0x70,
 	0x69, 0x65, 0x6e, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74,
 	0x18, 0x03, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x08, 0x63, 0x6f, 0x6e, 0x74, 0x72, 0x61, 0x63, 0x74,
-	0x32, 0xd0, 0x0c, 0x0a, 0x0c, 0x45, 0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x50, 0x72, 0x6f, 0x74,
+	0x32, 0xa2, 0x0d, 0x0a, 0x0c, 0x45, 0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x50, 0x72, 0x6f, 0x74,
 	0x6f, 0x12, 0x3f, 0x0a, 0x06, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x18, 0x2e, 0x67, 0x65,
 	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65,
 	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x19, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65,
@@ -3390,9 +3490,14 @@ var file_enclave_proto_rawDesc = []byte{
 	0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x41, 0x72, 0x67,
 	0x73, 0x1a, 0x1e, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x48, 0x65,
 	0x61, 0x6c, 0x74, 0x68, 0x43, 0x68, 0x65, 0x63, 0x6b, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73,
-	0x65, 0x22, 0x00, 0x42, 0x17, 0x5a, 0x15, 0x65, 0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65, 0x2f, 0x72,
-	0x70, 0x63, 0x2f, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x65, 0x22, 0x00, 0x12, 0x50, 0x0a, 0x0b, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x53, 0x74, 0x61,
+	0x74, 0x65, 0x12, 0x1e, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x43,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x1f, 0x2e, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2e, 0x43,
+	0x72, 0x65, 0x61, 0x74, 0x65, 0x52, 0x6f, 0x6c, 0x6c, 0x75, 0x70, 0x52, 0x65, 0x73, 0x70, 0x6f,
+	0x6e, 0x73, 0x65, 0x22, 0x00, 0x42, 0x17, 0x5a, 0x15, 0x65, 0x6e, 0x63, 0x6c, 0x61, 0x76, 0x65,
+	0x2f, 0x72, 0x70, 0x63, 0x2f, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x62, 0x06,
+	0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -3407,119 +3512,124 @@ func file_enclave_proto_rawDescGZIP() []byte {
 	return file_enclave_proto_rawDescData
 }
 
-var file_enclave_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
+var file_enclave_proto_msgTypes = make([]protoimpl.MessageInfo, 54)
 var file_enclave_proto_goTypes = []interface{}{
-	(*StatusRequest)(nil),                 // 0: generated.StatusRequest
-	(*StatusResponse)(nil),                // 1: generated.StatusResponse
-	(*AttestationRequest)(nil),            // 2: generated.AttestationRequest
-	(*AttestationResponse)(nil),           // 3: generated.AttestationResponse
-	(*GenerateSecretRequest)(nil),         // 4: generated.GenerateSecretRequest
-	(*GenerateSecretResponse)(nil),        // 5: generated.GenerateSecretResponse
-	(*InitEnclaveRequest)(nil),            // 6: generated.InitEnclaveRequest
-	(*InitEnclaveResponse)(nil),           // 7: generated.InitEnclaveResponse
-	(*StartRequest)(nil),                  // 8: generated.StartRequest
-	(*StartResponse)(nil),                 // 9: generated.StartResponse
-	(*SubmitBlockRequest)(nil),            // 10: generated.SubmitBlockRequest
-	(*SubmitBlockResponse)(nil),           // 11: generated.SubmitBlockResponse
-	(*SubmitTxRequest)(nil),               // 12: generated.SubmitTxRequest
-	(*SubmitTxResponse)(nil),              // 13: generated.SubmitTxResponse
-	(*SubmitBatchRequest)(nil),            // 14: generated.SubmitBatchRequest
-	(*SubmitBatchResponse)(nil),           // 15: generated.SubmitBatchResponse
-	(*OffChainRequest)(nil),               // 16: generated.OffChainRequest
-	(*OffChainResponse)(nil),              // 17: generated.OffChainResponse
-	(*GetTransactionCountRequest)(nil),    // 18: generated.GetTransactionCountRequest
-	(*GetTransactionCountResponse)(nil),   // 19: generated.GetTransactionCountResponse
-	(*StopRequest)(nil),                   // 20: generated.StopRequest
-	(*StopResponse)(nil),                  // 21: generated.StopResponse
-	(*GetTransactionRequest)(nil),         // 22: generated.GetTransactionRequest
-	(*GetTransactionResponse)(nil),        // 23: generated.GetTransactionResponse
-	(*GetTransactionReceiptRequest)(nil),  // 24: generated.GetTransactionReceiptRequest
-	(*GetTransactionReceiptResponse)(nil), // 25: generated.GetTransactionReceiptResponse
-	(*AddViewingKeyRequest)(nil),          // 26: generated.AddViewingKeyRequest
-	(*AddViewingKeyResponse)(nil),         // 27: generated.AddViewingKeyResponse
-	(*GetBalanceRequest)(nil),             // 28: generated.GetBalanceRequest
-	(*GetBalanceResponse)(nil),            // 29: generated.GetBalanceResponse
-	(*GetCodeRequest)(nil),                // 30: generated.GetCodeRequest
-	(*GetCodeResponse)(nil),               // 31: generated.GetCodeResponse
-	(*SubscribeRequest)(nil),              // 32: generated.SubscribeRequest
-	(*SubscribeResponse)(nil),             // 33: generated.SubscribeResponse
-	(*UnsubscribeRequest)(nil),            // 34: generated.UnsubscribeRequest
-	(*UnsubscribeResponse)(nil),           // 35: generated.UnsubscribeResponse
-	(*EstimateGasRequest)(nil),            // 36: generated.EstimateGasRequest
-	(*EstimateGasResponse)(nil),           // 37: generated.EstimateGasResponse
-	(*GetLogsRequest)(nil),                // 38: generated.GetLogsRequest
-	(*GetLogsResponse)(nil),               // 39: generated.GetLogsResponse
-	(*HealthCheckResponse)(nil),           // 40: generated.HealthCheckResponse
-	(*EmptyArgs)(nil),                     // 41: generated.EmptyArgs
-	(*AttestationReportMsg)(nil),          // 42: generated.AttestationReportMsg
-	(*BlockSubmissionResponseMsg)(nil),    // 43: generated.BlockSubmissionResponseMsg
-	(*BlockSubmissionErrorMsg)(nil),       // 44: generated.BlockSubmissionErrorMsg
-	(*CrossChainMsg)(nil),                 // 45: generated.CrossChainMsg
-	(*ExtBatchMsg)(nil),                   // 46: generated.ExtBatchMsg
-	(*BatchHeaderMsg)(nil),                // 47: generated.BatchHeaderMsg
-	(*ExtRollupMsg)(nil),                  // 48: generated.ExtRollupMsg
-	(*RollupHeaderMsg)(nil),               // 49: generated.RollupHeaderMsg
-	(*SecretResponseMsg)(nil),             // 50: generated.SecretResponseMsg
-	(*WithdrawalMsg)(nil),                 // 51: generated.WithdrawalMsg
+	(*CreateRollupRequest)(nil),           // 0: generated.CreateRollupRequest
+	(*CreateRollupResponse)(nil),          // 1: generated.CreateRollupResponse
+	(*StatusRequest)(nil),                 // 2: generated.StatusRequest
+	(*StatusResponse)(nil),                // 3: generated.StatusResponse
+	(*AttestationRequest)(nil),            // 4: generated.AttestationRequest
+	(*AttestationResponse)(nil),           // 5: generated.AttestationResponse
+	(*GenerateSecretRequest)(nil),         // 6: generated.GenerateSecretRequest
+	(*GenerateSecretResponse)(nil),        // 7: generated.GenerateSecretResponse
+	(*InitEnclaveRequest)(nil),            // 8: generated.InitEnclaveRequest
+	(*InitEnclaveResponse)(nil),           // 9: generated.InitEnclaveResponse
+	(*StartRequest)(nil),                  // 10: generated.StartRequest
+	(*StartResponse)(nil),                 // 11: generated.StartResponse
+	(*SubmitBlockRequest)(nil),            // 12: generated.SubmitBlockRequest
+	(*SubmitBlockResponse)(nil),           // 13: generated.SubmitBlockResponse
+	(*SubmitTxRequest)(nil),               // 14: generated.SubmitTxRequest
+	(*SubmitTxResponse)(nil),              // 15: generated.SubmitTxResponse
+	(*SubmitBatchRequest)(nil),            // 16: generated.SubmitBatchRequest
+	(*SubmitBatchResponse)(nil),           // 17: generated.SubmitBatchResponse
+	(*OffChainRequest)(nil),               // 18: generated.OffChainRequest
+	(*OffChainResponse)(nil),              // 19: generated.OffChainResponse
+	(*GetTransactionCountRequest)(nil),    // 20: generated.GetTransactionCountRequest
+	(*GetTransactionCountResponse)(nil),   // 21: generated.GetTransactionCountResponse
+	(*StopRequest)(nil),                   // 22: generated.StopRequest
+	(*StopResponse)(nil),                  // 23: generated.StopResponse
+	(*GetTransactionRequest)(nil),         // 24: generated.GetTransactionRequest
+	(*GetTransactionResponse)(nil),        // 25: generated.GetTransactionResponse
+	(*GetTransactionReceiptRequest)(nil),  // 26: generated.GetTransactionReceiptRequest
+	(*GetTransactionReceiptResponse)(nil), // 27: generated.GetTransactionReceiptResponse
+	(*AddViewingKeyRequest)(nil),          // 28: generated.AddViewingKeyRequest
+	(*AddViewingKeyResponse)(nil),         // 29: generated.AddViewingKeyResponse
+	(*GetBalanceRequest)(nil),             // 30: generated.GetBalanceRequest
+	(*GetBalanceResponse)(nil),            // 31: generated.GetBalanceResponse
+	(*GetCodeRequest)(nil),                // 32: generated.GetCodeRequest
+	(*GetCodeResponse)(nil),               // 33: generated.GetCodeResponse
+	(*SubscribeRequest)(nil),              // 34: generated.SubscribeRequest
+	(*SubscribeResponse)(nil),             // 35: generated.SubscribeResponse
+	(*UnsubscribeRequest)(nil),            // 36: generated.UnsubscribeRequest
+	(*UnsubscribeResponse)(nil),           // 37: generated.UnsubscribeResponse
+	(*EstimateGasRequest)(nil),            // 38: generated.EstimateGasRequest
+	(*EstimateGasResponse)(nil),           // 39: generated.EstimateGasResponse
+	(*GetLogsRequest)(nil),                // 40: generated.GetLogsRequest
+	(*GetLogsResponse)(nil),               // 41: generated.GetLogsResponse
+	(*HealthCheckResponse)(nil),           // 42: generated.HealthCheckResponse
+	(*EmptyArgs)(nil),                     // 43: generated.EmptyArgs
+	(*AttestationReportMsg)(nil),          // 44: generated.AttestationReportMsg
+	(*BlockSubmissionResponseMsg)(nil),    // 45: generated.BlockSubmissionResponseMsg
+	(*BlockSubmissionErrorMsg)(nil),       // 46: generated.BlockSubmissionErrorMsg
+	(*CrossChainMsg)(nil),                 // 47: generated.CrossChainMsg
+	(*ExtBatchMsg)(nil),                   // 48: generated.ExtBatchMsg
+	(*BatchHeaderMsg)(nil),                // 49: generated.BatchHeaderMsg
+	(*ExtRollupMsg)(nil),                  // 50: generated.ExtRollupMsg
+	(*RollupHeaderMsg)(nil),               // 51: generated.RollupHeaderMsg
+	(*SecretResponseMsg)(nil),             // 52: generated.SecretResponseMsg
+	(*WithdrawalMsg)(nil),                 // 53: generated.WithdrawalMsg
 }
 var file_enclave_proto_depIdxs = []int32{
-	42, // 0: generated.AttestationResponse.attestationReportMsg:type_name -> generated.AttestationReportMsg
-	43, // 1: generated.SubmitBlockResponse.blockSubmissionResponse:type_name -> generated.BlockSubmissionResponseMsg
-	46, // 2: generated.SubmitBatchRequest.batch:type_name -> generated.ExtBatchMsg
-	46, // 3: generated.BlockSubmissionResponseMsg.producedBatch:type_name -> generated.ExtBatchMsg
-	48, // 4: generated.BlockSubmissionResponseMsg.producedRollup:type_name -> generated.ExtRollupMsg
-	50, // 5: generated.BlockSubmissionResponseMsg.producedSecretResponses:type_name -> generated.SecretResponseMsg
-	44, // 6: generated.BlockSubmissionResponseMsg.error:type_name -> generated.BlockSubmissionErrorMsg
-	47, // 7: generated.ExtBatchMsg.header:type_name -> generated.BatchHeaderMsg
-	45, // 8: generated.BatchHeaderMsg.CrossChainMessages:type_name -> generated.CrossChainMsg
-	49, // 9: generated.ExtRollupMsg.header:type_name -> generated.RollupHeaderMsg
-	46, // 10: generated.ExtRollupMsg.batches:type_name -> generated.ExtBatchMsg
-	45, // 11: generated.RollupHeaderMsg.CrossChainMessages:type_name -> generated.CrossChainMsg
-	0,  // 12: generated.EnclaveProto.Status:input_type -> generated.StatusRequest
-	2,  // 13: generated.EnclaveProto.Attestation:input_type -> generated.AttestationRequest
-	4,  // 14: generated.EnclaveProto.GenerateSecret:input_type -> generated.GenerateSecretRequest
-	6,  // 15: generated.EnclaveProto.InitEnclave:input_type -> generated.InitEnclaveRequest
-	10, // 16: generated.EnclaveProto.SubmitL1Block:input_type -> generated.SubmitBlockRequest
-	12, // 17: generated.EnclaveProto.SubmitTx:input_type -> generated.SubmitTxRequest
-	14, // 18: generated.EnclaveProto.SubmitBatch:input_type -> generated.SubmitBatchRequest
-	16, // 19: generated.EnclaveProto.ExecuteOffChainTransaction:input_type -> generated.OffChainRequest
-	18, // 20: generated.EnclaveProto.GetTransactionCount:input_type -> generated.GetTransactionCountRequest
-	20, // 21: generated.EnclaveProto.Stop:input_type -> generated.StopRequest
-	22, // 22: generated.EnclaveProto.GetTransaction:input_type -> generated.GetTransactionRequest
-	24, // 23: generated.EnclaveProto.GetTransactionReceipt:input_type -> generated.GetTransactionReceiptRequest
-	26, // 24: generated.EnclaveProto.AddViewingKey:input_type -> generated.AddViewingKeyRequest
-	28, // 25: generated.EnclaveProto.GetBalance:input_type -> generated.GetBalanceRequest
-	30, // 26: generated.EnclaveProto.GetCode:input_type -> generated.GetCodeRequest
-	32, // 27: generated.EnclaveProto.Subscribe:input_type -> generated.SubscribeRequest
-	34, // 28: generated.EnclaveProto.Unsubscribe:input_type -> generated.UnsubscribeRequest
-	36, // 29: generated.EnclaveProto.EstimateGas:input_type -> generated.EstimateGasRequest
-	38, // 30: generated.EnclaveProto.GetLogs:input_type -> generated.GetLogsRequest
-	41, // 31: generated.EnclaveProto.HealthCheck:input_type -> generated.EmptyArgs
-	1,  // 32: generated.EnclaveProto.Status:output_type -> generated.StatusResponse
-	3,  // 33: generated.EnclaveProto.Attestation:output_type -> generated.AttestationResponse
-	5,  // 34: generated.EnclaveProto.GenerateSecret:output_type -> generated.GenerateSecretResponse
-	7,  // 35: generated.EnclaveProto.InitEnclave:output_type -> generated.InitEnclaveResponse
-	11, // 36: generated.EnclaveProto.SubmitL1Block:output_type -> generated.SubmitBlockResponse
-	13, // 37: generated.EnclaveProto.SubmitTx:output_type -> generated.SubmitTxResponse
-	15, // 38: generated.EnclaveProto.SubmitBatch:output_type -> generated.SubmitBatchResponse
-	17, // 39: generated.EnclaveProto.ExecuteOffChainTransaction:output_type -> generated.OffChainResponse
-	19, // 40: generated.EnclaveProto.GetTransactionCount:output_type -> generated.GetTransactionCountResponse
-	21, // 41: generated.EnclaveProto.Stop:output_type -> generated.StopResponse
-	23, // 42: generated.EnclaveProto.GetTransaction:output_type -> generated.GetTransactionResponse
-	25, // 43: generated.EnclaveProto.GetTransactionReceipt:output_type -> generated.GetTransactionReceiptResponse
-	27, // 44: generated.EnclaveProto.AddViewingKey:output_type -> generated.AddViewingKeyResponse
-	29, // 45: generated.EnclaveProto.GetBalance:output_type -> generated.GetBalanceResponse
-	31, // 46: generated.EnclaveProto.GetCode:output_type -> generated.GetCodeResponse
-	33, // 47: generated.EnclaveProto.Subscribe:output_type -> generated.SubscribeResponse
-	35, // 48: generated.EnclaveProto.Unsubscribe:output_type -> generated.UnsubscribeResponse
-	37, // 49: generated.EnclaveProto.EstimateGas:output_type -> generated.EstimateGasResponse
-	39, // 50: generated.EnclaveProto.GetLogs:output_type -> generated.GetLogsResponse
-	40, // 51: generated.EnclaveProto.HealthCheck:output_type -> generated.HealthCheckResponse
-	32, // [32:52] is the sub-list for method output_type
-	12, // [12:32] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	50, // 0: generated.CreateRollupResponse.msg:type_name -> generated.ExtRollupMsg
+	44, // 1: generated.AttestationResponse.attestationReportMsg:type_name -> generated.AttestationReportMsg
+	45, // 2: generated.SubmitBlockResponse.blockSubmissionResponse:type_name -> generated.BlockSubmissionResponseMsg
+	48, // 3: generated.SubmitBatchRequest.batch:type_name -> generated.ExtBatchMsg
+	48, // 4: generated.BlockSubmissionResponseMsg.producedBatch:type_name -> generated.ExtBatchMsg
+	50, // 5: generated.BlockSubmissionResponseMsg.producedRollup:type_name -> generated.ExtRollupMsg
+	52, // 6: generated.BlockSubmissionResponseMsg.producedSecretResponses:type_name -> generated.SecretResponseMsg
+	46, // 7: generated.BlockSubmissionResponseMsg.error:type_name -> generated.BlockSubmissionErrorMsg
+	49, // 8: generated.ExtBatchMsg.header:type_name -> generated.BatchHeaderMsg
+	47, // 9: generated.BatchHeaderMsg.CrossChainMessages:type_name -> generated.CrossChainMsg
+	51, // 10: generated.ExtRollupMsg.header:type_name -> generated.RollupHeaderMsg
+	48, // 11: generated.ExtRollupMsg.batches:type_name -> generated.ExtBatchMsg
+	47, // 12: generated.RollupHeaderMsg.CrossChainMessages:type_name -> generated.CrossChainMsg
+	2,  // 13: generated.EnclaveProto.Status:input_type -> generated.StatusRequest
+	4,  // 14: generated.EnclaveProto.Attestation:input_type -> generated.AttestationRequest
+	6,  // 15: generated.EnclaveProto.GenerateSecret:input_type -> generated.GenerateSecretRequest
+	8,  // 16: generated.EnclaveProto.InitEnclave:input_type -> generated.InitEnclaveRequest
+	12, // 17: generated.EnclaveProto.SubmitL1Block:input_type -> generated.SubmitBlockRequest
+	14, // 18: generated.EnclaveProto.SubmitTx:input_type -> generated.SubmitTxRequest
+	16, // 19: generated.EnclaveProto.SubmitBatch:input_type -> generated.SubmitBatchRequest
+	18, // 20: generated.EnclaveProto.ExecuteOffChainTransaction:input_type -> generated.OffChainRequest
+	20, // 21: generated.EnclaveProto.GetTransactionCount:input_type -> generated.GetTransactionCountRequest
+	22, // 22: generated.EnclaveProto.Stop:input_type -> generated.StopRequest
+	24, // 23: generated.EnclaveProto.GetTransaction:input_type -> generated.GetTransactionRequest
+	26, // 24: generated.EnclaveProto.GetTransactionReceipt:input_type -> generated.GetTransactionReceiptRequest
+	28, // 25: generated.EnclaveProto.AddViewingKey:input_type -> generated.AddViewingKeyRequest
+	30, // 26: generated.EnclaveProto.GetBalance:input_type -> generated.GetBalanceRequest
+	32, // 27: generated.EnclaveProto.GetCode:input_type -> generated.GetCodeRequest
+	34, // 28: generated.EnclaveProto.Subscribe:input_type -> generated.SubscribeRequest
+	36, // 29: generated.EnclaveProto.Unsubscribe:input_type -> generated.UnsubscribeRequest
+	38, // 30: generated.EnclaveProto.EstimateGas:input_type -> generated.EstimateGasRequest
+	40, // 31: generated.EnclaveProto.GetLogs:input_type -> generated.GetLogsRequest
+	43, // 32: generated.EnclaveProto.HealthCheck:input_type -> generated.EmptyArgs
+	0,  // 33: generated.EnclaveProto.RollupState:input_type -> generated.CreateRollupRequest
+	3,  // 34: generated.EnclaveProto.Status:output_type -> generated.StatusResponse
+	5,  // 35: generated.EnclaveProto.Attestation:output_type -> generated.AttestationResponse
+	7,  // 36: generated.EnclaveProto.GenerateSecret:output_type -> generated.GenerateSecretResponse
+	9,  // 37: generated.EnclaveProto.InitEnclave:output_type -> generated.InitEnclaveResponse
+	13, // 38: generated.EnclaveProto.SubmitL1Block:output_type -> generated.SubmitBlockResponse
+	15, // 39: generated.EnclaveProto.SubmitTx:output_type -> generated.SubmitTxResponse
+	17, // 40: generated.EnclaveProto.SubmitBatch:output_type -> generated.SubmitBatchResponse
+	19, // 41: generated.EnclaveProto.ExecuteOffChainTransaction:output_type -> generated.OffChainResponse
+	21, // 42: generated.EnclaveProto.GetTransactionCount:output_type -> generated.GetTransactionCountResponse
+	23, // 43: generated.EnclaveProto.Stop:output_type -> generated.StopResponse
+	25, // 44: generated.EnclaveProto.GetTransaction:output_type -> generated.GetTransactionResponse
+	27, // 45: generated.EnclaveProto.GetTransactionReceipt:output_type -> generated.GetTransactionReceiptResponse
+	29, // 46: generated.EnclaveProto.AddViewingKey:output_type -> generated.AddViewingKeyResponse
+	31, // 47: generated.EnclaveProto.GetBalance:output_type -> generated.GetBalanceResponse
+	33, // 48: generated.EnclaveProto.GetCode:output_type -> generated.GetCodeResponse
+	35, // 49: generated.EnclaveProto.Subscribe:output_type -> generated.SubscribeResponse
+	37, // 50: generated.EnclaveProto.Unsubscribe:output_type -> generated.UnsubscribeResponse
+	39, // 51: generated.EnclaveProto.EstimateGas:output_type -> generated.EstimateGasResponse
+	41, // 52: generated.EnclaveProto.GetLogs:output_type -> generated.GetLogsResponse
+	42, // 53: generated.EnclaveProto.HealthCheck:output_type -> generated.HealthCheckResponse
+	1,  // 54: generated.EnclaveProto.RollupState:output_type -> generated.CreateRollupResponse
+	34, // [34:55] is the sub-list for method output_type
+	13, // [13:34] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_enclave_proto_init() }
@@ -3529,7 +3639,7 @@ func file_enclave_proto_init() {
 	}
 	if !protoimpl.UnsafeEnabled {
 		file_enclave_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StatusRequest); i {
+			switch v := v.(*CreateRollupRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3541,7 +3651,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StatusResponse); i {
+			switch v := v.(*CreateRollupResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3553,7 +3663,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttestationRequest); i {
+			switch v := v.(*StatusRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3565,7 +3675,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttestationResponse); i {
+			switch v := v.(*StatusResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3577,7 +3687,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GenerateSecretRequest); i {
+			switch v := v.(*AttestationRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3589,7 +3699,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GenerateSecretResponse); i {
+			switch v := v.(*AttestationResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3601,7 +3711,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*InitEnclaveRequest); i {
+			switch v := v.(*GenerateSecretRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3613,7 +3723,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*InitEnclaveResponse); i {
+			switch v := v.(*GenerateSecretResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3625,7 +3735,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[8].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StartRequest); i {
+			switch v := v.(*InitEnclaveRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3637,7 +3747,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[9].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StartResponse); i {
+			switch v := v.(*InitEnclaveResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3649,7 +3759,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[10].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubmitBlockRequest); i {
+			switch v := v.(*StartRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3661,7 +3771,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[11].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubmitBlockResponse); i {
+			switch v := v.(*StartResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3673,7 +3783,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[12].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubmitTxRequest); i {
+			switch v := v.(*SubmitBlockRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3685,7 +3795,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[13].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubmitTxResponse); i {
+			switch v := v.(*SubmitBlockResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3697,7 +3807,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[14].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubmitBatchRequest); i {
+			switch v := v.(*SubmitTxRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3709,7 +3819,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubmitBatchResponse); i {
+			switch v := v.(*SubmitTxResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3721,7 +3831,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*OffChainRequest); i {
+			switch v := v.(*SubmitBatchRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3733,7 +3843,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*OffChainResponse); i {
+			switch v := v.(*SubmitBatchResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3745,7 +3855,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetTransactionCountRequest); i {
+			switch v := v.(*OffChainRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3757,7 +3867,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetTransactionCountResponse); i {
+			switch v := v.(*OffChainResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3769,7 +3879,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StopRequest); i {
+			switch v := v.(*GetTransactionCountRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3781,7 +3891,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StopResponse); i {
+			switch v := v.(*GetTransactionCountResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3793,7 +3903,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetTransactionRequest); i {
+			switch v := v.(*StopRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3805,7 +3915,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetTransactionResponse); i {
+			switch v := v.(*StopResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3817,7 +3927,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetTransactionReceiptRequest); i {
+			switch v := v.(*GetTransactionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3829,7 +3939,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetTransactionReceiptResponse); i {
+			switch v := v.(*GetTransactionResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3841,7 +3951,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddViewingKeyRequest); i {
+			switch v := v.(*GetTransactionReceiptRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3853,7 +3963,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddViewingKeyResponse); i {
+			switch v := v.(*GetTransactionReceiptResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3865,7 +3975,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetBalanceRequest); i {
+			switch v := v.(*AddViewingKeyRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3877,7 +3987,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetBalanceResponse); i {
+			switch v := v.(*AddViewingKeyResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3889,7 +3999,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetCodeRequest); i {
+			switch v := v.(*GetBalanceRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3901,7 +4011,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetCodeResponse); i {
+			switch v := v.(*GetBalanceResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3913,7 +4023,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubscribeRequest); i {
+			switch v := v.(*GetCodeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3925,7 +4035,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SubscribeResponse); i {
+			switch v := v.(*GetCodeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3937,7 +4047,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UnsubscribeRequest); i {
+			switch v := v.(*SubscribeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3949,7 +4059,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[35].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*UnsubscribeResponse); i {
+			switch v := v.(*SubscribeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3961,7 +4071,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[36].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EstimateGasRequest); i {
+			switch v := v.(*UnsubscribeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3973,7 +4083,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[37].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EstimateGasResponse); i {
+			switch v := v.(*UnsubscribeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3985,7 +4095,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[38].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetLogsRequest); i {
+			switch v := v.(*EstimateGasRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3997,7 +4107,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[39].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetLogsResponse); i {
+			switch v := v.(*EstimateGasResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4009,7 +4119,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[40].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HealthCheckResponse); i {
+			switch v := v.(*GetLogsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4021,7 +4131,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[41].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EmptyArgs); i {
+			switch v := v.(*GetLogsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4033,7 +4143,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[42].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AttestationReportMsg); i {
+			switch v := v.(*HealthCheckResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4045,7 +4155,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[43].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*BlockSubmissionResponseMsg); i {
+			switch v := v.(*EmptyArgs); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4057,7 +4167,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[44].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*BlockSubmissionErrorMsg); i {
+			switch v := v.(*AttestationReportMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4069,7 +4179,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[45].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CrossChainMsg); i {
+			switch v := v.(*BlockSubmissionResponseMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4081,7 +4191,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[46].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtBatchMsg); i {
+			switch v := v.(*BlockSubmissionErrorMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4093,7 +4203,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[47].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*BatchHeaderMsg); i {
+			switch v := v.(*CrossChainMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4105,7 +4215,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[48].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ExtRollupMsg); i {
+			switch v := v.(*ExtBatchMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4117,7 +4227,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[49].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RollupHeaderMsg); i {
+			switch v := v.(*BatchHeaderMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4129,7 +4239,7 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[50].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SecretResponseMsg); i {
+			switch v := v.(*ExtRollupMsg); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -4141,6 +4251,30 @@ func file_enclave_proto_init() {
 			}
 		}
 		file_enclave_proto_msgTypes[51].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*RollupHeaderMsg); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_enclave_proto_msgTypes[52].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*SecretResponseMsg); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_enclave_proto_msgTypes[53].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*WithdrawalMsg); i {
 			case 0:
 				return &v.state
@@ -4159,7 +4293,7 @@ func file_enclave_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_enclave_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   52,
+			NumMessages:   54,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

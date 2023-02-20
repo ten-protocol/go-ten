@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	intcommon "github.com/obscuronet/go-obscuro/integration/common"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -19,8 +20,6 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 
 	"github.com/obscuronet/go-obscuro/go/rpc"
 
@@ -334,7 +333,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	total := big.NewInt(0)
 	for _, wallet := range s.Params.Wallets.SimObsWallets {
 		client := rpcHandles.ObscuroWalletClient(wallet.Address(), nodeIdx)
-		bal := balance(s.ctx, client, wallet.Address(), s.Params.Wallets.Tokens[rollupextractor.HOC].L2ContractAddress)
+		bal := balance(s.ctx, client, wallet.Address(), s.Params.Wallets.Tokens[intcommon.HOC].L2ContractAddress)
 		total.Add(total, bal)
 	}
 
@@ -534,7 +533,7 @@ out:
 func checkSnapshotLogs(t *testing.T, client *obsclient.AuthObsClient) int {
 	// To exercise the filtering mechanism, we get a snapshot for HOC events only, ignoring POC events.
 	hocFilter := common.FilterCriteriaJSON{
-		Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + rollupextractor.HOCAddr)},
+		Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + intcommon.HOCAddr)},
 	}
 	logs, err := client.GetLogs(context.Background(), hocFilter)
 	if err != nil {
@@ -552,7 +551,7 @@ func assertLogsValid(t *testing.T, owner string, logs []*types.Log) {
 		assertRelevantLogsOnly(t, owner, *receivedLog)
 
 		logAddrHex := receivedLog.Address.Hex()
-		if logAddrHex != "0x"+rollupextractor.HOCAddr {
+		if logAddrHex != "0x"+intcommon.HOCAddr {
 			t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
 		}
 	}

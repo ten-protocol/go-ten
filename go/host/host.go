@@ -356,6 +356,20 @@ func (h *host) startProcessing() {
 	i := int32(0)
 	roundInterrupt := &i
 
+	if h.config.NodeType == common.Sequencer {
+		go func() {
+			for {
+				time.Sleep(5 * time.Second)
+				rollup, err := h.enclaveClient.GenerateRollup()
+				if err == nil {
+					h.publishRollup(rollup)
+				} else {
+					h.logger.Warn("Error generating rollup", log.ErrKey, err)
+				}
+			}
+		}()
+	}
+
 	// Main Processing Loop -
 	// - Process new blocks from the L1 node
 	// - Process new Transactions gossiped from L2 Peers
@@ -466,7 +480,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 
 	if blockSubmissionResponse.ProducedBatch != nil && blockSubmissionResponse.ProducedBatch.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
-		h.publishRollup(blockSubmissionResponse.ProducedRollup)
+		//h.publishRollup(blockSubmissionResponse.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
 		h.storeAndDistributeBatch(blockSubmissionResponse.ProducedBatch)
 	}
@@ -511,7 +525,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 			}
 
 			return string(header[:])
-		}})
+		}}, "rollup_hash", producedRollup.Header.Hash().Hex())
 
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
 	rollupTx, err = h.ethClient.EstimateGasAndGasPrice(rollupTx, h.ethWallet.Address())
@@ -525,7 +539,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	// fire-and-forget (track the receipt asynchronously)
 	// TODO - #718 - Now we have a single sequencer, it is problematic if rollup publication fails. Handle this case
 	//  better.
-	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup, false)
+	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup, true)
 	if err != nil {
 		h.logger.Error("could not issue rollup tx", log.ErrKey, err)
 	}

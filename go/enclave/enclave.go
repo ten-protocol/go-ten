@@ -56,7 +56,7 @@ type enclaveImpl struct {
 	mempool              mempool.Manager
 	l1Blockchain         *gethcore.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
-	bridge               *rollupextractor.RollupExtractor
+	rollupManager        *rollupextractor.RollupExtractor
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
@@ -154,14 +154,6 @@ func NewEnclave(
 
 	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl(logger)
 
-	obscuroBridge := rollupextractor.New(
-		mgmtContractLib,
-		transactionBlobCrypto,
-		config.ObscuroChainID,
-		config.L1ChainID,
-		logger,
-	)
-
 	memp := mempool.New(config.ObscuroChainID)
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
@@ -172,7 +164,7 @@ func NewEnclave(
 		config.NodeType,
 		storage,
 		l1Blockchain,
-		obscuroBridge,
+		//obscuroBridge,
 		crossChainProcessors,
 		memp,
 		enclaveKey,
@@ -181,6 +173,17 @@ func NewEnclave(
 		genesis,
 		logger,
 	)
+
+	rollupManager := rollupextractor.New(
+		mgmtContractLib,
+		transactionBlobCrypto,
+		config.ObscuroChainID,
+		config.L1ChainID,
+		storage,
+		chain,
+		logger,
+	)
+
 	// ensure cached chain state data is up-to-date using the persisted batch data
 	err = chain.ResyncStateDB()
 	if err != nil {
@@ -196,7 +199,7 @@ func NewEnclave(
 		mempool:               memp,
 		l1Blockchain:          l1Blockchain,
 		rpcEncryptionManager:  rpcEncryptionManager,
-		bridge:                obscuroBridge,
+		rollupManager:         rollupManager,
 		subscriptionManager:   subscriptionManager,
 		crossChainProcessors:  crossChainProcessors,
 		chain:                 chain,
@@ -237,6 +240,11 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 	e.logger.Info("ProcessL1Block successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
+
+	err = e.rollupManager.ProcessL1Block(&block)
+	if err != nil {
+		e.logger.Warn("Error processing L1 block for rollups", log.ErrKey, err)
+	}
 
 	// We prepare the block submission response.
 	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
@@ -322,6 +330,15 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 	}
 
 	return nil
+}
+
+func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
+	if e.config.NodeType != common.Sequencer {
+		return nil, errors.New("only sequencer can generate rollups")
+	}
+
+	rollup, err := e.rollupManager.CreateRollup()
+	return rollup.ToExtRollup(e.transactionBlobCrypto), err
 }
 
 // ExecuteOffChainTransaction handles param decryption, validation and encryption
