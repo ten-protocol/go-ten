@@ -2,7 +2,9 @@
 
 The Obscuro Sequencer must have HA capabilities. The reasoning is covered in the "Fast finality" design docs.
 
-One option is to require a governance event to whitelist a new sequencer enclave in case the current one fails over.
+The requirement is that the service must continue even if the enclave of the sequencer crashes and is corrupted.
+
+One option is to require a governance event to whitelist a new sequencer enclave in case the current one becomes unavailable.
 This is not a good solution, because it would lead to significant downtime.
 
 The preferred option is to mark multiple enclaves as sequencers, and make it the responsibility of the operator to switch
