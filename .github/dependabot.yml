@@ -1,0 +1,11 @@
+# Initial dependabot file.
+# Documentation for all configuration options is at:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 4
