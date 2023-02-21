@@ -34,6 +34,8 @@ Each Batch will have three elements:
 
 The protocol payload will not be included in the rollup published to the data availability layer. 
 
+Note: the protocol payload can be used for other protocol specific messages, like current attestations.
+
 ```golang
 type RestartEvent struct {
 	enclaveId                   EnclaveId
