@@ -69,6 +69,12 @@ type HostInputConfig struct {
 
 	// MetricsHTTPPort sets the port where the http server is available
 	MetricsHTTPPort uint
+
+	// UseInMemoryDB sets whether the enclave should use in-memory or persistent storage
+	UseInMemoryDB bool
+
+	// LevelDBPath path for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable, or if using InMemory DB)
+	LevelDBPath string
 }
 
 // ToHostConfig returns a HostConfig given a HostInputConfig
@@ -100,6 +106,8 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		ID:                        gethcommon.Address{},
 		MetricsEnabled:            p.MetricsEnabled,
 		MetricsHTTPPort:           p.MetricsHTTPPort,
+		UseInMemoryDB:             p.UseInMemoryDB,
+		LevelDBPath:               p.LevelDBPath,
 	}
 }
 
@@ -160,6 +168,12 @@ type HostConfig struct {
 
 	// MetricsHTTPPort sets the port where the http server is available
 	MetricsHTTPPort uint
+
+	// Whether the host should use in-memory or persistent storage
+	UseInMemoryDB bool
+
+	// filepath for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable, or if using InMemory DB)
+	LevelDBPath string
 }
 
 // DefaultHostParsedConfig returns a HostConfig with default values.
@@ -190,5 +204,6 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		L1StartHash:               common.L1RootHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
 		MetricsEnabled:            true,
 		MetricsHTTPPort:           14000,
+		UseInMemoryDB:             true,
 	}
 }

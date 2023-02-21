@@ -56,6 +56,8 @@ func (d *DockerNode) startHost() error {
 		"-p2pBindAddress", fmt.Sprintf("0.0.0.0:%d", d.cfg.hostP2PPort),
 		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.hostHTTPPort),
 		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
+		// for now this is hard-coded to true todo: default to false once we're confident
+		"-useInMemoryDB=true",
 	}
 
 	exposedPorts := []int{

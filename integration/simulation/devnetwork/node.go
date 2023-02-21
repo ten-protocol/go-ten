@@ -3,6 +3,7 @@ package devnetwork
 import (
 	"fmt"
 	"math/big"
+	"os"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
@@ -46,6 +47,7 @@ type InMemNodeOperator struct {
 	enclave      *enclavecontainer.EnclaveContainer
 	l1Wallet     wallet.Wallet
 	sqliteDBPath string
+	levelDBPath  string
 }
 
 func (n *InMemNodeOperator) StopHost() error {
@@ -116,6 +118,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1ChainID:                 integration.EthereumChainID,
 		ObscuroChainID:            integration.ObscuroChainID,
 		L1StartHash:               n.l1Data.ObscuroStartBlock,
+		UseInMemoryDB:             false,
+		LevelDBPath:               n.levelDBPath,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.operatorIdx, log.CmpKey, log.HostCmp)
@@ -193,9 +197,14 @@ func (n *InMemNodeOperator) StopEnclave() error {
 func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common.NodeType, l1Data *params.L1SetupData,
 	l1Client ethadapter.EthClient, l1Wallet wallet.Wallet, logger gethlog.Logger,
 ) *InMemNodeOperator {
-	dbFile, err := sql.CreateTempDBFile()
+	// todo: put sqlite and levelDB storage in the same temp dir
+	sqliteDBPath, err := sql.CreateTempDBFile()
 	if err != nil {
-		panic("failed to create temp db path")
+		panic("failed to create temp sqlite db path")
+	}
+	levelDBPath, err := os.MkdirTemp("", "levelDB_*")
+	if err != nil {
+		panic("failed to create temp levelDBPath")
 	}
 	return &InMemNodeOperator{
 		operatorIdx:  operatorIdx,
@@ -205,7 +214,8 @@ func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common
 		l1Client:     l1Client,
 		l1Wallet:     l1Wallet,
 		logger:       logger,
-		sqliteDBPath: dbFile,
+		sqliteDBPath: sqliteDBPath,
+		levelDBPath:  levelDBPath,
 	}
 }
 

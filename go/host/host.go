@@ -83,7 +83,10 @@ func NewHost(
 	logger gethlog.Logger,
 	regMetrics gethmetrics.Registry,
 ) hostcommon.Host {
-	database := db.NewInMemoryDB(regMetrics) // todo - make this config driven
+	database, err := db.CreateDBFromConfig(config, regMetrics, logger)
+	if err != nil {
+		logger.Crit("unable to create database for host", log.ErrKey, err)
+	}
 	host := &host{
 		// config
 		config:  config,
@@ -286,6 +289,10 @@ func (h *host) Stop() {
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
 	h.exitHostCh <- true
+
+	if err := h.db.Stop(); err != nil {
+		h.logger.Error("could not stop DB - %w", err)
+	}
 
 	h.logger.Info("Host shut down successfully.")
 }
