@@ -126,13 +126,17 @@ func (oc *ObscuroChain) UpdateL2Chain(batch *core.Batch) error {
 func (oc *ObscuroChain) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error) {
 	batches := make([]*core.Batch, 0)
 
-	headBatch, _ := oc.storage.FetchHeadBatch()
 	var batch *core.Batch
 	if batchHash == gethcommon.BigToHash(gethcommon.Big0) {
 		batch, _ = oc.storage.FetchBatchByHeight(0)
 		batches = append(batches, batch)
 	} else {
 		batch, _ = oc.storage.FetchBatch(batchHash)
+	}
+
+	headBatch, err := oc.storage.FetchHeadBatch()
+	if err != nil {
+		return nil, err
 	}
 
 	if headBatch.NumberU64() < batch.NumberU64() {
