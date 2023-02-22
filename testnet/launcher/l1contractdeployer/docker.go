@@ -65,7 +65,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (string, string, error)
 	defer cli.Close()
 
 	// make sure the container has finished execution
-	err = docker.WaitForContainerToFinish(n.containerID, time.Minute)
+	err = docker.WaitForContainerToFinish(n.containerID, 2*time.Minute)
 	if err != nil {
 		return "", "", err
 	}
