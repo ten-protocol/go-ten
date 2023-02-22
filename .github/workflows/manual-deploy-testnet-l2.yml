@@ -87,7 +87,6 @@ jobs:
           echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
           echo "L1_HOST=${{env.L1_HOST}}" >> $GITHUB_OUTPUT
-          
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -123,6 +122,12 @@ jobs:
           echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_ENV
           echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
 
+      - name: 'Grab L1 deployer logs on failure'
+        id: hhL1ContainerLogs
+        if: failure()
+        run: |
+          docker logs `docker ps -aqf "name=hh-l1-deployer"` > build-hh-l1-deployer.out
+
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
       - name: 'Delete deployed VMs'
         uses: azure/CLI@v1
@@ -136,6 +141,15 @@ jobs:
         with:
           inlineScript: |
             $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+
+      - name: 'Upload build step container logs'
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: build-artifacts
+          path: |
+            build-*.out
+          retention-days: 2
 
   deploy:
     needs: build
