@@ -122,11 +122,10 @@ jobs:
           echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_ENV
           echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
 
-      - name: 'Grab L1 deployer logs on failure'
-        id: hhL1ContainerLogs
+      - name: 'Save container logs on failure'
         if: failure()
         run: |
-          docker logs `docker ps -aqf "name=hh-l1-deployer"` > build-hh-l1-deployer.out
+          docker logs `docker ps -aqf "name=hh-l1-deployer"` > build-hh-l1-deployer.out 2>&1
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
       - name: 'Delete deployed VMs'
@@ -142,7 +141,7 @@ jobs:
           inlineScript: |
             $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
-      - name: 'Upload build step container logs'
+      - name: 'Upload container logs on failure'
         uses: actions/upload-artifact@v3
         if: failure()
         with:
