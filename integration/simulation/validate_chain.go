@@ -175,7 +175,6 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 }
 
 func checkRollups(t *testing.T, nodeIdx int, rollups []*common.ExtRollup) {
-
 	if len(rollups) < 2 {
 		t.Errorf("Node %d: Found less than two submitted rollups! Successful simulation should always produce more than 2", nodeIdx)
 	}
