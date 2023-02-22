@@ -169,12 +169,12 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	if reorgEfficiency > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d: The number of reorgs is too high: %d. ", nodeIdx, reorgs)
 	}
-	checkRollups(t, nodeIdx, rollups)
+	checkRollups(t, s, nodeIdx, rollups)
 
 	return height
 }
 
-func checkRollups(t *testing.T, nodeIdx int, rollups []*common.ExtRollup) {
+func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
 	if len(rollups) < 2 {
 		t.Errorf("Node %d: Found less than two submitted rollups! Successful simulation should always produce more than 2", nodeIdx)
 	}
@@ -189,6 +189,7 @@ func checkRollups(t *testing.T, nodeIdx int, rollups []*common.ExtRollup) {
 	}
 
 	// Check that all the rollups are produced by aggregators.
+	batchNumber := uint64(0)
 	for idx, rollup := range rollups {
 		nodeID, err := strconv.ParseInt(rollup.Header.Agg.Hex()[2:], 16, 64)
 		if err != nil {
@@ -207,6 +208,22 @@ func checkRollups(t *testing.T, nodeIdx int, rollups []*common.ExtRollup) {
 		if idx != 0 {
 			prevRollup := rollups[idx-1]
 			checkRollupPair(t, nodeIdx, prevRollup, rollup)
+		}
+
+		for _, batch := range rollup.Batches {
+			currHeight := batch.Header.Number.Uint64()
+			if currHeight != 0 && currHeight > batchNumber+1 {
+				t.Errorf("Node %d: Batch gap!", nodeIdx)
+			}
+			batchNumber = currHeight
+
+			for _, clients := range s.RPCHandles.AuthObsClients {
+				client := clients[0]
+				batchOnNode, _ := client.RollupHeaderByNumber(batch.Header.Number)
+				if batchOnNode.Hash() != batch.Hash() {
+					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
+				}
+			}
 		}
 	}
 }
