@@ -43,11 +43,11 @@ type InMemNodeOperator struct {
 	l1Client    ethadapter.EthClient
 	logger      gethlog.Logger
 
-	host         *hostcontainer.HostContainer
-	enclave      *enclavecontainer.EnclaveContainer
-	l1Wallet     wallet.Wallet
-	sqliteDBPath string
-	levelDBPath  string
+	host              *hostcontainer.HostContainer
+	enclave           *enclavecontainer.EnclaveContainer
+	l1Wallet          wallet.Wallet
+	enclaveDBFilepath string
+	hostDBFilepath    string
 }
 
 func (n *InMemNodeOperator) StopHost() error {
@@ -119,7 +119,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		ObscuroChainID:            integration.ObscuroChainID,
 		L1StartHash:               n.l1Data.ObscuroStartBlock,
 		UseInMemoryDB:             false,
-		LevelDBPath:               n.levelDBPath,
+		LevelDBPath:               n.hostDBFilepath,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.operatorIdx, log.CmpKey, log.HostCmp)
@@ -158,7 +158,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		ManagementContractAddress: n.l1Data.MgmtContractAddress,
 		MinGasPrice:               big.NewInt(1),
 		MessageBusAddress:         *n.l1Data.MessageBusAddr,
-		SqliteDBPath:              n.sqliteDBPath,
+		SqliteDBPath:              n.enclaveDBFilepath,
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }
@@ -207,15 +207,15 @@ func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common
 		panic("failed to create temp levelDBPath")
 	}
 	return &InMemNodeOperator{
-		operatorIdx:  operatorIdx,
-		config:       config,
-		nodeType:     nodeType,
-		l1Data:       l1Data,
-		l1Client:     l1Client,
-		l1Wallet:     l1Wallet,
-		logger:       logger,
-		sqliteDBPath: sqliteDBPath,
-		levelDBPath:  levelDBPath,
+		operatorIdx:       operatorIdx,
+		config:            config,
+		nodeType:          nodeType,
+		l1Data:            l1Data,
+		l1Client:          l1Client,
+		l1Wallet:          l1Wallet,
+		logger:            logger,
+		enclaveDBFilepath: sqliteDBPath,
+		hostDBFilepath:    levelDBPath,
 	}
 }
 

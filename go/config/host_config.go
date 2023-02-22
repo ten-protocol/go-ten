@@ -70,7 +70,7 @@ type HostInputConfig struct {
 	// MetricsHTTPPort sets the port where the http server is available
 	MetricsHTTPPort uint
 
-	// UseInMemoryDB sets whether the enclave should use in-memory or persistent storage
+	// UseInMemoryDB sets whether the host should use in-memory or persistent storage
 	UseInMemoryDB bool
 
 	// LevelDBPath path for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable, or if using InMemory DB)
