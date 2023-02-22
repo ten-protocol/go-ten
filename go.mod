@@ -1,6 +1,6 @@
 module github.com/obscuronet/go-obscuro
 
-go 1.17
+go 1.18
 
 require (
 	github.com/Azure/azure-sdk-for-go v63.2.0+incompatible
@@ -8,6 +8,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11
 	github.com/Azure/go-autorest/autorest/to v0.4.0
 	github.com/docker/docker v1.4.2-0.20180625184442-8e610b2b55bf
+	github.com/docker/go-connections v0.4.0
 	github.com/edgelesssys/ego v0.5.0
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/go-kit/kit v0.10.0
@@ -44,7 +45,6 @@ require (
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect

@@ -116,7 +116,7 @@ func (oc *ObscuroChain) UpdateL2Chain(batch *core.Batch) error {
 	oc.blockProcessingMutex.Lock()
 	defer oc.blockProcessingMutex.Unlock()
 
-	if err := oc.checkAndStoreBatch(batch); err != nil {
+	if err := oc.CheckAndStoreBatch(batch); err != nil {
 		return err
 	}
 
@@ -890,7 +890,7 @@ func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address,
 
 // Checks the batch. If we've not seen a batch at this height before, we store it. If we have seen a batch at this
 // height before, we validate it against the other received batch at the same height.
-func (oc *ObscuroChain) checkAndStoreBatch(batch *core.Batch) error {
+func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 	// We check the batch.
 	var txReceipts types.Receipts
 	// TODO - #718 - Determine what level of checking we should perform on the genesis batch.

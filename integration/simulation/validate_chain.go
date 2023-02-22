@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -168,9 +169,21 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	if reorgEfficiency > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d: The number of reorgs is too high: %d. ", nodeIdx, reorgs)
 	}
+	if len(rollups) < 2 {
+		t.Errorf("Node %d: Found less than two submitted rollups! Successful simulation should always produce more than 2", nodeIdx)
+	}
+
+	sort.Slice(rollups, func(i, j int) bool {
+		// Ascending order sort.
+		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
+	})
+
+	if rollups[0].Header.Number.Uint64() != 0 {
+		t.Errorf("Node %d: No genesis rollup", nodeIdx)
+	}
 
 	// Check that all the rollups are produced by aggregators.
-	for _, rollup := range rollups {
+	for idx, rollup := range rollups {
 		nodeID, err := strconv.ParseInt(rollup.Header.Agg.Hex()[2:], 16, 64)
 		if err != nil {
 			t.Errorf("Node %d: Could not parse node's integer ID. Cause: %s", nodeIdx, err)
@@ -178,6 +191,18 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		}
 		if network.GetNodeType(int(nodeID)) != common.Sequencer {
 			t.Errorf("Node %d: Found rollup produced by non-sequencer %d", nodeIdx, nodeID)
+		}
+
+		if idx != 0 {
+			prevRollup := rollups[idx-1]
+			isValidChain := prevRollup.Header.Number.Uint64() == rollup.Header.Number.Uint64()-1
+			if !isValidChain {
+				t.Errorf("Node %d: Found rollup gap!", nodeIdx)
+			}
+			isValidChain = rollup.Header.ParentHash == prevRollup.Header.Hash()
+			if !isValidChain {
+				t.Errorf("Node %d: Found badly chained rollups!", nodeIdx)
+			}
 		}
 	}
 
@@ -209,6 +234,12 @@ func ExtractDataFromEthereumChain(
 			if t == nil {
 				continue
 			}
+			receipt, err := node.TransactionReceipt(tx.Hash())
+
+			if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+				continue
+			}
+
 			switch l1tx := t.(type) {
 			case *ethadapter.L1DepositTx:
 				// TODO: Remove this hack once the old integrated bridge is removed.

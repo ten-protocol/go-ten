@@ -38,7 +38,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupmanager"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
@@ -56,7 +56,7 @@ type enclaveImpl struct {
 	mempool              mempool.Manager
 	l1Blockchain         *gethcore.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
-	rollupManager        *rollupextractor.RollupExtractor
+	rollupManager        *rollupmanager.RollupManager
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
@@ -174,7 +174,7 @@ func NewEnclave(
 		logger,
 	)
 
-	rollupManager := rollupextractor.New(
+	rollupManager := rollupmanager.New(
 		mgmtContractLib,
 		transactionBlobCrypto,
 		config.ObscuroChainID,

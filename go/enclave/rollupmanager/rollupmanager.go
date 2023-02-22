@@ -1,4 +1,4 @@
-package rollupextractor
+package rollupmanager
 
 // TODO: once the cross chain messages based bridge is implemented remove this completely.
 
@@ -27,9 +27,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 )
 
-// RollupExtractor encapsulates the logic of decoding rollup transactions submitted to the L1 and resolving them
+// RollupManager encapsulates the logic of decoding rollup transactions submitted to the L1 and resolving them
 // to rollups that the enclave can process.
-type RollupExtractor struct {
+type RollupManager struct {
 	MgmtContractLib mgmtcontractlib.MgmtContractLib
 
 	TransactionBlobCrypto crypto2.TransactionBlobCrypto
@@ -51,8 +51,8 @@ func New(
 	storage db.Storage,
 	l2chain *l2chain.ObscuroChain,
 	logger gethlog.Logger,
-) *RollupExtractor {
-	return &RollupExtractor{
+) *RollupManager {
+	return &RollupManager{
 		MgmtContractLib:       mgmtContractLib,
 		TransactionBlobCrypto: transactionBlobCrypto,
 		ObscuroChainID:        obscuroChainID,
@@ -63,30 +63,17 @@ func New(
 	}
 }
 
-func (re *RollupExtractor) fetchLatestRollupHeader() (*core.Rollup, error) {
-	b, _ := re.storage.FetchHeadBlock()
+func (re *RollupManager) fetchLatestRolluп() (*core.Rollup, error) {
+	b, err := re.storage.FetchHeadBlock()
 	if b != nil {
 		return re.getLatestRollupBeforeBlock(b)
 	} else {
-		return nil, nil
+		return nil, err
 	}
 }
 
-func (re *RollupExtractor) CreateRollup() (*core.Rollup, error) {
-	rollup, _ := re.fetchLatestRollupHeader()
-
-	hash := gethcommon.Hash{}
-	if rollup != nil {
-		hash = rollup.Header.HeadBatchHash
-	}
-
-	batches, _ := re.l2chain.BatchesAfter(hash)
-
+func NextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
 	headBatch := batches[len(batches)-1]
-
-	if headBatch.Header.Hash() == hash {
-		return nil, nil
-	}
 
 	rh := headBatch.Header.ToRollupHeader()
 
@@ -104,27 +91,50 @@ func (re *RollupExtractor) CreateRollup() (*core.Rollup, error) {
 	rollupHeight := big.NewInt(0)
 	if rollup != nil {
 		rollupHeight = rollup.Header.Number
-		rollupHeight = rollupHeight.Add(rollupHeight, gethcommon.Big1)
+		rollupHeight.Add(rollupHeight, gethcommon.Big1)
 	}
 
 	rh.Number = rollupHeight
 	rh.HeadBatchHash = headBatch.Header.Hash()
 
-	newRollup := &core.Rollup{
+	return &core.Rollup{
 		Header:  rh,
 		Batches: batches,
 	}
+}
+
+func (re *RollupManager) CreateRollup() (*core.Rollup, error) {
+	rollup, err := re.fetchLatestRolluп()
+	if err != nil && !errors.Is(err, db.ErrNoRollups) {
+		return nil, err
+	}
+
+	hash := gethcommon.Hash{}
+	if rollup != nil {
+		hash = rollup.Header.HeadBatchHash
+	}
+
+	batches, err := re.l2chain.BatchesAfter(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	if batches[len(batches)-1].Header.Hash() == hash {
+		return nil, fmt.Errorf("current head batch matches the rollup head bash")
+	}
+
+	newRollup := NextRollup(rollup, batches)
 
 	re.l2chain.SignRollup(newRollup)
 	return newRollup, nil
 }
 
-func (re *RollupExtractor) ProcessL1Block(b *types.Block) error {
+func (re *RollupManager) ProcessL1Block(b *types.Block) error {
 	return re.processRollups(b)
 }
 
 // ExtractRollups - returns a list of the rollups published in this block
-func (re *RollupExtractor) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
+func (re *RollupManager) ExtractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
 	rollups := make([]*core.Rollup, 0)
 	for _, tx := range b.Transactions() {
 		// go through all rollup transactions
@@ -151,6 +161,12 @@ func (re *RollupExtractor) ExtractRollups(b *types.Block, blockResolver db.Block
 			}
 		}
 	}
+
+	sort.Slice(rollups, func(i, j int) bool {
+		// Ascending order sort.
+		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
+	})
+
 	return rollups
 }
 
@@ -158,17 +174,13 @@ func (re *RollupExtractor) ExtractRollups(b *types.Block, blockResolver db.Block
 
 // Validates and stores the rollup in a given block.
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
-func (oc *RollupExtractor) processRollups(block *common.L1Block) error {
-	latestRollup, err := oc.getLatestRollupBeforeBlock(block)
+func (re *RollupManager) processRollups(block *common.L1Block) error {
+	latestRollup, err := re.getLatestRollupBeforeBlock(block)
 	if err != nil && !errors.Is(err, db.ErrNoRollups) {
 		return fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
 	}
 
-	rollups := oc.ExtractRollups(block, oc.storage)
-	sort.Slice(rollups, func(i, j int) bool {
-		// Ascending order sort.
-		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
-	})
+	rollups := re.ExtractRollups(block, re.storage)
 
 	// If this is the first rollup we've ever received, we check that it's the genesis rollup.
 	if latestRollup == nil && len(rollups) != 0 && !rollups[0].IsGenesis() {
@@ -190,27 +202,26 @@ func (oc *RollupExtractor) processRollups(block *common.L1Block) error {
 			if idx != 0 {
 				previousRollup = rollups[idx-1]
 			}
-			if err = oc.checkRollupsCorrectlyChained(rollup, previousRollup); err != nil {
+			if err = re.checkRollupsCorrectlyChained(rollup, previousRollup); err != nil {
 				return err
 			}
 		}
 
-		/*	for _, batch := range rollup.Batches {
-			if err = oc.checkAndStoreBatch(batch); err != nil {
+		for _, batch := range rollup.Batches {
+			if err = re.l2chain.CheckAndStoreBatch(batch); err != nil {
 				return fmt.Errorf("could not store batch. Cause: %w", err)
 			}
-		}*/
+		}
 
-		if err = oc.storage.StoreRollup(rollup); err != nil {
+		if err = re.storage.StoreRollup(rollup); err != nil {
 			return fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
 	}
 
 	// we record the latest rollup published against this L1 block hash
-	// note: if no rollup published yet then we record the empty hash as a marker
 	rollupHash := rollups[len(rollups)-1].Header.Hash()
 
-	err = oc.storage.UpdateHeadRollup(&blockHash, &rollupHash)
+	err = re.storage.UpdateHeadRollup(&blockHash, &rollupHash)
 	if err != nil {
 		return fmt.Errorf("unable to update head rollup - %w", err)
 	}
@@ -219,10 +230,10 @@ func (oc *RollupExtractor) processRollups(block *common.L1Block) error {
 }
 
 // Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
-func (oc *RollupExtractor) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
+func (re *RollupManager) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
 	for {
 		blockParentHash := block.ParentHash()
-		latestRollup, err := oc.storage.FetchHeadRollupForBlock(&blockParentHash)
+		latestRollup, err := re.storage.FetchHeadRollupForBlock(&blockParentHash)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not fetch current L2 head rollup - %w", err)
 		}
@@ -232,7 +243,7 @@ func (oc *RollupExtractor) getLatestRollupBeforeBlock(block *common.L1Block) (*c
 
 		// we scan backwards now to the prev block in the chain and we will lookup to see if that has an entry
 		// todo: is this still required for safety, even though we're storing an entry for every L1 block?
-		block, err = oc.storage.FetchBlock(block.ParentHash())
+		block, err = re.storage.FetchBlock(block.ParentHash())
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
 				// No more blocks available (enclave does not read the L1 chain from genesis if it knows
@@ -249,7 +260,7 @@ func (oc *RollupExtractor) getLatestRollupBeforeBlock(block *common.L1Block) (*c
 //   - Has a number exactly 1 higher than the previous rollup
 //   - Links to the previous rollup by hash
 //   - Has a first batch whose parent is the head batch of the previous rollup
-func (oc *RollupExtractor) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRollup *core.Rollup) error {
+func (re *RollupManager) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRollup *core.Rollup) error {
 	if big.NewInt(0).Sub(rollup.Header.Number, previousRollup.Header.Number).Cmp(big.NewInt(1)) != 0 {
 		return fmt.Errorf("found gap in rollups between rollup %d and rollup %d",
 			previousRollup.Header.Number, rollup.Header.Number)
