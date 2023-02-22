@@ -129,7 +129,10 @@ func (re *RollupManager) CreateRollup() (*core.Rollup, error) {
 
 	newRollup := NextRollup(rollup, batches)
 
-	re.l2chain.SignRollup(newRollup)
+	if err := re.l2chain.SignRollup(newRollup); err != nil {
+		return nil, err
+	}
+
 	return newRollup, nil
 }
 
