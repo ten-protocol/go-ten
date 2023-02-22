@@ -675,7 +675,7 @@ func (oc *ObscuroChain) isInternallyValidBatch(batch *core.Batch) (types.Receipt
 	}
 
 	// Check that the signature is valid.
-	if err = oc.checkSequencerSignature(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
+	if err = oc.CheckSequencerSignature(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
 		return nil, fmt.Errorf("verify batch r_%d: invalid signature. Cause: %w", common.ShortHash(*batch.Hash()), err)
 	}
 
@@ -721,7 +721,7 @@ func (oc *ObscuroChain) SignRollup(rollup *core.Rollup) error {
 }
 
 // Checks that the header is signed validly by the sequencer.
-func (oc *ObscuroChain) checkSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
+func (oc *ObscuroChain) CheckSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
 	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
 	if !bytes.Equal(aggregator.Bytes(), oc.sequencerID.Bytes()) {

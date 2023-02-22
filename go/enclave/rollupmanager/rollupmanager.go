@@ -197,9 +197,9 @@ func (re *RollupManager) processRollups(block *common.L1Block) ([]*core.Rollup, 
 
 	blockHash := block.Hash()
 	for idx, rollup := range rollups {
-		/*if err = oc.checkSequencerSignature(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
-			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
-		}*/
+		if err = re.l2chain.CheckSequencerSignature(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
+			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
+		}
 
 		if !rollup.IsGenesis() {
 			previousRollup := latestRollup
