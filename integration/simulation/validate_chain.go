@@ -206,35 +206,39 @@ func checkRollups(t *testing.T, nodeIdx int, rollups []*common.ExtRollup) {
 
 		if idx != 0 {
 			prevRollup := rollups[idx-1]
-			isValidChain := prevRollup.Header.Number.Uint64() == rollup.Header.Number.Uint64()-1
-			if !isValidChain {
-				t.Errorf("Node %d: Found rollup gap!", nodeIdx)
-				continue
-			}
-			isValidChain = rollup.Header.ParentHash == prevRollup.Header.Hash()
-			if !isValidChain {
-				t.Errorf("Node %d: Found badly chained rollups!", nodeIdx)
-				continue
-			}
-
-			if len(prevRollup.Batches) == 0 {
-				continue
-			}
-
-			lastBatch := prevRollup.Batches[len(prevRollup.Batches)-1]
-			firstBatch := rollup.Batches[0]
-			isValidChain = firstBatch.Header.ParentHash == lastBatch.Header.Hash()
-			if !isValidChain {
-				t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
-				continue
-			}
-
-			isValidChain = prevRollup.Header.HeadBatchHash == firstBatch.Header.ParentHash
-			if !isValidChain {
-				t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
-				continue
-			}
+			checkRollupPair(t, nodeIdx, prevRollup, rollup)
 		}
+	}
+}
+
+func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, rollup *common.ExtRollup) {
+	isValidChain := prevRollup.Header.Number.Uint64() == rollup.Header.Number.Uint64()-1
+	if !isValidChain {
+		t.Errorf("Node %d: Found rollup gap!", nodeIdx)
+		return
+	}
+	isValidChain = rollup.Header.ParentHash == prevRollup.Header.Hash()
+	if !isValidChain {
+		t.Errorf("Node %d: Found badly chained rollups!", nodeIdx)
+		return
+	}
+
+	if len(prevRollup.Batches) == 0 {
+		return
+	}
+
+	lastBatch := prevRollup.Batches[len(prevRollup.Batches)-1]
+	firstBatch := rollup.Batches[0]
+	isValidChain = firstBatch.Header.ParentHash == lastBatch.Header.Hash()
+	if !isValidChain {
+		t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
+		return
+	}
+
+	isValidChain = prevRollup.Header.HeadBatchHash == firstBatch.Header.ParentHash
+	if !isValidChain {
+		t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
+		return
 	}
 }
 
@@ -272,11 +276,9 @@ func ExtractDataFromEthereumChain(
 			switch l1tx := t.(type) {
 			case *ethadapter.L1DepositTx:
 				// TODO: Remove this hack once the old integrated bridge is removed.
-				if receipt, err := node.TransactionReceipt(tx.Hash()); err == nil && receipt.Status == 1 {
-					deposits = append(deposits, tx.Hash())
-					totalDeposited.Add(totalDeposited, l1tx.Amount)
-					successfulDeposits++
-				}
+				deposits = append(deposits, tx.Hash())
+				totalDeposited.Add(totalDeposited, l1tx.Amount)
+				successfulDeposits++
 			case *ethadapter.L1RollupTx:
 				r, err := common.DecodeRollup(l1tx.Rollup)
 				if err != nil {
