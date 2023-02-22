@@ -339,11 +339,12 @@ func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
 		return nil, errors.New("only sequencer can generate rollups")
 	}
 
-	if rollup, err := e.rollupManager.CreateRollup(); err != nil {
+	rollup, err := e.rollupManager.CreateRollup()
+	if err != nil {
 		return nil, err
-	} else {
-		return rollup.ToExtRollup(e.transactionBlobCrypto), nil
 	}
+
+	return rollup.ToExtRollup(e.transactionBlobCrypto), nil
 }
 
 // ExecuteOffChainTransaction handles param decryption, validation and encryption
