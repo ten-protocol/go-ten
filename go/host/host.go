@@ -480,7 +480,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 
 	if blockSubmissionResponse.ProducedBatch != nil && blockSubmissionResponse.ProducedBatch.Header != nil {
 		// TODO - #718 - Unlink rollup production from L1 cadence.
-		//h.publishRollup(blockSubmissionResponse.ProducedRollup)
+		// h.publishRollup(blockSubmissionResponse.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
 		h.storeAndDistributeBatch(blockSubmissionResponse.ProducedBatch)
 	}

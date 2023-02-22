@@ -164,7 +164,7 @@ func NewEnclave(
 		config.NodeType,
 		storage,
 		l1Blockchain,
-		//obscuroBridge,
+		// obscuroBridge,
 		crossChainProcessors,
 		memp,
 		enclaveKey,

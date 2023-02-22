@@ -79,7 +79,7 @@ func NextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
 
 	if rollup != nil {
 		rh.ParentHash = rollup.Header.Hash()
-	} else { //genesis
+	} else { // genesis
 		rh.ParentHash = gethcommon.Hash{}
 	}
 
