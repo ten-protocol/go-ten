@@ -133,7 +133,7 @@ func (re *RollupManager) CreateRollup() (*core.Rollup, error) {
 	return newRollup, nil
 }
 
-func (re *RollupManager) ProcessL1Block(b *types.Block) error {
+func (re *RollupManager) ProcessL1Block(b *types.Block) ([]*core.Rollup, error) {
 	return re.processRollups(b)
 }
 
@@ -178,21 +178,21 @@ func (re *RollupManager) ExtractRollups(b *types.Block, blockResolver db.BlockRe
 
 // Validates and stores the rollup in a given block.
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
-func (re *RollupManager) processRollups(block *common.L1Block) error {
+func (re *RollupManager) processRollups(block *common.L1Block) ([]*core.Rollup, error) {
 	latestRollup, err := re.getLatestRollupBeforeBlock(block)
 	if err != nil && !errors.Is(err, db.ErrNoRollups) {
-		return fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
+		return nil, fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
 	}
 
 	rollups := re.ExtractRollups(block, re.storage)
 
 	// If this is the first rollup we've ever received, we check that it's the genesis rollup.
 	if latestRollup == nil && len(rollups) != 0 && !rollups[0].IsGenesis() {
-		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
+		return nil, fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
 	}
 
 	if len(rollups) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	blockHash := block.Hash()
@@ -207,18 +207,18 @@ func (re *RollupManager) processRollups(block *common.L1Block) error {
 				previousRollup = rollups[idx-1]
 			}
 			if err = re.checkRollupsCorrectlyChained(rollup, previousRollup); err != nil {
-				return err
+				return nil, err
 			}
 		}
 
 		for _, batch := range rollup.Batches {
 			if err = re.l2chain.CheckAndStoreBatch(batch); err != nil {
-				return fmt.Errorf("could not store batch. Cause: %w", err)
+				return nil, fmt.Errorf("could not store batch. Cause: %w", err)
 			}
 		}
 
 		if err = re.storage.StoreRollup(rollup); err != nil {
-			return fmt.Errorf("could not store rollup. Cause: %w", err)
+			return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
 		}
 	}
 
@@ -227,10 +227,10 @@ func (re *RollupManager) processRollups(block *common.L1Block) error {
 
 	err = re.storage.UpdateHeadRollup(&blockHash, &rollupHash)
 	if err != nil {
-		return fmt.Errorf("unable to update head rollup - %w", err)
+		return nil, fmt.Errorf("unable to update head rollup - %w", err)
 	}
 
-	return nil
+	return rollups, nil
 }
 
 // Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).

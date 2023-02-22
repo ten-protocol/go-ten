@@ -241,12 +241,14 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	}
 	e.logger.Info("ProcessL1Block successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 
-	err = e.rollupManager.ProcessL1Block(&block)
+	_, err = e.rollupManager.ProcessL1Block(&block)
 	if err != nil {
 		e.logger.Warn("Error processing L1 block for rollups", log.ErrKey, err)
+		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
 	// We prepare the block submission response.
+	// TODO: Fix subscribed logs for validators who are being synchronized only through L1
 	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
 
 	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(),
