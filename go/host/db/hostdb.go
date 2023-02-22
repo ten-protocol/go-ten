@@ -93,7 +93,7 @@ func NewLevelDBBackedDB(dbPath string, regMetrics gethmetrics.Registry, logger g
 		return nil, fmt.Errorf("could not create leveldb - %w", err)
 	}
 	logger.Info(fmt.Sprintf("Opened %s level db dir at %s", dbDesc, dbPath))
-	return newDB(db, regMetrics, nil), nil
+	return newDB(db, regMetrics, logger), nil
 }
 
 func newDB(kvStore ethdb.KeyValueStore, regMetrics gethmetrics.Registry, logger gethlog.Logger) *DB {
