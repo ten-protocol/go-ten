@@ -65,11 +65,10 @@ func New(
 
 func (re *RollupManager) fetchLatestRolluп() (*core.Rollup, error) {
 	b, err := re.storage.FetchHeadBlock()
-	if b != nil {
-		return re.getLatestRollupBeforeBlock(b)
-	} else {
+	if err != nil {
 		return nil, err
 	}
+	return re.getLatestRollupBeforeBlock(b)
 }
 
 func NextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {

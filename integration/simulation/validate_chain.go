@@ -209,10 +209,12 @@ func checkRollups(t *testing.T, nodeIdx int, rollups []*common.ExtRollup) {
 			isValidChain := prevRollup.Header.Number.Uint64() == rollup.Header.Number.Uint64()-1
 			if !isValidChain {
 				t.Errorf("Node %d: Found rollup gap!", nodeIdx)
+				continue
 			}
 			isValidChain = rollup.Header.ParentHash == prevRollup.Header.Hash()
 			if !isValidChain {
 				t.Errorf("Node %d: Found badly chained rollups!", nodeIdx)
+				continue
 			}
 
 			if len(prevRollup.Batches) == 0 {
@@ -224,11 +226,13 @@ func checkRollups(t *testing.T, nodeIdx int, rollups []*common.ExtRollup) {
 			isValidChain = firstBatch.Header.ParentHash == lastBatch.Header.Hash()
 			if !isValidChain {
 				t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
+				continue
 			}
 
 			isValidChain = prevRollup.Header.HeadBatchHash == firstBatch.Header.ParentHash
 			if !isValidChain {
 				t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
+				continue
 			}
 		}
 	}
