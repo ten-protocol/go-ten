@@ -1,4 +1,3 @@
-//nolint:contextcheck
 package p2p
 
 import (
