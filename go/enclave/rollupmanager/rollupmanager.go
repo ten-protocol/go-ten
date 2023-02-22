@@ -119,6 +119,10 @@ func (re *RollupManager) CreateRollup() (*core.Rollup, error) {
 		return nil, err
 	}
 
+	if len(batches) == 0 {
+		return nil, fmt.Errorf("no batches for rollup")
+	}
+
 	if batches[len(batches)-1].Header.Hash() == hash {
 		return nil, fmt.Errorf("current head batch matches the rollup head bash")
 	}

@@ -193,6 +193,11 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 			t.Errorf("Node %d: Found rollup produced by non-sequencer %d", nodeIdx, nodeID)
 		}
 
+		if len(rollup.Batches) == 0 {
+			t.Errorf("Node %d: No batches in rollup!", nodeIdx)
+			continue
+		}
+
 		if idx != 0 {
 			prevRollup := rollups[idx-1]
 			isValidChain := prevRollup.Header.Number.Uint64() == rollup.Header.Number.Uint64()-1
@@ -202,6 +207,22 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 			isValidChain = rollup.Header.ParentHash == prevRollup.Header.Hash()
 			if !isValidChain {
 				t.Errorf("Node %d: Found badly chained rollups!", nodeIdx)
+			}
+
+			if len(prevRollup.Batches) == 0 {
+				continue
+			}
+
+			lastBatch := prevRollup.Batches[len(prevRollup.Batches)-1]
+			firstBatch := rollup.Batches[0]
+			isValidChain = firstBatch.Header.ParentHash == lastBatch.Header.Hash()
+			if !isValidChain {
+				t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
+			}
+
+			isValidChain = prevRollup.Header.HeadBatchHash == firstBatch.Header.ParentHash
+			if !isValidChain {
+				t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
 			}
 		}
 	}

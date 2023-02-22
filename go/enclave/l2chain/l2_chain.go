@@ -120,21 +120,17 @@ func (oc *ObscuroChain) UpdateL2Chain(batch *core.Batch) error {
 		return err
 	}
 
-	// If this is the genesis batch, we commit the genesis state.
-	if batch.IsGenesis() {
-		if err := oc.genesis.CommitGenesisState(oc.storage); err != nil {
-			return fmt.Errorf("could not apply genesis state. Cause: %w", err)
-		}
-	}
-
 	return nil
 }
 
 func (oc *ObscuroChain) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error) {
+	batches := make([]*core.Batch, 0)
+
 	headBatch, _ := oc.storage.FetchHeadBatch()
 	var batch *core.Batch
 	if batchHash == gethcommon.BigToHash(gethcommon.Big0) {
 		batch, _ = oc.storage.FetchBatchByHeight(0)
+		batches = append(batches, batch)
 	} else {
 		batch, _ = oc.storage.FetchBatch(batchHash)
 	}
@@ -142,8 +138,6 @@ func (oc *ObscuroChain) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, 
 	if headBatch.NumberU64() < batch.NumberU64() {
 		return nil, errors.New("head batch height is in the past compared to requested batch")
 	}
-
-	batches := make([]*core.Batch, 0)
 
 	for batch.Number().Cmp(headBatch.Number()) != 0 {
 		batch, _ = oc.storage.FetchBatchByHeight(batch.NumberU64() + 1)
@@ -927,6 +921,13 @@ func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 		}
 		if err = oc.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, txReceipts); err != nil {
 			return fmt.Errorf("could not store new L2 head. Cause: %w", err)
+		}
+	}
+
+	// If this is the genesis batch, we commit the genesis state.
+	if batch.IsGenesis() {
+		if err := oc.genesis.CommitGenesisState(oc.storage); err != nil {
+			return fmt.Errorf("could not apply genesis state. Cause: %w", err)
 		}
 	}
 
