@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/syndtr/goleveldb/leveldb"
-
 	"github.com/ethereum/go-ethereum/ethdb"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -23,9 +21,6 @@ import (
 func (db *DB) GetHeadBatchHeader() (*common.BatchHeader, error) {
 	headBatchHash, err := db.readHeadBatchHash()
 	if err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) { // todo: checking for impl specific error at this level feels like the abstractions are wrong
-			return nil, errutil.ErrNotFound
-		}
 		return nil, err
 	}
 	return db.readBatchHeader(*headBatchHash)
@@ -153,9 +148,6 @@ func batchNumberKey(txHash gethcommon.Hash) []byte {
 func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.BatchHeader, error) {
 	data, err := db.kvStore.Get(batchHeaderKey(hash))
 	if err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, err
 	}
 	if len(data) == 0 {
@@ -172,9 +164,6 @@ func (db *DB) readBatchHeader(hash gethcommon.Hash) (*common.BatchHeader, error)
 func (db *DB) readHeadBatchHash() (*gethcommon.Hash, error) {
 	value, err := db.kvStore.Get(headBatch)
 	if err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, err
 	}
 	h := gethcommon.BytesToHash(value)
@@ -217,9 +206,6 @@ func (db *DB) writeBatchHash(w ethdb.KeyValueWriter, header *common.BatchHeader)
 func (db *DB) readBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 	data, err := db.kvStore.Get(batchHashKey(number))
 	if err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, err
 	}
 	if len(data) == 0 {
@@ -233,9 +219,6 @@ func (db *DB) readBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 func (db *DB) readBatchTxHashes(batchHash common.L2RootHash) ([]gethcommon.Hash, error) {
 	data, err := db.kvStore.Get(batchTxHashesKey(batchHash))
 	if err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, err
 	}
 	if len(data) == 0 {
@@ -276,9 +259,6 @@ func (db *DB) writeBatchTxHashes(w ethdb.KeyValueWriter, batchHash common.L2Root
 func (db *DB) readBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
 	data, err := db.kvStore.Get(batchNumberKey(txHash))
 	if err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, err
 	}
 	if len(data) == 0 {
@@ -291,7 +271,7 @@ func (db *DB) readBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
 func (db *DB) readTotalTransactions() (*big.Int, error) {
 	data, err := db.kvStore.Get(totalTransactionsKey)
 	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) || errors.Is(err, leveldb.ErrNotFound) {
+		if errors.Is(err, errutil.ErrNotFound) {
 			return big.NewInt(0), nil
 		}
 		return nil, err
@@ -330,9 +310,6 @@ func (db *DB) writeBatch(batch *common.ExtBatch) error {
 func (db *DB) readBatch(hash gethcommon.Hash) (*common.ExtBatch, error) {
 	data, err := db.kvStore.Get(batchKey(hash))
 	if err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, err
 	}
 	if len(data) == 0 {
