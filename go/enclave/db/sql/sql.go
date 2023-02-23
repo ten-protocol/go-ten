@@ -81,7 +81,7 @@ func (m *sqlEthDatabase) NewIterator(prefix []byte, start []byte) ethdb.Iterator
 	pr := prefix
 	st := append(prefix, start...)
 	// iterator clean-up handles closing this rows iterator
-	rows, err := m.db.Query(searchQry, len(pr), pr, st) //nolint:sqlclosecheck
+	rows, err := m.db.Query(searchQry, len(pr), pr, st)
 	if err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),
