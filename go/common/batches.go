@@ -4,6 +4,7 @@ import (
 	"sync/atomic"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 // ExtBatch is an encrypted form of batch used when passing the batch around outside of an enclave.
@@ -24,6 +25,11 @@ func (b *ExtBatch) Hash() L2RootHash {
 	v := b.Header.Hash()
 	b.hash.Store(v)
 	return v
+}
+
+func (b *ExtBatch) Size() (int, error) {
+	bytes, err := rlp.EncodeToBytes(b)
+	return len(bytes), err
 }
 
 // BatchRequest is used when requesting a range of batches from a peer.
