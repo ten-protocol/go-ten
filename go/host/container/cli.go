@@ -42,6 +42,8 @@ type HostConfigToml struct {
 	L1StartHash               string
 	MetricsEnabled            bool
 	MetricsHTTPPort           uint
+	UseInMemoryDB             bool
+	LevelDBPath               string
 }
 
 // ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
@@ -74,6 +76,8 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	l1StartHash := flag.String(l1StartHashName, cfg.L1StartHash.Hex(), flagUsageMap[l1StartHashName])
 	metricsEnabled := flag.Bool(metricsEnabledName, cfg.MetricsEnabled, flagUsageMap[metricsEnabledName])
 	metricsHTPPPort := flag.Uint(metricsHTTPPortName, cfg.MetricsHTTPPort, flagUsageMap[metricsHTTPPortName])
+	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
+	levelDBPath := flag.String(levelDBPathName, cfg.LevelDBPath, flagUsageMap[levelDBPathName])
 
 	flag.Parse()
 
@@ -111,6 +115,8 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.L1StartHash = gethcommon.HexToHash(*l1StartHash)
 	cfg.MetricsEnabled = *metricsEnabled
 	cfg.MetricsHTTPPort = *metricsHTPPPort
+	cfg.UseInMemoryDB = *useInMemoryDB
+	cfg.LevelDBPath = *levelDBPath
 
 	return cfg, nil
 }
@@ -159,5 +165,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		L1StartHash:               gethcommon.HexToHash(tomlConfig.L1StartHash),
 		MetricsEnabled:            tomlConfig.MetricsEnabled,
 		MetricsHTTPPort:           tomlConfig.MetricsHTTPPort,
+		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
+		LevelDBPath:               tomlConfig.LevelDBPath,
 	}, nil
 }

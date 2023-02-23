@@ -127,6 +127,7 @@ func createSocketObscuroHostContainer(
 		ObscuroChainID:            integration.ObscuroChainID,
 		L1StartHash:               l1StartBlk,
 		ManagementContractAddress: *mgmtContractLib.GetContractAddr(),
+		UseInMemoryDB:             true,
 	}
 
 	// TODO change this to use the NewHostContainerFromConfig - depends on https://github.com/obscuronet/obscuro-internal/issues/1303

@@ -279,7 +279,7 @@ func describeBSR(response *common.BlockSubmissionResponse) string {
 	}
 	producedRollup := "no rollup produced"
 	if response.ProducedRollup != nil {
-		producedBatch = fmt.Sprintf("newRollup{num=%d, numBatches=%d, hash=%s}",
+		producedRollup = fmt.Sprintf("newRollup{num=%d, numBatches=%d, hash=%s}",
 			response.ProducedRollup.Header.Number, len(response.ProducedRollup.Batches), response.ProducedRollup.Hash())
 	}
 	return fmt.Sprintf("%s, %s", producedBatch, producedRollup)
