@@ -361,4 +361,4 @@ jobs:
       - name: 'Run E2E tests on repository_dispatch trigger after successful deployment of dev-testnet'
         if: ${{ github.event_name == 'repository_dispatch' }}
         run: |
-           curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "scheduled_deployment", "client_payload": { "ref": "main", "env": : "dev-testnet" }'
+           curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "scheduled_deployment", "client_payload": { "ref": "main", "env": "dev-testnet" }'
