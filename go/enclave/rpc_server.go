@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -13,7 +15,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"google.golang.org/grpc"
-	"net"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
