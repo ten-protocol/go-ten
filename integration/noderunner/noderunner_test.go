@@ -86,8 +86,9 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		panic(err)
 	}
 
+	enclave := enclavecontainer.NewEnclaveContainerFromConfig(enclaveConfig)
 	go func() {
-		err := enclavecontainer.NewEnclaveContainerFromConfig(enclaveConfig).Start()
+		err := enclave.Start()
 		if err != nil {
 			panic(err)
 		}
@@ -114,9 +115,11 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		wait--
 	}
 	defer func() {
-		// the container stops the enclave
 		if err = hostContainer.Stop(); err != nil {
-			t.Fatal("unable to properly stop the host container")
+			t.Fatal("unable to properly stop the host container", err)
+		}
+		if err = enclave.Stop(); err != nil {
+			t.Fatal("unable to properly stop the enclave", err)
 		}
 	}()
 
