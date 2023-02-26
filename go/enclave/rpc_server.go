@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -15,6 +13,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"google.golang.org/grpc"
+	"net"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -154,7 +153,8 @@ func (s *RPCServer) GetTransactionCount(_ context.Context, request *generated.Ge
 }
 
 func (s *RPCServer) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
-	defer s.grpcServer.GracefulStop()
+	// if we want to use grpcServer.GracefulShutdown here we need to set a timeout and then call Stop() afterwards
+	s.grpcServer.Stop()
 	err := s.enclave.Stop()
 	return &generated.StopResponse{}, err
 }
