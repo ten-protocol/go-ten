@@ -10,10 +10,11 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/networktest/env"
 )
 
-func TestRestartValidatorEnclave(t *testing.T) {
+// restart both the host and the enclave for a validator
+func TestRestartValidatorNode(t *testing.T) {
 	networktest.TestOnlyRunsInIDE(t)
 	networktest.Run(
-		"restart-enclave",
+		"restart-node",
 		t,
 		env.LocalDevNetwork(),
 		actions.Series(
@@ -22,10 +23,14 @@ func TestRestartValidatorEnclave(t *testing.T) {
 			// short load test, build up some state
 			actions.GenerateUsersRandomisedTransferActionsInParallel(4, 10*time.Second),
 
-			// restart enclave on a validator
+			actions.SleepAction(10*time.Second), // allow time for in-flight transactions
+
+			// restart host and enclave on a validator
 			actions.StopValidatorEnclave(1),
+			actions.StopValidatorHost(1),
 			actions.SleepAction(5*time.Second), // allow time for shutdown
 			actions.StartValidatorEnclave(1),
+			actions.StartValidatorHost(1),
 			actions.WaitForValidatorHealthCheck(1, 30*time.Second),
 
 			// todo: we often see 1 transaction getting lost without this sleep after the node restarts.
