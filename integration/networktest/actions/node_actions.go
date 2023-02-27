@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/retry"
@@ -17,6 +18,7 @@ type startValidatorEnclaveAction struct {
 }
 
 func (s *startValidatorEnclaveAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+	fmt.Printf("Validator %d: starting enclave\n", s.validatorIdx)
 	validator := network.GetValidatorNode(s.validatorIdx)
 	err := validator.StartEnclave()
 	if err != nil {
@@ -38,6 +40,7 @@ type stopValidatorEnclaveAction struct {
 }
 
 func (s *stopValidatorEnclaveAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+	fmt.Printf("Validator %d: stopping enclave\n", s.validatorIdx)
 	validator := network.GetValidatorNode(s.validatorIdx)
 	err := validator.StopEnclave()
 	if err != nil {
@@ -48,6 +51,30 @@ func (s *stopValidatorEnclaveAction) Run(ctx context.Context, network networktes
 
 func (s *stopValidatorEnclaveAction) Verify(_ context.Context, _ networktest.NetworkConnector) error {
 	return nil
+}
+
+func StopValidatorHost(validatorIdx int) networktest.Action {
+	return NoStateNoVerifyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+		fmt.Printf("Validator %d: stopping host\n", validatorIdx)
+		validator := network.GetValidatorNode(validatorIdx)
+		err := validator.StopHost()
+		if err != nil {
+			return nil, err
+		}
+		return ctx, nil
+	})
+}
+
+func StartValidatorHost(validatorIdx int) networktest.Action {
+	return NoStateNoVerifyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+		fmt.Printf("Validator %d: starting host\n", validatorIdx)
+		validator := network.GetValidatorNode(validatorIdx)
+		err := validator.StartHost()
+		if err != nil {
+			return nil, err
+		}
+		return ctx, nil
+	})
 }
 
 func WaitForValidatorHealthCheck(validatorIdx int, maxWait time.Duration) networktest.Action {
