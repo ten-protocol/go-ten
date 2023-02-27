@@ -99,7 +99,7 @@ an upgrade in a dark room without anyone knowing.
 
 In phase 2, we can decentralise by creating a more complex incentive-driven lifecycle.
 
-1. A developer proposes a new version by publishing a GitHub tag (hash) and the AttestationAttestation of an enclave built from that code,
+1. A developer proposes a new version by publishing a GitHub tag (hash) and the Attestation of an enclave built from that code,
    together with a stake. Initially, the developer will likely be the Obscuro Foundation.
 
 2. Anyone posting a stake can make a challenge to this version. The challenge period is predetermined.
@@ -178,7 +178,7 @@ Instead, we'll present some possible practical attacks that illustrate the threa
 
 Assumptions:
 
-1. The current version of the enclave starts with a "weak subjectivity checkpoint" as part of its AttestationAttestation, the same as any beacon chain client.
+1. The current version of the enclave starts with a "weak subjectivity checkpoint" as part of its Attestation, the same as any beacon chain client.
    Note: this first assumption leads to an interesting recursivity which we'll analyse below. (TODO)
 
 2. The attackers are part of the original Ethereum validator set but only control a low amount of the total stake.
@@ -273,13 +273,16 @@ This approach leverages the objectivity of a pow network, but unfortunately, it 
 
 We'll use it as a reference for the mental model of the desired result.
 
+The protocol in essence uses a liveliness nonce and is an adapted challenge-response mechanism that ensures the freshness
+of the data fed into the enclave.
+
 Note that the naive solution described above does not validate every piece of data that goes into the enclave.
 It is a mechanism that periodically validates a timestamp (or equivalent) that the enclave can use to compare against the data it receives.
 If the time difference between the data and the validated timestamp is too large, the enclave will eventually stop and exit.
 
 To prevent an outdated enclave from starting up, the nonce generated inside it must be included in a Bitcoin block, but also
 the latest attestation constraints must be published to Bitcoin. And at startup, the enclave would have to walk back the chain
-until it finds the latest AttestationAttestation, and compare that to itself. If the current code fails the constraints, the enclave
+until it finds the latest Attestation, and compare that to itself. If the current code fails the constraints, the enclave
 will shut down before loading any secrets in memory.
 
 In the next sections, we'll describe some more complex solutions.
@@ -329,10 +332,10 @@ This is more tricky to achieve because of the subjectivity of the Obscuro networ
 Draft:
 
 Every N Ethereum epoch started, the enclave will generate a payload containing a newly generated nonce, the last checkpoint hash,
-and the current AttestationAttestation.
+and the current Attestation.
 The host is responsible for collecting signatures from the other Obscuro nodes over this payload.
 The rule is that an enclave receiving a request from another enclave will sign over it only if the latest checkpoint coincides,
-and the AttestationAttestation is valid.
+and the Attestation is valid.
 
 Once it collects signatures from a majority of its peers, it returns the proof to the enclave.
 Assuming the other nodes are not colluding against it, the current enclave has a good confidence level that everyone else
@@ -358,6 +361,18 @@ Todo: We need a mechanism to prevent a validator from being considered active if
 This is to prevent an attacker from keeping a large number of validators dormant. (Is this a problem?)
 
 Todo-define the protocol properly, including payloads, etc.
+
+todo - catchup vs live
+
+weak subjectivity checkpoint - signatures over it  
+
+Todo classify all the possible cases:
+- start a new node from new version
+-start a node after a short period
+- start a node after a long period
+  ...m
+
+
 
 
 ### Proof-of-stake heuristics

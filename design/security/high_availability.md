@@ -13,16 +13,21 @@ between them to ensure that service goes on uninterrupted.
 ## MEV Protection 
 
 The Sequencer is the only Obscuro node capable of producing Light Batches, and thus the only node that can in theory
-attempt to extract value via MEV. If the operator has multiple enclaves available it can both provide an uninterrupted service
-and extract some value at the same time.
+attempt to extract value via MEV. If the operator has multiple enclaves available operating in "Sequencer" mode it can both 
+provide an uninterrupted service and extract some value at the same time.
 
 Introducing startup delays does not help too much in this case, because the operator could hold key transactions for longer.
 
 
-An alternative solution is to introduce restart transparency, such that the Obscuro network can assess the likelyhood
-of bad behaviour.  
+An alternative solution is to introduce transparency into the lifecycle events of the sequencer enclaves, such that the Obscuro network 
+can assess the likelyhood of bad behaviour.  
 
-On a high level, all enclave restart events of all the sequencer whitelisted enclaves must be published to the network.
+Lifecycle events:
+- enclave starting up
+- enclave become active
+- enclave becoming passive
+
+On a high level, all enclave lifecycle events of all the sequencer whitelisted enclaves must be published to the network.
 
 ### Protocol
 
@@ -46,9 +51,13 @@ type RestartEvent struct {
 }
 
 type ProtocolPayload struct {
-    restartEvents []RestartEvent	
+    events []LifecycleEvent	
+	
 }
 ```
+
+Todo - each event points to the previous event to prevent the operator from transitioning from active to passive without declaring.
+?
 
 Periodically (todo - how often? Every batch?), the sequencer host will request a `RestartEvent` from each of the whitelisted enclaves it controls.
 It will add these events to the `ProtocolPayload`, and broadcast them to the Obscuro network together with the Batch.
