@@ -23,7 +23,8 @@ func TestRestartValidatorNode(t *testing.T) {
 			// short load test, build up some state
 			actions.GenerateUsersRandomisedTransferActionsInParallel(4, 10*time.Second),
 
-			actions.SleepAction(10*time.Second), // allow time for in-flight transactions
+			// todo: this could be replaced by something that finds all the transaction IDs in context and waits for them to be mined
+			actions.SleepAction(5*time.Second), // allow time for in-flight transactions
 
 			// restart host and enclave on a validator
 			actions.StopValidatorEnclave(1),
