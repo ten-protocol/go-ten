@@ -26,11 +26,19 @@ func main() {
 	)
 	if err != nil {
 		fmt.Println("unable to configure the l2 contract deployer - ", err)
+		os.Exit(1)
 	}
 
 	err = l2ContractDeployer.Start()
 	if err != nil {
 		fmt.Println("unable to start the l2 contract deployer - ", err)
+		os.Exit(1)
+	}
+
+	err = l2ContractDeployer.WaitForFinish()
+	if err != nil {
+		fmt.Println("unexpected error waiting for l2 contract deployer to finish - ", err)
+		os.Exit(1)
 	}
 	fmt.Println("L2 Contracts were successfully deployed...")
 	os.Exit(0)
