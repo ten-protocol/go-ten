@@ -249,7 +249,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	// TODO: Fix subscribed logs for validators who are being synchronized only through L1
 	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
 
-	if producedBatch != nil && (producedBatch.Header.Number.Uint64()%e.config.RollupCadance == 0) {
+	if producedBatch != nil && (producedBatch.Header.Number.Uint64()%e.config.Cadence == 0) {
 		rollup, err := e.rollupManager.CreateRollup()
 		if err != nil {
 			e.logger.Error("Failed to produce rollup", log.ErrKey, err)

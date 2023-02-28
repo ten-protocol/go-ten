@@ -159,7 +159,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		MinGasPrice:               big.NewInt(1),
 		MessageBusAddress:         *n.l1Data.MessageBusAddr,
 		SqliteDBPath:              n.enclaveDBFilepath,
-		RollupCadance:             10,
+		Cadence:                   10,
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }
