@@ -350,7 +350,7 @@ func (c *Client) GenerateRollup() (*common.ExtRollup, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	resp, err := c.protoClient.RollupState(timeoutCtx, &generated.CreateRollupRequest{})
+	resp, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{})
 	if err != nil {
 		return nil, err
 	}

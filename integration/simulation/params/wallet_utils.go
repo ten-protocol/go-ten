@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/go-obscuro/go/wallet"
-	intcommon "github.com/obscuronet/go-obscuro/integration/common"
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 )
 
@@ -20,7 +20,7 @@ import (
 // because it needs to sign transactions and deploy contracts.
 // Note: For now the l2 values are taken from the "bridge" inside the Obscuro core.
 type SimToken struct {
-	Name intcommon.ERC20
+	Name testcommon.ERC20
 
 	L1Owner           wallet.Wallet
 	L1ContractAddress *common.Address
@@ -36,8 +36,8 @@ type SimWallets struct {
 	SimEthWallets []wallet.Wallet // the wallets of the simulated users on the Ethereum side
 	SimObsWallets []wallet.Wallet // and their equivalents on the obscuro side (with a different chainId)
 
-	L2FaucetWallet wallet.Wallet                 // the wallet of the L2 faucet
-	Tokens         map[intcommon.ERC20]*SimToken // The supported tokens
+	L2FaucetWallet wallet.Wallet                  // the wallet of the L2 faucet
+	Tokens         map[testcommon.ERC20]*SimToken // The supported tokens
 }
 
 func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroChainID int64) *SimWallets {
@@ -68,16 +68,16 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 
 	// create the L1 addresses of the two tokens, and connect them to the hardcoded addresses from the enclave
 	hoc := SimToken{
-		Name:              intcommon.HOC,
+		Name:              testcommon.HOC,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
-		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), intcommon.HOCOwner, testlog.Logger()),
-		L2ContractAddress: &intcommon.HOCContract,
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), testcommon.HOCOwner, testlog.Logger()),
+		L2ContractAddress: &testcommon.HOCContract,
 	}
 	poc := SimToken{
-		Name:              intcommon.POC,
+		Name:              testcommon.POC,
 		L1Owner:           datagenerator.RandomWallet(ethereumChainID),
-		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), intcommon.POCOwner, testlog.Logger()),
-		L2ContractAddress: &intcommon.POCContract,
+		L2Owner:           wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), testcommon.POCOwner, testlog.Logger()),
+		L2ContractAddress: &testcommon.POCContract,
 	}
 
 	return &SimWallets{
@@ -86,9 +86,9 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 		SimEthWallets:  simEthWallets,
 		SimObsWallets:  simObsWallets,
 		L2FaucetWallet: l2FaucetWallet,
-		Tokens: map[intcommon.ERC20]*SimToken{
-			intcommon.HOC: &hoc,
-			intcommon.POC: &poc,
+		Tokens: map[testcommon.ERC20]*SimToken{
+			testcommon.HOC: &hoc,
+			testcommon.POC: &poc,
 		},
 	}
 }
@@ -103,8 +103,8 @@ func (w *SimWallets) AllEthWallets() []wallet.Wallet {
 
 func (w *SimWallets) AllEthAddresses() []*common.Address {
 	addresses := make([]*common.Address, 0)
-	addresses = append(addresses, w.Tokens[intcommon.HOC].L1ContractAddress)
-	addresses = append(addresses, w.Tokens[intcommon.POC].L1ContractAddress)
+	addresses = append(addresses, w.Tokens[testcommon.HOC].L1ContractAddress)
+	addresses = append(addresses, w.Tokens[testcommon.POC].L1ContractAddress)
 	return addresses
 }
 

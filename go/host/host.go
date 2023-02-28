@@ -360,20 +360,6 @@ func (h *host) startProcessing() {
 	i := int32(0)
 	roundInterrupt := &i
 
-	if h.config.NodeType == common.Sequencer {
-		go func() {
-			for {
-				time.Sleep(5 * time.Second)
-				rollup, err := h.enclaveClient.GenerateRollup()
-				if err == nil {
-					h.publishRollup(rollup)
-				} else {
-					h.logger.Warn("Error generating rollup", log.ErrKey, err)
-				}
-			}
-		}()
-	}
-
 	// Main Processing Loop -
 	// - Process new blocks from the L1 node
 	// - Process new Transactions gossiped from L2 Peers
@@ -483,10 +469,12 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	}
 
 	if blockSubmissionResponse.ProducedBatch != nil && blockSubmissionResponse.ProducedBatch.Header != nil {
-		// TODO - #718 - Unlink rollup production from L1 cadence.
-		// h.publishRollup(blockSubmissionResponse.ProducedRollup)
 		// TODO - #718 - Unlink batch production from L1 cadence.
 		h.storeAndDistributeBatch(blockSubmissionResponse.ProducedBatch)
+	}
+
+	if blockSubmissionResponse.ProducedRollup != nil && blockSubmissionResponse.ProducedRollup.Header != nil {
+		h.publishRollup(blockSubmissionResponse.ProducedRollup)
 	}
 
 	return nil

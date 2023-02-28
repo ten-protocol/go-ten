@@ -54,6 +54,8 @@ type EnclaveConfig struct {
 	SequencerID gethcommon.Address
 	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
 	ObscuroGenesis string
+	// RollupCadance
+	RollupCadance uint64
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -78,5 +80,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		MinGasPrice:               big.NewInt(1),
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
+		RollupCadance:             10,
 	}
 }

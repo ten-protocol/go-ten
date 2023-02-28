@@ -242,7 +242,7 @@ func (s *RPCServer) HealthCheck(_ context.Context, _ *generated.EmptyArgs) (*gen
 	return &generated.HealthCheckResponse{Status: healthy}, nil
 }
 
-func (s *RPCServer) RollupState(_ context.Context, _ *generated.CreateRollupRequest) (*generated.CreateRollupResponse, error) {
+func (s *RPCServer) CreateRollup(_ context.Context, _ *generated.CreateRollupRequest) (*generated.CreateRollupResponse, error) {
 	rollup, err := s.enclave.GenerateRollup()
 
 	msg := rpc.ToExtRollupMsg(rollup)

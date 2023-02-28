@@ -9,7 +9,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
-	intcommon "github.com/obscuronet/go-obscuro/integration/common"
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
@@ -37,9 +37,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyOBXAddress := datagenerator.RandomAddress()
-	params.Wallets.Tokens[intcommon.HOC].L1ContractAddress = &dummyOBXAddress
+	params.Wallets.Tokens[testcommon.HOC].L1ContractAddress = &dummyOBXAddress
 	dummyETHAddress := datagenerator.RandomAddress()
-	params.Wallets.Tokens[intcommon.POC].L1ContractAddress = &dummyETHAddress
+	params.Wallets.Tokens[testcommon.POC].L1ContractAddress = &dummyETHAddress
 	disabledBus := common.BigToAddress(common.Big0)
 
 	for i := 0; i < params.NumberOfNodes; i++ {

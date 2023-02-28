@@ -56,7 +56,7 @@ type enclaveImpl struct {
 	mempool              mempool.Manager
 	l1Blockchain         *gethcore.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
-	rollupManager        *rollupmanager.RollupManager
+	rollupManager        rollupmanager.RollupManager
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
@@ -164,7 +164,6 @@ func NewEnclave(
 		config.NodeType,
 		storage,
 		l1Blockchain,
-		// obscuroBridge,
 		crossChainProcessors,
 		memp,
 		enclaveKey,
@@ -244,12 +243,19 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	_, err = e.rollupManager.ProcessL1Block(&block)
 	if err != nil {
 		e.logger.Warn("Error processing L1 block for rollups", log.ErrKey, err)
-		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
 	// We prepare the block submission response.
 	// TODO: Fix subscribed logs for validators who are being synchronized only through L1
 	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
+
+	if producedBatch != nil && (producedBatch.Header.Number.Uint64()%e.config.RollupCadance == 0) {
+		rollup, err := e.rollupManager.CreateRollup()
+		if err != nil {
+			e.logger.Error("Failed to produce rollup", log.ErrKey, err)
+		}
+		blockSubmissionResponse.ProducedRollup = rollup.ToExtRollup(e.transactionBlobCrypto)
+	}
 
 	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(),
 		"newBatch", describeBSR(blockSubmissionResponse))
@@ -1074,15 +1080,12 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head 
 	}
 
 	var producedExtBatch *common.ExtBatch
-	var producedExtRollup *common.ExtRollup
 	if producedBatch != nil {
 		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
-		producedExtRollup = common.ExtRollupFromExtBatches([]*common.ExtBatch{producedExtBatch})
 	}
 
 	return &common.BlockSubmissionResponse{
 		ProducedBatch:  producedExtBatch,
-		ProducedRollup: producedExtRollup,
 		SubscribedLogs: e.getEncryptedLogs(*block, l2Head),
 	}
 }

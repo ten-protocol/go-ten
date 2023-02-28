@@ -71,7 +71,7 @@ service EnclaveProto {
   // HealthCheck returns the health status of enclave + db
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
 
-  rpc RollupState(CreateRollupRequest) returns (CreateRollupResponse) {}
+  rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
 }
 
 message CreateRollupRequest{}

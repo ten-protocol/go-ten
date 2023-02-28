@@ -127,11 +127,16 @@ func (oc *ObscuroChain) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, 
 	batches := make([]*core.Batch, 0)
 
 	var batch *core.Batch
+	var err error
 	if batchHash == gethcommon.BigToHash(gethcommon.Big0) {
-		batch, _ = oc.storage.FetchBatchByHeight(0)
+		if batch, err = oc.storage.FetchBatchByHeight(0); err != nil {
+			return nil, err
+		}
 		batches = append(batches, batch)
 	} else {
-		batch, _ = oc.storage.FetchBatch(batchHash)
+		if batch, err = oc.storage.FetchBatch(batchHash); err != nil {
+			return nil, err
+		}
 	}
 
 	headBatch, err := oc.storage.FetchHeadBatch()
@@ -359,12 +364,6 @@ func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *bl
 			return nil, nil, err
 		}
 	}
-
-	// We process the rollups, updating the head rollup associated with the L1 block as we go.
-	/*if err := oc.processRollups(block); err != nil {
-		// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
-		oc.logger.Error("could not process rollups", log.ErrKey, err)
-	} */
 
 	// We determine whether we have produced a genesis batch yet.
 	genesisBatchStored := true
