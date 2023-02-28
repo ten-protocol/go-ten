@@ -7,7 +7,8 @@
         "deployment_scripts/bridge/layer1/"
       ],
       "accounts": [
-        "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
+        "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f1"
       ]
     },
     "localObscuro": {
