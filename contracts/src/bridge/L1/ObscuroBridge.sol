@@ -35,6 +35,10 @@ contract ObscuroBridge is
         _grantRole(NATIVE_TOKEN_ROLE, address(0x0));
     }
 
+    function promoteToAdmin(address newAdmin) external onlyRole(ADMIN_ROLE) {
+        _grantRole(ADMIN_ROLE, newAdmin);
+    }
+
     function whitelistToken(
         address asset,
         string calldata name,
