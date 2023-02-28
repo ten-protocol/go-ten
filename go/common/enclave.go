@@ -101,6 +101,8 @@ type Enclave interface {
 
 	// HealthCheck returns whether the enclave is in a healthy state
 	HealthCheck() (bool, error)
+
+	GenerateRollup() (*ExtRollup, error)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

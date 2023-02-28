@@ -8,6 +8,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
@@ -34,6 +35,11 @@ func (b *Batch) Hash() *common.L2RootHash {
 	v := b.Header.Hash()
 	b.hash.Store(v)
 	return &v
+}
+
+func (b *Batch) Size() (int, error) {
+	bytes, err := rlp.EncodeToBytes(b)
+	return len(bytes), err
 }
 
 func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }

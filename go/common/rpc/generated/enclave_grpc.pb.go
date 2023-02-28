@@ -69,6 +69,7 @@ type EnclaveProtoClient interface {
 	GetLogs(ctx context.Context, in *GetLogsRequest, opts ...grpc.CallOption) (*GetLogsResponse, error)
 	// HealthCheck returns the health status of enclave + db
 	HealthCheck(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*HealthCheckResponse, error)
+	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -259,6 +260,15 @@ func (c *enclaveProtoClient) HealthCheck(ctx context.Context, in *EmptyArgs, opt
 	return out, nil
 }
 
+func (c *enclaveProtoClient) CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error) {
+	out := new(CreateRollupResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/CreateRollup", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -310,6 +320,7 @@ type EnclaveProtoServer interface {
 	GetLogs(context.Context, *GetLogsRequest) (*GetLogsResponse, error)
 	// HealthCheck returns the health status of enclave + db
 	HealthCheck(context.Context, *EmptyArgs) (*HealthCheckResponse, error)
+	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -376,6 +387,9 @@ func (UnimplementedEnclaveProtoServer) GetLogs(context.Context, *GetLogsRequest)
 }
 func (UnimplementedEnclaveProtoServer) HealthCheck(context.Context, *EmptyArgs) (*HealthCheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
+}
+func (UnimplementedEnclaveProtoServer) CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateRollup not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -750,6 +764,24 @@ func _EnclaveProto_HealthCheck_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_CreateRollup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateRollupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).CreateRollup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/CreateRollup",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).CreateRollup(ctx, req.(*CreateRollupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -836,6 +868,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HealthCheck",
 			Handler:    _EnclaveProto_HealthCheck_Handler,
+		},
+		{
+			MethodName: "CreateRollup",
+			Handler:    _EnclaveProto_CreateRollup_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

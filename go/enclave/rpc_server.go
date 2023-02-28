@@ -242,6 +242,16 @@ func (s *RPCServer) HealthCheck(_ context.Context, _ *generated.EmptyArgs) (*gen
 	return &generated.HealthCheckResponse{Status: healthy}, nil
 }
 
+func (s *RPCServer) CreateRollup(_ context.Context, _ *generated.CreateRollupRequest) (*generated.CreateRollupResponse, error) {
+	rollup, err := s.enclave.GenerateRollup()
+
+	msg := rpc.ToExtRollupMsg(rollup)
+
+	return &generated.CreateRollupResponse{
+		Msg: &msg,
+	}, err
+}
+
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

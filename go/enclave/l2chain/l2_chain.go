@@ -28,7 +28,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 	"github.com/status-im/keycard-go/hexutils"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -46,7 +45,6 @@ type ObscuroChain struct {
 
 	storage              db.Storage
 	l1Blockchain         *gethcore.BlockChain
-	rollupExtractor      *rollupextractor.RollupExtractor
 	mempool              mempool.Manager
 	genesis              *genesis.Genesis
 	crossChainProcessors *crosschain.Processors
@@ -66,7 +64,6 @@ func New(
 	nodeType common.NodeType,
 	storage db.Storage,
 	l1Blockchain *gethcore.BlockChain,
-	bridge *rollupextractor.RollupExtractor,
 	crossChainProcessors *crosschain.Processors,
 	mempool mempool.Manager,
 	privateKey *ecdsa.PrivateKey,
@@ -80,7 +77,6 @@ func New(
 		nodeType:             nodeType,
 		storage:              storage,
 		l1Blockchain:         l1Blockchain,
-		rollupExtractor:      bridge,
 		mempool:              mempool,
 		crossChainProcessors: crossChainProcessors,
 		enclavePrivateKey:    privateKey,
@@ -120,18 +116,44 @@ func (oc *ObscuroChain) UpdateL2Chain(batch *core.Batch) error {
 	oc.blockProcessingMutex.Lock()
 	defer oc.blockProcessingMutex.Unlock()
 
-	if err := oc.checkAndStoreBatch(batch); err != nil {
+	if err := oc.CheckAndStoreBatch(batch); err != nil {
 		return err
 	}
 
-	// If this is the genesis batch, we commit the genesis state.
-	if batch.IsGenesis() {
-		if err := oc.genesis.CommitGenesisState(oc.storage); err != nil {
-			return fmt.Errorf("could not apply genesis state. Cause: %w", err)
+	return nil
+}
+
+func (oc *ObscuroChain) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error) {
+	batches := make([]*core.Batch, 0)
+
+	var batch *core.Batch
+	var err error
+	if batchHash == gethcommon.BigToHash(gethcommon.Big0) {
+		if batch, err = oc.storage.FetchBatchByHeight(0); err != nil {
+			return nil, err
+		}
+		batches = append(batches, batch)
+	} else {
+		if batch, err = oc.storage.FetchBatch(batchHash); err != nil {
+			return nil, err
 		}
 	}
 
-	return nil
+	headBatch, err := oc.storage.FetchHeadBatch()
+	if err != nil {
+		return nil, err
+	}
+
+	if headBatch.NumberU64() < batch.NumberU64() {
+		return nil, errors.New("head batch height is in the past compared to requested batch")
+	}
+
+	for batch.Number().Cmp(headBatch.Number()) != 0 {
+		batch, _ = oc.storage.FetchBatchByHeight(batch.NumberU64() + 1)
+		batches = append(batches, batch)
+	}
+
+	return batches, nil
 }
 
 func (oc *ObscuroChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
@@ -341,12 +363,6 @@ func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *bl
 		if err != nil {
 			return nil, nil, err
 		}
-	}
-
-	// We process the rollups, updating the head rollup associated with the L1 block as we go.
-	if err := oc.processRollups(block); err != nil {
-		// TODO - #718 - Determine correct course of action if one or more rollups are invalid.
-		oc.logger.Error("could not process rollups", log.ErrKey, err)
 	}
 
 	// We determine whether we have produced a genesis batch yet.
@@ -662,7 +678,7 @@ func (oc *ObscuroChain) isInternallyValidBatch(batch *core.Batch) (types.Receipt
 	}
 
 	// Check that the signature is valid.
-	if err = oc.checkSequencerSignature(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
+	if err = oc.CheckSequencerSignature(batch.Hash(), &batch.Header.Agg, batch.Header.R, batch.Header.S); err != nil {
 		return nil, fmt.Errorf("verify batch r_%d: invalid signature. Cause: %w", common.ShortHash(*batch.Hash()), err)
 	}
 
@@ -697,8 +713,18 @@ func (oc *ObscuroChain) signBatch(batch *core.Batch) error {
 	return nil
 }
 
+func (oc *ObscuroChain) SignRollup(rollup *core.Rollup) error {
+	var err error
+	h := rollup.Header.Hash()
+	rollup.Header.R, rollup.Header.S, err = ecdsa.Sign(rand.Reader, oc.enclavePrivateKey, h[:])
+	if err != nil {
+		return fmt.Errorf("could not sign batch. Cause: %w", err)
+	}
+	return nil
+}
+
 // Checks that the header is signed validly by the sequencer.
-func (oc *ObscuroChain) checkSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
+func (oc *ObscuroChain) CheckSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
 	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
 	if !bytes.Equal(aggregator.Bytes(), oc.sequencerID.Bytes()) {
@@ -859,120 +885,9 @@ func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address,
 	return len(chainState.GetCode(accountAddr)) > 0, nil
 }
 
-// Validates and stores the rollup in a given block.
-// TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
-func (oc *ObscuroChain) processRollups(block *common.L1Block) error {
-	latestRollup, err := oc.getLatestRollupBeforeBlock(block)
-	if err != nil && !errors.Is(err, db.ErrNoRollups) {
-		return fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
-	}
-
-	rollups := oc.rollupExtractor.ExtractRollups(block, oc.storage)
-	sort.Slice(rollups, func(i, j int) bool {
-		// Ascending order sort.
-		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
-	})
-
-	// If this is the first rollup we've ever received, we check that it's the genesis rollup.
-	if latestRollup == nil && len(rollups) != 0 && !rollups[0].IsGenesis() {
-		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollups[0].Number())
-	}
-
-	blockHash := block.Hash()
-	for idx, rollup := range rollups {
-		if err = oc.checkSequencerSignature(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
-			return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
-		}
-
-		if !rollup.IsGenesis() {
-			previousRollup := latestRollup
-			if idx != 0 {
-				previousRollup = rollups[idx-1]
-			}
-			if err = oc.checkRollupsCorrectlyChained(rollup, previousRollup); err != nil {
-				return err
-			}
-		}
-
-		for _, batch := range rollup.Batches {
-			if err = oc.checkAndStoreBatch(batch); err != nil {
-				return fmt.Errorf("could not store batch. Cause: %w", err)
-			}
-		}
-
-		if err = oc.storage.StoreRollup(rollup); err != nil {
-			return fmt.Errorf("could not store rollup. Cause: %w", err)
-		}
-	}
-
-	// we record the latest rollup published against this L1 block hash
-	// note: if no rollup published yet then we record the empty hash as a marker
-	rollupHash := &gethcommon.Hash{}
-	if latestRollup != nil {
-		rollupHash = latestRollup.Hash()
-	}
-
-	err = oc.storage.UpdateHeadRollup(&blockHash, rollupHash)
-	if err != nil {
-		return fmt.Errorf("unable to update head rollup - %w", err)
-	}
-
-	return nil
-}
-
-// Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
-func (oc *ObscuroChain) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
-	for {
-		blockParentHash := block.ParentHash()
-		latestRollup, err := oc.storage.FetchHeadRollupForBlock(&blockParentHash)
-		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("could not fetch current L2 head rollup - %w", err)
-		}
-		if latestRollup != nil {
-			return latestRollup, nil
-		}
-
-		// we scan backwards now to the prev block in the chain and we will lookup to see if that has an entry
-		// todo: is this still required for safety, even though we're storing an entry for every L1 block?
-		block, err = oc.storage.FetchBlock(block.ParentHash())
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				// No more blocks available (enclave does not read the L1 chain from genesis if it knows
-				// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
-				// We have now checked through the entire (relevant) history of the L1 and no rollups were found.
-				return nil, db.ErrNoRollups
-			}
-			return nil, fmt.Errorf("could not fetch parent block - %w", err)
-		}
-	}
-}
-
-// Checks that the rollup:
-//   - Has a number exactly 1 higher than the previous rollup
-//   - Links to the previous rollup by hash
-//   - Has a first batch whose parent is the head batch of the previous rollup
-func (oc *ObscuroChain) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRollup *core.Rollup) error {
-	if big.NewInt(0).Sub(rollup.Header.Number, previousRollup.Header.Number).Cmp(big.NewInt(1)) != 0 {
-		return fmt.Errorf("found gap in rollups between rollup %d and rollup %d",
-			previousRollup.Header.Number, rollup.Header.Number)
-	}
-
-	if rollup.Header.ParentHash != *previousRollup.Hash() {
-		return fmt.Errorf("found gap in rollups. Rollup %d did not reference rollup %d by hash",
-			rollup.Header.Number, previousRollup.Header.Number)
-	}
-
-	if len(rollup.Batches) != 0 && previousRollup.Header.HeadBatchHash != rollup.Batches[0].Header.ParentHash {
-		return fmt.Errorf("found gap in rollup batches. Batches in rollup %d did not chain to batches in rollup %d",
-			rollup.Header.Number, previousRollup.Header.Number)
-	}
-
-	return nil
-}
-
 // Checks the batch. If we've not seen a batch at this height before, we store it. If we have seen a batch at this
 // height before, we validate it against the other received batch at the same height.
-func (oc *ObscuroChain) checkAndStoreBatch(batch *core.Batch) error {
+func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 	// We check the batch.
 	var txReceipts types.Receipts
 	// TODO - #718 - Determine what level of checking we should perform on the genesis batch.
@@ -1009,6 +924,13 @@ func (oc *ObscuroChain) checkAndStoreBatch(batch *core.Batch) error {
 		}
 		if err = oc.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, txReceipts); err != nil {
 			return fmt.Errorf("could not store new L2 head. Cause: %w", err)
+		}
+	}
+
+	// If this is the genesis batch, we commit the genesis state.
+	if batch.IsGenesis() {
+		if err := oc.genesis.CommitGenesisState(oc.storage); err != nil {
+			return fmt.Errorf("could not apply genesis state. Cause: %w", err)
 		}
 	}
 

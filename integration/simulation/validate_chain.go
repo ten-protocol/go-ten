@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -19,8 +21,6 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 
 	"github.com/obscuronet/go-obscuro/go/rpc"
 
@@ -169,9 +169,30 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	if reorgEfficiency > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d: The number of reorgs is too high: %d. ", nodeIdx, reorgs)
 	}
+	if !s.Params.IsInMem {
+		checkRollups(t, s, nodeIdx, rollups)
+	}
+
+	return height
+}
+
+func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
+	if len(rollups) < 2 {
+		t.Errorf("Node %d: Found less than two submitted rollups! Successful simulation should always produce more than 2", nodeIdx)
+	}
+
+	sort.Slice(rollups, func(i, j int) bool {
+		// Ascending order sort.
+		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
+	})
+
+	if rollups[0].Header.Number.Uint64() != 0 {
+		t.Errorf("Node %d: No genesis rollup", nodeIdx)
+	}
 
 	// Check that all the rollups are produced by aggregators.
-	for _, rollup := range rollups {
+	batchNumber := uint64(0)
+	for idx, rollup := range rollups {
 		nodeID, err := strconv.ParseInt(rollup.Header.Agg.Hex()[2:], 16, 64)
 		if err != nil {
 			t.Errorf("Node %d: Could not parse node's integer ID. Cause: %s", nodeIdx, err)
@@ -180,9 +201,64 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		if network.GetNodeType(int(nodeID)) != common.Sequencer {
 			t.Errorf("Node %d: Found rollup produced by non-sequencer %d", nodeIdx, nodeID)
 		}
+
+		if len(rollup.Batches) == 0 {
+			t.Errorf("Node %d: No batches in rollup!", nodeIdx)
+			continue
+		}
+
+		if idx != 0 {
+			prevRollup := rollups[idx-1]
+			checkRollupPair(t, nodeIdx, prevRollup, rollup)
+		}
+
+		for _, batch := range rollup.Batches {
+			currHeight := batch.Header.Number.Uint64()
+			if currHeight != 0 && currHeight > batchNumber+1 {
+				t.Errorf("Node %d: Batch gap!", nodeIdx)
+			}
+			batchNumber = currHeight
+
+			for _, clients := range s.RPCHandles.AuthObsClients {
+				client := clients[0]
+				batchOnNode, _ := client.RollupHeaderByHash(batch.Header.Hash())
+				if batchOnNode.Hash() != batch.Hash() {
+					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
+				}
+			}
+		}
+	}
+}
+
+func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, rollup *common.ExtRollup) {
+	isValidChain := prevRollup.Header.Number.Uint64() == rollup.Header.Number.Uint64()-1
+	if !isValidChain {
+		t.Errorf("Node %d: Found rollup gap!", nodeIdx)
+		return
+	}
+	isValidChain = rollup.Header.ParentHash == prevRollup.Header.Hash()
+	if !isValidChain {
+		t.Errorf("Node %d: Found badly chained rollups!", nodeIdx)
+		return
 	}
 
-	return height
+	if len(prevRollup.Batches) == 0 {
+		return
+	}
+
+	lastBatch := prevRollup.Batches[len(prevRollup.Batches)-1]
+	firstBatch := rollup.Batches[0]
+	isValidChain = firstBatch.Header.ParentHash == lastBatch.Header.Hash()
+	if !isValidChain {
+		t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
+		return
+	}
+
+	isValidChain = prevRollup.Header.HeadBatchHash == firstBatch.Header.ParentHash
+	if !isValidChain {
+		t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
+		return
+	}
 }
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
@@ -210,14 +286,18 @@ func ExtractDataFromEthereumChain(
 			if t == nil {
 				continue
 			}
+			receipt, err := node.TransactionReceipt(tx.Hash())
+
+			if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+				continue
+			}
+
 			switch l1tx := t.(type) {
 			case *ethadapter.L1DepositTx:
 				// TODO: Remove this hack once the old integrated bridge is removed.
-				if receipt, err := node.TransactionReceipt(tx.Hash()); err == nil && receipt.Status == 1 {
-					deposits = append(deposits, tx.Hash())
-					totalDeposited.Add(totalDeposited, l1tx.Amount)
-					successfulDeposits++
-				}
+				deposits = append(deposits, tx.Hash())
+				totalDeposited.Add(totalDeposited, l1tx.Amount)
+				successfulDeposits++
 			case *ethadapter.L1RollupTx:
 				r, err := common.DecodeRollup(l1tx.Rollup)
 				if err != nil {
@@ -334,7 +414,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	total := big.NewInt(0)
 	for _, wallet := range s.Params.Wallets.SimObsWallets {
 		client := rpcHandles.ObscuroWalletClient(wallet.Address(), nodeIdx)
-		bal := balance(s.ctx, client, wallet.Address(), s.Params.Wallets.Tokens[rollupextractor.HOC].L2ContractAddress)
+		bal := balance(s.ctx, client, wallet.Address(), s.Params.Wallets.Tokens[testcommon.HOC].L2ContractAddress)
 		total.Add(total, bal)
 	}
 
@@ -534,7 +614,7 @@ out:
 func checkSnapshotLogs(t *testing.T, client *obsclient.AuthObsClient) int {
 	// To exercise the filtering mechanism, we get a snapshot for HOC events only, ignoring POC events.
 	hocFilter := common.FilterCriteriaJSON{
-		Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + rollupextractor.HOCAddr)},
+		Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + testcommon.HOCAddr)},
 	}
 	logs, err := client.GetLogs(context.Background(), hocFilter)
 	if err != nil {
@@ -552,7 +632,7 @@ func assertLogsValid(t *testing.T, owner string, logs []*types.Log) {
 		assertRelevantLogsOnly(t, owner, *receivedLog)
 
 		logAddrHex := receivedLog.Address.Hex()
-		if logAddrHex != "0x"+rollupextractor.HOCAddr {
+		if logAddrHex != "0x"+testcommon.HOCAddr {
 			t.Errorf("due to filter, expected logs from the HOC contract only, but got a log from %s", logAddrHex)
 		}
 	}

@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -295,7 +294,7 @@ func (ti *TransactionInjector) newObscuroTransferTx(from wallet.Wallet, dest get
 }
 
 func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types.TxData {
-	transferERC20data := erc20contractlib.CreateTransferTxData(rollupextractor.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
+	transferERC20data := erc20contractlib.CreateTransferTxData(testcommon.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
 	return ti.newTx(transferERC20data, 1)
 }
 
@@ -312,7 +311,7 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     data,
-		To:       ti.wallets.Tokens[rollupextractor.HOC].L2ContractAddress,
+		To:       ti.wallets.Tokens[testcommon.HOC].L2ContractAddress,
 	}
 }
 

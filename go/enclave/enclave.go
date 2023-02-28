@@ -38,7 +38,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupextractor"
+	"github.com/obscuronet/go-obscuro/go/enclave/rollupmanager"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
@@ -56,7 +56,7 @@ type enclaveImpl struct {
 	mempool              mempool.Manager
 	l1Blockchain         *gethcore.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
-	bridge               *rollupextractor.RollupExtractor
+	rollupManager        rollupmanager.RollupManager
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
@@ -154,14 +154,6 @@ func NewEnclave(
 
 	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl(logger)
 
-	obscuroBridge := rollupextractor.New(
-		mgmtContractLib,
-		transactionBlobCrypto,
-		config.ObscuroChainID,
-		config.L1ChainID,
-		logger,
-	)
-
 	memp := mempool.New(config.ObscuroChainID)
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
@@ -172,7 +164,6 @@ func NewEnclave(
 		config.NodeType,
 		storage,
 		l1Blockchain,
-		obscuroBridge,
 		crossChainProcessors,
 		memp,
 		enclaveKey,
@@ -181,6 +172,17 @@ func NewEnclave(
 		genesis,
 		logger,
 	)
+
+	rollupManager := rollupmanager.New(
+		mgmtContractLib,
+		transactionBlobCrypto,
+		config.ObscuroChainID,
+		config.L1ChainID,
+		storage,
+		chain,
+		logger,
+	)
+
 	// ensure cached chain state data is up-to-date using the persisted batch data
 	err = chain.ResyncStateDB()
 	if err != nil {
@@ -196,7 +198,7 @@ func NewEnclave(
 		mempool:               memp,
 		l1Blockchain:          l1Blockchain,
 		rpcEncryptionManager:  rpcEncryptionManager,
-		bridge:                obscuroBridge,
+		rollupManager:         rollupManager,
 		subscriptionManager:   subscriptionManager,
 		crossChainProcessors:  crossChainProcessors,
 		chain:                 chain,
@@ -238,8 +240,22 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	}
 	e.logger.Info("ProcessL1Block successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 
+	_, err = e.rollupManager.ProcessL1Block(&block)
+	if err != nil {
+		e.logger.Warn("Error processing L1 block for rollups", log.ErrKey, err)
+	}
+
 	// We prepare the block submission response.
+	// TODO: Fix subscribed logs for validators who are being synchronized only through L1
 	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
+
+	if producedBatch != nil && (producedBatch.Header.Number.Uint64()%e.config.Cadence == 0) {
+		rollup, err := e.rollupManager.CreateRollup()
+		if err != nil {
+			e.logger.Error("Failed to produce rollup", log.ErrKey, err)
+		}
+		blockSubmissionResponse.ProducedRollup = rollup.ToExtRollup(e.transactionBlobCrypto)
+	}
 
 	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(),
 		"newBatch", describeBSR(blockSubmissionResponse))
@@ -322,6 +338,19 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 	}
 
 	return nil
+}
+
+func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
+	if e.config.NodeType != common.Sequencer {
+		return nil, errors.New("only sequencer can generate rollups")
+	}
+
+	rollup, err := e.rollupManager.CreateRollup()
+	if err != nil {
+		return nil, err
+	}
+
+	return rollup.ToExtRollup(e.transactionBlobCrypto), nil
 }
 
 // ExecuteOffChainTransaction handles param decryption, validation and encryption
@@ -1051,15 +1080,12 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head 
 	}
 
 	var producedExtBatch *common.ExtBatch
-	var producedExtRollup *common.ExtRollup
 	if producedBatch != nil {
 		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
-		producedExtRollup = common.ExtRollupFromExtBatches([]*common.ExtBatch{producedExtBatch})
 	}
 
 	return &common.BlockSubmissionResponse{
 		ProducedBatch:  producedExtBatch,
-		ProducedRollup: producedExtRollup,
 		SubscribedLogs: e.getEncryptedLogs(*block, l2Head),
 	}
 }

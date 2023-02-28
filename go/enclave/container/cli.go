@@ -35,6 +35,7 @@ type EnclaveConfigToml struct {
 	MessageBusAddress         string
 	SequencerID               string
 	ObscuroGenesis            string
+	Cadence                   uint64
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
@@ -63,6 +64,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	messageBusAddress := flag.String(messageBusAddressName, cfg.MessageBusAddress.Hex(), flagUsageMap[messageBusAddressName])
 	sequencerID := flag.String(sequencerIDName, cfg.SequencerID.Hex(), flagUsageMap[sequencerIDName])
 	obscuroGenesis := flag.String(obscuroGenesisName, cfg.ObscuroGenesis, flagUsageMap[obscuroGenesisName])
+	Cadence := flag.Uint64(CadenceName, cfg.Cadence, flagUsageMap[CadenceName])
 
 	flag.Parse()
 
@@ -94,6 +96,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	cfg.MessageBusAddress = gethcommon.HexToAddress(*messageBusAddress)
 	cfg.SequencerID = gethcommon.HexToAddress(*sequencerID)
 	cfg.ObscuroGenesis = *obscuroGenesis
+	cfg.Cadence = *Cadence
 
 	return cfg, nil
 }

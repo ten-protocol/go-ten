@@ -345,3 +345,14 @@ func (c *Client) HealthCheck() (bool, error) {
 	}
 	return resp.Status, nil
 }
+
+func (c *Client) GenerateRollup() (*common.ExtRollup, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return rpc.FromExtRollupMsg(resp.Msg), nil
+}
