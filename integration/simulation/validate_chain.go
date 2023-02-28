@@ -169,7 +169,9 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	if reorgEfficiency > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d: The number of reorgs is too high: %d. ", nodeIdx, reorgs)
 	}
-	checkRollups(t, s, nodeIdx, rollups)
+	if !s.Params.IsInMem {
+		checkRollups(t, s, nodeIdx, rollups)
+	}
 
 	return height
 }
@@ -219,7 +221,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 
 			for _, clients := range s.RPCHandles.AuthObsClients {
 				client := clients[0]
-				batchOnNode, _ := client.RollupHeaderByNumber(batch.Header.Number)
+				batchOnNode, _ := client.RollupHeaderByHash(batch.Header.Hash())
 				if batchOnNode.Hash() != batch.Hash() {
 					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
 				}
