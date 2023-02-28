@@ -2,10 +2,7 @@ package db
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-
-	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
@@ -61,9 +58,6 @@ func (db *DB) writeBlockHeader(header *types.Header) error {
 func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*types.Header, error) {
 	data, err := r.Get(blockHeaderKey(hash))
 	if err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, err
 	}
 	if len(data) == 0 {

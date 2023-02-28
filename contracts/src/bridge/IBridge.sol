@@ -17,7 +17,7 @@ interface IBridge {
 
     // Sends ERC20 assets over to the other network. The user must grant allowance to the bridge
     // before calling this function for more or equal to the amount being bridged over. 
-    // This can be done using IERC20(asset).increaseAllowance(bridge, amount); 
+    // This can be done using IERC20(asset).approve(bridge, amount); 
     // asset - the address of the smart contract of the ERC20 token.
     // amount - the number of tokens being transfered.
     // receiver - the L2 address receiving the assets.

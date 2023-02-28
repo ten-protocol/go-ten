@@ -35,7 +35,10 @@ const (
 	_receivedMessage          = "msg/inbound/success_received"
 )
 
-var _alertPeriod = 5 * time.Minute
+var (
+	_alertPeriod        = 5 * time.Minute
+	errUnknownSequencer = errors.New("sequencer address not known")
+)
 
 // A P2P message's type.
 type msgType uint8
@@ -105,7 +108,11 @@ func (p *p2pImpl) UpdatePeerList(newPeers []string) {
 
 func (p *p2pImpl) SendTxToSequencer(tx common.EncryptedTx) error {
 	msg := message{Sender: p.ourAddress, Type: msgTypeTx, Contents: tx}
-	return p.send(msg, p.getSequencer())
+	sequencer, err := p.getSequencer()
+	if err != nil {
+		return fmt.Errorf("failed to find sequencer - %w", err)
+	}
+	return p.send(msg, sequencer)
 }
 
 func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
@@ -129,7 +136,11 @@ func (p *p2pImpl) RequestBatchesFromSequencer(batchRequest *common.BatchRequest)
 
 	msg := message{Sender: p.ourAddress, Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
 	// TODO - #718 - Allow missing batches to be requested from peers other than sequencer?
-	return p.send(msg, p.getSequencer())
+	sequencer, err := p.getSequencer()
+	if err != nil {
+		return fmt.Errorf("failed to find sequencer - %w", err)
+	}
+	return p.send(msg, sequencer)
 }
 
 func (p *p2pImpl) SendBatches(batchMsg *host.BatchMsg, to string) error {
@@ -277,8 +288,11 @@ func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
 
 // Retrieves the sequencer's address.
 // TODO - #718 - Use better method to identify the sequencer?
-func (p *p2pImpl) getSequencer() string {
-	return p.peerAddresses[0]
+func (p *p2pImpl) getSequencer() (string, error) {
+	if len(p.peerAddresses) == 0 {
+		return "", errUnknownSequencer
+	}
+	return p.peerAddresses[0], nil
 }
 
 // status returns the current status of the p2p layer

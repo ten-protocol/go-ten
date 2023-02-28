@@ -153,6 +153,7 @@ func startEth2Network() error {
 				"0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944", // contract deployment pk - f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb
 				"0x0654D8B60033144D567f25bF41baC1FB0D60F23B", // sequencer pk - 8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99
 				"0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A", // validator pk - ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89
+				"0xDEe530E22045939e6f6a0A593F829e35A140D3F1", // bridge admin pk - 4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f1
 			}),
 		),
 	)

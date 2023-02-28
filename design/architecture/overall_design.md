@@ -9,7 +9,7 @@ The purpose of this document is to describe aspects of Obscuro's technical desig
 
 The following diagram shows the key components of an Obscuro deployment:
 
-![architecture diagram](./obscuro_arch.jpeg)
+![architecture diagram](./resources/obscuro_arch.jpeg)
 
 The Ethereum node and Ethereum chain components shown in this diagram are developed and maintained by third-parties. 
 The following additional components must be developed:
