@@ -199,7 +199,7 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 			UseInMemoryDB:     false,
 			MinGasPrice:       big.NewInt(1),
 			MessageBusAddress: *params.L1SetupData.MessageBusAddr,
-			RollupCadance:     10,
+			Cadence:           10,
 		}
 		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
 		encl := enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, params.MgmtContractLib, enclaveLogger)
