@@ -29,6 +29,7 @@ jobs:
         run: |
           cd contracts
           npx hardhat generate-abi-bindings --output-dir generated
+          git diff
           [ $(git diff | wc -c) -eq "0" ] || exit 1 
       
       - name: Hardhat test
