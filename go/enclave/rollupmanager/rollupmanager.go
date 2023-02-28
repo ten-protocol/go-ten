@@ -21,7 +21,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
@@ -139,14 +138,16 @@ func (re *rollupManager) CreateRollup() (*core.Rollup, error) {
 	return newRollup, nil
 }
 
-func (re *rollupManager) ProcessL1Block(b *types.Block) ([]*core.Rollup, error) {
-	return re.processRollups(b)
+func (re *rollupManager) ProcessL1Block(br *common.BlockAndReceipts) ([]*core.Rollup, error) {
+	return re.processRollups(br)
 }
 
 // extractRollups - returns a list of the rollups published in this block
-func (re *rollupManager) extractRollups(b *types.Block, blockResolver db.BlockResolver) []*core.Rollup {
+func (re *rollupManager) extractRollups(br *common.BlockAndReceipts, blockResolver db.BlockResolver) []*core.Rollup {
 	rollups := make([]*core.Rollup, 0)
-	for _, tx := range b.Transactions() {
+	b := br.Block
+
+	for _, tx := range *br.SuccessfulTransactions() {
 		// go through all rollup transactions
 		t := re.MgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -185,13 +186,15 @@ func (re *rollupManager) extractRollups(b *types.Block, blockResolver db.BlockRe
 
 // Validates and stores the rollup in a given block.
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
-func (re *rollupManager) processRollups(block *common.L1Block) ([]*core.Rollup, error) {
+func (re *rollupManager) processRollups(br *common.BlockAndReceipts) ([]*core.Rollup, error) {
+	block := br.Block
+
 	latestRollup, err := re.getLatestRollupBeforeBlock(block)
 	if err != nil && !errors.Is(err, db.ErrNoRollups) {
 		return nil, fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
 	}
 
-	rollups := re.extractRollups(block, re.storage)
+	rollups := re.extractRollups(br, re.storage)
 
 	// If this is the first rollup we've ever received, we check that it's the genesis rollup.
 	if latestRollup == nil && len(rollups) != 0 && !rollups[0].IsGenesis() {

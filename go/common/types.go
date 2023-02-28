@@ -1,6 +1,8 @@
 package common
 
 import (
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
@@ -78,3 +80,49 @@ type (
 	EncryptedSharedEnclaveSecret []byte
 	EncodedAttestationReport     []byte
 )
+
+type BlockAndReceipts struct {
+	Block                  *types.Block
+	ReceiptsMap            map[int]*types.Receipt
+	Receipts               *types.Receipts
+	successfulTransactions *types.Transactions
+}
+
+func ParseBlockAndReceipts(block *types.Block, receipts *types.Receipts) (*BlockAndReceipts, error) {
+
+	if len(block.Transactions()) != len(*receipts) {
+		return nil, fmt.Errorf("transactions and receipts do not match")
+	}
+
+	br := BlockAndReceipts{
+		Block:                  block,
+		Receipts:               receipts,
+		ReceiptsMap:            make(map[int]*types.Receipt, receipts.Len()),
+		successfulTransactions: nil,
+	}
+
+	for idx, receipt := range *receipts {
+		br.ReceiptsMap[idx] = receipt
+	}
+
+	return &br, nil
+}
+
+func (br *BlockAndReceipts) SuccessfulTransactions() *types.Transactions {
+	if br.successfulTransactions != nil {
+		return br.successfulTransactions
+	}
+
+	txs := br.Block.Transactions()
+	st := make(types.Transactions, 0)
+
+	for idx, tx := range txs {
+		receipt, ok := br.ReceiptsMap[idx]
+		if ok && receipt.Status == types.ReceiptStatusSuccessful {
+			st = append(st, tx)
+		}
+	}
+
+	br.successfulTransactions = &st
+	return br.successfulTransactions
+}
