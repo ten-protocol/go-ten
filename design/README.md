@@ -27,7 +27,7 @@ Note: the wallet extension and the data relevancy rules are already implemented.
 
 Obscuro needs a decentralised bridge infrastructure to Ethereum.
 
-Note: this design is approved and implemented.
+Note: this design is approved and mostly implemented (there are some dependencies on the fast-finality work). 
 
 
 ## Fast Soft-Finality Protocol
