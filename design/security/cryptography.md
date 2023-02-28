@@ -99,7 +99,7 @@ Edb uses RocksDB behind the scenes and use AES-GCM to encrypt the backing files.
 The payload containing transactions must be stored encrypted in the data availability layer.
 For efficiency it must be encrypted with symmetric keys.
 
-The other impotant requirement is that 
+The other important requirement is that transactions can be revealed. 
 
 We propose to use with AES-128-GCM. 
 
