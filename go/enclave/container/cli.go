@@ -35,6 +35,7 @@ type EnclaveConfigToml struct {
 	MessageBusAddress         string
 	SequencerID               string
 	ObscuroGenesis            string
+	RollupCadance             uint64
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
