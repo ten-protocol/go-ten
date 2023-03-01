@@ -89,7 +89,6 @@ type BlockAndReceipts struct {
 }
 
 func ParseBlockAndReceipts(block *types.Block, receipts *types.Receipts) (*BlockAndReceipts, error) {
-
 	if len(block.Transactions()) != len(*receipts) {
 		return nil, fmt.Errorf("transactions and receipts do not match")
 	}
