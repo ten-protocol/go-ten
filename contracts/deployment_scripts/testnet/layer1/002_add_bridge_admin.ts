@@ -18,7 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Deploy a constant supply (constructor mints) erc20
     await deployments.execute('ObscuroBridge', {
         from: deployer
-    }, 'promoteToAdmin', '0xDEe530E22045939e6f6a0A593F829e35A140D3F1')
+    }, 'promoteToAdmin', '0xE09a37ABc1A63441404007019E5BC7517bE2c43f')
 };
 
 export default func;
