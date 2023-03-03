@@ -6,6 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
 	"github.com/obscuronet/go-obscuro/integration"
 
@@ -17,13 +21,17 @@ type testnetConnector struct {
 	seqRPCAddress         string
 	validatorRPCAddresses []string
 	faucetHTTPAddress     string
+	l1Host                string
+	l1HttpPort            uint
 }
 
-func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string) networktest.NetworkConnector {
+func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1Host string, l1Port uint) networktest.NetworkConnector {
 	return &testnetConnector{
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
 		faucetHTTPAddress:     faucetHTTPAddress,
+		l1Host:                l1Host,
+		l1HttpPort:            l1Port,
 	}
 }
 
@@ -60,6 +68,14 @@ func (t *testnetConnector) ValidatorRPCAddress(idx int) string {
 
 func (t *testnetConnector) NumValidators() int {
 	return len(t.validatorRPCAddresses)
+}
+
+func (t *testnetConnector) GetL1Client() (ethadapter.EthClient, error) {
+	client, err := ethadapter.NewEthClient(t.l1Host, t.l1HttpPort, time.Minute, gethcommon.Address{}, testlog.Logger())
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
 func (t *testnetConnector) GetSequencerNode() networktest.NodeOperator {

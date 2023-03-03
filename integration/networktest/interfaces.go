@@ -3,6 +3,8 @@ package networktest
 import (
 	"context"
 
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -18,6 +20,7 @@ type NetworkConnector interface {
 	NumValidators() int
 	GetSequencerNode() NodeOperator
 	GetValidatorNode(idx int) NodeOperator
+	GetL1Client() (ethadapter.EthClient, error)
 }
 
 // Action is any step in a test, they will typically be either minimally small steps in the test or they will be containers

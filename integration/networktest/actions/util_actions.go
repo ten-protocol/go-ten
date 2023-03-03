@@ -54,12 +54,12 @@ type (
 	VerifyFunc func(ctx context.Context, network networktest.NetworkConnector) error
 )
 
-// NoStateNoVerifyAction allows you to create an action quickly with an in-line function when it doesn't need state or a verify method
-func NoStateNoVerifyAction(run RunFunc) networktest.Action {
+// RunOnlyAction allows you to create an action quickly with an in-line function when it doesn't need state or a verify method
+func RunOnlyAction(run RunFunc) networktest.Action {
 	return &basicAction{run: run}
 }
 
-// VerifyOnlyAction allows you to create an action quickly with an in-line function when it doesn't need state or a verify method
+// VerifyOnlyAction allows you to create a test verification quickly with an in-line function when it doesn't need state or a run method
 func VerifyOnlyAction(verify VerifyFunc) networktest.Action {
 	return &basicAction{verify: verify}
 }

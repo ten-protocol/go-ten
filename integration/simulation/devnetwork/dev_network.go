@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
@@ -80,6 +82,10 @@ func (s *InMemDevNetwork) SequencerRPCAddress() string {
 func (s *InMemDevNetwork) ValidatorRPCAddress(idx int) string {
 	val := s.GetValidatorNode(idx)
 	return val.HostRPCAddress()
+}
+
+func (s *InMemDevNetwork) GetL1Client() (ethadapter.EthClient, error) {
+	return s.l1Network.GetClient(0), nil
 }
 
 func (s *InMemDevNetwork) GetSequencerNode() networktest.NodeOperator {

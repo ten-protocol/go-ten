@@ -54,7 +54,7 @@ func (s *stopValidatorEnclaveAction) Verify(_ context.Context, _ networktest.Net
 }
 
 func StopValidatorHost(validatorIdx int) networktest.Action {
-	return NoStateNoVerifyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 		fmt.Printf("Validator %d: stopping host\n", validatorIdx)
 		validator := network.GetValidatorNode(validatorIdx)
 		err := validator.StopHost()
@@ -66,7 +66,7 @@ func StopValidatorHost(validatorIdx int) networktest.Action {
 }
 
 func StartValidatorHost(validatorIdx int) networktest.Action {
-	return NoStateNoVerifyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 		fmt.Printf("Validator %d: starting host\n", validatorIdx)
 		validator := network.GetValidatorNode(validatorIdx)
 		err := validator.StartHost()
