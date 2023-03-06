@@ -81,7 +81,7 @@ func (n *ContractDeployer) WaitForFinish() error {
 	defer cli.Close()
 
 	// make sure the container has finished execution
-	err = docker.WaitForContainerToFinish(n.containerID, time.Minute)
+	err = docker.WaitForContainerToFinish(n.containerID, 3*time.Minute)
 	if err != nil {
 		return err
 	}
