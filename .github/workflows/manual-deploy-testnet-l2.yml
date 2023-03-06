@@ -319,6 +319,7 @@ jobs:
           go run ./testnet/launcher/l2contractdeployer/cmd \
           -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
           -l1_host=${{ needs.build.outputs.L1_HOST }} \
+          -l2_ws_port=13001 \
           -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
           -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
           -l2_hoc_private_key=6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682 \
