@@ -32,7 +32,7 @@ func FetchBalanceAtSnapshot(ctx context.Context, userID int, snapshot string) (*
 // SnapshotUserBalances requests and records the curr users native balances in the context
 // Note: when running this ensure that there are no transactions in flight if that will affect usage of this data
 func SnapshotUserBalances(snapshot string) networktest.Action {
-	return NoStateNoVerifyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 		numUsers, err := FetchNumberOfTestUsers(ctx)
 		if err != nil {
 			return nil, err

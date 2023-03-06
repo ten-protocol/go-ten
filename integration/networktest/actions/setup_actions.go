@@ -67,7 +67,7 @@ func CreateAndFundTestUsers(numUsers int) *MultiAction {
 }
 
 func AuthenticateAllUsers() networktest.Action {
-	return NoStateNoVerifyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 		numUsers, err := FetchNumberOfTestUsers(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("expected number of test users to be set on the context")

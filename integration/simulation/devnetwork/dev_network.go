@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
@@ -80,6 +82,14 @@ func (s *InMemDevNetwork) SequencerRPCAddress() string {
 func (s *InMemDevNetwork) ValidatorRPCAddress(idx int) string {
 	val := s.GetValidatorNode(idx)
 	return val.HostRPCAddress()
+}
+
+// GetL1Client returns the first client we have for our local L1 network
+// todo: this allows tests some basic L1 verification but in future this will need support more manipulation of L1 nodes,
+//
+//	(to allow us to simulate various scenarios where L1 is unavailable, under attack, etc.)
+func (s *InMemDevNetwork) GetL1Client() (ethadapter.EthClient, error) {
+	return s.l1Network.GetClient(0), nil
 }
 
 func (s *InMemDevNetwork) GetSequencerNode() networktest.NodeOperator {
