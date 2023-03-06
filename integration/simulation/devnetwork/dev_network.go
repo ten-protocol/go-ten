@@ -84,6 +84,9 @@ func (s *InMemDevNetwork) ValidatorRPCAddress(idx int) string {
 	return val.HostRPCAddress()
 }
 
+// GetL1Client returns the first client we have for our local L1 network
+// todo: this allows tests some basic L1 verification but in future this will need support more manipulation of L1 nodes,
+//  (to allow us to simulate various scenarios where L1 is unavailable, under attack, etc.)
 func (s *InMemDevNetwork) GetL1Client() (ethadapter.EthClient, error) {
 	return s.l1Network.GetClient(0), nil
 }
