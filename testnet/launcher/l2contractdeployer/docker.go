@@ -1,15 +1,9 @@
 package l2contractdeployer
 
 import (
-	"bytes"
-	"context"
 	"fmt"
-	"io"
-	"regexp"
-	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/obscuronet/go-obscuro/go/common/docker"
 )
@@ -79,65 +73,20 @@ func (n *ContractDeployer) Start() error {
 	return nil
 }
 
-func (n *ContractDeployer) RetrieveL1ContractAddresses() (string, string, error) {
+func (n *ContractDeployer) WaitForFinish() error {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		return "", "", err
+		return err
 	}
 	defer cli.Close()
 
 	// make sure the container has finished execution
-	err = docker.WaitForContainerToFinish(n.containerID, time.Minute)
+	err = docker.WaitForContainerToFinish(n.containerID, 3*time.Minute)
 	if err != nil {
-		return "", "", err
+		return err
 	}
 
-	logsOptions := types.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Tail:       "2",
-	}
+	// todo: if we want to read anything from the container logs we can do it here (see RetrieveL1ContractAddresses as example)
 
-	// Read the container logs
-	out, err := cli.ContainerLogs(context.Background(), n.containerID, logsOptions)
-	if err != nil {
-		return "", "", err
-	}
-	defer out.Close()
-
-	// Buffer the output
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, out)
-	if err != nil {
-		return "", "", err
-	}
-
-	// Get the last two lines
-	output := buf.String()
-	lines := strings.Split(output, "\n")
-
-	managementAddr, err := findAddress(lines[0])
-	if err != nil {
-		return "", "", err
-	}
-	messageBusAddr, err := findAddress(lines[1])
-	if err != nil {
-		return "", "", err
-	}
-
-	return managementAddr, messageBusAddr, nil
-}
-
-func findAddress(line string) (string, error) {
-	// Regular expression to match Ethereum addresses
-	re := regexp.MustCompile("(0x[a-fA-F0-9]{40})")
-
-	// Find all Ethereum addresses in the text
-	matches := re.FindAllString(line, -1)
-
-	if len(matches) == 0 {
-		return "", fmt.Errorf("no address found in: %s", line)
-	}
-	// Print the last
-	return matches[len(matches)-1], nil
+	return nil
 }

@@ -139,6 +139,11 @@ func (t *Testnet) Start() error {
 	if err != nil {
 		return fmt.Errorf("unable to start the l2 contract deployer - %w", err)
 	}
+
+	err = l2ContractDeployer.WaitForFinish()
+	if err != nil {
+		return fmt.Errorf("unexpected error waiting for l2 contract deployer to finish - %w", err)
+	}
 	fmt.Println("L2 Contracts were successfully deployed...")
 
 	return nil

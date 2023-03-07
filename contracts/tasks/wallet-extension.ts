@@ -30,8 +30,9 @@ task("obscuro:wallet-extension:start:local")
         `-nodePortWS`, `${nodeUrl.port}`
     ]);
 
+    console.log("Waiting for Wallet Extension to start");
     await new Promise((resolve, fail)=>{
-        const timeoutSchedule = setTimeout(fail, 40_000);
+        const timeoutSchedule = setTimeout(fail, 60_000);
         weProcess.stdout.on('data', (data: string) => {
             if (args.withStdOut) {
                 console.log(data.toString());
@@ -48,6 +49,7 @@ task("obscuro:wallet-extension:start:local")
         });
     });
 
+    console.log("Wallet Exension started successfully");
     return weProcess;
 });
 
