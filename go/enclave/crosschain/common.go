@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"golang.org/x/crypto/sha3"
@@ -146,16 +145,4 @@ func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) Mes
 		Topic:    event.Topic,
 		Payload:  event.Payload,
 	}
-}
-
-// VerifyReceiptHash - ensures the receiptRoot in the block header matches the actual hash of the tree built from the receipts.
-func VerifyReceiptHash(block *common.L1Block, receipts common.L1Receipts) bool {
-	if len(receipts) == 0 {
-		return bytes.Equal(block.ReceiptHash().Bytes(), types.EmptyRootHash.Bytes())
-	}
-
-	calculatedHash := types.DeriveSha(receipts, &trie.StackTrie{})
-	expectedHash := block.ReceiptHash()
-
-	return bytes.Equal(calculatedHash.Bytes(), expectedHash.Bytes())
 }
