@@ -8,14 +8,10 @@ import (
 	"net"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	erpc "github.com/obscuronet/go-obscuro/go/enclave/rpc"
-
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"google.golang.org/grpc"
@@ -28,24 +24,19 @@ import (
 // RPCServer receives RPC calls to the enclave process and relays them to the enclave.Enclave.
 type RPCServer struct {
 	generated.UnimplementedEnclaveProtoServer
-	enclave           common.Enclave
-	grpcServer        *grpc.Server
-	logger            gethlog.Logger
-	listenAddress     string
-	encryptionManager erpc.EncryptionManager
+	enclave       common.Enclave
+	grpcServer    *grpc.Server
+	logger        gethlog.Logger
+	listenAddress string
 }
 
 // NewEnclaveRPCServer prepares an enclave RPCServer (doesn't start listening until `StartServer` is called
 func NewEnclaveRPCServer(listenAddress string, enclave common.Enclave, logger gethlog.Logger) *RPCServer {
-	obscuroKey := crypto.GetObscuroKey(logger)
-	encryptionManager := erpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
-
 	return &RPCServer{
-		enclave:           enclave,
-		grpcServer:        grpc.NewServer(),
-		logger:            logger,
-		listenAddress:     listenAddress,
-		encryptionManager: encryptionManager,
+		enclave:       enclave,
+		grpcServer:    grpc.NewServer(),
+		logger:        logger,
+		listenAddress: listenAddress,
 	}
 }
 
