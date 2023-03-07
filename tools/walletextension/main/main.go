@@ -53,7 +53,11 @@ func main() {
 		}
 	}
 
-	logger := log.New(log.WalletExtCmp, int(gethlog.LvlError), config.LogPath)
+	logLvl := gethlog.LvlError
+	if config.VerboseFlag {
+		logLvl = gethlog.LvlDebug
+	}
+	logger := log.New(log.WalletExtCmp, int(logLvl), config.LogPath)
 
 	walletExtension := walletextension.NewWalletExtension(config, logger)
 	defer walletExtension.Shutdown()

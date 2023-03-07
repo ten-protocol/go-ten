@@ -230,6 +230,7 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 		userConn.HandleError(err.Error())
 		return
 	}
+	we.logger.Debug("REQUEST", "method", rpcReq.Method, "body", string(body))
 
 	if rpcReq.Method == rpc.Subscribe && !userConn.SupportsSubscriptions() {
 		userConn.HandleError(ErrSubscribeFailHTTP)
@@ -429,4 +430,5 @@ type Config struct {
 	NodeRPCWebsocketAddress string
 	LogPath                 string
 	PersistencePathOverride string // Overrides the persistence file location. Used in tests.
+	VerboseFlag             bool
 }

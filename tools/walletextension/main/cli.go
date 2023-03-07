@@ -39,6 +39,10 @@ const (
 	persistencePathName    = "persistencePath"
 	persistencePathDefault = ""
 	persistencePathUsage   = "The path for the wallet extension's persistence file. Default: ~/.obscuro/wallet_extension_persistence"
+
+	verboseFlagName    = "verbose"
+	verboseFlagDefault = false
+	verboseFlagUsage   = "Flag to enable verbose logging of wallet extension traffic"
 )
 
 func parseCLIArgs() walletextension.Config {
@@ -50,6 +54,7 @@ func parseCLIArgs() walletextension.Config {
 	nodeWebsocketPort := flag.Int(nodeWebsocketPortName, nodeWebsocketPortDefault, nodeWebsocketPortUsage)
 	logPath := flag.String(logPathName, logPathDefault, logPathUsage)
 	persistencePath := flag.String(persistencePathName, persistencePathDefault, persistencePathUsage)
+	verboseFlag := flag.Bool(verboseFlagName, verboseFlagDefault, verboseFlagUsage)
 	flag.Parse()
 
 	return walletextension.Config{
@@ -60,5 +65,6 @@ func parseCLIArgs() walletextension.Config {
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
 		LogPath:                 *logPath,
 		PersistencePathOverride: *persistencePath,
+		VerboseFlag:             *verboseFlag,
 	}
 }
