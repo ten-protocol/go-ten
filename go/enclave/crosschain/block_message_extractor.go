@@ -40,7 +40,7 @@ func (m *blockMessageExtractor) Enabled() bool {
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
 func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error {
-	areReceiptsValid := VerifyReceiptHash(block, receipts)
+	areReceiptsValid := common.VerifyReceiptHash(block, receipts)
 
 	if !areReceiptsValid && m.Enabled() {
 		m.logger.Error("Invalid receipts submitted", "block", common.ShortHash(block.Hash()), log.CmpKey, log.CrossChainCmp)

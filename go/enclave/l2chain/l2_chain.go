@@ -275,12 +275,6 @@ func (oc *ObscuroChain) updateL1State(block types.Block, receipts types.Receipts
 		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 	}
 
-	// Reject block if not provided with matching receipts.
-	// This needs to happen before saving the block as otherwise it will be considered as processed.
-	if oc.crossChainProcessors.Enabled() && !crosschain.VerifyReceiptHash(&block, receipts) {
-		return nil, errors.New("receipts do not match receipt_root in block")
-	}
-
 	// We insert the block into the L1 chain and store it.
 	ingestionType, err := oc.insertBlockIntoL1Chain(&block, isLatest)
 	if err != nil {

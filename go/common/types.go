@@ -1,10 +1,12 @@
 package common
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 )
 
@@ -81,6 +83,11 @@ type (
 	EncodedAttestationReport     []byte
 )
 
+// BlockAndReceipts - a structure that contains a fuller view of a block. It allows iterating over the
+// successful transactions, using the receipts. The receipts are bundled in the host node and thus verification
+// is performed over their correctness.
+// To work properly, all of the receipts are required, due to rlp encoding pruning some of the information.
+// The receipts must also be in the correct order.
 type BlockAndReceipts struct {
 	Block                  *types.Block
 	ReceiptsMap            map[int]*types.Receipt
@@ -88,9 +95,15 @@ type BlockAndReceipts struct {
 	successfulTransactions *types.Transactions
 }
 
-func ParseBlockAndReceipts(block *types.Block, receipts *types.Receipts) (*BlockAndReceipts, error) {
+// ParseBlockAndReceipts - will create a container struct that has preprocessed the receipts
+// and verified if they indeed match the receipt root hash in the block.
+func ParseBlockAndReceipts(block *L1Block, receipts *L1Receipts, verify bool) (*BlockAndReceipts, error) {
 	if len(block.Transactions()) != len(*receipts) {
 		return nil, fmt.Errorf("transactions and receipts do not match")
+	}
+
+	if verify && !VerifyReceiptHash(block, *receipts) {
+		return nil, fmt.Errorf("receipts do not match the block")
 	}
 
 	br := BlockAndReceipts{
@@ -107,6 +120,7 @@ func ParseBlockAndReceipts(block *types.Block, receipts *types.Receipts) (*Block
 	return &br, nil
 }
 
+// SuccessfulTransactions - returns slice containing only the transactions that have receipts with successful status.
 func (br *BlockAndReceipts) SuccessfulTransactions() *types.Transactions {
 	if br.successfulTransactions != nil {
 		return br.successfulTransactions
@@ -124,4 +138,16 @@ func (br *BlockAndReceipts) SuccessfulTransactions() *types.Transactions {
 
 	br.successfulTransactions = &st
 	return br.successfulTransactions
+}
+
+// VerifyReceiptHash - ensures the receiptRoot in the block header matches the actual hash of the tree built from the receipts.
+func VerifyReceiptHash(block *L1Block, receipts L1Receipts) bool {
+	if len(receipts) == 0 {
+		return bytes.Equal(block.ReceiptHash().Bytes(), types.EmptyRootHash.Bytes())
+	}
+
+	calculatedHash := types.DeriveSha(receipts, &trie.StackTrie{})
+	expectedHash := block.ReceiptHash()
+
+	return bytes.Equal(calculatedHash.Bytes(), expectedHash.Bytes())
 }
