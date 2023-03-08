@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"os"
 	"testing"
 	"time"
 
@@ -18,12 +17,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-const gethTestEnv = "GETH_TEST_ENABLED"
-
 func TestBlockProviderHappyPath_LiveStream(t *testing.T) {
-	if os.Getenv(gethTestEnv) == "" {
-		t.Skipf("set the variable to run this test: `%s=true`", gethTestEnv)
-	}
 	mockEthClient := mockEthClient(3)
 	blockProvider := setupBlockProvider(mockEthClient)
 

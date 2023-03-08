@@ -79,7 +79,7 @@ func (e *EthBlockProvider) streamBlocks(ctx context.Context, fromHeight *big.Int
 			// this will block if we're up-to-date with live blocks
 			block, err := e.fetchNextCanonicalBlock(ctx, fromHeight, latestSent)
 			if err != nil {
-				e.logger.Error("unexpected error while preparing block to stream, will retry in 1 sec", log.ErrKey, err)
+				e.logger.Warn("unexpected error while preparing block to stream, will retry in 1 sec", log.ErrKey, err)
 				// todo: consider possible scenarios and what an appropriate wait time is here. Perhaps use a back-off strategy?
 				time.Sleep(10 * time.Millisecond)
 				continue
