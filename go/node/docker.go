@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/docker"
