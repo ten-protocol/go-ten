@@ -3,6 +3,8 @@ package node
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/obscuronet/go-obscuro/go/common/docker"
 )
 
@@ -48,7 +50,7 @@ func (d *DockerNode) startHost() error {
 		"-privateKey", d.cfg.privateKey,
 		"-clientRPCHost", "0.0.0.0",
 		"-logPath", "sys_out",
-		"-logLevel", "4",
+		"-logLevel", fmt.Sprint(log.LvlInfo),
 		fmt.Sprintf("-isGenesis=%t", d.cfg.isGenesis), // boolean are a special case where the = is required
 		"-nodeType", d.cfg.nodeType,
 		"-profilerEnabled=false",
@@ -108,7 +110,7 @@ func (d *DockerNode) startEnclave() error {
 		"-profilerEnabled=false",
 		"-useInMemoryDB=false",
 		"-logPath", "sys_out",
-		"-logLevel", "2",
+		"-logLevel", fmt.Sprint(log.LvlInfo),
 	)
 
 	if d.cfg.sgxEnabled {
