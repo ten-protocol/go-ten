@@ -367,7 +367,7 @@ func (h *host) startProcessing() {
 		select {
 		case b := <-blockStream.Stream:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			isLive := h.l1BlockProvider.IsLive(b) // checks whether the block is the current head of the L1 (false if there is a newer block available)
+			isLive := h.l1BlockProvider.IsLatest(b) // checks whether the block is the current head of the L1 (false if there is a newer block available)
 			err := h.processL1Block(b, isLive)
 			if err != nil {
 				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)

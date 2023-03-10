@@ -58,15 +58,17 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (*host.Bloc
 	return &host.BlockStream{Stream: streamCh, Stop: cancel}, nil
 }
 
-func (e *EthBlockProvider) IsLive(b *types.Block) bool {
+// IsLatest returns true iff the block has the same hash as the L1 head block (from the eth client)
+func (e *EthBlockProvider) IsLatest(b *types.Block) bool {
 	l1Head, err := e.ethClient.FetchHeadBlock()
 	if err != nil {
 		e.logger.Warn("unable to fetch head eth block - %w", err)
 		return false
 	}
+	isLatest := b.Hash() == l1Head.Hash()
 	// this log message is helpful for visibility on how far behind the block feeding is
-	e.logger.Info("L1 block provider live-monitoring", "currBlock", b.NumberU64(), "head", l1Head.NumberU64())
-	return b.NumberU64() >= l1Head.NumberU64()-1
+	e.logger.Info("L1 block provider live-monitoring", "currBlock", b.NumberU64(), "head", l1Head.NumberU64(), "isLatest", isLatest)
+	return isLatest
 }
 
 // streamBlocks is the main loop. It should be run in a separate go routine. It will stream catch-up blocks from requested height until it
