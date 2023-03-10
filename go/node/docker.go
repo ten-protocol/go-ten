@@ -8,6 +8,11 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/docker"
 )
 
+var (
+	_hostDataDir      = "/data"
+	_defaultHostMount = map[string]string{"host-persistence": _hostDataDir}
+)
+
 type DockerNode struct {
 	cfg *Config
 }
@@ -58,8 +63,9 @@ func (d *DockerNode) startHost() error {
 		"-p2pBindAddress", fmt.Sprintf("0.0.0.0:%d", d.cfg.hostP2PPort),
 		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.hostHTTPPort),
 		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
-		// for now this is hard-coded to true todo: default to false once we're confident
-		"-useInMemoryDB=true",
+		// host persistence hardcoded to use /data dir within the container, this needs to be mounted
+		"-useInMemoryDB=false",
+		"-levelDBPath", _hostDataDir,
 	}
 
 	exposedPorts := []int{
@@ -68,7 +74,7 @@ func (d *DockerNode) startHost() error {
 		d.cfg.hostP2PPort,
 	}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil, _defaultHostMount)
 
 	return err
 }
@@ -131,7 +137,7 @@ func (d *DockerNode) startEnclave() error {
 		)
 	}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, nil)
 	return err
 }
 
@@ -155,7 +161,7 @@ func (d *DockerNode) startEdgelessDB() error {
 		envs["PCCS_ADDR"] = d.cfg.pccsAddr
 	}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, nil)
 
 	return err
 }

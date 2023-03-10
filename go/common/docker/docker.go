@@ -3,6 +3,8 @@ package docker
 import (
 	"context"
 	"fmt"
+	"github.com/docker/docker/api/types/mount"
+	volumetypes "github.com/docker/docker/api/types/volume"
 	"io"
 	"os"
 	"time"
@@ -18,7 +20,8 @@ import (
 
 const _networkName = "node_network"
 
-func StartNewContainer(containerName, image string, cmds []string, ports []int, envs, devices map[string]string) (string, error) {
+// volumes is a map from volume name to dir name it will have within the container. If a volume doesn't exist this will create it.
+func StartNewContainer(containerName, image string, cmds []string, ports []int, envs, devices, volumes map[string]string) (string, error) {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -58,6 +61,19 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 		})
 	}
 
+	var mountVolumes []mount.Mount
+	for v, mntTarget := range volumes {
+		vol, err := ensureVolumeExists(cli, v)
+		if err != nil {
+			return "", err
+		}
+		mountVolumes = append(mountVolumes, mount.Mount{
+			Type:   mount.TypeVolume,
+			Source: vol.Name,
+			Target: mntTarget,
+		})
+	}
+
 	// convert env vars
 	envVars := make([]string, 0, len(envs))
 	for k, v := range envs {
@@ -82,6 +98,7 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 	},
 		&container.HostConfig{
 			PortBindings: portBindings,
+			Mounts:       mountVolumes,
 			Resources:    container.Resources{Devices: deviceMapping},
 		},
 		&network.NetworkingConfig{
@@ -106,6 +123,26 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 
 	_, _ = stdcopy.StdCopy(os.Stdout, os.Stderr, out)
 	return resp.ID, nil
+}
+
+func ensureVolumeExists(cli *client.Client, volumeName string) (*types.Volume, error) {
+	ctx := context.Background()
+	allVolumes, err := cli.VolumeList(ctx, filters.NewArgs())
+	if err != nil {
+		return nil, fmt.Errorf("unable to list volumes - %w", err)
+	}
+	for _, v := range allVolumes.Volumes {
+		if v.Name == volumeName {
+			return v, nil
+		}
+	}
+	// volume doesn't exist, so create it
+	vol, err := cli.VolumeCreate(ctx, volumetypes.VolumeCreateBody{
+		Driver: "local",
+		Name:   volumeName,
+	})
+	fmt.Println("volume not found in docker, created: ", volumeName)
+	return &vol, err
 }
 
 func createNetwork(networkName string, cli *client.Client) error {
