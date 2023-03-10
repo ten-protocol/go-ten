@@ -50,7 +50,7 @@ func (d *DockerNode) startHost() error {
 		"-privateKey", d.cfg.privateKey,
 		"-clientRPCHost", "0.0.0.0",
 		"-logPath", "sys_out",
-		"-logLevel", fmt.Sprint(log.LvlInfo),
+		"-logLevel", fmt.Sprintf("%d", log.LvlInfo),
 		fmt.Sprintf("-isGenesis=%t", d.cfg.isGenesis), // boolean are a special case where the = is required
 		"-nodeType", d.cfg.nodeType,
 		"-profilerEnabled=false",
@@ -110,7 +110,7 @@ func (d *DockerNode) startEnclave() error {
 		"-profilerEnabled=false",
 		"-useInMemoryDB=false",
 		"-logPath", "sys_out",
-		"-logLevel", fmt.Sprint(log.LvlInfo),
+		"-logLevel", fmt.Sprintf("%d", log.LvlInfo),
 	)
 
 	if d.cfg.sgxEnabled {
