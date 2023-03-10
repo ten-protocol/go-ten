@@ -3,11 +3,12 @@ package docker
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/api/types/mount"
-	volumetypes "github.com/docker/docker/api/types/volume"
 	"io"
 	"os"
 	"time"
+
+	"github.com/docker/docker/api/types/mount"
+	volumetypes "github.com/docker/docker/api/types/volume"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -61,7 +62,7 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 		})
 	}
 
-	var mountVolumes []mount.Mount
+	mountVolumes := make([]mount.Mount, 0, len(volumes))
 	for v, mntTarget := range volumes {
 		vol, err := ensureVolumeExists(cli, v)
 		if err != nil {
