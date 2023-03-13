@@ -137,7 +137,12 @@ func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg *ethereum.CallMsg)
 	if err != nil {
 		return 0, err
 	}
-	return hexutil.DecodeUint64(result)
+	response, err := common.EmptyResponse[hexutil.Uint64]().Decode([]byte(result))
+	if err != nil {
+		return 0, err
+	}
+
+	return hexutil.DecodeUint64(response.String())
 }
 
 func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxData {

@@ -213,17 +213,11 @@ func (s *RPCServer) Unsubscribe(_ context.Context, req *generated.UnsubscribeReq
 }
 
 func (s *RPCServer) EstimateGas(_ context.Context, req *generated.EstimateGasRequest) (*generated.EstimateGasResponse, error) {
-	encryptedBalance, err := s.enclave.EstimateGas(req.EncryptedParams)
+	encryptedResponse, err := s.enclave.EstimateGas(req.EncryptedParams)
 	if err != nil {
-		// handle complex errors from the EVM
-		errResponse, processErr := serializeEVMError(err)
-		if processErr != nil {
-			// unable to serialize the error
-			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
-		}
-		return &generated.EstimateGasResponse{Error: errResponse}, nil
+		return nil, err
 	}
-	return &generated.EstimateGasResponse{EncryptedResponse: encryptedBalance}, nil
+	return &generated.EstimateGasResponse{EncryptedResponse: encryptedResponse.Encoded}, nil
 }
 
 func (s *RPCServer) GetLogs(_ context.Context, req *generated.GetLogsRequest) (*generated.GetLogsResponse, error) {

@@ -117,7 +117,7 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 	}
 
 	// decrypt with the VK
-	decryptedResult, err := vk.PrivateKey.Decrypt(gas, nil, nil)
+	decryptedResult, err := vk.PrivateKey.Decrypt(gas.Encoded, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

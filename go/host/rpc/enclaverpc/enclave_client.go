@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -309,7 +310,7 @@ func (c *Client) Unsubscribe(id gethrpc.ID) error {
 	return err
 }
 
-func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, error) {
+func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -319,7 +320,10 @@ func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) 
 	if err != nil {
 		return nil, err
 	}
-	return resp.EncryptedResponse, nil
+	var response common.EncryptedResponseEstimateGas = common.EmptyResponse[hexutil.Uint64]()
+	response.Encoded = resp.EncryptedResponse
+
+	return response, nil
 }
 
 func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {

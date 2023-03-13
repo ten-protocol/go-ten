@@ -700,11 +700,14 @@ func (e *enclaveImpl) Stop() error {
 
 // EstimateGas decrypts CallMsg data, runs the gas estimation for the data.
 // Using the callMsg.From Viewing Key, returns the encrypted gas estimation
-func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, error) {
+func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, common.SystemError) {
 	// decrypt the input with the enclave PK
+	var response common.EncryptedResponseEstimateGas = common.EmptyResponse[hexutil.Uint64]()
+
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decrypt params in EstimateGas request. Cause: %w", err)
+		err = fmt.Errorf("unable to decrypt params in EstimateGas request. Cause: %w", err)
+		return response.WithError(err), err
 	}
 
 	// extract params from byte slice to array of strings
@@ -729,24 +732,30 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, fmt.Errorf("no from address provided")
 	}
 
+	encryptor := func(toEncrypt []byte) ([]byte, error) {
+		// encrypt the gas cost with the callMsg.From viewing key
+		result, err := e.rpcEncryptionManager.EncryptWithViewingKey(*callMsg.From, toEncrypt)
+		if err != nil {
+			return nil, fmt.Errorf("enclave could not respond securely to eth_estimateGas request. Cause: %w", err)
+		}
+		return result, nil
+	}
+
 	// extract optional block number - defaults to the latest block if not avail
 	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList, 1)
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+		err = fmt.Errorf("unable to extract requested block number - %w", err)
+		return response.WithError(err).Finalize(encryptor)
 	}
 
 	// TODO hook the correct blockNumber from the API call (paramList[1])
 	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.chain.GlobalGasCap)
 	if err != nil {
-		return nil, fmt.Errorf("unable to estimate transaction - %w", err)
+		err = fmt.Errorf("unable to estimate transaction - %w", err)
+		return response.WithError(err).Finalize(encryptor)
 	}
 
-	// encrypt the gas cost with the callMsg.From viewing key
-	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(*callMsg.From, []byte(hexutil.EncodeUint64(uint64(gasEstimate))))
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_estimateGas request. Cause: %w", err)
-	}
-	return encryptedGasCost, nil
+	return response.WithResult(gasEstimate).Finalize(encryptor)
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {

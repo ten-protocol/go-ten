@@ -113,7 +113,7 @@ func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.En
 		return nil, err
 	}
 
-	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse)
+	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse.Encoded)
 	return &encryptedResponseHex, nil
 }
 

@@ -94,7 +94,7 @@ type Enclave interface {
 	StopClient() error
 
 	// EstimateGas tries to estimate the gas needed to execute a specific transaction based on the pending state.
-	EstimateGas(encryptedParams EncryptedParamsEstimateGas) (EncryptedResponseEstimateGas, error)
+	EstimateGas(encryptedParams EncryptedParamsEstimateGas) (EncryptedResponseEstimateGas, SystemError)
 
 	// GetLogs returns all the logs matching the filter.
 	GetLogs(encryptedParams EncryptedParamsGetLogs) (EncryptedResponseGetLogs, error)
