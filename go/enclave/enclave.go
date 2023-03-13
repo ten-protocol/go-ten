@@ -309,12 +309,28 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
 	}
 
+	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
+	if err != nil {
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
+	}
+
+	encryptor := func(toEncrypt []byte) ([]byte, error) {
+		// encrypt the gas cost with the callMsg.From viewing key
+		result, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, toEncrypt)
+		if err != nil {
+			return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
+		}
+		return result, nil
+	}
+
+	var response common.EncryptedResponseSendRawTx
+
 	if e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx) {
 		return nil, fmt.Errorf("synthetic transaction coming from external rpc")
 	}
 	if err = e.checkGas(decryptedTx); err != nil {
 		e.logger.Info("", log.ErrKey, err.Error())
-		return nil, err
+		return response.AsError(err).Encrypt(encryptor)
 	}
 
 	// Only the sequencer needs to maintain a transaction mempool. Other node types can return early.
@@ -324,17 +340,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 		}
 	}
 
-	txHashBytes := []byte(decryptedTx.Hash().Hex())
-	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
-	}
-	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txHashBytes)
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
-	}
-
-	return encryptedResult, nil
+	return response.AsResult(decryptedTx.Hash()).Encrypt(encryptor)
 }
 
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {

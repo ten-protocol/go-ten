@@ -95,8 +95,14 @@ func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg,
 	return []byte(hex), err
 }
 
-func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) error {
-	return ac.rpcClient.CallContext(ctx, nil, rpc.SendRawTransaction, encodeTx(signedTx))
+func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) (*gethcommon.Hash, error) {
+	var result string
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.SendRawTransaction, encodeTx(signedTx))
+	if err != nil {
+		return nil, err
+	}
+
+	return common.DecodeEncryptedBytes[gethcommon.Hash]([]byte(result))
 }
 
 // BalanceAt retrieves the native balance for the account registered on this client (due to obscuro privacy restrictions,
