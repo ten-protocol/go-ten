@@ -286,8 +286,8 @@
   * The ability to start a faucet server against a local testnet deployment is now supported via a docker 
     container. For more information see the Obscuro 
     [readme](https://github.com/obscuronet/go-obscuro#building-and-running-a-local-faucet).
-  * Updates to the [Events](https://github.com/obscuronet/go-obscuro/blob/main/design/Events_design.md) design 
-    inclusion of the [Fast Finality](https://github.com/obscuronet/go-obscuro/blob/main/design/fast_finality.md) design.
+  * Updates to the [Events](https://github.com/obscuronet/go-obscuro/blob/main/design/ux/Events_design.md) design 
+    inclusion of the [Fast Finality](https://github.com/obscuronet/go-obscuro/blob/main/design/finality_protocol/fast_finality.md) design.
   * The [Obscuro docs site](https://docs.obscu.ro/) is now searchable. 
   * Testnet is now officially termed `Evan's Cat`.
 
@@ -340,7 +340,7 @@
   * The node operator can configure the minimum gas price their aggregator will accept on startup.
 * Wallet extension 
   * The wallet extension now supports multiple viewing keys through a single running instance. For more information see 
-    the [wallet extension design doc](https://github.com/obscuronet/go-obscuro/blob/main/design/wallet_extension.md), 
+    the [wallet extension design doc](https://github.com/obscuronet/go-obscuro/blob/main/design/ux/wallet_extension.md), 
     specifically `Handling eth_call requests` for how the required viewing key is selected when multiple keys are 
     registered.
 
