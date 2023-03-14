@@ -73,9 +73,13 @@ func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.
 }
 
 func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
-	var receipt types.Receipt
-	err := ac.rpcClient.CallContext(ctx, &receipt, rpc.GetTransactionReceipt, txHash)
-	return &receipt, err
+	var receiptEncoded common.EncryptedResponseGetTxReceipt
+	err := ac.rpcClient.CallContext(ctx, &receiptEncoded, rpc.GetTransactionReceipt, txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return common.DecodeEncryptedBytes(receiptEncoded)
 }
 
 // NonceAt retrieves the nonce for the account registered on this client (due to obscuro privacy restrictions,
@@ -113,7 +117,11 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	if err != nil {
 		return big.NewInt(0), err
 	}
-	return hexutil.DecodeBig(result)
+
+	response := common.EncryptedResponseGetBalance(result)
+	num, err := common.DecodeEncryptedBytes(response)
+
+	return num.ToInt(), err
 }
 
 func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria filters.FilterCriteria, ch chan common.IDAndLog) (ethereum.Subscription, error) {

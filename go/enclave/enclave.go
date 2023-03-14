@@ -511,13 +511,32 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return nil, err
 	}
 
+	// We retrieve the sender's address.
+	sender, err := rpc.GetSender(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
+	}
+
+	addressToUse := &sender
+	encryptor := func(toEncrypt []byte) ([]byte, error) {
+		// encrypt the gas cost with the callMsg.From viewing key
+		result, err := e.rpcEncryptionManager.EncryptWithViewingKey(*addressToUse, toEncrypt)
+		if err != nil {
+			return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
+		}
+		return result, nil
+	}
+	var response common.EncryptedResponseGetTxReceipt
+
 	// Only return receipts for transactions included in the canonical chain.
 	r, err := e.storage.FetchBatchByHeight(txBatchHeight)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve batch containing transaction. Cause: %w", err)
+		err = fmt.Errorf("could not retrieve batch containing transaction. Cause: %w", err)
+		return response.AsError(err).Encrypt(encryptor)
 	}
 	if !bytes.Equal(r.Hash().Bytes(), txBatchHash.Bytes()) {
-		return nil, fmt.Errorf("transaction not included in the canonical chain")
+		err = fmt.Errorf("transaction not included in the canonical chain")
+		return response.AsError(err).Encrypt(encryptor)
 	}
 
 	// We retrieve the transaction receipt.
@@ -527,12 +546,6 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 			return nil, nil
 		}
 		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-
-	// We retrieve the sender's address.
-	sender, err := rpc.GetSender(tx)
-	if err != nil {
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
 	}
 
 	// We filter out irrelevant logs.
@@ -661,22 +674,30 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return nil, fmt.Errorf("unable to extract requested address - %w", err)
 	}
 
+	addressToUse := accountAddress
+	encryptor := func(toEncrypt []byte) ([]byte, error) {
+		// encrypt the gas cost with the callMsg.From viewing key
+		result, err := e.rpcEncryptionManager.EncryptWithViewingKey(*addressToUse, toEncrypt)
+		if err != nil {
+			return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
+		}
+		return result, nil
+	}
+	var response common.EncryptedResponseGetBalance
+
 	blockNumber, err := gethencoding.ExtractBlockNumber(paramList[1])
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+		err = fmt.Errorf("unable to extract requested block number - %w", err)
+		return response.AsError(err).Encrypt(encryptor)
 	}
 
 	encryptAddress, balance, err := e.chain.GetBalance(*accountAddress, blockNumber)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get balance - %w", err)
+		err = fmt.Errorf("unable to get balance - %w", err)
+		return response.AsError(err).Encrypt(encryptor)
 	}
-
-	encryptedBalance, err := e.rpcEncryptionManager.EncryptWithViewingKey(*encryptAddress, []byte(balance.String()))
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
-	}
-
-	return encryptedBalance, nil
+	addressToUse = encryptAddress
+	return response.AsResult(*balance).Encrypt(encryptor)
 }
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2RootHash) ([]byte, error) {

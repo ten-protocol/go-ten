@@ -70,7 +70,7 @@ func (er *EncryptedResponse[T]) Decode(encoded []byte) (*T, error) {
 	return decoded.Result, userError
 }
 
-func DecodeEncryptedBytes[T any](encoded []byte) (*T, error) {
+func DecodeEncryptedBytes[T any](encoded EncryptedBytesResponse[T]) (*T, error) {
 	decoded := &transportMessage[T]{}
 	err := json.Unmarshal(encoded, decoded)
 	if err != nil {
