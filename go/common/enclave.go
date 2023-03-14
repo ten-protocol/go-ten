@@ -26,6 +26,7 @@ const (
 type Enclave interface {
 
 	// TODO: GetID() []byte with an alias. phase 1 - return random byte array
+	GetID() (EnclaveID, error)
 
 	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
 	Status() (Status, error)

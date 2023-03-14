@@ -75,6 +75,11 @@ func (c *Client) StopClient() error {
 	return c.connection.Close()
 }
 
+func (c *Client) GetID() (common.EnclaveID, error) {
+	// TODO Return real ID
+	return nil, nil
+}
+
 func (c *Client) Status() (common.Status, error) {
 	if c.connection.GetState() != connectivity.Ready {
 		return common.Unavailable, errors.New("RPC connection is not ready")
