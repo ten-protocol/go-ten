@@ -27,11 +27,53 @@ func (d *DockerNode) Start() error {
 	// TODO this should probably be removed in the future
 	fmt.Printf("Starting Node %s with config: %+v\n", d.cfg.nodeName, d.cfg)
 
-	err := d.startEdgelessDB()
+	// write the network-level config to disk for future restarts
+	err := WriteNetworkConfigToDisk(d.getNetworkConfig())
 	if err != nil {
 		return err
 	}
 
+	err = d.startEdgelessDB()
+	if err != nil {
+		return err
+	}
+
+	err = d.startEnclave()
+	if err != nil {
+		return err
+	}
+
+	err = d.startHost()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *DockerNode) Upgrade() error {
+	// TODO this should probably be removed in the future
+	fmt.Printf("Upgrading node %s with config: %+v\n", d.cfg.nodeName, d.cfg)
+
+	// first we load network-specific details from the initial node setup from disk
+	networkCfg, err := ReadNetworkConfigFromDisk()
+	if err != nil {
+		return err
+	}
+	d.updateConfigWithNetworkConfig(networkCfg)
+
+	fmt.Println("Stopping existing host and enclave")
+	err = docker.StopAndRemove(d.cfg.nodeName + "-host")
+	if err != nil {
+		return err
+	}
+
+	err = docker.StopAndRemove(d.cfg.nodeName + "-enclave")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Starting upgraded host and enclave")
 	err = d.startEnclave()
 	if err != nil {
 		return err
@@ -164,4 +206,16 @@ func (d *DockerNode) startEdgelessDB() error {
 	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, nil)
 
 	return err
+}
+
+func (d *DockerNode) getNetworkConfig() networkConfig {
+	return networkConfig{
+		ManagementContractAddress: d.cfg.managementContractAddr,
+		MessageBusAddress:         d.cfg.messageBusContractAddress,
+	}
+}
+
+func (d *DockerNode) updateConfigWithNetworkConfig(networkCfg *networkConfig) {
+	d.cfg.managementContractAddr = networkCfg.ManagementContractAddress
+	d.cfg.messageBusContractAddress = networkCfg.MessageBusAddress
 }

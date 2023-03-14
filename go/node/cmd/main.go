@@ -37,7 +37,14 @@ func main() {
 		panic(err)
 	}
 
-	err = dockerNode.Start()
+	switch cliConfig.nodeAction {
+	case startAction:
+		err = dockerNode.Start()
+	case upgradeAction:
+		err = dockerNode.Upgrade()
+	default:
+		panic("unrecognized node action: " + cliConfig.nodeAction)
+	}
 	if err != nil {
 		panic(err)
 	}
