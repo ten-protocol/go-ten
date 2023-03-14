@@ -22,4 +22,4 @@ rollups will be encrypted with rotating keys that are not known to anyone, or an
 
 ## External API Calls
 
-The URL path [/rollup/](http://testnet.obscuroscan.io/rollup/) may be requested from external clients using a HTTP POST request with either a rollup number (integer) or transaction hash (string beginning with "0x"). A JSON object representing the rollup will be returned. Further API development of ObscuroScan with RESTful documentation will follow.
+The URL path /rollup/ may be requested from external clients using a HTTP POST request with either a rollup number (integer) or transaction hash (string beginning with "0x"). A JSON object representing the rollup will be returned. Further API development of ObscuroScan with RESTful documentation will follow.
