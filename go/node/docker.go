@@ -210,12 +210,12 @@ func (d *DockerNode) startEdgelessDB() error {
 
 func (d *DockerNode) getNetworkConfig() networkConfig {
 	return networkConfig{
-		managementContractAddress: d.cfg.managementContractAddr,
-		messageBusAddress:         d.cfg.messageBusContractAddress,
+		ManagementContractAddress: d.cfg.managementContractAddr,
+		MessageBusAddress:         d.cfg.messageBusContractAddress,
 	}
 }
 
 func (d *DockerNode) updateConfigWithNetworkConfig(networkCfg *networkConfig) {
-	d.cfg.managementContractAddr = networkCfg.managementContractAddress
-	d.cfg.messageBusContractAddress = networkCfg.messageBusAddress
+	d.cfg.managementContractAddr = networkCfg.ManagementContractAddress
+	d.cfg.messageBusContractAddress = networkCfg.MessageBusAddress
 }
