@@ -126,6 +126,22 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 	return resp.ID, nil
 }
 
+func StopAndRemove(containerName string) error {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	err = cli.ContainerStop(ctx, containerName, nil)
+	if err != nil {
+		return err
+	}
+
+	return cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{Force: true})
+}
+
 func ensureVolumeExists(cli *client.Client, volumeName string) (*types.Volume, error) {
 	ctx := context.Background()
 	allVolumes, err := cli.VolumeList(ctx, filters.NewArgs())
