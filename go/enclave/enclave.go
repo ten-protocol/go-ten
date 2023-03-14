@@ -212,6 +212,11 @@ func NewEnclave(
 	}
 }
 
+func (e *enclaveImpl) GetID() (common.EnclaveID, error) {
+	// TODO: return real ID
+	return nil, nil
+}
+
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, error) {
 	_, err := e.storage.FetchSecret()

@@ -6,6 +6,9 @@ package generated;
 
 // TODO - Remove these comments which duplicate those in common/enclave.go.
 service EnclaveProto {
+
+  rpc GetID(GetIDRequest) returns (GetIDResponse) {}
+
   // Status is used to check whether the server is ready for requests.
   rpc Status(StatusRequest) returns (StatusResponse) {}
 
@@ -77,6 +80,12 @@ service EnclaveProto {
 message CreateRollupRequest{}
 message CreateRollupResponse{
   ExtRollupMsg msg = 1;
+  string error = 2;
+}
+
+message GetIDRequest {}
+message GetIDResponse {
+  bytes status = 1;
   string error = 2;
 }
 

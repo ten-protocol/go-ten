@@ -13,14 +13,20 @@ import (
 // since the host's responsibility is to manage communication in and out of the enclave.
 type Status int
 
+type EnclaveID []byte
+
+// Enclave represents the API of the service that runs inside the TEE.
+
 const (
 	Running        Status = iota // the enclave is running, accepting L1 blocks
 	AwaitingSecret               // the enclave has not received the network secret and cannot process L1 blocks
 	Unavailable                  // the enclave is unavailable (no guarantee it will self-recover)
 )
 
-// Enclave represents the API of the service that runs inside the TEE.
 type Enclave interface {
+
+	// TODO: GetID() []byte with an alias. phase 1 - return random byte array
+
 	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
 	Status() (Status, error)
 
