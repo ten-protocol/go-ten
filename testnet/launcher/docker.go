@@ -98,6 +98,7 @@ func (t *Testnet) Start() error {
 		node.WithSequencerID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
 		node.WithManagementContractAddress(managementContractAddr),
 		node.WithMessageBusContractAddress(messageBusContractAddr),
+		node.WithInMemoryDB(true),
 	)
 
 	validatorNode, err := node.NewDockerNode(validatorNodeConfig)
