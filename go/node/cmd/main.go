@@ -39,8 +39,21 @@ func main() {
 
 	switch cliConfig.nodeAction {
 	case startAction:
+		// write the network-level config to disk for future restarts
+		err = node.WriteNetworkConfigToDisk(nodeCfg)
+		if err != nil {
+			panic(err)
+		}
 		err = dockerNode.Start()
 	case upgradeAction:
+		// load network-specific details from the initial node setup from disk
+		var ntwCfg *node.NetworkConfig
+		ntwCfg, err = node.ReadNetworkConfigFromDisk()
+		if err != nil {
+			panic(err)
+		}
+		dockerNode.SetNetworkConfig(ntwCfg)
+
 		err = dockerNode.Upgrade()
 	default:
 		panic("unrecognized node action: " + cliConfig.nodeAction)
