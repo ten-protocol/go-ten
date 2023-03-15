@@ -17,7 +17,7 @@ type DockerNode struct {
 	cfg *Config
 }
 
-func NewDockerNode(cfg *Config) (Node, error) {
+func NewDockerNode(cfg *Config) (*DockerNode, error) {
 	return &DockerNode{
 		cfg: cfg,
 	}, nil // todo: add config validation
@@ -27,13 +27,7 @@ func (d *DockerNode) Start() error {
 	// TODO this should probably be removed in the future
 	fmt.Printf("Starting Node %s with config: %+v\n", d.cfg.nodeName, d.cfg)
 
-	// write the network-level config to disk for future restarts
-	err := WriteNetworkConfigToDisk(d.getNetworkConfig())
-	if err != nil {
-		return err
-	}
-
-	err = d.startEdgelessDB()
+	err := d.startEdgelessDB()
 	if err != nil {
 		return err
 	}
@@ -55,15 +49,8 @@ func (d *DockerNode) Upgrade() error {
 	// TODO this should probably be removed in the future
 	fmt.Printf("Upgrading node %s with config: %+v\n", d.cfg.nodeName, d.cfg)
 
-	// first we load network-specific details from the initial node setup from disk
-	networkCfg, err := ReadNetworkConfigFromDisk()
-	if err != nil {
-		return err
-	}
-	d.updateConfigWithNetworkConfig(networkCfg)
-
 	fmt.Println("Stopping existing host and enclave")
-	err = docker.StopAndRemove(d.cfg.nodeName + "-host")
+	err := docker.StopAndRemove(d.cfg.nodeName + "-host")
 	if err != nil {
 		return err
 	}
@@ -210,14 +197,7 @@ func (d *DockerNode) startEdgelessDB() error {
 	return err
 }
 
-func (d *DockerNode) getNetworkConfig() networkConfig {
-	return networkConfig{
-		ManagementContractAddress: d.cfg.managementContractAddr,
-		MessageBusAddress:         d.cfg.messageBusContractAddress,
-	}
-}
-
-func (d *DockerNode) updateConfigWithNetworkConfig(networkCfg *networkConfig) {
+func (d *DockerNode) SetNetworkConfig(networkCfg *NetworkConfig) {
 	d.cfg.managementContractAddr = networkCfg.ManagementContractAddress
 	d.cfg.messageBusContractAddress = networkCfg.MessageBusAddress
 }
