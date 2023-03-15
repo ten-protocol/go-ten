@@ -27,6 +27,7 @@ type Config struct {
 	edgelessDBImage           string
 	enclaveDebug              bool
 	nodeName                  string
+	hostInMemDB               bool
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -168,5 +169,11 @@ func WithEdgelessDBImage(s string) Option {
 func WithPCCSAddr(s string) Option {
 	return func(c *Config) {
 		c.pccsAddr = s
+	}
+}
+
+func WithInMemoryDB(b bool) Option {
+	return func(c *Config) {
+		c.hostInMemDB = b
 	}
 }

@@ -106,8 +106,10 @@ func (d *DockerNode) startHost() error {
 		"-clientRPCPortHttp", fmt.Sprintf("%d", d.cfg.hostHTTPPort),
 		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
 		// host persistence hardcoded to use /data dir within the container, this needs to be mounted
-		"-useInMemoryDB=false",
-		"-levelDBPath", _hostDataDir,
+		fmt.Sprintf("-useInMemoryDB=%t", d.cfg.hostInMemDB),
+	}
+	if !d.cfg.hostInMemDB {
+		cmd = append(cmd, "-levelDBPath", _hostDataDir)
 	}
 
 	exposedPorts := []int{
