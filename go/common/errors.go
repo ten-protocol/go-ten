@@ -113,3 +113,23 @@ func (ebr *EncryptedBytesResponse[T]) Encrypt(encrypt Encryptor) (EncryptedBytes
 	*ebr = encryptedBytes
 	return *ebr, err
 }
+
+type UserResponse[T any] struct {
+	Result *T
+	Error  error
+}
+
+type EncryptedUserResponse []byte
+
+type EnclaveResponse struct {
+	EncUserResponse EncryptedUserResponse
+	Err             error
+}
+
+func (er *EnclaveResponse) WithResponse(encResp EncryptedUserResponse) {
+	er.EncUserResponse = encResp
+}
+
+func (er *EnclaveResponse) WithError(err error) {
+
+}

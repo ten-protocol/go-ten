@@ -729,7 +729,7 @@ func (e *enclaveImpl) Stop() error {
 // Using the callMsg.From Viewing Key, returns the encrypted gas estimation
 func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, common.SystemError) {
 	// decrypt the input with the enclave PK
-	var response common.EncryptedResponseEstimateGas = common.EmptyResponse[hexutil.Uint64]()
+	var enclaveResponse common.EncryptedResponseEstimateGas
 
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {

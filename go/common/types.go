@@ -55,7 +55,7 @@ type (
 	EncryptedResponseGetTxCount   []byte                                  // As above, but for an RPC getTransactionCount request.
 	EncryptedLogSubscription      []byte                                  // As above, but for a log subscription request.
 	EncryptedLogs                 []byte                                  // As above, but for a log subscription response.
-	EncryptedResponseEstimateGas  = *EncryptedResponse[hexutil.Uint64]    // As above, but for an RPC estimateGas response.
+	EncryptedResponseEstimateGas  = EnclaveResponse                       // As above, but for an RPC estimateGas response.
 	EncryptedResponseGetLogs      []byte                                  // As above, but for an RPC getLogs request.
 
 	Nonce               = uint64
