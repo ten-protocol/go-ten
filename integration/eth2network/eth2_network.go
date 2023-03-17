@@ -412,7 +412,7 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 		"--p2p-udp-port", fmt.Sprintf("%d", p2pPort),
 		"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)-1),
 		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
-		"--interop-genesis-state", n.prysmGenesisPath,
+		"--genesis-state", n.prysmGenesisPath,
 		"--chain-config-file", n.prysmConfigPath,
 		"--config-file", n.prysmConfigPath,
 		"--chain-id", fmt.Sprintf("%d", n.chainID),
