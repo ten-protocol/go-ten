@@ -5,7 +5,7 @@ The steps below demonstrate how to programmatically create a new contract on to 
 call functions. The example uses [Python](https://www.python.org/) and [web3.py](https://web3py.readthedocs.io/en/stable/) 
 as a reference but the principles of usage will be the same in any web3 language implementation. 
 
-A full working example can be seen in [deploying-a-smart-contract-programmatically.py](deploying-a-smart-contract-programmatically.py).
+A full working example can be seen in [deploying-a-smart-contract-programmatically.py](https://github.com/obscuronet/go-obscuro/blob/main/docs/_docs/testnet/deploying-a-smart-contract-programmatically.py).
 Usage of the example requires Python > 3.9.13, solc 0.8.15 and the web3, requests, and json modules. It is assumed solc 
 has been installed using homebrew and resides in `/opt/homebrew/bin/solc` and that the wallet extension is running on 
 the local host with default values `WHOST=127.0.0.1` and `WPORT=3000`.
