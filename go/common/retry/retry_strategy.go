@@ -93,6 +93,7 @@ func (b *backoffStrategy) Reset() {
 
 // NewBackoffAndRetryForeverStrategy will keep retrying until there is a success. For the first retries it will wait the
 // durations specified by the `backoffIntervals` slice, after which it will use the `retryInterval` indefinitely
+// Note: caller can still use retry.FailFast(err) to wrap an error if it wants to break out of the retry
 func NewBackoffAndRetryForeverStrategy(backoffIntervals []time.Duration, retryInterval time.Duration) Strategy {
 	return &infiniteRetryStrategy{
 		backoffIntervals: backoffIntervals,

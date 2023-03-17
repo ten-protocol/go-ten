@@ -90,19 +90,23 @@ func (e *EthBlockProvider) streamBlocks(ctx context.Context, fromHeight *big.Int
 			return
 		default:
 			var block *types.Block
-			var err error
 			// this will retry forever with a back-off, if L1 client is unavailable we should still recover eventually
-			err = retry.Do(func() error {
+			err := retry.Do(func() error {
+				var fetchErr error
 				// this will block if we're up-to-date with live blocks
-				block, err = e.fetchNextCanonicalBlock(ctx, fromHeight, latestSent)
-				if err != nil {
+				block, fetchErr = e.fetchNextCanonicalBlock(ctx, fromHeight, latestSent)
+				if fetchErr != nil {
 					// this shouldn't happen often, it's important that node operator has visibility on it, and that host can
 					// eventually recover when L1 client issue is resolved
-					e.logger.Warn("unexpected error while preparing block to stream, will retry periodically", log.ErrKey, err)
-					return err
+					e.logger.Warn("unexpected error while preparing block to stream, will retry periodically", log.ErrKey, fetchErr)
+					return fetchErr
 				}
 				return nil
 			}, retry.NewBackoffAndRetryForeverStrategy(backoffRetryIntervals, 30*time.Second))
+			if err != nil {
+				// retry block above should retry forever until success, so if it does error we treat it as unrecoverable
+				e.logger.Crit("unable to fetch next canonical block, unexpected failure", log.ErrKey, err)
+			}
 			e.logger.Trace("blockProvider streaming block", "height", block.Number(), "hash", block.Hash())
 			streamCh <- block // we block here until consumer takes it
 			// update stream state
