@@ -55,11 +55,7 @@ func (e *gethRPCClient) FetchHeadBlock() (*types.Block, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	blk, err := e.client.BlockByNumber(ctx, nil)
-	if err != nil {
-		e.logger.Crit("could not fetch head block.", log.ErrKey, err)
-	}
-	return blk, nil
+	return e.client.BlockByNumber(ctx, nil)
 }
 
 func (e *gethRPCClient) Info() Info {

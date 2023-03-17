@@ -79,3 +79,34 @@ func TestDoublingBackoffStrategy_DoublingIntervalsAndRespectMaxRetries(t *testin
 
 	assert.Equal(t, 5, count, "expected function to be called exactly 5 times before failing")
 }
+
+func TestRetryForeverWithBackoffs(t *testing.T) {
+	var count int
+	prevAttempt := time.Now()
+	backOffIntervals := []time.Duration{2 * time.Millisecond, 20 * time.Millisecond, 100 * time.Millisecond}
+	recurringInterval := 500 * time.Millisecond
+	retriesTilSuccess := 5
+	testFunc := func() error {
+		if count > 0 { // (no wait time to check on the first call of the function)
+			// we check it waited at least long enough (not checking for too long as that could be flaky)
+			if count <= len(backOffIntervals) {
+				assert.Greater(t, time.Since(prevAttempt), backOffIntervals[count-1])
+			} else {
+				assert.Greater(t, time.Since(prevAttempt), recurringInterval)
+			}
+		}
+		prevAttempt = time.Now()
+		if count > retriesTilSuccess {
+			return nil // succeed now
+		}
+		count = count + 1
+		return fmt.Errorf("attempt number %d", count)
+	}
+	err := Do(testFunc, NewBackoffAndRetryForeverStrategy(backOffIntervals, recurringInterval))
+	if err != nil {
+		assert.Fail(t, "expected testFunc to succeed eventually and never to give up")
+	}
+	if count < retriesTilSuccess {
+		assert.Fail(t, "unexpectedly succeeded earlier than expected, check the test")
+	}
+}

@@ -90,3 +90,43 @@ func (b *backoffStrategy) Reset() {
 	b.attempts = 0
 	b.startTime = time.Now()
 }
+
+// NewBackoffAndRetryForeverStrategy will keep retrying until there is a success. For the first retries it will wait the
+// durations specified by the `backoffIntervals` slice, after which it will use the `retryInterval` indefinitely
+func NewBackoffAndRetryForeverStrategy(backoffIntervals []time.Duration, retryInterval time.Duration) Strategy {
+	return &infiniteRetryStrategy{
+		backoffIntervals: backoffIntervals,
+		retryInterval:    retryInterval,
+	}
+}
+
+type infiniteRetryStrategy struct {
+	// backoffIntervals is an optional list of intervals to use before moving onto the recurring `retryInterval`
+	// e.g. allows caller to specify [10ms, 1sec, 5sec, 30sec, 1min] before settling into constant retryIntervals of 5min
+	backoffIntervals []time.Duration
+	retryInterval    time.Duration // interval between retries
+
+	startTime time.Time
+	attempts  int
+}
+
+func (irs *infiniteRetryStrategy) NextRetryInterval() time.Duration {
+	irs.attempts++
+	if irs.attempts <= len(irs.backoffIntervals) {
+		return irs.backoffIntervals[irs.attempts-1]
+	}
+	return irs.retryInterval
+}
+
+func (irs *infiniteRetryStrategy) Done() bool {
+	return false
+}
+
+func (irs *infiniteRetryStrategy) Summary() string {
+	return fmt.Sprintf("retrying - %d attempts over %s", irs.attempts, time.Since(irs.startTime))
+}
+
+func (irs *infiniteRetryStrategy) Reset() {
+	irs.attempts = 0
+	irs.startTime = time.Now()
+}
