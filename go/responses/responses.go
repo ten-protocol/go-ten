@@ -34,7 +34,6 @@ func AsError(err error) EnclaveResponse {
 }
 
 func EncryptedResponse[T any](data *T, encrypt Encryptor) EnclaveResponse {
-
 	userResp := UserResponse[T]{
 		Result: data,
 	}
@@ -75,7 +74,7 @@ func ToEnclaveResponse(encoded []byte) *EnclaveResponse {
 	resp := EnclaveResponse{}
 	err := json.Unmarshal(encoded, &resp)
 	if err != nil {
-		panic(err) //Todo change when stable.
+		panic(err) // Todo change when stable.
 	}
 	return &resp
 }

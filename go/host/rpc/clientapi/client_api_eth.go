@@ -99,7 +99,6 @@ func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.Encrypted
 func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*string, error) {
 	enclaveResponse := api.host.EnclaveClient().GetTransactionReceipt(encryptedParams)
 	err := enclaveResponse.Err
-
 	if err != nil {
 		return nil, err
 	}

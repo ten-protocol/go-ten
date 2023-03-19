@@ -317,7 +317,6 @@ func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) 
 	resp, err := c.protoClient.EstimateGas(timeoutCtx, &generated.EstimateGasRequest{
 		EncryptedParams: encryptedParams,
 	})
-
 	if err != nil {
 		return responses.AsError(err)
 	}
