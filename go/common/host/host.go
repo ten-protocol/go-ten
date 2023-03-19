@@ -8,6 +8,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/host/db"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -21,7 +22,7 @@ type Host interface {
 	// Start initializes the main loop of the host.
 	Start() error
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
-	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
+	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.SendRawTx, error)
 	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
 	// ReceiveBatches receives a set of batches from a peer host.

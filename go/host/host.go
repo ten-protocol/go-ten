@@ -23,6 +23,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
 	"github.com/obscuronet/go-obscuro/go/host/db"
 	"github.com/obscuronet/go-obscuro/go/host/events"
+	"github.com/obscuronet/go-obscuro/go/responses"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -225,12 +226,13 @@ func (h *host) EnclaveClient() common.Enclave {
 	return h.enclaveClient
 }
 
-func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
+func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.SendRawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
-	encryptedResponse, err := h.enclaveClient.SubmitTx(encryptedTx)
+	enclaveResponse := h.enclaveClient.SubmitTx(encryptedTx)
+	err := enclaveResponse.Err
 	if err != nil {
-		return nil, fmt.Errorf("could not submit transaction. Cause: %w", err)
+		return nil, err
 	}
 
 	if h.config.NodeType != common.Sequencer {
@@ -240,7 +242,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 		}
 	}
 
-	return encryptedResponse, nil
+	return &enclaveResponse, nil
 }
 
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
@@ -376,8 +378,8 @@ func (h *host) startProcessing() {
 
 		case tx := <-h.txP2PCh:
 			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
-			if _, err := h.enclaveClient.SubmitTx(tx); err != nil {
-				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
+			if resp := h.enclaveClient.SubmitTx(tx); resp.Err != nil {
+				h.logger.Warn("Could not submit transaction. ", log.ErrKey, resp.Err)
 			}
 
 		// TODO - #718 - Adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.

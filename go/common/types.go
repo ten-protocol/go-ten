@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
@@ -46,17 +45,6 @@ type (
 	EncryptedParamsGetTxCount      []byte // As above, but for an RPC getTransactionCount request.
 	EncryptedParamsEstimateGas     []byte // As above, but for an RPC estimateGas request.
 	EncryptedParamsGetLogs         []byte // As above, but for an RPC getLogs request.
-
-	EncryptedResponseGetBalance   = EncryptedBytesResponse[hexutil.Big]   // The response for an RPC getBalance request, as a JSON object encrypted with the viewing key of the user.
-	EncryptedResponseCall         []byte                                  // As above, but for an RPC call request.
-	EncryptedResponseGetTxReceipt = EncryptedBytesResponse[types.Receipt] // As above, but for an RPC getTransactionReceipt request.
-	EncryptedResponseSendRawTx    = EncryptedBytesResponse[common.Hash]   // As above, but for an RPC sendRawTransaction request.
-	EncryptedResponseGetTxByHash  []byte                                  // As above, but for an RPC getTransactionByHash request.
-	EncryptedResponseGetTxCount   []byte                                  // As above, but for an RPC getTransactionCount request.
-	EncryptedLogSubscription      []byte                                  // As above, but for a log subscription request.
-	EncryptedLogs                 []byte                                  // As above, but for a log subscription response.
-	EncryptedResponseEstimateGas  = EnclaveResponse                       // As above, but for an RPC estimateGas response.
-	EncryptedResponseGetLogs      []byte                                  // As above, but for an RPC getLogs request.
 
 	Nonce               = uint64
 	EncodedRollup       []byte

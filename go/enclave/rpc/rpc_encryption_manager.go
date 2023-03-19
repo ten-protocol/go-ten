@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -113,4 +114,16 @@ func (rpc *EncryptionManager) AuthenticateSubscriptionRequest(subscription commo
 	}
 
 	return nil
+}
+
+func (rpc *EncryptionManager) CreateEncryptorFor(address gethcommon.Address) responses.Encryptor {
+	encryptorForUser := func(data []byte) ([]byte, error) {
+		result, err := rpc.EncryptWithViewingKey(address, data)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	}
+
+	return encryptorForUser
 }

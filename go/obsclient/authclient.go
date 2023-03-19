@@ -7,6 +7,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
 
@@ -66,62 +67,74 @@ func DialWithAuth(rpcurl string, wal wallet.Wallet, logger gethlog.Logger) (*Aut
 
 // TransactionByHash returns transaction (if found), isPending (always false currently as we don't search the mempool), error
 func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.Hash) (*types.Transaction, bool, error) {
-	var tx types.Transaction
+	var tx responses.TxType
 	err := ac.rpcClient.CallContext(ctx, &tx, rpc.GetTransactionByHash, hash.Hex())
+	if err != nil {
+		return nil, false, err
+	}
 	// todo: revisit isPending result value, included for ethclient equivalence but hardcoded currently
-	return &tx, false, err
+	return tx.Result, false, tx.Error()
 }
 
 func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
-	var receiptEncoded common.EncryptedResponseGetTxReceipt
-	err := ac.rpcClient.CallContext(ctx, &receiptEncoded, rpc.GetTransactionReceipt, txHash)
+	var result responses.ReceiptType
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetTransactionReceipt, txHash)
 	if err != nil {
 		return nil, err
 	}
 
-	return common.DecodeEncryptedBytes(receiptEncoded)
+	return result.Result, result.Error()
 }
 
 // NonceAt retrieves the nonce for the account registered on this client (due to obscuro privacy restrictions,
 // nonce cannot be requested for other accounts)
 func (ac *AuthObsClient) NonceAt(ctx context.Context, blockNumber *big.Int) (uint64, error) {
-	var result string
+	var result responses.NonceType
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetTransactionCount, ac.account, toBlockNumArg(blockNumber))
 	if err != nil {
 		return 0, err
 	}
-	return hexutil.DecodeUint64(result)
+
+	if err = result.Error(); err != nil {
+		return 0, err
+	}
+
+	return hexutil.DecodeUint64(*result.Result)
 }
 
 func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
-	var hex string
-	err := ac.rpcClient.CallContext(ctx, &hex, rpc.Call, ToCallArg(msg), toBlockNumArg(blockNumber))
-	return []byte(hex), err
+	var result responses.CallType
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.Call, ToCallArg(msg), toBlockNumArg(blockNumber))
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(*result.Result), result.Error()
 }
 
 func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) (*gethcommon.Hash, error) {
-	var result string
+	var result responses.SendRawTxType
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.SendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		return nil, err
 	}
 
-	return common.DecodeEncryptedBytes[gethcommon.Hash]([]byte(result))
+	return result.Result, result.Error()
 }
 
 // BalanceAt retrieves the native balance for the account registered on this client (due to obscuro privacy restrictions,
 // balance cannot be requested for other accounts)
 func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*big.Int, error) {
-	var result string
+	var result responses.BalanceType
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetBalance, ac.account, toBlockNumArg(blockNumber))
 	if err != nil {
 		return big.NewInt(0), err
 	}
+	if err = result.Error(); err != nil {
+		return big.NewInt(0), result.Error()
+	}
 
-	response := common.EncryptedResponseGetBalance(result)
-	num, err := common.DecodeEncryptedBytes(response)
-
-	return num.ToInt(), err
+	return result.Result.ToInt(), nil
 }
 
 func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria filters.FilterCriteria, ch chan common.IDAndLog) (ethereum.Subscription, error) {
@@ -136,9 +149,16 @@ func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria
 }
 
 func (ac *AuthObsClient) GetLogs(ctx context.Context, filterCriteria common.FilterCriteriaJSON) ([]*types.Log, error) {
-	var logs []*types.Log
-	err := ac.rpcClient.CallContext(ctx, &logs, rpc.GetLogs, filterCriteria, ac.account)
-	return logs, err
+	var result responses.GetLogsType
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetLogs, filterCriteria, ac.account)
+	if err != nil {
+		return nil, err
+	}
+	if err = result.Error(); err != nil {
+		return nil, result.Error()
+	}
+
+	return *result.Result, nil
 }
 
 func (ac *AuthObsClient) Address() gethcommon.Address {
@@ -146,17 +166,16 @@ func (ac *AuthObsClient) Address() gethcommon.Address {
 }
 
 func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg *ethereum.CallMsg) (uint64, error) {
-	var result string
+	var result responses.EstimateGasType
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.EstimateGas, ToCallArg(*msg))
 	if err != nil {
 		return 0, err
 	}
-	response, err := common.EmptyResponse[hexutil.Uint64]().Decode([]byte(result))
-	if err != nil {
+	if err = result.Error(); err != nil {
 		return 0, err
 	}
 
-	return hexutil.DecodeUint64(response.String())
+	return hexutil.DecodeUint64(result.Result.String())
 }
 
 func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxData {
