@@ -408,9 +408,12 @@ func (n *Impl) prysmStartBeaconNode(gethAuthRPCPort, rpcPort, p2pPort int, nodeD
 		"--datadir", path.Join(nodeDataDir, "prysm", "beacondata"),
 		"--interop-eth1data-votes",
 		"--accept-terms-of-use",
+		"--no-discovery",
 		"--rpc-port", fmt.Sprintf("%d", rpcPort),
 		"--p2p-udp-port", fmt.Sprintf("%d", p2pPort),
 		"--min-sync-peers", fmt.Sprintf("%d", len(n.dataDirs)-1),
+		// if nodes have zero or one peers then that's the min-peers, if more than that then say 2 peers is the min
+		"--minimum-peers-per-subnet", fmt.Sprintf("%d", min(len(n.dataDirs)-1, 2)),
 		"--interop-num-validators", fmt.Sprintf("%d", len(n.dataDirs)),
 		"--genesis-state", n.prysmGenesisPath,
 		"--chain-config-file", n.prysmConfigPath,
@@ -555,4 +558,11 @@ func (n *Impl) gethImportEnodes(enodes []string) error {
 		time.Sleep(time.Second)
 	}
 	return nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
