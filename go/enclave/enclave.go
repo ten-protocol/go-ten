@@ -459,7 +459,6 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	if err != nil {
 		err = fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
 		return responses.AsError(err)
-
 	}
 	if len(paramList) == 0 {
 		err = fmt.Errorf("required at least one param, but received zero")
