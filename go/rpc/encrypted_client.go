@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
 
@@ -115,8 +117,21 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return ErrNilResponse
 	}
 
+	encodedBytes, err := hex.DecodeString(rawResult.(string))
+	if err != nil {
+		return fmt.Errorf("error decoding response - %v", err)
+	}
+	resp := responses.ToEnclaveResponse(encodedBytes)
+	if resp.Err != nil {
+		return resp.Err
+	}
+
+	if resp.EncUserResponse == nil || len(resp.EncUserResponse) == 0 {
+		return ErrNilResponse
+	}
+
 	// method is sensitive, so we decrypt it before unmarshalling the result
-	decrypted, err := c.decryptHexString(rawResult)
+	decrypted, err := c.decryptResponse(resp.EncUserResponse)
 	if err != nil {
 		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
 	}

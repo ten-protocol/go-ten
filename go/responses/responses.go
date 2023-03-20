@@ -15,9 +15,41 @@ type EnclaveResponse struct {
 	Err             error
 }
 
+// ToEnclaveResponse - Converts an encoded plaintext into an enclave response
+func ToEnclaveResponse(encoded []byte) *EnclaveResponse {
+	resp := EnclaveResponse{}
+	transportStruct := struct {
+		Resp EncryptedUserResponse
+		Err  *string
+	}{}
+
+	err := json.Unmarshal(encoded, &transportStruct)
+	if err != nil {
+		panic(err) // Todo change when stable.
+	}
+	resp.EncUserResponse = transportStruct.Resp
+	if transportStruct.Err != nil {
+		resp.Err = fmt.Errorf(*transportStruct.Err)
+	}
+
+	return &resp
+}
+
 // Encode - serializes the enclave response into a json
 func (er *EnclaveResponse) Encode() []byte {
-	encoded, err := json.Marshal(er)
+	transportStruct := struct {
+		Resp EncryptedUserResponse
+		Err  *string
+	}{
+		Resp: er.EncUserResponse,
+	}
+
+	if er.Err != nil {
+		errStr := er.Err.Error()
+		transportStruct.Err = &errStr
+	}
+
+	encoded, err := json.Marshal(transportStruct)
 	if err != nil {
 		panic(err)
 	}
@@ -79,16 +111,6 @@ func AsEncryptedError(err error, encrypt ViewingKeyEncryptor) EnclaveResponse {
 	}
 
 	return AsPlaintextResponse(encrypted)
-}
-
-// ToEnclaveResponse - Converts an encoded plaintext into an enclave response
-func ToEnclaveResponse(encoded []byte) *EnclaveResponse {
-	resp := EnclaveResponse{}
-	err := json.Unmarshal(encoded, &resp)
-	if err != nil {
-		panic(err) // Todo change when stable.
-	}
-	return &resp
 }
 
 // DecodeResponse - Extracts the user response from a decrypted bytes field and returns the
