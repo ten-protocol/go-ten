@@ -10,7 +10,7 @@ The core contract that provides this functionality is the `MessageBus`. It exist
 
 Users call the `publishMessage` function on the `MessageBus`. This function emits an event that records what message is being published, who is calling the method and some other bits. This event later on gets picked on by the protocol which ensures that the message is available on the counterpart `MessageBus`.
 
-When the message is made available, users can call the `verifyMessageFinalized` method in the `MessageBus` on the receipient layer. This method will return `true` if the message was indeed sent on the other layer as presented. Same `msg.sender`, same `payload`, same `nonce`.
+When the message is made available, users can call the `verifyMessageFinalized` method in the `MessageBus` on the recipient layer. This method will return `true` if the message was indeed sent on the other layer as presented. Same `msg.sender`, same `payload`, same `nonce`.
 
 This allows to have a behaviour much like querying questions - **'Has the address 0xAAAA.. received 25WETH tokens on the bridge with address 0XAB0FF?'**. If the bridge on this address has called `publishMessage` saying **'I have received 25 WETH tokens with recipient 0xAAAA.`** the query will return true. 
 
