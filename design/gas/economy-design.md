@@ -38,7 +38,7 @@ The main challenge with spot conversions is the same challenge every layer 2 has
 Most projects that extend into L2 tend to share the same property of having significantly less TVL. This is true for both Arbitrum and Optimism and is not just about small projects. Even the biggest projects tend to suffer from lack of liquidity outside the "core pools". Core for example being USDC/ETH. 
 
 
-In our instance, given that this would be liquidity for OBX/ETH on the platform where OBX is used this might be okay. One could say this is actually a "core pool". Furthermore good fee incentives on the pool along with having guaranteed platform induced demand might make providing liquidity on the L2 even more lucrative than on the L1. The guaranteed demand is due to the pool being core part of the gas protocol and thus everyone being forced to use it.
+In our instance, given that this would be liquidity for OBX/ETH on the platform where OBX is used it might not be such an issue. One could say this is actually a "core pool". Furthermore good fee incentives on the pool along with having guaranteed platform induced demand might make providing liquidity on the L2 even more lucrative than on the L1. The guaranteed demand is due to the pool being core part of the gas protocol and thus everyone being forced to use it.
 
 #### The problem of OBX/ETH pairs being decoupled
 
@@ -94,4 +94,16 @@ This however does not help in the case where ETH remains same price, but OBX is 
 
 An alternative approach would be to deploy our own OBX Squeeth that allows us to cover both OBX dropping and ETH shooting up. This would have a questionable market given the size of ETH/USDC. 
 
+### Selling calldata options
+
+If we ignore OBX and think in terms of L1 ETH pricing of L2 transactions, we have something non obvious - We are selling an option contract for X amount of ETH to deliver of Y amount of bytes. The price is current spot gas price + gas price premium in ETH. This contract is for a fixed amount of time that will always be executed. (I guess this is more like a future, but I have no clue how volatility is priced there) 
+
+So users pay ETH for a contract that you will pay the gas on the L1 for their transaction. The implication of this is that if we were to go on the extreme offensive, we could in theory use established option pricing to provide extremely fair prices. Instead of having some % markup. And this would make us ... option sellers. [Pricing model?](https://www.investopedia.com/terms/b/blackscholes.asp)
+
+Furthermore if we remember OBX, we can stack the optionality: 
+
+1. Get transaction option contract price in ETH.
+2. Get OBX price for ETH option contract. (or future, idk)
+
+Now this isn't entirely risk free, but in theory it should allow us to operate without instant swaps or any other party tricks. Given a long enough amount of time and not using too much capital, we should easily be profitable. As pretty much everyone who sells theta is. **That said, I don't think this is the way to go for the time being.** When Obscuro and OBX mature and become somewhat stable we could transition to this after proper back testing.
 
