@@ -1,4 +1,4 @@
-This package dubplicates the geth "rawdb" package.
+This package duplicates the geth "rawdb" package.
 It contains logic to wrap access to the key value store.
 The only changes are around the used prefixes, and the removal of the "ancients" which we don't use for now. 
 

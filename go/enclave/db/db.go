@@ -7,19 +7,18 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/obscuronet/go-obscuro/go/config"
 )
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
-func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (ethdb.Database, error) {
+func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (sql.EnclaveDB, error) {
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		return getInMemDB()
+		// this creates an in memory sqllite db
+		return sql.CreateTemporarySQLiteDB("file:"+cfg.HostID.Hex()+"?mode=memory&cache=shared", true, logger)
 	}
 
 	if !cfg.WillAttest {
@@ -27,7 +26,7 @@ func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (ethdb.
 		logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
 		// when we want to test persistence after node restart the SqliteDBPath should be set
 		// (if empty string then a temp db file will be created for the lifetime of the enclave)
-		return sql.CreateTemporarySQLiteDB(cfg.SqliteDBPath, logger)
+		return sql.CreateTemporarySQLiteDB(cfg.SqliteDBPath, false, logger)
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
@@ -55,11 +54,7 @@ func validateDBConf(cfg config.EnclaveConfig) error {
 	return nil
 }
 
-func getInMemDB() (ethdb.Database, error) {
-	return rawdb.NewMemoryDatabase(), nil
-}
-
-func getEdgelessDB(cfg config.EnclaveConfig, logger gethlog.Logger) (ethdb.Database, error) {
+func getEdgelessDB(cfg config.EnclaveConfig, logger gethlog.Logger) (sql.EnclaveDB, error) {
 	if cfg.EdgelessDBHost == "" {
 		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
 	}

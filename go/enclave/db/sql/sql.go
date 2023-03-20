@@ -5,9 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/ethdb"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 )
 
@@ -19,18 +18,33 @@ const (
 	searchQry = `select * from keyvalue where substring(keyvalue.ky, 1, ?) = ? and keyvalue.ky >= ? order by keyvalue.ky asc`
 )
 
-// sqlEthDatabase implements ethdb.Database
-type sqlEthDatabase struct {
+// EnclaveSQLDB - exposes the underlying sql database
+type EnclaveSQLDB interface {
+	GetSQLDB() *sql.DB
+}
+
+// EnclaveDB - the type returned by the database connectors. Extends the ethdb and exposes an SQL db.
+type EnclaveDB interface {
+	ethdb.Database
+	EnclaveSQLDB
+}
+
+// sqlDBImpl implements db.EnclaveDB which implements ethdb.Database
+type sqlDBImpl struct {
 	db     *sql.DB
 	logger gethlog.Logger
 }
 
-func CreateSQLEthDatabase(db *sql.DB, logger gethlog.Logger) (ethdb.Database, error) {
-	return &sqlEthDatabase{db: db, logger: logger}, nil
+func CreateSQLEthDatabase(db *sql.DB, logger gethlog.Logger) (EnclaveDB, error) {
+	return &sqlDBImpl{db: db, logger: logger}, nil
 }
 
-func (m *sqlEthDatabase) Has(key []byte) (bool, error) {
-	err := m.db.QueryRow(getQry, key).Scan()
+func (sqlDB *sqlDBImpl) GetSQLDB() *sql.DB {
+	return sqlDB.db
+}
+
+func (sqlDB *sqlDBImpl) Has(key []byte) (bool, error) {
+	err := sqlDB.db.QueryRow(getQry, key).Scan()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
@@ -40,10 +54,10 @@ func (m *sqlEthDatabase) Has(key []byte) (bool, error) {
 	return true, nil
 }
 
-func (m *sqlEthDatabase) Get(key []byte) ([]byte, error) {
+func (sqlDB *sqlDBImpl) Get(key []byte) ([]byte, error) {
 	var res []byte
 
-	err := m.db.QueryRow(getQry, key).Scan(&res)
+	err := sqlDB.db.QueryRow(getQry, key).Scan(&res)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -54,34 +68,34 @@ func (m *sqlEthDatabase) Get(key []byte) ([]byte, error) {
 	return res, nil
 }
 
-func (m *sqlEthDatabase) Put(key []byte, value []byte) error {
-	_, err := m.db.Exec(putQry, key, value)
+func (sqlDB *sqlDBImpl) Put(key []byte, value []byte) error {
+	_, err := sqlDB.db.Exec(putQry, key, value)
 	return err
 }
 
-func (m *sqlEthDatabase) Delete(key []byte) error {
-	_, err := m.db.Exec(delQry, key)
+func (sqlDB *sqlDBImpl) Delete(key []byte) error {
+	_, err := sqlDB.db.Exec(delQry, key)
 	return err
 }
 
-func (m *sqlEthDatabase) Close() error {
-	if err := m.db.Close(); err != nil {
+func (sqlDB *sqlDBImpl) Close() error {
+	if err := sqlDB.db.Close(); err != nil {
 		return fmt.Errorf("failed to close sql db - %w", err)
 	}
 	return nil
 }
 
-func (m *sqlEthDatabase) NewBatch() ethdb.Batch {
+func (sqlDB *sqlDBImpl) NewBatch() ethdb.Batch {
 	return &sqlBatch{
-		db: m,
+		db: sqlDB,
 	}
 }
 
-func (m *sqlEthDatabase) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
+func (sqlDB *sqlDBImpl) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
 	pr := prefix
 	st := append(prefix, start...)
 	// iterator clean-up handles closing this rows iterator
-	rows, err := m.db.Query(searchQry, len(pr), pr, st)
+	rows, err := sqlDB.db.Query(searchQry, len(pr), pr, st)
 	if err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),
@@ -97,15 +111,15 @@ func (m *sqlEthDatabase) NewIterator(prefix []byte, start []byte) ethdb.Iterator
 	}
 }
 
-func (m *sqlEthDatabase) Stat(property string) (string, error) {
+func (sqlDB *sqlDBImpl) Stat(property string) (string, error) {
 	// TODO implement me
-	m.logger.Crit("implement me")
+	sqlDB.logger.Crit("implement me")
 	return "", nil
 }
 
-func (m *sqlEthDatabase) Compact(start []byte, limit []byte) error {
+func (sqlDB *sqlDBImpl) Compact(start []byte, limit []byte) error {
 	// TODO implement me
-	m.logger.Crit("implement me")
+	sqlDB.logger.Crit("implement me")
 	return nil
 }
 
@@ -115,46 +129,46 @@ func (m *sqlEthDatabase) Compact(start []byte, limit []byte) error {
 var errNotSupported = errors.New("this operation is not supported")
 
 // HasAncient returns an error as we don't have a backing chain freezer.
-func (m *sqlEthDatabase) HasAncient(kind string, number uint64) (bool, error) {
+func (sqlDB *sqlDBImpl) HasAncient(kind string, number uint64) (bool, error) {
 	return false, errNotSupported
 }
 
 // Ancient returns an error as we don't have a backing chain freezer.
-func (m *sqlEthDatabase) Ancient(kind string, number uint64) ([]byte, error) {
+func (sqlDB *sqlDBImpl) Ancient(kind string, number uint64) ([]byte, error) {
 	return nil, errNotSupported
 }
 
 // AncientRange returns an error as we don't have a backing chain freezer.
-func (m *sqlEthDatabase) AncientRange(kind string, start, max, maxByteSize uint64) ([][]byte, error) {
+func (sqlDB *sqlDBImpl) AncientRange(kind string, start, max, maxByteSize uint64) ([][]byte, error) {
 	return nil, errNotSupported
 }
 
 // Ancients returns an error as we don't have a backing chain freezer.
-func (m *sqlEthDatabase) Ancients() (uint64, error) {
+func (sqlDB *sqlDBImpl) Ancients() (uint64, error) {
 	return 0, errNotSupported
 }
 
 // AncientSize returns an error as we don't have a backing chain freezer.
-func (m *sqlEthDatabase) AncientSize(kind string) (uint64, error) {
+func (sqlDB *sqlDBImpl) AncientSize(kind string) (uint64, error) {
 	return 0, errNotSupported
 }
 
 // ModifyAncients is not supported.
-func (m *sqlEthDatabase) ModifyAncients(func(ethdb.AncientWriteOp) error) (int64, error) {
+func (sqlDB *sqlDBImpl) ModifyAncients(func(ethdb.AncientWriteOp) error) (int64, error) {
 	return 0, errNotSupported
 }
 
 // TruncateAncients returns an error as we don't have a backing chain freezer.
-func (m *sqlEthDatabase) TruncateAncients(items uint64) error {
+func (sqlDB *sqlDBImpl) TruncateAncients(items uint64) error {
 	return errNotSupported
 }
 
 // Sync returns an error as we don't have a backing chain freezer.
-func (m *sqlEthDatabase) Sync() error {
+func (sqlDB *sqlDBImpl) Sync() error {
 	return errNotSupported
 }
 
-func (m *sqlEthDatabase) ReadAncients(fn func(reader ethdb.AncientReader) error) (err error) {
+func (sqlDB *sqlDBImpl) ReadAncients(fn func(reader ethdb.AncientReader) error) (err error) {
 	// Unlike other ancient-related methods, this method does not return
 	// errNotSupported when invoked.
 	// The reason for this is that the caller might want to do several things:
@@ -167,5 +181,5 @@ func (m *sqlEthDatabase) ReadAncients(fn func(reader ethdb.AncientReader) error)
 	// If we instead were to return errNotSupported here, then the caller would
 	// have to explicitly check for that, having an extra clause to do the
 	// non-ancient operations.
-	return fn(m)
+	return fn(sqlDB)
 }

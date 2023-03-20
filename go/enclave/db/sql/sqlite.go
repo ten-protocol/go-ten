@@ -10,7 +10,6 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/ethereum/go-ethereum/ethdb"
 	_ "github.com/mattn/go-sqlite3" // this imports the sqlite driver to make the sql.Open() connection work
 )
 
@@ -21,7 +20,7 @@ const (
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the db file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (ethdb.Database, error) {
+func CreateTemporarySQLiteDB(dbPath string, inMem bool, logger gethlog.Logger) (EnclaveDB, error) {
 	if dbPath == "" {
 		tempPath, err := CreateTempDBFile()
 		if err != nil {
@@ -29,9 +28,13 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (ethdb.Databa
 		}
 		dbPath = tempPath
 	}
-	// determine if a db file already exists, we don't want to overwrite it
-	_, err := os.Stat(dbPath)
-	existingDB := err == nil
+	// for in memory databases set up every time
+	existingDB := false
+	if !inMem {
+		// determine if a db file already exists, we don't want to overwrite it
+		_, err := os.Stat(dbPath)
+		existingDB = err == nil
+	}
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {

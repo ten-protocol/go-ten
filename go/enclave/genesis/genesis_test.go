@@ -5,7 +5,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 
@@ -22,7 +24,10 @@ func TestDefaultGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB := rawdb.NewMemoryDatabase()
+	backingDB, err := sql.CreateTemporarySQLiteDB("", false, testlog.Logger())
+	if err != nil {
+		t.Fatalf("unable to apply genesis allocations")
+	}
 	storageDB := db.NewStorage(backingDB, nil, gethlog.New())
 	stateDB, err := gen.applyAllocations(storageDB)
 	if err != nil {
@@ -55,7 +60,10 @@ func TestCustomGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB := rawdb.NewMemoryDatabase()
+	backingDB, err := sql.CreateTemporarySQLiteDB("", false, testlog.Logger())
+	if err != nil {
+		t.Fatalf("unable to apply genesis allocations")
+	}
 	storageDB := db.NewStorage(backingDB, nil, gethlog.New())
 	stateDB, err := gen.applyAllocations(storageDB)
 	if err != nil {

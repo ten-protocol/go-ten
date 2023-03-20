@@ -17,7 +17,7 @@ type keyvalue struct {
 }
 
 type sqlBatch struct {
-	db     *sqlEthDatabase
+	db     *sqlDBImpl
 	writes []keyvalue
 	size   int
 }
