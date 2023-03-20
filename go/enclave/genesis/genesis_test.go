@@ -24,9 +24,9 @@ func TestDefaultGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB, err := sql.CreateTemporarySQLiteDB("", false, testlog.Logger())
+	backingDB, err := sql.CreateTemporarySQLiteDB("", testlog.Logger())
 	if err != nil {
-		t.Fatalf("unable to apply genesis allocations")
+		t.Fatalf("unable to create temp db: %s", err)
 	}
 	storageDB := db.NewStorage(backingDB, nil, gethlog.New())
 	stateDB, err := gen.applyAllocations(storageDB)
@@ -60,9 +60,9 @@ func TestCustomGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB, err := sql.CreateTemporarySQLiteDB("", false, testlog.Logger())
+	backingDB, err := sql.CreateTemporarySQLiteDB("", testlog.Logger())
 	if err != nil {
-		t.Fatalf("unable to apply genesis allocations")
+		t.Fatalf("unable to create temp db: %s", err)
 	}
 	storageDB := db.NewStorage(backingDB, nil, gethlog.New())
 	stateDB, err := gen.applyAllocations(storageDB)

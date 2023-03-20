@@ -18,7 +18,7 @@ func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (sql.En
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
 		// this creates an in memory sqllite db
-		return sql.CreateTemporarySQLiteDB("file:"+cfg.HostID.Hex()+"?mode=memory&cache=shared", true, logger)
+		return sql.CreateTemporarySQLiteDB("", logger)
 	}
 
 	if !cfg.WillAttest {
@@ -26,7 +26,7 @@ func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (sql.En
 		logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
 		// when we want to test persistence after node restart the SqliteDBPath should be set
 		// (if empty string then a temp db file will be created for the lifetime of the enclave)
-		return sql.CreateTemporarySQLiteDB(cfg.SqliteDBPath, false, logger)
+		return sql.CreateTemporarySQLiteDB(cfg.SqliteDBPath, logger)
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
