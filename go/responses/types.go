@@ -8,13 +8,16 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
-type Encryptor func([]byte) ([]byte, error)
+type ViewingKeyEncryptor func([]byte) ([]byte, error)
 
+// UserResponse - The response struct that contains either data or result
+// which will be decoded only on the client side.
 type UserResponse[T any] struct {
 	Result *T
 	ErrStr *string
 }
 
+// Error - converts the encoded string in the response into a normal error and returns it.
 func (ur *UserResponse[T]) Error() error {
 	if ur.ErrStr != nil {
 		return fmt.Errorf(*ur.ErrStr)

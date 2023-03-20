@@ -3,7 +3,6 @@ package enclaverpc
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -12,8 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/responses"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
@@ -164,7 +161,8 @@ func (c *Client) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	if err != nil {
 		return responses.AsPlaintextError(err)
 	}
-	return responses.AsPlaintextResponse(response.EncryptedHash)
+
+	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
 func (c *Client) SubmitBatch(batch *common.ExtBatch) error {
@@ -189,16 +187,7 @@ func (c *Client) ExecuteOffChainTransaction(encryptedParams common.EncryptedPara
 	if err != nil {
 		return responses.AsPlaintextError(err)
 	}
-	if len(response.Error) > 0 {
-		// The enclave always returns a SerialisableError
-		var result evm.SerialisableError
-		err = json.Unmarshal(response.Error, &result)
-		if err != nil {
-			return responses.AsPlaintextError(err)
-		}
-		return responses.AsPlaintextError(result)
-	}
-	return responses.AsPlaintextResponse(response.Result)
+	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
 func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) responses.TxCount {
@@ -209,10 +198,7 @@ func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTx
 	if err != nil {
 		return responses.AsPlaintextError(err)
 	}
-	if response.Error != "" {
-		return responses.AsPlaintextError(errors.New(response.Error))
-	}
-	return responses.AsPlaintextResponse(response.Result)
+	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
 func (c *Client) Stop() error {
@@ -234,7 +220,7 @@ func (c *Client) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHas
 	if err != nil {
 		return responses.AsPlaintextError(err)
 	}
-	return responses.AsPlaintextResponse(resp.EncryptedTx)
+	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
 func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) responses.TxReceipt {
@@ -245,7 +231,7 @@ func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGet
 	if err != nil {
 		return responses.AsPlaintextError(err)
 	}
-	return responses.AsPlaintextResponse(response.EncryptedTxReceipt)
+	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
 func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
@@ -272,7 +258,7 @@ func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) re
 	if err != nil {
 		return responses.AsPlaintextError(err)
 	}
-	return responses.AsPlaintextResponse(resp.EncryptedBalance)
+	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
 func (c *Client) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, error) {
@@ -321,7 +307,7 @@ func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) 
 		return responses.AsPlaintextError(err)
 	}
 
-	return responses.AsPlaintextResponse(resp.EncryptedResponse)
+	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
 func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) responses.Logs {
@@ -334,7 +320,7 @@ func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) response
 	if err != nil {
 		return responses.AsPlaintextError(err)
 	}
-	return responses.AsPlaintextResponse(resp.EncryptedResponse)
+	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
 func (c *Client) HealthCheck() (bool, error) {

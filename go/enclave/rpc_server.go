@@ -123,11 +123,7 @@ func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBl
 
 func (s *RPCServer) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
 	enclaveResponse := s.enclave.SubmitTx(request.EncryptedTx)
-	if enclaveResponse.Err != nil {
-		return nil, enclaveResponse.Err
-	}
-
-	return &generated.SubmitTxResponse{EncryptedHash: enclaveResponse.EncUserResponse}, nil
+	return &generated.SubmitTxResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
 }
 
 func (s *RPCServer) SubmitBatch(_ context.Context, request *generated.SubmitBatchRequest) (*generated.SubmitBatchResponse, error) {
@@ -137,26 +133,12 @@ func (s *RPCServer) SubmitBatch(_ context.Context, request *generated.SubmitBatc
 
 func (s *RPCServer) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
 	enclaveResp := s.enclave.ExecuteOffChainTransaction(request.EncryptedParams)
-	err := enclaveResp.Err
-	if err != nil {
-		// handle complex errors from the EVM
-		errResponse, processErr := serializeEVMError(err)
-		if processErr != nil {
-			// unable to serialize the error
-			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
-		}
-		return &generated.OffChainResponse{Error: errResponse}, nil
-	}
-	return &generated.OffChainResponse{Result: enclaveResp.EncUserResponse}, nil
+	return &generated.OffChainResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetTransactionCount(_ context.Context, request *generated.GetTransactionCountRequest) (*generated.GetTransactionCountResponse, error) {
 	enclaveResp := s.enclave.GetTransactionCount(request.EncryptedParams)
-	err := enclaveResp.Err
-	if err != nil {
-		return nil, err
-	}
-	return &generated.GetTransactionCountResponse{Result: enclaveResp.EncUserResponse}, nil
+	return &generated.GetTransactionCountResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
@@ -167,21 +149,12 @@ func (s *RPCServer) Stop(context.Context, *generated.StopRequest) (*generated.St
 
 func (s *RPCServer) GetTransaction(_ context.Context, request *generated.GetTransactionRequest) (*generated.GetTransactionResponse, error) {
 	enclaveResp := s.enclave.GetTransaction(request.EncryptedParams)
-	err := enclaveResp.Err
-	if err != nil {
-		return nil, err
-	}
-	return &generated.GetTransactionResponse{EncryptedTx: enclaveResp.EncUserResponse}, nil
+	return &generated.GetTransactionResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetTransactionReceipt(_ context.Context, request *generated.GetTransactionReceiptRequest) (*generated.GetTransactionReceiptResponse, error) {
 	enclaveResponse := s.enclave.GetTransactionReceipt(request.EncryptedParams)
-	err := enclaveResponse.Err
-	if err != nil {
-		return nil, err
-	}
-
-	return &generated.GetTransactionReceiptResponse{EncryptedTxReceipt: enclaveResponse.EncUserResponse}, nil
+	return &generated.GetTransactionReceiptResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
 }
 
 func (s *RPCServer) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {
@@ -194,11 +167,7 @@ func (s *RPCServer) AddViewingKey(_ context.Context, request *generated.AddViewi
 
 func (s *RPCServer) GetBalance(_ context.Context, request *generated.GetBalanceRequest) (*generated.GetBalanceResponse, error) {
 	enclaveResp := s.enclave.GetBalance(request.EncryptedParams)
-	err := enclaveResp.Err
-	if err != nil {
-		return nil, err
-	}
-	return &generated.GetBalanceResponse{EncryptedBalance: enclaveResp.EncUserResponse}, nil
+	return &generated.GetBalanceResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetCode(_ context.Context, request *generated.GetCodeRequest) (*generated.GetCodeResponse, error) {
@@ -224,20 +193,12 @@ func (s *RPCServer) Unsubscribe(_ context.Context, req *generated.UnsubscribeReq
 
 func (s *RPCServer) EstimateGas(_ context.Context, req *generated.EstimateGasRequest) (*generated.EstimateGasResponse, error) {
 	enclaveResp := s.enclave.EstimateGas(req.EncryptedParams)
-	if enclaveResp.Err != nil {
-		return nil, enclaveResp.Err
-	}
-
-	return &generated.EstimateGasResponse{EncryptedResponse: enclaveResp.EncUserResponse}, nil
+	return &generated.EstimateGasResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetLogs(_ context.Context, req *generated.GetLogsRequest) (*generated.GetLogsResponse, error) {
 	enclaveResp := s.enclave.GetLogs(req.EncryptedParams)
-	err := enclaveResp.Err
-	if err != nil {
-		return nil, err
-	}
-	return &generated.GetLogsResponse{EncryptedResponse: enclaveResp.EncUserResponse}, nil
+	return &generated.GetLogsResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) HealthCheck(_ context.Context, _ *generated.EmptyArgs) (*generated.HealthCheckResponse, error) {

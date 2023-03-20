@@ -5,13 +5,17 @@ import (
 	"fmt"
 )
 
+// This is the encoded & encrypted form of a UserResponse[Type]
 type EncryptedUserResponse []byte
 
+// The response that the enclave returns for sensitive API calls
+// The user response is encrypted while the error is in plaintext
 type EnclaveResponse struct {
 	EncUserResponse EncryptedUserResponse
 	Err             error
 }
 
+// Encode - serializes the enclave response into a json
 func (er *EnclaveResponse) Encode() []byte {
 	encoded, err := json.Marshal(er)
 	if err != nil {
@@ -21,19 +25,25 @@ func (er *EnclaveResponse) Encode() []byte {
 	return encoded
 }
 
+// AsPlaintextResponse - creates the plaintext part of the enclave response
+// It would be visible that there is an enclave response,
+// but the bytes in it will still be encrypted
 func AsPlaintextResponse(encResp EncryptedUserResponse) EnclaveResponse {
 	return EnclaveResponse{
 		EncUserResponse: encResp,
 	}
 }
 
+// AsPlaintextError - generates a plaintext response containing a visible to the host error.
 func AsPlaintextError(err error) EnclaveResponse {
 	return EnclaveResponse{
 		Err: err,
 	}
 }
 
-func AsEncryptedResponse[T any](data *T, encrypt Encryptor) EnclaveResponse {
+// AsEncryptedResponse - wraps the data passed into the proper format, serializes it and encrypts it.
+// It is then encoded in a plaintext response.
+func AsEncryptedResponse[T any](data *T, encrypt ViewingKeyEncryptor) EnclaveResponse {
 	userResp := UserResponse[T]{
 		Result: data,
 	}
@@ -51,7 +61,8 @@ func AsEncryptedResponse[T any](data *T, encrypt Encryptor) EnclaveResponse {
 	return AsPlaintextResponse(encrypted)
 }
 
-func AsEncryptedError(err error, encrypt Encryptor) EnclaveResponse {
+// AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
+func AsEncryptedError(err error, encrypt ViewingKeyEncryptor) EnclaveResponse {
 	errStr := err.Error()
 	userResp := UserResponse[string]{
 		ErrStr: &errStr,
@@ -70,6 +81,7 @@ func AsEncryptedError(err error, encrypt Encryptor) EnclaveResponse {
 	return AsPlaintextResponse(encrypted)
 }
 
+// ToEnclaveResponse - Converts an encoded plaintext into an enclave response
 func ToEnclaveResponse(encoded []byte) *EnclaveResponse {
 	resp := EnclaveResponse{}
 	err := json.Unmarshal(encoded, &resp)
@@ -79,6 +91,8 @@ func ToEnclaveResponse(encoded []byte) *EnclaveResponse {
 	return &resp
 }
 
+// DecodeResponse - Extracts the user response from a decrypted bytes field and returns the
+// result or nil and optional error.
 func DecodeResponse[T any](encoded []byte) (*T, error) {
 	resp := UserResponse[T]{}
 	err := json.Unmarshal(encoded, &resp)
