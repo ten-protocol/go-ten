@@ -156,15 +156,15 @@ func (c *Client) SubmitL1Block(block types.Block, receipts types.Receipts, isLat
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) SubmitTx(tx common.EncryptedTx) responses.SendRawTx {
+func (c *Client) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
 	if err != nil {
-		return responses.AsError(err)
+		return responses.AsPlaintextError(err)
 	}
-	return responses.AsResponse(response.EncryptedHash)
+	return responses.AsPlaintextResponse(response.EncryptedHash)
 }
 
 func (c *Client) SubmitBatch(batch *common.ExtBatch) error {
@@ -187,32 +187,32 @@ func (c *Client) ExecuteOffChainTransaction(encryptedParams common.EncryptedPara
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return responses.AsError(err)
+		return responses.AsPlaintextError(err)
 	}
 	if len(response.Error) > 0 {
 		// The enclave always returns a SerialisableError
 		var result evm.SerialisableError
 		err = json.Unmarshal(response.Error, &result)
 		if err != nil {
-			return responses.AsError(err)
+			return responses.AsPlaintextError(err)
 		}
-		return responses.AsError(result)
+		return responses.AsPlaintextError(result)
 	}
-	return responses.AsResponse(response.Result)
+	return responses.AsPlaintextResponse(response.Result)
 }
 
-func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) responses.GetTxCount {
+func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) responses.TxCount {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetTransactionCount(timeoutCtx, &generated.GetTransactionCountRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return responses.AsError(err)
+		return responses.AsPlaintextError(err)
 	}
 	if response.Error != "" {
-		return responses.AsError(errors.New(response.Error))
+		return responses.AsPlaintextError(errors.New(response.Error))
 	}
-	return responses.AsResponse(response.Result)
+	return responses.AsPlaintextResponse(response.Result)
 }
 
 func (c *Client) Stop() error {
@@ -226,26 +226,26 @@ func (c *Client) Stop() error {
 	return nil
 }
 
-func (c *Client) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) responses.GetTxByHash {
+func (c *Client) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) responses.TxByHash {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	resp, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return responses.AsError(err)
+		return responses.AsPlaintextError(err)
 	}
-	return responses.AsResponse(resp.EncryptedTx)
+	return responses.AsPlaintextResponse(resp.EncryptedTx)
 }
 
-func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) responses.GetTxReceipt {
+func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) responses.TxReceipt {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetTransactionReceipt(timeoutCtx, &generated.GetTransactionReceiptRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return responses.AsError(err)
+		return responses.AsPlaintextError(err)
 	}
-	return responses.AsResponse(response.EncryptedTxReceipt)
+	return responses.AsPlaintextResponse(response.EncryptedTxReceipt)
 }
 
 func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
@@ -262,7 +262,7 @@ func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
 	return nil
 }
 
-func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) responses.GetBalance {
+func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) responses.Balance {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -270,9 +270,9 @@ func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) re
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return responses.AsError(err)
+		return responses.AsPlaintextError(err)
 	}
-	return responses.AsResponse(resp.EncryptedBalance)
+	return responses.AsPlaintextResponse(resp.EncryptedBalance)
 }
 
 func (c *Client) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, error) {
@@ -310,7 +310,7 @@ func (c *Client) Unsubscribe(id gethrpc.ID) error {
 	return err
 }
 
-func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) responses.EstimateGas {
+func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) responses.Gas {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -318,13 +318,13 @@ func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) 
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return responses.AsError(err)
+		return responses.AsPlaintextError(err)
 	}
 
-	return responses.AsResponse(resp.EncryptedResponse)
+	return responses.AsPlaintextResponse(resp.EncryptedResponse)
 }
 
-func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) responses.GetLogs {
+func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) responses.Logs {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -332,9 +332,9 @@ func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) response
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return responses.AsError(err)
+		return responses.AsPlaintextError(err)
 	}
-	return responses.AsResponse(resp.EncryptedResponse)
+	return responses.AsPlaintextResponse(resp.EncryptedResponse)
 }
 
 func (c *Client) HealthCheck() (bool, error) {

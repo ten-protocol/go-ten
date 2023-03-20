@@ -226,7 +226,7 @@ func (h *host) EnclaveClient() common.Enclave {
 	return h.enclaveClient
 }
 
-func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.SendRawTx, error) {
+func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
 	enclaveResponse := h.enclaveClient.SubmitTx(encryptedTx)

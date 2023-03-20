@@ -21,37 +21,37 @@ func (er *EnclaveResponse) Encode() []byte {
 	return encoded
 }
 
-func AsResponse(encResp EncryptedUserResponse) EnclaveResponse {
+func AsPlaintextResponse(encResp EncryptedUserResponse) EnclaveResponse {
 	return EnclaveResponse{
 		EncUserResponse: encResp,
 	}
 }
 
-func AsError(err error) EnclaveResponse {
+func AsPlaintextError(err error) EnclaveResponse {
 	return EnclaveResponse{
 		Err: err,
 	}
 }
 
-func EncryptedResponse[T any](data *T, encrypt Encryptor) EnclaveResponse {
+func AsEncryptedResponse[T any](data *T, encrypt Encryptor) EnclaveResponse {
 	userResp := UserResponse[T]{
 		Result: data,
 	}
 
 	encoded, err := json.Marshal(userResp)
 	if err != nil {
-		return AsError(err)
+		return AsPlaintextError(err)
 	}
 
 	encrypted, err := encrypt(encoded)
 	if err != nil {
-		return AsError(err)
+		return AsPlaintextError(err)
 	}
 
-	return AsResponse(encrypted)
+	return AsPlaintextResponse(encrypted)
 }
 
-func EncryptedError(err error, encrypt Encryptor) EnclaveResponse {
+func AsEncryptedError(err error, encrypt Encryptor) EnclaveResponse {
 	errStr := err.Error()
 	userResp := UserResponse[string]{
 		ErrStr: &errStr,
@@ -59,15 +59,15 @@ func EncryptedError(err error, encrypt Encryptor) EnclaveResponse {
 
 	encoded, err := json.Marshal(userResp)
 	if err != nil {
-		return AsError(err)
+		return AsPlaintextError(err)
 	}
 
 	encrypted, err := encrypt(encoded)
 	if err != nil {
-		return AsError(err)
+		return AsPlaintextError(err)
 	}
 
-	return AsResponse(encrypted)
+	return AsPlaintextResponse(encrypted)
 }
 
 func ToEnclaveResponse(encoded []byte) *EnclaveResponse {

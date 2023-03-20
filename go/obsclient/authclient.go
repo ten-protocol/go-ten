@@ -113,7 +113,7 @@ func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg,
 }
 
 func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) (*gethcommon.Hash, error) {
-	var result responses.SendRawTxType
+	var result responses.RawTxType
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.SendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria
 }
 
 func (ac *AuthObsClient) GetLogs(ctx context.Context, filterCriteria common.FilterCriteriaJSON) ([]*types.Log, error) {
-	var result responses.GetLogsType
+	var result responses.LogsType
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetLogs, filterCriteria, ac.account)
 	if err != nil {
 		return nil, err
@@ -166,7 +166,7 @@ func (ac *AuthObsClient) Address() gethcommon.Address {
 }
 
 func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg *ethereum.CallMsg) (uint64, error) {
-	var result responses.EstimateGasType
+	var result responses.GasType
 	err := ac.rpcClient.CallContext(ctx, &result, rpc.EstimateGas, ToCallArg(*msg))
 	if err != nil {
 		return 0, err
