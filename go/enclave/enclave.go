@@ -266,7 +266,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 
 	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(),
 		"newBatch", describeBSR(blockSubmissionResponse))
-	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(block)
+	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
 
 	// We remove any transactions considered immune to re-orgs from the mempool.
 	if blockSubmissionResponse.ProducedBatch != nil {
@@ -965,9 +965,11 @@ func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
 }
 
 // processNetworkSecretMsgs we watch for all messages that are requesting or receiving the secret and we store the nodes attested keys
-func (e *enclaveImpl) processNetworkSecretMsgs(block types.Block) []*common.ProducedSecretResponse {
+func (e *enclaveImpl) processNetworkSecretMsgs(br *common.BlockAndReceipts) []*common.ProducedSecretResponse {
 	var responses []*common.ProducedSecretResponse
-	for _, tx := range block.Transactions() {
+	transactions := br.SuccessfulTransactions()
+	block := br.Block
+	for _, tx := range *transactions {
 		t := e.mgmtContractLib.DecodeTx(tx)
 
 		// this transaction is for a node that has joined the network and needs to be sent the network secret
