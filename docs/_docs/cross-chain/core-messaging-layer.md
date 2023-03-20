@@ -8,7 +8,7 @@ The core contract that provides this functionality is the `MessageBus`. It exist
 
 ## How It Works
 
-Users call the `publishMessage` function on the `MessageBus`. This function emits an event that records what message is being published, who is calling the method and some other bits. This event later on gets picked on by the protocol which ensures that the message is available on the counterpart `MessageBus`.
+Users call the `publishMessage` function on the `MessageBus`. This function emits an event that records what message is being published, who is calling the method and some other bits. This event later on gets picked up by the protocol which ensures that the message is available on the counterpart `MessageBus`.
 
 When the message is made available, users can call the `verifyMessageFinalized` method in the `MessageBus` on the recipient layer. This method will return `true` if the message was indeed sent on the other layer as presented. Same `msg.sender`, same `payload`, same `nonce`.
 
