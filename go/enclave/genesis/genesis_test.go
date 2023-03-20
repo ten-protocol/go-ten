@@ -14,7 +14,16 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
+const testLogs = "../.build/tests/"
+
 func TestDefaultGenesis(t *testing.T) {
+	testlog.Setup(&testlog.Cfg{
+		LogDir:      testLogs,
+		TestType:    "unit",
+		TestSubtype: "genesis",
+		LogLevel:    gethlog.LvlInfo,
+	})
+
 	gen, err := New("")
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
@@ -40,6 +49,13 @@ func TestDefaultGenesis(t *testing.T) {
 }
 
 func TestCustomGenesis(t *testing.T) {
+	testlog.Setup(&testlog.Cfg{
+		LogDir:      testLogs,
+		TestType:    "unit",
+		TestSubtype: "genesis",
+		LogLevel:    gethlog.LvlInfo,
+	})
+
 	addr1 := datagenerator.RandomAddress()
 	amt1 := datagenerator.RandomUInt64()
 	addr2 := datagenerator.RandomAddress()
