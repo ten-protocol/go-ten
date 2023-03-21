@@ -2,7 +2,6 @@ package enclave
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -13,7 +12,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
-	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"google.golang.org/grpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -238,26 +236,4 @@ func (s *RPCServer) decodeReceipts(encodedReceipts []byte) types.Receipts {
 	}
 
 	return receipts
-}
-
-// serializeEVMError serialises EVM errors into the RPC response
-// always returns a SerialisableError byte slice
-func serializeEVMError(err error) ([]byte, error) {
-	var errReturn interface{}
-
-	// check if it's a serialized error and handle any error wrapping that might have occurred
-	var e *evm.SerialisableError
-	if ok := errors.As(err, &e); ok {
-		errReturn = e
-	} else {
-		// it's a generic error, serialise it
-		errReturn = &evm.SerialisableError{Err: err.Error()}
-	}
-
-	// serialise the error object returned by the evm into a json
-	errSerializedBytes, marshallErr := json.Marshal(errReturn)
-	if marshallErr != nil {
-		return nil, marshallErr
-	}
-	return errSerializedBytes, nil
 }
