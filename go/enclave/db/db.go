@@ -18,7 +18,7 @@ func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (sql.En
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
 		// this creates a temporary sqlite db
-		return sql.CreateTemporarySQLiteDB("", logger)
+		return sql.CreateTemporarySQLiteDB("file:"+cfg.HostID.String()+"?mode=memory&cache=shared", logger)
 	}
 
 	if !cfg.WillAttest {

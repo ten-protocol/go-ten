@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -29,11 +30,19 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (EnclaveDB, e
 		dbPath = tempPath
 	}
 
-	// determine if a db file already exists, we don't want to overwrite it
-	_, err := os.Stat(dbPath)
-	existingDB := err == nil
+	inMem := strings.Contains(dbPath, "mode=memory")
+	existingDB := false
+	if !inMem {
+		// determine if a db file already exists, we don't want to overwrite it
+		_, err := os.Stat(dbPath)
+		existingDB = err == nil
+	}
 
 	db, err := sql.Open("sqlite3", dbPath)
+	if inMem {
+		db.SetMaxOpenConns(1)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
