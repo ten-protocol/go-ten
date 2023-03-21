@@ -260,8 +260,9 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 		rollup, err := e.rollupManager.CreateRollup()
 		if err != nil {
 			e.logger.Error("Failed to produce rollup", log.ErrKey, err)
+		} else {
+			blockSubmissionResponse.ProducedRollup = rollup.ToExtRollup(e.transactionBlobCrypto)
 		}
-		blockSubmissionResponse.ProducedRollup = rollup.ToExtRollup(e.transactionBlobCrypto)
 	}
 
 	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(),
