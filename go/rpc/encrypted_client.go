@@ -119,7 +119,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 
 	encodedBytes, err := hex.DecodeString(rawResult.(string))
 	if err != nil {
-		return fmt.Errorf("error decoding response - %w", err)
+		return fmt.Errorf("error decoding response - %v", err)
 	}
 	resp := responses.ToEnclaveResponse(encodedBytes)
 	if resp.Err != nil {
@@ -325,6 +325,14 @@ func (c *EncRPCClient) encryptParamBytes(params []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not encrypt the following request params with enclave public key: %s. Cause: %w", params, err)
 	}
 	return encryptedParams, nil
+}
+
+func (c *EncRPCClient) decryptHexString(resultBlob interface{}) ([]byte, error) {
+	resultStr, ok := resultBlob.(string)
+	if !ok {
+		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
+	}
+	return c.decryptResponse(gethcommon.Hex2Bytes(resultStr))
 }
 
 func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {
