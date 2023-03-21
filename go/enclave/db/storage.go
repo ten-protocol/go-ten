@@ -7,10 +7,11 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
+
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -30,13 +31,13 @@ var ErrNoRollups = errors.New("no rollups have been published")
 // TODO - Consistency around whether we assert the secret is available or not.
 
 type storageImpl struct {
-	db          ethdb.Database
+	db          sql.EnclaveDB
 	stateDB     state.Database
 	chainConfig *params.ChainConfig
 	logger      gethlog.Logger
 }
 
-func NewStorage(backingDB ethdb.Database, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
+func NewStorage(backingDB sql.EnclaveDB, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	return &storageImpl{
 		db:          backingDB,
 		stateDB:     state.NewDatabase(backingDB),
