@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -78,13 +77,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 }
 
 // GetLogs returns the logs matching the filter.
-func (api *FilterAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (string, error) {
-	enclaveResp := api.host.EnclaveClient().GetLogs(encryptedParams)
-	if enclaveResp.Error() != nil {
-		return "", enclaveResp.Error()
-	}
-	if enclaveResp.EncUserResponse == nil {
-		return "", enclaveResp.Error()
-	}
-	return gethcommon.Bytes2Hex(enclaveResp.EncUserResponse), nil
+func (api *FilterAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (responses.EnclaveResponse, error) {
+	enclaveResponse := api.host.EnclaveClient().GetLogs(encryptedParams)
+	return enclaveResponse, nil
 }

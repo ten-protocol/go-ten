@@ -144,10 +144,8 @@ func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []int
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionByHash, err)
 	}
 
-	// GetTransactionByHash returns string pointer, we want string
-	if encryptedResponse != nil {
-		*result.(*interface{}) = *encryptedResponse
-	}
+	// GetTransactionByHash returns EnclaveResponse
+	*result.(*interface{}) = encryptedResponse
 	return nil
 }
 
@@ -174,10 +172,8 @@ func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []in
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionReceipt, err)
 	}
 
-	// GetTransactionReceipt returns string pointer, we want string
-	if encryptedResponse != nil {
-		*result.(*interface{}) = *encryptedResponse
-	}
+	// GetTransactionReceipt returns EnclaveResponse
+	*result.(*interface{}) = encryptedResponse
 	return nil
 }
 
