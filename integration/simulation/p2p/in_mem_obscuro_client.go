@@ -13,6 +13,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
+	"github.com/obscuronet/go-obscuro/go/responses"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
@@ -129,7 +130,9 @@ func (c *inMemObscuroClient) sendRawTransaction(result interface{}, args []inter
 	}
 
 	encryptedResponse, err := c.ethAPI.SendRawTransaction(context.Background(), encBytes)
-	*result.(*interface{}) = encryptedResponse
+	if encryptedResponse != nil {
+		*result.(*responses.EnclaveResponse) = *encryptedResponse
+	}
 
 	return err
 }
@@ -145,7 +148,7 @@ func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []int
 	}
 
 	// GetTransactionByHash returns EnclaveResponse
-	*result.(*interface{}) = encryptedResponse
+	*result.(*responses.EnclaveResponse) = encryptedResponse
 	return nil
 }
 
@@ -158,7 +161,7 @@ func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) err
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.Call, err)
 	}
-	*result.(*interface{}) = encryptedResponse
+	*result.(*responses.EnclaveResponse) = encryptedResponse
 	return nil
 }
 
@@ -173,7 +176,7 @@ func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []in
 	}
 
 	// GetTransactionReceipt returns EnclaveResponse
-	*result.(*interface{}) = encryptedResponse
+	*result.(*responses.EnclaveResponse) = encryptedResponse
 	return nil
 }
 
@@ -187,7 +190,7 @@ func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []inte
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionCount, err)
 	}
 
-	*result.(*interface{}) = encryptedResponse
+	*result.(*responses.EnclaveResponse) = encryptedResponse
 	return nil
 }
 
@@ -200,7 +203,7 @@ func (c *inMemObscuroClient) getLogs(result interface{}, args []interface{}) err
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetLogs, err)
 	}
-	*result.(*interface{}) = encryptedResponse
+	*result.(*responses.EnclaveResponse) = encryptedResponse
 	return nil
 }
 
