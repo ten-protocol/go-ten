@@ -22,6 +22,7 @@ const (
 	sequencerIDFlag            = "sequencer_id"
 	managementContractAddrFlag = "management_contract_addr"
 	messageBusContractAddrFlag = "message_bus_contract_addr"
+	l1StartBlockFlag           = "l1_start"
 	pccsAddrFlag               = "pccs_addr"
 	edgelessDBImageFlag        = "edgeless_db_image"
 )
@@ -48,6 +49,7 @@ func getFlagUsageMap() map[string]string {
 		sequencerIDFlag:            "The 20 bytes of the address of the sequencer for this network",
 		managementContractAddrFlag: "The management contract address on the L1",
 		messageBusContractAddrFlag: "The address of the L1 message bus contract owned by the management contract.",
+		l1StartBlockFlag:           "The block hash on the L1 where the management contract was deployed",
 		pccsAddrFlag:               "Sets the PCCS address",
 		edgelessDBImageFlag:        "Sets the edgelessdb image",
 		hostHTTPPortFlag:           "Host HTTPs bound port",

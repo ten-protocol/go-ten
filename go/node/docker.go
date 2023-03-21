@@ -81,6 +81,7 @@ func (d *DockerNode) startHost() error {
 		"-l1NodePort", fmt.Sprintf("%d", d.cfg.l1WSPort),
 		"-enclaveRPCAddress", fmt.Sprintf("%s:%d", d.cfg.nodeName+"-enclave", d.cfg.enclaveWSPort),
 		"-managementContractAddress", d.cfg.managementContractAddr,
+		"-l1Start", d.cfg.l1Start,
 		"-privateKey", d.cfg.privateKey,
 		"-clientRPCHost", "0.0.0.0",
 		"-logPath", "sys_out",
@@ -200,4 +201,5 @@ func (d *DockerNode) startEdgelessDB() error {
 func (d *DockerNode) SetNetworkConfig(networkCfg *NetworkConfig) {
 	d.cfg.managementContractAddr = networkCfg.ManagementContractAddress
 	d.cfg.messageBusContractAddress = networkCfg.MessageBusAddress
+	d.cfg.l1Start = networkCfg.L1StartHash
 }

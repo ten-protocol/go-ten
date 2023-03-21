@@ -13,12 +13,14 @@ const _networkCfgFilePath = "./network.json"
 type NetworkConfig struct {
 	ManagementContractAddress string
 	MessageBusAddress         string
+	L1StartHash               string // L1 block hash from which to process for L2 data (mgmt contract deploy block)
 }
 
 func WriteNetworkConfigToDisk(cfg *Config) error {
 	n := NetworkConfig{
 		ManagementContractAddress: cfg.managementContractAddr,
 		MessageBusAddress:         cfg.messageBusContractAddress,
+		L1StartHash:               cfg.l1Start,
 	}
 	jsonStr, err := json.Marshal(n)
 	if err != nil {

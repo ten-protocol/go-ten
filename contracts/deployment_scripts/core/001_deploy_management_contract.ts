@@ -18,7 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const contractArtifact = await hre.artifacts.readArtifact("ManagementContract");
 
     // Deploying the management contract
-    await deployments.deploy('ManagementContract', {
+    const mgmtContractDeployment = await deployments.deploy('ManagementContract', {
         from: deployer,
         contract: contractArtifact,
         args: [],
@@ -29,6 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // This is required in CI/CD - look at testnet-deploy-contracts.sh for more information.
     // depends on grep -e MessageBusAddress and a positional cut of the address
     console.log(`MessageBusAddress= ${busAddress}`);
+    console.log(`L1Start=${mgmtContractDeployment.receipt.blockHash}`)
 };
 
 export default func;
