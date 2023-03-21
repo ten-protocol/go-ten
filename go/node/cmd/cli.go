@@ -33,6 +33,7 @@ type NodeConfigCLI struct {
 	sequencerID            string
 	managementContractAddr string
 	messageBusContractAddr string
+	l1Start                string
 	pccsAddr               string
 	edgelessDBImage        string
 	hostHTTPPort           int
@@ -65,6 +66,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	sequencerID := flag.String(sequencerIDFlag, "", flagUsageMap[sequencerIDFlag])
 	managementContractAddr := flag.String(managementContractAddrFlag, "", flagUsageMap[managementContractAddrFlag])
 	messageBusContractAddr := flag.String(messageBusContractAddrFlag, "", flagUsageMap[messageBusContractAddrFlag])
+	l1Start := flag.String(l1StartBlockFlag, "", flagUsageMap[l1StartBlockFlag])
 	pccsAddr := flag.String(pccsAddrFlag, "", flagUsageMap[pccsAddrFlag])
 	edgelessDBImage := flag.String(edgelessDBImageFlag, "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2", flagUsageMap[edgelessDBImageFlag])
 
@@ -87,6 +89,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.sequencerID = *sequencerID
 	cfg.managementContractAddr = *managementContractAddr
 	cfg.messageBusContractAddr = *messageBusContractAddr
+	cfg.l1Start = *l1Start
 	cfg.pccsAddr = *pccsAddr
 	cfg.edgelessDBImage = *edgelessDBImage
 	cfg.hostHTTPPort = *hostHTTPPort

@@ -20,6 +20,7 @@ type Config struct {
 	enclaveWSPort             int
 	messageBusContractAddress string
 	managementContractAddr    string
+	l1Start                   string
 	l1WSPort                  int
 	hostP2PHost               string
 	hostPublicP2PAddr         string
@@ -115,6 +116,12 @@ func WithPrivateKey(s string) Option {
 func WithEnclaveWSPort(i int) Option {
 	return func(c *Config) {
 		c.enclaveWSPort = i
+	}
+}
+
+func WithL1Start(blockHash string) Option {
+	return func(c *Config) {
+		c.l1Start = blockHash
 	}
 }
 
