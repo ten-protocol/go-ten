@@ -259,7 +259,7 @@ jobs:
                -l1_host=${{needs.build.outputs.L1_HOST}} \
                -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
-               -l1_start=${{needs.build.outputs.}} \
+               -l1_start=${{needs.build.outputs.L1_START_HASH}} \
                -private_key=${{ secrets[matrix.node_pk_str] }} \
                -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
                -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
