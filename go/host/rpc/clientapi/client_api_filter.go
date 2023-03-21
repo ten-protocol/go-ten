@@ -80,5 +80,11 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 // GetLogs returns the logs matching the filter.
 func (api *FilterAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (string, error) {
 	enclaveResp := api.host.EnclaveClient().GetLogs(encryptedParams)
-	return gethcommon.Bytes2Hex(enclaveResp.Encode()), nil
+	if enclaveResp.Err != nil {
+		return "", enclaveResp.Err
+	}
+	if enclaveResp.EncUserResponse == nil {
+		return "", enclaveResp.Err
+	}
+	return gethcommon.Bytes2Hex(enclaveResp.EncUserResponse), nil
 }
