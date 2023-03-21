@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync/atomic"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 
@@ -71,6 +73,8 @@ type enclaveImpl struct {
 	transactionBlobCrypto crypto.TransactionBlobCrypto
 	profiler              *profiler.Profiler
 	logger                gethlog.Logger
+
+	stopInterrupt *int32
 }
 
 // NewEnclave creates a new enclave.
@@ -209,11 +213,16 @@ func NewEnclave(
 		transactionBlobCrypto: transactionBlobCrypto,
 		profiler:              prof,
 		logger:                logger,
+		stopInterrupt:         new(int32),
 	}
 }
 
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return common.Unavailable, nil
+	}
+
 	_, err := e.storage.FetchSecret()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -231,6 +240,10 @@ func (e *enclaveImpl) StopClient() error {
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil //nolint:nilnil
+	}
+
 	e.logger.Info("SubmitL1Block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 
 	// If the block and receipts do not match, reject the block.
@@ -300,6 +313,10 @@ func describeBSR(response *common.BlockSubmissionResponse) string {
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	encodedTx, err := e.rpcEncryptionManager.DecryptBytes(tx)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
@@ -339,6 +356,10 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 }
 
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil
+	}
+
 	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
 	if err := e.chain.UpdateL2Chain(batch); err != nil {
@@ -349,6 +370,10 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 }
 
 func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil //nolint:nilnil
+	}
+
 	if e.config.NodeType != common.Sequencer {
 		return nil, errors.New("only sequencer can generate rollups")
 	}
@@ -364,6 +389,10 @@ func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
 // ExecuteOffChainTransaction handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_call)
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
@@ -417,6 +446,10 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 }
 
 func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (common.EncryptedResponseGetTxCount, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	var nonce uint64
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
@@ -446,6 +479,10 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 }
 
 func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	hashBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt encrypted RPC request params. Cause: %w", err)
@@ -487,6 +524,10 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	// We decrypt the transaction bytes.
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
@@ -552,6 +593,10 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 }
 
 func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil //nolint:nilnil
+	}
+
 	if e.enclavePubKey == nil {
 		e.logger.Error("public key not initialized, we can't produce the attestation report")
 		return nil, fmt.Errorf("public key not initialized, we can't produce the attestation report")
@@ -566,6 +611,10 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	secret := crypto.GenerateEntropy(e.logger)
 	err := e.storage.StoreSecret(secret)
 	if err != nil {
@@ -581,6 +630,10 @@ func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, err
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
 func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil
+	}
+
 	secret, err := crypto.DecryptSecret(s, e.enclaveKey)
 	if err != nil {
 		return err
@@ -595,6 +648,10 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
 
 // ShareSecret verifies the request and if it trusts the report and the public key it will return the secret encrypted with that public key.
 func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
 	data, err := e.attestationProvider.VerifyReport(att)
 	if err != nil {
@@ -614,6 +671,10 @@ func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationR
 }
 
 func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil
+	}
+
 	return e.rpcEncryptionManager.AddViewingKey(encryptedViewingKeyBytes, signature)
 }
 
@@ -635,6 +696,10 @@ func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 // GetBalance handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_getBalance)
 func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	// Decrypt the request.
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
@@ -675,6 +740,10 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 }
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2RootHash) ([]byte, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	stateDB, err := e.storage.CreateStateDB(*batchHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
@@ -683,25 +752,45 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2Ro
 }
 
 func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil
+	}
+
 	return e.subscriptionManager.AddSubscription(id, encryptedSubscription)
 }
 
 func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) error {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil
+	}
+
 	e.subscriptionManager.RemoveSubscription(id)
 	return nil
 }
 
 func (e *enclaveImpl) Stop() error {
+	// block all requests
+	atomic.StoreInt32(e.stopInterrupt, 1)
+
 	if e.profiler != nil {
 		return e.profiler.Stop()
 	}
 
+	time.Sleep(time.Second)
+	err := e.storage.Close()
+	if err != nil {
+		e.logger.Error("Could not stop db", log.ErrKey, err)
+	}
 	return nil
 }
 
 // EstimateGas decrypts CallMsg data, runs the gas estimation for the data.
 // Using the callMsg.From Viewing Key, returns the encrypted gas estimation
 func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	// decrypt the input with the enclave PK
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
@@ -751,6 +840,10 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
 	// We decrypt the params.
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
@@ -897,6 +990,10 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 
 // HealthCheck returns whether the enclave is deemed healthy
 func (e *enclaveImpl) HealthCheck() (bool, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return false, nil
+	}
+
 	// check the storage health
 	storageHealthy, err := e.storage.HealthCheck()
 	if err != nil {

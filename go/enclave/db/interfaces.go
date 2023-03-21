@@ -2,6 +2,7 @@ package db
 
 import (
 	"crypto/ecdsa"
+	"io"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -111,4 +112,5 @@ type Storage interface {
 
 	// HealthCheck returns whether the storage is deemed healthy or not
 	HealthCheck() (bool, error)
+	io.Closer
 }
