@@ -113,8 +113,8 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 
 	// Run gas Estimation
 	gas := enclave.EstimateGas(encryptedParams)
-	if gas.Err != nil {
-		t.Fatal(gas.Err)
+	if gas.Error() != nil {
+		t.Fatal(gas.Error())
 	}
 
 	// decrypt with the VK
@@ -166,8 +166,8 @@ func gasEstimateNoVKRegistered(t *testing.T, _ wallet.Wallet, enclave common.Enc
 
 	// Run gas Estimation
 	resp := enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, resp.Err, "could not encrypt bytes because it does not have a viewing key for account") {
-		t.Fatalf("unexpected error - %s", resp.Err)
+	if !assert.ErrorContains(t, resp.Error(), "could not encrypt bytes because it does not have a viewing key for account") {
+		t.Fatalf("unexpected error - %s", resp.Error())
 	}
 }
 
@@ -191,8 +191,8 @@ func gasEstimateNoCallMsgFrom(t *testing.T, _ wallet.Wallet, enclave common.Encl
 
 	// Run gas Estimation
 	resp := enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, resp.Err, "no from address provided") {
-		t.Fatalf("unexpected error - %s", resp.Err)
+	if !assert.ErrorContains(t, resp.Error(), "no from address provided") {
+		t.Fatalf("unexpected error - %s", resp.Error())
 	}
 }
 
@@ -217,8 +217,8 @@ func gasEstimateInvalidBytes(t *testing.T, w wallet.Wallet, enclave common.Encla
 
 	// Run gas Estimation
 	resp := enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, resp.Err, "invalid character") {
-		t.Fatalf("unexpected error - %s", resp.Err)
+	if !assert.ErrorContains(t, resp.Error(), "invalid character") {
+		t.Fatalf("unexpected error - %s", resp.Error())
 	}
 }
 
@@ -242,7 +242,7 @@ func gasEstimateInvalidNumParams(t *testing.T, w wallet.Wallet, enclave common.E
 
 	// Run gas Estimation
 	resp := enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, resp.Err, "required at least 1 params, but received 0") {
+	if !assert.ErrorContains(t, resp.Error(), "required at least 1 params, but received 0") {
 		t.Fatal("unexpected error")
 	}
 }
@@ -267,7 +267,7 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 
 	// Run gas Estimation
 	resp := enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, resp.Err, "unexpected type supplied in") {
+	if !assert.ErrorContains(t, resp.Error(), "unexpected type supplied in") {
 		t.Fatal("unexpected error")
 	}
 }
@@ -385,7 +385,7 @@ func getBalanceRequestUnsuccessful(t *testing.T, prefund []genesis.Account, encl
 
 			// Run gas Estimation
 			enclaveResp := enclave.GetBalance(encryptedParams)
-			err = enclaveResp.Err
+			err = enclaveResp.Error()
 
 			// If there is no enclave error we must get
 			// the internal user error

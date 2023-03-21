@@ -230,7 +230,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
 	enclaveResponse := h.enclaveClient.SubmitTx(encryptedTx)
-	err := enclaveResponse.Err
+	err := enclaveResponse.Error()
 	if err != nil {
 		return nil, err
 	}
@@ -378,8 +378,8 @@ func (h *host) startProcessing() {
 
 		case tx := <-h.txP2PCh:
 			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
-			if resp := h.enclaveClient.SubmitTx(tx); resp.Err != nil {
-				h.logger.Warn("Could not submit transaction. ", log.ErrKey, resp.Err)
+			if resp := h.enclaveClient.SubmitTx(tx); resp.Error() != nil {
+				h.logger.Warn("Could not submit transaction. ", log.ErrKey, resp.Error())
 			}
 
 		// TODO - #718 - Adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.

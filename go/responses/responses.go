@@ -12,7 +12,7 @@ type EncryptedUserResponse []byte
 // The user response is encrypted while the error is in plaintext
 type EnclaveResponse struct {
 	EncUserResponse EncryptedUserResponse
-	Err             error
+	Err             *string
 }
 
 // Encode - serializes the enclave response into a json
@@ -23,6 +23,13 @@ func (er *EnclaveResponse) Encode() []byte {
 	}
 
 	return encoded
+}
+
+func (er *EnclaveResponse) Error() error {
+	if er.Err != nil {
+		return fmt.Errorf(*er.Err)
+	}
+	return nil
 }
 
 // AsPlaintextResponse - creates the plaintext part of the enclave response
@@ -36,8 +43,9 @@ func AsPlaintextResponse(encResp EncryptedUserResponse) EnclaveResponse {
 
 // AsPlaintextError - generates a plaintext response containing a visible to the host error.
 func AsPlaintextError(err error) EnclaveResponse {
+	errStr := err.Error()
 	return EnclaveResponse{
-		Err: err,
+		Err: &errStr,
 	}
 }
 

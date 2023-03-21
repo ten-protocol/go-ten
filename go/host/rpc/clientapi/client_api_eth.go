@@ -53,7 +53,7 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 // `address` field and encoded as hex.
 func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (string, error) {
 	enclaveResp := api.host.EnclaveClient().GetBalance(encryptedParams)
-	err := enclaveResp.Err
+	err := enclaveResp.Error()
 	if err != nil {
 		return "", err
 	}
@@ -87,7 +87,7 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 // the `from` field and encoded as hex.
 func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (string, error) {
 	enclaveResp := api.host.EnclaveClient().ExecuteOffChainTransaction(encryptedParams)
-	err := enclaveResp.Err
+	err := enclaveResp.Error()
 	if err != nil {
 		return "", err
 	}
@@ -98,7 +98,7 @@ func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.Encrypted
 // corresponding to the original transaction submitter and encoded as hex, or nil if no matching transaction exists.
 func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*string, error) {
 	enclaveResponse := api.host.EnclaveClient().GetTransactionReceipt(encryptedParams)
-	err := enclaveResponse.Err
+	err := enclaveResponse.Error()
 	if err != nil {
 		return nil, err
 	}
@@ -114,8 +114,8 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas) (*string, error) {
 	encryptedResponse := api.host.EnclaveClient().EstimateGas(encryptedParams)
 
-	if encryptedResponse.Err != nil {
-		return nil, encryptedResponse.Err
+	if encryptedResponse.Error() != nil {
+		return nil, encryptedResponse.Error()
 	}
 
 	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse.EncUserResponse)
@@ -154,11 +154,11 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 
 func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (string, error) {
 	enclaveResp := api.host.EnclaveClient().GetTransactionCount(encryptedParams)
-	if enclaveResp.Err != nil {
-		return "", enclaveResp.Err
+	if enclaveResp.Error() != nil {
+		return "", enclaveResp.Error()
 	}
 	if enclaveResp.EncUserResponse == nil {
-		return "", enclaveResp.Err
+		return "", enclaveResp.Error()
 	}
 	return gethcommon.Bytes2Hex(enclaveResp.EncUserResponse), nil
 }
@@ -167,11 +167,11 @@ func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams c
 // `from` field and encoded as hex, or nil if no matching transaction exists.
 func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*string, error) {
 	enclaveResp := api.host.EnclaveClient().GetTransaction(encryptedParams)
-	if enclaveResp.Err != nil {
-		return nil, enclaveResp.Err
+	if enclaveResp.Error() != nil {
+		return nil, enclaveResp.Error()
 	}
 	if enclaveResp.EncUserResponse == nil {
-		return nil, enclaveResp.Err
+		return nil, enclaveResp.Error()
 	}
 	encryptedResponseHex := gethcommon.Bytes2Hex(enclaveResp.EncUserResponse)
 	return &encryptedResponseHex, nil
