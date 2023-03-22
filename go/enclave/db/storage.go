@@ -46,6 +46,10 @@ func NewStorage(backingDB sql.EnclaveDB, chainConfig *params.ChainConfig, logger
 	}
 }
 
+func (s *storageImpl) Close() error {
+	return s.db.GetSQLDB().Close()
+}
+
 func (s *storageImpl) FetchHeadBatch() (*core.Batch, error) {
 	headHash, err := obscurorawdb.ReadL2HeadBatch(s.db)
 	if err != nil {
