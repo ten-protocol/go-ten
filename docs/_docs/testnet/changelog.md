@@ -2,6 +2,45 @@
 ---
 # Obscuro Testnet Change Log
 
+# March 2023-03-22 (v0.11)
+* A list of the PRs merged in this release is as below;
+    * `1d22729e` Fixed nil ptr case. (#1172)
+    * `96565a7d` Bridge and cross chain messaging docs. (#1087)
+    * `dfc2b284` Added some logs for event relevancy. (#1169)
+    * `915794a4` Process network secrets now iterates only over successful transactions. (#1168)
+    * `0d8e947e` Tell prysm node not to look for peers (#1167)
+    * `72cf6948` Retry l1 reconnect indefinitely (#1166)
+    * `2678359a` Fix dead links. (#1156)e$ 
+    * `266fd18c` Fix a dead link (#1157)e$ 
+    * `f32bd928` Fixes for 3 dead links. (#1158)
+    * `c3147be0` Prysm upgrade + fix compatibility (#1165)
+    * `2e38f551` Set sequencer host to use in-mem db as well (#1164)
+    * `496e626e` Move network config persistence further down stack (#1161)
+    * `290c6c53` Docker testnet launcher to use in-mem db for host (#1162)
+    * `6527a019` Update fast_finality.md (#1163)
+    * `a483fe3f` Add upgrade option to node script (#1154)
+    * `d41ad9ea` Small logging improvements, loosen islatest restriction (#1151)
+    * `59762afe` Enable persistence on testnet hosts (#1152)
+    * `a6087483` Fix loglvl arg format in testnet script (#1150)
+    * `5bd5c21e` Set host and enclave loggers to info by default (#1149)
+    * `8b85efe5` Reenable disabled block provider test (#1148)
+    * `2e335e8e` Enclave does not process failed rollups (#1138)
+    * `fddfeccb` Wallet extension verbose logging (#1147)
+    * `824d74f8` Deploy l2 contracts synchronously (#1146)
+    * `31b1d017` Add buildkit to docker update step (#1145)
+    * `ee335754` Add basic l1 sanity check to networktests tools (#1142)
+    * `af7f7259` Updated readme. (#1140)
+    * `70197a13` Update the go versions on actions to match the repo version (#1143)
+    * `dbda7aec` Fix to the admin address (#1141)
+    * `d0a2d02d` Rollup module (#1125)
+    * `d4637cc1` Trigger a repository dispatch to the faucet (#1139)
+    * `6eb94f9b` Renamed increaseallowance to approve. (#1136)
+    * `486892e5` Admin role for bridge. (#1135)
+    * `f4e8f2ab` Clean up design documents (#1137)
+    * `ec41be07` Draft upgrading design (#1103)
+    * `b5a79eb6` Add test that restarts the host as well as the enclave (#1134)
+    * `b3b15faa` Fix to the format of the dispatch event (#1133)
+
 # February 2023-02-23 (v0.10)
 * A list of the PRs merged in this release is as below;
     * `d81f5f9a` Run a schedule deploy on the l1, and trigger l2 if succesful (#1129)
