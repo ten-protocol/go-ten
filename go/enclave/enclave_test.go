@@ -65,9 +65,11 @@ func TestGasEstimation(t *testing.T) {
 		"gasEstimateInvalidParamParsing": gasEstimateInvalidParamParsing,
 	}
 
+	idx := 0
 	for name, test := range tests {
 		// create the enclave
-		testEnclave, err := createTestEnclave(nil)
+		testEnclave, err := createTestEnclave(nil, idx)
+		idx++
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -286,7 +288,7 @@ func TestGetBalance(t *testing.T) {
 		}
 
 		// create the enclave
-		testEnclave, err := createTestEnclave(prefundedAddresses)
+		testEnclave, err := createTestEnclave(prefundedAddresses, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -402,7 +404,7 @@ func TestGetBalanceBlockHeight(t *testing.T) {
 	}
 
 	// create the enclave
-	testEnclave, err := createTestEnclave(nil)
+	testEnclave, err := createTestEnclave(nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,8 +460,9 @@ func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wal
 }
 
 // createTestEnclave returns a test instance of the enclave
-func createTestEnclave(prefundedAddresses []genesis.Account) (common.Enclave, error) {
+func createTestEnclave(prefundedAddresses []genesis.Account, idx int) (common.Enclave, error) {
 	enclaveConfig := config.EnclaveConfig{
+		HostID:         gethcommon.BigToAddress(big.NewInt(int64(idx))),
 		L1ChainID:      integration.EthereumChainID,
 		ObscuroChainID: integration.ObscuroChainID,
 		WillAttest:     false,
