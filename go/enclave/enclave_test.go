@@ -65,7 +65,7 @@ func TestGasEstimation(t *testing.T) {
 		"gasEstimateInvalidParamParsing": gasEstimateInvalidParamParsing,
 	}
 
-	idx := 0
+	idx := 100
 	for name, test := range tests {
 		// create the enclave
 		testEnclave, err := createTestEnclave(nil, idx)
@@ -406,7 +406,7 @@ func TestGetBalanceBlockHeight(t *testing.T) {
 	}
 
 	// create the enclave
-	testEnclave, err := createTestEnclave(nil, 0)
+	testEnclave, err := createTestEnclave(nil, 200)
 	if err != nil {
 		t.Fatal(err)
 	}
