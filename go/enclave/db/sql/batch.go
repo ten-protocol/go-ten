@@ -17,7 +17,7 @@ type keyvalue struct {
 }
 
 type sqlBatch struct {
-	db     *sqlDBImpl
+	db     *EnclaveDB
 	writes []keyvalue
 	size   int
 }

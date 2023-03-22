@@ -31,13 +31,13 @@ var ErrNoRollups = errors.New("no rollups have been published")
 // TODO - Consistency around whether we assert the secret is available or not.
 
 type storageImpl struct {
-	db          sql.EnclaveDB
+	db          *sql.EnclaveDB
 	stateDB     state.Database
 	chainConfig *params.ChainConfig
 	logger      gethlog.Logger
 }
 
-func NewStorage(backingDB sql.EnclaveDB, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
+func NewStorage(backingDB *sql.EnclaveDB, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	return &storageImpl{
 		db:          backingDB,
 		stateDB:     state.NewDatabase(backingDB),

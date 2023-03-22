@@ -11,7 +11,7 @@ import (
 )
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
-func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (sql.EnclaveDB, error) {
+func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (*sql.EnclaveDB, error) {
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
@@ -54,7 +54,7 @@ func validateDBConf(cfg config.EnclaveConfig) error {
 	return nil
 }
 
-func getEdgelessDB(cfg config.EnclaveConfig, logger gethlog.Logger) (sql.EnclaveDB, error) {
+func getEdgelessDB(cfg config.EnclaveConfig, logger gethlog.Logger) (*sql.EnclaveDB, error) {
 	if cfg.EdgelessDBHost == "" {
 		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
 	}

@@ -18,32 +18,21 @@ const (
 	searchQry = `select * from keyvalue where substring(keyvalue.ky, 1, ?) = ? and keyvalue.ky >= ? order by keyvalue.ky asc`
 )
 
-// EnclaveSQLDB - exposes the underlying sql database
-type EnclaveSQLDB interface {
-	GetSQLDB() *sql.DB
-}
-
-// EnclaveDB - the type returned by the database connectors. Extends the ethdb and exposes an SQL db.
-type EnclaveDB interface {
-	ethdb.Database
-	EnclaveSQLDB
-}
-
-// sqlDBImpl implements db.EnclaveDB which implements ethdb.Database
-type sqlDBImpl struct {
+// EnclaveDB - Implements the key-value ethdb.Database and also exposes the underlying sql database
+type EnclaveDB struct {
 	db     *sql.DB
 	logger gethlog.Logger
 }
 
-func CreateSQLEthDatabase(db *sql.DB, logger gethlog.Logger) (EnclaveDB, error) {
-	return &sqlDBImpl{db: db, logger: logger}, nil
+func CreateSQLEthDatabase(db *sql.DB, logger gethlog.Logger) (*EnclaveDB, error) {
+	return &EnclaveDB{db: db, logger: logger}, nil
 }
 
-func (sqlDB *sqlDBImpl) GetSQLDB() *sql.DB {
+func (sqlDB *EnclaveDB) GetSQLDB() *sql.DB {
 	return sqlDB.db
 }
 
-func (sqlDB *sqlDBImpl) Has(key []byte) (bool, error) {
+func (sqlDB *EnclaveDB) Has(key []byte) (bool, error) {
 	err := sqlDB.db.QueryRow(getQry, key).Scan()
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -54,7 +43,7 @@ func (sqlDB *sqlDBImpl) Has(key []byte) (bool, error) {
 	return true, nil
 }
 
-func (sqlDB *sqlDBImpl) Get(key []byte) ([]byte, error) {
+func (sqlDB *EnclaveDB) Get(key []byte) ([]byte, error) {
 	var res []byte
 
 	err := sqlDB.db.QueryRow(getQry, key).Scan(&res)
@@ -68,30 +57,30 @@ func (sqlDB *sqlDBImpl) Get(key []byte) ([]byte, error) {
 	return res, nil
 }
 
-func (sqlDB *sqlDBImpl) Put(key []byte, value []byte) error {
+func (sqlDB *EnclaveDB) Put(key []byte, value []byte) error {
 	_, err := sqlDB.db.Exec(putQry, key, value)
 	return err
 }
 
-func (sqlDB *sqlDBImpl) Delete(key []byte) error {
+func (sqlDB *EnclaveDB) Delete(key []byte) error {
 	_, err := sqlDB.db.Exec(delQry, key)
 	return err
 }
 
-func (sqlDB *sqlDBImpl) Close() error {
+func (sqlDB *EnclaveDB) Close() error {
 	if err := sqlDB.db.Close(); err != nil {
 		return fmt.Errorf("failed to close sql db - %w", err)
 	}
 	return nil
 }
 
-func (sqlDB *sqlDBImpl) NewBatch() ethdb.Batch {
+func (sqlDB *EnclaveDB) NewBatch() ethdb.Batch {
 	return &sqlBatch{
 		db: sqlDB,
 	}
 }
 
-func (sqlDB *sqlDBImpl) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
+func (sqlDB *EnclaveDB) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
 	pr := prefix
 	st := append(prefix, start...)
 	// iterator clean-up handles closing this rows iterator
@@ -111,13 +100,13 @@ func (sqlDB *sqlDBImpl) NewIterator(prefix []byte, start []byte) ethdb.Iterator 
 	}
 }
 
-func (sqlDB *sqlDBImpl) Stat(property string) (string, error) {
+func (sqlDB *EnclaveDB) Stat(property string) (string, error) {
 	// TODO implement me
 	sqlDB.logger.Crit("implement me")
 	return "", nil
 }
 
-func (sqlDB *sqlDBImpl) Compact(start []byte, limit []byte) error {
+func (sqlDB *EnclaveDB) Compact(start []byte, limit []byte) error {
 	// TODO implement me
 	sqlDB.logger.Crit("implement me")
 	return nil
@@ -129,46 +118,46 @@ func (sqlDB *sqlDBImpl) Compact(start []byte, limit []byte) error {
 var errNotSupported = errors.New("this operation is not supported")
 
 // HasAncient returns an error as we don't have a backing chain freezer.
-func (sqlDB *sqlDBImpl) HasAncient(kind string, number uint64) (bool, error) {
+func (sqlDB *EnclaveDB) HasAncient(kind string, number uint64) (bool, error) {
 	return false, errNotSupported
 }
 
 // Ancient returns an error as we don't have a backing chain freezer.
-func (sqlDB *sqlDBImpl) Ancient(kind string, number uint64) ([]byte, error) {
+func (sqlDB *EnclaveDB) Ancient(kind string, number uint64) ([]byte, error) {
 	return nil, errNotSupported
 }
 
 // AncientRange returns an error as we don't have a backing chain freezer.
-func (sqlDB *sqlDBImpl) AncientRange(kind string, start, max, maxByteSize uint64) ([][]byte, error) {
+func (sqlDB *EnclaveDB) AncientRange(kind string, start, max, maxByteSize uint64) ([][]byte, error) {
 	return nil, errNotSupported
 }
 
 // Ancients returns an error as we don't have a backing chain freezer.
-func (sqlDB *sqlDBImpl) Ancients() (uint64, error) {
+func (sqlDB *EnclaveDB) Ancients() (uint64, error) {
 	return 0, errNotSupported
 }
 
 // AncientSize returns an error as we don't have a backing chain freezer.
-func (sqlDB *sqlDBImpl) AncientSize(kind string) (uint64, error) {
+func (sqlDB *EnclaveDB) AncientSize(kind string) (uint64, error) {
 	return 0, errNotSupported
 }
 
 // ModifyAncients is not supported.
-func (sqlDB *sqlDBImpl) ModifyAncients(func(ethdb.AncientWriteOp) error) (int64, error) {
+func (sqlDB *EnclaveDB) ModifyAncients(func(ethdb.AncientWriteOp) error) (int64, error) {
 	return 0, errNotSupported
 }
 
 // TruncateAncients returns an error as we don't have a backing chain freezer.
-func (sqlDB *sqlDBImpl) TruncateAncients(items uint64) error {
+func (sqlDB *EnclaveDB) TruncateAncients(items uint64) error {
 	return errNotSupported
 }
 
 // Sync returns an error as we don't have a backing chain freezer.
-func (sqlDB *sqlDBImpl) Sync() error {
+func (sqlDB *EnclaveDB) Sync() error {
 	return errNotSupported
 }
 
-func (sqlDB *sqlDBImpl) ReadAncients(fn func(reader ethdb.AncientReader) error) (err error) {
+func (sqlDB *EnclaveDB) ReadAncients(fn func(reader ethdb.AncientReader) error) (err error) {
 	// Unlike other ancient-related methods, this method does not return
 	// errNotSupported when invoked.
 	// The reason for this is that the caller might want to do several things:
