@@ -275,6 +275,7 @@ func TestGetBalance(t *testing.T) {
 		"getBalanceRequestUnsuccessful": getBalanceRequestUnsuccessful,
 	}
 
+	idx := 0
 	for name, test := range tests {
 		// create the wallet
 		w := datagenerator.RandomWallet(integration.ObscuroChainID)
@@ -288,7 +289,8 @@ func TestGetBalance(t *testing.T) {
 		}
 
 		// create the enclave
-		testEnclave, err := createTestEnclave(prefundedAddresses, 0)
+		testEnclave, err := createTestEnclave(prefundedAddresses, idx)
+		idx++
 		if err != nil {
 			t.Fatal(err)
 		}
