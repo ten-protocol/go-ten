@@ -21,7 +21,7 @@ const (
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the db file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (EnclaveDB, error) {
+func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (*EnclaveDB, error) {
 	if dbPath == "" {
 		tempPath, err := CreateTempDBFile()
 		if err != nil {
