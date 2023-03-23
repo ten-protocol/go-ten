@@ -116,7 +116,7 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor c
 	return n.IsBlockAncestor(p, maybeAncestor)
 }
 
-func (n *blockResolverInMem) FetchLogs(common.L1RootHash) ([]*types.Log, error) {
+func (n *blockResolverInMem) FetchLogs(common.L2RootHash) ([]*types.Log, error) {
 	return nil, errutil.ErrNoImpl
 }
 

@@ -69,16 +69,15 @@ func (s *Simulation) Start() {
 
 	// Allow for some time after tx injection was stopped so that the network can process all transactions, catch up
 	// on missed batches, etc.
-	stoppingDelay := 5 * time.Second
 
 	// Wait for the simulation time
-	time.Sleep(s.SimulationTime - stoppingDelay)
+	time.Sleep(s.SimulationTime - s.Params.StoppingDelay)
 	fmt.Printf("Stopping injection\n")
 	testlog.Logger().Info("Stopping injection")
 
 	s.TxInjector.Stop()
 
-	time.Sleep(stoppingDelay)
+	time.Sleep(s.Params.StoppingDelay)
 
 	fmt.Printf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime)
 	testlog.Logger().Info(fmt.Sprintf("Ran simulation for %f secs, configured to run for: %s ... \n", time.Since(timer).Seconds(), s.SimulationTime))

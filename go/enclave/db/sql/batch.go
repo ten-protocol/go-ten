@@ -21,14 +21,14 @@ type statement struct {
 	args  []any
 }
 
-type SqlBatch struct {
+type Batch struct {
 	db         *EnclaveDB
 	writes     []keyvalue
 	statements []*statement
 	size       int
 }
 
-func (b *SqlBatch) ExecuteSQL(query string, args ...any) {
+func (b *Batch) ExecuteSQL(query string, args ...any) {
 	s := statement{
 		query: query,
 		args:  args,
@@ -37,26 +37,26 @@ func (b *SqlBatch) ExecuteSQL(query string, args ...any) {
 }
 
 // Put inserts the given value into the batch for later committing.
-func (b *SqlBatch) Put(key, value []byte) error {
+func (b *Batch) Put(key, value []byte) error {
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), common.CopyBytes(value), false})
 	b.size += len(key) + len(value)
 	return nil
 }
 
 // Delete inserts the a key removal into the batch for later committing.
-func (b *SqlBatch) Delete(key []byte) error {
+func (b *Batch) Delete(key []byte) error {
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), nil, true})
 	b.size += len(key)
 	return nil
 }
 
 // ValueSize retrieves the amount of data queued up for writing.
-func (b *SqlBatch) ValueSize() int {
+func (b *Batch) ValueSize() int {
 	return b.size
 }
 
 // Write executes a batch statement with all the updates
-func (b *SqlBatch) Write() error {
+func (b *Batch) Write() error {
 	tx, err := b.db.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to create batch transaction - %w", err)
@@ -92,13 +92,13 @@ func (b *SqlBatch) Write() error {
 }
 
 // Reset resets the batch for reuse.
-func (b *SqlBatch) Reset() {
+func (b *Batch) Reset() {
 	b.writes = b.writes[:0]
 	b.size = 0
 }
 
 // Replay replays the batch contents.
-func (b *SqlBatch) Replay(w ethdb.KeyValueWriter) error {
+func (b *Batch) Replay(w ethdb.KeyValueWriter) error {
 	for _, keyvalue := range b.writes {
 		if keyvalue.delete {
 			if err := w.Delete(keyvalue.key); err != nil {

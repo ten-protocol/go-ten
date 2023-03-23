@@ -33,6 +33,7 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationFullNetwork,
 		ReceiptTimeout:            30 * time.Second,
+		StoppingDelay:             10 * time.Second,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 

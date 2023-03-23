@@ -22,7 +22,7 @@ type BlockResolver interface {
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
 	// FetchLogs returns the block's logs.
-	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
+	FetchLogs(l2Hash common.L2RootHash) ([]*types.Log, error)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise

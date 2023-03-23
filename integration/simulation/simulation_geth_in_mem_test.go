@@ -37,6 +37,7 @@ func TestGethSimulation(t *testing.T) {
 		StartPort:                 integration.StartPortSimulationGethInMem,
 		IsInMem:                   true,
 		ReceiptTimeout:            30 * time.Second,
+		StoppingDelay:             10 * time.Second,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

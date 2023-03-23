@@ -267,7 +267,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 
 	// We prepare the block submission response.
 	// TODO: Fix subscribed logs for validators who are being synchronized only through L1
-	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
+	blockSubmissionResponse := e.produceBlockSubmissionResponse(newL2Head, producedBatch)
 
 	if producedBatch != nil && (producedBatch.Header.Number.Uint64()%e.config.Cadence == 0) {
 		rollup, err := e.rollupManager.CreateRollup()
@@ -1180,7 +1180,7 @@ func (e *enclaveImpl) removeOldMempoolTxs(batchHeader *common.BatchHeader) error
 	return nil
 }
 
-func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
+func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2RootHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
 	if l2Head == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return &common.BlockSubmissionResponse{}
@@ -1193,14 +1193,14 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head 
 
 	return &common.BlockSubmissionResponse{
 		ProducedBatch:  producedExtBatch,
-		SubscribedLogs: e.getEncryptedLogs(*block, l2Head),
+		SubscribedLogs: e.getEncryptedLogs(l2Head),
 	}
 }
 
 // Retrieves and encrypts the logs for the block.
-func (e *enclaveImpl) getEncryptedLogs(block types.Block, l2Head *common.L2RootHash) map[gethrpc.ID][]byte {
+func (e *enclaveImpl) getEncryptedLogs(l2Head *common.L2RootHash) map[gethrpc.ID][]byte {
 	var logs []*types.Log
-	fetchedLogs, err := e.storage.FetchLogs(block.Hash())
+	fetchedLogs, err := e.storage.FetchLogs(*l2Head)
 	if err == nil {
 		logs = fetchedLogs
 	} else {
