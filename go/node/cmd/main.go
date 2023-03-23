@@ -28,6 +28,7 @@ func main() {
 		node.WithSequencerID(cliConfig.sequencerID),                          // "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
 		node.WithManagementContractAddress(cliConfig.managementContractAddr), // "0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF"),
 		node.WithMessageBusContractAddress(cliConfig.messageBusContractAddr), // "0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"),
+		node.WithL1Start(cliConfig.l1Start),
 		node.WithPCCSAddr(cliConfig.pccsAddr),
 		node.WithEdgelessDBImage(cliConfig.edgelessDBImage),
 	)
