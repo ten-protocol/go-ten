@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -416,14 +415,6 @@ func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostco
 	}
 	stream.Stop() // cancel the previous stream and return the replacement
 	return replacementStream
-}
-
-// activates the given interrupt (atomically) and returns a new interrupt
-func triggerInterrupt(interrupt *int32) *int32 {
-	// Notify the previous round to stop work
-	atomic.StoreInt32(interrupt, 1)
-	i := int32(0)
-	return &i
 }
 
 func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
