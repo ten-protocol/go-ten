@@ -4,7 +4,7 @@
 # build-host = copies over the source code and builds the binaries using a compiler cache
 # final = copies over only the executables in an alpine image that doesn't have any additional load.
 
-FROM golang:1.17-alpine as system
+FROM golang:1.18-alpine as system
 # set the base libs to build / run
 RUN apk add build-base bash
 ENV CGO_ENABLED=1

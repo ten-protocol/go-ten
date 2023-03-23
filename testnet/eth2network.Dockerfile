@@ -9,7 +9,7 @@
 # final = copies over the executables from the 'build-*' stages and prepares the final image.
 
 # Build stage for downloading dependencies based on the core defined system
-FROM golang:1.17-buster as get-dependencies
+FROM golang:1.18-buster as get-dependencies
 
 # create the base directory
 # setup container data structure
