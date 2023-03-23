@@ -315,7 +315,7 @@ func describeBSR(response *common.BlockSubmissionResponse) string {
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsPlaintextError(fmt.Errorf("unable to submit transaction right now, retry later"))
+		return responses.AsEmptyResponse()
 	}
 
 	encodedTx, err := e.rpcEncryptionManager.DecryptBytes(tx)
@@ -390,7 +390,7 @@ func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
 // and requests the Rollup chain to execute the payload (eth_call)
 func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) responses.Call {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsPlaintextError(fmt.Errorf("unable to submit transaction right now, retry later"))
+		return responses.AsEmptyResponse()
 	}
 
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
@@ -450,7 +450,7 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 
 func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) responses.TxCount {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsPlaintextError(fmt.Errorf("unable to perform operation right now, retry later"))
+		return responses.AsEmptyResponse()
 	}
 
 	var nonce uint64
@@ -484,7 +484,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 
 func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) responses.TxByHash {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsPlaintextError(fmt.Errorf("unable to perform operation right now, retry later"))
+		return responses.AsEmptyResponse()
 	}
 
 	hashBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
@@ -531,7 +531,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) responses.TxReceipt {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsPlaintextError(fmt.Errorf("unable to perform operation right now, retry later"))
+		return responses.AsEmptyResponse()
 	}
 
 	// We decrypt the transaction bytes.
@@ -696,7 +696,7 @@ func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 // and requests the Rollup chain to execute the payload (eth_getBalance)
 func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) responses.Balance {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsPlaintextError(fmt.Errorf("unable to perform operation right now, retry later"))
+		return responses.AsEmptyResponse()
 	}
 
 	// Decrypt the request.
@@ -792,7 +792,7 @@ func (e *enclaveImpl) Stop() error {
 // Using the callMsg.From Viewing Key, returns the encrypted gas estimation
 func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) responses.Gas {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsPlaintextError(fmt.Errorf("unable to perform operation right now, retry later"))
+		return responses.AsEmptyResponse()
 	}
 
 	// decrypt the input with the enclave PK
@@ -849,7 +849,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) responses.Logs {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsPlaintextError(fmt.Errorf("unable to perform operation right now, retry later"))
+		return responses.AsEmptyResponse()
 	}
 
 	// We decrypt the params.
