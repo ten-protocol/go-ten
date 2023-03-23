@@ -34,7 +34,7 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - run: |
-          docker build -t testnetobscuronet.azurecr.io/obscuronet/dev_testnet_obscuroscan:latest -f testnet/obscuroscan.Dockerfile  .
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/dev_testnet_obscuroscan:latest -f testnet/obscuroscan.Dockerfile  .
           docker push testnetobscuronet.azurecr.io/obscuronet/dev_testnet_obscuroscan:latest
 
       - name: 'Deploy to Azure Container Instances'
