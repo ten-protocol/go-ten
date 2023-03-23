@@ -115,7 +115,7 @@ func TestBatchUpdateHappyPath(t *testing.T) {
 func createDB(t *testing.T) ethdb.Database {
 	// todo: is it valid to use sqlite for testing when we'll be using a mysql-based db?
 	lite := setupSQLite(t)
-	_, err := lite.Exec(createQry)
+	_, err := lite.Exec(createKVTable)
 	failIfError(t, err, "Failed to create key-value table in test db")
 	s, err := CreateSQLEthDatabase(lite, testlog.Logger())
 	failIfError(t, err, "Failed to create SQLEthDatabase for test")

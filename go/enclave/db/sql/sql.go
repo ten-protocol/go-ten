@@ -74,8 +74,14 @@ func (sqlDB *EnclaveDB) Close() error {
 	return nil
 }
 
+func (sqlDB *EnclaveDB) NewSqlBatch() *SqlBatch {
+	return &SqlBatch{
+		db: sqlDB,
+	}
+}
+
 func (sqlDB *EnclaveDB) NewBatch() ethdb.Batch {
-	return &sqlBatch{
+	return &SqlBatch{
 		db: sqlDB,
 	}
 }

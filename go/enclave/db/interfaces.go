@@ -4,6 +4,8 @@ import (
 	"crypto/ecdsa"
 	"io"
 
+	"github.com/ethereum/go-ethereum/eth/filters"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -113,4 +115,5 @@ type Storage interface {
 	// HealthCheck returns whether the storage is deemed healthy or not
 	HealthCheck() (bool, error)
 	io.Closer
+	FilterLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error)
 }

@@ -2,12 +2,9 @@ package events
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"sync"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -103,52 +100,7 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 
 // GetFilteredLogs returns the logs across the entire canonical chain that match the provided account and filter.
 func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
-	headBlock, err := s.storage.FetchHeadBlock()
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			// There is no head block, and thus no logs to retrieve.
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	// We collect all the block hashes in the canonical chain.
-	// TODO: Only collect blocks within the filter's range.
-	blockHashes := []gethcommon.Hash{}
-	currentBlock := headBlock
-	for {
-		blockHashes = append(blockHashes, currentBlock.Hash())
-
-		parentHash := currentBlock.ParentHash()
-		currentBlock, err = s.storage.FetchBlock(parentHash)
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				break // we have reached the beginning of the known chain
-			}
-			return nil, fmt.Errorf("could not retrieve block %s to extract its logs. Cause: %w", parentHash, err)
-		}
-	}
-
-	// We gather the logs across all the blocks in the canonical chain.
-	logs := []*types.Log{}
-	for _, hash := range blockHashes {
-		blockLogs, err := s.storage.FetchLogs(hash)
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				break // Blocks before the genesis rollup do not have associated logs (or block state).
-			}
-			return nil, fmt.Errorf("could not fetch logs for block hash. Cause: %w", err)
-		}
-		logs = append(logs, blockLogs...)
-	}
-
-	// We proceed in this way instead of calling `FetchHeadRollup` because we want to ensure the chain has not advanced
-	// causing a head block/head rollup mismatch.
-	l2Head, err := s.storage.FetchHeadBatchForBlock(headBlock.Hash())
-	if err != nil {
-		return nil, fmt.Errorf("could not filter logs as block state for head block could not be retrieved. Cause: %w", err)
-	}
-	return s.FilterLogs(logs, *l2Head.Hash(), account, filter)
+	return s.storage.FilterLogs(account, filter)
 }
 
 // FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs

@@ -16,33 +16,47 @@ type keyvalue struct {
 	delete bool
 }
 
-type sqlBatch struct {
-	db     *EnclaveDB
-	writes []keyvalue
-	size   int
+type statement struct {
+	query string
+	args  []any
+}
+
+type SqlBatch struct {
+	db         *EnclaveDB
+	writes     []keyvalue
+	statements []*statement
+	size       int
+}
+
+func (b *SqlBatch) ExecuteSQL(query string, args ...any) {
+	s := statement{
+		query: query,
+		args:  args,
+	}
+	b.statements = append(b.statements, &s)
 }
 
 // Put inserts the given value into the batch for later committing.
-func (b *sqlBatch) Put(key, value []byte) error {
+func (b *SqlBatch) Put(key, value []byte) error {
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), common.CopyBytes(value), false})
 	b.size += len(key) + len(value)
 	return nil
 }
 
 // Delete inserts the a key removal into the batch for later committing.
-func (b *sqlBatch) Delete(key []byte) error {
+func (b *SqlBatch) Delete(key []byte) error {
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), nil, true})
 	b.size += len(key)
 	return nil
 }
 
 // ValueSize retrieves the amount of data queued up for writing.
-func (b *sqlBatch) ValueSize() int {
+func (b *SqlBatch) ValueSize() int {
 	return b.size
 }
 
 // Write executes a batch statement with all the updates
-func (b *sqlBatch) Write() error {
+func (b *SqlBatch) Write() error {
 	tx, err := b.db.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to create batch transaction - %w", err)
@@ -63,6 +77,13 @@ func (b *sqlBatch) Write() error {
 		}
 	}
 
+	for _, s := range b.statements {
+		_, err := tx.Exec(s.query, s.args...)
+		if err != nil {
+			return fmt.Errorf("failed to exec batch statement. , err=%w", err)
+		}
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return fmt.Errorf("failed to commit batch of writes - %w", err)
@@ -71,13 +92,13 @@ func (b *sqlBatch) Write() error {
 }
 
 // Reset resets the batch for reuse.
-func (b *sqlBatch) Reset() {
+func (b *SqlBatch) Reset() {
 	b.writes = b.writes[:0]
 	b.size = 0
 }
 
 // Replay replays the batch contents.
-func (b *sqlBatch) Replay(w ethdb.KeyValueWriter) error {
+func (b *SqlBatch) Replay(w ethdb.KeyValueWriter) error {
 	for _, keyvalue := range b.writes {
 		if keyvalue.delete {
 			if err := w.Delete(keyvalue.key); err != nil {

@@ -98,6 +98,16 @@ var (
 		fmt.Sprintf("CREATE USER %s REQUIRE ISSUER '/CN=%s' SUBJECT '/CN=%s'", dbUser, certIssuer, certSubject),
 		fmt.Sprintf("CREATE DATABASE %s", dbName),
 		fmt.Sprintf("CREATE TABLE %s.%s (%s varbinary(64) primary key, %s mediumblob)", dbName, tableName, keyCol, valueCol),
+		"create table events (topic0 binary(32), topic1 binary(32), topic2 binary(32), topic3 binary(32), topic4 binary(32), data mediumblob, blockHash binary(32), blockNumber int, txHash binary(32), txIdx int, logIdx int, address binary(32), lifecycleEvent boolean, relAddress1 binary(20), relAddress2 binary(20), relAddress3 binary(20), relAddress4 binary(20)) ",
+		"create index IX_AD on events(address)",
+		"create index IX_BLH on events(blockHash)",
+		"create index IX_BLN on events(blockNumber)",
+		"create index IX_TXH on events(txHash)",
+		"create index IX_T0 on events(topic0)",
+		"create index IX_T1 on events(topic1)",
+		"create index IX_T2 on events(topic2)",
+		"create index IX_T3 on events(topic3)",
+		"create index IX_T4 on events(topic4)",
 		fmt.Sprintf("GRANT ALL ON %s.%s TO %s", dbName, tableName, dbUser),
 	}
 
