@@ -59,7 +59,7 @@ func NewInMemObscuroClient(hostContainer *container.HostContainer) rpc.Client {
 func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
 	case rpc.SendRawTransaction:
-		return c.sendRawTransaction(args)
+		return c.sendRawTransaction(result, args)
 
 	case rpc.GetTransactionByHash:
 		return c.getTransactionByHash(result, args)
@@ -122,13 +122,15 @@ func (c *inMemObscuroClient) Subscribe(context.Context, interface{}, string, int
 	panic("not implemented")
 }
 
-func (c *inMemObscuroClient) sendRawTransaction(args []interface{}) error {
+func (c *inMemObscuroClient) sendRawTransaction(result interface{}, args []interface{}) error {
 	encBytes, err := getEncryptedBytes(args, rpc.SendRawTransaction)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.ethAPI.SendRawTransaction(context.Background(), encBytes)
+	encryptedResponse, err := c.ethAPI.SendRawTransaction(context.Background(), encBytes)
+	*result.(*interface{}) = encryptedResponse
+
 	return err
 }
 

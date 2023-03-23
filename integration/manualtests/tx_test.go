@@ -124,7 +124,7 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 	signedTx, err := w.SignTransaction(estimatedTx)
 	assert.Nil(t, err)
 
-	err = authClient.SendTransaction(ctx, signedTx)
+	_, err = authClient.SendTransaction(ctx, signedTx)
 	assert.Nil(t, err)
 
 	fmt.Printf("Created Tx: %s \n", signedTx.Hash().Hex())

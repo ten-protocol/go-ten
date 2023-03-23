@@ -185,9 +185,14 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 
 		ti.stats.Transfer()
 
-		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		txHash, err := obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
+			continue
+		}
+
+		if *txHash != signedTx.Hash() {
+			ti.logger.Error("The hash of the submitted transaction does not match the hash coming back!")
 			continue
 		}
 
@@ -223,7 +228,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		ti.stats.Transfer()
 
-		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		_, err = obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
 			continue
@@ -261,7 +266,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 
-		err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
+		_, err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Warn("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
 		}

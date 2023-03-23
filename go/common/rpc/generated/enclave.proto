@@ -122,7 +122,7 @@ message SubmitTxRequest {
   bytes encryptedTx = 1;
 }
 message SubmitTxResponse {
-  bytes encryptedHash = 1;
+  bytes encodedEnclaveResponse = 1;
 }
 
 message SubmitBatchRequest {
@@ -135,16 +135,14 @@ message OffChainRequest {
   bytes encryptedParams = 1;
 }
 message OffChainResponse {
-  bytes result = 1;
-  bytes error = 2;
+  bytes encodedEnclaveResponse = 1;
 }
 
 message GetTransactionCountRequest {
   bytes encryptedParams = 1;
 }
 message GetTransactionCountResponse {
-  bytes result = 1;
-  string error = 2;
+  bytes encodedEnclaveResponse = 1;
 }
 
 message StopRequest {}
@@ -154,14 +152,14 @@ message GetTransactionRequest {
   bytes encryptedParams = 1;
 }
 message GetTransactionResponse {
-  bytes encryptedTx = 1;
+  bytes encodedEnclaveResponse = 1;
 }
 
 message GetTransactionReceiptRequest {
   bytes encryptedParams = 1;
 }
 message GetTransactionReceiptResponse {
-  bytes encryptedTxReceipt = 1;
+  bytes encodedEnclaveResponse = 1;
 }
 
 message AddViewingKeyRequest {
@@ -174,7 +172,7 @@ message GetBalanceRequest {
   bytes encryptedParams = 1;
 }
 message GetBalanceResponse {
-  bytes encryptedBalance = 1;
+  bytes encodedEnclaveResponse = 1;
 }
 
 message GetCodeRequest {
@@ -201,8 +199,7 @@ message EstimateGasRequest {
 }
 
 message EstimateGasResponse {
-  bytes encryptedResponse = 1;
-  bytes error = 2;
+  bytes encodedEnclaveResponse = 1;
 }
 
 message GetLogsRequest {
@@ -210,7 +207,7 @@ message GetLogsRequest {
 }
 
 message GetLogsResponse {
-  bytes encryptedResponse = 1;
+  bytes encodedEnclaveResponse = 1;
 }
 
 message HealthCheckResponse {
