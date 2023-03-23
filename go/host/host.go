@@ -52,9 +52,7 @@ type host struct {
 	enclaveClient common.Enclave       // For communication with the enclave
 
 	// control the host lifecycle
-	exitHostCh            chan bool
-	stopHostInterrupt     *int32
-	bootstrappingComplete *int32 // Marks when the host is done bootstrapping
+	exitHostCh chan bool
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
@@ -98,9 +96,7 @@ func NewHost(
 		enclaveClient: enclaveClient,
 
 		// lifecycle channels
-		exitHostCh:            make(chan bool),
-		stopHostInterrupt:     new(int32),
-		bootstrappingComplete: new(int32),
+		exitHostCh: make(chan bool),
 
 		// incoming data
 		l1BlockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
@@ -273,9 +269,6 @@ func (h *host) Unsubscribe(id rpc.ID) {
 }
 
 func (h *host) Stop() {
-	// block all requests
-	atomic.StoreInt32(h.stopHostInterrupt, 1)
-
 	if err := h.p2p.StopListening(); err != nil {
 		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
 	}
@@ -356,18 +349,12 @@ func (h *host) startProcessing() {
 		}
 	}
 
-	// use the roundInterrupt as a signaling mechanism for interrupting block processing
-	// stops processing the current round if a new block arrives
-	i := int32(0)
-	roundInterrupt := &i
-
 	// Main Processing Loop -
 	// - Process new blocks from the L1 node
 	// - Process new Transactions gossiped from L2 Peers
 	for {
 		select {
 		case b := <-blockStream.Stream:
-			roundInterrupt = triggerInterrupt(roundInterrupt)
 			isLive := h.l1BlockProvider.IsLatest(b) // checks whether the block is the current head of the L1 (false if there is a newer block available)
 			err := h.processL1Block(b, isLive)
 			if err != nil {
