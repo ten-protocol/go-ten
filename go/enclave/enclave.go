@@ -508,7 +508,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			return responses.AsPlaintextResponse(nil)
+			return responses.AsEmptyResponse()
 		}
 		return responses.AsPlaintextError(err)
 	}
@@ -548,7 +548,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	tx, txBatchHash, txBatchHeight, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			return responses.AsPlaintextResponse(nil)
+			return responses.AsEmptyResponse()
 		}
 		return responses.AsPlaintextError(err)
 	}
@@ -576,7 +576,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			return responses.AsPlaintextResponse(nil)
+			return responses.AsEmptyResponse()
 		}
 		err := fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 		return responses.AsEncryptedError(err, encryptor)
