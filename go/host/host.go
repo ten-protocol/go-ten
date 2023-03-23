@@ -281,16 +281,17 @@ func (h *host) Stop() {
 	if err := h.p2p.StopListening(); err != nil {
 		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
 	}
+
+	// Leave some time for all processing to finish before exiting the main loop.
+	time.Sleep(time.Second)
+	h.exitHostCh <- true
+
 	if err := h.enclaveClient.Stop(); err != nil {
 		h.logger.Error("could not stop enclave server", log.ErrKey, err)
 	}
 	if err := h.enclaveClient.StopClient(); err != nil {
 		h.logger.Error("failed to stop enclave RPC client", log.ErrKey, err)
 	}
-
-	// Leave some time for all processing to finish before exiting the main loop.
-	time.Sleep(time.Second)
-	h.exitHostCh <- true
 
 	if err := h.db.Stop(); err != nil {
 		h.logger.Error("could not stop DB - %w", err)
@@ -369,7 +370,7 @@ func (h *host) startProcessing() {
 		select {
 		case b := <-blockStream.Stream:
 			roundInterrupt = triggerInterrupt(roundInterrupt)
-			isLive := h.l1BlockProvider.IsLive(b.Hash()) // checks whether the block is the current head of the L1 (false if there is a newer block available)
+			isLive := h.l1BlockProvider.IsLatest(b) // checks whether the block is the current head of the L1 (false if there is a newer block available)
 			err := h.processL1Block(b, isLive)
 			if err != nil {
 				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)

@@ -7,19 +7,18 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/obscuronet/go-obscuro/go/config"
 )
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
-func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (ethdb.Database, error) {
+func CreateDBFromConfig(cfg config.EnclaveConfig, logger gethlog.Logger) (*sql.EnclaveDB, error) {
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		return getInMemDB()
+		// this creates a temporary sqlite db
+		return sql.CreateTemporarySQLiteDB("file:"+cfg.HostID.String()+"?mode=memory&cache=shared", logger)
 	}
 
 	if !cfg.WillAttest {
@@ -55,11 +54,7 @@ func validateDBConf(cfg config.EnclaveConfig) error {
 	return nil
 }
 
-func getInMemDB() (ethdb.Database, error) {
-	return rawdb.NewMemoryDatabase(), nil
-}
-
-func getEdgelessDB(cfg config.EnclaveConfig, logger gethlog.Logger) (ethdb.Database, error) {
+func getEdgelessDB(cfg config.EnclaveConfig, logger gethlog.Logger) (*sql.EnclaveDB, error) {
 	if cfg.EdgelessDBHost == "" {
 		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
 	}

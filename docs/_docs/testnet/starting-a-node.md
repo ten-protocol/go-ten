@@ -46,7 +46,8 @@ go run /home/obscuro/go-obscuro/go/node/cmd \
   -management_contract_addr=0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF \
   -message_bus_contract_addr=0xFD03804faCA2538F4633B3EBdfEfc38adafa259B \
   -private_key="PrivateKeyString" \
-  -private_key="HOST:10000"
+  -private_key="HOST:10000" \
+  start
 ```
 
 ## - (Alternatively) Steps required to run a node on Alibaba SGX

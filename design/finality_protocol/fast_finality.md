@@ -69,7 +69,7 @@ described in the [Bootstrapping Strategy design doc](./sequencer_bootstrapping_s
 
 Here is an overview of the sequencer design:
 
-![architecture diagram](./fast_finality_arch.jpeg)
+![architecture diagram](./resources/fast_finality_arch.jpeg)
 
 ### Sequencer identity
 

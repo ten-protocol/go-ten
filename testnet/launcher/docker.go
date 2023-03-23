@@ -34,7 +34,7 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to start eth2network - %w", err)
 	}
 
-	managementContractAddr, messageBusContractAddr, err := deployL1Contracts()
+	networkConfig, err := deployL1Contracts()
 	if err != nil {
 		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
@@ -57,8 +57,10 @@ func (t *Testnet) Start() error {
 		node.WithPrivateKey("8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"),
 		node.WithHostID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
 		node.WithSequencerID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
-		node.WithManagementContractAddress(managementContractAddr),
-		node.WithMessageBusContractAddress(messageBusContractAddr),
+		node.WithManagementContractAddress(networkConfig.ManagementContractAddress),
+		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
+		node.WithL1Start(networkConfig.L1StartHash),
+		node.WithInMemoryDB(true),
 	)
 
 	sequencerNode, err := node.NewDockerNode(sequencerNodeConfig)
@@ -96,8 +98,10 @@ func (t *Testnet) Start() error {
 		node.WithPrivateKey("ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89"),
 		node.WithHostID("0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A"),
 		node.WithSequencerID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
-		node.WithManagementContractAddress(managementContractAddr),
-		node.WithMessageBusContractAddress(messageBusContractAddr),
+		node.WithManagementContractAddress(networkConfig.ManagementContractAddress),
+		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
+		node.WithL1Start(networkConfig.L1StartHash),
+		node.WithInMemoryDB(true),
 	)
 
 	validatorNode, err := node.NewDockerNode(validatorNodeConfig)
@@ -181,7 +185,7 @@ func startEth2Network() error {
 	return nil
 }
 
-func deployL1Contracts() (string, string, error) {
+func deployL1Contracts() (*node.NetworkConfig, error) {
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
 		l1cd.NewContractDeployerConfig(
 			l1cd.WithL1Host("eth2network"),
@@ -191,20 +195,20 @@ func deployL1Contracts() (string, string, error) {
 		),
 	)
 	if err != nil {
-		return "", "", fmt.Errorf("unable to configure l1 contract deployer - %w", err)
+		return nil, fmt.Errorf("unable to configure l1 contract deployer - %w", err)
 	}
 
 	err = l1ContractDeployer.Start()
 	if err != nil {
-		return "", "", fmt.Errorf("unable to start l1 contract deployer - %w", err)
+		return nil, fmt.Errorf("unable to start l1 contract deployer - %w", err)
 	}
 
-	managementContractAddr, messageBusContractAddr, err := l1ContractDeployer.RetrieveL1ContractAddresses()
+	networkConfig, err := l1ContractDeployer.RetrieveL1ContractAddresses()
 	if err != nil {
-		return "", "", fmt.Errorf("unable to fetch l1 contract addresses - %w", err)
+		return nil, fmt.Errorf("unable to fetch l1 contract addresses - %w", err)
 	}
 	fmt.Println("L1 Contracts were successfully deployed...")
-	return managementContractAddr, messageBusContractAddr, nil
+	return networkConfig, nil
 }
 
 // waitForHealthyNode retries continuously for the node to respond to a healthcheck http request

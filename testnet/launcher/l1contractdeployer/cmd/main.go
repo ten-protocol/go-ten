@@ -29,19 +29,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	managementContractAddr, messageBusContractAddr, err := l1ContractDeployer.RetrieveL1ContractAddresses()
+	networkConfig, err := l1ContractDeployer.RetrieveL1ContractAddresses()
 	if err != nil {
 		fmt.Println("unable to fetch l1 contract addresses - %w", err)
 		os.Exit(1)
 	}
 	fmt.Println("L1 Contracts were successfully deployed...")
 
-	fmt.Printf("MGMTCONTRACTADDR=%s\n", managementContractAddr)
-	fmt.Printf("MSGBUSCONTRACTADDR=%s\n", messageBusContractAddr)
+	fmt.Printf("MGMTCONTRACTADDR=%s\n", networkConfig.ManagementContractAddress)
+	fmt.Printf("MSGBUSCONTRACTADDR=%s\n", networkConfig.MessageBusAddress)
+	fmt.Printf("L1START=%s\n", networkConfig.L1StartHash)
 
 	// the responsibility of writing to disk is outside the deployers domain
 	if cliConfig.contractsEnvFile != "" {
-		envFile := fmt.Sprintf("MGMTCONTRACTADDR=%s\nMSGBUSCONTRACTADDR=%s\n", managementContractAddr, messageBusContractAddr)
+		envFile := fmt.Sprintf("MGMTCONTRACTADDR=%s\nMSGBUSCONTRACTADDR=%s\nL1START=%s\n",
+			networkConfig.ManagementContractAddress, networkConfig.MessageBusAddress, networkConfig.L1StartHash)
 
 		// Write the content to a new file or override the existing file
 		err = os.WriteFile(cliConfig.contractsEnvFile, []byte(envFile), 0o644) //nolint:gosec

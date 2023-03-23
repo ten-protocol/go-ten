@@ -20,6 +20,7 @@ type Config struct {
 	enclaveWSPort             int
 	messageBusContractAddress string
 	managementContractAddr    string
+	l1Start                   string
 	l1WSPort                  int
 	hostP2PHost               string
 	hostPublicP2PAddr         string
@@ -27,6 +28,7 @@ type Config struct {
 	edgelessDBImage           string
 	enclaveDebug              bool
 	nodeName                  string
+	hostInMemDB               bool
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -117,6 +119,12 @@ func WithEnclaveWSPort(i int) Option {
 	}
 }
 
+func WithL1Start(blockHash string) Option {
+	return func(c *Config) {
+		c.l1Start = blockHash
+	}
+}
+
 func WithL1WSPort(i int) Option {
 	return func(c *Config) {
 		c.l1WSPort = i
@@ -168,5 +176,11 @@ func WithEdgelessDBImage(s string) Option {
 func WithPCCSAddr(s string) Option {
 	return func(c *Config) {
 		c.pccsAddr = s
+	}
+}
+
+func WithInMemoryDB(b bool) Option {
+	return func(c *Config) {
+		c.hostInMemDB = b
 	}
 }

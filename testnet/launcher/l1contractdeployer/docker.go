@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/node"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/obscuronet/go-obscuro/go/common/docker"
@@ -49,7 +51,7 @@ func (n *ContractDeployer) Start() error {
 `, n.cfg.l1Host, n.cfg.l1Port, n.cfg.privateKey),
 	}
 
-	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, nil, envs, nil)
+	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, nil, envs, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -57,29 +59,29 @@ func (n *ContractDeployer) Start() error {
 	return nil
 }
 
-func (n *ContractDeployer) RetrieveL1ContractAddresses() (string, string, error) {
+func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	defer cli.Close()
 
 	// make sure the container has finished execution
 	err = docker.WaitForContainerToFinish(n.containerID, time.Minute)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
 	logsOptions := types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
-		Tail:       "2",
+		Tail:       "3",
 	}
 
 	// Read the container logs
 	out, err := cli.ContainerLogs(context.Background(), n.containerID, logsOptions)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	defer out.Close()
 
@@ -87,23 +89,28 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (string, string, error)
 	var buf bytes.Buffer
 	_, err = io.Copy(&buf, out)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
-	// Get the last two lines
+	// Get the last three lines
 	output := buf.String()
 	lines := strings.Split(output, "\n")
 
 	managementAddr, err := findAddress(lines[0])
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 	messageBusAddr, err := findAddress(lines[1])
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
+	l1BlockHash := readValue("L1Start", lines[2])
 
-	return managementAddr, messageBusAddr, nil
+	return &node.NetworkConfig{
+		ManagementContractAddress: managementAddr,
+		MessageBusAddress:         messageBusAddr,
+		L1StartHash:               l1BlockHash,
+	}, nil
 }
 
 func findAddress(line string) (string, error) {
@@ -118,4 +125,10 @@ func findAddress(line string) (string, error) {
 	}
 	// Print the last
 	return matches[len(matches)-1], nil
+}
+
+func readValue(name string, line string) string {
+	parts := strings.Split(line, fmt.Sprintf("%s=", name))
+	val := strings.TrimSpace(parts[len(parts)-1])
+	return val
 }

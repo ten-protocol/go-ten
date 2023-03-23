@@ -96,14 +96,14 @@ func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipt
 	defer oc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
-	oc.logger.Info("updateL1State (entered mutex)", log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash())
 	l1IngestionType, err := oc.updateL1State(block, receipts, isLatest)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// We update the L1 and L2 chain heads.
-	oc.logger.Info("updateL1AndL2Heads", log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash())
+	oc.logger.Info("updateL1AndL2Heads", log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(),
+		"l1Ingestion", l1IngestionType)
 	newL2Head, producedBatch, err := oc.updateL1AndL2Heads(&block, l1IngestionType)
 	if err != nil {
 		return nil, nil, err

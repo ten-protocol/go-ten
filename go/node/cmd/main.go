@@ -28,6 +28,7 @@ func main() {
 		node.WithSequencerID(cliConfig.sequencerID),                          // "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
 		node.WithManagementContractAddress(cliConfig.managementContractAddr), // "0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF"),
 		node.WithMessageBusContractAddress(cliConfig.messageBusContractAddr), // "0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"),
+		node.WithL1Start(cliConfig.l1Start),
 		node.WithPCCSAddr(cliConfig.pccsAddr),
 		node.WithEdgelessDBImage(cliConfig.edgelessDBImage),
 	)
@@ -37,7 +38,27 @@ func main() {
 		panic(err)
 	}
 
-	err = dockerNode.Start()
+	switch cliConfig.nodeAction {
+	case startAction:
+		// write the network-level config to disk for future restarts
+		err = node.WriteNetworkConfigToDisk(nodeCfg)
+		if err != nil {
+			panic(err)
+		}
+		err = dockerNode.Start()
+	case upgradeAction:
+		// load network-specific details from the initial node setup from disk
+		var ntwCfg *node.NetworkConfig
+		ntwCfg, err = node.ReadNetworkConfigFromDisk()
+		if err != nil {
+			panic(err)
+		}
+		dockerNode.SetNetworkConfig(ntwCfg)
+
+		err = dockerNode.Upgrade()
+	default:
+		panic("unrecognized node action: " + cliConfig.nodeAction)
+	}
 	if err != nil {
 		panic(err)
 	}

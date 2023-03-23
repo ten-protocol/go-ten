@@ -28,7 +28,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core/egoutils"
 
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -124,7 +123,7 @@ type EdgelessDBCredentials struct {
 	UserKeyPEM   string // db user private key, generated in our enclave
 }
 
-func EdgelessDBConnector(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (ethdb.Database, error) {
+func EdgelessDBConnector(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*EnclaveDB, error) {
 	// rather than fail immediately if EdgelessDB is not available yet we wait up for `edgelessDBStartTimeout` for it to be available
 	err := waitForEdgelessDBToStart(edbCfg.Host, logger)
 	if err != nil {

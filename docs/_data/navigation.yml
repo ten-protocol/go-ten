@@ -40,6 +40,13 @@ sidebar-list:
       - title: Change Log
         url: testnet/changelog
 
+  - title: On Chain Capabilities
+    children: 
+      - title: Cross Chain Messaging
+        url: cross-chain/core-messaging-layer
+      - title: Standard Bridge
+        url: cross-chain/bridge
+
   - title: Example dApps
     children:
       - title: Guessing Game

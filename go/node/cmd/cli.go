@@ -2,10 +2,20 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
+	"strings"
+)
+
+var (
+	startAction      = "start"
+	upgradeAction    = "upgrade"
+	validNodeActions = []string{startAction, upgradeAction}
 )
 
 // NodeConfigCLI represents the configurations passed into the node over CLI
 type NodeConfigCLI struct {
+	nodeAction             string
 	nodeType               string
 	isGenesis              bool
 	isSGXEnabled           bool
@@ -23,6 +33,7 @@ type NodeConfigCLI struct {
 	sequencerID            string
 	managementContractAddr string
 	messageBusContractAddr string
+	l1Start                string
 	pccsAddr               string
 	edgelessDBImage        string
 	hostHTTPPort           int
@@ -55,6 +66,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	sequencerID := flag.String(sequencerIDFlag, "", flagUsageMap[sequencerIDFlag])
 	managementContractAddr := flag.String(managementContractAddrFlag, "", flagUsageMap[managementContractAddrFlag])
 	messageBusContractAddr := flag.String(messageBusContractAddrFlag, "", flagUsageMap[messageBusContractAddrFlag])
+	l1Start := flag.String(l1StartBlockFlag, "", flagUsageMap[l1StartBlockFlag])
 	pccsAddr := flag.String(pccsAddrFlag, "", flagUsageMap[pccsAddrFlag])
 	edgelessDBImage := flag.String(edgelessDBImageFlag, "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2", flagUsageMap[edgelessDBImageFlag])
 
@@ -77,10 +89,32 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.sequencerID = *sequencerID
 	cfg.managementContractAddr = *managementContractAddr
 	cfg.messageBusContractAddr = *messageBusContractAddr
+	cfg.l1Start = *l1Start
 	cfg.pccsAddr = *pccsAddr
 	cfg.edgelessDBImage = *edgelessDBImage
 	cfg.hostHTTPPort = *hostHTTPPort
 	cfg.hostWSPort = *hostWSPort
 
+	cfg.nodeAction = flag.Arg(0)
+	if !validateNodeAction(cfg.nodeAction) {
+		if cfg.nodeAction == "" {
+			fmt.Printf("expected a node action string (%s) as the only argument after the flags but no argument provided\n",
+				strings.Join(validNodeActions, ", "))
+		} else {
+			fmt.Printf("expected a node action string (%s) as the only argument after the flags but got %s\n",
+				strings.Join(validNodeActions, ", "), cfg.nodeAction)
+		}
+		os.Exit(1)
+	}
+
 	return cfg
+}
+
+func validateNodeAction(action string) bool {
+	for _, a := range validNodeActions {
+		if a == action {
+			return true
+		}
+	}
+	return false
 }
