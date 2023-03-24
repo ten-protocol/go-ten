@@ -547,11 +547,11 @@ func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, filter *
 	}
 	if filter.FromBlock != nil {
 		query += " AND blockNumber >= ?"
-		queryParams = append(queryParams, filter.FromBlock.Bytes())
+		queryParams = append(queryParams, filter.FromBlock.Int64())
 	}
 	if filter.ToBlock != nil {
 		query += " AND blockNumber < ?"
-		queryParams = append(queryParams, filter.ToBlock.Bytes())
+		queryParams = append(queryParams, filter.ToBlock.Int64())
 	}
 	if len(filter.Addresses) > 0 {
 		query += " AND address in (?" + strings.Repeat(",?", len(filter.Addresses)-1) + ")"
