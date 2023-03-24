@@ -23,7 +23,7 @@ const (
 		" topic2 binary(32), " +
 		" topic3 binary(32), " +
 		" topic4 binary(32), " +
-		" data mediumblob, " +
+		" datablob mediumblob, " +
 		" blockHash binary(32), " +
 		" blockNumber int, " +
 		" txHash binary(32), " +
