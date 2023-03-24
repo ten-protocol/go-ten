@@ -7,7 +7,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/responses"
 )
 
 // Status represents the enclave's current status - the status and behaviour of the host is a function of the status of the enclave
@@ -43,26 +42,26 @@ type Enclave interface {
 	SubmitL1Block(block L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, error)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx EncryptedTx) responses.RawTx
+	SubmitTx(tx EncryptedTx) (EncryptedResponseSendRawTx, error)
 
 	// SubmitBatch submits a batch received from the sequencer for processing.
 	SubmitBatch(batch *ExtBatch) error
 
 	// ExecuteOffChainTransaction - Execute a smart contract to retrieve data
 	// Todo - return the result with a block delay. To prevent frontrunning.
-	ExecuteOffChainTransaction(encryptedParams EncryptedParamsCall) responses.Call
+	ExecuteOffChainTransaction(encryptedParams EncryptedParamsCall) (EncryptedResponseCall, error)
 
 	// GetTransactionCount returns the nonce of the wallet with the given address (encrypted with the acc viewing key)
-	GetTransactionCount(encryptedParams EncryptedParamsGetTxCount) responses.TxCount
+	GetTransactionCount(encryptedParams EncryptedParamsGetTxCount) (EncryptedResponseGetTxCount, error)
 
 	// Stop gracefully stops the enclave
 	Stop() error
 
 	// GetTransaction returns a transaction in JSON format, encrypted with the viewing key for the transaction's `from` field.
-	GetTransaction(encryptedParams EncryptedParamsGetTxByHash) responses.TxByHash
+	GetTransaction(encryptedParams EncryptedParamsGetTxByHash) (EncryptedResponseGetTxByHash, error)
 
 	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
-	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) responses.TxReceipt
+	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (EncryptedResponseGetTxReceipt, error)
 
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
 	// Viewing keys are asymmetric keys generated inside the wallet extension, and then signed by the wallet (e.g.
@@ -77,7 +76,7 @@ type Enclave interface {
 
 	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the
 	// address.
-	GetBalance(encryptedParams EncryptedParamsGetBalance) responses.Balance
+	GetBalance(encryptedParams EncryptedParamsGetBalance) (EncryptedResponseGetBalance, error)
 
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.
 	GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error)
@@ -95,10 +94,10 @@ type Enclave interface {
 	StopClient() error
 
 	// EstimateGas tries to estimate the gas needed to execute a specific transaction based on the pending state.
-	EstimateGas(encryptedParams EncryptedParamsEstimateGas) responses.Gas
+	EstimateGas(encryptedParams EncryptedParamsEstimateGas) (EncryptedResponseEstimateGas, error)
 
 	// GetLogs returns all the logs matching the filter.
-	GetLogs(encryptedParams EncryptedParamsGetLogs) responses.Logs
+	GetLogs(encryptedParams EncryptedParamsGetLogs) (EncryptedResponseGetLogs, error)
 
 	// HealthCheck returns whether the enclave is in a healthy state
 	HealthCheck() (bool, error)

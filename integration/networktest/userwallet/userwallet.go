@@ -109,7 +109,7 @@ func (s *UserWallet) SendTransaction(ctx context.Context, tx *types.LegacyTx) (*
 		return nil, fmt.Errorf("unable to sign transaction - %w", err)
 	}
 	// fmt.Printf("waiting for receipt hash %s\n", signedTx.Hash())
-	_, err = s.client.SendTransaction(ctx, signedTx)
+	err = s.client.SendTransaction(ctx, signedTx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to send transaction - %w", err)
 	}
