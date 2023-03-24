@@ -1204,7 +1204,7 @@ func (e *enclaveImpl) getEncryptedLogs(l2Head *common.L2RootHash) map[gethrpc.ID
 	if err == nil {
 		logs = fetchedLogs
 	} else {
-		e.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
+		e.logger.Error("Could not retrieve logs for stored block state; returning no logs.", log.ErrKey, err)
 	}
 	encryptedLogs, err := e.subscriptionManager.GetSubscribedLogsEncrypted(logs, *l2Head)
 	if err != nil {

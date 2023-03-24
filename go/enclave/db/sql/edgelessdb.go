@@ -113,6 +113,7 @@ var (
 		fmt.Sprintf("create index IX_T3 on %s.events(topic3)", dbName),
 		fmt.Sprintf("create index IX_T4 on %s.events(topic4)", dbName),
 		fmt.Sprintf("GRANT ALL ON %s.%s TO %s", dbName, tableName, dbUser),
+		fmt.Sprintf("GRANT ALL ON %s.events TO %s", dbName, dbUser),
 	}
 
 	edgelessDBStartTimeout = 60 * time.Second
