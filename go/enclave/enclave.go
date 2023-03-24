@@ -262,7 +262,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 
 	_, err = e.rollupManager.ProcessL1Block(br)
 	if err != nil {
-		e.logger.Warn("Error processing L1 block for rollups", log.ErrKey, err)
+		e.logger.Error("Error processing L1 block for rollups", log.ErrKey, err)
 	}
 
 	// We prepare the block submission response.

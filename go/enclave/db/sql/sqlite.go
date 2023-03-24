@@ -37,6 +37,10 @@ const (
 		" relAddress4 binary(20) " +
 		");" +
 		"create index IX_AD on events(address);" +
+		"create index IX_RAD1 on events(relAddress1);" +
+		"create index IX_RAD2 on events(relAddress2);" +
+		"create index IX_RAD3 on events(relAddress3);" +
+		"create index IX_RAD4 on events(relAddress4);" +
 		"create index IX_BLH on events(blockHash);" +
 		"create index IX_BLN on events(blockNumber);" +
 		"create index IX_TXH on events(txHash);" +

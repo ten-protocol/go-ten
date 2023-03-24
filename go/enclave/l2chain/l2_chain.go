@@ -892,6 +892,7 @@ func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 			return fmt.Errorf("batch was invalid. Cause: %w", err)
 		}
 
+		// todo - shouldn't this be checked first?
 		// We check that we've stored the batch's parent.
 		if _, err = oc.storage.FetchBatch(batch.Header.ParentHash); err != nil {
 			return fmt.Errorf("could not retrieve parent batch. Cause: %w", err)

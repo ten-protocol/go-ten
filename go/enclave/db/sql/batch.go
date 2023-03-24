@@ -24,7 +24,7 @@ type statement struct {
 type Batch struct {
 	db         *EnclaveDB
 	writes     []keyvalue
-	statements []*statement
+	statements []statement
 	size       int
 }
 
@@ -33,7 +33,7 @@ func (b *Batch) ExecuteSQL(query string, args ...any) {
 		query: query,
 		args:  args,
 	}
-	b.statements = append(b.statements, &s)
+	b.statements = append(b.statements, s)
 }
 
 // Put inserts the given value into the batch for later committing.
@@ -79,8 +79,9 @@ func (b *Batch) Write() error {
 
 	for _, s := range b.statements {
 		_, err := tx.Exec(s.query, s.args...)
+		// println("+")
 		if err != nil {
-			return fmt.Errorf("failed to exec batch statement. , err=%w", err)
+			return fmt.Errorf("failed to exec batch statement. err=%w", err)
 		}
 	}
 

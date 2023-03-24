@@ -201,6 +201,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomTransfers() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
+		// println("^")
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
 		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
@@ -232,12 +233,49 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		// todo - retrieve receipt
 
 		go ti.TxTracker.trackTransferL2Tx(signedTx)
-		sleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
+		sleepRndBtw(ti.avgBlockDuration/10, ti.avgBlockDuration/4)
 	}
 }
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
+	fromWalletHoc := ti.wallets.Tokens[testcommon.HOC].L2Owner
+	fromWalletPoc := ti.wallets.Tokens[testcommon.POC].L2Owner
+
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
+		fromWallet := fromWalletHoc
+		if txCounter%2 == 0 {
+			fromWallet = fromWalletPoc
+		}
+		toWallet := ti.rndObsWallet()
+		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(toWallet)
+		v := testcommon.RndBtw(500, 2000)
+		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), v)
+		tx = obscuroClient.EstimateGasAndGasPrice(tx)
+		signedTx, err := fromWallet.SignTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
+		ti.logger.Info(fmt.Sprintf(
+			"Deposit  transaction injected into L2. Hash: %d. From address: %d. To address: %d",
+			common.ShortHash(signedTx.Hash()),
+			common.ShortAddress(fromWallet.Address()),
+			common.ShortAddress(toWallet.Address()),
+		))
+
+		ti.stats.Deposit(big.NewInt(int64(v)))
+
+		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		if err != nil {
+			ti.logger.Info("Failed to issue deposit via RPC.", log.ErrKey, err)
+			continue
+		}
+
+		// todo - retrieve receipt
+
+		go ti.TxTracker.trackTransferL2Tx(signedTx)
+		sleepRndBtw(ti.avgBlockDuration/3, ti.avgBlockDuration)
+	}
 	// TODO: Rework this when old contract deployer is phased out?
 }
 

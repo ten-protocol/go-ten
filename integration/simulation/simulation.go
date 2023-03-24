@@ -128,7 +128,7 @@ func (s *Simulation) trackLogs() {
 		s.LogChannels[owner] = []chan common.IDAndLog{}
 
 		for _, client := range clients {
-			channel := make(chan common.IDAndLog)
+			channel := make(chan common.IDAndLog, 1000)
 
 			// To exercise the filtering mechanism, we subscribe for HOC events only, ignoring POC events.
 			hocFilter := filters.FilterCriteria{
