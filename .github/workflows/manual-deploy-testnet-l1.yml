@@ -10,12 +10,14 @@
 #  testnet-eth2network-DEPLOYNUMBER.uksouth.azurecontainer.io
 # or
 #  dev-testnet-eth2network-DEPLOYNUMBER.uksouth.azurecontainer.io
+#
+# The scheduled deployment runs tt 03:05 on every day-of-week from Tuesday through Saturday, for dev-testnet only.
 
 name: '[M] Deploy Testnet L1'
 
 on:
   schedule:
-    - cron: '05 3 * * *'
+    - cron: '05 3 * * 2-6'
   workflow_dispatch:
     inputs:
       testnet_type:
