@@ -479,7 +479,7 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 // todo always pass in the actual batch hashes because of reorgs
 func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondition string, whereParams []any) ([]*types.Log, error) {
 	result := []*types.Log{}
-	query := "select topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1==1 "
+	query := "select topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1=1 "
 	var queryParams []any
 
 	// todo - once we introduce streaming, this check should be converted into an assert. This should never return non-account specific logs
