@@ -205,7 +205,7 @@ func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Bat
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
 	}
 
-	if l2Head.Number().Int64() > 0 {
+	if l2Head.Number().Int64() > 1 {
 		err2 := s.writeLogs(l2Head.Header.ParentHash, receipts, dbBatch)
 		if err2 != nil {
 			return fmt.Errorf("could not save logs %w", err2)

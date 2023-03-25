@@ -98,7 +98,7 @@ var (
 		fmt.Sprintf("CREATE USER %s REQUIRE ISSUER '/CN=%s' SUBJECT '/CN=%s'", dbUser, certIssuer, certSubject),
 		fmt.Sprintf("CREATE DATABASE %s", dbName),
 		fmt.Sprintf("CREATE TABLE %s.%s (%s varbinary(64) primary key, %s mediumblob)", dbName, tableName, keyCol, valueCol),
-		fmt.Sprintf("create table %s.events (topic0 binary(32), topic1 binary(32), topic2 binary(32), topic3 binary(32), topic4 binary(32), datablob mediumblob, blockHash binary(32), blockNumber int, txHash binary(32), txIdx int, logIdx int, address binary(32), lifecycleEvent boolean, relAddress1 binary(20), relAddress2 binary(20), relAddress3 binary(20), relAddress4 binary(20)) ", dbName),
+		fmt.Sprintf("create table %s.events (topic0 binary(32), topic1 binary(32), topic2 binary(32), topic3 binary(32), topic4 binary(32), datablob mediumblob, blockHash binary(32), blockNumber int, txHash binary(32), txIdx int, logIdx int, address binary(20), lifecycleEvent boolean, relAddress1 binary(20), relAddress2 binary(20), relAddress3 binary(20), relAddress4 binary(20)) ", dbName),
 		fmt.Sprintf("create index IX_RAD1 on %s.events(relAddress1)", dbName),
 		fmt.Sprintf("create index IX_RAD2 on %s.events(relAddress2)", dbName),
 		fmt.Sprintf("create index IX_RAD3 on %s.events(relAddress3)", dbName),
