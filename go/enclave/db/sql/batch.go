@@ -79,7 +79,6 @@ func (b *Batch) Write() error {
 
 	for _, s := range b.statements {
 		_, err := tx.Exec(s.query, s.args...)
-		// println("+")
 		if err != nil {
 			return fmt.Errorf("failed to exec batch statement. err=%w", err)
 		}

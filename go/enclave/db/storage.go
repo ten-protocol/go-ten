@@ -225,12 +225,9 @@ func (s *storageImpl) writeLogs(l2Head common.L2RootHash, receipts []*types.Rece
 		return fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}
 
-	// fmt.Printf("receipts: %d\n", len(receipts))
 	// We update the block's logs, based on the batch's logs.
 	for _, receipt := range receipts {
-		// fmt.Printf("receipt logs %d: %d\n", i, len(receipt.Logs))
 		for _, l := range receipt.Logs {
-			// println("*")
 			s.writeLog(l, stateDB, dbBatch)
 		}
 	}
@@ -270,7 +267,6 @@ func (s *storageImpl) writeLog(l *types.Log, stateDB *state.StateDB, dbBatch *sq
 		isLifecycle = isLifecycle && !ua
 	}
 
-	// println("-")
 	dbBatch.ExecuteSQL("insert into events values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 		t0, t1, t2, t3, t4,
 		l.Data, l.BlockHash, l.BlockNumber, l.TxHash, l.TxIndex, l.Index, l.Address,

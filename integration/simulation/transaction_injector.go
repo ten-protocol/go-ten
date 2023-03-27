@@ -201,7 +201,6 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 // issueRandomTransfers creates and issues a number of L2 transfer transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomTransfers() {
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		// println("^")
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
 		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
