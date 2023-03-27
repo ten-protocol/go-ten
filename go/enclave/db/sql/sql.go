@@ -101,13 +101,13 @@ func (sqlDB *EnclaveDB) NewIterator(prefix []byte, start []byte) ethdb.Iterator 
 }
 
 func (sqlDB *EnclaveDB) Stat(property string) (string, error) {
-	// TODO implement me
+	// todo - implement me
 	sqlDB.logger.Crit("implement me")
 	return "", nil
 }
 
 func (sqlDB *EnclaveDB) Compact(start []byte, limit []byte) error {
-	// TODO implement me
+	// todo - implement me
 	sqlDB.logger.Crit("implement me")
 	return nil
 }

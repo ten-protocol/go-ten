@@ -65,7 +65,7 @@ func performEDBRemoteAttestation(edbHost string, constraints *EdgelessAttestatio
 	edbHTTPAddr := fmt.Sprintf("%s:%s", edbHost, edbHTTPPort)
 	certs, tcbStatus, err := performRAAndFetchTLSCert(edbHTTPAddr, constraints)
 	if err != nil {
-		// todo should we check the error type with: err == attestation.ErrTCBLevelInvalid?
+		// todo (#1550) - should we check the error type with: err == attestation.ErrTCBLevelInvalid?
 		// for now it's maximum strictness (we can revisit this and permit some tcbStatuses if desired)
 		return "", fmt.Errorf("attestation failed, host=%s, tcbStatus=%s, err=%w", edbHTTPAddr, tcbStatus, err)
 	}

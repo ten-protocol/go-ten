@@ -48,7 +48,7 @@ func (m *Service) Start() {
 	// starts the metric server
 	address := fmt.Sprintf("%s:%d", "0.0.0.0", m.port)
 	m.logger.Info("HTTP Metric server started at %s", address)
-	// TODO re-write this http server so to have a stop method
+	// todo - re-write this http server so to have a stop method
 	exp.Setup(address)
 }
 
@@ -58,7 +58,7 @@ func (m *Service) Registry() gethmetrics.Registry {
 }
 
 func (m *Service) Stop() {
-	// TODO re-write this http server so to have a stop method
+	// todo - re-write this http server so to have a stop method
 }
 
 // CollectProcessMetrics collect process and system metrics

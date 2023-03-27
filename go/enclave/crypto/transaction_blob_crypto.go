@@ -17,7 +17,7 @@ import (
 
 const (
 	// RollupEncryptionKeyHex is the AES key used to encrypt and decrypt the transaction blob in rollups.
-	// TODO - Replace this fixed key with derived, rotating keys.
+	// todo (#1053) - replace this fixed key with derived, rotating keys.
 	RollupEncryptionKeyHex = "bddbc0d46a0666ce57a466168d99c1830b0c65e052d77188f2cbfc3f6486588c"
 	// NonceLength is the nonce's length in bytes for encrypting and decrypting transactions.
 	NonceLength = 12
@@ -50,7 +50,7 @@ func NewTransactionBlobCryptoImpl(logger gethlog.Logger) TransactionBlobCrypto {
 	}
 }
 
-// TODO - Modify this logic so that transactions with different reveal periods are in different blobs, as per the whitepaper.
+// todo (#1053) - modify this logic so that transactions with different reveal periods are in different blobs, as per the whitepaper.
 func (t TransactionBlobCryptoImpl) Encrypt(transactions []*common.L2Tx) common.EncryptedTransactions {
 	encodedTxs, err := rlp.EncodeToBytes(transactions)
 	if err != nil {
@@ -62,7 +62,7 @@ func (t TransactionBlobCryptoImpl) Encrypt(transactions []*common.L2Tx) common.E
 		t.logger.Crit("could not generate nonce to encrypt transactions.", log.ErrKey, err)
 	}
 
-	// TODO - Ensure this nonce is not used too many times (2^32?) with the same key, to avoid risk of repeat.
+	// todo - ensure this nonce is not used too many times (2^32?) with the same key, to avoid risk of repeat.
 	ciphertext := t.transactionCipher.Seal(nil, nonce, encodedTxs, nil)
 	// We prepend the nonce to the ciphertext, so that it can be retrieved when decrypting.
 	return append(nonce, ciphertext...) //nolint:makezero

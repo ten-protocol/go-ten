@@ -18,7 +18,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
-// TODO: Cryptography epic remove this.
+// todo (#1549) - implement with cryptography epic
 const ( // DO NOT USE OR CHANGE THIS KEY IN THE REST OF THE CODEBASE
 	ownerKeyHex = "6e384a07a01263518a18a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 )
@@ -35,7 +35,7 @@ func NewObscuroMessageBusManager(
 	chainID *big.Int,
 	logger gethlog.Logger,
 ) Manager {
-	// TODO: Cryptography epic remove this key and use the DeriveKey
+	// todo (#1549) - implement with cryptography epic, remove this key and use the DeriveKey
 	key, _ := crypto.HexToECDSA(ownerKeyHex)
 	wallet := wallet.NewInMemoryWalletFromPK(chainID, key, logger)
 
@@ -68,14 +68,14 @@ func (m *MessageBusManager) GetOwner() common.L2Address {
 }
 
 // GetBusAddress - Returns the L2 address of the message bus contract.
-// TODO: Figure out how to expose the deployed contract to the external world. Perhaps extract event from contract construction?
+// todo - figure out how to expose the deployed contract to the external world. Perhaps extract event from contract construction?
 func (m *MessageBusManager) GetBusAddress() *common.L2Address {
 	return m.messageBusAddress
 }
 
 // DeriveOwner - Generates the key pair that will be used to transact with the L2 message bus.
 func (m *MessageBusManager) DeriveOwner(seed []byte) (*common.L2Address, error) {
-	// TODO: Implement with cryptography epic!
+	// todo (#1549) - implement with cryptography epic
 	return m.messageBusAddress, nil
 }
 
@@ -119,9 +119,9 @@ func (m *MessageBusManager) ExtractOutboundMessages(receipts common.L2Receipts) 
 }
 
 // RetrieveInboundMessages - Retrieves the cross chain messages between two blocks.
-// TODO: Fix ordering of messages, currently it is irrelevant.
-// TODO: Do not extract messages below their consistency level. Irrelevant security wise.
-// TODO: Surface errors
+// todo (@stefan) - fix ordering of messages, currently it is irrelevant.
+// todo (@stefan) - do not extract messages below their consistency level. Irrelevant security wise.
+// todo (@stefan) - surface errors
 func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.CrossChainMessages {
 	messages := make(common.CrossChainMessages, 0)
 
@@ -175,7 +175,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(messages common.CrossCha
 			m.logger.Crit("Failed packing submitOutOfNetwork message!", log.CmpKey, log.CrossChainCmp)
 			return signedTransactions
 
-			// TODO: return error
+			// todo (@stefan) - return error
 			// return nil, fmt.Errorf("failed packing submitOutOfNetworkMessage %w", err)
 		}
 

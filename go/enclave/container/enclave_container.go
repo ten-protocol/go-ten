@@ -16,7 +16,7 @@ import (
 	obscuroGenesis "github.com/obscuronet/go-obscuro/go/enclave/genesis"
 )
 
-// TODO - Replace with the genesis.json of Obscuro's L1 network.
+// todo (#1056) - replace with the genesis.json of Obscuro's L1 network.
 const hardcodedGenesisJSON = "TODO - REPLACE ME"
 
 type EnclaveContainer struct {
@@ -46,7 +46,7 @@ func (e *EnclaveContainer) Stop() error {
 // NewEnclaveContainerFromConfig wires up the components of the Enclave and its RPC server. Manages their lifecycle/monitors their status
 func NewEnclaveContainerFromConfig(config config.EnclaveConfig) *EnclaveContainer {
 	// todo - improve this wiring, perhaps setup DB etc. at this level and inject into enclave
-	//  (at that point the WithLogger constructor could be a full DI constructor like the HostContainer tries, for testability)
+	// (at that point the WithLogger constructor could be a full DI constructor like the HostContainer tries, for testability)
 	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.HostID)
 
 	// todo - this is for debugging purposes only, should be remove in the future

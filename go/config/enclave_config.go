@@ -67,13 +67,13 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		NodeType:                  common.Sequencer,
 		L1ChainID:                 1337,
 		ObscuroChainID:            777,
-		WillAttest:                false, // todo: attestation should be on by default before production release
+		WillAttest:                false, // todo (config) - attestation should be on by default before production release
 		ValidateL1Blocks:          false,
 		GenesisJSON:               nil,
 		ManagementContractAddress: gethcommon.BytesToAddress([]byte("")),
 		LogLevel:                  int(gethlog.LvlInfo),
 		LogPath:                   log.SysOut,
-		UseInMemoryDB:             true, // todo: persistence should be on by default before production release
+		UseInMemoryDB:             true, // todo (config) - persistence should be on by default before production release
 		EdgelessDBHost:            "",
 		SqliteDBPath:              "",
 		ProfilerEnabled:           false,

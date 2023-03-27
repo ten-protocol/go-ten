@@ -20,7 +20,7 @@ import (
 
 const (
 	// obscuroPrivateKeyHex is the private key used for sensitive communication with the enclave.
-	// TODO - Replace this fixed key with a key derived from the master seed.
+	// todo (#1053) - replace this fixed key with a key derived from the master seed.
 	obscuroPrivateKeyHex = "81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207"
 	sharedSecretLen      = 32
 )
