@@ -239,6 +239,8 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
+	// TODO - this implementation transfers from the hoc and poc owner contracts
+	// a better implementation should use the bridge
 	fromWalletHoc := ti.wallets.Tokens[testcommon.HOC].L2Owner
 	fromWalletPoc := ti.wallets.Tokens[testcommon.POC].L2Owner
 

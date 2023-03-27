@@ -83,7 +83,7 @@ func New(
 		chainConfig:          chainConfig,
 		blockProcessingMutex: sync.Mutex{},
 		logger:               logger,
-		GlobalGasCap:         5_000_000_000,
+		GlobalGasCap:         5_000_000_000, // Todo - make config
 		BaseFee:              gethcommon.Big0,
 		sequencerID:          sequencerID,
 		genesis:              genesis,
@@ -913,7 +913,8 @@ func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 	// If we haven't stored the batch before, we store it and update the head batch for that L1 block.
 	// TODO - FetchBatch should return errutil.ErrNotFound for unstored batches, so we can handle that type of error
 	//  separately.
-	if _, err = oc.storage.FetchBatch(*batch.Hash()); err != nil {
+	b, _ := oc.storage.FetchBatch(*batch.Hash())
+	if b == nil {
 		if err = oc.storage.StoreBatch(batch, txReceipts); err != nil {
 			return fmt.Errorf("failed to store batch. Cause: %w", err)
 		}

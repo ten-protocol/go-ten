@@ -631,7 +631,7 @@ func assertLogsValid(t *testing.T, owner string, logs []*types.Log) {
 		}
 	}
 
-	// assertNoDupeLogs(t, logs)
+	assertNoDupeLogs(t, logs)
 }
 
 // Asserts that the log is relevant to the recipient (either a lifecycle event or a relevant user event).
@@ -669,8 +669,6 @@ func assertRelevantLogsOnly(t *testing.T, owner string, receivedLog types.Log) {
 	t.Errorf("received log that was not relevant (neither a lifecycle event nor relevant to the client's account)")
 }
 
-/*
-Commented out until the streaming of logs is implemented
 // Asserts that there are no duplicate logs in the provided list.
 func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 	logCount := make(map[string]int)
@@ -697,7 +695,6 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 		}
 	}
 }
-*/
 
 // Checks that the various APIs powering Obscuroscan are working correctly.
 func checkObscuroscan(t *testing.T, s *Simulation) {

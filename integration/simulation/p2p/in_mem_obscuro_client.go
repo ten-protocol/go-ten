@@ -26,6 +26,7 @@ const (
 	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
 
+// todo - move this from the P2P folder
 // An in-memory implementation of `rpc.Client` that speaks directly to the node.
 type inMemObscuroClient struct {
 	obscuroAPI       *clientapi.ObscuroAPI

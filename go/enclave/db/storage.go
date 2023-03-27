@@ -206,6 +206,7 @@ func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Bat
 	}
 
 	if l2Head.Number().Int64() > 1 {
+		fmt.Printf("Save logs. head: %d\n", l2Head.NumberU64())
 		err2 := s.writeLogs(l2Head.Header.ParentHash, receipts, dbBatch)
 		if err2 != nil {
 			return fmt.Errorf("could not save logs %w", err2)
@@ -479,7 +480,9 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 // todo always pass in the actual batch hashes because of reorgs
 func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondition string, whereParams []any) ([]*types.Log, error) {
 	result := []*types.Log{}
-	query := "select topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1=1 "
+	// todo - remove the "distinct" once the fast-finality work is completed.
+	// currently the events seem to be stored twice because of some weird logic in the rollup/batch processing.
+	query := "select distinct topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1=1 "
 	var queryParams []any
 
 	// todo - once we introduce streaming, this check should be converted into an assert. This should never return non-account specific logs
