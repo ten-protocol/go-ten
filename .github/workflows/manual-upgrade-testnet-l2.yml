@@ -141,7 +141,8 @@ jobs:
             az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ github.event.inputs.github_deploy_number }}"  \
             --command-id RunShellScript \
             --scripts '
-              git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
+              rm -rf /home/obscuro/go-obscuro \
+            && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
             && cd /home/obscuro/go-obscuro/ \
             && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
               -is_genesis=${{ matrix.is_genesis }} \
