@@ -12,7 +12,7 @@ import (
 
 type blockMessageExtractor struct {
 	busAddress   *common.L1Address
-	l2MessageBus *common.L2Address // TODO: remove this
+	l2MessageBus *common.L2Address // todo (@stefan) - remove this
 	storage      db.Storage
 	logger       gethlog.Logger
 }
@@ -48,7 +48,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 	}
 
 	if len(receipts) == 0 {
-		// TODO: Error if block receipts root does not match receipts hash
+		// todo (@stefan) - error if block receipts root does not match receipts hash
 		// else nil
 		return nil
 	}

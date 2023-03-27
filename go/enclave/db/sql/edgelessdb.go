@@ -110,7 +110,7 @@ type manifest struct {
 	Debug bool     `json:"debug"`
 }
 
-// todo: move more of the hardcoded config into this (attestation conf, usernames etc.)
+// todo (#1474) - move more of the hardcoded config into this (attestation conf, usernames etc.)
 type EdgelessDBConfig struct {
 	Host string
 }
@@ -256,7 +256,7 @@ func performHandshake(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*Edgeles
 	if err != nil {
 		return nil, err
 	}
-	// todo: #1377 the credentials must be sealed with the enclave unique ID in production, not just the product key
+	// todo (#1377) - the credentials must be sealed with the enclave unique ID in production, not just the product key
 	err = egoutils.SealAndPersist(string(edbCredsJSON), edbCredentialsFilepath, true)
 	if err != nil {
 		return nil, err

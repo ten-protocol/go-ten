@@ -20,7 +20,7 @@ func SealAndPersist(contents string, filepath string, testEnvSealOnly bool) erro
 
 	sealMethod := ecrypto.SealWithUniqueKey
 	if testEnvSealOnly {
-		// todo: #1377 remove this option - this is a stop-gap solution for upgradability in testnet while we implement the final solution
+		// todo (#1377) - remove this option - this is a stop-gap solution for upgradability in testnet while we implement the final solution
 		// In prod this must not be used in this way, it would make the secret vulnerable to anyone that manages to get
 		// access to the product signing key
 		sealMethod = ecrypto.SealWithProductKey

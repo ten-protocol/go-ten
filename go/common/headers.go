@@ -26,7 +26,7 @@ type BatchHeader struct {
 	UncleHash   common.Hash    `json:"sha3Uncles"`
 	Coinbase    common.Address `json:"miner"`
 	Root        StateRoot      `json:"stateRoot"`
-	TxHash      common.Hash    `json:"transactionsRoot"` // todo - include the synthetic deposits
+	TxHash      common.Hash    `json:"transactionsRoot"` // todo (#1545) - include the synthetic deposits
 	ReceiptHash common.Hash    `json:"receiptsRoot"`
 	Bloom       types.Bloom    `json:"logsBloom"`
 	Difficulty  *big.Int
@@ -40,7 +40,7 @@ type BatchHeader struct {
 	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
-	Agg                common.Address                        // TODO - Can this be removed and replaced with the `Coinbase` field?
+	Agg                common.Address                        // todo - can this be removed and replaced with the `Coinbase` field?
 	L1Proof            L1RootHash                            // the L1 block used by the enclave to generate the current batch
 	R, S               *big.Int                              // signature values
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
@@ -73,7 +73,7 @@ type RollupHeader struct {
 	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
-	Agg                common.Address                        // TODO - Can this be removed and replaced with the `Coinbase` field?
+	Agg                common.Address                        // todo - can this be removed and replaced with the `Coinbase` field?
 	L1Proof            L1RootHash                            // the L1 block used by the enclave to generate the current rollup
 	R, S               *big.Int                              // signature values
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
