@@ -2,9 +2,8 @@ package db
 
 import (
 	"crypto/ecdsa"
-	"io"
-
 	"github.com/ethereum/go-ethereum/eth/filters"
+	"io"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -111,9 +110,10 @@ type Storage interface {
 	TransactionStorage
 	AttestationStorage
 	CrossChainMessagesStorage
+	io.Closer
 
 	// HealthCheck returns whether the storage is deemed healthy or not
 	HealthCheck() (bool, error)
-	io.Closer
-	FilterLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error)
+	// FilterLogs - applies the filter and the relevancy checks for the requestingAccount to all the stored log events
+	FilterLogs(requestingAccount *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error)
 }

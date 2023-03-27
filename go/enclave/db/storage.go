@@ -181,12 +181,8 @@ func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*co
 func (s *storageImpl) FetchLogs(l2Hash common.L2RootHash) ([]*types.Log, error) {
 	logs, err := s.loadLogs(nil, " AND blockHash=? ", []any{l2Hash.Bytes()})
 	if err != nil {
-		// TODO - Return the error itself, once we move from `errutil.ErrNotFound` to `ethereum.NotFound`
 		return nil, err
 	}
-	//if len(logs) > 0 {
-	//	fmt.Printf("Logs: %v\n", logs)
-	//}
 	return logs, nil
 }
 
@@ -206,7 +202,6 @@ func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Bat
 	}
 
 	if l2Head.Number().Int64() > 1 {
-		fmt.Printf("Save logs. head: %d\n", l2Head.NumberU64())
 		err2 := s.writeLogs(l2Head.Header.ParentHash, receipts, dbBatch)
 		if err2 != nil {
 			return fmt.Errorf("could not save logs %w", err2)
@@ -234,11 +229,25 @@ func (s *storageImpl) writeLogs(l2Head common.L2RootHash, receipts []*types.Rece
 	return nil
 }
 
+// This method stores a log entry together with relevancy metadata
+// Each types.Log has 5 indexable topics, where the first one is the event signature hash
+// The other 4 topics are set by the programmer
+// According to the data relevancy rules, an event is relevant to accounts referenced directly in topics
+// If the event is not referring any user address, it is considered a "lifecycle event", and is relevant to everyone
 func (s *storageImpl) writeLog(l *types.Log, stateDB *state.StateDB, dbBatch *sql.Batch) {
+
+	// The topics are stored in an array with a maximum of 5 entries, but usually less
 	var t0, t1, t2, t3, t4 *gethcommon.Hash
+
+	// these are the addresses to which this event might be relevant to.
 	var addr1, addr2, addr3, addr4 *gethcommon.Address
+
+	// start with true, and as soon as a user address is discovered, it becomes false
 	isLifecycle := true
-	var ua bool
+
+	// internal variable
+	var isUserAccount bool
+
 	n := len(l.Topics)
 	if n > 0 {
 		t0 = &l.Topics[0]
@@ -248,23 +257,23 @@ func (s *storageImpl) writeLog(l *types.Log, stateDB *state.StateDB, dbBatch *sq
 	// if yes, then mark it as relevant for that account
 	if n > 1 {
 		t1 = &l.Topics[1]
-		ua, addr1 = s.isEndUserAccount(*t1, stateDB)
-		isLifecycle = isLifecycle && !ua
+		isUserAccount, addr1 = s.isEndUserAccount(*t1, stateDB)
+		isLifecycle = isLifecycle && !isUserAccount
 	}
 	if n > 2 {
 		t2 = &l.Topics[2]
-		ua, addr2 = s.isEndUserAccount(*t2, stateDB)
-		isLifecycle = isLifecycle && !ua
+		isUserAccount, addr2 = s.isEndUserAccount(*t2, stateDB)
+		isLifecycle = isLifecycle && !isUserAccount
 	}
 	if n > 3 {
 		t3 = &l.Topics[3]
-		ua, addr3 = s.isEndUserAccount(*t3, stateDB)
-		isLifecycle = isLifecycle && !ua
+		isUserAccount, addr3 = s.isEndUserAccount(*t3, stateDB)
+		isLifecycle = isLifecycle && !isUserAccount
 	}
 	if n > 4 {
 		t4 = &l.Topics[4]
-		ua, addr4 = s.isEndUserAccount(*t4, stateDB)
-		isLifecycle = isLifecycle && !ua
+		isUserAccount, addr4 = s.isEndUserAccount(*t4, stateDB)
+		isLifecycle = isLifecycle && !isUserAccount
 	}
 
 	dbBatch.ExecuteSQL("insert into events values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -275,13 +284,16 @@ func (s *storageImpl) writeLog(l *types.Log, stateDB *state.StateDB, dbBatch *sq
 }
 
 // Of the log's topics, returns those that are (potentially) user addresses. A topic is considered a user address if:
-//   - It has 12 leading zero bytes (since addresses are 20 bytes long, while hashes are 32)
-//   - It has a non-zero nonce (to prevent accidental or malicious creation of the address matching a given topic,
-//     forcing its events to become permanently private
+//   - It has at least 12 leading zero bytes (since addresses are 20 bytes long, while hashes are 32) and at most 22 leading zero bytes
 //   - It does not have associated code (meaning it's a smart-contract address)
+//   - It has a non-zero nonce (to prevent accidental or malicious creation of the address matching a given topic,
+//     forcing its events to become permanently private (this is not implemented for now)
 func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB) (bool, *gethcommon.Address) {
 	bitlen := topic.Big().BitLen()
-	if bitlen == 0 || bitlen > 160 {
+	// Addresses have 20 bytes. If the field has more, it means it is clearly not an address
+	// Discovering addresses with more than 20 leading 0s is very unlikely, so we assume that
+	// any topic that has less than 80 bits of data to not be an address for sure
+	if bitlen < 80 || bitlen > 160 {
 		return false, nil
 	}
 
@@ -300,14 +312,14 @@ func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB)
 		return true, &potentialAddr
 	}
 
-	// A user address must have a non-zero nonce. This prevents accidental or malicious sending of funds to an
+	//TODO A user address must have a non-zero nonce. This prevents accidental or malicious sending of funds to an
 	// address matching a topic, forcing its events to become permanently private.
-	// if db.GetNonce(potentialAddr) != 0 {
+	// if db.GetNonce(potentialAddr) != 0
+
 	// If the address has code, it's a smart contract address instead.
 	if db.GetCode(potentialAddr) == nil {
 		return true, &potentialAddr
 	}
-	//}
 
 	return false, nil
 }
@@ -496,7 +508,6 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
-	// fmt.Printf("%s , %v\n", query, queryParams)
 	rows, err := s.db.GetSQLDB().Query(query, queryParams...)
 	if err != nil {
 		return nil, err
@@ -558,7 +569,7 @@ func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, filter *
 			queryParams = append(queryParams, address.Bytes())
 		}
 	}
-	if len(filter.Topics) > 4 {
+	if len(filter.Topics) > 5 {
 		return nil, fmt.Errorf("invalid filter. Too many topics")
 	}
 	if len(filter.Topics) > 0 {
