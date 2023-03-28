@@ -562,13 +562,15 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 // Terminates all subscriptions and validates the received events.
 func checkReceivedLogs(t *testing.T, s *Simulation) {
 	logsFromSnapshots := 0
+	// at least one event per transfer tx
+	nrLogs := len(s.TxInjector.TxTracker.TransferL2Transactions) * len(s.RPCHandles.AuthObsClients)
 	for _, clients := range s.RPCHandles.AuthObsClients {
 		for _, client := range clients {
 			logsFromSnapshots += checkSnapshotLogs(t, client)
 		}
 	}
-	if logsFromSnapshots < logsThreshold {
-		t.Errorf("only received %d logs from snapshots, expected at least %d", logsFromSnapshots, logsThreshold)
+	if logsFromSnapshots < nrLogs {
+		t.Errorf("only received %d logs from snapshots, expected at least %d", logsFromSnapshots, nrLogs)
 	}
 
 	// In-memory clients cannot handle subscriptions for now.
@@ -583,8 +585,8 @@ func checkReceivedLogs(t *testing.T, s *Simulation) {
 				logsFromSubscriptions += checkSubscribedLogs(t, owner, channel)
 			}
 		}
-		if logsFromSubscriptions < logsThreshold {
-			t.Errorf("only received %d logs from subscriptions, expected at least %d", logsFromSubscriptions, logsThreshold)
+		if logsFromSubscriptions < nrLogs {
+			t.Errorf("only received %d logs from subscriptions, expected at least %d", logsFromSubscriptions, nrLogs)
 		}
 	}
 }
