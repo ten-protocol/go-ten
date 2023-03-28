@@ -70,6 +70,8 @@ func (s *SubscriptionManager) ForEachSubscription(f func(gethrpc.ID, *common.Log
 }
 
 func (s *SubscriptionManager) SetLastHead(id gethrpc.ID, nr *big.Int) {
+	s.subscriptionMutex.Lock()
+	defer s.subscriptionMutex.Unlock()
 	s.lastHead[id] = nr
 }
 

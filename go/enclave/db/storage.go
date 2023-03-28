@@ -566,7 +566,6 @@ func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, filter *
 		//	logger.Info(fmt.Sprintf("Skipping log = %v", logItem), "reason", "The contract address of the log is not an address of interest")
 		//	continue
 		//}
-
 	}
 	if len(filter.Topics) > 5 {
 		return nil, fmt.Errorf("invalid filter. Too many topics")
