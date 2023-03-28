@@ -142,9 +142,11 @@ func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2
 // EncryptLogs Encrypts each log with the appropriate viewing key.
 func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
 	encryptedLogsByID := map[gethrpc.ID][]byte{}
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
 
 	for subID, logs := range logsByID {
-		subscription, found := s.getSubscriptionThreadsafe(subID)
+		subscription, found := s.subscriptions[subID]
 		if !found {
 			continue // The subscription has been removed, so there's no need to return anything.
 		}
@@ -192,15 +194,6 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 	}
 
 	return userAddrs
-}
-
-// Locks the subscription map and retrieves the subscription with subID, or (nil, false) if so such subscription is found.
-func (s *SubscriptionManager) getSubscriptionThreadsafe(subID gethrpc.ID) (*common.LogSubscription, bool) {
-	s.subscriptionMutex.RLock()
-	defer s.subscriptionMutex.RUnlock()
-
-	subscription, found := s.subscriptions[subID]
-	return subscription, found
 }
 
 // Indicates whether BOTH of the following apply:
