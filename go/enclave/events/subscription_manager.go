@@ -39,6 +39,7 @@ type SubscriptionManager struct {
 	storage              db.Storage
 
 	subscriptions     map[gethrpc.ID]*common.LogSubscription
+	lastHead          map[gethrpc.ID]*big.Int
 	subscriptionMutex *sync.RWMutex
 	logger            gethlog.Logger
 }
@@ -49,9 +50,27 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 		storage:              storage,
 
 		subscriptions:     map[gethrpc.ID]*common.LogSubscription{},
+		lastHead:          map[gethrpc.ID]*big.Int{},
 		subscriptionMutex: &sync.RWMutex{},
 		logger:            logger,
 	}
+}
+
+func (s *SubscriptionManager) ForEachSubscription(f func(gethrpc.ID, *common.LogSubscription, *big.Int) error) error {
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
+
+	for id, subscription := range s.subscriptions {
+		err := f(id, subscription, s.lastHead[id])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *SubscriptionManager) SetLastHead(id gethrpc.ID, nr *big.Int) {
+	s.lastHead[id] = nr
 }
 
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
@@ -77,6 +96,7 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	subscription.Filter.ToBlock = nil
 
 	// We set the FromBlock to the current rollup height, so that historical logs aren't returned.
+	// Todo - this is probably not the right behaviour
 	height := big.NewInt(0)
 	rollup, err := s.storage.FetchHeadBatch()
 	if err == nil {
@@ -84,6 +104,8 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	}
 	subscription.Filter.FromBlock = big.NewInt(0).Add(height, big.NewInt(1))
 
+	// Always start from the FromBlock
+	s.lastHead[id] = subscription.Filter.FromBlock
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
 	s.subscriptions[id] = &subscription
@@ -129,7 +151,7 @@ func (s *SubscriptionManager) GetSubscribedLogsEncrypted(logs []*types.Log, roll
 	if err != nil {
 		return nil, fmt.Errorf("could not get subscribed logs. Cause: %w", err)
 	}
-	return s.encryptLogs(filteredLogs)
+	return s.EncryptLogs(filteredLogs)
 }
 
 // Filters out irrelevant logs, those that are not subscribed to, and those the subscription has seen before, and
@@ -155,8 +177,8 @@ func (s *SubscriptionManager) getSubscribedLogs(logs []*types.Log, rollupHash co
 	return relevantLogsByID, nil
 }
 
-// Encrypts each log with the appropriate viewing key.
-func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
+// EncryptLogs Encrypts each log with the appropriate viewing key.
+func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
 	encryptedLogsByID := map[gethrpc.ID][]byte{}
 
 	for subID, logs := range logsByID {

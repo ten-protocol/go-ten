@@ -178,14 +178,6 @@ func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*co
 	return obscurorawdb.ReadRollup(s.db, *l2HeadBatch)
 }
 
-func (s *storageImpl) FetchLogs(l2Hash common.L2RootHash) ([]*types.Log, error) {
-	logs, err := s.loadLogs(nil, " AND blockHash=? ", []any{l2Hash.Bytes()})
-	if err != nil {
-		return nil, err
-	}
-	return logs, nil
-}
-
 func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error {
 	dbBatch := s.db.NewSQLBatch()
 
@@ -235,7 +227,6 @@ func (s *storageImpl) writeLogs(l2Head common.L2RootHash, receipts []*types.Rece
 // According to the data relevancy rules, an event is relevant to accounts referenced directly in topics
 // If the event is not referring any user address, it is considered a "lifecycle event", and is relevant to everyone
 func (s *storageImpl) writeLog(l *types.Log, stateDB *state.StateDB, dbBatch *sql.Batch) {
-
 	// The topics are stored in an array with a maximum of 5 entries, but usually less
 	var t0, t1, t2, t3, t4 *gethcommon.Hash
 
@@ -312,7 +303,7 @@ func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB)
 		return true, &potentialAddr
 	}
 
-	//TODO A user address must have a non-zero nonce. This prevents accidental or malicious sending of funds to an
+	// TODO A user address must have a non-zero nonce. This prevents accidental or malicious sending of funds to an
 	// address matching a topic, forcing its events to become permanently private.
 	// if db.GetNonce(potentialAddr) != 0
 
@@ -487,23 +478,24 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 // utility function that knows how to load relevant logs from the database
 // todo always pass in the actual batch hashes because of reorgs
 func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondition string, whereParams []any) ([]*types.Log, error) {
+	if requestingAccount == nil {
+		return nil, fmt.Errorf("logs can only be requested for an account")
+	}
+
 	result := []*types.Log{}
 	// todo - remove the "distinct" once the fast-finality work is completed.
 	// currently the events seem to be stored twice because of some weird logic in the rollup/batch processing.
 	query := "select distinct topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1=1 "
 	var queryParams []any
 
-	// todo - once we introduce streaming, this check should be converted into an assert. This should never return non-account specific logs
-	if requestingAccount != nil {
-		// Add relevancy rules
-		//  An event is considered relevant to all account owners whose addresses are used as topics in the event.
-		//	In case there are no account addresses in an event's topics, then the event is considered relevant to everyone (known as a "lifecycle event").
-		query += " AND (lifecycleEvent OR (relAddress1=? OR relAddress2=? OR relAddress3=? OR relAddress4=?)) "
-		queryParams = append(queryParams, requestingAccount.Bytes())
-		queryParams = append(queryParams, requestingAccount.Bytes())
-		queryParams = append(queryParams, requestingAccount.Bytes())
-		queryParams = append(queryParams, requestingAccount.Bytes())
-	}
+	// Add relevancy rules
+	//  An event is considered relevant to all account owners whose addresses are used as topics in the event.
+	//	In case there are no account addresses in an event's topics, then the event is considered relevant to everyone (known as a "lifecycle event").
+	query += " AND (lifecycleEvent OR (relAddress1=? OR relAddress2=? OR relAddress3=? OR relAddress4=?)) "
+	queryParams = append(queryParams, requestingAccount.Bytes())
+	queryParams = append(queryParams, requestingAccount.Bytes())
+	queryParams = append(queryParams, requestingAccount.Bytes())
+	queryParams = append(queryParams, requestingAccount.Bytes())
 
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)

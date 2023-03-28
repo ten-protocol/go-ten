@@ -2,8 +2,9 @@ package db
 
 import (
 	"crypto/ecdsa"
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"io"
+
+	"github.com/ethereum/go-ethereum/eth/filters"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -20,8 +21,6 @@ type BlockResolver interface {
 	FetchBlock(blockHash common.L1RootHash) (*types.Block, error)
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
-	// FetchLogs returns the block's logs.
-	FetchLogs(l2Hash common.L2RootHash) ([]*types.Log, error)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise

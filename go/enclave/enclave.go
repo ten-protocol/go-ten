@@ -1191,26 +1191,47 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2RootHash, 
 		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
 	}
 
+	batch, err := e.storage.FetchBatch(*l2Head)
+	if err != nil {
+		e.logger.Crit("Failed to retrieve batch. Should not happen", log.ErrKey, err)
+		return nil
+	}
+	logs, err := e.getEncryptedLogs(batch.Number())
+	if err != nil {
+		e.logger.Error("Could not fetch logs", log.ErrKey, err)
+		return nil
+	}
 	return &common.BlockSubmissionResponse{
 		ProducedBatch:  producedExtBatch,
-		SubscribedLogs: e.getEncryptedLogs(l2Head),
+		SubscribedLogs: logs,
 	}
 }
 
 // Retrieves and encrypts the logs for the block.
-func (e *enclaveImpl) getEncryptedLogs(l2Head *common.L2RootHash) map[gethrpc.ID][]byte {
-	var logs []*types.Log
-	fetchedLogs, err := e.storage.FetchLogs(*l2Head)
-	if err == nil {
-		logs = fetchedLogs
-	} else {
-		e.logger.Error("Could not retrieve logs for stored block state; returning no logs.", log.ErrKey, err)
-	}
-	encryptedLogs, err := e.subscriptionManager.GetSubscribedLogsEncrypted(logs, *l2Head)
+func (e *enclaveImpl) getEncryptedLogs(l2Head *big.Int) (map[gethrpc.ID][]byte, error) {
+	result := map[gethrpc.ID][]*types.Log{}
+
+	// Go through each subscription:
+	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, nr *big.Int) error {
+		// -  fetch the logs since the last request
+		f := subscription.Filter
+		f.FromBlock = nr
+		f.ToBlock = l2Head
+		logs, err := e.storage.FilterLogs(subscription.Account, f)
+		if err != nil {
+			return err
+		}
+		// -  store the current l2Head in the Subscription
+		e.subscriptionManager.SetLastHead(id, l2Head)
+		result[id] = logs
+		return nil
+	})
 	if err != nil {
-		e.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
+		e.logger.Error("Could not retrieve subscription logs", log.ErrKey, err)
+		return nil, err
 	}
-	return encryptedLogs
+	// -  encrypt the fetch logs
+	return e.subscriptionManager.EncryptLogs(result)
 }
 
 func (e *enclaveImpl) rejectBlockErr(cause error) *common.BlockRejectError {
