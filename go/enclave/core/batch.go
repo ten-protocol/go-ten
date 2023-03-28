@@ -28,7 +28,7 @@ type Batch struct {
 func (b *Batch) Hash() *common.L2RootHash {
 	// Temporarily disabling the caching of the hash because it's causing bugs.
 	// Transforming a Batch to an ExtBatch and then back to a Batch will generate a different hash if caching is enabled.
-	// Todo - re-enable
+	// todo (#1547) - re-enable
 	//if hash := b.hash.Load(); hash != nil {
 	//	return hash.(common.L2RootHash)
 	//}
@@ -46,7 +46,7 @@ func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }
 func (b *Batch) Number() *big.Int  { return new(big.Int).Set(b.Header.Number) }
 
 // IsGenesis indicates whether the batch is the genesis batch.
-// TODO - #718 - Change this to a check against a hardcoded genesis hash.
+// todo (#718) - Change this to a check against a hardcoded genesis hash.
 func (b *Batch) IsGenesis() bool {
 	return b.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
@@ -81,7 +81,7 @@ func EmptyBatch(agg gethcommon.Address, parent *common.BatchHeader, blkHash geth
 		ParentHash: parent.Hash(),
 		L1Proof:    blkHash,
 		Number:     big.NewInt(0).Add(parent.Number, big.NewInt(1)),
-		// TODO - Consider how this time should align with the time of the L1 block used as proof.
+		// todo (#1548) - Consider how this time should align with the time of the L1 block used as proof.
 		Time: uint64(time.Now().Unix()),
 		// generate true randomness inside the enclave.
 		// note that this randomness will be published in the header of the batch.

@@ -32,7 +32,7 @@ import (
 // Note: this is not just "not found", we cache at every L1 block what rollup we are up to so we also record that we haven't seen one yet
 var ErrNoRollups = errors.New("no rollups have been published")
 
-// TODO - Consistency around whether we assert the secret is available or not.
+// todo (#1551) - consistency around whether we assert the secret is available or not.
 
 type storageImpl struct {
 	db          *sql.EnclaveDB
@@ -153,7 +153,7 @@ func (s *storageImpl) HealthCheck() (bool, error) {
 }
 
 func (s *storageImpl) assertSecretAvailable() {
-	// TODO uncomment this
+	// todo (#1551) - uncomment this
 	//if s.FetchSecret() == nil {
 	//	panic("Enclave not initialized")
 	//}
@@ -354,7 +354,6 @@ func (s *storageImpl) CreateStateDB(hash common.L2RootHash) (*state.StateDB, err
 		return nil, err
 	}
 
-	// todo - snapshots?
 	statedb, err := state.New(batch.Header.Root, s.stateDB, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)

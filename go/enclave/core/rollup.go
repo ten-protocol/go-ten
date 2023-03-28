@@ -20,7 +20,7 @@ type Rollup struct {
 func (r *Rollup) Hash() *common.L2RootHash {
 	// Temporarily disabling the caching of the hash because it's causing bugs.
 	// Transforming a Rollup to an ExtRollup and then back to a Rollup will generate a different hash if caching is enabled.
-	// Todo - re-enable
+	// todo (#1547) - re-enable
 	//if hash := r.hash.Load(); hash != nil {
 	//	return hash.(common.L2RootHash)
 	//}
@@ -33,7 +33,7 @@ func (r *Rollup) NumberU64() uint64 { return r.Header.Number.Uint64() }
 func (r *Rollup) Number() *big.Int  { return new(big.Int).Set(r.Header.Number) }
 
 // IsGenesis indicates whether the rollup is the genesis rollup.
-// TODO - #718 - Change this to a check against a hardcoded genesis hash.
+// todo (#718) - Change this to a check against a hardcoded genesis hash.
 func (r *Rollup) IsGenesis() bool {
 	return r.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }

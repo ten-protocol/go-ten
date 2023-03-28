@@ -35,7 +35,7 @@ type Manager interface {
 	GetBusAddress() *common.L2Address
 
 	// DeriveOwner - Generates the key pair that will be used to transact with the L2 message bus.
-	// TODO: Implement with cryptography epic.
+	// todo (#1549) - implement with cryptography epic.
 	DeriveOwner(seed []byte) (*common.L2Address, error)
 
 	// GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
