@@ -857,7 +857,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 	}
 
 	// We retrieve the relevant logs that match the filter.
-	filteredLogs, err := e.subscriptionManager.GetFilteredLogs(forAddress, filter)
+	filteredLogs, err := e.storage.FilterLogs(forAddress, filter)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
 	}

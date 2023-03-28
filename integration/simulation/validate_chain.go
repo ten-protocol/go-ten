@@ -39,8 +39,6 @@ const (
 	// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
 	// type, for example.
 	txThreshold = 5
-	// As above, but for the number of logs received via subscriptions.
-	logsThreshold = 5
 	// The maximum number of blocks an Obscuro node can fall behind
 	maxBlockDelay = 5
 	// The leading zero bytes in a hash indicating that it is possibly an address, since it only has 20 bytes of data.
@@ -511,6 +509,7 @@ func getSender(tx *common.L2Tx) gethcommon.Address {
 func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
 
+	nrSuccessful := 0
 	for _, tx := range l2Txs {
 		sender := getSender(tx)
 
@@ -528,7 +527,13 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 
 		if receipt.Status == types.ReceiptStatusFailed {
 			testlog.Logger().Info("Transaction receipt had failed status.", log.TxKey, tx.Hash().Hex())
+		} else {
+			nrSuccessful++
 		}
+	}
+
+	if nrSuccessful < len(l2Txs)/2 {
+		t.Errorf("node %d: More than half the transactions failed. Successful number: %d", nodeIdx, nrSuccessful)
 	}
 }
 
