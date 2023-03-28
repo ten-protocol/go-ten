@@ -1213,7 +1213,7 @@ func (e *enclaveImpl) getEncryptedLogs(l2Head *big.Int) (map[gethrpc.ID][]byte, 
 
 	// Go through each subscription:
 	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, nr *big.Int) error {
-		// -  fetch the logs since the last request
+		// 1. fetch the logs since the last request
 		f := subscription.Filter
 		f.FromBlock = nr
 		f.ToBlock = l2Head
@@ -1221,7 +1221,8 @@ func (e *enclaveImpl) getEncryptedLogs(l2Head *big.Int) (map[gethrpc.ID][]byte, 
 		if err != nil {
 			return err
 		}
-		// -  store the current l2Head in the Subscription
+
+		// 2.  store the current l2Head in the Subscription
 		e.subscriptionManager.SetLastHead(id, l2Head)
 		result[id] = logs
 		return nil
@@ -1230,7 +1231,8 @@ func (e *enclaveImpl) getEncryptedLogs(l2Head *big.Int) (map[gethrpc.ID][]byte, 
 		e.logger.Error("Could not retrieve subscription logs", log.ErrKey, err)
 		return nil, err
 	}
-	// -  encrypt the fetch logs
+
+	// Encrypt the results
 	return e.subscriptionManager.EncryptLogs(result)
 }
 

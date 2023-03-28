@@ -116,10 +116,6 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor c
 	return n.IsBlockAncestor(p, maybeAncestor)
 }
 
-func (n *blockResolverInMem) FetchLogs(common.L2RootHash) ([]*types.Log, error) {
-	return nil, errutil.ErrNoImpl
-}
-
 // The cache of included transactions
 type txDBInMem struct {
 	transactionsPerBlockCache map[common.L1RootHash]map[common.TxHash]*types.Transaction

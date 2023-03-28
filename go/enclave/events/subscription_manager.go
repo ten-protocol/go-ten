@@ -39,7 +39,7 @@ type SubscriptionManager struct {
 	storage              db.Storage
 
 	subscriptions     map[gethrpc.ID]*common.LogSubscription
-	lastHead          map[gethrpc.ID]*big.Int
+	lastHead          map[gethrpc.ID]*big.Int // This is the batch height up to which events were returned to the user
 	subscriptionMutex *sync.RWMutex
 	logger            gethlog.Logger
 }
