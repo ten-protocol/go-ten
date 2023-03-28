@@ -546,19 +546,27 @@ func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, filter *
 		query += " AND blockHash = ?"
 		queryParams = append(queryParams, filter.BlockHash.Bytes())
 	}
-	if filter.FromBlock != nil {
+	// ignore Pending(-2) and Latest(-1)
+	if filter.FromBlock != nil && filter.FromBlock.Sign() > 0 {
 		query += " AND blockNumber >= ?"
 		queryParams = append(queryParams, filter.FromBlock.Int64())
 	}
-	if filter.ToBlock != nil {
+	if filter.ToBlock != nil && filter.ToBlock.Sign() > 0 {
 		query += " AND blockNumber < ?"
 		queryParams = append(queryParams, filter.ToBlock.Int64())
 	}
+
 	if len(filter.Addresses) > 0 {
 		query += " AND address in (?" + strings.Repeat(",?", len(filter.Addresses)-1) + ")"
 		for _, address := range filter.Addresses {
 			queryParams = append(queryParams, address.Bytes())
 		}
+		//todo - find out what this condition is and include it
+		//if len(filter.Addresses) > 0 && !includes(addresses, logItem.Address) {
+		//	logger.Info(fmt.Sprintf("Skipping log = %v", logItem), "reason", "The contract address of the log is not an address of interest")
+		//	continue
+		//}
+
 	}
 	if len(filter.Topics) > 5 {
 		return nil, fmt.Errorf("invalid filter. Too many topics")

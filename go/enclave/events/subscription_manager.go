@@ -104,9 +104,9 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	}
 	subscription.Filter.FromBlock = big.NewInt(0).Add(height, big.NewInt(1))
 
+	s.subscriptionMutex.Lock()
 	// Always start from the FromBlock
 	s.lastHead[id] = subscription.Filter.FromBlock
-	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
 	s.subscriptions[id] = &subscription
 	return nil
