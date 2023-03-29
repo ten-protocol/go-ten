@@ -1,8 +1,10 @@
 package l2contractdeployer
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -108,9 +110,17 @@ func (n *ContractDeployer) PrintLogs(cli *client.Client) error {
 	// Read the container logs
 	out, err := cli.ContainerLogs(context.Background(), n.containerID, logsOptions)
 	if err != nil {
-		fmt.Printf("Error printing out container %s logs... %v", n.containerID, err)
+		fmt.Printf("Error printing out container %s logs... %v\n", n.containerID, err)
 		return err
 	}
 	defer out.Close()
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, out)
+	if err != nil {
+		fmt.Printf("Error getting logs for container %s\n", n.containerID)
+	}
+	fmt.Println(buf.String())
+
 	return nil
 }
