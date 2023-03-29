@@ -31,12 +31,12 @@ func GetL1Messages(db ethdb.KeyValueReader, blockHash gethcommon.Hash, logger ge
 
 	data, err := db.Get(crossChainMessagesKey(blockHash))
 	if err != nil {
-		logger.Trace("Could not read key from db. ", log.ErrKey, err)
 		// It is expected that not every block will have messages, thus do not surface it.
 		// String comparison due to in memory tests using a different db.
 		if errors.Is(err, errutil.ErrNotFound) || err.Error() == "not found" {
 			return messages, nil
 		}
+		logger.Warn("Could not read key from db. ", log.ErrKey, err)
 		return nil, err
 	}
 

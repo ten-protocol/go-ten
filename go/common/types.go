@@ -23,7 +23,7 @@ type (
 	L1Receipts    = types.Receipts
 
 	// Local Obscuro aliases
-	L2RootHash     = common.Hash
+	L2RootHash     = common.Hash // todo this is not a state root hash. This is the hash of the batch. Rename to L2Hash
 	L2TxHash       = common.Hash
 	L2Tx           = types.Transaction
 	L2Transactions = types.Transactions

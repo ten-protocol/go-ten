@@ -8,7 +8,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -221,44 +220,6 @@ func ReadL2HeadRollup(kv ethdb.KeyValueReader, l1Head *common.L1RootHash) (*comm
 	}
 	l2Head := gethcommon.BytesToHash(data)
 	return &l2Head, nil
-}
-
-func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log) error {
-	// Geth serialises its logs in a reduced form to minimise storage space. For now, it is more straightforward for us
-	// to serialise all the fields by converting the logs to this type.
-	logsForStorage := make([]*logForStorage, len(logs))
-	for idx, fullFatLog := range logs {
-		logsForStorage[idx] = toLogForStorage(fullFatLog)
-	}
-
-	logBytes, err := rlp.EncodeToBytes(logsForStorage)
-	if err != nil {
-		return fmt.Errorf("could not encode logs. Cause: %w", err)
-	}
-
-	if err := db.Put(logsKey(blockHash), logBytes); err != nil {
-		return fmt.Errorf("could not put logs in DB. Cause: %w", err)
-	}
-	return nil
-}
-
-func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) ([]*types.Log, error) {
-	data, err := kv.Get(logsKey(blockHash))
-	if err != nil {
-		return nil, err
-	}
-
-	logsForStorage := new([]*logForStorage)
-	if err := rlp.Decode(bytes.NewReader(data), logsForStorage); err != nil {
-		return nil, fmt.Errorf("could not decode logs. Cause: %w", err)
-	}
-
-	logs := make([]*types.Log, len(*logsForStorage))
-	for idx, logToStore := range *logsForStorage {
-		logs[idx] = logToStore.toLog()
-	}
-
-	return logs, nil
 }
 
 // ReadCanonicalBatchHash retrieves the hash of the canonical batch at a given height.

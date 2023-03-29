@@ -2,12 +2,9 @@ package events
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"sync"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -42,6 +39,7 @@ type SubscriptionManager struct {
 	storage              db.Storage
 
 	subscriptions     map[gethrpc.ID]*common.LogSubscription
+	lastHead          map[gethrpc.ID]*big.Int // This is the batch height up to which events were returned to the user
 	subscriptionMutex *sync.RWMutex
 	logger            gethlog.Logger
 }
@@ -52,9 +50,28 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 		storage:              storage,
 
 		subscriptions:     map[gethrpc.ID]*common.LogSubscription{},
+		lastHead:          map[gethrpc.ID]*big.Int{},
 		subscriptionMutex: &sync.RWMutex{},
 		logger:            logger,
 	}
+}
+
+func (s *SubscriptionManager) ForEachSubscription(f func(gethrpc.ID, *common.LogSubscription, *big.Int) error) error {
+	s.subscriptionMutex.Lock()
+	defer s.subscriptionMutex.Unlock()
+
+	for id, subscription := range s.subscriptions {
+		err := f(id, subscription, s.lastHead[id])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SetLastHead - only call with a write lock on the subscription mutex
+func (s *SubscriptionManager) SetLastHead(id gethrpc.ID, nr *big.Int) {
+	s.lastHead[id] = nr
 }
 
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
@@ -75,19 +92,9 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 		return err
 	}
 
-	// For subscriptions, only the Topics and Addresses fields of the filter are applied.
-	subscription.Filter.BlockHash = nil
-	subscription.Filter.ToBlock = nil
-
-	// We set the FromBlock to the current rollup height, so that historical logs aren't returned.
-	height := big.NewInt(0)
-	rollup, err := s.storage.FetchHeadBatch()
-	if err == nil {
-		height = rollup.Number()
-	}
-	subscription.Filter.FromBlock = big.NewInt(0).Add(height, big.NewInt(1))
-
 	s.subscriptionMutex.Lock()
+	// Start from the FromBlock
+	s.lastHead[id] = subscription.Filter.FromBlock
 	defer s.subscriptionMutex.Unlock()
 	s.subscriptions[id] = &subscription
 	return nil
@@ -99,56 +106,6 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
 	delete(s.subscriptions, id)
-}
-
-// GetFilteredLogs returns the logs across the entire canonical chain that match the provided account and filter.
-func (s *SubscriptionManager) GetFilteredLogs(account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
-	headBlock, err := s.storage.FetchHeadBlock()
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			// There is no head block, and thus no logs to retrieve.
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	// We collect all the block hashes in the canonical chain.
-	// TODO: Only collect blocks within the filter's range.
-	blockHashes := []gethcommon.Hash{}
-	currentBlock := headBlock
-	for {
-		blockHashes = append(blockHashes, currentBlock.Hash())
-
-		parentHash := currentBlock.ParentHash()
-		currentBlock, err = s.storage.FetchBlock(parentHash)
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				break // we have reached the beginning of the known chain
-			}
-			return nil, fmt.Errorf("could not retrieve block %s to extract its logs. Cause: %w", parentHash, err)
-		}
-	}
-
-	// We gather the logs across all the blocks in the canonical chain.
-	logs := []*types.Log{}
-	for _, hash := range blockHashes {
-		blockLogs, err := s.storage.FetchLogs(hash)
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				break // Blocks before the genesis rollup do not have associated logs (or block state).
-			}
-			return nil, fmt.Errorf("could not fetch logs for block hash. Cause: %w", err)
-		}
-		logs = append(logs, blockLogs...)
-	}
-
-	// We proceed in this way instead of calling `FetchHeadRollup` because we want to ensure the chain has not advanced
-	// causing a head block/head rollup mismatch.
-	l2Head, err := s.storage.FetchHeadBatchForBlock(headBlock.Hash())
-	if err != nil {
-		return nil, fmt.Errorf("could not filter logs as block state for head block could not be retrieved. Cause: %w", err)
-	}
-	return s.FilterLogs(logs, *l2Head.Hash(), account, filter)
 }
 
 // FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs
@@ -170,45 +127,14 @@ func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2
 	return filteredLogs, nil
 }
 
-// GetSubscribedLogsEncrypted returns, for each subscription, the logs filtered and encrypted with the appropriate
-// viewing key.
-func (s *SubscriptionManager) GetSubscribedLogsEncrypted(logs []*types.Log, rollupHash common.L2RootHash) (map[gethrpc.ID][]byte, error) {
-	filteredLogs, err := s.getSubscribedLogs(logs, rollupHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not get subscribed logs. Cause: %w", err)
-	}
-	return s.encryptLogs(filteredLogs)
-}
-
-// Filters out irrelevant logs, those that are not subscribed to, and those the subscription has seen before, and
-// organises them by their subscribing ID.
-func (s *SubscriptionManager) getSubscribedLogs(logs []*types.Log, rollupHash common.L2RootHash) (map[gethrpc.ID][]*types.Log, error) {
-	relevantLogsByID := map[gethrpc.ID][]*types.Log{}
-
-	// If there are no subscriptions, we return early, to avoid the overhead of creating the state DB.
-	if s.getNumberOfSubsThreadsafe() == 0 {
-		return map[gethrpc.ID][]*types.Log{}, nil
-	}
-
-	stateDB, err := s.storage.CreateStateDB(rollupHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not create stateDB to extract user addresses. Cause: %w", err)
-	}
-
-	for _, logItem := range logs {
-		userAddrs := getUserAddrsFromLogTopics(logItem, stateDB)
-		s.updateRelevantLogs(logItem, userAddrs, relevantLogsByID)
-	}
-
-	return relevantLogsByID, nil
-}
-
-// Encrypts each log with the appropriate viewing key.
-func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
+// EncryptLogs Encrypts each log with the appropriate viewing key.
+func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
 	encryptedLogsByID := map[gethrpc.ID][]byte{}
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
 
 	for subID, logs := range logsByID {
-		subscription, found := s.getSubscriptionThreadsafe(subID)
+		subscription, found := s.subscriptions[subID]
 		if !found {
 			continue // The subscription has been removed, so there's no need to return anything.
 		}
@@ -256,42 +182,6 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 	}
 
 	return userAddrs
-}
-
-// For each subscription, updates the relevant logs in the provided map.
-func (s *SubscriptionManager) updateRelevantLogs(logItem *types.Log, userAddrs []string, relevantLogsByID map[gethrpc.ID][]*types.Log) {
-	s.subscriptionMutex.RLock()
-	defer s.subscriptionMutex.RUnlock()
-
-	for subscriptionID, subscription := range s.subscriptions {
-		// We ignore irrelevant logs.
-		if !isRelevant(logItem, userAddrs, subscription.Account, subscription.Filter, s.logger) {
-			continue
-		}
-
-		// We update the relevant logs for the subscription.
-		if relevantLogsByID[subscriptionID] == nil {
-			relevantLogsByID[subscriptionID] = []*types.Log{}
-		}
-		relevantLogsByID[subscriptionID] = append(relevantLogsByID[subscriptionID], logItem)
-	}
-}
-
-// Locks the subscription map and retrieves the subscription with subID, or (nil, false) if so such subscription is found.
-func (s *SubscriptionManager) getSubscriptionThreadsafe(subID gethrpc.ID) (*common.LogSubscription, bool) {
-	s.subscriptionMutex.RLock()
-	defer s.subscriptionMutex.RUnlock()
-
-	subscription, found := s.subscriptions[subID]
-	return subscription, found
-}
-
-// Locks the subscription map and retrieves the number of subscriptions.
-func (s *SubscriptionManager) getNumberOfSubsThreadsafe() int {
-	s.subscriptionMutex.RLock()
-	defer s.subscriptionMutex.RUnlock()
-
-	return len(s.subscriptions)
 }
 
 // Indicates whether BOTH of the following apply:

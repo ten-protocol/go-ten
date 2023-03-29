@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
@@ -40,8 +39,6 @@ const (
 	// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
 	// type, for example.
 	txThreshold = 5
-	// As above, but for the number of logs received via subscriptions.
-	logsThreshold = 5
 	// The maximum number of blocks an Obscuro node can fall behind
 	maxBlockDelay = 5
 	// The leading zero bytes in a hash indicating that it is possibly an address, since it only has 20 bytes of data.
@@ -512,6 +509,7 @@ func getSender(tx *common.L2Tx) gethcommon.Address {
 func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
 
+	nrSuccessful := 0
 	for _, tx := range l2Txs {
 		sender := getSender(tx)
 
@@ -529,7 +527,13 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 
 		if receipt.Status == types.ReceiptStatusFailed {
 			testlog.Logger().Info("Transaction receipt had failed status.", log.TxKey, tx.Hash().Hex())
+		} else {
+			nrSuccessful++
 		}
+	}
+
+	if nrSuccessful < len(l2Txs)/2 {
+		t.Errorf("node %d: More than half the transactions failed. Successful number: %d", nodeIdx, nrSuccessful)
 	}
 }
 
@@ -563,13 +567,15 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 // Terminates all subscriptions and validates the received events.
 func checkReceivedLogs(t *testing.T, s *Simulation) {
 	logsFromSnapshots := 0
+	// at least one event per transfer tx
+	nrLogs := len(s.TxInjector.TxTracker.TransferL2Transactions) * len(s.RPCHandles.AuthObsClients)
 	for _, clients := range s.RPCHandles.AuthObsClients {
 		for _, client := range clients {
 			logsFromSnapshots += checkSnapshotLogs(t, client)
 		}
 	}
-	if logsFromSnapshots < logsThreshold {
-		t.Errorf("only received %d logs from snapshots, expected at least %d", logsFromSnapshots, logsThreshold)
+	if logsFromSnapshots < nrLogs {
+		t.Errorf("only received %d logs from snapshots, expected at least %d", logsFromSnapshots, nrLogs)
 	}
 
 	// In-memory clients cannot handle subscriptions for now.
@@ -584,8 +590,8 @@ func checkReceivedLogs(t *testing.T, s *Simulation) {
 				logsFromSubscriptions += checkSubscribedLogs(t, owner, channel)
 			}
 		}
-		if logsFromSubscriptions < logsThreshold {
-			t.Errorf("only received %d logs from subscriptions, expected at least %d", logsFromSubscriptions, logsThreshold)
+		if logsFromSubscriptions < nrLogs {
+			t.Errorf("only received %d logs from subscriptions, expected at least %d", logsFromSubscriptions, nrLogs)
 		}
 	}
 }
@@ -594,17 +600,12 @@ func checkReceivedLogs(t *testing.T, s *Simulation) {
 func checkSubscribedLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
 	var logs []*types.Log
 
-out:
 	for {
-		select {
-		case idAndLog := <-channel:
-			logs = append(logs, idAndLog.Log)
-
-		// The logs will have built up on the channel throughout the simulation, so they should arrive immediately.
-		// However, if we use a `default` case, only the first one arrives. Some minimal wait is required.
-		case <-time.After(time.Millisecond):
-			break out
+		if len(channel) == 0 {
+			break
 		}
+		idAndLog := <-channel
+		logs = append(logs, idAndLog.Log)
 	}
 
 	assertLogsValid(t, owner, logs)

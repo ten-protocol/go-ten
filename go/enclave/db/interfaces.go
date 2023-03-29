@@ -3,6 +3,7 @@ package db
 import (
 	"crypto/ecdsa"
 	"io"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -19,8 +20,6 @@ type BlockResolver interface {
 	FetchBlock(blockHash common.L1RootHash) (*types.Block, error)
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
-	// FetchLogs returns the block's logs.
-	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
@@ -109,8 +108,11 @@ type Storage interface {
 	TransactionStorage
 	AttestationStorage
 	CrossChainMessagesStorage
+	io.Closer
 
 	// HealthCheck returns whether the storage is deemed healthy or not
 	HealthCheck() (bool, error)
-	io.Closer
+	// FilterLogs - applies the properties the relevancy checks for the requestingAccount to all the stored log events
+	// nil values will be ignored. Make sure to set all fields to the right values before calling this function
+	FilterLogs(requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2RootHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error)
 }

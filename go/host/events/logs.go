@@ -15,8 +15,8 @@ type LogEventManager struct {
 	logger            gethlog.Logger
 }
 
-func NewLogEventManager(logger gethlog.Logger) LogEventManager {
-	return LogEventManager{
+func NewLogEventManager(logger gethlog.Logger) *LogEventManager {
+	return &LogEventManager{
 		subscriptions:     map[rpc.ID]*subscription{},
 		subscriptionMutex: &sync.RWMutex{},
 		logger:            logger,
@@ -33,34 +33,28 @@ func (l *LogEventManager) AddSubscription(id rpc.ID, matchedLogsCh chan []byte) 
 
 // RemoveSubscription removes a subscription from the set of managed subscriptions.
 func (l *LogEventManager) RemoveSubscription(id rpc.ID) {
-	logSubscription, found := l.getSubscriptionThreadsafe(id)
+	l.subscriptionMutex.Lock()
+	defer l.subscriptionMutex.Unlock()
+
+	logSubscription, found := l.subscriptions[id]
 	if found {
 		close(logSubscription.ch)
-
-		l.subscriptionMutex.Lock()
-		defer l.subscriptionMutex.Unlock()
 		delete(l.subscriptions, id)
 	}
 }
 
 // SendLogsToSubscribers distributes logs to subscribed clients.
 func (l *LogEventManager) SendLogsToSubscribers(result *common.BlockSubmissionResponse) {
+	l.subscriptionMutex.RLock()
+	defer l.subscriptionMutex.RUnlock()
+
 	for id, encryptedLogs := range result.SubscribedLogs {
-		logSub, found := l.getSubscriptionThreadsafe(id)
+		logSub, found := l.subscriptions[id]
 		if !found {
 			continue
 		}
 		logSub.ch <- encryptedLogs
 	}
-}
-
-// Locks the subscription map and retrieves the subscription with subID, or (nil, false) if so such subscription is found.
-func (l *LogEventManager) getSubscriptionThreadsafe(subID rpc.ID) (*subscription, bool) {
-	l.subscriptionMutex.RLock()
-	defer l.subscriptionMutex.RUnlock()
-
-	sub, found := l.subscriptions[subID]
-	return sub, found
 }
 
 // Pairs the latest seen rollup for a log subscription with the channel on which new logs should be sent.

@@ -3,9 +3,11 @@ package db
 import (
 	"bytes"
 	"crypto/ecdsa"
+	sql2 "database/sql"
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 
@@ -174,17 +176,8 @@ func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*co
 	return obscurorawdb.ReadRollup(s.db, *l2HeadBatch)
 }
 
-func (s *storageImpl) FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error) {
-	logs, err := obscurorawdb.ReadBlockLogs(s.db, blockHash)
-	if err != nil {
-		// todo (#1552, @matt) - return the error itself, once we move from `errutil.ErrNotFound` to `ethereum.NotFound`
-		return nil, errutil.ErrNotFound
-	}
-	return logs, nil
-}
-
 func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error {
-	dbBatch := s.db.NewBatch()
+	dbBatch := s.db.NewSQLBatch()
 
 	if err := obscurorawdb.SetL2HeadBatch(dbBatch, *l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
@@ -198,19 +191,126 @@ func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Bat
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
 	}
 
-	// We update the block's logs, based on the batch's logs.
-	var logs []*types.Log
-	for _, receipt := range receipts {
-		logs = append(logs, receipt.Logs...)
-	}
-	if err := obscurorawdb.WriteBlockLogs(dbBatch, l1Head, logs); err != nil {
-		return fmt.Errorf("could not write block logs. Cause: %w", err)
+	if l2Head.Number().Int64() > 1 {
+		err2 := s.writeLogs(l2Head.Header.ParentHash, receipts, dbBatch)
+		if err2 != nil {
+			return fmt.Errorf("could not save logs %w", err2)
+		}
 	}
 
 	if err := dbBatch.Write(); err != nil {
 		return fmt.Errorf("could not save new head. Cause: %w", err)
 	}
 	return nil
+}
+
+func (s *storageImpl) writeLogs(l2Head common.L2RootHash, receipts []*types.Receipt, dbBatch *sql.Batch) error {
+	stateDB, err := s.CreateStateDB(l2Head)
+	if err != nil {
+		return fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
+	}
+
+	// We update the block's logs, based on the batch's logs.
+	for _, receipt := range receipts {
+		for _, l := range receipt.Logs {
+			s.writeLog(l, stateDB, dbBatch)
+		}
+	}
+	return nil
+}
+
+// This method stores a log entry together with relevancy metadata
+// Each types.Log has 5 indexable topics, where the first one is the event signature hash
+// The other 4 topics are set by the programmer
+// According to the data relevancy rules, an event is relevant to accounts referenced directly in topics
+// If the event is not referring any user address, it is considered a "lifecycle event", and is relevant to everyone
+func (s *storageImpl) writeLog(l *types.Log, stateDB *state.StateDB, dbBatch *sql.Batch) {
+	// The topics are stored in an array with a maximum of 5 entries, but usually less
+	var t0, t1, t2, t3, t4 *gethcommon.Hash
+
+	// these are the addresses to which this event might be relevant to.
+	var addr1, addr2, addr3, addr4 *gethcommon.Address
+
+	// start with true, and as soon as a user address is discovered, it becomes false
+	isLifecycle := true
+
+	// internal variable
+	var isUserAccount bool
+
+	n := len(l.Topics)
+	if n > 0 {
+		t0 = &l.Topics[0]
+	}
+
+	// for every indexed topic, check whether it is an end user account
+	// if yes, then mark it as relevant for that account
+	if n > 1 {
+		t1 = &l.Topics[1]
+		isUserAccount, addr1 = s.isEndUserAccount(*t1, stateDB)
+		isLifecycle = isLifecycle && !isUserAccount
+	}
+	if n > 2 {
+		t2 = &l.Topics[2]
+		isUserAccount, addr2 = s.isEndUserAccount(*t2, stateDB)
+		isLifecycle = isLifecycle && !isUserAccount
+	}
+	if n > 3 {
+		t3 = &l.Topics[3]
+		isUserAccount, addr3 = s.isEndUserAccount(*t3, stateDB)
+		isLifecycle = isLifecycle && !isUserAccount
+	}
+	if n > 4 {
+		t4 = &l.Topics[4]
+		isUserAccount, addr4 = s.isEndUserAccount(*t4, stateDB)
+		isLifecycle = isLifecycle && !isUserAccount
+	}
+
+	dbBatch.ExecuteSQL("insert into events values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+		t0, t1, t2, t3, t4,
+		l.Data, l.BlockHash, l.BlockNumber, l.TxHash, l.TxIndex, l.Index, l.Address,
+		isLifecycle, addr1, addr2, addr3, addr4,
+	)
+}
+
+// Of the log's topics, returns those that are (potentially) user addresses. A topic is considered a user address if:
+//   - It has at least 12 leading zero bytes (since addresses are 20 bytes long, while hashes are 32) and at most 22 leading zero bytes
+//   - It does not have associated code (meaning it's a smart-contract address)
+//   - It has a non-zero nonce (to prevent accidental or malicious creation of the address matching a given topic,
+//     forcing its events to become permanently private (this is not implemented for now)
+func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB) (bool, *gethcommon.Address) {
+	bitlen := topic.Big().BitLen()
+	// Addresses have 20 bytes. If the field has more, it means it is clearly not an address
+	// Discovering addresses with more than 20 leading 0s is very unlikely, so we assume that
+	// any topic that has less than 80 bits of data to not be an address for sure
+	if bitlen < 80 || bitlen > 160 {
+		return false, nil
+	}
+
+	potentialAddr := gethcommon.BytesToAddress(topic.Bytes())
+	addrBytes := potentialAddr.Bytes()
+	// Check the database if there are already entries for this address
+	var count int
+	query := "select count(*) from events where relAddress1=? OR relAddress2=? OR relAddress3=? OR relAddress4=?"
+	err := s.db.GetSQLDB().QueryRow(query, addrBytes, addrBytes, addrBytes, addrBytes).Scan(&count)
+	if err != nil {
+		// exit here
+		s.logger.Crit("Could not execute query", log.ErrKey, err)
+	}
+
+	if count > 0 {
+		return true, &potentialAddr
+	}
+
+	// TODO A user address must have a non-zero nonce. This prevents accidental or malicious sending of funds to an
+	// address matching a topic, forcing its events to become permanently private.
+	// if db.GetNonce(potentialAddr) != 0
+
+	// If the address has code, it's a smart contract address instead.
+	if db.GetCode(potentialAddr) == nil {
+		return true, &potentialAddr
+	}
+
+	return false, nil
 }
 
 func (s *storageImpl) SetHeadBatchPointer(l2Head *core.Batch) error {
@@ -370,4 +470,122 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
 	}
 	return nil
+}
+
+// utility function that knows how to load relevant logs from the database
+// todo always pass in the actual batch hashes because of reorgs
+func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondition string, whereParams []any) ([]*types.Log, error) {
+	if requestingAccount == nil {
+		return nil, fmt.Errorf("logs can only be requested for an account")
+	}
+
+	result := []*types.Log{}
+	// todo - remove the "distinct" once the fast-finality work is completed.
+	// currently the events seem to be stored twice because of some weird logic in the rollup/batch processing.
+	query := "select distinct topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1=1 "
+	var queryParams []any
+
+	// Add relevancy rules
+	//  An event is considered relevant to all account owners whose addresses are used as topics in the event.
+	//	In case there are no account addresses in an event's topics, then the event is considered relevant to everyone (known as a "lifecycle event").
+	query += " AND (lifecycleEvent OR (relAddress1=? OR relAddress2=? OR relAddress3=? OR relAddress4=?)) "
+	queryParams = append(queryParams, requestingAccount.Bytes())
+	queryParams = append(queryParams, requestingAccount.Bytes())
+	queryParams = append(queryParams, requestingAccount.Bytes())
+	queryParams = append(queryParams, requestingAccount.Bytes())
+
+	query += whereCondition
+	queryParams = append(queryParams, whereParams...)
+
+	rows, err := s.db.GetSQLDB().Query(query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		l := types.Log{
+			Topics: []gethcommon.Hash{},
+		}
+		var t0, t1, t2, t3, t4 sql2.NullString
+		err := rows.Scan(&t0, &t1, &t2, &t3, &t4, &l.Data, &l.BlockHash, &l.BlockNumber, &l.TxHash, &l.TxIndex, &l.Index, &l.Address)
+		if err != nil {
+			return nil, fmt.Errorf("could not load log entry from db: %w", err)
+		}
+		if t0.Valid {
+			l.Topics = append(l.Topics, hash(t0))
+		}
+		if t1.Valid {
+			l.Topics = append(l.Topics, hash(t1))
+		}
+		if t2.Valid {
+			l.Topics = append(l.Topics, hash(t2))
+		}
+		if t3.Valid {
+			l.Topics = append(l.Topics, hash(t3))
+		}
+		if t4.Valid {
+			l.Topics = append(l.Topics, hash(t4))
+		}
+
+		result = append(result, &l)
+	}
+	err = rows.Close()
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2RootHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
+	queryParams := []any{}
+	query := ""
+	if blockHash != nil {
+		query += " AND blockHash = ?"
+		queryParams = append(queryParams, blockHash.Bytes())
+	}
+
+	// ignore Pending(-2) and Latest(-1)
+	if fromBlock != nil && fromBlock.Sign() > 0 {
+		query += " AND blockNumber >= ?"
+		queryParams = append(queryParams, fromBlock.Int64())
+	}
+	if toBlock != nil && toBlock.Sign() > 0 {
+		query += " AND blockNumber < ?"
+		queryParams = append(queryParams, toBlock.Int64())
+	}
+
+	if len(addresses) > 0 {
+		query += " AND address in (?" + strings.Repeat(",?", len(addresses)-1) + ")"
+		for _, address := range addresses {
+			queryParams = append(queryParams, address.Bytes())
+		}
+	}
+	if len(topics) > 5 {
+		return nil, fmt.Errorf("invalid filter. Too many topics")
+	}
+	if len(topics) > 0 {
+		for i, sub := range topics {
+			// empty rule set == wildcard
+			if len(sub) > 0 {
+				column := fmt.Sprintf("topic%d", i)
+				query += " AND " + column + " in (?" + strings.Repeat(",?", len(sub)-1) + ")"
+				for _, topic := range sub {
+					queryParams = append(queryParams, topic.Bytes())
+				}
+			}
+		}
+	}
+
+	return s.loadLogs(requestingAccount, query, queryParams)
+}
+
+func hash(ns sql2.NullString) gethcommon.Hash {
+	value, err := ns.Value()
+	if err != nil {
+		return [32]byte{}
+	}
+	s := value.(string)
+	result := gethcommon.Hash{}
+	result.SetBytes([]byte(s))
+	return result
 }

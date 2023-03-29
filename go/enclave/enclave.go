@@ -255,19 +255,19 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	// We update the enclave state based on the L1 block.
 	newL2Head, producedBatch, err := e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
-		e.logger.Info("ProcessL1Block failed", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
+		e.logger.Warn("ProcessL1Block failed", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 	e.logger.Info("ProcessL1Block successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 
 	_, err = e.rollupManager.ProcessL1Block(br)
 	if err != nil {
-		e.logger.Warn("Error processing L1 block for rollups", log.ErrKey, err)
+		e.logger.Error("Error processing L1 block for rollups", log.ErrKey, err)
 	}
 
 	// We prepare the block submission response.
 	// TODO: Fix subscribed logs for validators who are being synchronized only through L1
-	blockSubmissionResponse := e.produceBlockSubmissionResponse(&block, newL2Head, producedBatch)
+	blockSubmissionResponse := e.produceBlockSubmissionResponse(newL2Head, producedBatch)
 
 	if producedBatch != nil && (producedBatch.Header.Number.Uint64()%e.config.Cadence == 0) {
 		rollup, err := e.rollupManager.CreateRollup()
@@ -856,8 +856,27 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 		return nil, err
 	}
 
+	// todo logic to check that the filter is valid
+	// can't have both from and blockhash
+	// from <=to
+
+	from := filter.FromBlock
+	if from != nil && from.Int64() < 0 {
+		batch, err := e.storage.FetchHeadBatch()
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
+		}
+		from = batch.Number()
+	}
+
+	to := filter.ToBlock
+	// when to=="latest", don't filter on it
+	if to != nil && to.Int64() < 0 {
+		to = nil
+	}
+
 	// We retrieve the relevant logs that match the filter.
-	filteredLogs, err := e.subscriptionManager.GetFilteredLogs(forAddress, filter)
+	filteredLogs, err := e.storage.FilterLogs(forAddress, from, to, filter.BlockHash, filter.Addresses, filter.Topics)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
 	}
@@ -1180,7 +1199,7 @@ func (e *enclaveImpl) removeOldMempoolTxs(batchHeader *common.BatchHeader) error
 	return nil
 }
 
-func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head *common.L2RootHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
+func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2RootHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
 	if l2Head == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return &common.BlockSubmissionResponse{}
@@ -1191,26 +1210,55 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(block *types.Block, l2Head 
 		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
 	}
 
+	batch, err := e.storage.FetchBatch(*l2Head)
+	if err != nil {
+		e.logger.Crit("Failed to retrieve batch. Should not happen", log.ErrKey, err)
+		return nil
+	}
+	logs, err := e.subscriptionLogs(batch.Number())
+	if err != nil {
+		e.logger.Error("Could not fetch logs", log.ErrKey, err)
+		return nil
+	}
 	return &common.BlockSubmissionResponse{
 		ProducedBatch:  producedExtBatch,
-		SubscribedLogs: e.getEncryptedLogs(*block, l2Head),
+		SubscribedLogs: logs,
 	}
 }
 
 // Retrieves and encrypts the logs for the block.
-func (e *enclaveImpl) getEncryptedLogs(block types.Block, l2Head *common.L2RootHash) map[gethrpc.ID][]byte {
-	var logs []*types.Log
-	fetchedLogs, err := e.storage.FetchLogs(block.Hash())
-	if err == nil {
-		logs = fetchedLogs
-	} else {
-		e.logger.Error("Could not retrieve logs for stored block state; returning no logs. Cause: %w", err)
-	}
-	encryptedLogs, err := e.subscriptionManager.GetSubscribedLogsEncrypted(logs, *l2Head)
+func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]byte, error) {
+	result := map[gethrpc.ID][]*types.Log{}
+
+	// Go through each subscription
+	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
+		// 1. fetch the logs since the last request
+		fromBlock := previousHead
+		// when the subscription is initialised, default from the latest batch
+		if previousHead == nil || previousHead.Int64() < 0 {
+			batch, err := e.storage.FetchHeadBatch()
+			if err != nil {
+				return err
+			}
+			fromBlock = batch.Number()
+		}
+		logs, err := e.storage.FilterLogs(subscription.Account, fromBlock, upToBatchNr, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
+		if err != nil {
+			return err
+		}
+
+		// 2.  store the current l2Head in the Subscription
+		e.subscriptionManager.SetLastHead(id, upToBatchNr)
+		result[id] = logs
+		return nil
+	})
 	if err != nil {
-		e.logger.Crit("Could not get subscribed logs in encrypted form. ", log.ErrKey, err)
+		e.logger.Error("Could not retrieve subscription logs", log.ErrKey, err)
+		return nil, err
 	}
-	return encryptedLogs
+
+	// Encrypt the results
+	return e.subscriptionManager.EncryptLogs(result)
 }
 
 func (e *enclaveImpl) rejectBlockErr(cause error) *common.BlockRejectError {
