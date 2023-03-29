@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/sanity-io/litter"
 
 	"github.com/obscuronet/go-obscuro/go/common/docker"
 )
@@ -25,7 +26,7 @@ func NewDockerNode(cfg *Config) (*DockerNode, error) {
 
 func (d *DockerNode) Start() error {
 	// TODO this should probably be removed in the future
-	fmt.Printf("Starting Node %s with config: %+v\n", d.cfg.nodeName, d.cfg)
+	fmt.Printf("Starting Node %s with config: \n%s\n\n", d.cfg.nodeName, litter.Sdump(*d.cfg))
 
 	err := d.startEdgelessDB()
 	if err != nil {

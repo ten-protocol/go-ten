@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/obscuronet/go-obscuro/go/common/docker"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/sanity-io/litter"
 )
 
 type Eth2Network struct {
@@ -22,7 +23,7 @@ func NewDockerEth2Network(cfg *Config) (*Eth2Network, error) {
 }
 
 func (n *Eth2Network) Start() error {
-	fmt.Printf("Starting Eth2Network with config: %+v\n", n.cfg)
+	fmt.Printf("Starting Eth2Network with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
 	cmds := []string{
 		"/home/obscuro/go-obscuro/integration/eth2network/main/main",

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/node"
+	"github.com/sanity-io/litter"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -28,7 +29,7 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 }
 
 func (n *ContractDeployer) Start() error {
-	fmt.Printf("Starting L1ContractDeployer with config: %+v\n", n.cfg)
+	fmt.Printf("Starting L1 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
 	cmds := []string{
 		"npx", "hardhat", "deploy",
