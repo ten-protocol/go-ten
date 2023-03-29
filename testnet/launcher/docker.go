@@ -12,6 +12,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/node"
 	"github.com/obscuronet/go-obscuro/testnet/launcher/eth2network"
+	"github.com/sanity-io/litter"
 
 	l1cd "github.com/obscuronet/go-obscuro/testnet/launcher/l1contractdeployer"
 	l2cd "github.com/obscuronet/go-obscuro/testnet/launcher/l2contractdeployer"
@@ -27,7 +28,8 @@ func NewTestnetLauncher(cfg *Config) *Testnet {
 }
 
 func (t *Testnet) Start() error {
-	fmt.Printf("Starting Testnet with config: %+v\n", t.cfg)
+	litter.Config.HidePrivateFields = false
+	fmt.Printf("Starting Testnet with config: \n%s\n\n", litter.Sdump(*t.cfg))
 
 	err := startEth2Network()
 	if err != nil {
@@ -146,7 +148,7 @@ func (t *Testnet) Start() error {
 
 	err = l2ContractDeployer.WaitForFinish()
 	if err != nil {
-		return fmt.Errorf("unexpected error waiting for l2 contract deployer to finish - %w", err)
+		return fmt.Errorf("unexpected error waiting for l2 contract deployer { ID = %s } to finish - %w", l2ContractDeployer.GetID(), err)
 	}
 	fmt.Println("L2 Contracts were successfully deployed...")
 
@@ -216,7 +218,10 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 	requestURL := fmt.Sprintf("http://localhost:%d", port)
 	reqBody := `{"method": "obscuro_health", "id": 1}`
 
-	fmt.Println("Waiting for obscuro node to be healthy...")
+	timeStart := time.Now()
+	defer func() { fmt.Printf("Node became healthy after %f seconds\n", time.Since(timeStart).Seconds()) }()
+
+	fmt.Println("Waiting for Obscuro node to be healthy...")
 	return retry.Do(
 		func() error {
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, requestURL, bytes.NewBufferString(reqBody))
@@ -253,6 +258,6 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 				}
 			}
 			return fmt.Errorf("node OverallHealth is not good yet")
-		}, retry.NewTimeoutStrategy(1*time.Second, 2*time.Minute),
+		}, retry.NewTimeoutStrategy(2*time.Minute, 1*time.Second),
 	)
 }
