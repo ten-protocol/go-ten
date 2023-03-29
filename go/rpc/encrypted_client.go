@@ -13,6 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
 
@@ -121,11 +122,12 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
 	}
 
-	// process the decrypted result to get the desired type and set it on the result pointer
-	err = c.setResult(decrypted, result)
-	if err != nil {
-		return fmt.Errorf("failed to extract result from %s response: %w", method, err)
+	decodedResult, decodedError := responses.DecodeResponse[interface{}](decrypted)
+	if decodedError != nil {
+		return decodedError
 	}
+	fmt.Printf("Method - %s result - %v", method, decodedResult)
+	*result.(*interface{}) = *decodedResult
 	return nil
 }
 
