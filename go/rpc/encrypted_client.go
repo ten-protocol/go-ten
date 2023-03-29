@@ -126,7 +126,6 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	if err != nil {
 		return fmt.Errorf("failed to extract result from %s response: %w", method, err)
 	}
-
 	return nil
 }
 
