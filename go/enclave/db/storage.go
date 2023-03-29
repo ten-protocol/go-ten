@@ -9,8 +9,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/eth/filters"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -538,40 +536,35 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	return result, nil
 }
 
-func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
-	// transform a FilterCriteria into an SQL where condition
+func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2RootHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
 	queryParams := []any{}
 	query := ""
-	if filter.BlockHash != nil {
+	if blockHash != nil {
 		query += " AND blockHash = ?"
-		queryParams = append(queryParams, filter.BlockHash.Bytes())
-	}
-	// ignore Pending(-2) and Latest(-1)
-	if filter.FromBlock != nil && filter.FromBlock.Sign() > 0 {
-		query += " AND blockNumber >= ?"
-		queryParams = append(queryParams, filter.FromBlock.Int64())
-	}
-	if filter.ToBlock != nil && filter.ToBlock.Sign() > 0 {
-		query += " AND blockNumber < ?"
-		queryParams = append(queryParams, filter.ToBlock.Int64())
+		queryParams = append(queryParams, blockHash.Bytes())
 	}
 
-	if len(filter.Addresses) > 0 {
-		query += " AND address in (?" + strings.Repeat(",?", len(filter.Addresses)-1) + ")"
-		for _, address := range filter.Addresses {
+	// ignore Pending(-2) and Latest(-1)
+	if fromBlock != nil && fromBlock.Sign() > 0 {
+		query += " AND blockNumber >= ?"
+		queryParams = append(queryParams, fromBlock.Int64())
+	}
+	if toBlock != nil && toBlock.Sign() > 0 {
+		query += " AND blockNumber < ?"
+		queryParams = append(queryParams, toBlock.Int64())
+	}
+
+	if len(addresses) > 0 {
+		query += " AND address in (?" + strings.Repeat(",?", len(addresses)-1) + ")"
+		for _, address := range addresses {
 			queryParams = append(queryParams, address.Bytes())
 		}
-		//todo - find out what this condition is and include it
-		//if len(filter.Addresses) > 0 && !includes(addresses, logItem.Address) {
-		//	logger.Info(fmt.Sprintf("Skipping log = %v", logItem), "reason", "The contract address of the log is not an address of interest")
-		//	continue
-		//}
 	}
-	if len(filter.Topics) > 5 {
+	if len(topics) > 5 {
 		return nil, fmt.Errorf("invalid filter. Too many topics")
 	}
-	if len(filter.Topics) > 0 {
-		for i, sub := range filter.Topics {
+	if len(topics) > 0 {
+		for i, sub := range topics {
 			// empty rule set == wildcard
 			if len(sub) > 0 {
 				column := fmt.Sprintf("topic%d", i)

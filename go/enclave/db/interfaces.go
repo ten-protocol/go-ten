@@ -3,8 +3,7 @@ package db
 import (
 	"crypto/ecdsa"
 	"io"
-
-	"github.com/ethereum/go-ethereum/eth/filters"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -113,6 +112,7 @@ type Storage interface {
 
 	// HealthCheck returns whether the storage is deemed healthy or not
 	HealthCheck() (bool, error)
-	// FilterLogs - applies the filter and the relevancy checks for the requestingAccount to all the stored log events
-	FilterLogs(requestingAccount *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error)
+	// FilterLogs - applies the properties the relevancy checks for the requestingAccount to all the stored log events
+	// nil values will be ignored. Make sure to set all fields to the right values before calling this function
+	FilterLogs(requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2RootHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error)
 }

@@ -856,8 +856,27 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 		return nil, err
 	}
 
+	// todo logic to check that the filter is valid
+	// can't have both from and blockhash
+	// from <=to
+
+	from := filter.FromBlock
+	if from != nil && from.Int64() < 0 {
+		batch, err := e.storage.FetchHeadBatch()
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
+		}
+		from = batch.Number()
+	}
+
+	to := filter.ToBlock
+	// when to=="latest", don't filter on it
+	if to != nil && to.Int64() < 0 {
+		to = nil
+	}
+
 	// We retrieve the relevant logs that match the filter.
-	filteredLogs, err := e.storage.FilterLogs(forAddress, filter)
+	filteredLogs, err := e.storage.FilterLogs(forAddress, from, to, filter.BlockHash, filter.Addresses, filter.Topics)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
 	}
@@ -1196,7 +1215,7 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2RootHash, 
 		e.logger.Crit("Failed to retrieve batch. Should not happen", log.ErrKey, err)
 		return nil
 	}
-	logs, err := e.getEncryptedLogs(batch.Number())
+	logs, err := e.subscriptionLogs(batch.Number())
 	if err != nil {
 		e.logger.Error("Could not fetch logs", log.ErrKey, err)
 		return nil
@@ -1208,22 +1227,28 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2RootHash, 
 }
 
 // Retrieves and encrypts the logs for the block.
-func (e *enclaveImpl) getEncryptedLogs(l2Head *big.Int) (map[gethrpc.ID][]byte, error) {
+func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]byte, error) {
 	result := map[gethrpc.ID][]*types.Log{}
 
-	// Go through each subscription:
-	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, nr *big.Int) error {
+	// Go through each subscription
+	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
 		// 1. fetch the logs since the last request
-		f := subscription.Filter
-		f.FromBlock = nr
-		f.ToBlock = l2Head
-		logs, err := e.storage.FilterLogs(subscription.Account, f)
+		fromBlock := previousHead
+		// when the subscription is initialised, default from the latest batch
+		if previousHead == nil || previousHead.Int64() < 0 {
+			batch, err := e.storage.FetchHeadBatch()
+			if err != nil {
+				return err
+			}
+			fromBlock = batch.Number()
+		}
+		logs, err := e.storage.FilterLogs(subscription.Account, fromBlock, upToBatchNr, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
 		if err != nil {
 			return err
 		}
 
 		// 2.  store the current l2Head in the Subscription
-		e.subscriptionManager.SetLastHead(id, l2Head)
+		e.subscriptionManager.SetLastHead(id, upToBatchNr)
 		result[id] = logs
 		return nil
 	})
