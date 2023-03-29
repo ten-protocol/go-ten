@@ -100,7 +100,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	}
 
 	// we set up a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
-	var rawResult interface{}
+	var rawResult responses.EnclaveResponse
 	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
 	if err != nil {
 		return err
@@ -111,13 +111,16 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return nil
 	}
 
-	if rawResult == nil {
-		// note: some methods return nil for 'not found', caller can check for this ErrKey type to verify
+	if rawResult.Error() != nil {
+		return rawResult.Error()
+	}
+
+	if len(rawResult.EncUserResponse) == 0 {
 		return ErrNilResponse
 	}
 
 	// method is sensitive, so we decrypt it before unmarshalling the result
-	decrypted, err := c.decryptHexString(rawResult)
+	decrypted, err := c.decryptResponse(rawResult.EncUserResponse)
 	if err != nil {
 		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
 	}
@@ -312,14 +315,6 @@ func (c *EncRPCClient) encryptParamBytes(params []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not encrypt the following request params with enclave public key: %s. Cause: %w", params, err)
 	}
 	return encryptedParams, nil
-}
-
-func (c *EncRPCClient) decryptHexString(resultBlob interface{}) ([]byte, error) {
-	resultStr, ok := resultBlob.(string)
-	if !ok {
-		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
-	}
-	return c.decryptResponse(gethcommon.Hex2Bytes(resultStr))
 }
 
 func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {

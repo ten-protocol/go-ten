@@ -8,6 +8,7 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
@@ -49,17 +50,6 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 	return hexutil.Uint64(header.Number.Uint64())
 }
 
-// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the
-// `address` field and encoded as hex.
-func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (string, error) {
-	enclaveResp := api.host.EnclaveClient().GetBalance(encryptedParams)
-	err := enclaveResp.Error()
-	if err != nil {
-		return "", err
-	}
-	return gethcommon.Bytes2Hex(enclaveResp.EncUserResponse), nil
-}
-
 // GetBlockByNumber returns the header of the batch with the given height.
 func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
 	batchHash, err := api.batchNumberToBatchHash(number)
@@ -83,52 +73,40 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 	return (*hexutil.Big)(big.NewInt(1)), nil
 }
 
+// GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the
+// `address` field and encoded as hex.
+func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (responses.EnclaveResponse, error) {
+	enclaveResponse := api.host.EnclaveClient().GetBalance(encryptedParams)
+	return enclaveResponse, nil
+}
+
 // Call returns the result of executing the smart contract as a user, encrypted with the viewing key corresponding to
 // the `from` field and encoded as hex.
-func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (string, error) {
-	enclaveResp := api.host.EnclaveClient().ExecuteOffChainTransaction(encryptedParams)
-	err := enclaveResp.Error()
-	if err != nil {
-		return "", err
-	}
-	return gethcommon.Bytes2Hex(enclaveResp.EncUserResponse), nil
+func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
+	enclaveResponse := api.host.EnclaveClient().ExecuteOffChainTransaction(encryptedParams)
+	return enclaveResponse, nil
 }
 
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash, encrypted with the viewing key
 // corresponding to the original transaction submitter and encoded as hex, or nil if no matching transaction exists.
-func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*string, error) {
+func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (responses.EnclaveResponse, error) {
 	enclaveResponse := api.host.EnclaveClient().GetTransactionReceipt(encryptedParams)
-	err := enclaveResponse.Error()
-	if err != nil {
-		return nil, err
-	}
-	if enclaveResponse.EncUserResponse == nil {
-		return nil, nil //nolint:nilnil
-	}
-
-	encryptedResponseHex := gethcommon.Bytes2Hex(enclaveResponse.EncUserResponse)
-	return &encryptedResponseHex, nil
+	return enclaveResponse, nil
 }
 
 // EstimateGas requests the enclave the gas estimation based on the callMsg supplied params (encrypted)
-func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas) (*string, error) {
-	encryptedResponse := api.host.EnclaveClient().EstimateGas(encryptedParams)
-
-	if encryptedResponse.Error() != nil {
-		return nil, encryptedResponse.Error()
-	}
-
-	encryptedResponseHex := gethcommon.Bytes2Hex(encryptedResponse.EncUserResponse)
-	return &encryptedResponseHex, nil
+func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas) (responses.EnclaveResponse, error) {
+	enclaveResponse := api.host.EnclaveClient().EstimateGas(encryptedParams)
+	return enclaveResponse, nil
 }
 
 // SendRawTransaction sends the encrypted transaction.
-func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (string, error) {
+func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.EnclaveResponse, error) {
 	enclaveResponse, err := api.host.SubmitAndBroadcastTx(encryptedParams)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return gethcommon.Bytes2Hex(enclaveResponse.EncUserResponse), nil
+	return enclaveResponse, nil
 }
 
 // GetCode returns the code stored at the given address in the state for the given batch height or batch hash.
@@ -152,29 +130,16 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 	return nil, errors.New("invalid arguments; neither batch height nor batch hash specified")
 }
 
-func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (string, error) {
-	enclaveResp := api.host.EnclaveClient().GetTransactionCount(encryptedParams)
-	if enclaveResp.Error() != nil {
-		return "", enclaveResp.Error()
-	}
-	if enclaveResp.EncUserResponse == nil {
-		return "", enclaveResp.Error()
-	}
-	return gethcommon.Bytes2Hex(enclaveResp.EncUserResponse), nil
+func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (responses.EnclaveResponse, error) {
+	enclaveResponse := api.host.EnclaveClient().GetTransactionCount(encryptedParams)
+	return enclaveResponse, nil
 }
 
 // GetTransactionByHash returns the transaction with the given hash, encrypted with the viewing key corresponding to the
 // `from` field and encoded as hex, or nil if no matching transaction exists.
-func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*string, error) {
-	enclaveResp := api.host.EnclaveClient().GetTransaction(encryptedParams)
-	if enclaveResp.Error() != nil {
-		return nil, enclaveResp.Error()
-	}
-	if enclaveResp.EncUserResponse == nil {
-		return nil, enclaveResp.Error()
-	}
-	encryptedResponseHex := gethcommon.Bytes2Hex(enclaveResp.EncUserResponse)
-	return &encryptedResponseHex, nil
+func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (responses.EnclaveResponse, error) {
+	enclaveResponse := api.host.EnclaveClient().GetTransaction(encryptedParams)
+	return enclaveResponse, nil
 }
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.

@@ -32,8 +32,10 @@ func (er *EnclaveResponse) Error() error {
 	return nil
 }
 
-// asResponse - Creates an enclave response out of an encrypted bytes array.
-func asResponse(encResp EncryptedUserResponse) EnclaveResponse {
+// AsPlaintextResponse - creates the plaintext part of the enclave response
+// It would be visible that there is an enclave response,
+// but the bytes in it will still be encrypted
+func AsPlaintextResponse(encResp EncryptedUserResponse) EnclaveResponse {
 	return EnclaveResponse{
 		EncUserResponse: encResp,
 	}
@@ -73,7 +75,7 @@ func AsEncryptedResponse[T any](data *T, encrypt ViewingKeyEncryptor) EnclaveRes
 		return AsPlaintextError(err)
 	}
 
-	return asResponse(encrypted)
+	return AsPlaintextResponse(encrypted)
 }
 
 // AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
@@ -93,7 +95,7 @@ func AsEncryptedError(err error, encrypt ViewingKeyEncryptor) EnclaveResponse {
 		return AsPlaintextError(err)
 	}
 
-	return asResponse(encrypted)
+	return AsPlaintextResponse(encrypted)
 }
 
 // ToEnclaveResponse - Converts an encoded plaintext into an enclave response
