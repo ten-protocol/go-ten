@@ -15,8 +15,8 @@ type LogEventManager struct {
 	logger            gethlog.Logger
 }
 
-func NewLogEventManager(logger gethlog.Logger) LogEventManager {
-	return LogEventManager{
+func NewLogEventManager(logger gethlog.Logger) *LogEventManager {
+	return &LogEventManager{
 		subscriptions:     map[rpc.ID]*subscription{},
 		subscriptionMutex: &sync.RWMutex{},
 		logger:            logger,
