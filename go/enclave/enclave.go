@@ -875,6 +875,8 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 		to = nil
 	}
 
+	// todo - remove BlockHash from the parameters
+	// the filter should be all blocks starting with that height
 	// We retrieve the relevant logs that match the filter.
 	filteredLogs, err := e.storage.FilterLogs(forAddress, from, to, filter.BlockHash, filter.Addresses, filter.Topics)
 	if err != nil {
