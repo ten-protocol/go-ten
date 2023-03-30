@@ -15,9 +15,9 @@ type ExtRollup struct {
 
 // Hash returns the keccak256 hash of the rollup's header.
 // The hash is computed on the first call and cached thereafter.
-func (r *ExtRollup) Hash() L2RootHash {
+func (r *ExtRollup) Hash() L2BatchHash {
 	if hash := r.hash.Load(); hash != nil {
-		return hash.(L2RootHash)
+		return hash.(L2BatchHash)
 	}
 	v := r.Header.Hash()
 	r.hash.Store(v)

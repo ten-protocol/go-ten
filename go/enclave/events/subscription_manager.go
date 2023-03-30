@@ -110,7 +110,7 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 
 // FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs
 // filtered based on the provided account and filter.
-func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2RootHash, account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
+func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2BatchHash, account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
 	filteredLogs := []*types.Log{}
 	stateDB, err := s.storage.CreateStateDB(rollupHash)
 	if err != nil {

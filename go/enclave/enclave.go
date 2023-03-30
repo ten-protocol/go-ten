@@ -739,7 +739,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 	return encryptedBalance, nil
 }
 
-func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2RootHash) ([]byte, error) {
+func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2BatchHash) ([]byte, error) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, nil
 	}
@@ -1199,7 +1199,7 @@ func (e *enclaveImpl) removeOldMempoolTxs(batchHeader *common.BatchHeader) error
 	return nil
 }
 
-func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2RootHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
+func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
 	if l2Head == nil {
 		// not an error state, we ingested a block but no rollup head found
 		return &common.BlockSubmissionResponse{}
@@ -1262,7 +1262,7 @@ func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]b
 }
 
 func (e *enclaveImpl) rejectBlockErr(cause error) *common.BlockRejectError {
-	var hash common.L1RootHash
+	var hash common.L1BlockHash
 	l1Head, err := e.storage.FetchHeadBlock()
 	// TODO - Handle error.
 	if err == nil {

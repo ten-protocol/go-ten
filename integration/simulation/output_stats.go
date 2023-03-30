@@ -59,7 +59,7 @@ func (o *OutputStats) countBlockChain() {
 	header := getHeadRollupHeader(obscuroClient, 0)
 	var err error
 	for {
-		if header != nil && !bytes.Equal(header.Hash().Bytes(), (common.L1RootHash{}).Bytes()) {
+		if header != nil && !bytes.Equal(header.Hash().Bytes(), (common.L1BlockHash{}).Bytes()) {
 			break
 		}
 
@@ -72,7 +72,7 @@ func (o *OutputStats) countBlockChain() {
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for block, _ := l1Node.FetchHeadBlock(); block != nil && !bytes.Equal(block.Hash().Bytes(), (common.L1RootHash{}).Bytes()); block, _ = l1Node.BlockByHash(block.ParentHash()) {
+	for block, _ := l1Node.FetchHeadBlock(); block != nil && !bytes.Equal(block.Hash().Bytes(), (common.L1BlockHash{}).Bytes()); block, _ = l1Node.BlockByHash(block.ParentHash()) {
 		o.incrementStats(block, l1Node)
 	}
 }

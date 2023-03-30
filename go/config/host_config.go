@@ -201,7 +201,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		L1ChainID:                 1337,
 		ObscuroChainID:            777,
 		ProfilerEnabled:           false,
-		L1StartHash:               common.L1RootHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
+		L1StartHash:               common.L1BlockHash{}, // this hash will not be found, host will log a warning and then stream from L1 genesis
 		MetricsEnabled:            true,
 		MetricsHTTPPort:           14000,
 		UseInMemoryDB:             true,
