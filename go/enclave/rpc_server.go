@@ -131,8 +131,8 @@ func (s *RPCServer) SubmitBatch(_ context.Context, request *generated.SubmitBatc
 	return &generated.SubmitBatchResponse{}, s.enclave.SubmitBatch(batch)
 }
 
-func (s *RPCServer) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
-	result, err := s.enclave.ExecuteOffChainTransaction(request.EncryptedParams)
+func (s *RPCServer) ObsCall(_ context.Context, request *generated.ObsCallRequest) (*generated.ObsCallResponse, error) {
+	result, err := s.enclave.ObsCall(request.EncryptedParams)
 	if err != nil {
 		// handle complex errors from the EVM
 		errResponse, processErr := serializeEVMError(err)
@@ -140,9 +140,9 @@ func (s *RPCServer) ExecuteOffChainTransaction(_ context.Context, request *gener
 			// unable to serialize the error
 			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
 		}
-		return &generated.OffChainResponse{Error: errResponse}, nil
+		return &generated.ObsCallResponse{Error: errResponse}, nil
 	}
-	return &generated.OffChainResponse{Result: result}, nil
+	return &generated.ObsCallResponse{Result: result}, nil
 }
 
 func (s *RPCServer) GetTransactionCount(_ context.Context, request *generated.GetTransactionCountRequest) (*generated.GetTransactionCountResponse, error) {

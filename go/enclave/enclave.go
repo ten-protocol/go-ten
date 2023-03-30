@@ -386,9 +386,9 @@ func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
 	return rollup.ToExtRollup(e.transactionBlobCrypto), nil
 }
 
-// ExecuteOffChainTransaction handles param decryption, validation and encryption
+// ObsCall handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_call)
-func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
+func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, nil
 	}
@@ -425,7 +425,7 @@ func (e *enclaveImpl) ExecuteOffChainTransaction(encryptedParams common.Encrypte
 		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}
 
-	execResult, err := e.chain.ExecuteOffChainTransaction(apiArgs, blkNumber)
+	execResult, err := e.chain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
 		return nil, err
@@ -1029,7 +1029,7 @@ func (e *enclaveImpl) HealthCheck() (bool, error) {
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
 func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
 	args.Gas = (*hexutil.Uint64)(&gas)
-	result, err := e.chain.ExecuteOffChainTransactionAtBlock(args, blkNumber)
+	result, err := e.chain.ObsCallAtBlock(args, blkNumber)
 	if err != nil {
 		if errors.Is(err, gethcore.ErrIntrinsicGas) {
 			return true, nil, nil // Special case, raise gas limit
