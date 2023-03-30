@@ -129,7 +129,6 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	if decodedError != nil {
 		return decodedError
 	}
-	fmt.Printf("Method - %s\n %s", method, string(*decodedResult))
 
 	resultBytes, _ := decodedResult.MarshalJSON()
 	err = json.Unmarshal(resultBytes, result)

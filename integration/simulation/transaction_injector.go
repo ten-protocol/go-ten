@@ -271,7 +271,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 		ti.stats.Deposit(big.NewInt(int64(v)))
 
-		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		_, err = obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue deposit via RPC.", log.ErrKey, err)
 			continue
