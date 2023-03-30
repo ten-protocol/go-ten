@@ -140,7 +140,7 @@ func (m *Node) BlockByNumber(n *big.Int) (*types.Block, error) {
 		}
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
-	for !bytes.Equal(blk.ParentHash().Bytes(), (common.L1RootHash{}).Bytes()) {
+	for !bytes.Equal(blk.ParentHash().Bytes(), (common.L1BlockHash{}).Bytes()) {
 		if blk.NumberU64() == n.Uint64() {
 			return blk, nil
 		}
@@ -175,7 +175,7 @@ func (m *Node) Info() ethadapter.Info {
 	}
 }
 
-func (m *Node) IsBlockAncestor(block *types.Block, proof common.L1RootHash) bool {
+func (m *Node) IsBlockAncestor(block *types.Block, proof common.L1BlockHash) bool {
 	return m.Resolver.IsBlockAncestor(block, proof)
 }
 

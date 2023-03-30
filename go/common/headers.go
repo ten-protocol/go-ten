@@ -22,7 +22,7 @@ var hasherPool = sync.Pool{
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type BatchHeader struct {
 	// The fields present in Geth's `types/Header` struct.
-	ParentHash  L2RootHash
+	ParentHash  L2BatchHash
 	UncleHash   common.Hash    `json:"sha3Uncles"`
 	Coinbase    common.Address `json:"miner"`
 	Root        StateRoot      `json:"stateRoot"`
@@ -41,7 +41,7 @@ type BatchHeader struct {
 
 	// The custom Obscuro fields.
 	Agg                common.Address                        // todo - can this be removed and replaced with the `Coinbase` field?
-	L1Proof            L1RootHash                            // the L1 block used by the enclave to generate the current batch
+	L1Proof            L1BlockHash                           // the L1 block used by the enclave to generate the current batch
 	R, S               *big.Int                              // signature values
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 
@@ -56,7 +56,7 @@ type BatchHeader struct {
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type RollupHeader struct {
 	// The fields present in Geth's `types/Header` struct.
-	ParentHash  L2RootHash
+	ParentHash  L2BatchHash
 	UncleHash   common.Hash    `json:"sha3Uncles"`
 	Coinbase    common.Address `json:"miner"`
 	Root        StateRoot      `json:"stateRoot"`
@@ -74,7 +74,7 @@ type RollupHeader struct {
 
 	// The custom Obscuro fields.
 	Agg                common.Address                        // todo - can this be removed and replaced with the `Coinbase` field?
-	L1Proof            L1RootHash                            // the L1 block used by the enclave to generate the current rollup
+	L1Proof            L1BlockHash                           // the L1 block used by the enclave to generate the current rollup
 	R, S               *big.Int                              // signature values
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 	HeadBatchHash      common.Hash                           // The latest batch included in this rollup.
@@ -88,7 +88,7 @@ type RollupHeader struct {
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding excluding the signature.
-func (b *BatchHeader) Hash() L2RootHash {
+func (b *BatchHeader) Hash() L2BatchHash {
 	cp := *b
 	cp.R = nil
 	cp.S = nil
@@ -129,7 +129,7 @@ func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
 // RLP encoding excluding the signature.
-func (r *RollupHeader) Hash() L2RootHash {
+func (r *RollupHeader) Hash() L2BatchHash {
 	cp := *r
 	cp.R = nil
 	cp.S = nil

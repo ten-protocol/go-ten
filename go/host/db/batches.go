@@ -216,7 +216,7 @@ func (db *DB) readBatchHash(number *big.Int) (*gethcommon.Hash, error) {
 }
 
 // Returns the transaction hashes in the batch with the given hash.
-func (db *DB) readBatchTxHashes(batchHash common.L2RootHash) ([]gethcommon.Hash, error) {
+func (db *DB) readBatchTxHashes(batchHash common.L2BatchHash) ([]gethcommon.Hash, error) {
 	data, err := db.kvStore.Get(batchTxHashesKey(batchHash))
 	if err != nil {
 		return nil, err
@@ -243,7 +243,7 @@ func (db *DB) writeBatchNumber(w ethdb.KeyValueWriter, header *common.BatchHeade
 }
 
 // Writes the transaction hashes against the batch containing them.
-func (db *DB) writeBatchTxHashes(w ethdb.KeyValueWriter, batchHash common.L2RootHash, txHashes []gethcommon.Hash) error {
+func (db *DB) writeBatchTxHashes(w ethdb.KeyValueWriter, batchHash common.L2BatchHash, txHashes []gethcommon.Hash) error {
 	data, err := rlp.EncodeToBytes(txHashes)
 	if err != nil {
 		return err

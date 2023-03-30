@@ -25,12 +25,12 @@ type Batch struct {
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
-func (b *Batch) Hash() *common.L2RootHash {
+func (b *Batch) Hash() *common.L2BatchHash {
 	// Temporarily disabling the caching of the hash because it's causing bugs.
 	// Transforming a Batch to an ExtBatch and then back to a Batch will generate a different hash if caching is enabled.
 	// todo (#1547) - re-enable
 	//if hash := b.hash.Load(); hash != nil {
-	//	return hash.(common.L2RootHash)
+	//	return hash.(common.L2BatchHash)
 	//}
 	v := b.Header.Hash()
 	b.hash.Store(v)

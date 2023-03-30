@@ -63,7 +63,7 @@ func (s *storageImpl) FetchHeadBatch() (*core.Batch, error) {
 	return s.FetchBatch(*headHash)
 }
 
-func (s *storageImpl) FetchBatch(hash common.L2RootHash) (*core.Batch, error) {
+func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
 	s.assertSecretAvailable()
 	batch, err := obscurorawdb.ReadBatch(s.db, hash)
 	if err != nil {
@@ -85,7 +85,7 @@ func (s *storageImpl) StoreBlock(b *types.Block) {
 	rawdb.WriteBlock(s.db, b)
 }
 
-func (s *storageImpl) FetchBlock(blockHash common.L1RootHash) (*types.Block, error) {
+func (s *storageImpl) FetchBlock(blockHash common.L1BlockHash) (*types.Block, error) {
 	s.assertSecretAvailable()
 	height := rawdb.ReadHeaderNumber(s.db, blockHash)
 	if height == nil {
@@ -133,7 +133,7 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 	return s.IsAncestor(p, maybeAncestor)
 }
 
-func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool {
+func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L1BlockHash) bool {
 	resolvedBlock, err := s.FetchBlock(maybeAncestor)
 	if err != nil {
 		return false
@@ -157,7 +157,7 @@ func (s *storageImpl) assertSecretAvailable() {
 	//}
 }
 
-func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1RootHash) (*core.Batch, error) {
+func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error) {
 	l2HeadBatch, err := obscurorawdb.ReadL2HeadBatchForBlock(s.db, blockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read L2 head batch for block. Cause: %w", err)
@@ -165,7 +165,7 @@ func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1RootHash) (*core
 	return obscurorawdb.ReadBatch(s.db, *l2HeadBatch)
 }
 
-func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*core.Rollup, error) {
+func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*core.Rollup, error) {
 	l2HeadBatch, err := obscurorawdb.ReadL2HeadRollup(s.db, blockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read L2 head rollup for block. Cause: %w", err)
@@ -176,7 +176,7 @@ func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*co
 	return obscurorawdb.ReadRollup(s.db, *l2HeadBatch)
 }
 
-func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error {
+func (s *storageImpl) UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Batch, receipts []*types.Receipt) error {
 	dbBatch := s.db.NewSQLBatch()
 
 	if err := obscurorawdb.SetL2HeadBatch(dbBatch, *l2Head.Hash()); err != nil {
@@ -204,7 +204,7 @@ func (s *storageImpl) UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Bat
 	return nil
 }
 
-func (s *storageImpl) writeLogs(l2Head common.L2RootHash, receipts []*types.Receipt, dbBatch *sql.Batch) error {
+func (s *storageImpl) writeLogs(l2Head common.L2BatchHash, receipts []*types.Receipt, dbBatch *sql.Batch) error {
 	stateDB, err := s.CreateStateDB(l2Head)
 	if err != nil {
 		return fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
@@ -326,7 +326,7 @@ func (s *storageImpl) SetHeadBatchPointer(l2Head *core.Batch) error {
 	return nil
 }
 
-func (s *storageImpl) UpdateHeadRollup(l1Head *common.L1RootHash, l2Head *common.L2RootHash) error {
+func (s *storageImpl) UpdateHeadRollup(l1Head *common.L1BlockHash, l2Head *common.L2BatchHash) error {
 	dbBatch := s.db.NewBatch()
 	if err := obscurorawdb.WriteL2HeadRollup(dbBatch, l1Head, l2Head); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
@@ -337,7 +337,7 @@ func (s *storageImpl) UpdateHeadRollup(l1Head *common.L1RootHash, l2Head *common
 	return nil
 }
 
-func (s *storageImpl) UpdateL1Head(l1Head common.L1RootHash) error {
+func (s *storageImpl) UpdateL1Head(l1Head common.L1BlockHash) error {
 	dbBatch := s.db.NewBatch()
 	rawdb.WriteHeadHeaderHash(dbBatch, l1Head)
 	if err := dbBatch.Write(); err != nil {
@@ -346,7 +346,7 @@ func (s *storageImpl) UpdateL1Head(l1Head common.L1RootHash) error {
 	return nil
 }
 
-func (s *storageImpl) CreateStateDB(hash common.L2RootHash) (*state.StateDB, error) {
+func (s *storageImpl) CreateStateDB(hash common.L2BatchHash) (*state.StateDB, error) {
 	batch, err := s.FetchBatch(hash)
 	if err != nil {
 		return nil, err
@@ -451,11 +451,11 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) e
 	return nil
 }
 
-func (s *storageImpl) StoreL1Messages(blockHash common.L1RootHash, messages common.CrossChainMessages) error {
+func (s *storageImpl) StoreL1Messages(blockHash common.L1BlockHash, messages common.CrossChainMessages) error {
 	return obscurorawdb.StoreL1Messages(s.db, blockHash, messages, s.logger)
 }
 
-func (s *storageImpl) GetL1Messages(blockHash common.L1RootHash) (common.CrossChainMessages, error) {
+func (s *storageImpl) GetL1Messages(blockHash common.L1BlockHash) (common.CrossChainMessages, error) {
 	return obscurorawdb.GetL1Messages(s.db, blockHash, s.logger)
 }
 
@@ -536,7 +536,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	return result, nil
 }
 
-func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2RootHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
+func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
 	queryParams := []any{}
 	query := ""
 	if blockHash != nil {

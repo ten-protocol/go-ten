@@ -91,7 +91,7 @@ func New(
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Batch, error) {
+func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2BatchHash, *core.Batch, error) {
 	oc.blockProcessingMutex.Lock()
 	defer oc.blockProcessingMutex.Unlock()
 
@@ -349,7 +349,7 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 }
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
-func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2RootHash, *core.Batch, error) {
+func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2BatchHash, *core.Batch, error) {
 	// before proceeding we check if L2 needs to be rolled back because of the L1 block
 	// (eventually this will be bound to just the hash of L1 message data rather than L1 block hashes - so less likely to reorg)
 	if ingestionType.fork {
@@ -427,7 +427,7 @@ func (oc *ObscuroChain) produceAndStoreBatch(block *common.L1Block, genesisBatch
 }
 
 // Creates a genesis batch linked to the provided L1 block and signs it.
-func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, error) {
+func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1BlockHash) (*core.Batch, error) {
 	preFundGenesisState, err := oc.genesis.GetGenesisRoot(oc.storage)
 	if err != nil {
 		return nil, err
@@ -436,7 +436,7 @@ func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Ba
 	genesisBatch := &core.Batch{
 		Header: &common.BatchHeader{
 			Agg:         oc.hostID,
-			ParentHash:  common.L2RootHash{},
+			ParentHash:  common.L2BatchHash{},
 			L1Proof:     blkHash,
 			Root:        *preFundGenesisState,
 			TxHash:      types.EmptyRootHash,
@@ -468,7 +468,7 @@ func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Ba
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a message bus embedded in the platform, and this method is responsible for transferring messages as well.
 // The batch can be a final batch as received from peers or the batch under construction.
-func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2BatchHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
@@ -633,7 +633,7 @@ func (oc *ObscuroChain) replayBatchesToValidState() error {
 // batch in the chain and is used to query state at a certain height.
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
-func stateDBAvailableForBatch(storage db.Storage, hash *common.L2RootHash) bool {
+func stateDBAvailableForBatch(storage db.Storage, hash *common.L2BatchHash) bool {
 	_, err := storage.CreateStateDB(*hash)
 	return err == nil
 }

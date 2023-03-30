@@ -209,7 +209,7 @@ func (e *ethClientMock) BlocksBetween(block *types.Block, head *types.Block) []*
 	panic("implement me")
 }
 
-func (e *ethClientMock) IsBlockAncestor(block *types.Block, proof common.L1RootHash) bool {
+func (e *ethClientMock) IsBlockAncestor(block *types.Block, proof common.L1BlockHash) bool {
 	// TODO implement me
 	panic("implement me")
 }
