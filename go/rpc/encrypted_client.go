@@ -125,18 +125,16 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
 	}
 
-	decodedResult, decodedError := responses.DecodeResponse[interface{}](decrypted)
+	decodedResult, decodedError := responses.DecodeResponse[json.RawMessage](decrypted)
 	if decodedError != nil {
 		return decodedError
 	}
-	fmt.Printf("Method - %s result - %v", method, decodedResult)
-	switch result.(type) {
-	case *interface{}:
-		*result.(*interface{}) = *decodedResult
-	case *string:
-		*result.(*string) = (*decodedResult).(string)
-	default:
-		json.Unmarshal([]byte((*decodedResult).(string)), &result)
+	fmt.Printf("Method - %s\n %s", method, string(*decodedResult))
+
+	resultBytes, _ := decodedResult.MarshalJSON()
+	err = json.Unmarshal(resultBytes, result)
+	if err != nil {
+		return fmt.Errorf("could not populate the response object with the json_rpc result. Cause: %w", err)
 	}
 
 	return nil
