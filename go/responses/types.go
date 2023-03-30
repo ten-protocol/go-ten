@@ -50,9 +50,3 @@ type (
 	GasType     = hexutil.Uint64
 	LogsType    = []*types.Log
 )
-
-type JsonConstructable interface {
-	UnmarshalJSON(input []byte) error
-}
-
-type ArrayJsonConstructable = []*JsonConstructable

@@ -31,7 +31,7 @@ func TestNonceAt_ConvertsNilBlockNumberToLatest(t *testing.T) {
 		res := args.Get(1).(*responses.NonceType)
 		// set the result pointer in the RPC client
 		num := "0x2"
-		*res = responses.NonceType(num)
+		*res = num
 	})
 
 	nonce, err := authClient.NonceAt(testCtx, nil)
