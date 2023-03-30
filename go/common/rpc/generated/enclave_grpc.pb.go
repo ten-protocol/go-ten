@@ -31,10 +31,8 @@ type EnclaveProtoClient interface {
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-	//
-	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
-	//
+	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
@@ -43,9 +41,9 @@ type EnclaveProtoClient interface {
 	SubmitTx(ctx context.Context, in *SubmitTxRequest, opts ...grpc.CallOption) (*SubmitTxResponse, error)
 	// SubmitBatch submits a batch received from the sequencer for processing.
 	SubmitBatch(ctx context.Context, in *SubmitBatchRequest, opts ...grpc.CallOption) (*SubmitBatchResponse, error)
-	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
+	// ObsCall - returns the result of executing the smart contract as a user, encrypted with the
 	// viewing key corresponding to the `from` field
-	ExecuteOffChainTransaction(ctx context.Context, in *OffChainRequest, opts ...grpc.CallOption) (*OffChainResponse, error)
+	ObsCall(ctx context.Context, in *ObsCallRequest, opts ...grpc.CallOption) (*ObsCallResponse, error)
 	// GetTransactionCount - returns the nonce of the wallet with the given address.
 	GetTransactionCount(ctx context.Context, in *GetTransactionCountRequest, opts ...grpc.CallOption) (*GetTransactionCountResponse, error)
 	// Stop gracefully stops the enclave
@@ -143,9 +141,9 @@ func (c *enclaveProtoClient) SubmitBatch(ctx context.Context, in *SubmitBatchReq
 	return out, nil
 }
 
-func (c *enclaveProtoClient) ExecuteOffChainTransaction(ctx context.Context, in *OffChainRequest, opts ...grpc.CallOption) (*OffChainResponse, error) {
-	out := new(OffChainResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/ExecuteOffChainTransaction", in, out, opts...)
+func (c *enclaveProtoClient) ObsCall(ctx context.Context, in *ObsCallRequest, opts ...grpc.CallOption) (*ObsCallResponse, error) {
+	out := new(ObsCallResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/ObsCall", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -282,10 +280,8 @@ type EnclaveProtoServer interface {
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-	//
-	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
-	//
+	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
@@ -294,9 +290,9 @@ type EnclaveProtoServer interface {
 	SubmitTx(context.Context, *SubmitTxRequest) (*SubmitTxResponse, error)
 	// SubmitBatch submits a batch received from the sequencer for processing.
 	SubmitBatch(context.Context, *SubmitBatchRequest) (*SubmitBatchResponse, error)
-	// ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
+	// ObsCall - returns the result of executing the smart contract as a user, encrypted with the
 	// viewing key corresponding to the `from` field
-	ExecuteOffChainTransaction(context.Context, *OffChainRequest) (*OffChainResponse, error)
+	ObsCall(context.Context, *ObsCallRequest) (*ObsCallResponse, error)
 	// GetTransactionCount - returns the nonce of the wallet with the given address.
 	GetTransactionCount(context.Context, *GetTransactionCountRequest) (*GetTransactionCountResponse, error)
 	// Stop gracefully stops the enclave
@@ -349,8 +345,8 @@ func (UnimplementedEnclaveProtoServer) SubmitTx(context.Context, *SubmitTxReques
 func (UnimplementedEnclaveProtoServer) SubmitBatch(context.Context, *SubmitBatchRequest) (*SubmitBatchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitBatch not implemented")
 }
-func (UnimplementedEnclaveProtoServer) ExecuteOffChainTransaction(context.Context, *OffChainRequest) (*OffChainResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ExecuteOffChainTransaction not implemented")
+func (UnimplementedEnclaveProtoServer) ObsCall(context.Context, *ObsCallRequest) (*ObsCallResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ObsCall not implemented")
 }
 func (UnimplementedEnclaveProtoServer) GetTransactionCount(context.Context, *GetTransactionCountRequest) (*GetTransactionCountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTransactionCount not implemented")
@@ -530,20 +526,20 @@ func _EnclaveProto_SubmitBatch_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveProto_ExecuteOffChainTransaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OffChainRequest)
+func _EnclaveProto_ObsCall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ObsCallRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveProtoServer).ExecuteOffChainTransaction(ctx, in)
+		return srv.(EnclaveProtoServer).ObsCall(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/ExecuteOffChainTransaction",
+		FullMethod: "/generated.EnclaveProto/ObsCall",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).ExecuteOffChainTransaction(ctx, req.(*OffChainRequest))
+		return srv.(EnclaveProtoServer).ObsCall(ctx, req.(*ObsCallRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -818,8 +814,8 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_SubmitBatch_Handler,
 		},
 		{
-			MethodName: "ExecuteOffChainTransaction",
-			Handler:    _EnclaveProto_ExecuteOffChainTransaction_Handler,
+			MethodName: "ObsCall",
+			Handler:    _EnclaveProto_ObsCall_Handler,
 		},
 		{
 			MethodName: "GetTransactionCount",

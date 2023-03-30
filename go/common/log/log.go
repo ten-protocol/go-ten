@@ -9,6 +9,7 @@ import (
 // These are the keys of the log entries
 const (
 	ErrKey         = "err"
+	CtrErrKey      = "ctr_err"
 	SubIDKey       = "subscription_id"
 	CfgKey         = "cfg"
 	TxKey          = "tx"

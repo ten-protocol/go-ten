@@ -203,26 +203,27 @@ func (oc *ObscuroChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockN
 	return (*hexutil.Big)(chainState.GetBalance(accountAddr)), nil
 }
 
-// ExecuteOffChainTransaction executes non-state changing transactions at a given block height (eth_call)
-func (oc *ObscuroChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
-	result, err := oc.ExecuteOffChainTransactionAtBlock(apiArgs, blockNumber)
+// ObsCall executes non-state changing transactions at a given block height (eth_call)
+func (oc *ObscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+	result, err := oc.ObsCallAtBlock(apiArgs, blockNumber)
 	if err != nil {
-		oc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, err.Error())
+		oc.logger.Info(fmt.Sprintf("Obs_Call: failed to execute contract %s.", apiArgs.To), log.CtrErrKey, err.Error())
 		return nil, err
 	}
 
 	// the execution might have succeeded (err == nil) but the evm contract logic might have failed (result.Failed() == true)
 	if result.Failed() {
-		oc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, result.Err)
+		oc.logger.Info(fmt.Sprintf("Obs_Call: Failed to execute contract %s.", apiArgs.To), log.CtrErrKey, result.Err)
 		return nil, result.Err
 	}
 
-	oc.logger.Trace(fmt.Sprintf("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData)))
-
+	oc.logger.Trace("Obs_Call successful", "result", gethlog.Lazy{Fn: func() string {
+		return hexutils.BytesToHex(result.ReturnData)
+	}})
 	return result, nil
 }
 
-func (oc *ObscuroChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+func (oc *ObscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
 	// TODO review this during gas mechanics implementation
 	callMsg, err := apiArgs.ToMessage(oc.GlobalGasCap, oc.BaseFee)
 	if err != nil {
@@ -240,16 +241,16 @@ func (oc *ObscuroChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Trans
 		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
 
-	oc.logger.Trace(
-		fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, batch=b_%d, state=%s",
+	oc.logger.Trace("Obs_Call:", "Successful result", gethlog.Lazy{Fn: func() string {
+		return fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=b_%d, state=%s",
 			callMsg.To(),
 			callMsg.From(),
 			hexutils.BytesToHex(callMsg.Data()),
 			common.ShortHash(*batch.Hash()),
-			batch.Header.Root.Hex()),
-	)
+			batch.Header.Root.Hex())
+	}})
 
-	result, err := evm.ExecuteOffChainCall(&callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.logger)
+	result, err := evm.ExecuteObsCall(&callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err
@@ -259,7 +260,7 @@ func (oc *ObscuroChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Trans
 	if result.Failed() {
 		// do not return an error
 		// the result object should be evaluated upstream
-		oc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
+		oc.logger.Info(fmt.Sprintf("ObsCall: Failed to execute contract %s.", callMsg.To()), log.CtrErrKey, result.Err)
 	}
 
 	return result, nil
@@ -536,7 +537,7 @@ func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stat
 				false)
 
 			clonedDB := stateDB.Copy()
-			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, batch.Header, oc.storage, oc.chainConfig, oc.logger)
+			res, err := evm.ExecuteObsCall(&txCallMessage, clonedDB, batch.Header, oc.storage, oc.chainConfig, oc.logger)
 			oc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
 		}
 

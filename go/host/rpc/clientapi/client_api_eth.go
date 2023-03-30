@@ -85,7 +85,7 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 // Call returns the result of executing the smart contract as a user, encrypted with the viewing key corresponding to
 // the `from` field and encoded as hex.
 func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (string, error) {
-	encryptedResponse, err := api.host.EnclaveClient().ExecuteOffChainTransaction(encryptedParams)
+	encryptedResponse, err := api.host.EnclaveClient().ObsCall(encryptedParams)
 	if err != nil {
 		return "", err
 	}
