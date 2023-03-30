@@ -8,7 +8,7 @@
   "securityVersion": 1,
   "mounts": [
     {
-      "source": "/home/obscuro/data",
+      "source": "/enclavedata",
       "target": "/data",
       "type": "hostfs",
       "readOnly": false
