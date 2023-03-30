@@ -1,11 +1,16 @@
 package l2contractdeployer
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/obscuronet/go-obscuro/go/common/docker"
+	"github.com/sanity-io/litter"
 )
 
 type ContractDeployer struct {
@@ -20,7 +25,7 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 }
 
 func (n *ContractDeployer) Start() error {
-	fmt.Printf("Starting L2ContractDeployer with config: %+v\n", n.cfg)
+	fmt.Printf("Starting L2 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
 	cmds := []string{
 		"npx", "hardhat", "obscuro:deploy",
@@ -73,6 +78,10 @@ func (n *ContractDeployer) Start() error {
 	return nil
 }
 
+func (n *ContractDeployer) GetID() string {
+	return n.containerID
+}
+
 func (n *ContractDeployer) WaitForFinish() error {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
@@ -83,10 +92,32 @@ func (n *ContractDeployer) WaitForFinish() error {
 	// make sure the container has finished execution
 	err = docker.WaitForContainerToFinish(n.containerID, 3*time.Minute)
 	if err != nil {
+		n.PrintLogs(cli)
 		return err
 	}
 
 	// todo: if we want to read anything from the container logs we can do it here (see RetrieveL1ContractAddresses as example)
 
 	return nil
+}
+
+func (n *ContractDeployer) PrintLogs(cli *client.Client) {
+	logsOptions := types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+	}
+
+	// Read the container logs
+	out, err := cli.ContainerLogs(context.Background(), n.containerID, logsOptions)
+	if err != nil {
+		fmt.Printf("Error printing out container %s logs... %v", n.containerID, err)
+	}
+	defer out.Close()
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, out)
+	if err != nil {
+		fmt.Printf("Error getting logs for container %s\n", n.containerID)
+	}
+	fmt.Println(buf.String())
 }
