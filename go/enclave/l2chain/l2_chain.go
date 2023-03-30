@@ -217,7 +217,7 @@ func (oc *ObscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *g
 		return nil, result.Err
 	}
 
-	oc.logger.Trace("Obs_Call:", "Successful result", gethlog.Lazy{Fn: func() string {
+	oc.logger.Trace("Obs_Call successful", "result", gethlog.Lazy{Fn: func() string {
 		return hexutils.BytesToHex(result.ReturnData)
 	}})
 	return result, nil
