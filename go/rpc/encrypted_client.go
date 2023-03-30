@@ -130,7 +130,15 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return decodedError
 	}
 	fmt.Printf("Method - %s result - %v", method, decodedResult)
-	*result.(*interface{}) = *decodedResult
+	switch result.(type) {
+	case *interface{}:
+		*result.(*interface{}) = *decodedResult
+	case *string:
+		*result.(*string) = (*decodedResult).(string)
+	default:
+		json.Unmarshal([]byte((*decodedResult).(string)), &result)
+	}
+
 	return nil
 }
 

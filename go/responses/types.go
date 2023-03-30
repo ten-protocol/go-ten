@@ -41,12 +41,12 @@ type (
 // Data Types
 
 type (
-	BalanceType = UserResponse[hexutil.Big]
-	CallType    = UserResponse[string]
-	ReceiptType = UserResponse[types.Receipt]
-	RawTxType   = UserResponse[common.Hash]
-	TxType      = UserResponse[types.Transaction]
-	NonceType   = UserResponse[string]
-	GasType     = UserResponse[hexutil.Uint64]
-	LogsType    = UserResponse[[]*types.Log]
+	BalanceType = hexutil.Big
+	CallType    = string
+	ReceiptType = types.Receipt
+	RawTxType   = common.Hash
+	TxType      = types.Transaction
+	NonceType   = string
+	GasType     = hexutil.Uint64
+	LogsType    = []*types.Log
 )

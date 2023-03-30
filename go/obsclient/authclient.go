@@ -73,7 +73,7 @@ func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.
 		return nil, false, err
 	}
 	// todo: revisit isPending result value, included for ethclient equivalence but hardcoded currently
-	return tx.Result, false, tx.Error()
+	return &tx, false, nil
 }
 
 func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
@@ -83,7 +83,7 @@ func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcomm
 		return nil, err
 	}
 
-	return result.Result, result.Error()
+	return &result, nil
 }
 
 // NonceAt retrieves the nonce for the account registered on this client (due to obscuro privacy restrictions,
@@ -95,11 +95,7 @@ func (ac *AuthObsClient) NonceAt(ctx context.Context, blockNumber *big.Int) (uin
 		return 0, err
 	}
 
-	if err = result.Error(); err != nil {
-		return 0, err
-	}
-
-	return hexutil.DecodeUint64(*result.Result)
+	return hexutil.DecodeUint64(result)
 }
 
 func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
@@ -109,7 +105,7 @@ func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg,
 		return nil, err
 	}
 
-	return []byte(*result.Result), result.Error()
+	return []byte(result), nil
 }
 
 func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) (*gethcommon.Hash, error) {
@@ -119,7 +115,7 @@ func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Tr
 		return nil, err
 	}
 
-	return result.Result, result.Error()
+	return &result, nil
 }
 
 // BalanceAt retrieves the native balance for the account registered on this client (due to obscuro privacy restrictions,
@@ -130,11 +126,8 @@ func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*
 	if err != nil {
 		return big.NewInt(0), err
 	}
-	if err = result.Error(); err != nil {
-		return big.NewInt(0), result.Error()
-	}
 
-	return result.Result.ToInt(), nil
+	return result.ToInt(), nil
 }
 
 func (ac *AuthObsClient) SubscribeFilterLogs(ctx context.Context, filterCriteria filters.FilterCriteria, ch chan common.IDAndLog) (ethereum.Subscription, error) {
@@ -154,11 +147,8 @@ func (ac *AuthObsClient) GetLogs(ctx context.Context, filterCriteria common.Filt
 	if err != nil {
 		return nil, err
 	}
-	if err = result.Error(); err != nil {
-		return nil, result.Error()
-	}
 
-	return *result.Result, nil
+	return result, nil
 }
 
 func (ac *AuthObsClient) Address() gethcommon.Address {
@@ -171,11 +161,8 @@ func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg *ethereum.CallMsg)
 	if err != nil {
 		return 0, err
 	}
-	if err = result.Error(); err != nil {
-		return 0, err
-	}
 
-	return hexutil.DecodeUint64(result.Result.String())
+	return hexutil.DecodeUint64(result.String())
 }
 
 func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxData {
