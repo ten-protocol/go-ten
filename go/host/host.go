@@ -63,7 +63,7 @@ type host struct {
 
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	ethWallet       wallet.Wallet                   // Wallet used to issue ethereum transactions
-	logEventManager events.LogEventManager
+	logEventManager *events.LogEventManager
 	batchManager    *batchmanager.BatchManager
 
 	logger gethlog.Logger

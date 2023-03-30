@@ -48,9 +48,9 @@ type Enclave interface {
 	// SubmitBatch submits a batch received from the sequencer for processing.
 	SubmitBatch(batch *ExtBatch) error
 
-	// ExecuteOffChainTransaction - Execute a smart contract to retrieve data
+	// ObsCall - Execute a smart contract to retrieve data. The equivalent of "Eth_call"
 	// Todo - return the result with a block delay. To prevent frontrunning.
-	ExecuteOffChainTransaction(encryptedParams EncryptedParamsCall) responses.Call
+	ObsCall(encryptedParams EncryptedParamsCall) responses.Call
 
 	// GetTransactionCount returns the nonce of the wallet with the given address (encrypted with the acc viewing key)
 	GetTransactionCount(encryptedParams EncryptedParamsGetTxCount) responses.TxCount

@@ -23,7 +23,6 @@ var (
 	rollupNumberPrefix           = []byte("rn")  // rollupNumberPrefix + hash -> num (uint64 big endian)
 	headBatchAfterL1BlockPrefix  = []byte("hb")  // headBatchAfterL1BlockPrefix + hash -> num (uint64 big endian)
 	headRollupAfterL1BlockPrefix = []byte("hr")  // headRollupAfterL1BlockPrefix + hash -> num (uint64 big endian)
-	logsPrefix                   = []byte("olg") // logsPrefix + hash -> block logs
 	batchReceiptsPrefix          = []byte("or")  // batchReceiptsPrefix + num (uint64 big endian) + hash -> batch receipts
 	contractReceiptPrefix        = []byte("ocr") // contractReceiptPrefix + address -> tx hash
 	txLookupPrefix               = []byte("ol")  // txLookupPrefix + hash -> transaction/receipt lookup metadata
@@ -37,22 +36,22 @@ func encodeNumber(number uint64) []byte {
 }
 
 // For storing and fetching a batch header by batch hash.
-func batchHeaderKey(hash common.L2RootHash) []byte {
+func batchHeaderKey(hash common.L2BatchHash) []byte {
 	return append(batchHeaderPrefix, hash.Bytes()...)
 }
 
 // For storing and fetching a batch body by batch hash.
-func batchBodyKey(hash common.L2RootHash) []byte {
+func batchBodyKey(hash common.L2BatchHash) []byte {
 	return append(batchBodyPrefix, hash.Bytes()...)
 }
 
 // For storing and fetching a batch number by batch hash.
-func batchNumberKey(hash common.L2RootHash) []byte {
+func batchNumberKey(hash common.L2BatchHash) []byte {
 	return append(batchNumberPrefix, hash.Bytes()...)
 }
 
 // For storing and fetching the L2 head batch hash by L1 block hash.
-func headBatchAfterL1BlockKey(hash common.L1RootHash) []byte {
+func headBatchAfterL1BlockKey(hash common.L1BlockHash) []byte {
 	return append(headBatchAfterL1BlockPrefix, hash.Bytes()...)
 }
 
@@ -62,18 +61,13 @@ func batchHeaderHashKey(number uint64) []byte {
 }
 
 // For storing and fetching a batch's receipts by batch hash.
-func batchReceiptsKey(hash common.L2RootHash) []byte {
+func batchReceiptsKey(hash common.L2BatchHash) []byte {
 	return append(batchReceiptsPrefix, hash.Bytes()...)
 }
 
 // For storing and fetching the L2 head rollup hash by L1 block hash.
-func headRollupAfterL1BlockKey(hash *common.L1RootHash) []byte {
+func headRollupAfterL1BlockKey(hash *common.L1BlockHash) []byte {
 	return append(headRollupAfterL1BlockPrefix, hash.Bytes()...)
-}
-
-// logsPrefix + hash
-func logsKey(hash common.L1RootHash) []byte {
-	return append(logsPrefix, hash.Bytes()...)
 }
 
 func contractReceiptKey(contractAddress gethcommon.Address) []byte {
@@ -89,21 +83,21 @@ func attestationPkKey(aggregator gethcommon.Address) []byte {
 	return append(attestationKeyPrefix, aggregator.Bytes()...)
 }
 
-func crossChainMessagesKey(blockHash common.L1RootHash) []byte {
+func crossChainMessagesKey(blockHash common.L1BlockHash) []byte {
 	return append(syntheticTransactionsKeyPrefix, blockHash.Bytes()...)
 }
 
 // For storing and fetching a rollup header by batch hash.
-func rollupHeaderKey(hash common.L2RootHash) []byte {
+func rollupHeaderKey(hash common.L2BatchHash) []byte {
 	return append(rollupHeaderPrefix, hash.Bytes()...)
 }
 
 // For storing and fetching a rollup body by batch hash.
-func rollupBodyKey(hash common.L2RootHash) []byte {
+func rollupBodyKey(hash common.L2BatchHash) []byte {
 	return append(rollupBodyPrefix, hash.Bytes()...)
 }
 
 // For storing and fetching a rollup number by batch hash.
-func rollupNumberKey(hash common.L2RootHash) []byte {
+func rollupNumberKey(hash common.L2BatchHash) []byte {
 	return append(rollupNumberPrefix, hash.Bytes()...)
 }

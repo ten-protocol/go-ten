@@ -13,7 +13,7 @@ RUN go install github.com/go-delve/delve/cmd/dlv@v1.9.1
 
 FROM system as get-dependencies
 # setup container data structure
-RUN mkdir -p /data && mkdir -p /home/obscuro/go-obscuro
+RUN mkdir -p /enclavedata && mkdir -p /home/obscuro/go-obscuro
 
 # Ensures container layer caching when dependencies are not changed
 WORKDIR /home/obscuro/go-obscuro

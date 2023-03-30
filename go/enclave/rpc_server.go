@@ -129,9 +129,9 @@ func (s *RPCServer) SubmitBatch(_ context.Context, request *generated.SubmitBatc
 	return &generated.SubmitBatchResponse{}, s.enclave.SubmitBatch(batch)
 }
 
-func (s *RPCServer) ExecuteOffChainTransaction(_ context.Context, request *generated.OffChainRequest) (*generated.OffChainResponse, error) {
-	enclaveResp := s.enclave.ExecuteOffChainTransaction(request.EncryptedParams)
-	return &generated.OffChainResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
+func (s *RPCServer) ObsCall(_ context.Context, request *generated.ObsCallRequest) (*generated.ObsCallResponse, error) {
+	enclaveResp := s.enclave.ObsCall(request.EncryptedParams)
+	return &generated.ObsCallResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetTransactionCount(_ context.Context, request *generated.GetTransactionCountRequest) (*generated.GetTransactionCountResponse, error) {

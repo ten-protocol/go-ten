@@ -186,7 +186,7 @@ func (re *rollupManager) extractRollups(br *common.BlockAndReceipts, blockResolv
 
 // Validates and stores the rollup in a given block.
 // TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
-func (re *rollupManager) processRollups(br *common.BlockAndReceipts) ([]*core.Rollup, error) {
+func (re *rollupManager) processRollups(br *common.BlockAndReceipts) ([]*core.Rollup, error) { //nolint:gocognit
 	block := br.Block
 
 	latestRollup, err := re.getLatestRollupBeforeBlock(block)
@@ -222,6 +222,12 @@ func (re *rollupManager) processRollups(br *common.BlockAndReceipts) ([]*core.Ro
 		}
 
 		for _, batch := range rollup.Batches {
+			b, _ := re.storage.FetchBatch(*batch.Hash())
+			// only store the batch if not found in the db
+			// todo - this needs to be clarified.
+			if b != nil {
+				continue
+			}
 			if err = re.l2chain.CheckAndStoreBatch(batch); err != nil {
 				return nil, fmt.Errorf("could not store batch. Cause: %w", err)
 			}

@@ -10,8 +10,12 @@ import (
 )
 
 var (
-	_hostDataDir      = "/data"
-	_defaultHostMount = map[string]string{"host-persistence": _hostDataDir}
+	_hostDataDir    = "/data"        // this is how the directory is referenced within the host container
+	_enclaveDataDir = "/enclavedata" // this is how the directory is references within the enclave container
+
+	// these mounts are created if they don't exist by the `StartNewContainer` function
+	_defaultHostMount    = map[string]string{"host-persistence": _hostDataDir}       // used for host database
+	_defaultEnclaveMount = map[string]string{"enclave-persistence": _enclaveDataDir} // used to store data encrypted by the enclave (e.g. EDB credentials)
 )
 
 type DockerNode struct {
@@ -170,7 +174,7 @@ func (d *DockerNode) startEnclave() error {
 		)
 	}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, nil)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, _defaultEnclaveMount)
 	return err
 }
 

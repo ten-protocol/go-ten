@@ -114,7 +114,7 @@ func TestBatchUpdateHappyPath(t *testing.T) {
 
 func createDB(t *testing.T) ethdb.Database {
 	lite := setupSQLite(t)
-	_, err := lite.Exec(createQry)
+	_, err := lite.Exec(createKVTable)
 	failIfError(t, err, "Failed to create key-value table in test db")
 	s, err := CreateSQLEthDatabase(lite, testlog.Logger())
 	failIfError(t, err, "Failed to create SQLEthDatabase for test")

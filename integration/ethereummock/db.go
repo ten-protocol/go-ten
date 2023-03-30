@@ -18,7 +18,7 @@ import (
 
 // Received blocks ar stored here
 type blockResolverInMem struct {
-	blockCache map[common.L1RootHash]*types.Block
+	blockCache map[common.L1BlockHash]*types.Block
 	m          sync.RWMutex
 }
 
@@ -28,7 +28,7 @@ func (n *blockResolverInMem) Proof(_ *core.Rollup) (*types.Block, error) {
 
 func NewResolver() db.BlockResolver {
 	return &blockResolverInMem{
-		blockCache: map[common.L1RootHash]*types.Block{},
+		blockCache: map[common.L1BlockHash]*types.Block{},
 		m:          sync.RWMutex{},
 	}
 }
@@ -39,7 +39,7 @@ func (n *blockResolverInMem) StoreBlock(block *types.Block) {
 	n.blockCache[block.Hash()] = block
 }
 
-func (n *blockResolverInMem) FetchBlock(hash common.L1RootHash) (*types.Block, error) {
+func (n *blockResolverInMem) FetchBlock(hash common.L1BlockHash) (*types.Block, error) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	block, f := n.blockCache[hash]
@@ -87,7 +87,7 @@ func (n *blockResolverInMem) IsAncestor(block *types.Block, maybeAncestor *types
 	return n.IsAncestor(p, maybeAncestor)
 }
 
-func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool {
+func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor common.L1BlockHash) bool {
 	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) {
 		return true
 	}
@@ -116,19 +116,15 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor c
 	return n.IsBlockAncestor(p, maybeAncestor)
 }
 
-func (n *blockResolverInMem) FetchLogs(common.L1RootHash) ([]*types.Log, error) {
-	return nil, errutil.ErrNoImpl
-}
-
 // The cache of included transactions
 type txDBInMem struct {
-	transactionsPerBlockCache map[common.L1RootHash]map[common.TxHash]*types.Transaction
+	transactionsPerBlockCache map[common.L1BlockHash]map[common.TxHash]*types.Transaction
 	rpbcM                     *sync.RWMutex
 }
 
 func NewTxDB() TxDB {
 	return &txDBInMem{
-		transactionsPerBlockCache: make(map[common.L1RootHash]map[common.TxHash]*types.Transaction),
+		transactionsPerBlockCache: make(map[common.L1BlockHash]map[common.TxHash]*types.Transaction),
 		rpbcM:                     &sync.RWMutex{},
 	}
 }

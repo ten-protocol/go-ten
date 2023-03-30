@@ -177,11 +177,11 @@ func (c *Client) SubmitBatch(batch *common.ExtBatch) error {
 	return nil
 }
 
-func (c *Client) ExecuteOffChainTransaction(encryptedParams common.EncryptedParamsCall) responses.Call {
+func (c *Client) ObsCall(encryptedParams common.EncryptedParamsCall) responses.Call {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.ExecuteOffChainTransaction(timeoutCtx, &generated.OffChainRequest{
+	response, err := c.protoClient.ObsCall(timeoutCtx, &generated.ObsCallRequest{
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {

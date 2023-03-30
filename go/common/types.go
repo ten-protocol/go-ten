@@ -16,14 +16,14 @@ type (
 
 	// MainNet aliases
 	L1Address     = common.Address
-	L1RootHash    = common.Hash
+	L1BlockHash   = common.Hash
 	L1Block       = types.Block
 	L1Transaction = types.Transaction
 	L1Receipt     = types.Receipt
 	L1Receipts    = types.Receipts
 
 	// Local Obscuro aliases
-	L2RootHash     = common.Hash
+	L2BatchHash    = common.Hash
 	L2TxHash       = common.Hash
 	L2Tx           = types.Transaction
 	L2Transactions = types.Transactions

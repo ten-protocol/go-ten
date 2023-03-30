@@ -633,7 +633,7 @@ func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber,
 func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Batch {
 	h := common.BatchHeader{
 		Agg:         gethcommon.HexToAddress("0x0"),
-		ParentHash:  common.L1RootHash{},
+		ParentHash:  common.L1BlockHash{},
 		L1Proof:     blkHash,
 		Root:        state.IntermediateRoot(true),
 		Number:      big.NewInt(int64(height)),

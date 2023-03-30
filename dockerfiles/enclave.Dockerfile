@@ -41,7 +41,6 @@ COPY --from=build-enclave \
     /home/obscuro/go-obscuro/go/enclave/main home/obscuro/go-obscuro/go/enclave/main
     
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
-RUN mkdir -p /home/obscuro/data
 
 # simulation mode is ACTIVE by default
 ENV OE_SIMULATION=1

@@ -8,9 +8,9 @@ import (
 )
 
 type (
-	OnChainEVMExecutorResponse = map[common.TxHash]interface{}
-	OnChainEVMExecutorFunc     = func(common.L2Transactions) map[common.TxHash]interface{}
-	OffChainEVMCallFunc        = func(types.Message) (*core.ExecutionResult, error)
+	EVMExecutorResponse = map[common.TxHash]interface{}
+	EVMExecutorFunc     = func(common.L2Transactions) map[common.TxHash]interface{}
+	ObsCallEVMFunc      = func(types.Message) (*core.ExecutionResult, error)
 )
 
 type BlockMessageExtractor interface {

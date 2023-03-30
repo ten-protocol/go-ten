@@ -83,7 +83,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 // Call returns the result of executing the smart contract as a user, encrypted with the viewing key corresponding to
 // the `from` field and encoded as hex.
 func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
-	enclaveResponse := api.host.EnclaveClient().ExecuteOffChainTransaction(encryptedParams)
+	enclaveResponse := api.host.EnclaveClient().ObsCall(encryptedParams)
 	return enclaveResponse, nil
 }
 

@@ -3,6 +3,7 @@ package db
 import (
 	"crypto/ecdsa"
 	"io"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -16,11 +17,9 @@ import (
 // BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
 	// FetchBlock returns the L1 Block with the given hash.
-	FetchBlock(blockHash common.L1RootHash) (*types.Block, error)
+	FetchBlock(blockHash common.L1BlockHash) (*types.Block, error)
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
-	// FetchLogs returns the block's logs.
-	FetchLogs(blockHash common.L1RootHash) ([]*types.Log, error)
 	// StoreBlock persists the L1 Block
 	StoreBlock(block *types.Block)
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
@@ -28,12 +27,12 @@ type BlockResolver interface {
 	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
 	// todo (low priority) - this is super confusing, analyze the usage
-	IsBlockAncestor(block *types.Block, maybeAncestor common.L1RootHash) bool
+	IsBlockAncestor(block *types.Block, maybeAncestor common.L1BlockHash) bool
 }
 
 type BatchResolver interface {
 	// FetchBatch returns the batch with the given hash.
-	FetchBatch(hash common.L2RootHash) (*core.Batch, error)
+	FetchBatch(hash common.L2BatchHash) (*core.Batch, error)
 	// FetchBatchByHeight returns the batch on the canonical chain with the given height.
 	FetchBatchByHeight(height uint64) (*core.Batch, error)
 	// FetchHeadBatch returns the current head batch of the canonical chain.
@@ -49,20 +48,20 @@ type RollupResolver interface {
 
 type HeadsAfterL1BlockStorage interface {
 	// FetchHeadBatchForBlock returns the hash of the head batch at a given L1 block.
-	FetchHeadBatchForBlock(blockHash common.L1RootHash) (*core.Batch, error)
+	FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error)
 	// FetchHeadRollupForBlock returns the hash of the latest (i.e. highest-numbered) rollup in the given L1 block, or
 	// nil if the block contains no rollups.
-	FetchHeadRollupForBlock(blockHash *common.L1RootHash) (*core.Rollup, error)
+	FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*core.Rollup, error)
 	// UpdateL1Head updates the L1 head.
-	UpdateL1Head(l1Head common.L1RootHash) error
+	UpdateL1Head(l1Head common.L1BlockHash) error
 	// UpdateHeadBatch updates the canonical L2 head batch for a given L1 block.
-	UpdateHeadBatch(l1Head common.L1RootHash, l2Head *core.Batch, receipts []*types.Receipt) error
+	UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Batch, receipts []*types.Receipt) error
 	// SetHeadBatchPointer updates the canonical L2 head batch for a given L1 block.
 	SetHeadBatchPointer(l2Head *core.Batch) error
 	// UpdateHeadRollup just updates the canonical L2 head batch, leaving data untouched (used to rewind after L1 fork or data corruption)
-	UpdateHeadRollup(l1Head *common.L1RootHash, l2Head *common.L2RootHash) error
+	UpdateHeadRollup(l1Head *common.L1BlockHash, l2Head *common.L2BatchHash) error
 	// CreateStateDB creates a database that can be used to execute transactions
-	CreateStateDB(hash common.L2RootHash) (*state.StateDB, error)
+	CreateStateDB(hash common.L2BatchHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
 	EmptyStateDB() (*state.StateDB, error)
 }
@@ -80,7 +79,7 @@ type TransactionStorage interface {
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(txHash common.L2TxHash) (*types.Receipt, error)
 	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
-	GetReceiptsByHash(hash common.L2RootHash) (types.Receipts, error)
+	GetReceiptsByHash(hash common.L2BatchHash) (types.Receipts, error)
 	// GetSender returns the sender of the tx by hash
 	GetSender(txHash common.L2TxHash) (gethcommon.Address, error)
 	// GetContractCreationTx returns the hash of the tx that created a contract
@@ -95,8 +94,8 @@ type AttestationStorage interface {
 }
 
 type CrossChainMessagesStorage interface {
-	StoreL1Messages(blockHash common.L1RootHash, messages common.CrossChainMessages) error
-	GetL1Messages(blockHash common.L1RootHash) (common.CrossChainMessages, error)
+	StoreL1Messages(blockHash common.L1BlockHash, messages common.CrossChainMessages) error
+	GetL1Messages(blockHash common.L1BlockHash) (common.CrossChainMessages, error)
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore
@@ -109,8 +108,11 @@ type Storage interface {
 	TransactionStorage
 	AttestationStorage
 	CrossChainMessagesStorage
+	io.Closer
 
 	// HealthCheck returns whether the storage is deemed healthy or not
 	HealthCheck() (bool, error)
-	io.Closer
+	// FilterLogs - applies the properties the relevancy checks for the requestingAccount to all the stored log events
+	// nil values will be ignored. Make sure to set all fields to the right values before calling this function
+	FilterLogs(requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error)
 }

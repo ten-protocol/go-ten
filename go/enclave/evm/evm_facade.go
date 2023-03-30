@@ -41,7 +41,7 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Ba
 		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i)
 		if err != nil {
 			result[t.Hash()] = err
-			logger.Error("!TxKey", log.TxKey, t.Hash().Hex(), log.ErrKey, err)
+			logger.Info("Failed to execute tx:", log.TxKey, t.Hash().Hex(), log.CtrErrKey, err)
 			continue
 		}
 		result[t.Hash()] = r
@@ -69,24 +69,23 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 }
 
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {
-	receiptJSON, err := r.MarshalJSON()
-	if err != nil {
-		if r.Status == types.ReceiptStatusFailed {
-			logger.Error("Unsuccessful (status != 1) (but could not print receipt as JSON)", log.TxKey, r.TxHash.Hex())
-		} else {
-			logger.Trace("Successfully executed (but could not print receipt as JSON)", log.TxKey, r.TxHash.Hex())
+	logger.Trace("Receipt", log.TxKey, r.TxHash.Hex(), "Result", gethlog.Lazy{Fn: func() string {
+		receiptJSON, err := r.MarshalJSON()
+		if err != nil {
+			if r.Status == types.ReceiptStatusFailed {
+				return "Unsuccessful (status != 1) (but could not print receipt as JSON)"
+			}
+			return "Successfully executed (but could not print receipt as JSON)"
 		}
-	}
-
-	if r.Status == types.ReceiptStatusFailed {
-		logger.Error(fmt.Sprintf("Unsuccessful (status != 1). Receipt: %s", string(receiptJSON)), log.TxKey, r.TxHash.Hex())
-	} else {
-		logger.Trace(fmt.Sprintf("Successfully executed. Receipt: %s", string(receiptJSON)), log.TxKey, r.TxHash.Hex())
-	}
+		if r.Status == types.ReceiptStatusFailed {
+			return fmt.Sprintf("Unsuccessful (status != 1). Receipt: %s", string(receiptJSON))
+		}
+		return fmt.Sprintf("Successfully executed. Receipt: %s", string(receiptJSON))
+	}})
 }
 
-// ExecuteOffChainCall - executes the eth_call call
-func ExecuteOffChainCall(
+// ExecuteObsCall - executes the eth_call call
+func ExecuteObsCall(
 	msg *types.Message,
 	s *state.StateDB,
 	header *common.BatchHeader,
@@ -123,7 +122,7 @@ func ExecuteOffChainCall(
 
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
-		logger.Error("ErrKey applying msg:", log.ErrKey, err)
+		logger.Info(fmt.Sprintf("Error applying msg %v:", msg), log.CtrErrKey, err)
 		return result, err
 	}
 

@@ -32,9 +32,9 @@ service EnclaveProto {
   // SubmitBatch submits a batch received from the sequencer for processing.
   rpc SubmitBatch(SubmitBatchRequest) returns (SubmitBatchResponse) {}
 
-  // ExecuteOffChainTransaction - returns the result of executing the smart contract as a user, encrypted with the
+  // ObsCall - returns the result of executing the smart contract as a user, encrypted with the
   // viewing key corresponding to the `from` field
-  rpc ExecuteOffChainTransaction(OffChainRequest) returns (OffChainResponse) {}
+  rpc ObsCall(ObsCallRequest) returns (ObsCallResponse) {}
 
   // GetTransactionCount - returns the nonce of the wallet with the given address.
   rpc GetTransactionCount(GetTransactionCountRequest) returns (GetTransactionCountResponse) {}
@@ -131,10 +131,10 @@ message SubmitBatchRequest {
 message SubmitBatchResponse {
 }
 
-message OffChainRequest {
+message ObsCallRequest {
   bytes encryptedParams = 1;
 }
-message OffChainResponse {
+message ObsCallResponse {
   bytes encodedEnclaveResponse = 1;
 }
 

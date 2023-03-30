@@ -8,14 +8,13 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
-func ReadBatch(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Batch, error) {
+func ReadBatch(db ethdb.KeyValueReader, hash common.L2BatchHash) (*core.Batch, error) {
 	header, err := readBatchHeader(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
@@ -33,7 +32,7 @@ func ReadBatch(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Batch, er
 }
 
 // ReadBatchNumber returns the number of a batch.
-func ReadBatchNumber(db ethdb.KeyValueReader, hash common.L2RootHash) (*uint64, error) {
+func ReadBatchNumber(db ethdb.KeyValueReader, hash common.L2BatchHash) (*uint64, error) {
 	data, err := db.Get(batchNumberKey(hash))
 	if err != nil {
 		return nil, errutil.ErrNotFound
@@ -55,7 +54,7 @@ func WriteBatch(db ethdb.KeyValueWriter, batch *core.Batch) error {
 	return nil
 }
 
-func ReadRollup(db ethdb.KeyValueReader, hash common.L2RootHash) (*core.Rollup, error) {
+func ReadRollup(db ethdb.KeyValueReader, hash common.L2BatchHash) (*core.Rollup, error) {
 	header, err := readRollupHeader(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
@@ -113,7 +112,7 @@ func writeBatchHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, numbe
 }
 
 // Retrieves the batch header corresponding to the hash.
-func readBatchHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.BatchHeader, error) {
+func readBatchHeader(db ethdb.KeyValueReader, hash common.L2BatchHash) (*common.BatchHeader, error) {
 	data, err := readBatchHeaderRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
@@ -146,7 +145,7 @@ func writeBatchBody(db ethdb.KeyValueWriter, hash gethcommon.Hash, body []*commo
 }
 
 // Retrieves the batch body corresponding to the hash.
-func readBatchBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L2Tx, error) {
+func readBatchBody(db ethdb.KeyValueReader, hash common.L2BatchHash) ([]*common.L2Tx, error) {
 	data, err := readBatchBodyRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read body. Cause: %w", err)
@@ -159,7 +158,7 @@ func readBatchBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*common.L
 }
 
 // Stores an RLP encoded batch body into the database.
-func writeBatchBodyRLP(db ethdb.KeyValueWriter, hash common.L2RootHash, rlp rlp.RawValue) error {
+func writeBatchBodyRLP(db ethdb.KeyValueWriter, hash common.L2BatchHash, rlp rlp.RawValue) error {
 	if err := db.Put(batchBodyKey(hash), rlp); err != nil {
 		return fmt.Errorf("could not put batch body into DB. Cause: %w", err)
 	}
@@ -167,7 +166,7 @@ func writeBatchBodyRLP(db ethdb.KeyValueWriter, hash common.L2RootHash, rlp rlp.
 }
 
 // Retrieves the batch body (transactions and uncles) in RLP encoding.
-func readBatchBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawValue, error) {
+func readBatchBodyRLP(db ethdb.KeyValueReader, hash common.L2BatchHash) (rlp.RawValue, error) {
 	data, err := db.Get(batchBodyKey(hash))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve batch body from DB. Cause: %w", err)
@@ -175,28 +174,28 @@ func readBatchBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawV
 	return data, nil
 }
 
-func SetL2HeadBatch(db ethdb.KeyValueWriter, l2Head common.L2RootHash) error {
+func SetL2HeadBatch(db ethdb.KeyValueWriter, l2Head common.L2BatchHash) error {
 	if err := db.Put(headBatchHash, l2Head.Bytes()); err != nil {
 		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
 	}
 	return nil
 }
 
-func WriteL1ToL2BatchMapping(db ethdb.KeyValueWriter, l1Head common.L1RootHash, l2Head common.L2RootHash) error {
+func WriteL1ToL2BatchMapping(db ethdb.KeyValueWriter, l1Head common.L1BlockHash, l2Head common.L2BatchHash) error {
 	if err := db.Put(headBatchAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
 		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
 	}
 	return nil
 }
 
-func WriteL2HeadRollup(db ethdb.KeyValueWriter, l1Head *common.L1RootHash, l2Head *common.L2RootHash) error {
+func WriteL2HeadRollup(db ethdb.KeyValueWriter, l1Head *common.L1BlockHash, l2Head *common.L2BatchHash) error {
 	if err := db.Put(headRollupAfterL1BlockKey(l1Head), l2Head.Bytes()); err != nil {
 		return fmt.Errorf("could not put chain heads in DB. Cause: %w", err)
 	}
 	return nil
 }
 
-func ReadL2HeadBatch(kv ethdb.KeyValueReader) (*common.L2RootHash, error) {
+func ReadL2HeadBatch(kv ethdb.KeyValueReader) (*common.L2BatchHash, error) {
 	data, err := kv.Get(headBatchHash)
 	if err != nil {
 		return nil, errutil.ErrNotFound
@@ -205,7 +204,7 @@ func ReadL2HeadBatch(kv ethdb.KeyValueReader) (*common.L2RootHash, error) {
 	return &l2Head, nil
 }
 
-func ReadL2HeadBatchForBlock(kv ethdb.KeyValueReader, l1Head common.L1RootHash) (*common.L2RootHash, error) {
+func ReadL2HeadBatchForBlock(kv ethdb.KeyValueReader, l1Head common.L1BlockHash) (*common.L2BatchHash, error) {
 	data, err := kv.Get(headBatchAfterL1BlockKey(l1Head))
 	if err != nil {
 		return nil, errutil.ErrNotFound
@@ -214,7 +213,7 @@ func ReadL2HeadBatchForBlock(kv ethdb.KeyValueReader, l1Head common.L1RootHash) 
 	return &l2Head, nil
 }
 
-func ReadL2HeadRollup(kv ethdb.KeyValueReader, l1Head *common.L1RootHash) (*common.L2RootHash, error) {
+func ReadL2HeadRollup(kv ethdb.KeyValueReader, l1Head *common.L1BlockHash) (*common.L2BatchHash, error) {
 	data, err := kv.Get(headRollupAfterL1BlockKey(l1Head))
 	if err != nil {
 		return nil, errutil.ErrNotFound
@@ -223,46 +222,8 @@ func ReadL2HeadRollup(kv ethdb.KeyValueReader, l1Head *common.L1RootHash) (*comm
 	return &l2Head, nil
 }
 
-func WriteBlockLogs(db ethdb.KeyValueWriter, blockHash gethcommon.Hash, logs []*types.Log) error {
-	// Geth serialises its logs in a reduced form to minimise storage space. For now, it is more straightforward for us
-	// to serialise all the fields by converting the logs to this type.
-	logsForStorage := make([]*logForStorage, len(logs))
-	for idx, fullFatLog := range logs {
-		logsForStorage[idx] = toLogForStorage(fullFatLog)
-	}
-
-	logBytes, err := rlp.EncodeToBytes(logsForStorage)
-	if err != nil {
-		return fmt.Errorf("could not encode logs. Cause: %w", err)
-	}
-
-	if err := db.Put(logsKey(blockHash), logBytes); err != nil {
-		return fmt.Errorf("could not put logs in DB. Cause: %w", err)
-	}
-	return nil
-}
-
-func ReadBlockLogs(kv ethdb.KeyValueReader, blockHash gethcommon.Hash) ([]*types.Log, error) {
-	data, err := kv.Get(logsKey(blockHash))
-	if err != nil {
-		return nil, err
-	}
-
-	logsForStorage := new([]*logForStorage)
-	if err := rlp.Decode(bytes.NewReader(data), logsForStorage); err != nil {
-		return nil, fmt.Errorf("could not decode logs. Cause: %w", err)
-	}
-
-	logs := make([]*types.Log, len(*logsForStorage))
-	for idx, logToStore := range *logsForStorage {
-		logs[idx] = logToStore.toLog()
-	}
-
-	return logs, nil
-}
-
 // ReadCanonicalBatchHash retrieves the hash of the canonical batch at a given height.
-func ReadCanonicalBatchHash(db ethdb.Reader, number uint64) (*common.L2RootHash, error) {
+func ReadCanonicalBatchHash(db ethdb.Reader, number uint64) (*common.L2BatchHash, error) {
 	// Get it by hash from leveldb
 	data, err := db.Get(batchHeaderHashKey(number))
 	if err != nil {
@@ -322,7 +283,7 @@ func writeRollupHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, numb
 }
 
 // Stores an RLP encoded rollup body into the database.
-func writeRollupBodyRLP(db ethdb.KeyValueWriter, hash common.L2RootHash, rlp rlp.RawValue) error {
+func writeRollupBodyRLP(db ethdb.KeyValueWriter, hash common.L2BatchHash, rlp rlp.RawValue) error {
 	if err := db.Put(rollupBodyKey(hash), rlp); err != nil {
 		return fmt.Errorf("could not put rollup body into DB. Cause: %w", err)
 	}
@@ -330,7 +291,7 @@ func writeRollupBodyRLP(db ethdb.KeyValueWriter, hash common.L2RootHash, rlp rlp
 }
 
 // Retrieves the rollup header corresponding to the hash.
-func readRollupHeader(db ethdb.KeyValueReader, hash common.L2RootHash) (*common.RollupHeader, error) {
+func readRollupHeader(db ethdb.KeyValueReader, hash common.L2BatchHash) (*common.RollupHeader, error) {
 	data, err := readRollupHeaderRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
@@ -352,7 +313,7 @@ func readRollupHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.Raw
 }
 
 // Retrieves the rollup body corresponding to the hash.
-func readRollupBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*core.Batch, error) {
+func readRollupBody(db ethdb.KeyValueReader, hash common.L2BatchHash) ([]*core.Batch, error) {
 	data, err := readRollupBodyRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read batch hashes. Cause: %w", err)
@@ -365,7 +326,7 @@ func readRollupBody(db ethdb.KeyValueReader, hash common.L2RootHash) ([]*core.Ba
 }
 
 // Retrieves the rollup body (transactions and uncles) in RLP encoding.
-func readRollupBodyRLP(db ethdb.KeyValueReader, hash common.L2RootHash) (rlp.RawValue, error) {
+func readRollupBodyRLP(db ethdb.KeyValueReader, hash common.L2BatchHash) (rlp.RawValue, error) {
 	data, err := db.Get(rollupBodyKey(hash))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup body from DB. Cause: %w", err)

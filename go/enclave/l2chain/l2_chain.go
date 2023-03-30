@@ -83,7 +83,7 @@ func New(
 		chainConfig:          chainConfig,
 		blockProcessingMutex: sync.Mutex{},
 		logger:               logger,
-		GlobalGasCap:         5_000_000_000,
+		GlobalGasCap:         5_000_000_000, // Todo - make config
 		BaseFee:              gethcommon.Big0,
 		sequencerID:          sequencerID,
 		genesis:              genesis,
@@ -91,7 +91,7 @@ func New(
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2RootHash, *core.Batch, error) {
+func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2BatchHash, *core.Batch, error) {
 	oc.blockProcessingMutex.Lock()
 	defer oc.blockProcessingMutex.Unlock()
 
@@ -203,26 +203,27 @@ func (oc *ObscuroChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockN
 	return (*hexutil.Big)(chainState.GetBalance(accountAddr)), nil
 }
 
-// ExecuteOffChainTransaction executes non-state changing transactions at a given block height (eth_call)
-func (oc *ObscuroChain) ExecuteOffChainTransaction(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
-	result, err := oc.ExecuteOffChainTransactionAtBlock(apiArgs, blockNumber)
+// ObsCall executes non-state changing transactions at a given block height (eth_call)
+func (oc *ObscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+	result, err := oc.ObsCallAtBlock(apiArgs, blockNumber)
 	if err != nil {
-		oc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, err.Error())
+		oc.logger.Info(fmt.Sprintf("Obs_Call: failed to execute contract %s.", apiArgs.To), log.CtrErrKey, err.Error())
 		return nil, err
 	}
 
 	// the execution might have succeeded (err == nil) but the evm contract logic might have failed (result.Failed() == true)
 	if result.Failed() {
-		oc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", apiArgs.To), log.ErrKey, result.Err)
+		oc.logger.Info(fmt.Sprintf("Obs_Call: Failed to execute contract %s.", apiArgs.To), log.CtrErrKey, result.Err)
 		return nil, result.Err
 	}
 
-	oc.logger.Trace(fmt.Sprintf("!OffChain result: %s", hexutils.BytesToHex(result.ReturnData)))
-
+	oc.logger.Trace("Obs_Call successful", "result", gethlog.Lazy{Fn: func() string {
+		return hexutils.BytesToHex(result.ReturnData)
+	}})
 	return result, nil
 }
 
-func (oc *ObscuroChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+func (oc *ObscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
 	// TODO review this during gas mechanics implementation
 	callMsg, err := apiArgs.ToMessage(oc.GlobalGasCap, oc.BaseFee)
 	if err != nil {
@@ -240,16 +241,16 @@ func (oc *ObscuroChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Trans
 		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
 
-	oc.logger.Trace(
-		fmt.Sprintf("!OffChain call: contractAddress=%s, from=%s, data=%s, batch=b_%d, state=%s",
+	oc.logger.Trace("Obs_Call:", "Successful result", gethlog.Lazy{Fn: func() string {
+		return fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=b_%d, state=%s",
 			callMsg.To(),
 			callMsg.From(),
 			hexutils.BytesToHex(callMsg.Data()),
 			common.ShortHash(*batch.Hash()),
-			batch.Header.Root.Hex()),
-	)
+			batch.Header.Root.Hex())
+	}})
 
-	result, err := evm.ExecuteOffChainCall(&callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.logger)
+	result, err := evm.ExecuteObsCall(&callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err
@@ -259,7 +260,7 @@ func (oc *ObscuroChain) ExecuteOffChainTransactionAtBlock(apiArgs *gethapi.Trans
 	if result.Failed() {
 		// do not return an error
 		// the result object should be evaluated upstream
-		oc.logger.Error(fmt.Sprintf("!OffChain: Failed to execute contract %s.", callMsg.To()), log.ErrKey, result.Err)
+		oc.logger.Info(fmt.Sprintf("ObsCall: Failed to execute contract %s.", callMsg.To()), log.CtrErrKey, result.Err)
 	}
 
 	return result, nil
@@ -349,7 +350,7 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 }
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
-func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2RootHash, *core.Batch, error) {
+func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2BatchHash, *core.Batch, error) {
 	// before proceeding we check if L2 needs to be rolled back because of the L1 block
 	// (eventually this will be bound to just the hash of L1 message data rather than L1 block hashes - so less likely to reorg)
 	if ingestionType.fork {
@@ -427,7 +428,7 @@ func (oc *ObscuroChain) produceAndStoreBatch(block *common.L1Block, genesisBatch
 }
 
 // Creates a genesis batch linked to the provided L1 block and signs it.
-func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Batch, error) {
+func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1BlockHash) (*core.Batch, error) {
 	preFundGenesisState, err := oc.genesis.GetGenesisRoot(oc.storage)
 	if err != nil {
 		return nil, err
@@ -436,7 +437,7 @@ func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Ba
 	genesisBatch := &core.Batch{
 		Header: &common.BatchHeader{
 			Agg:         oc.hostID,
-			ParentHash:  common.L2RootHash{},
+			ParentHash:  common.L2BatchHash{},
 			L1Proof:     blkHash,
 			Root:        *preFundGenesisState,
 			TxHash:      types.EmptyRootHash,
@@ -468,7 +469,7 @@ func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1RootHash) (*core.Ba
 // This is where transactions are executed and the state is calculated.
 // Obscuro includes a message bus embedded in the platform, and this method is responsible for transferring messages as well.
 // The batch can be a final batch as received from peers or the batch under construction.
-func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2RootHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
+func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2BatchHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
@@ -536,7 +537,7 @@ func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stat
 				false)
 
 			clonedDB := stateDB.Copy()
-			res, err := evm.ExecuteOffChainCall(&txCallMessage, clonedDB, batch.Header, oc.storage, oc.chainConfig, oc.logger)
+			res, err := evm.ExecuteObsCall(&txCallMessage, clonedDB, batch.Header, oc.storage, oc.chainConfig, oc.logger)
 			oc.logger.Crit("Synthetic transaction failed!", log.ErrKey, err, "result", res)
 		}
 
@@ -633,7 +634,7 @@ func (oc *ObscuroChain) replayBatchesToValidState() error {
 // batch in the chain and is used to query state at a certain height.
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
-func stateDBAvailableForBatch(storage db.Storage, hash *common.L2RootHash) bool {
+func stateDBAvailableForBatch(storage db.Storage, hash *common.L2BatchHash) bool {
 	_, err := storage.CreateStateDB(*hash)
 	return err == nil
 }
@@ -892,6 +893,7 @@ func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 			return fmt.Errorf("batch was invalid. Cause: %w", err)
 		}
 
+		// todo - shouldn't this be checked first?
 		// We check that we've stored the batch's parent.
 		if _, err = oc.storage.FetchBatch(batch.Header.ParentHash); err != nil {
 			return fmt.Errorf("could not retrieve parent batch. Cause: %w", err)
@@ -912,7 +914,8 @@ func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 	// If we haven't stored the batch before, we store it and update the head batch for that L1 block.
 	// TODO - FetchBatch should return errutil.ErrNotFound for unstored batches, so we can handle that type of error
 	//  separately.
-	if _, err = oc.storage.FetchBatch(*batch.Hash()); err != nil {
+	b, _ := oc.storage.FetchBatch(*batch.Hash())
+	if b == nil {
 		if err = oc.storage.StoreBatch(batch, txReceipts); err != nil {
 			return fmt.Errorf("failed to store batch. Cause: %w", err)
 		}

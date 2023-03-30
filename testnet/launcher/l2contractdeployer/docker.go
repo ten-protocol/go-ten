@@ -101,7 +101,7 @@ func (n *ContractDeployer) WaitForFinish() error {
 	return nil
 }
 
-func (n *ContractDeployer) PrintLogs(cli *client.Client) error {
+func (n *ContractDeployer) PrintLogs(cli *client.Client) {
 	logsOptions := types.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
@@ -111,7 +111,6 @@ func (n *ContractDeployer) PrintLogs(cli *client.Client) error {
 	out, err := cli.ContainerLogs(context.Background(), n.containerID, logsOptions)
 	if err != nil {
 		fmt.Printf("Error printing out container %s logs... %v\n", n.containerID, err)
-		return err
 	}
 	defer out.Close()
 
@@ -121,6 +120,4 @@ func (n *ContractDeployer) PrintLogs(cli *client.Client) error {
 		fmt.Printf("Error getting logs for container %s\n", n.containerID)
 	}
 	fmt.Println(buf.String())
-
-	return nil
 }
