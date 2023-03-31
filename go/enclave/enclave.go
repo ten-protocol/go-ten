@@ -839,7 +839,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	return encryptedGasCost, nil
 }
 
-func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {
+func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) { //nolint:gocognit
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, nil
 	}
@@ -856,9 +856,10 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 		return nil, err
 	}
 
-	// todo logic to check that the filter is valid
-	// can't have both from and blockhash
-	// from <=to
+	// todo user error
+	if filter.BlockHash != nil && filter.FromBlock != nil {
+		return nil, fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock")
+	}
 
 	from := filter.FromBlock
 	if from != nil && from.Int64() < 0 {
@@ -869,14 +870,27 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 		from = batch.Number()
 	}
 
+	// Set from to the height of the block hash
+	if from == nil && filter.BlockHash != nil {
+		batch, err := e.storage.FetchBatch(*filter.BlockHash)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve batch with hash %s. Cause: %w", filter.BlockHash.Hex(), err)
+		}
+		from = batch.Number()
+	}
+
 	to := filter.ToBlock
 	// when to=="latest", don't filter on it
 	if to != nil && to.Int64() < 0 {
 		to = nil
 	}
 
+	if from != nil && to != nil && from.Cmp(to) > 0 {
+		return nil, fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to)
+	}
+
 	// We retrieve the relevant logs that match the filter.
-	filteredLogs, err := e.storage.FilterLogs(forAddress, from, to, filter.BlockHash, filter.Addresses, filter.Topics)
+	filteredLogs, err := e.storage.FilterLogs(forAddress, from, to, nil, filter.Addresses, filter.Topics)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
 	}
@@ -1230,19 +1244,30 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash,
 func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]byte, error) {
 	result := map[gethrpc.ID][]*types.Log{}
 
-	// Go through each subscription
+	// Go through each subscription and collect the logs
 	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
 		// 1. fetch the logs since the last request
-		fromBlock := previousHead
-		// when the subscription is initialised, default from the latest batch
-		if previousHead == nil || previousHead.Int64() < 0 {
+		var from *big.Int
+		to := big.NewInt(upToBatchNr.Int64() + 1)
+
+		if previousHead == nil || previousHead.Int64() <= 0 {
+			// when the subscription is initialised, default from the latest batch
 			batch, err := e.storage.FetchHeadBatch()
 			if err != nil {
 				return err
 			}
-			fromBlock = batch.Number()
+			from = batch.Number()
+		} else {
+			from = big.NewInt(previousHead.Int64() + 1)
 		}
-		logs, err := e.storage.FilterLogs(subscription.Account, fromBlock, upToBatchNr, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
+
+		if from.Cmp(to) >= 0 {
+			e.logger.Warn(fmt.Sprintf("Skipping subscription step id=%s: [%d, %d]", id, from, to))
+			return nil
+		}
+
+		e.logger.Info(fmt.Sprintf("Subscription id=%s: [%d, %d]", id, from, to))
+		logs, err := e.storage.FilterLogs(subscription.Account, from, to, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
 		if err != nil {
 			return err
 		}

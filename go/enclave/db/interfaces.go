@@ -114,5 +114,6 @@ type Storage interface {
 	HealthCheck() (bool, error)
 	// FilterLogs - applies the properties the relevancy checks for the requestingAccount to all the stored log events
 	// nil values will be ignored. Make sure to set all fields to the right values before calling this function
+	// the blockHash should always be nil.
 	FilterLogs(requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error)
 }
