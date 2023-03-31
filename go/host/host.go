@@ -497,8 +497,8 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 				return err.Error()
 			}
 
-			return string(header[:])
-		}}, "rollup_hash", producedRollup.Header.Hash().Hex())
+			return string(header)
+		}}, "rollup_hash", producedRollup.Header.Hash().Hex(), "batches_len", len(producedRollup.Batches))
 
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
 	rollupTx, err = h.ethClient.EstimateGasAndGasPrice(rollupTx, h.ethWallet.Address())
@@ -549,6 +549,8 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt 
 	if err != nil {
 		return err
 	}
+
+	h.logger.Trace(fmt.Sprintf("Broadcasting l1 transaction of size %d", len(signedTx.Data())))
 
 	err = retry.Do(func() error {
 		return h.ethClient.SendTransaction(signedTx)

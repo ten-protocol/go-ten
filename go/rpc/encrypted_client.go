@@ -99,7 +99,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
 	}
 
-	// we set up a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
+	// We setup the rawResult to receive an EnclaveResponse. All sensitive methods should return this
 	var rawResult responses.EnclaveResponse
 	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
 	if err != nil {
