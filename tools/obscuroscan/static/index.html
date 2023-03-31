@@ -13,31 +13,38 @@
 </head>
 
 <body>
-<nav class="navbar navbar-expand-lg bg-dark">
+<nav class="navbar navbar-expand-lg navbar-light">
     <div class="container-fluid">
         <a class="navbar-brand" href="">
-            <img src="logo.png" alt="" height="36">
+            <img src="image-dark.png" alt="" height="36">
         </a>
         <ul class="navbar-nav ms-md-auto navbar-nav-scroll">
             <li>
                 <form class="d-flex" role="search" id="form-get-rollup">
                     <input class="form-control me-2" type="search" id="rollupID" placeholder="Rollup # or tx hash">
-                    <button type="submit" class="btn btn-outline-light">Search</button>
+                    <button type="submit" class="btn btn-outline-dark">Search</button>
                 </form>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="https://discord.gg/yQfmKeNzNd" target="_blank">
-                    <i class="fab fa-discord" style="color: #fff;"></i>
+                    <i class="fab fa-discord" style="color: black;"></i>
                 </a>
             </li>
         </ul>
     </div>
 </nav>
+<div
+  class="bg-image"
+  style="
+    background-image: url('https://mdbcdn.b-cdn.net/img/Photos/Others/images/76.webp');
+    height: 250px;
+  "
+>
 
-<div class="container" style="padding-top: 25px;">
+<div class="container-fluid" class="p-3 mb-2 bg-light text-dark" style="padding-top: 190px;">
     <div class="card shadow p-3 mb-5 bg-body rounded">
         <div class="card-body">
-            <h2 class="card-title">Obscuro block explorer</h2>
+            <h3 class="card-title">Obscuro block explorer</h3>
             <div id="numRollups">Total rollups: Fetching...</div>
             <div id="numTxs">Total transactions: Fetching...</div>
             <div id="rollupTime">Avg. rollup time: Fetching...</div>
@@ -45,12 +52,13 @@
     </div>
 </div>
 
-<div class="container">
+</div>
+<div class="container-fluid" class="p-3 mb-2 bg-light text-dark" style="padding-top: 150px;">
     <div class="row align-items-start">
         <div class="col">
             <div class="card shadow p-3 mb-5 bg-body rounded">
                 <div class="card-body">
-                    <h2 class="card-title">Latest rollups</h2>
+                    <h3 class="card-title">Latest rollups</h3>
 
                     <ul class="list-group list-group-flush">
                         <a id="rollupOne" href="" class="list-group-item list-group-item-action py-1 link-primary">Fetching...</a>
@@ -65,7 +73,7 @@
         <div class="col">
             <div class="card shadow p-3 mb-5 bg-body rounded">
                 <div class="card-body">
-                    <h2 class="card-title">Latest transactions</h2>
+                    <h3 class="card-title">Latest transactions</h3>
 
                     <ul class="list-group list-group-flush">
                         <a id="txOne" href="" class="list-group-item list-group-item-action py-1 link-primary">Fetching...</a>
@@ -80,10 +88,10 @@
     </div>
 </div>
 
-<div class="container">
-    <div class="card shadow p-3 mb-5 bg-body rounded">
+<div class="container-fluid">
+    <div class="card shadow p-3 mb-5 bg-body rounded" >
         <div class="card-body" id="result">
-            <h2 class="card-title">Obscuro rollup</h2>
+            <h3 class="card-title">Obscuro rollup</h3>
             <pre id="rollup">N/A</pre>
             <hr>
 
