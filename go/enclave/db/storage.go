@@ -544,13 +544,13 @@ func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, fromBloc
 		queryParams = append(queryParams, blockHash.Bytes())
 	}
 
-	// ignore Pending(-2) and Latest(-1)
+	// ignore negative numbers
 	if fromBlock != nil && fromBlock.Sign() > 0 {
 		query += " AND blockNumber >= ?"
 		queryParams = append(queryParams, fromBlock.Int64())
 	}
 	if toBlock != nil && toBlock.Sign() > 0 {
-		query += " AND blockNumber < ?"
+		query += " AND blockNumber <= ?"
 		queryParams = append(queryParams, toBlock.Int64())
 	}
 
