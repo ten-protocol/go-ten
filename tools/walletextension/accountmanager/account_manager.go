@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/eth/filters"
+
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -59,6 +61,70 @@ func (m *AccountManager) AddClient(address gethcommon.Address, client *rpc.EncRP
 // ProxyRequest tries to identify the correct EncRPCClient to proxy the request to the Obscuro node, or it will attempt
 // the request with all clients until it succeeds
 func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, userConn userconn.UserConn) error {
+	if rpcReq.Method == rpc.Subscribe {
+		client, err := m.suggestSubscriptionClient(rpcReq)
+		if err != nil {
+			return err
+		}
+		// fetch the client from a topic
+		return m.executeSubscribe(client, rpcReq, rpcResp, userConn)
+	}
+
+	return m.executeCall(rpcReq, rpcResp)
+}
+
+const emptyFilterCriteria = "[]" // This is the value that gets passed for an empty filter criteria.
+
+// determine the client based on the topics
+// if none is found use the first client and assume this is a lifecycle method
+func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) (rpc.Client, error) {
+	var client rpc.Client //= m.unauthedClient // todo - support lifecycle events through an unauthed client
+
+	// by default use the first client for lifecycle events
+	for _, c := range m.accountClients {
+		client = c
+		break
+	}
+
+	if len(rpcReq.Params) < 2 {
+		return client, nil
+	}
+
+	// The filter is the second parameter
+	filterCriteriaJSON, err := json.Marshal(rpcReq.Params[1])
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
+	}
+
+	filterCriteria := filters.FilterCriteria{}
+	if string(filterCriteriaJSON) != emptyFilterCriteria {
+		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshal filter criteria from the following JSON: `%s`. Cause: %w", string(filterCriteriaJSON), err)
+		}
+	}
+
+	// Go through each topic filter and look for registered addresses
+	for i, topicCondition := range filterCriteria.Topics {
+		// the first topic is always the signature of the event, so it can't be an address
+		if i == 0 {
+			continue
+		}
+		for _, topic := range topicCondition {
+			potentialAddr := common.ExtractPotentialAddress(topic)
+			if potentialAddr != nil {
+				cl, found := m.accountClients[*potentialAddr]
+				if found {
+					return cl, nil
+				}
+			}
+		}
+	}
+
+	return client, nil
+}
+
+func (m *AccountManager) executeCall(rpcReq *RPCRequest, rpcResp *interface{}) error {
 	// for obscuro RPC requests it is important we know the sender account for the viewing key encryption/decryption
 	suggestedClient := m.suggestAccountClient(rpcReq, m.accountClients)
 
@@ -66,13 +132,13 @@ func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, 
 	case suggestedClient != nil: // use the suggested client if there is one
 		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
 		// 		The call data guessing won't often be wrong but there could be edge-cases there
-		return m.performRequest(suggestedClient, rpcReq, rpcResp, userConn)
+		return submitCall(suggestedClient, rpcReq, rpcResp)
 
 	case len(m.accountClients) > 0: // try registered clients until there's a successful execution
 		m.logger.Info(fmt.Sprintf("appropriate client not found, attempting request with up to %d clients", len(m.accountClients)))
 		var err error
 		for _, client := range m.accountClients {
-			err = m.performRequest(client, rpcReq, rpcResp, userConn)
+			err = submitCall(client, rpcReq, rpcResp)
 			if err == nil || errors.Is(err, rpc.ErrNilResponse) {
 				// request didn't fail, we don't need to continue trying the other clients
 				return nil
@@ -211,14 +277,7 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 	return nil, fmt.Errorf("no known account found in data bytes")
 }
 
-func (m *AccountManager) performRequest(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
-	if req.Method == rpc.Subscribe {
-		return m.executeSubscribe(client, req, resp, userConn)
-	}
-	return executeCall(client, req, resp)
-}
-
-func (m *AccountManager) executeSubscribe(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
+func (m *AccountManager) executeSubscribe(client rpc.Client, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
 	if len(req.Params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
@@ -273,7 +332,7 @@ func (m *AccountManager) executeSubscribe(client *rpc.EncRPCClient, req *RPCRequ
 	return nil
 }
 
-func executeCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
+func submitCall(client *rpc.EncRPCClient, req *RPCRequest, resp *interface{}) error {
 	if req.Method == rpc.Call || req.Method == rpc.EstimateGas {
 		// Never modify the original request, as it might be reused.
 		req = req.Clone()
