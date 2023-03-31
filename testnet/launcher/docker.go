@@ -76,7 +76,7 @@ func (t *Testnet) Start() error {
 	}
 	fmt.Println("Obscuro node was successfully started...")
 
-	// wait until the node it healthy
+	// wait until the node is healthy
 	err = waitForHealthyNode(13000)
 	if err != nil {
 		return fmt.Errorf("sequencer obscuro node not healthy - %w", err)
@@ -219,10 +219,9 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 	reqBody := `{"method": "obscuro_health", "id": 1}`
 
 	timeStart := time.Now()
-	defer func() { fmt.Printf("Node became healthy after %f seconds\n", time.Since(timeStart).Seconds()) }()
 
 	fmt.Println("Waiting for Obscuro node to be healthy...")
-	return retry.Do(
+	err := retry.Do(
 		func() error {
 			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, requestURL, bytes.NewBufferString(reqBody))
 			if err != nil {
@@ -260,4 +259,9 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 			return fmt.Errorf("node OverallHealth is not good yet")
 		}, retry.NewTimeoutStrategy(2*time.Minute, 1*time.Second),
 	)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Node became healthy after %f seconds\n", time.Since(timeStart).Seconds())
+	return nil
 }

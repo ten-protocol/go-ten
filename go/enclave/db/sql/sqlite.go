@@ -62,6 +62,15 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (*EnclaveDB, 
 		dbPath = tempPath
 	}
 	inMem := strings.Contains(dbPath, "mode=memory")
+	description := "in memory"
+	if !inMem {
+		_, err := os.Stat(dbPath)
+		if err == nil {
+			description = "existing"
+		} else {
+			description = "new"
+		}
+	}
 
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -78,16 +87,7 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (*EnclaveDB, 
 		return nil, err
 	}
 
-	desc := "in memory"
-	if !inMem {
-		_, err := os.Stat(dbPath)
-		if err == nil {
-			desc = "existing"
-		} else {
-			desc = "new"
-		}
-	}
-	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", desc, dbPath))
+	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", description, dbPath))
 
 	return CreateSQLEthDatabase(db, logger)
 }
