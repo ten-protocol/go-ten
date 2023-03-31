@@ -1266,8 +1266,8 @@ func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]b
 			return nil
 		}
 
-		e.logger.Info(fmt.Sprintf("Subscription id=%s: [%d, %d]", id, from, to))
 		logs, err := e.storage.FilterLogs(subscription.Account, from, to, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
+		e.logger.Info(fmt.Sprintf("Subscription id=%s: [%d, %d]. Logs %d, Err: %s", id, from, to, len(logs), err))
 		if err != nil {
 			return err
 		}
