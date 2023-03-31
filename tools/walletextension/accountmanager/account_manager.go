@@ -75,6 +75,8 @@ func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, 
 
 const emptyFilterCriteria = "[]" // This is the value that gets passed for an empty filter criteria.
 
+// determine the client based on the topics
+// if none is found use the first client and assume this is a lifecycle method
 func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) (rpc.Client, error) {
 	var client rpc.Client //= m.unauthedClient // todo - support lifecycle events through an unauthed client
 
@@ -84,12 +86,11 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) (rpc.Clie
 		break
 	}
 
-	// determine the client based on the topics
-	// if none is found use the unauthed client and assume this is a lifecycle method
-	if len(rpcReq.Params) == 0 {
+	if len(rpcReq.Params) < 2 {
 		return client, nil
 	}
 
+	// The filter is the second parameter
 	filterCriteriaJSON, err := json.Marshal(rpcReq.Params[1])
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
