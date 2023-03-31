@@ -57,6 +57,7 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 }
 
 func (s *SubscriptionManager) ForEachSubscription(f func(gethrpc.ID, *common.LogSubscription, *big.Int) error) error {
+	// grab a write lock because the function will mutate the lastHead map
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
 

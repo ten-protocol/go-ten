@@ -681,7 +681,10 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 	logCount := make(map[string]int)
 
 	for _, item := range logs {
-		logJSON, err := item.MarshalJSON()
+		l := *item
+		// todo - uncomment this to catch events saved multiple times in different batches
+		// l.BlockHash = gethcommon.Hash{}
+		logJSON, err := l.MarshalJSON()
 		if err != nil {
 			t.Errorf("could not marshal log to JSON to check for duplicate logs")
 			continue
