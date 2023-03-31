@@ -278,15 +278,10 @@ func (s *storageImpl) writeLog(l *types.Log, stateDB *state.StateDB, dbBatch *sq
 //   - It has a non-zero nonce (to prevent accidental or malicious creation of the address matching a given topic,
 //     forcing its events to become permanently private (this is not implemented for now)
 func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB) (bool, *gethcommon.Address) {
-	bitlen := topic.Big().BitLen()
-	// Addresses have 20 bytes. If the field has more, it means it is clearly not an address
-	// Discovering addresses with more than 20 leading 0s is very unlikely, so we assume that
-	// any topic that has less than 80 bits of data to not be an address for sure
-	if bitlen < 80 || bitlen > 160 {
+	potentialAddr := common.ExtractPotentialAddress(topic)
+	if potentialAddr == nil {
 		return false, nil
 	}
-
-	potentialAddr := gethcommon.BytesToAddress(topic.Bytes())
 	addrBytes := potentialAddr.Bytes()
 	// Check the database if there are already entries for this address
 	var count int
@@ -298,7 +293,7 @@ func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB)
 	}
 
 	if count > 0 {
-		return true, &potentialAddr
+		return true, potentialAddr
 	}
 
 	// TODO A user address must have a non-zero nonce. This prevents accidental or malicious sending of funds to an
@@ -306,8 +301,8 @@ func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB)
 	// if db.GetNonce(potentialAddr) != 0
 
 	// If the address has code, it's a smart contract address instead.
-	if db.GetCode(potentialAddr) == nil {
-		return true, &potentialAddr
+	if db.GetCode(*potentialAddr) == nil {
+		return true, potentialAddr
 	}
 
 	return false, nil

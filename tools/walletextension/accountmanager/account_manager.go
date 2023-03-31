@@ -102,19 +102,20 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) (rpc.Clie
 			return nil, fmt.Errorf("could not unmarshal filter criteria from the following JSON: `%s`. Cause: %w", string(filterCriteriaJSON), err)
 		}
 	}
+
+	// Go through each topic filter and look for registered addresses
 	for i, topicCondition := range filterCriteria.Topics {
+		// the first topic is always the signature of the event, so it can't be an address
 		if i == 0 {
 			continue
 		}
 		for _, topic := range topicCondition {
-			bitlen := topic.Big().BitLen()
-			if bitlen < 80 || bitlen > 160 {
-				continue
-			}
-			potentialAddr := gethcommon.BytesToAddress(topic.Bytes())
-			cl, found := m.accountClients[potentialAddr]
-			if found {
-				return cl, nil
+			potentialAddr := common.ExtractPotentialAddress(topic)
+			if potentialAddr != nil {
+				cl, found := m.accountClients[*potentialAddr]
+				if found {
+					return cl, nil
+				}
 			}
 		}
 	}
