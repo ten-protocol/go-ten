@@ -41,12 +41,14 @@ jobs:
       - name: 'Sets env vars for testnet'
         if: ${{ github.event.inputs.testnet_type == 'testnet' }}
         run: |
+          echo "ETH2NETWORK_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/eth2network:latest" >> $GITHUB_ENV
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/testnet_l1network:latest" >> $GITHUB_ENV
           echo "L1_CONTAINER_NAME=testnet-eth2network" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' || (github.event_name == 'schedule') }}
         run: |
+          echo "ETH2NETWORK_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_eth2network:latest" >> $GITHUB_ENV
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_testnet_l1network:latest" >> $GITHUB_ENV
           echo "L1_CONTAINER_NAME=dev-testnet-eth2network" >> $GITHUB_ENV
 
@@ -79,8 +81,8 @@ jobs:
       - name: 'Build and push image'
         #DOCKER_BUILDKIT=1 will enable  the new docker build kit that allows us to use build only caches on RUN commands. 
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/eth2network.Dockerfile  .
-          docker push ${{env.L1_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{env.ETH2NETWORK_BUILD_TAG}} -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/eth2network.Dockerfile .
+          docker push -a ${{env.L1_DOCKER_BUILD_TAG}}
 
       - name: 'Deploy L1 to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
