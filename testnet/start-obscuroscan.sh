@@ -6,9 +6,9 @@
 
 help_and_exit() {
     echo ""
-    echo "Usage: $(basename "${0}") --rpcServerAddress=http://testnet-host-1:13000 --receivingPort=80"
+    echo "Usage: $(basename "${0}") --rpcServerAddress=http://validator-host:13010 --receivingPort=80"
     echo ""
-    echo "  rpcServerAddress        *Optional* Set the rpc server address (defaults to http://testnet-host-1:13000)"
+    echo "  rpcServerAddress        *Optional* Set the rpc server address (defaults to http://validator-host:13010)"
     echo ""
     echo "  receivingPort           *Optional* Set the ObscuroScan server receiving port (defaults to 80)"
     echo ""
@@ -25,7 +25,7 @@ testnet_path="${start_path}"
 
 # Define defaults
 receivingPort=80
-rpcServerAddress='http://testnet-host-1:13000'
+rpcServerAddress='http://validator-host:13010'
 docker_image="testnetobscuronet.azurecr.io/obscuronet/obscuroscan:latest"
 
 # Fetch options
