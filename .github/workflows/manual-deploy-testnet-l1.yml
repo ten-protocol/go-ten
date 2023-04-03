@@ -79,7 +79,8 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: 'Build and push image'
-        #DOCKER_BUILDKIT=1 will enable  the new docker build kit that allows us to use build only caches on RUN commands. 
+        # DOCKER_BUILDKIT=1 will enable  the new docker build kit that allows us to use build only caches on RUN commands.
+        # Tag the same image with 2 tags and push with the -a flag which pushes all images
         run: |
           DOCKER_BUILDKIT=1 docker build -t ${{env.ETH2NETWORK_BUILD_TAG}} -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/eth2network.Dockerfile .
           docker push -a ${{env.L1_DOCKER_BUILD_TAG}}
