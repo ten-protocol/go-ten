@@ -83,8 +83,8 @@ jobs:
         # Tag the same image with 2 tags and push with the -a flag which pushes all images
         run: |
           DOCKER_BUILDKIT=1 docker build -t ${{env.ETH2NETWORK_BUILD_TAG}} -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/eth2network.Dockerfile .
-          docker push -a ${{env.L1_DOCKER_BUILD_TAG}}
-
+          docker push ${{env.L1_DOCKER_BUILD_TAG}}
+          docker push ${{env.ETH2NETWORK_BUILD_TAG}}
       - name: 'Deploy L1 to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
         with:
