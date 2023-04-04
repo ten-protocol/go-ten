@@ -107,7 +107,7 @@ func ExecuteObsCall(
 	result, err := gethcore.ApplyMessage(vmenv, msg, gp)
 	// Follow the same error check structure as in geth
 	// 1 - vmError / stateDB err check
-	// 2 - evm.Cancelled() TODO
+	// 2 - evm.Cancelled() todo (#1576) - support the ability to cancel function call if it takes too long
 	// 3 - error check the ApplyMessage
 
 	// Read the error stored in the database.
@@ -140,10 +140,10 @@ func initParams(storage db.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroC
 	return chain, vmCfg, &gp
 }
 
-// Todo - this is currently just returning the shared secret
+// todo (#1053) - this is currently just returning the shared secret
 // it should not use it directly, but derive some entropy from it
 func secret(storage db.Storage) []byte {
-	// TODO - Handle secret not being found.
+	// todo (#1053) - handle secret not being found
 	secret, _ := storage.FetchSecret()
 	return secret[:]
 }
@@ -175,7 +175,7 @@ func newRevertError(result *gethcore.ExecutionResult) error {
 	return &SerialisableError{
 		Err:    err.Error(),
 		Reason: hexutil.Encode(result.Revert()),
-		Code:   3, // todo - magic number
+		Code:   3, // todo - magic number, really needs thought around the value and made a constant
 	}
 }
 

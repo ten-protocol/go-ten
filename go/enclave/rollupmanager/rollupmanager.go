@@ -1,6 +1,6 @@
 package rollupmanager
 
-// TODO: once the cross chain messages based bridge is implemented remove this completely.
+// todo (@stefan) - once the cross chain messages based bridge is implemented remove this completely
 
 import (
 	"errors"
@@ -185,7 +185,7 @@ func (re *rollupManager) extractRollups(br *common.BlockAndReceipts, blockResolv
 }
 
 // Validates and stores the rollup in a given block.
-// TODO - #718 - Design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P).
+// todo (#718) - design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P)
 func (re *rollupManager) processRollups(br *common.BlockAndReceipts) ([]*core.Rollup, error) { //nolint:gocognit
 	block := br.Block
 
@@ -224,7 +224,7 @@ func (re *rollupManager) processRollups(br *common.BlockAndReceipts) ([]*core.Ro
 		for _, batch := range rollup.Batches {
 			b, _ := re.storage.FetchBatch(*batch.Hash())
 			// only store the batch if not found in the db
-			// todo - this needs to be clarified.
+			// todo (@matt) - this needs to be clarified
 			if b != nil {
 				continue
 			}
@@ -262,7 +262,7 @@ func (re *rollupManager) getLatestRollupBeforeBlock(block *common.L1Block) (*cor
 		}
 
 		// we scan backwards now to the prev block in the chain and we will lookup to see if that has an entry
-		// todo: is this still required for safety, even though we're storing an entry for every L1 block?
+		// todo (@stefan) - is this still required for safety, even though we're storing an entry for every L1 block?
 		block, err = re.storage.FetchBlock(block.ParentHash())
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {

@@ -26,7 +26,6 @@ var (
 	_ = common.Big1
 	_ = types.BloomLookup
 	_ = event.NewSubscription
-	_ = abi.ConvertType
 )
 
 // StructsCrossChainMessage is an auto generated low-level Go binding around an user-defined struct.
@@ -167,11 +166,11 @@ func NewCrossChainMessengerFilterer(address common.Address, filterer bind.Contra
 
 // bindCrossChainMessenger binds a generic wrapper to an already deployed contract.
 func bindCrossChainMessenger(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
-	parsed, err := CrossChainMessengerMetaData.GetAbi()
+	parsed, err := abi.JSON(strings.NewReader(CrossChainMessengerABI))
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, *parsed, caller, transactor, filterer), nil
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and

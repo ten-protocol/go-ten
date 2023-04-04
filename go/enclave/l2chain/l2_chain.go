@@ -54,7 +54,7 @@ type ObscuroChain struct {
 	logger               gethlog.Logger
 
 	// Gas usage values
-	// TODO use the ethconfig.Config instead
+	// todo (#627) - use the ethconfig.Config instead
 	GlobalGasCap uint64
 	BaseFee      *big.Int
 }
@@ -83,7 +83,7 @@ func New(
 		chainConfig:          chainConfig,
 		blockProcessingMutex: sync.Mutex{},
 		logger:               logger,
-		GlobalGasCap:         5_000_000_000, // Todo - make config
+		GlobalGasCap:         5_000_000_000, // todo (#627) - make config
 		BaseFee:              gethcommon.Big0,
 		sequencerID:          sequencerID,
 		genesis:              genesis,
@@ -224,7 +224,7 @@ func (oc *ObscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *g
 }
 
 func (oc *ObscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
-	// TODO review this during gas mechanics implementation
+	// todo (#627) - review this during gas mechanics implementation
 	callMsg, err := apiArgs.ToMessage(oc.GlobalGasCap, oc.BaseFee)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
@@ -305,12 +305,12 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 			return nil, fmt.Errorf("block was invalid: %w", err)
 		}
 	}
-	// todo: this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
+	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
 	prevL1Head, err := oc.storage.FetchHeadBlock()
 
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			// todo: we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
+			// todo (@matt) - we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
 			return &blockIngestionType{isLatest: isLatest, fork: false, preGenesis: true}, nil
 		}
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
@@ -448,7 +448,7 @@ func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1BlockHash) (*core.B
 		Transactions: []*common.L2Tx{},
 	}
 
-	// TODO: Figure out a better way to bootstrap the system contracts.
+	// todo (#1577) - figure out a better way to bootstrap the system contracts
 	deployTx, err := oc.crossChainProcessors.Local.GenerateMessageBusDeployTx()
 	if err != nil {
 		oc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
@@ -517,7 +517,7 @@ func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stat
 	for _, resp := range syntheticTransactionsResponses {
 		rec, ok := resp.(*types.Receipt)
 		if !ok { // Еxtract reason for failing deposit.
-			// TODO - Handle the case of an error (e.g. insufficient funds).
+			// todo (#1578) - handle the case of an error (e.g. insufficient funds)
 			oc.logger.Crit("Sanity check. Expected a receipt", log.ErrKey, resp)
 		}
 
@@ -552,7 +552,6 @@ func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stat
 
 	sort.Sort(sortByTxIndex(txReceipts))
 
-	// todo - handle the tx execution logs
 	return rootHash, executedTransactions, txReceipts, synthReceipts
 }
 
@@ -581,10 +580,10 @@ func (oc *ObscuroChain) ResyncStateDB() error {
 // replayBatchesToValidState is used to repopulate the stateDB cache with data from persisted batches. Two step process:
 // 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
 // 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
-// todo: get unit test coverage around this (and L2 Chain code more widely, see ticket #1416 )
+// todo (#1416) - get unit test coverage around this (and L2 Chain code more widely)
 func (oc *ObscuroChain) replayBatchesToValidState() error {
 	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
-	// todo: consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
+	// todo - consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
 	var batchesToReplay []*core.Batch
 	// `batchToReplayFrom` variable will eventually be the latest batch for which we are able to produce a StateDB
 	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
@@ -721,7 +720,7 @@ func (oc *ObscuroChain) SignRollup(rollup *core.Rollup) error {
 // Checks that the header is signed validly by the sequencer.
 func (oc *ObscuroChain) CheckSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
-	// TODO - #718 - Sequencer identities should be retrieved from the L1 management contract.
+	// todo (#718) - sequencer identities should be retrieved from the L1 management contract.
 	if !bytes.Equal(aggregator.Bytes(), oc.sequencerID.Bytes()) {
 		return fmt.Errorf("expected batch to be produced by sequencer %s, but was produced by %s", oc.sequencerID.Hex(), aggregator.Hex())
 	}
@@ -752,7 +751,7 @@ func (oc *ObscuroChain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error
 		}
 		batch = genesisBatch
 	case gethrpc.PendingBlockNumber:
-		// TODO - Depends on the current pending rollup; leaving it for a different iteration as it will need more thought.
+		// todo - depends on the current pending rollup; leaving it for a different iteration as it will need more thought
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
 	case gethrpc.LatestBlockNumber:
 		headBatch, err := oc.storage.FetchHeadBatch()
@@ -849,7 +848,6 @@ func (oc *ObscuroChain) produceBatch(block *types.Block, genesisBatchStored bool
 }
 
 // Returns the state of the chain at height
-// TODO make this cacheable
 func (oc *ObscuroChain) getChainStateAtBlock(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
 	// We retrieve the batch of interest.
 	batch, err := oc.getBatch(*blockNumber)
@@ -885,7 +883,7 @@ func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address,
 func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 	// We check the batch.
 	var txReceipts types.Receipts
-	// TODO - #718 - Determine what level of checking we should perform on the genesis batch.
+	// todo (#718) - determine what level of checking we should perform on the genesis batch
 	if !batch.IsGenesis() {
 		var err error
 		txReceipts, err = oc.isInternallyValidBatch(batch)
@@ -893,7 +891,7 @@ func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 			return fmt.Errorf("batch was invalid. Cause: %w", err)
 		}
 
-		// todo - shouldn't this be checked first?
+		// todo (@matt) - shouldn't this be checked first?
 		// We check that we've stored the batch's parent.
 		if _, err = oc.storage.FetchBatch(batch.Header.ParentHash); err != nil {
 			return fmt.Errorf("could not retrieve parent batch. Cause: %w", err)
@@ -905,14 +903,14 @@ func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not fetch batch. Cause: %w", err)
 	}
-	// TODO - #718 - Once the sequencer includes transactions deterministically (i.e. a batch of a given height always
+	// todo (#718) - once the sequencer includes transactions deterministically (i.e. a batch of a given height always
 	//  contains the same transactions, regardless of reorgs), uncomment this check.
 	//if err == nil && batch.Header.TxHash != storedBatch.Header.TxHash {
 	//	return fmt.Errorf("two batches at same height did not have the same transactions")
 	//}
 
 	// If we haven't stored the batch before, we store it and update the head batch for that L1 block.
-	// TODO - FetchBatch should return errutil.ErrNotFound for unstored batches, so we can handle that type of error
+	// todo (#1579) - FetchBatch should return errutil.ErrNotFound for unstored batches, so we can handle that type of error
 	//  separately.
 	b, _ := oc.storage.FetchBatch(*batch.Hash())
 	if b == nil {
