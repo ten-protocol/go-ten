@@ -27,6 +27,13 @@ const (
 	_IDEFlag = "IDE"
 )
 
+// Testnet values used for quick debugging:
+// l1 host: testnet-eth2network.uksouth.azurecontainer.io
+// l1 port: 9000
+// l2 host: testnet.obscu.ro
+// l2 port: 13001
+// l2wallet: 8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b
+
 func TestL1IssueTxWaitReceipt(t *testing.T) {
 	// test is skipped by default to avoid breaking CI - set env flag in `Run Configurations` to run it in IDE
 	if os.Getenv(_IDEFlag) == "" {
