@@ -169,7 +169,12 @@ func (re *rollupManager) extractRollups(br *common.BlockAndReceipts, blockResolv
 		// In case of L1 reorgs, rollups may end published on a fork
 		if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
 			rollups = append(rollups, core.ToRollup(r, re.TransactionBlobCrypto))
-			re.logger.Trace(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
+			re.logger.Info(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
+				common.ShortHash(r.Hash()),
+				common.ShortHash(b.Hash()),
+			))
+		} else {
+			re.logger.Warn(fmt.Sprintf("Ignored rollup r_%d from block b_%d, because it was produced on a fork",
 				common.ShortHash(r.Hash()),
 				common.ShortHash(b.Hash()),
 			))

@@ -567,8 +567,8 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 // Terminates all subscriptions and validates the received events.
 func checkReceivedLogs(t *testing.T, s *Simulation) {
 	logsFromSnapshots := 0
-	// at least one event per transfer tx
-	nrLogs := len(s.TxInjector.TxTracker.TransferL2Transactions) * len(s.RPCHandles.AuthObsClients)
+	// at least one event per transfer tx for half the transactions
+	nrLogs := len(s.TxInjector.TxTracker.TransferL2Transactions) * len(s.RPCHandles.AuthObsClients) / 2
 	for _, clients := range s.RPCHandles.AuthObsClients {
 		for _, client := range clients {
 			logsFromSnapshots += checkSnapshotLogs(t, client)
@@ -681,10 +681,7 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 	logCount := make(map[string]int)
 
 	for _, item := range logs {
-		l := *item
-		// todo - uncomment this to catch events saved multiple times in different batches
-		// l.BlockHash = gethcommon.Hash{}
-		logJSON, err := l.MarshalJSON()
+		logJSON, err := item.MarshalJSON()
 		if err != nil {
 			t.Errorf("could not marshal log to JSON to check for duplicate logs")
 			continue

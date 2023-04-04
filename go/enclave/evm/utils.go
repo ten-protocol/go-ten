@@ -3,11 +3,12 @@ package evm
 import (
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 )
 
 // Perform the conversion between an Obscuro header and an Ethereum header that the EVM understands
