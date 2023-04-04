@@ -106,6 +106,10 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return err
 	}
 
+	defer func() {
+		c.logger.Info("[DEBUG] Encrypted-Client m: %s r: %+v", method, result)
+	}()
+
 	// if caller not interested in response, we're done
 	if result == nil {
 		return nil
@@ -115,7 +119,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return rawResult.Error()
 	}
 
-	if len(rawResult.EncUserResponse) == 0 {
+	if rawResult.EncUserResponse == nil {
 		return ErrNilResponse
 	}
 

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"sync/atomic"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -30,6 +31,10 @@ func (b *ExtBatch) Hash() L2BatchHash {
 func (b *ExtBatch) Size() (int, error) {
 	bytes, err := rlp.EncodeToBytes(b)
 	return len(bytes), err
+}
+
+func (b *ExtBatch) SDump() string {
+	return fmt.Sprintf("Tx_Len=%d, encrypted_blob_len=%d", len(b.TxHashes), len(b.EncryptedTxBlob))
 }
 
 // BatchRequest is used when requesting a range of batches from a peer.

@@ -451,10 +451,17 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 
 	if blockSubmissionResponse.ProducedBatch != nil && blockSubmissionResponse.ProducedBatch.Header != nil {
 		// TODO - #718 - Unlink batch production from L1 cadence.
+		batch := blockSubmissionResponse.ProducedBatch
+		size, _ := batch.Size()
+		h.logger.Info(fmt.Sprintf("Publishing batch b_num %d, size %d , b=%s", batch.Header.Number, size, batch.SDump()))
 		h.storeAndDistributeBatch(blockSubmissionResponse.ProducedBatch)
 	}
 
 	if blockSubmissionResponse.ProducedRollup != nil && blockSubmissionResponse.ProducedRollup.Header != nil {
+		rp := blockSubmissionResponse.ProducedRollup
+		h.logger.Info(fmt.Sprintf("Publishing rollup with b_num %d-%d",
+			rp.Batches[0].Header.Number,
+			rp.Batches[len(rp.Batches)-1].Header.Number))
 		h.publishRollup(blockSubmissionResponse.ProducedRollup)
 	}
 
