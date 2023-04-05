@@ -45,7 +45,7 @@ func (e *EgoAttestationProvider) GetReport(pubKey []byte, owner gethcommon.Addre
 	}, nil
 }
 
-/ / todo (#1059) - we need to verify the hash is a recognized enclave - figure out how we solve for upgradability
+// todo (#1059) - we need to verify the hash is a recognized enclave - figure out how we solve for upgradability
 // todo (@matt) - we should probably return other properties for manual verification, not just the data (e.g. validate code hash)
 func (e *EgoAttestationProvider) VerifyReport(att *common.AttestationReport) ([]byte, error) {
 	remoteReport, err := enclave.VerifyRemoteReport(att.Report)
