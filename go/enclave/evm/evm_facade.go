@@ -148,7 +148,7 @@ func initParams(storage db.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroC
 	return chain, vmCfg, &gp
 }
 
-//  todo (#1053) - this is currently just returning the shared secret
+// todo (#1053) - this is currently just returning the shared secret
 // it should not use it directly, but derive some entropy from it
 func secret(storage db.Storage) []byte {
 	// todo (#1053) - handle secret not being found.
