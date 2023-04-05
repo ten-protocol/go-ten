@@ -241,14 +241,14 @@ func (oc *ObscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
 
-	oc.logger.Trace("Obs_Call:", "Successful result", gethlog.Lazy{Fn: func() string {
+	/*oc.logger.Trace("Obs_Call:", "Successful result", gethlog.Lazy{Fn: func() string {
 		return fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=b_%d, state=%s",
 			callMsg.To(),
 			callMsg.From(),
 			hexutils.BytesToHex(callMsg.Data()),
 			common.ShortHash(*batch.Hash()),
 			batch.Header.Root.Hex())
-	}})
+	}})*/
 
 	result, err := evm.ExecuteObsCall(&callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.logger)
 	if err != nil {

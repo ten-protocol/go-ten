@@ -192,8 +192,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		}
 
 		if *txHash != signedTx.Hash() {
-			ti.logger.Error("The hash of the submitted transaction does not match the hash coming back!")
-			continue
+			panic("The hash of the submitted transaction does not match the hash coming back!")
 		}
 
 		// todo - retrieve receipt
@@ -231,7 +230,6 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		_, err = obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
-			continue
 		}
 
 		// todo - retrieve receipt
@@ -274,12 +272,11 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		_, err = obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue deposit via RPC.", log.ErrKey, err)
-			continue
+		} else {
+			go ti.TxTracker.trackTransferL2Tx(signedTx)
 		}
-
 		// todo - retrieve receipt
 
-		go ti.TxTracker.trackTransferL2Tx(signedTx)
 		sleepRndBtw(ti.avgBlockDuration/3, ti.avgBlockDuration)
 	}
 	// TODO: Rework this when old contract deployer is phased out?
@@ -348,7 +345,6 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 	//if nonce%3 == 0 {
 	//	value = max
 	//}
-
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,

@@ -329,9 +329,15 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 		return responses.AsPlaintextError(fmt.Errorf("could not decrypt transaction. Cause: %w", err))
 	}
 
+	e.logger.Info(fmt.Sprintf("Submitted transaction = %s", decryptedTx.Hash().Hex()))
+
 	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
 	if err != nil {
-		responses.AsPlaintextError(fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err))
+		if errors.Is(err, types.ErrInvalidSig) {
+			return responses.AsPlaintextError(fmt.Errorf("transaction contains invalid signature"))
+		} else {
+			return responses.AsPlaintextError(fmt.Errorf("could not recover from address. Cause: %w", err))
+		}
 	}
 
 	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(viewingKeyAddress)
@@ -351,7 +357,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 		}
 	}
 
-	hash := decryptedTx.Hash()
+	hash := decryptedTx.Hash().Hex()
 	return responses.AsEncryptedResponse(&hash, encryptor)
 }
 

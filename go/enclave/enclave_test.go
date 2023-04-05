@@ -484,7 +484,7 @@ func createTestEnclave(prefundedAddresses []genesis.Account, idx int) (common.En
 		WillAttest:     false,
 		UseInMemoryDB:  true,
 		MinGasPrice:    big.NewInt(1),
-		Cadence:        3,
+		Cadence:        10,
 	}
 	logger := log.New(log.TestLogCmp, int(gethlog.LvlError), log.SysOut)
 

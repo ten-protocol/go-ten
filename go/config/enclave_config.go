@@ -80,6 +80,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		MinGasPrice:               big.NewInt(1),
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
-		Cadence:                   3,
+		Cadence:                   10,
 	}
 }

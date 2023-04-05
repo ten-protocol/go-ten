@@ -225,13 +225,9 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
 	enclaveResponse := h.enclaveClient.SubmitTx(encryptedTx)
-	err := enclaveResponse.Error()
-	if err != nil {
-		return nil, err
-	}
 
 	if h.config.NodeType != common.Sequencer {
-		err = h.p2p.SendTxToSequencer(encryptedTx)
+		err := h.p2p.SendTxToSequencer(encryptedTx)
 		if err != nil {
 			return nil, fmt.Errorf("could not broadcast transaction to sequencer. Cause: %w", err)
 		}
