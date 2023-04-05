@@ -201,6 +201,7 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 					SubID: idAndEncLog.SubID,
 					Log:   decryptedLog,
 				}
+				c.logger.Info(fmt.Sprintf("Received log: %v", idAndLog))
 				logCh <- idAndLog
 			}
 
