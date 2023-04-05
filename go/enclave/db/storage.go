@@ -30,7 +30,7 @@ import (
 // Note: this is not just "not found", we cache at every L1 block what rollup we are up to so we also record that we haven't seen one yet
 var ErrNoRollups = errors.New("no rollups have been published")
 
-// todo (#1551) - consistency around whether we assert the secret is available or not.
+// todo (#1551) - consistency around whether we assert the secret is available or not
 
 type storageImpl struct {
 	db          *sql.EnclaveDB
@@ -475,7 +475,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	}
 
 	result := []*types.Log{}
-	// todo - remove the "distinct" once the fast-finality work is completed.
+	// todo - remove the "distinct" once the fast-finality work is completed
 	// currently the events seem to be stored twice because of some weird logic in the rollup/batch processing.
 	query := "select distinct topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1=1 "
 	var queryParams []any

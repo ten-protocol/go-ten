@@ -13,7 +13,7 @@ import (
 
 // Perform the conversion between an Obscuro header and an Ethereum header that the EVM understands
 // in the first stage we just encode the obscuro header in the Extra field
-// todo - find a better way
+// todo (@tudor) - find a better way
 func convertToEthHeader(h *common.BatchHeader, secret []byte) (*types.Header, error) {
 	obscuroHeader, err := rlp.EncodeToBytes(h)
 	if err != nil {
