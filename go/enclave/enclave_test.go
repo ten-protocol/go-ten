@@ -436,7 +436,7 @@ func TestGetBalanceBlockHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// TODO review why injecting a new block crashes the enclave https://github.com/obscuronet/obscuro-internal/issues/1251
+	// todo (#1251) - review why injecting a new block crashes the enclave https://github.com/obscuronet/obscuro-internal/issues/1251
 	//err = injectNewBlockAndChangeBalance(testEnclave, fundedAtBlock2)
 	//if err != nil {
 	//	t.Fatal(err)

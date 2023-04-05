@@ -28,11 +28,11 @@ const (
 	chainDataAncientDir = "chaindata/ancient"
 	trieCacheDir        = "triecache"
 	ethashDir           = "ethash"
-	// TODO - Use a constant that makes sense outside of the simulation.
+	// todo (#1471) - use a constant that makes sense outside of the simulation.
 	dataDirRoot = "../.build/simulations/gethDataDir"
 )
 
-// TODO - Add the constants used in this file to the config framework.
+// todo (#1471) - add the constants used in this file to the config framework
 
 // NewL1Blockchain creates a Geth BlockChain object. `genesisJSON` is the Genesis block config in JSON format.
 // A Geth node can be made to output this using the `dumpgenesis` startup command.
