@@ -561,7 +561,7 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt 
 	if err != nil {
 		return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 	}
-	h.logger.Trace("L1 transaction sent successfully, watching for receipt.")
+	h.logger.Info("Successfully issued Rollup on L1", "txHash", signedTx.Hash())
 
 	if awaitReceipt {
 		// block until receipt is found and then return

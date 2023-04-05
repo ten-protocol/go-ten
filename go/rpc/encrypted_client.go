@@ -41,7 +41,6 @@ var SensitiveMethods = []string{
 	GetTransactionCount,
 	GetTransactionReceipt,
 	SendRawTransaction,
-	Subscribe,
 	EstimateGas,
 	GetLogs,
 }

@@ -87,7 +87,7 @@ func NewEnclave(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	logger gethlog.Logger,
 ) common.Enclave {
-	// todo - add the delay: N hashes
+	// todo (#1053) - add the delay: N hashes
 
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
@@ -122,7 +122,7 @@ func NewEnclave(
 	storage := db.NewStorage(backingDB, &chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
-	// Todo - check the minimum difficulty parameter
+	// todo (#1056) - valid block
 	var l1Blockchain *gethcore.BlockChain
 	if config.ValidateL1Blocks {
 		if config.GenesisJSON == nil {
@@ -133,7 +133,7 @@ func NewEnclave(
 		logger.Info("validateBlocks is set to false. L1 blocks will not be validated.")
 	}
 
-	// Todo- make sure the enclave cannot be started in production with WillAttest=false
+	// todo (#1474) - make sure the enclave cannot be started in production with WillAttest=false
 	var attestationProvider AttestationProvider
 	if config.WillAttest {
 		attestationProvider = &EgoAttestationProvider{}
@@ -142,11 +142,11 @@ func NewEnclave(
 		attestationProvider = &DummyAttestationProvider{}
 	}
 
-	// todo - this has to be read from the database when the node restarts.
+	// todo (#1053) - this has to be read from the database when the node restarts
 	// first time the node starts we derive the obscuro key from the master seed received after the shared secret exchange
 	logger.Info("Generating the Obscuro key")
 
-	// todo - save this to the db
+	// todo (#1053) - save this to the db
 	enclaveKey, err := gethcrypto.GenerateKey()
 	if err != nil {
 		logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
@@ -267,7 +267,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	}
 
 	// We prepare the block submission response.
-	// TODO: Fix subscribed logs for validators who are being synchronized only through L1
+	// todo (@stefan) - fix subscribed logs for validators who are being synchronized only through L1
 	blockSubmissionResponse := e.produceBlockSubmissionResponse(newL2Head, producedBatch)
 
 	if producedBatch != nil && (producedBatch.Header.Number.Uint64()%e.config.Cadence == 0) {
@@ -474,8 +474,8 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 
 	l2Head, err := e.storage.FetchHeadBatch()
 	if err == nil {
-		// todo: we should return an error when head state is not available, but for current test situations with race
-		// 		conditions we allow it to return zero while head state is uninitialized
+		// todo - we should return an error when head state is not available, but for current test situations with race
+		//  conditions we allow it to return zero while head state is uninitialized
 		s, err := e.storage.CreateStateDB(*l2Head.Hash())
 		if err != nil {
 			err = fmt.Errorf("could not create stateDB. Cause: %w", err)
@@ -528,7 +528,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(viewingKeyAddress)
 
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
-	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
+	// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
 	signer := types.NewLondonSigner(tx.ChainId())
 	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
 
@@ -843,7 +843,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, encryptor)
 	}
 
-	// TODO hook the correct blockNumber from the API call (paramList[1])
+	// todo (@pedro) - hook the correct blockNumber from the API call (paramList[1])
 	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.chain.GlobalGasCap)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
@@ -875,6 +875,10 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) res
 	// todo logic to check that the filter is valid
 	// can't have both from and blockhash
 	// from <=to
+	// todo (@stefan) - return user error
+	if filter.BlockHash != nil && filter.FromBlock != nil {
+		return responses.AsEncryptedError(fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock"), encryptor)
+	}
 
 	from := filter.FromBlock
 	if from != nil && from.Int64() < 0 {
@@ -885,14 +889,27 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) res
 		from = batch.Number()
 	}
 
+	// Set from to the height of the block hash
+	if from == nil && filter.BlockHash != nil {
+		batch, err := e.storage.FetchBatch(*filter.BlockHash)
+		if err != nil {
+			return responses.AsEncryptedError(fmt.Errorf("could not retrieve batch with hash %s. Cause: %w", filter.BlockHash.Hex(), err), encryptor)
+		}
+		from = batch.Number()
+	}
+
 	to := filter.ToBlock
 	// when to=="latest", don't filter on it
 	if to != nil && to.Int64() < 0 {
 		to = nil
 	}
 
+	if from != nil && to != nil && from.Cmp(to) > 0 {
+		return responses.AsEncryptedError(fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to), encryptor)
+	}
+
 	// We retrieve the relevant logs that match the filter.
-	filteredLogs, err := e.storage.FilterLogs(forAddress, from, to, filter.BlockHash, filter.Addresses, filter.Topics)
+	filteredLogs, err := e.storage.FilterLogs(forAddress, from, to, nil, filter.Addresses, filter.Topics)
 	if err != nil {
 		err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
 		return responses.AsEncryptedError(err, encryptor)
@@ -920,7 +937,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 	if args.Gas != nil && uint64(*args.Gas) >= params.TxGas {
 		hi = uint64(*args.Gas)
 	} else {
-		// TODO review this with the gas mechanics/tokenomics work
+		// todo (#627) - review this with the gas mechanics/tokenomics work
 		/*
 			//Retrieve the block to act as the gas ceiling
 			block, err := b.BlockByNumberOrHash(ctx, blockNrOrHash)
@@ -1028,7 +1045,7 @@ func (e *enclaveImpl) HealthCheck() (bool, error) {
 		e.logger.Error("unable to HealthCheck enclave storage", log.ErrKey, err)
 		return false, nil
 	}
-	// TODO enclave healthcheck operations
+	// todo (#1148) - enclave healthcheck operations
 	enclaveHealthy := true
 	return storageHealthy && enclaveHealthy, nil
 }
@@ -1111,7 +1128,7 @@ func (e *enclaveImpl) processNetworkSecretMsgs(br *common.BlockAndReceipts) []*c
 
 		// this transaction was created by the genesis node, we need to store their attested key to decrypt their rollup
 		if initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx); ok {
-			// TODO - Ensure that we don't accidentally skip over the real `L1InitializeSecretTx` message. Otherwise
+			// todo (#1580) - ensure that we don't accidentally skip over the real `L1InitializeSecretTx` message. Otherwise
 			//  our node will never be able to speak to other nodes.
 			// there must be a way to make sure that this transaction can only be sent once.
 			att, err := common.DecodeAttestation(initSecretTx.Attestation)
@@ -1238,19 +1255,30 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash,
 func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]byte, error) {
 	result := map[gethrpc.ID][]*types.Log{}
 
-	// Go through each subscription
+	// Go through each subscription and collect the logs
 	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
 		// 1. fetch the logs since the last request
-		fromBlock := previousHead
-		// when the subscription is initialised, default from the latest batch
-		if previousHead == nil || previousHead.Int64() < 0 {
+		var from *big.Int
+		to := big.NewInt(upToBatchNr.Int64() + 1)
+
+		if previousHead == nil || previousHead.Int64() <= 0 {
+			// when the subscription is initialised, default from the latest batch
 			batch, err := e.storage.FetchHeadBatch()
 			if err != nil {
 				return err
 			}
-			fromBlock = batch.Number()
+			from = batch.Number()
+		} else {
+			from = big.NewInt(previousHead.Int64() + 1)
 		}
-		logs, err := e.storage.FilterLogs(subscription.Account, fromBlock, upToBatchNr, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
+
+		if from.Cmp(to) >= 0 {
+			e.logger.Warn(fmt.Sprintf("Skipping subscription step id=%s: [%d, %d]", id, from, to))
+			return nil
+		}
+
+		logs, err := e.storage.FilterLogs(subscription.Account, from, to, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
+		e.logger.Info(fmt.Sprintf("Subscription id=%s: [%d, %d]. Logs %d, Err: %s", id, from, to, len(logs), err))
 		if err != nil {
 			return err
 		}
@@ -1272,7 +1300,7 @@ func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]b
 func (e *enclaveImpl) rejectBlockErr(cause error) *common.BlockRejectError {
 	var hash common.L1BlockHash
 	l1Head, err := e.storage.FetchHeadBlock()
-	// TODO - Handle error.
+	// todo - handle error
 	if err == nil {
 		hash = l1Head.Hash()
 	}

@@ -14,8 +14,7 @@ var (
 	_enclaveDataDir = "/enclavedata" // this is how the directory is references within the enclave container
 
 	// these mounts are created if they don't exist by the `StartNewContainer` function
-	_defaultHostMount    = map[string]string{"host-persistence": _hostDataDir}       // used for host database
-	_defaultEnclaveMount = map[string]string{"enclave-persistence": _enclaveDataDir} // used to store data encrypted by the enclave (e.g. EDB credentials)
+	_defaultHostMount = map[string]string{"host-persistence": _hostDataDir} // used for host database
 )
 
 type DockerNode struct {
@@ -174,7 +173,7 @@ func (d *DockerNode) startEnclave() error {
 		)
 	}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, _defaultEnclaveMount)
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, getEnclaveVolumesConf(d.cfg.hostID))
 	return err
 }
 
@@ -207,4 +206,9 @@ func (d *DockerNode) SetNetworkConfig(networkCfg *NetworkConfig) {
 	d.cfg.managementContractAddr = networkCfg.ManagementContractAddress
 	d.cfg.messageBusContractAddress = networkCfg.MessageBusAddress
 	d.cfg.l1Start = networkCfg.L1StartHash
+}
+
+// make sure a separate mount is created for every host (so multiple nodes can be run from the same docker system)
+func getEnclaveVolumesConf(hostID string) map[string]string {
+	return map[string]string{"encl-data-" + hostID: _enclaveDataDir}
 }

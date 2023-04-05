@@ -30,7 +30,7 @@ import (
 // Note: this is not just "not found", we cache at every L1 block what rollup we are up to so we also record that we haven't seen one yet
 var ErrNoRollups = errors.New("no rollups have been published")
 
-// todo (#1551) - consistency around whether we assert the secret is available or not.
+// todo (#1551) - consistency around whether we assert the secret is available or not
 
 type storageImpl struct {
 	db          *sql.EnclaveDB
@@ -278,15 +278,10 @@ func (s *storageImpl) writeLog(l *types.Log, stateDB *state.StateDB, dbBatch *sq
 //   - It has a non-zero nonce (to prevent accidental or malicious creation of the address matching a given topic,
 //     forcing its events to become permanently private (this is not implemented for now)
 func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB) (bool, *gethcommon.Address) {
-	bitlen := topic.Big().BitLen()
-	// Addresses have 20 bytes. If the field has more, it means it is clearly not an address
-	// Discovering addresses with more than 20 leading 0s is very unlikely, so we assume that
-	// any topic that has less than 80 bits of data to not be an address for sure
-	if bitlen < 80 || bitlen > 160 {
+	potentialAddr := common.ExtractPotentialAddress(topic)
+	if potentialAddr == nil {
 		return false, nil
 	}
-
-	potentialAddr := gethcommon.BytesToAddress(topic.Bytes())
 	addrBytes := potentialAddr.Bytes()
 	// Check the database if there are already entries for this address
 	var count int
@@ -298,7 +293,7 @@ func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB)
 	}
 
 	if count > 0 {
-		return true, &potentialAddr
+		return true, potentialAddr
 	}
 
 	// TODO A user address must have a non-zero nonce. This prevents accidental or malicious sending of funds to an
@@ -306,8 +301,8 @@ func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB)
 	// if db.GetNonce(potentialAddr) != 0
 
 	// If the address has code, it's a smart contract address instead.
-	if db.GetCode(potentialAddr) == nil {
-		return true, &potentialAddr
+	if db.GetCode(*potentialAddr) == nil {
+		return true, potentialAddr
 	}
 
 	return false, nil
@@ -480,7 +475,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	}
 
 	result := []*types.Log{}
-	// todo - remove the "distinct" once the fast-finality work is completed.
+	// todo - remove the "distinct" once the fast-finality work is completed
 	// currently the events seem to be stored twice because of some weird logic in the rollup/batch processing.
 	query := "select distinct topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1=1 "
 	var queryParams []any
@@ -544,13 +539,13 @@ func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, fromBloc
 		queryParams = append(queryParams, blockHash.Bytes())
 	}
 
-	// ignore Pending(-2) and Latest(-1)
+	// ignore negative numbers
 	if fromBlock != nil && fromBlock.Sign() > 0 {
 		query += " AND blockNumber >= ?"
 		queryParams = append(queryParams, fromBlock.Int64())
 	}
 	if toBlock != nil && toBlock.Sign() > 0 {
-		query += " AND blockNumber < ?"
+		query += " AND blockNumber <= ?"
 		queryParams = append(queryParams, toBlock.Int64())
 	}
 

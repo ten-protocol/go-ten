@@ -7,7 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 type (
@@ -48,16 +48,29 @@ func MaxInt(x, y uint32) uint32 {
 }
 
 // ShortHash converts the hash to a shorter uint64 for printing.
-func ShortHash(hash common.Hash) uint64 {
+func ShortHash(hash gethcommon.Hash) uint64 {
 	return hash.Big().Uint64()
 }
 
 // ShortAddress converts the address to a shorter uint64 for printing.
-func ShortAddress(address common.Address) uint64 {
+func ShortAddress(address gethcommon.Address) uint64 {
 	return ShortHash(address.Hash())
 }
 
 // ShortNonce converts the nonce to a shorter uint64 for printing.
 func ShortNonce(nonce types.BlockNonce) uint64 {
 	return new(big.Int).SetBytes(nonce[4:]).Uint64()
+}
+
+// ExtractPotentialAddress - given a 32 byte hash , it checks whether it can be an address and extracts that
+func ExtractPotentialAddress(hash gethcommon.Hash) *gethcommon.Address {
+	bitlen := hash.Big().BitLen()
+	// Addresses have 20 bytes. If the field has more, it means it is clearly not an address
+	// Discovering addresses with more than 20 leading 0s is very unlikely, so we assume that
+	// any topic that has less than 80 bits of data to not be an address for sure
+	if bitlen < 80 || bitlen > 160 {
+		return nil
+	}
+	a := gethcommon.BytesToAddress(hash.Bytes())
+	return &a
 }

@@ -30,7 +30,7 @@ const (
 	zeroBytesHex = "000000000000000000000000"
 )
 
-// TODO - Ensure chain reorgs are handled gracefully.
+// todo (#1575, @tudor) - ensure chain reorgs are handled gracefully
 
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
@@ -57,6 +57,7 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 }
 
 func (s *SubscriptionManager) ForEachSubscription(f func(gethrpc.ID, *common.LogSubscription, *big.Int) error) error {
+	// grab a write lock because the function will mutate the lastHead map
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
 

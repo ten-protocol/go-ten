@@ -3,16 +3,17 @@ package evm
 import (
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 )
 
 // Perform the conversion between an Obscuro header and an Ethereum header that the EVM understands
 // in the first stage we just encode the obscuro header in the Extra field
-// todo - find a better way
+// todo (@tudor) - find a better way
 func convertToEthHeader(h *common.BatchHeader, secret []byte) (*types.Header, error) {
 	obscuroHeader, err := rlp.EncodeToBytes(h)
 	if err != nil {

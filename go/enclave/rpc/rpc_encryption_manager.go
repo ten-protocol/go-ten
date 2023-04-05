@@ -28,8 +28,8 @@ var placeholderResult = []byte("0x")
 // EncryptionManager manages the decryption and encryption of sensitive RPC requests.
 type EncryptionManager struct {
 	enclavePrivateKeyECIES *ecies.PrivateKey
-	// TODO - Replace with persistent storage.
-	// TODO - Handle multiple viewing keys per address.
+	// todo (#1445) - replace with persistent storage
+	// todo - handle multiple viewing keys per address
 	viewingKeys map[gethcommon.Address]*ecies.PublicKey // Maps account addresses to viewing public keys.
 }
 

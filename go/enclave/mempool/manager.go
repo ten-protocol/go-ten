@@ -88,7 +88,7 @@ func txsXBatchesAgo(initialBatch *core.Batch, resolver db.BatchResolver) (map[ge
 	currentBatch := initialBatch
 	var err error
 
-	// todo - create method to return the canonical rollup from height N
+	// todo (#1491) - create method to return the canonical rollup from height N
 	for {
 		if blocksDeep == common.HeightCommittedBlocks {
 			// We've found the rollup `HeightCommittedBlocks` deep.
@@ -123,7 +123,7 @@ func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.BatchResolver
 }
 
 // findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
-// todo - inefficient
+// todo (#1491) - inefficient
 func findTxsNotIncluded(head *core.Batch, txs []*common.L2Tx, s db.BatchResolver) ([]*common.L2Tx, error) {
 	// go back only HeightCommittedBlocks blocks to accumulate transactions to be diffed against the mempool
 	startAt := uint64(0)
