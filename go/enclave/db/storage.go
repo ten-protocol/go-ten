@@ -480,7 +480,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 		return nil, fmt.Errorf("logs can only be requested for an account")
 	}
 
-	var result []*types.Log
+	result := make([]*types.Log, 0)
 	// todo - remove the "distinct" once the fast-finality work is completed
 	// currently the events seem to be stored twice because of some weird logic in the rollup/batch processing.
 	query := "select distinct topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1=1 "
