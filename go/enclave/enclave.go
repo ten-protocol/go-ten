@@ -335,9 +335,8 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	if err != nil {
 		if errors.Is(err, types.ErrInvalidSig) {
 			return responses.AsPlaintextError(fmt.Errorf("transaction contains invalid signature"))
-		} else {
-			return responses.AsPlaintextError(fmt.Errorf("could not recover from address. Cause: %w", err))
 		}
+		return responses.AsPlaintextError(fmt.Errorf("could not recover from address. Cause: %w", err))
 	}
 
 	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(viewingKeyAddress)
