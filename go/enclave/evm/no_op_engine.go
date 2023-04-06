@@ -13,7 +13,7 @@ import (
 )
 
 // PoolAddress - address of the pool where the gas will go
-// TODO - this has to be reworked when the gas/fee work starts
+// todo (#627) - this has to be reworked when the gas/fee work starts
 var PoolAddress = common.HexToAddress("0x0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A0A")
 
 // ObscuroNoOpConsensusEngine - implements the geth consensus.Engine, but doesn't do anything

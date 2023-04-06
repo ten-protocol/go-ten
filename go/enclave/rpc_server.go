@@ -103,7 +103,8 @@ func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBl
 		var rejErr *common.BlockRejectError
 		isReject := errors.As(err, &rejErr)
 		if isReject {
-			// todo: we should avoid errors in response messages and use the gRPC error objects for this stuff (standardized across all enclave responses)
+			// todo (@stefan) - we should avoid errors in response messages and use the gRPC error objects for this stuff
+			//  (standardized across all enclave responses)
 			msg, err := rpc.ToBlockSubmissionRejectionMsg(rejErr)
 			if err == nil {
 				// send back reject err response

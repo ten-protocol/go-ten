@@ -6,6 +6,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"math"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -14,10 +17,8 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -39,7 +40,7 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Ba
 	}
 
 	for i, t := range txs {
-		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i)
+		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i, header.Hash())
 		if err != nil {
 			result[t.Hash()] = err
 			logger.Info("Failed to execute tx:", log.TxKey, t.Hash().Hex(), log.CtrErrKey, err)
@@ -52,7 +53,7 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Ba
 	return result
 }
 
-func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *gethcore.GasPool, header *types.Header, t *common.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int) (*types.Receipt, error) {
+func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *gethcore.GasPool, header *types.Header, t *common.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int, batchHash common.L2BatchHash) (*types.Receipt, error) {
 	s.Prepare(t.Hash(), tCount)
 	snap := s.Snapshot()
 
@@ -60,6 +61,13 @@ func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *Obscuro
 	// calculate a random value per transaction
 	header.MixDigest = gethcommon.BytesToHash(crypto.PerTransactionRnd(before.Bytes(), tCount))
 	receipt, err := gethcore.ApplyTransaction(cc, chain, nil, gp, s, header, t, usedGas, vmCfg)
+
+	// adjust the receipt to point to the right batch hash
+	if receipt != nil {
+		receipt.Logs = s.GetLogs(t.Hash(), batchHash)
+		receipt.BlockHash = batchHash
+	}
+
 	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
@@ -108,7 +116,7 @@ func ExecuteObsCall(
 	result, err := gethcore.ApplyMessage(vmenv, msg, gp)
 	// Follow the same error check structure as in geth
 	// 1 - vmError / stateDB err check
-	// 2 - evm.Cancelled() TODO
+	// 2 - evm.Cancelled()  todo (#1576) - support the ability to cancel function call if it takes too long
 	// 3 - error check the ApplyMessage
 
 	// Read the error stored in the database.
@@ -139,10 +147,10 @@ func initParams(storage db.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroC
 	return NewObscuroChainContext(storage, l), vmCfg, &gp
 }
 
-// Todo - this is currently just returning the shared secret
+// todo (#1053) - this is currently just returning the shared secret
 // it should not use it directly, but derive some entropy from it
 func secret(storage db.Storage) []byte {
-	// TODO - Handle secret not being found.
+	// todo (#1053) - handle secret not being found.
 	secret, _ := storage.FetchSecret()
 	return secret[:]
 }
@@ -174,7 +182,7 @@ func newRevertError(result *gethcore.ExecutionResult) error {
 	return &SerialisableError{
 		Err:    err.Error(),
 		Reason: hexutil.Encode(result.Revert()),
-		Code:   3, // todo - magic number
+		Code:   3, // todo - magic number, really needs thought around the value and made a constant
 	}
 }
 
