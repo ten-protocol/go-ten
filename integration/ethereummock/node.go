@@ -425,6 +425,10 @@ func (m *Node) RemoveSubscription(id uuid.UUID) {
 	delete(m.subs, id)
 }
 
+func (m *Node) Reconnect() error {
+	return nil
+}
+
 func NewMiner(
 	id gethcommon.Address,
 	cfg MiningConfig,

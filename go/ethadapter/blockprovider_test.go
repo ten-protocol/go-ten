@@ -229,6 +229,10 @@ func (e *ethClientMock) EthClient() *ethclient.Client {
 	panic("implement me")
 }
 
+func (e *ethClientMock) Reconnect() error {
+	return nil
+}
+
 func (e *ethClientMock) EstimateGasAndGasPrice(txData types.TxData, from gethcommon.Address) (types.TxData, error) {
 	return txData, nil
 }
