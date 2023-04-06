@@ -28,6 +28,7 @@ const (
 	APINamespaceObscuroScan = "obscuroscan"
 	APINamespaceNetwork     = "net"
 	APINamespaceTest        = "test"
+	APINamespaceDebug       = "debug"
 )
 
 type HostContainer struct {
@@ -176,6 +177,12 @@ func NewHostContainer(
 				Namespace: APINamespaceEth,
 				Version:   APIVersion1,
 				Service:   clientapi.NewFilterAPI(h, logger),
+				Public:    true,
+			},
+			{
+				Namespace: APINamespaceDebug,
+				Version:   APIVersion1,
+				Service:   clientapi.NewNetworkDebug(h),
 				Public:    true,
 			},
 		})

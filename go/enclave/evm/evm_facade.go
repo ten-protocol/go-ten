@@ -3,6 +3,7 @@ package evm
 import (
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"math"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -31,7 +32,7 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Ba
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 
-	ethHeader, err := convertToEthHeader(header, secret(storage))
+	ethHeader, err := gethencoding.ConvertToEthHeader(header, secret(storage))
 	if err != nil {
 		logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil
@@ -94,7 +95,7 @@ func ExecuteObsCall(
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
 	chain, vmCfg, gp := initParams(storage, true, nil)
-	ethHeader, err := convertToEthHeader(header, secret(storage))
+	ethHeader, err := gethencoding.ConvertToEthHeader(header, secret(storage))
 	if err != nil {
 		return nil, err
 	}
@@ -130,14 +131,12 @@ func ExecuteObsCall(
 }
 
 func initParams(storage db.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
-	chain := &ObscuroChainContext{storage: storage, logger: l}
-
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 		Debug:     false,
 	}
 	gp := gethcore.GasPool(math.MaxUint64)
-	return chain, vmCfg, &gp
+	return NewObscuroChainContext(storage, l), vmCfg, &gp
 }
 
 // Todo - this is currently just returning the shared secret

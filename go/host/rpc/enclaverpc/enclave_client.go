@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -355,4 +356,17 @@ func (c *Client) GenerateRollup() (*common.ExtRollup, error) {
 		return nil, err
 	}
 	return rpc.FromExtRollupMsg(resp.Msg), nil
+}
+
+func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.DebugTraceTransaction(timeoutCtx, &generated.DebugTraceTransactionRequest{
+		TxHash: hash.Bytes(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(resp.Msg), nil
 }

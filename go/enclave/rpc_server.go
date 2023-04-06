@@ -252,6 +252,14 @@ func (s *RPCServer) CreateRollup(_ context.Context, _ *generated.CreateRollupReq
 	}, err
 }
 
+func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.DebugTraceTransactionRequest) (*generated.DebugTraceTransactionResponse, error) {
+	txHash := gethcommon.BytesToHash(req.TxHash)
+
+	traceTx, err := s.enclave.DebugTraceTransaction(txHash, nil)
+
+	return &generated.DebugTraceTransactionResponse{Msg: string(traceTx)}, err
+}
+
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

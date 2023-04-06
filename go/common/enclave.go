@@ -1,8 +1,10 @@
 package common
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -103,6 +105,9 @@ type Enclave interface {
 	HealthCheck() (bool, error)
 
 	GenerateRollup() (*ExtRollup, error)
+
+	// DebugTraceTransaction returns the trace of a transaction
+	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
