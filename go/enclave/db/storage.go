@@ -498,7 +498,6 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
-	// indexes := map[uint]uint{}
 	rows, err := s.db.GetSQLDB().Query(query, queryParams...)
 	if err != nil {
 		return nil, err
@@ -528,11 +527,6 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 			l.Topics = append(l.Topics, hash(t4))
 		}
 
-		//_, f := indexes[l.Index]
-		//if f {
-		//	fmt.Printf("duplicate log: %v\n", l)
-		//}
-		//indexes[l.Index] = l.Index
 		result = append(result, &l)
 	}
 	err = rows.Close()
