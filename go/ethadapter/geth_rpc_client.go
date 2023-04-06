@@ -29,10 +29,12 @@ const (
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
-	client  *ethclient.Client  // the underlying eth rpc client
-	l2ID    gethcommon.Address // the address of the Obscuro node this client is dedicated to
-	timeout time.Duration      // the timeout for connecting to, or communicating with, the L1 node
-	logger  gethlog.Logger
+	client    *ethclient.Client  // the underlying eth rpc client
+	l2ID      gethcommon.Address // the address of the Obscuro node this client is dedicated to
+	timeout   time.Duration      // the timeout for connecting to, or communicating with, the L1 node
+	logger    gethlog.Logger
+	ipaddress string
+	port      uint
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
@@ -44,10 +46,12 @@ func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethc
 
 	logger.Trace(fmt.Sprintf("Initialized eth node connection - addr: %s port: %d", ipaddress, port))
 	return &gethRPCClient{
-		client:  client,
-		l2ID:    l2ID,
-		timeout: timeout,
-		logger:  logger,
+		client:    client,
+		l2ID:      l2ID,
+		timeout:   timeout,
+		logger:    logger,
+		ipaddress: ipaddress,
+		port:      port,
 	}, nil
 }
 
@@ -222,6 +226,18 @@ func (e *gethRPCClient) EstimateGasAndGasPrice(txData types.TxData, from gethcom
 		Value:    unEstimatedTx.Value(),
 		Data:     unEstimatedTx.Data(),
 	}, nil
+}
+
+// Reconnect closes the existing client connection and creates a new connection to the same address:port
+func (e *gethRPCClient) Reconnect() error {
+	e.client.Close()
+
+	client, err := connect(e.ipaddress, e.port, e.timeout)
+	if err != nil {
+		return fmt.Errorf("unable to connect to the eth node - %w", err)
+	}
+	e.client = client
+	return nil
 }
 
 func connect(ipaddress string, port uint, connectionTimeout time.Duration) (*ethclient.Client, error) {

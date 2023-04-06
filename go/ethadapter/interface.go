@@ -40,6 +40,7 @@ type EthClient interface {
 	Stop() // tries to cleanly stop the client and release any resources
 
 	EthClient() *ethclient.Client // returns the underlying eth client
+	Reconnect() error
 }
 
 // Info forces the RPC EthClient to return the data in the same format (independently of its implementation)
