@@ -54,6 +54,8 @@ const (
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the db file, allows for tests that care about persistence between restarts
 func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (*EnclaveDB, error) {
+	initialsed := false
+
 	if dbPath == "" {
 		tempPath, err := CreateTempDBFile()
 		if err != nil {
@@ -61,12 +63,14 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (*EnclaveDB, 
 		}
 		dbPath = tempPath
 	}
+
 	inMem := strings.Contains(dbPath, "mode=memory")
 	description := "in memory"
 	if !inMem {
 		_, err := os.Stat(dbPath)
 		if err == nil {
 			description = "existing"
+			initialsed = true
 		} else {
 			description = "new"
 		}
@@ -82,9 +86,11 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (*EnclaveDB, 
 		db.SetMaxOpenConns(1)
 	}
 
-	err = initialiseDB(db)
-	if err != nil {
-		return nil, err
+	if !initialsed {
+		err = initialiseDB(db)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", description, dbPath))

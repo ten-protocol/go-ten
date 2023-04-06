@@ -265,9 +265,15 @@ func (s *storageImpl) writeLog(l *types.Log, stateDB *state.StateDB, dbBatch *sq
 		isLifecycle = isLifecycle && !isUserAccount
 	}
 
+	// normalise the data field to nil to avoid duplicates
+	data := l.Data
+	if len(data) == 0 {
+		data = nil
+	}
+
 	dbBatch.ExecuteSQL("insert into events values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 		t0, t1, t2, t3, t4,
-		l.Data, l.BlockHash, l.BlockNumber, l.TxHash, l.TxIndex, l.Index, l.Address,
+		data, l.BlockHash, l.BlockNumber, l.TxHash, l.TxIndex, l.Index, l.Address,
 		isLifecycle, addr1, addr2, addr3, addr4,
 	)
 }
@@ -468,13 +474,13 @@ func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 }
 
 // utility function that knows how to load relevant logs from the database
-// todo always pass in the actual batch hashes because of reorgs
+// todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
 func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondition string, whereParams []any) ([]*types.Log, error) {
 	if requestingAccount == nil {
 		return nil, fmt.Errorf("logs can only be requested for an account")
 	}
 
-	result := []*types.Log{}
+	var result []*types.Log
 	// todo - remove the "distinct" once the fast-finality work is completed
 	// currently the events seem to be stored twice because of some weird logic in the rollup/batch processing.
 	query := "select distinct topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1=1 "

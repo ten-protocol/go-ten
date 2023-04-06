@@ -1258,7 +1258,7 @@ func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]b
 	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
 		// 1. fetch the logs since the last request
 		var from *big.Int
-		to := big.NewInt(upToBatchNr.Int64() + 1)
+		to := upToBatchNr
 
 		if previousHead == nil || previousHead.Int64() <= 0 {
 			// when the subscription is initialised, default from the latest batch
@@ -1271,7 +1271,7 @@ func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]b
 			from = big.NewInt(previousHead.Int64() + 1)
 		}
 
-		if from.Cmp(to) >= 0 {
+		if from.Cmp(to) > 0 {
 			e.logger.Warn(fmt.Sprintf("Skipping subscription step id=%s: [%d, %d]", id, from, to))
 			return nil
 		}
@@ -1283,7 +1283,7 @@ func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]b
 		}
 
 		// 2.  store the current l2Head in the Subscription
-		e.subscriptionManager.SetLastHead(id, upToBatchNr)
+		e.subscriptionManager.SetLastHead(id, to)
 		result[id] = logs
 		return nil
 	})
