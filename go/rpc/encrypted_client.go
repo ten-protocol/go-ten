@@ -92,50 +92,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return c.executeRPCCall(ctx, result, method, args...)
 	}
 
-	// encode the params into a json blob and encrypt them
-	encryptedParams, err := c.encryptArgs(args...)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
-	}
-
-	// We setup the rawResult to receive an EnclaveResponse. All sensitive methods should return this
-	var rawResult responses.EnclaveResponse
-	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
-	if err != nil {
-		return err
-	}
-
-	// if caller not interested in response, we're done
-	if result == nil {
-		return nil
-	}
-
-	if rawResult.Error() != nil {
-		return rawResult.Error()
-	}
-
-	if rawResult.EncUserResponse == nil || len(rawResult.EncUserResponse) == 0 {
-		return ErrNilResponse
-	}
-
-	// method is sensitive, so we decrypt it before unmarshalling the result
-	decrypted, err := c.decryptResponse(rawResult.EncUserResponse)
-	if err != nil {
-		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
-	}
-
-	decodedResult, decodedError := responses.DecodeResponse[json.RawMessage](decrypted)
-	if decodedError != nil {
-		return decodedError
-	}
-
-	resultBytes, _ := decodedResult.MarshalJSON()
-	err = json.Unmarshal(resultBytes, result)
-	if err != nil {
-		return fmt.Errorf("could not populate the response object with the json_rpc result. Cause: %w", err)
-	}
-
-	return nil
+	return c.executeSensitiveCall(ctx, result, method, args...)
 }
 
 func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
@@ -282,6 +239,53 @@ func (c *EncRPCClient) setResultToSubID(clientChannel chan common.IDAndEncLog, r
 	case <-subscription.Err():
 		return fmt.Errorf("did not receive the initial subscription response with the subscription ID")
 	}
+	return nil
+}
+
+func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+	// encode the params into a json blob and encrypt them
+	encryptedParams, err := c.encryptArgs(args...)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
+	}
+
+	// We setup the rawResult to receive an EnclaveResponse. All sensitive methods should return this
+	var rawResult responses.EnclaveResponse
+	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
+	if err != nil {
+		return err
+	}
+
+	// if caller not interested in response, we're done
+	if result == nil {
+		return nil
+	}
+
+	if rawResult.Error() != nil {
+		return rawResult.Error()
+	}
+
+	if rawResult.EncUserResponse == nil || len(rawResult.EncUserResponse) == 0 {
+		return ErrNilResponse
+	}
+
+	// method is sensitive, so we decrypt it before unmarshalling the result
+	decrypted, err := c.decryptResponse(rawResult.EncUserResponse)
+	if err != nil {
+		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
+	}
+
+	decodedResult, decodedError := responses.DecodeResponse[json.RawMessage](decrypted)
+	if decodedError != nil {
+		return decodedError
+	}
+
+	resultBytes, _ := decodedResult.MarshalJSON()
+	err = json.Unmarshal(resultBytes, result)
+	if err != nil {
+		return fmt.Errorf("could not populate the response object with the json_rpc result. Cause: %w", err)
+	}
+
 	return nil
 }
 

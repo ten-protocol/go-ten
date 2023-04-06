@@ -117,13 +117,7 @@ func (rpc *EncryptionManager) AuthenticateSubscriptionRequest(subscription commo
 }
 
 func (rpc *EncryptionManager) CreateEncryptorFor(address gethcommon.Address) responses.ViewingKeyEncryptor {
-	encryptorForUser := func(data []byte) ([]byte, error) {
-		result, err := rpc.EncryptWithViewingKey(address, data)
-		if err != nil {
-			return nil, err
-		}
-		return result, nil
+	return func(data []byte) ([]byte, error) {
+		return rpc.EncryptWithViewingKey(address, data)
 	}
-
-	return encryptorForUser
 }
