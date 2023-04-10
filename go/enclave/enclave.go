@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 	"github.com/obscuronet/go-obscuro/go/responses"
 
@@ -441,6 +442,10 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) respon
 	execResult, err := e.chain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
+		evmErr, err := serializeEVMError(err)
+		if err == nil {
+			err = fmt.Errorf(string(evmErr))
+		}
 		return responses.AsEncryptedError(err, encryptor)
 	}
 
@@ -846,6 +851,10 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.chain.GlobalGasCap)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
+		evmErr, err := serializeEVMError(err)
+		if err == nil {
+			err = fmt.Errorf(string(evmErr))
+		}
 		return responses.AsEncryptedError(err, encryptor)
 	}
 
@@ -1307,4 +1316,24 @@ func (e *enclaveImpl) rejectBlockErr(cause error) *common.BlockRejectError {
 		L1Head:  hash,
 		Wrapped: cause,
 	}
+}
+
+func serializeEVMError(err error) ([]byte, error) {
+	var errReturn interface{}
+
+	// check if it's a serialized error and handle any error wrapping that might have occurred
+	var e *evm.SerialisableError
+	if ok := errors.As(err, &e); ok {
+		errReturn = e
+	} else {
+		// it's a generic error, serialise it
+		errReturn = &evm.SerialisableError{Err: err.Error()}
+	}
+
+	// serialise the error object returned by the evm into a json
+	errSerializedBytes, marshallErr := json.Marshal(errReturn)
+	if marshallErr != nil {
+		return nil, marshallErr
+	}
+	return errSerializedBytes, nil
 }
