@@ -29,14 +29,15 @@ var (
 func NewEthBlockProvider(ethClient EthClient, logger gethlog.Logger) *EthBlockProvider {
 	return &EthBlockProvider{
 		ethClient: ethClient,
-		logger:    logger,
+		logger:    logger.New(log.PackageKey, "blockprovider"),
 	}
 }
 
 // EthBlockProvider streams blocks from the ethereum L1 client in the order expected by the enclave (consecutive, canonical blocks)
 type EthBlockProvider struct {
-	ethClient EthClient
-	logger    gethlog.Logger
+	ethClient         EthClient
+	logger            gethlog.Logger
+	lastBlockReceived time.Time
 }
 
 // StartStreamingFromHash will look up the hash block, find the appropriate height (LCA if there have been forks) and
@@ -130,6 +131,9 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(ctx context.Context, fromHeig
 		if err != nil {
 			return nil, fmt.Errorf("could not fetch block at requested height=%d - %w", fromHeight, err)
 		}
+
+		// mark the last received block
+		e.lastBlockReceived = time.Now()
 		return blk, nil
 	}
 
@@ -141,7 +145,6 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(ctx context.Context, fromHeig
 
 	// check if the block provider is already up-to-date with the latest L1 block (if it is, then wait for a new block)
 	if l1Head.Hash() == latestSent.Hash() {
-		var err error
 		// block provider's current head is up-to-date, we will wait for the next L1 block to arrive
 		l1Head, err = e.awaitNewBlock(ctx)
 		if err != nil {
@@ -155,6 +158,9 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(ctx context.Context, fromHeig
 		if err != nil {
 			return nil, fmt.Errorf("could not fetch block with hash=%s - %w", l1Head.Hash(), err)
 		}
+
+		// mark the last received block
+		e.lastBlockReceived = time.Now()
 		return blk, nil
 	}
 
@@ -170,6 +176,9 @@ func (e *EthBlockProvider) fetchNextCanonicalBlock(ctx context.Context, fromHeig
 	if err != nil {
 		return nil, fmt.Errorf("could not find block after canon fork branch, height=%s - %w", increment(latestCanon.Number()), err)
 	}
+
+	// mark the last received block
+	e.lastBlockReceived = time.Now()
 	return blk, nil
 }
 
@@ -207,12 +216,26 @@ func (e *EthBlockProvider) awaitNewBlock(ctx context.Context) (*types.Header, er
 			if errors.Is(err, ErrSubscriptionNotSupported) {
 				return nil, err
 			}
-			e.logger.Error("L1 block monitoring error", log.ErrKey, err)
+			e.logger.Error("L1 block monitoring error - Restarting L1 block Monitoring...", log.ErrKey, err)
 
-			e.logger.Info("Restarting L1 block Monitoring...")
+			if err = e.ensureClientConnected(); err != nil {
+				return nil, fmt.Errorf("eth client unable to connect - %w", err)
+			}
+
 			liveStream, streamSub = e.ethClient.BlockListener()
 
 		case <-time.After(waitingForBlockTimeout):
+			// restart the blocklistener
+			if time.Since(e.lastBlockReceived) > time.Minute {
+				e.logger.Error("L1 block monitoring has not received a new block in over 1 minute - Restarting L1 block Monitoring...")
+
+				if err := e.ensureClientConnected(); err != nil {
+					return nil, fmt.Errorf("eth client unable to connect - %w", err)
+				}
+
+				liveStream, streamSub = e.ethClient.BlockListener()
+				continue
+			}
 			return nil, fmt.Errorf("no block received from L1 client stream for over %s", waitingForBlockTimeout)
 		}
 	}
@@ -220,4 +243,14 @@ func (e *EthBlockProvider) awaitNewBlock(ctx context.Context) (*types.Header, er
 
 func increment(i *big.Int) *big.Int {
 	return i.Add(i, one)
+}
+
+func (e *EthBlockProvider) ensureClientConnected() error {
+	if !e.ethClient.Alive() {
+		e.logger.Error("eth client not responding - Restarting the eth client connection")
+		if err := e.ethClient.Reconnect(); err != nil {
+			return fmt.Errorf("unable to reconnect to the eth client - %w", err)
+		}
+	}
+	return nil
 }

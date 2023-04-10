@@ -18,6 +18,7 @@ const (
 	NetworkIDKey   = "network_id"
 	BlockHeightKey = "block_height"
 	BlockHashKey   = "block_hash"
+	PackageKey     = "package"
 )
 
 // Logging is grouped by the component where it was initialised

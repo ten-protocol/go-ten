@@ -5,7 +5,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 )
 
-// EnsureTestLogsSetUp calls Setup iff it hasn't already been called (some tests run tests within themselves, we don't want
+// EnsureTestLogsSetUp calls Setup if it hasn't already been called (some tests run tests within themselves, we don't want
 // the log folder flipping around for every subtest, so we assume this is called for the top level test that is running
 // and ignore subsequent calls
 func EnsureTestLogsSetUp(testName string) {
