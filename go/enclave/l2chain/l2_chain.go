@@ -472,8 +472,8 @@ func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1BlockHash) (*core.B
 func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2BatchHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
-
-	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, oc.storage, oc.chainConfig, 0, oc.logger)
+	limiter := core.NewBatchSizeLimiter(25_000, *oc.crossChainProcessors.Local.GetBusAddress(), crosschain.CrossChainEventID)
+	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, oc.storage, oc.chainConfig, 0, limiter, oc.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
@@ -507,7 +507,7 @@ func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stat
 
 	messages := oc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, batchProof, stateDB)
 	transactions := oc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
-	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, oc.storage, oc.chainConfig, len(executedTransactions), oc.logger)
+	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, oc.storage, oc.chainConfig, len(executedTransactions), nil, oc.logger)
 	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
 	if len(syntheticTransactionsResponses) != len(transactions) {
 		oc.logger.Crit("Sanity check. Some synthetic transactions failed.")
@@ -707,10 +707,10 @@ func (oc *ObscuroChain) signBatch(batch *core.Batch) error {
 	return nil
 }
 
-func (oc *ObscuroChain) SignRollup(rollup *core.Rollup) error {
+func (oc *ObscuroChain) SignRollup(header *common.RollupHeader) error {
 	var err error
-	h := rollup.Header.Hash()
-	rollup.Header.R, rollup.Header.S, err = ecdsa.Sign(rand.Reader, oc.enclavePrivateKey, h[:])
+	h := header.Hash()
+	header.R, header.S, err = ecdsa.Sign(rand.Reader, oc.enclavePrivateKey, h[:])
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}

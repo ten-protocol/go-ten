@@ -42,6 +42,10 @@ func (b *Batch) Size() (int, error) {
 	return len(bytes), err
 }
 
+func (b *Batch) Encode() ([]byte, error) {
+	return rlp.EncodeToBytes(b)
+}
+
 func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }
 func (b *Batch) Number() *big.Int  { return new(big.Int).Set(b.Header.Number) }
 

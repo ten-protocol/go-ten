@@ -274,7 +274,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 		if err != nil {
 			e.logger.Error("Failed to produce rollup", log.ErrKey, err)
 		} else {
-			blockSubmissionResponse.ProducedRollup = rollup.ToExtRollup(e.transactionBlobCrypto)
+			blockSubmissionResponse.ProducedRollup = rollup
 		}
 	}
 
@@ -383,7 +383,7 @@ func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
 		return nil, err
 	}
 
-	return rollup.ToExtRollup(e.transactionBlobCrypto), nil
+	return rollup, nil
 }
 
 // ObsCall handles param decryption, validation and encryption

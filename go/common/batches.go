@@ -32,6 +32,10 @@ func (b *ExtBatch) Size() (int, error) {
 	return len(bytes), err
 }
 
+func (b *ExtBatch) Encode() ([]byte, error) {
+	return rlp.EncodeToBytes(b)
+}
+
 // BatchRequest is used when requesting a range of batches from a peer.
 type BatchRequest struct {
 	Requester        string

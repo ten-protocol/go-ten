@@ -8,7 +8,7 @@ import (
 type RollupManager interface {
 	// CreateRollup - creates a rollup encapsulating the state from the
 	// latest published head batch to the most current headbatch.
-	CreateRollup() (*core.Rollup, error)
+	CreateRollup() (*common.ExtRollup, error)
 	// ProcessL1Block - extracts the rollups from the block's transactions
 	// and verifies their integrity, saving and processing any batches that have
 	// not been seenp previously.

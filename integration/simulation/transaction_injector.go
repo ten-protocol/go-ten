@@ -273,7 +273,6 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		}
 
 		// todo - retrieve receipt
-
 		go ti.TxTracker.trackTransferL2Tx(signedTx)
 		sleepRndBtw(ti.avgBlockDuration/3, ti.avgBlockDuration)
 	}

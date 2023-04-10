@@ -52,6 +52,7 @@ func New(
 	l2chain *l2chain.ObscuroChain,
 	logger gethlog.Logger,
 ) RollupManager {
+
 	return &rollupManager{
 		MgmtContractLib:       mgmtContractLib,
 		TransactionBlobCrypto: transactionBlobCrypto,
@@ -74,7 +75,7 @@ func (re *rollupManager) fetchLatestRollup() (*core.Rollup, error) {
 
 // createNextRollup - based on a previous rollup and batches will create a new rollup that encapsulate the state
 // transition from the old rollup to the new one's head batch.
-func createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
+func createNextRollup(rollup *core.Rollup, batches []*common.ExtBatch) *common.ExtRollup {
 	headBatch := batches[len(batches)-1]
 
 	rh := headBatch.Header.ToRollupHeader()
@@ -99,13 +100,13 @@ func createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
 	rh.Number = rollupHeight
 	rh.HeadBatchHash = headBatch.Header.Hash()
 
-	return &core.Rollup{
+	return &common.ExtRollup{
 		Header:  rh,
 		Batches: batches,
 	}
 }
 
-func (re *rollupManager) CreateRollup() (*core.Rollup, error) {
+func (re *rollupManager) CreateRollup() (*common.ExtRollup, error) {
 	rollup, err := re.fetchLatestRollup()
 	if err != nil && !errors.Is(err, db.ErrNoRollups) {
 		return nil, err
@@ -129,9 +130,30 @@ func (re *rollupManager) CreateRollup() (*core.Rollup, error) {
 		return nil, fmt.Errorf("current head batch matches the rollup head bash")
 	}
 
-	newRollup := createNextRollup(rollup, batches)
+	limiter := RollupLimiter(1024 * 64)
 
-	if err := re.l2chain.SignRollup(newRollup); err != nil {
+	extBatches := make([]*common.ExtBatch, 0)
+	for _, batch := range batches {
+		extBatch := batch.ToExtBatch(re.TransactionBlobCrypto)
+		err := limiter.Consume(extBatch)
+		if err != nil && errors.Is(err, ErrFailedToEncode) {
+			panic("cannot rlp encode batch. l1 updates will stall.")
+		}
+
+		if err != nil && errors.Is(err, ErrSizeExceedsLimit) {
+			break
+		}
+
+		extBatches = append(extBatches, extBatch)
+	}
+
+	if len(extBatches) == 0 {
+		panic("there is a batch that cannot be turned into rollup, cannot recover!")
+	}
+
+	newRollup := createNextRollup(rollup, extBatches)
+
+	if err := re.l2chain.SignRollup(newRollup.Header); err != nil {
 		return nil, err
 	}
 
