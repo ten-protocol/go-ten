@@ -49,7 +49,7 @@ func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethc
 		client:    client,
 		l2ID:      l2ID,
 		timeout:   timeout,
-		logger:    logger,
+		logger:    logger.New(log.PackageKey, "gethrpcclient"),
 		ipaddress: ipaddress,
 		port:      port,
 	}, nil
@@ -238,6 +238,16 @@ func (e *gethRPCClient) Reconnect() error {
 	}
 	e.client = client
 	return nil
+}
+
+// Alive tests the client
+func (e *gethRPCClient) Alive() bool {
+	_, err := e.client.BlockNumber(context.Background())
+	if err != nil {
+		e.logger.Error("unable to fetch BlockNumber rpc endpoint - client connection is in error state")
+		return false
+	}
+	return err == nil
 }
 
 func connect(ipaddress string, port uint, connectionTimeout time.Duration) (*ethclient.Client, error) {

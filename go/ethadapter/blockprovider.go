@@ -218,10 +218,13 @@ func (e *EthBlockProvider) awaitNewBlock(ctx context.Context) (*types.Header, er
 			}
 			e.logger.Error("L1 block monitoring error - Restarting L1 block Monitoring...", log.ErrKey, err)
 
-			err = e.ethClient.Reconnect()
-			if err != nil {
-				return nil, fmt.Errorf("unable to reconnect to the eth client - %w", err)
+			if !e.ethClient.Alive() {
+				e.logger.Error("eth client not responding - Restarting the eth client connection")
+				if err = e.ethClient.Reconnect(); err != nil {
+					return nil, fmt.Errorf("unable to reconnect to the eth client - %w", err)
+				}
 			}
+
 			liveStream, streamSub = e.ethClient.BlockListener()
 
 		case <-time.After(waitingForBlockTimeout):
@@ -229,9 +232,11 @@ func (e *EthBlockProvider) awaitNewBlock(ctx context.Context) (*types.Header, er
 			if time.Since(e.lastBlockReceived) > time.Minute {
 				e.logger.Error("L1 block monitoring has not received a new block in over 1 minute - Restarting L1 block Monitoring...")
 
-				err := e.ethClient.Reconnect()
-				if err != nil {
-					return nil, fmt.Errorf("unable to reconnect to the eth client - %w", err)
+				if !e.ethClient.Alive() {
+					e.logger.Error("eth client not responding - Restarting the eth client connection")
+					if err := e.ethClient.Reconnect(); err != nil {
+						return nil, fmt.Errorf("unable to reconnect to the eth client - %w", err)
+					}
 				}
 				liveStream, streamSub = e.ethClient.BlockListener()
 				continue
