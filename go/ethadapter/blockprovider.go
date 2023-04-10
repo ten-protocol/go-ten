@@ -29,7 +29,7 @@ var (
 func NewEthBlockProvider(ethClient EthClient, logger gethlog.Logger) *EthBlockProvider {
 	return &EthBlockProvider{
 		ethClient: ethClient,
-		logger:    logger,
+		logger:    logger.New(log.PackageKey, "blockprovider"),
 	}
 }
 
