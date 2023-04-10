@@ -48,20 +48,21 @@ func (l *BatchSizeLimiter) ProcessReceipt(receipt *types.Receipt) error {
 	}
 
 	for _, log := range receipt.Logs {
-		if log.Address == l.ContractAddress {
-			for _, t := range log.Topics {
-				if t == l.Topic {
-					rlpSize, err := getRlpSize(log)
-					if err != nil {
-						return err
-					}
-
-					if uint64(rlpSize) > l.Size {
-						return ErrInsufficientSpace
-					}
-
-					l.Size -= uint64(rlpSize)
+		if log.Address != l.ContractAddress {
+			continue
+		}
+		for _, t := range log.Topics {
+			if t == l.Topic {
+				rlpSize, err := getRlpSize(log)
+				if err != nil {
+					return err
 				}
+
+				if uint64(rlpSize) > l.Size {
+					return ErrInsufficientSpace
+				}
+
+				l.Size -= uint64(rlpSize)
 			}
 		}
 	}

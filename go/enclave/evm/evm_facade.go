@@ -62,7 +62,7 @@ func ExecuteTransactions(
 			continue
 		}
 
-		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i, header.Hash(), limiter)
+		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i, header.Hash())
 		if err != nil {
 			result[t.Hash()] = err
 			logger.Info("Failed to execute tx:", log.TxKey, t.Hash().Hex(), log.CtrErrKey, err)
@@ -92,7 +92,6 @@ func executeTransaction(
 	vmCfg vm.Config,
 	tCount int,
 	batchHash common.L2BatchHash,
-	limiter *core.BatchSizeLimiter,
 ) (*types.Receipt, error) {
 	s.Prepare(t.Hash(), tCount)
 	snap := s.Snapshot()

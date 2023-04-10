@@ -52,7 +52,6 @@ func New(
 	l2chain *l2chain.ObscuroChain,
 	logger gethlog.Logger,
 ) RollupManager {
-
 	return &rollupManager{
 		MgmtContractLib:       mgmtContractLib,
 		TransactionBlobCrypto: transactionBlobCrypto,
