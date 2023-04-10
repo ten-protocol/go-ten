@@ -3,8 +3,9 @@ package evm
 import (
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"math"
+
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"

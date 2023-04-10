@@ -7,11 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/tracers"
+	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 
@@ -46,6 +47,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupmanager"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+
+	_ "github.com/obscuronet/go-obscuro/go/common/tracers/native" // make sure the tracers are loaded
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
@@ -1052,7 +1055,6 @@ func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *trac
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, nil
 	}
-	config = nil
 
 	return e.debugger.DebugTraceTransaction(context.Background(), txHash, config)
 }

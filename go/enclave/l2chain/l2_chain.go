@@ -6,13 +6,14 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"math/big"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -896,7 +897,7 @@ func (oc *ObscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 	}
 	// Recompute transactions up to the target index.
 	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
-	//signer := types.MakeSigner(eth.blockchain.Config(), batch.Number())
+	// signer := types.MakeSigner(eth.blockchain.Config(), batch.Number())
 	signer := types.NewLondonSigner(oc.chainConfig.ChainID)
 	for idx, tx := range batch.Transactions {
 		// Assemble the transaction call message and return if the requested offset
@@ -917,7 +918,7 @@ func (oc *ObscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 		vmenv := vm.NewEVM(context, txContext, statedb, oc.chainConfig, vm.Config{})
 		statedb.Prepare(tx.Hash(), idx)
 		if _, err := gethcore.ApplyMessage(vmenv, msg, new(gethcore.GasPool).AddGas(tx.Gas())); err != nil {
-			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)
+			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %w", tx.Hash(), err)
 		}
 		// Ensure any modifications are committed to the state
 		// Only delete empty objects if EIP158/161 (a.k.a Spurious Dragon) is in effect

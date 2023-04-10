@@ -79,7 +79,7 @@ service EnclaveProto {
 
 message DebugTraceTransactionRequest{
   bytes txHash = 1;
-  string config = 2;
+  bytes config = 2;
 }
 message DebugTraceTransactionResponse{
   string msg = 1;

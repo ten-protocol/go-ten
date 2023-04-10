@@ -13,7 +13,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
+	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
+
 	"google.golang.org/grpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -255,8 +257,14 @@ func (s *RPCServer) CreateRollup(_ context.Context, _ *generated.CreateRollupReq
 
 func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.DebugTraceTransactionRequest) (*generated.DebugTraceTransactionResponse, error) {
 	txHash := gethcommon.BytesToHash(req.TxHash)
+	var config tracers.TraceConfig
 
-	traceTx, err := s.enclave.DebugTraceTransaction(txHash, nil)
+	err := json.Unmarshal(req.Config, &config)
+	if err != nil {
+		return &generated.DebugTraceTransactionResponse{}, fmt.Errorf("unable to unmarshall config - %w", err)
+	}
+
+	traceTx, err := s.enclave.DebugTraceTransaction(txHash, &config)
 
 	return &generated.DebugTraceTransactionResponse{Msg: string(traceTx)}, err
 }
