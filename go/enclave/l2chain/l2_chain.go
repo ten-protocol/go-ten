@@ -354,9 +354,17 @@ func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *bl
 	// before proceeding we check if L2 needs to be rolled back because of the L1 block
 	// (eventually this will be bound to just the hash of L1 message data rather than L1 block hashes - so less likely to reorg)
 	if ingestionType.fork {
-		err := oc.rollbackL2ToLatestValidBatch(block)
-		if err != nil {
-			return nil, nil, err
+		switch oc.nodeType {
+		case common.Sequencer:
+			err := oc.handleL1Fork(block)
+			if err != nil {
+				return nil, nil, err
+			}
+		case common.Validator: //this case smells
+			err := oc.rollbackL2ToLatestValidBatch(block)
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 
@@ -412,23 +420,29 @@ func (oc *ObscuroChain) produceAndStoreBatch(block *common.L1Block, genesisBatch
 		return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)
 	}
 
-	if err = oc.signBatch(l2Head); err != nil {
-		return nil, nil, fmt.Errorf("could not sign batch. Cause: %w", err)
+	receipts, err := oc.storeBatch(l2Head)
+	return l2Head, receipts, err
+}
+
+func (oc *ObscuroChain) storeBatch(batch *core.Batch) (types.Receipts, error) {
+	if err := oc.signBatch(batch); err != nil {
+		return nil, fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
 
-	l2HeadTxReceipts, err := oc.getTxReceipts(l2Head)
+	// todo - this replays the whole batch a second time in order to pull out the receipts; reevaluate why this is done
+	l2HeadTxReceipts, err := oc.getTxReceipts(batch)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not get batch transaction receipts. Cause: %w", err)
+		return nil, fmt.Errorf("could not get batch transaction receipts. Cause: %w", err)
 	}
-	if err = oc.storage.StoreBatch(l2Head, l2HeadTxReceipts); err != nil {
-		return nil, nil, fmt.Errorf("failed to store batch. Cause: %w", err)
+	if err = oc.storage.StoreBatch(batch, l2HeadTxReceipts); err != nil {
+		return nil, fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	return l2Head, l2HeadTxReceipts, nil
+	return l2HeadTxReceipts, nil
 }
 
 // Creates a genesis batch linked to the provided L1 block and signs it.
-func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1BlockHash) (*core.Batch, error) {
+func (oc *ObscuroChain) produceGenesisBatch(block *types.Block) (*core.Batch, error) {
 	preFundGenesisState, err := oc.genesis.GetGenesisRoot(oc.storage)
 	if err != nil {
 		return nil, err
@@ -438,7 +452,7 @@ func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1BlockHash) (*core.B
 		Header: &common.BatchHeader{
 			Agg:         oc.hostID,
 			ParentHash:  common.L2BatchHash{},
-			L1Proof:     blkHash,
+			L1Proof:     block.Hash(),
 			Root:        *preFundGenesisState,
 			TxHash:      types.EmptyRootHash,
 			Number:      big.NewInt(int64(0)),
@@ -769,11 +783,9 @@ func (oc *ObscuroChain) getBatch(height gethrpc.BlockNumber) (*core.Batch, error
 	return batch, nil
 }
 
-// Creates either a genesis or regular (i.e. post-genesis) batch.
 func (oc *ObscuroChain) produceBatch(block *types.Block, genesisBatchStored bool) (*core.Batch, error) {
-	// We handle producing the genesis batch as a special case.
 	if !genesisBatchStored {
-		return oc.produceGenesisBatch(block.Hash())
+		return oc.produceGenesisBatch(block)
 	}
 
 	headBatch, err := oc.storage.FetchHeadBatch()
@@ -781,19 +793,23 @@ func (oc *ObscuroChain) produceBatch(block *types.Block, genesisBatchStored bool
 		return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 	}
 
+	newBatchTxs, err := oc.mempool.CurrentTxs(headBatch, oc.storage)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve current transactions. Cause: %w", err)
+	}
+
+	return oc.processBatch(block, headBatch, newBatchTxs)
+}
+
+// Creates either a genesis or regular (i.e. post-genesis) batch.
+func (oc *ObscuroChain) processBatch(block *types.Block, headBatch *core.Batch, newBatchTxs []*common.L2Tx) (*core.Batch, error) {
 	// These variables will be used to create the new batch
-	var newBatchTxs []*common.L2Tx
 	var newBatchState *state.StateDB
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch, err := core.EmptyBatch(oc.hostID, headBatch.Header, block.Hash())
+	batch, err := core.EmptyBatch(oc.hostID, headBatch.Header, block)
 	if err != nil {
 		return nil, fmt.Errorf("could not create batch. Cause: %w", err)
-	}
-
-	newBatchTxs, err = oc.mempool.CurrentTxs(headBatch, oc.storage)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve current transactions. Cause: %w", err)
 	}
 
 	newBatchState, err = oc.storage.CreateStateDB(batch.Header.ParentHash)
@@ -936,33 +952,115 @@ func (oc *ObscuroChain) CheckAndStoreBatch(batch *core.Batch) error {
 // rollbackL2ToLatestValidBatch is called when the currHead's L1 proof block is no longer on the canonical fork
 // it will scan back through batch chain until it finds a batch associated with the canonical L1 chain
 func (oc *ObscuroChain) rollbackL2ToLatestValidBatch(newL1Head *types.Block) error {
+	ancestor, err := oc.findAncestralBatchForChain(newL1Head)
+	if err != nil {
+		panic(err)
+	}
+
+	return oc.storage.SetHeadBatchPointer(ancestor)
+}
+
+func (oc *ObscuroChain) findAncestralBatchForChain(block *types.Block) (*core.Batch, error) {
+	currentBlock := block
+	var ancestorBatch *core.Batch = nil
+	// todo - this for loop should have more edge cases.
+	for ancestorBatch == nil {
+		currentBlock, err := oc.storage.FetchBlock(currentBlock.ParentHash())
+		if err != nil {
+			oc.logger.Crit("Failure resolving ancestors for incoming fork block!", log.ErrKey, err)
+			return nil, err
+		}
+
+		ancestorBatch, err = oc.storage.FetchHeadBatchForBlock(currentBlock.Hash())
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			oc.logger.Crit("Failure while looking for latest ancestral batch!", log.ErrKey, err)
+			return nil, err
+		}
+	}
+
+	return ancestorBatch, nil
+}
+
+// Fork Scenarios (X - current height, Y - fork height):
+// X > Y - we are being rolled back to the past; Find latest head for Y; Reapply orphaned batches
+// X == Y - competing chain; Same as X > Y
+// X < Y - we are being rolled back to the future; Imagine being forked back and then receiving a follow up block for the rolled back chain.
+// todo - batches applied across multiple blocks are suddenly applied in the scope of one. This can skew timestamps
+// and introduce unpleasant outcomes for users. Figure out if we can do something to improve this.
+func (oc *ObscuroChain) handleL1Fork(fork *types.Block) error {
 	currHead, err := oc.storage.FetchHeadBatch()
 	if err != nil {
 		return fmt.Errorf("l2 rollback after fork: unable to fetch head batch - %w", err)
 	}
-	// after the for loop, this latestValidBatch variable will point to the latest batch processed that was not reorganised by the L1
-	latestValidBatch := currHead
-	for !oc.isBatchLinkedToAncestorOf(latestValidBatch, newL1Head) {
-		if latestValidBatch.Header.Number.Cmp(big.NewInt(1)) <= 0 {
-			// reached genesis without finding a canonical L1 block, something has gone critically wrong
-			oc.logger.Crit("reached genesis batch without finding a batch linked to canonical L1 block, aborting...")
-		}
-		// batch was linked to an L1 block that is no-longer canonical, move down to its parent batch
-		latestValidBatch, err = oc.storage.FetchBatch(latestValidBatch.Header.ParentHash)
+
+	ancestorBatch, err := oc.findAncestralBatchForChain(fork)
+	if err != nil {
+		return fmt.Errorf("cannot find any ancestral batches for this fork chain. genesis batch is on another fork")
+	}
+
+	// Are we jumping between forks without producing batches?
+	if bytes.Equal(currHead.Hash().Bytes(), ancestorBatch.Hash().Bytes()) {
+		return nil
+	}
+
+	// We can't jump to a fork without reapplying the same batches to the latest known head batch height.
+	// This means we should never have a fork with more batches than what we have
+	if currHead.NumberU64() < ancestorBatch.NumberU64() {
+		panic("fork should never resolve to a higher height batch...")
+	}
+
+	orphanedBatches := make([]*core.Batch, 0)
+	// We iterate based on numbers as the hashes of the batches at same height can be different
+	// due to belonging to different blocks, but their transactions should always be identical.
+	for currHead.NumberU64() > ancestorBatch.NumberU64() {
+		orphanedBatches = append(orphanedBatches, currHead)
+		currHead, err = oc.storage.FetchBatch(currHead.Header.ParentHash)
 		if err != nil {
-			return fmt.Errorf("l2 rollback after fork: could not find parent batch - %w", err)
+			oc.logger.Crit("Failure while looking for previously stored batch!", log.ErrKey, err)
+			return err
 		}
 	}
-	// we check if the batch has had to roll back from its current head, if it has then we update the head batch and log the rollback
-	if latestValidBatch.Hash() != currHead.Hash() {
-		err := oc.storage.SetHeadBatchPointer(latestValidBatch)
-		oc.logger.Info("L2 chain head has been rolled back",
-			"height", latestValidBatch.Header.Number, "hash", latestValidBatch.Hash(),
-			"prevHeight", currHead.Header.Number, "prevHash", currHead.Hash())
+
+	// This can happen for fork scenario X < Y - we jump back to the future that we forked
+	// out of. The ancestor batch for that chain can be the same height as the head batch for
+	// this chain due to having been reapplied without any follow up batches produced.
+	if len(orphanedBatches) == 0 {
+		return oc.storage.SetHeadBatchPointer(ancestorBatch)
+	}
+
+	// Since we are moving on to a fork we need to place the head batch to the latest known one
+	// for the chain of the fork. This is needed as the currHead from the previous search might be
+	// identical in transactions, but a cousin to the ancestor overall when they are on different competing chains
+	currHead = ancestorBatch
+
+	// We build the orphans walking back from the head batch to the ancestor, thus
+	// the array is in a reversed order and we have to iterate it backwards to preserve order.
+	for i := len(orphanedBatches) - 1; i >= 0; i-- {
+		orphan := orphanedBatches[i]
+
+		// Extend the chain with identical cousin batches
+		currHead, err = oc.processBatch(fork, currHead, orphan.Transactions)
 		if err != nil {
-			return fmt.Errorf("l2 rollback after fork: could not update head batch pointer - %w", err)
+			oc.logger.Crit("Error recalculating l2chain for forked block", log.ErrKey, err)
+			return err
+		}
+
+		//todo - process the receipts? possibly to send out events?
+		_, err := oc.storeBatch(currHead)
+		if err != nil {
+			oc.logger.Crit("Error storing l2chain batch for forked block", log.ErrKey, err)
+			return err
 		}
 	}
+
+	// The forked chain has been updated to have identical batches to the previous one
+	// and now we need to update the head batch pointer. This would also update the L1 to L2 mapping.
+	err = oc.storage.SetHeadBatchPointer(currHead)
+	if err != nil {
+		oc.logger.Crit("Failed updating head...")
+		return err
+	}
+
 	return nil
 }
 

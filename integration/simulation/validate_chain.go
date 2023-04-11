@@ -221,6 +221,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 				batchOnNode, _ := client.RollupHeaderByHash(batch.Header.Hash())
 				if batchOnNode.Hash() != batch.Hash() {
 					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
+					break
 				}
 			}
 		}

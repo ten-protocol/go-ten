@@ -125,6 +125,12 @@ func (m *MessageBusManager) ExtractOutboundMessages(receipts common.L2Receipts) 
 func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.CrossChainMessages {
 	messages := make(common.CrossChainMessages, 0)
 
+	// We only want to retrieve messages on the first batch produced for a fresh block.
+	// If there are multiple batches for the same block we do not want to submit the same messages multiple times.
+	if bytes.Equal(fromBlock.Hash().Bytes(), toBlock.Hash().Bytes()) {
+		return messages
+	}
+
 	from := fromBlock.Hash()
 	height := fromBlock.NumberU64()
 	if !m.storage.IsAncestor(toBlock, fromBlock) {

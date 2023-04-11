@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -15,8 +16,12 @@ type (
 	TxHash    = common.Hash
 
 	// MainNet aliases
-	L1Address     = common.Address
-	L1BlockHash   = common.Hash
+	L1Address   = common.Address
+	L1BlockHash = common.Hash
+	L1BlockRef  struct {
+		Hash   common.Hash
+		Height *big.Int
+	}
 	L1Block       = types.Block
 	L1Transaction = types.Transaction
 	L1Receipt     = types.Receipt

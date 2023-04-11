@@ -8,6 +8,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
@@ -71,7 +72,7 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.Transaction
 	}
 }
 
-func EmptyBatch(agg gethcommon.Address, parent *common.BatchHeader, blkHash gethcommon.Hash) (*Batch, error) {
+func EmptyBatch(agg gethcommon.Address, parent *common.BatchHeader, block *types.Block) (*Batch, error) {
 	rand, err := crypto.GeneratePublicRandomness()
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func EmptyBatch(agg gethcommon.Address, parent *common.BatchHeader, blkHash geth
 	h := common.BatchHeader{
 		Agg:        agg,
 		ParentHash: parent.Hash(),
-		L1Proof:    blkHash,
+		L1Proof:    block.Hash(),
 		Number:     big.NewInt(0).Add(parent.Number, big.NewInt(1)),
 		// todo (#1548) - Consider how this time should align with the time of the L1 block used as proof.
 		Time: uint64(time.Now().Unix()),
