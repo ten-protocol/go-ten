@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,9 @@ import (
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/tracers"
+	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 
@@ -44,6 +48,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
+	_ "github.com/obscuronet/go-obscuro/go/common/tracers/native" // make sure the tracers are loaded
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -72,6 +78,7 @@ type enclaveImpl struct {
 
 	transactionBlobCrypto crypto.TransactionBlobCrypto
 	profiler              *profiler.Profiler
+	debugger              *debugger.Debugger
 	logger                gethlog.Logger
 
 	stopInterrupt *int32
@@ -193,6 +200,9 @@ func NewEnclave(
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
 
+	// TODO ensure debug is allowed/disallowed
+	debug := debugger.New(chain, storage, &chainConfig)
+
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
 	return &enclaveImpl{
@@ -213,6 +223,7 @@ func NewEnclave(
 		transactionBlobCrypto: transactionBlobCrypto,
 		profiler:              prof,
 		logger:                logger,
+		debugger:              debug,
 		stopInterrupt:         new(int32),
 	}
 }
@@ -1037,6 +1048,15 @@ func (e *enclaveImpl) HealthCheck() (bool, error) {
 	// todo (#1148) - enclave healthcheck operations
 	enclaveHealthy := true
 	return storageHealthy && enclaveHealthy, nil
+}
+
+func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
+	// ensure the enclave is running
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
+	return e.debugger.DebugTraceTransaction(context.Background(), txHash, config)
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

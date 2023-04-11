@@ -6,17 +6,15 @@ import (
 	"fmt"
 	"math/big"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
-	"github.com/obscuronet/go-obscuro/go/common/host"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 // EthereumAPI implements a subset of the Ethereum JSON RPC operations. All the method signatures are copied from the

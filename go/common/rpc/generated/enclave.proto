@@ -72,6 +72,18 @@ service EnclaveProto {
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
 
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
+
+  rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
+}
+
+
+message DebugTraceTransactionRequest{
+  bytes txHash = 1;
+  bytes config = 2;
+}
+message DebugTraceTransactionResponse{
+  string msg = 1;
+  string error = 2;
 }
 
 message CreateRollupRequest{}
