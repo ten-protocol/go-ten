@@ -51,6 +51,7 @@ RUN rm package-lock.json || true
 
 COPY --from=install-npm-deps /home/obscuro/go-obscuro/contracts/ /home/obscuro/go-obscuro/contracts/
 
+RUN npm config set update-notifier false
 RUN npx hardhat compile
 
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/bin /home/obscuro/go-obscuro/tools/walletextension/bin
