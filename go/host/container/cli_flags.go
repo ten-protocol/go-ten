@@ -29,6 +29,7 @@ const (
 	metricsHTTPPortName          = "metricsHTTPPort"
 	useInMemoryDBName            = "useInMemoryDB"
 	levelDBPathName              = "levelDBPath"
+	debugNamespaceEnabledName    = "debugNamespaceEnabled"
 )
 
 // Returns a map of the flag usages.
@@ -62,5 +63,6 @@ func getFlagUsageMap() map[string]string {
 		metricsHTTPPortName:          "The port on which the metrics are served (Defaults to 0.0.0.0:14000)",
 		useInMemoryDBName:            "Whether the host will use an in-memory DB rather than persist data",
 		levelDBPathName:              "Filepath for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable or if using InMemory DB)",
+		debugNamespaceEnabledName:    "Whether the debug names is enabled",
 	}
 }

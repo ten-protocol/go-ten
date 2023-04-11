@@ -99,6 +99,7 @@ func (d *DockerNode) startHost() error {
 		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
 		// host persistence hardcoded to use /data dir within the container, this needs to be mounted
 		fmt.Sprintf("-useInMemoryDB=%t", d.cfg.hostInMemDB),
+		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
 	}
 	if !d.cfg.hostInMemDB {
 		cmd = append(cmd, "-levelDBPath", _hostDataDir)
@@ -153,6 +154,7 @@ func (d *DockerNode) startEnclave() error {
 		"-useInMemoryDB=false",
 		"-logPath", "sys_out",
 		"-logLevel", fmt.Sprintf("%d", log.LvlInfo),
+		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
 	)
 
 	if d.cfg.sgxEnabled {

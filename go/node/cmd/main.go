@@ -31,6 +31,7 @@ func main() {
 		node.WithL1Start(cliConfig.l1Start),
 		node.WithPCCSAddr(cliConfig.pccsAddr),
 		node.WithEdgelessDBImage(cliConfig.edgelessDBImage),
+		node.WithDebugNamespaceEnabled(cliConfig.isDebugNamespaceEnabled), // false
 	)
 
 	dockerNode, err := node.NewDockerNode(nodeCfg)
