@@ -23,9 +23,9 @@ func NewNetworkDebug(host host.Host) *NetworkDebug {
 // TraceTransaction returns the structured logs created during the execution of EVM
 // and returns them as a JSON object.
 func (api *NetworkDebug) TraceTransaction(ctx context.Context, hash gethcommon.Hash, config *tracers.TraceConfig) (interface{}, error) {
-	encryptedResponse, err := api.host.EnclaveClient().DebugTraceTransaction(hash, config)
+	response, err := api.host.EnclaveClient().DebugTraceTransaction(hash, config)
 	if err != nil {
 		return "", err
 	}
-	return encryptedResponse, nil
+	return response, nil
 }

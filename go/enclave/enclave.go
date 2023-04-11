@@ -1057,7 +1057,7 @@ func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *trac
 	}
 
 	if !e.config.DebugNamespaceEnabled {
-		return nil, nil
+		return nil, fmt.Errorf("debug namespace not enabled")
 	}
 
 	return e.debugger.DebugTraceTransaction(context.Background(), txHash, config)

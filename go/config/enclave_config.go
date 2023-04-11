@@ -56,7 +56,7 @@ type EnclaveConfig struct {
 	ObscuroGenesis string
 	// Cadence
 	Cadence uint64
-	// Wether debug calls are available
+	// Whether debug calls are available
 	DebugNamespaceEnabled bool
 }
 
