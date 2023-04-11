@@ -142,7 +142,7 @@ contract ManagementContract {
     function pushCrossChainMessages(Structs.HeaderCrossChainData calldata crossChainData) internal {
         uint256 messagesLength = crossChainData.messages.length;
         for (uint256 i = 0; i < messagesLength; ++i) {
-            messageBus.storeCrossChainMessage(crossChainData.messages[i], block.timestamp); //instantly finalize
+            messageBus.storeCrossChainMessage(crossChainData.messages[i], 1); //TODO - make finality depend on rollup challenge period
         }
     }
 
