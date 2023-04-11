@@ -179,13 +179,18 @@ func NewHostContainer(
 				Service:   clientapi.NewFilterAPI(h, logger),
 				Public:    true,
 			},
-			{
-				Namespace: APINamespaceDebug,
-				Version:   APIVersion1,
-				Service:   clientapi.NewNetworkDebug(h),
-				Public:    true,
-			},
 		})
+
+		if cfg.DebugNamespaceEnabled {
+			rpcServer.RegisterAPIs([]rpc.API{
+				{
+					Namespace: APINamespaceDebug,
+					Version:   APIVersion1,
+					Service:   clientapi.NewNetworkDebug(h),
+					Public:    true,
+				},
+			})
+		}
 	}
 
 	return hostContainer

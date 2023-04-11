@@ -44,6 +44,7 @@ type HostConfigToml struct {
 	MetricsHTTPPort           uint
 	UseInMemoryDB             bool
 	LevelDBPath               string
+	DebugNamespaceEnabled     bool
 }
 
 // ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
@@ -78,6 +79,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	metricsHTPPPort := flag.Uint(metricsHTTPPortName, cfg.MetricsHTTPPort, flagUsageMap[metricsHTTPPortName])
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
 	levelDBPath := flag.String(levelDBPathName, cfg.LevelDBPath, flagUsageMap[levelDBPathName])
+	debugNamespaceEnabled := flag.Bool(debugNamespaceEnabledName, cfg.DebugNamespaceEnabled, flagUsageMap[debugNamespaceEnabledName])
 
 	flag.Parse()
 
@@ -117,6 +119,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.MetricsHTTPPort = *metricsHTPPPort
 	cfg.UseInMemoryDB = *useInMemoryDB
 	cfg.LevelDBPath = *levelDBPath
+	cfg.DebugNamespaceEnabled = *debugNamespaceEnabled
 
 	return cfg, nil
 }
