@@ -460,6 +460,14 @@ func (s *storageImpl) GetL1Messages(blockHash common.L1BlockHash) (common.CrossC
 	return obscurorawdb.GetL1Messages(s.db, blockHash, s.logger)
 }
 
+func (s *storageImpl) StoreEnclaveKey(enclaveKey *ecdsa.PrivateKey) error {
+	return obscurorawdb.StoreEnclaveKey(s.db, enclaveKey, s.logger)
+}
+
+func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
+	return obscurorawdb.GetEnclaveKey(s.db, s.logger)
+}
+
 func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
 	dbBatch := s.db.NewBatch()
 

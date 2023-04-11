@@ -148,15 +148,25 @@ func NewEnclave(
 		attestationProvider = &DummyAttestationProvider{}
 	}
 
-	// todo (#1053) - this has to be read from the database when the node restarts
-	// first time the node starts we derive the obscuro key from the master seed received after the shared secret exchange
-	logger.Info("Generating the Obscuro key")
-
-	// todo (#1053) - save this to the db
-	enclaveKey, err := gethcrypto.GenerateKey()
+	// attempt to fetch the enclave key from the database
+	enclaveKey, err := storage.GetEnclaveKey()
 	if err != nil {
-		logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
+		if !errors.Is(err, errutil.ErrNotFound) {
+			logger.Crit("Failed to fetch enclave key", log.ErrKey, err)
+		}
+		// enclave key not found - new key should be generated
+		// todo (#1053) - revisit the crypto for this key generation/lifecycle before production
+		logger.Info("Generating the Obscuro key")
+		enclaveKey, err = gethcrypto.GenerateKey()
+		if err != nil {
+			logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
+		}
+		err = storage.StoreEnclaveKey(enclaveKey)
+		if err != nil {
+			logger.Crit("Failed to store enclave key.", log.ErrKey, err)
+		}
 	}
+
 	serializedEnclavePubKey := gethcrypto.CompressPubkey(&enclaveKey.PublicKey)
 	logger.Info(fmt.Sprintf("Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey)))
 
