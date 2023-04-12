@@ -13,6 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/responses"
 
 	"github.com/ethereum/go-ethereum/eth/filters"
@@ -278,6 +279,15 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 
 	decodedResult, decodedError := responses.DecodeResponse[json.RawMessage](decrypted)
 	if decodedError != nil {
+		if method == EstimateGas || method == Call {
+			var result evm.SerialisableError
+			err = json.Unmarshal([]byte(decodedError.Error()), &result)
+			if err != nil {
+				return err
+			}
+			return result
+		}
+
 		return decodedError
 	}
 
