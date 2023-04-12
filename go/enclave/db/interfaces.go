@@ -98,6 +98,11 @@ type CrossChainMessagesStorage interface {
 	GetL1Messages(blockHash common.L1BlockHash) (common.CrossChainMessages, error)
 }
 
+type EnclaveKeyStorage interface {
+	StoreEnclaveKey(enclaveKey *ecdsa.PrivateKey) error
+	GetEnclaveKey() (*ecdsa.PrivateKey, error)
+}
+
 // Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
@@ -108,6 +113,7 @@ type Storage interface {
 	TransactionStorage
 	AttestationStorage
 	CrossChainMessagesStorage
+	EnclaveKeyStorage
 	io.Closer
 
 	// HealthCheck returns whether the storage is deemed healthy or not
