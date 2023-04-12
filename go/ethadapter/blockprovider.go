@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/retry"
@@ -38,6 +39,8 @@ type EthBlockProvider struct {
 	ethClient         EthClient
 	logger            gethlog.Logger
 	lastBlockReceived time.Time
+	healthLock        sync.Mutex
+	healthStatus      *host.L1BlockProviderStatus
 }
 
 // StartStreamingFromHash will look up the hash block, find the appropriate height (LCA if there have been forks) and
@@ -77,6 +80,14 @@ func (e *EthBlockProvider) IsLatest(b *types.Block) bool {
 	return isLatest
 }
 
+// HealthStatus returns the current health status of the l1 block provider
+func (e *EthBlockProvider) HealthStatus() host.L1BlockProviderStatus {
+	e.healthLock.Lock()
+	defer e.healthLock.Unlock()
+
+	return *e.healthStatus
+}
+
 // streamBlocks is the main loop. It should be run in a separate go routine. It will stream catch-up blocks from requested height until it
 // reaches the latest live block, then it will block until next live block arrives
 // It blocks when:
@@ -100,8 +111,10 @@ func (e *EthBlockProvider) streamBlocks(ctx context.Context, fromHeight *big.Int
 					// this shouldn't happen often, it's important that node operator has visibility on it, and that host can
 					// eventually recover when L1 client issue is resolved
 					e.logger.Warn("unexpected error while preparing block to stream, will retry periodically", log.ErrKey, fetchErr)
+					e.updateHealthStatus(fetchErr)
 					return fetchErr
 				}
+				e.updateHealthStatus(nil)
 				return nil
 			}, retry.NewBackoffAndRetryForeverStrategy(backoffRetryIntervals, 30*time.Second))
 			if err != nil {
@@ -253,4 +266,21 @@ func (e *EthBlockProvider) ensureClientConnected() error {
 		}
 	}
 	return nil
+}
+
+func (e *EthBlockProvider) updateHealthStatus(err error) {
+	e.healthLock.Lock()
+	defer e.healthLock.Unlock()
+
+	if err != nil {
+		e.healthStatus = &host.L1BlockProviderStatus{
+			Status:  err.Error(),
+			Healthy: false,
+		}
+		return
+	}
+
+	e.healthStatus = &host.L1BlockProviderStatus{
+		Healthy: true,
+	}
 }
