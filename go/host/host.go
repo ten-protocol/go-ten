@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -68,6 +69,10 @@ type host struct {
 	logger gethlog.Logger
 
 	metricRegistry gethmetrics.Registry
+
+	// we don't want to make simultaneous requests to the enclave for major state update functions (e.g. SubmitL1Block,
+	// GenerateBatch, CreateRollup), so we use this lock to synchronize those requests
+	enclaveWriteLock sync.Mutex
 }
 
 func NewHost(
@@ -331,9 +336,13 @@ func (h *host) waitForEnclave() common.Status {
 	return status
 }
 
-// starts the host main processing loop
+// starts the host main processing loop, this should only be called once
 func (h *host) startProcessing() {
 	h.p2p.StartListening(h)
+	if h.config.NodeType == common.Sequencer {
+		go h.startBatchProduction()  // periodically request a new batch from enclave
+		go h.startRollupProduction() // periodically request a new rollup from enclave
+	}
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
 	// stream ch during the main loop if enclave gets out-of-sync, and we need to stream from an earlier block
@@ -385,6 +394,50 @@ func (h *host) startProcessing() {
 	}
 }
 
+func (h *host) startBatchProduction() {
+	interval := h.config.BatchInterval
+	if interval == 0 {
+		interval = 1 * time.Second
+	}
+	batchProdTicker := time.NewTicker(interval)
+	for {
+		select {
+		case <-batchProdTicker.C:
+			h.enclaveWriteLock.Lock()
+			producedBatch, err := h.enclaveClient.CreateBatch()
+			h.enclaveWriteLock.Unlock()
+			if err != nil {
+				h.logger.Warn("unable to produce batch", log.ErrKey, err)
+			}
+			h.storeAndDistributeBatch(producedBatch)
+		case <-h.exitHostCh:
+			return
+		}
+	}
+}
+
+func (h *host) startRollupProduction() {
+	interval := h.config.RollupInterval
+	if interval == 0 {
+		interval = 5 * time.Second
+	}
+	rollupTicker := time.NewTicker(interval)
+	for {
+		select {
+		case <-rollupTicker.C:
+			h.enclaveWriteLock.Lock()
+			producedRollup, err := h.enclaveClient.CreateRollup()
+			h.enclaveWriteLock.Unlock()
+			if err != nil {
+				h.logger.Warn("unable to produce rollup", log.ErrKey, err)
+			}
+			h.publishRollup(producedRollup)
+		case <-h.exitHostCh:
+			return
+		}
+	}
+}
+
 func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostcommon.BlockStream, err error) *hostcommon.BlockStream {
 	var rejErr *common.BlockRejectError
 	if !errors.As(err, &rejErr) {
@@ -426,7 +479,9 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	h.processL1BlockTransactions(block)
 
 	// submit each block to the enclave for ingestion plus validation
+	h.enclaveWriteLock.Lock()
 	blockSubmissionResponse, err := h.enclaveClient.SubmitL1Block(*block, h.extractReceipts(block), isLatestBlock)
+	h.enclaveWriteLock.Unlock()
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
@@ -440,20 +495,6 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	err = h.publishSharedSecretResponses(blockSubmissionResponse.ProducedSecretResponses)
 	if err != nil {
 		h.logger.Error("failed to publish response to secret request", log.ErrKey, err)
-	}
-
-	// If we're not the sequencer, we do not need to publish and distribute batches or rollups.
-	if h.config.NodeType != common.Sequencer {
-		return nil
-	}
-
-	if blockSubmissionResponse.ProducedBatch != nil && blockSubmissionResponse.ProducedBatch.Header != nil {
-		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.storeAndDistributeBatch(blockSubmissionResponse.ProducedBatch)
-	}
-
-	if blockSubmissionResponse.ProducedRollup != nil && blockSubmissionResponse.ProducedRollup.Header != nil {
-		h.publishRollup(blockSubmissionResponse.ProducedRollup)
 	}
 
 	return nil

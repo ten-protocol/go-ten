@@ -245,8 +245,18 @@ func (s *RPCServer) HealthCheck(_ context.Context, _ *generated.EmptyArgs) (*gen
 	return &generated.HealthCheckResponse{Status: healthy}, nil
 }
 
+func (s *RPCServer) CreateBatch(_ context.Context, _ *generated.CreateBatchRequest) (*generated.CreateBatchResponse, error) {
+	rollup, err := s.enclave.CreateBatch()
+
+	msg := rpc.ToExtBatchMsg(rollup)
+
+	return &generated.CreateBatchResponse{
+		Msg: &msg,
+	}, err
+}
+
 func (s *RPCServer) CreateRollup(_ context.Context, _ *generated.CreateRollupRequest) (*generated.CreateRollupResponse, error) {
-	rollup, err := s.enclave.GenerateRollup()
+	rollup, err := s.enclave.CreateRollup()
 
 	msg := rpc.ToExtRollupMsg(rollup)
 

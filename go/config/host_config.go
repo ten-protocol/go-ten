@@ -181,6 +181,12 @@ type HostConfig struct {
 
 	// DebugNamespaceEnabled enables the debug namespace handler in the host rpc server
 	DebugNamespaceEnabled bool
+
+	// Min interval before creating the next batch (only used by Sequencer nodes)
+	BatchInterval time.Duration
+
+	// Min interval before creating the next rollup (only used by Sequencer nodes)
+	RollupInterval time.Duration
 }
 
 // DefaultHostParsedConfig returns a HostConfig with default values.

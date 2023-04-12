@@ -274,7 +274,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	}
 
 	// We update the enclave state based on the L1 block.
-	newL2Head, producedBatch, err := e.chain.ProcessL1Block(block, receipts, isLatest)
+	err = e.chain.ProcessL1Block(block, receipts, isLatest)
 	if err != nil {
 		e.logger.Warn("ProcessL1Block failed", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
@@ -288,49 +288,21 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 
 	// We prepare the block submission response.
 	// todo (@stefan) - fix subscribed logs for validators who are being synchronized only through L1
-	blockSubmissionResponse := e.produceBlockSubmissionResponse(newL2Head, producedBatch)
+	blockSubmissionResponse := &common.BlockSubmissionResponse{}
 
-	if producedBatch != nil && (producedBatch.Header.Number.Uint64()%e.config.Cadence == 0) {
-		rollup, err := e.rollupManager.CreateRollup()
-		if err != nil {
-			e.logger.Error("Failed to produce rollup", log.ErrKey, err)
-		} else {
-			blockSubmissionResponse.ProducedRollup = rollup.ToExtRollup(e.transactionBlobCrypto)
-		}
-	}
-
-	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(),
-		"newBatch", describeBSR(blockSubmissionResponse))
+	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
 
 	// We remove any transactions considered immune to re-orgs from the mempool.
-	if blockSubmissionResponse.ProducedBatch != nil {
-		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedBatch.Header)
-		if err != nil {
-			e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
-			return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
-		}
-	}
+	//if blockSubmissionResponse.ProducedBatch != nil {
+	//	err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedBatch.Header)
+	//	if err != nil {
+	//		e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
+	//		return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
+	//	}
+	//}
 
 	return blockSubmissionResponse, nil
-}
-
-// useful description of the BSR for debugging
-func describeBSR(response *common.BlockSubmissionResponse) string {
-	if response.RejectError != nil {
-		return fmt.Sprintf("BlockSubmissionResponse failed with err=%s", response.RejectError.Error())
-	}
-	producedBatch := "no batch produced"
-	if response.ProducedBatch != nil {
-		producedBatch = fmt.Sprintf("newBatch{num=%d, numTx=%d, hash=%s}",
-			response.ProducedBatch.Header.Number, len(response.ProducedBatch.TxHashes), response.ProducedBatch.Hash())
-	}
-	producedRollup := "no rollup produced"
-	if response.ProducedRollup != nil {
-		producedRollup = fmt.Sprintf("newRollup{num=%d, numBatches=%d, hash=%s}",
-			response.ProducedRollup.Header.Number, len(response.ProducedRollup.Batches), response.ProducedRollup.Hash())
-	}
-	return fmt.Sprintf("%s, %s", producedBatch, producedRollup)
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -390,7 +362,29 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 	return nil
 }
 
-func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
+func (e *enclaveImpl) CreateBatch() (*common.ExtBatch, error) {
+	block, err := e.storage.FetchHeadBlock()
+	if err != nil {
+		return nil, err
+	}
+	genesisBatchExists := true
+	_, err = e.storage.FetchHeadBatch()
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			genesisBatchExists = false
+		} else {
+			return nil, err
+		}
+	}
+	batch, _, err := e.chain.ProduceAndStoreBatch(block, genesisBatchExists)
+	if err != nil {
+		return nil, err
+	}
+
+	return batch.ToExtBatch(e.transactionBlobCrypto), nil
+}
+
+func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, error) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, nil //nolint:nilnil
 	}
@@ -1245,33 +1239,6 @@ func (e *enclaveImpl) removeOldMempoolTxs(batchHeader *common.BatchHeader) error
 	}
 
 	return nil
-}
-
-func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
-	if l2Head == nil {
-		// not an error state, we ingested a block but no rollup head found
-		return &common.BlockSubmissionResponse{}
-	}
-
-	var producedExtBatch *common.ExtBatch
-	if producedBatch != nil {
-		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
-	}
-
-	batch, err := e.storage.FetchBatch(*l2Head)
-	if err != nil {
-		e.logger.Crit("Failed to retrieve batch. Should not happen", log.ErrKey, err)
-		return nil
-	}
-	logs, err := e.subscriptionLogs(batch.Number())
-	if err != nil {
-		e.logger.Error("Could not fetch logs", log.ErrKey, err)
-		return nil
-	}
-	return &common.BlockSubmissionResponse{
-		ProducedBatch:  producedExtBatch,
-		SubscribedLogs: logs,
-	}
 }
 
 // Retrieves and encrypts the logs for the block.

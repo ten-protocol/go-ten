@@ -342,7 +342,18 @@ func (c *Client) HealthCheck() (bool, error) {
 	return resp.Status, nil
 }
 
-func (c *Client) GenerateRollup() (*common.ExtRollup, error) {
+func (c *Client) CreateBatch() (*common.ExtBatch, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.CreateBatch(timeoutCtx, &generated.CreateBatchRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return rpc.FromExtBatchMsg(resp.Msg), nil
+}
+
+func (c *Client) CreateRollup() (*common.ExtRollup, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 

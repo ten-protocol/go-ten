@@ -71,6 +71,8 @@ service EnclaveProto {
   // HealthCheck returns the health status of enclave + db
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
 
+  rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
+
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
 
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
@@ -83,6 +85,12 @@ message DebugTraceTransactionRequest{
 }
 message DebugTraceTransactionResponse{
   string msg = 1;
+  string error = 2;
+}
+
+message CreateBatchRequest{}
+message CreateBatchResponse{
+  ExtBatchMsg msg = 1;
   string error = 2;
 }
 
@@ -242,11 +250,8 @@ message AttestationReportMsg {
 }
 
 message BlockSubmissionResponseMsg {
-  ExtBatchMsg producedBatch = 1;
-  ExtRollupMsg producedRollup = 2;
-  repeated SecretResponseMsg producedSecretResponses = 3;
-  bytes subscribedLogs = 4;
-  BlockSubmissionErrorMsg error = 5; // todo (@stefan) - avoid errors in Response objects, perhaps using gRPC Status responses
+  repeated SecretResponseMsg producedSecretResponses = 1;
+  BlockSubmissionErrorMsg error = 2; // todo (@stefan) - avoid errors in Response objects, perhaps using gRPC Status responses
 }
 
 message BlockSubmissionErrorMsg {

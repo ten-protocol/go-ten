@@ -35,7 +35,6 @@ type EnclaveConfigToml struct {
 	MessageBusAddress         string
 	SequencerID               string
 	ObscuroGenesis            string
-	Cadence                   uint64
 	DebugNamespaceEnabled     bool
 }
 
@@ -65,7 +64,6 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	messageBusAddress := flag.String(messageBusAddressName, cfg.MessageBusAddress.Hex(), flagUsageMap[messageBusAddressName])
 	sequencerID := flag.String(sequencerIDName, cfg.SequencerID.Hex(), flagUsageMap[sequencerIDName])
 	obscuroGenesis := flag.String(obscuroGenesisName, cfg.ObscuroGenesis, flagUsageMap[obscuroGenesisName])
-	Cadence := flag.Uint64(CadenceName, cfg.Cadence, flagUsageMap[CadenceName])
 	debugNamespaceEnabled := flag.Bool(debugNamespaceEnabledName, cfg.DebugNamespaceEnabled, flagUsageMap[debugNamespaceEnabledName])
 
 	flag.Parse()
@@ -98,7 +96,6 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	cfg.MessageBusAddress = gethcommon.HexToAddress(*messageBusAddress)
 	cfg.SequencerID = gethcommon.HexToAddress(*sequencerID)
 	cfg.ObscuroGenesis = *obscuroGenesis
-	cfg.Cadence = *Cadence
 	cfg.DebugNamespaceEnabled = *debugNamespaceEnabled
 
 	return cfg, nil

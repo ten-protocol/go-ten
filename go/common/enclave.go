@@ -105,18 +105,17 @@ type Enclave interface {
 	// HealthCheck returns whether the enclave is in a healthy state
 	HealthCheck() (bool, error)
 
-	GenerateRollup() (*ExtRollup, error)
-
 	// DebugTraceTransaction returns the trace of a transaction
 	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error)
+
+	CreateBatch() (*ExtBatch, error)
+
+	CreateRollup() (*ExtRollup, error)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
-	ProducedBatch           *ExtBatch                 // The batch produced iff the node is a sequencer and is on the latest block.
-	ProducedRollup          *ExtRollup                // The rollup produced iff the node is a sequencer and it is time to produce a new rollup.
 	ProducedSecretResponses []*ProducedSecretResponse // The responses to any secret requests in the ingested L1 block.
-	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the L1 block and all its ancestors for each subscription ID.
 	RejectError             *BlockRejectError         // If block was rejected, contains information about what block to submit next.
 }
 

@@ -81,7 +81,6 @@ func createInMemObscuroNode(
 		MinGasPrice:               big.NewInt(1),
 		MessageBusAddress:         *l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
-		Cadence:                   10,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)

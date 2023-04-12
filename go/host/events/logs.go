@@ -48,13 +48,14 @@ func (l *LogEventManager) SendLogsToSubscribers(result *common.BlockSubmissionRe
 	l.subscriptionMutex.RLock()
 	defer l.subscriptionMutex.RUnlock()
 
-	for id, encryptedLogs := range result.SubscribedLogs {
-		logSub, found := l.subscriptions[id]
-		if !found {
-			continue
-		}
-		logSub.ch <- encryptedLogs
-	}
+	// todo: figure out log subscriptions
+	//for id, encryptedLogs := range result.SubscribedLogs {
+	//	logSub, found := l.subscriptions[id]
+	//	if !found {
+	//		continue
+	//	}
+	//	logSub.ch <- encryptedLogs
+	//}
 }
 
 // Pairs the latest seen rollup for a log subscription with the channel on which new logs should be sent.

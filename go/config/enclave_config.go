@@ -54,8 +54,6 @@ type EnclaveConfig struct {
 	SequencerID gethcommon.Address
 	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
 	ObscuroGenesis string
-	// Cadence
-	Cadence uint64
 	// Whether debug calls are available
 	DebugNamespaceEnabled bool
 }
@@ -82,7 +80,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		MinGasPrice:               big.NewInt(1),
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
-		Cadence:                   10,
 		DebugNamespaceEnabled:     false,
 	}
 }

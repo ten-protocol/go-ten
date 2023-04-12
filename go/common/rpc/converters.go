@@ -1,12 +1,8 @@
 package rpc
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	"math/big"
-
-	"github.com/ethereum/go-ethereum/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -32,18 +28,7 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 }
 
 func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
-	subscribedLogBytes, err := json.Marshal(response.SubscribedLogs)
-	if err != nil {
-		return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
-	}
-
-	producedBatchMsg := ToExtBatchMsg(response.ProducedBatch)
-	producedRollupMsg := ToExtRollupMsg(response.ProducedRollup)
-
 	return generated.BlockSubmissionResponseMsg{
-		ProducedBatch:           &producedBatchMsg,
-		ProducedRollup:          &producedRollupMsg,
-		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
 	}, nil
 }
@@ -94,14 +79,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 			Wrapped: errors.New(msg.Error.Cause),
 		}
 	}
-	var subscribedLogs map[rpc.ID][]byte
-	if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
-		return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
-	}
 	return &common.BlockSubmissionResponse{
-		ProducedBatch:           FromExtBatchMsg(msg.ProducedBatch),
-		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
-		SubscribedLogs:          subscribedLogs,
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
 	}, nil
 }

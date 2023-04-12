@@ -94,24 +94,23 @@ func New(
 }
 
 // ProcessL1Block is used to update the enclave with an additional L1 block.
-func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.L2BatchHash, *core.Batch, error) {
+func (oc *ObscuroChain) ProcessL1Block(block types.Block, receipts types.Receipts, isLatest bool) error {
 	oc.blockProcessingMutex.Lock()
 	defer oc.blockProcessingMutex.Unlock()
 
 	// We update the L1 chain state.
 	l1IngestionType, err := oc.updateL1State(block, receipts, isLatest)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	// We update the L1 and L2 chain heads.
-	oc.logger.Info("updateL1AndL2Heads", log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(),
+	// We update the L1 head
+	oc.logger.Info("updateL1", log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(),
 		"l1Ingestion", l1IngestionType)
-	newL2Head, producedBatch, err := oc.updateL1AndL2Heads(&block, l1IngestionType)
-	if err != nil {
-		return nil, nil, err
+	if err := oc.updateL1(&block, l1IngestionType); err != nil {
+		return err
 	}
-	return newL2Head, producedBatch, nil
+	return nil
 }
 
 // UpdateL2Chain updates the L2 chain based on the received batch.
@@ -352,64 +351,25 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 	return &blockIngestionType{isLatest: isLatest, fork: false, preGenesis: false}, nil
 }
 
-// Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
-func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2BatchHash, *core.Batch, error) {
+// Updates the L1 head (and potentially the L2 chain head if there's been a fork and we need to rollback)
+func (oc *ObscuroChain) updateL1(block *types.Block, ingestionType *blockIngestionType) error {
 	// before proceeding we check if L2 needs to be rolled back because of the L1 block
 	// (eventually this will be bound to just the hash of L1 message data rather than L1 block hashes - so less likely to reorg)
 	if ingestionType.fork {
 		err := oc.rollbackL2ToLatestValidBatch(block)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 	}
 
-	// We determine whether we have produced a genesis batch yet.
-	genesisBatchStored := true
-	l2Head, err := oc.storage.FetchHeadBatch()
-	if err != nil {
-		if !errors.Is(err, errutil.ErrNotFound) {
-			return nil, nil, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
-		}
-		genesisBatchStored = false
+	if err := oc.storage.UpdateL1Head(block.Hash()); err != nil {
+		return fmt.Errorf("could not store new L1 head. Cause: %w", err)
 	}
-
-	// If there is an L2 head, we retrieve its stored receipts.
-	var l2HeadTxReceipts types.Receipts
-	if genesisBatchStored {
-		if l2HeadTxReceipts, err = oc.storage.GetReceiptsByHash(*l2Head.Hash()); err != nil {
-			return nil, nil, fmt.Errorf("could not fetch batch receipts. Cause: %w", err)
-		}
-	}
-
-	// If we're the sequencer and we're on the latest block, we produce a new L2 head to replace the old one.
-	var producedBatch *core.Batch
-	if oc.nodeType == common.Sequencer && ingestionType.isLatest {
-		l2Head, l2HeadTxReceipts, err = oc.produceAndStoreBatch(block, genesisBatchStored)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
-		}
-		producedBatch = l2Head
-	}
-
-	// We update the L1 and L2 chain heads.
-	if l2Head != nil {
-		if err = oc.storage.UpdateHeadBatch(block.Hash(), l2Head, l2HeadTxReceipts); err != nil {
-			return nil, nil, fmt.Errorf("could not store new head. Cause: %w", err)
-		}
-		if err = oc.storage.UpdateL1Head(block.Hash()); err != nil {
-			return nil, nil, fmt.Errorf("could not store new L1 head. Cause: %w", err)
-		}
-	}
-
-	var l2HeadHash *gethcommon.Hash
-	if l2Head != nil {
-		l2HeadHash = l2Head.Hash()
-	}
-	return l2HeadHash, producedBatch, nil
+	return nil
 }
 
-// Produces a new batch, signs it and stores it.
-func (oc *ObscuroChain) produceAndStoreBatch(block *common.L1Block, genesisBatchStored bool) (*core.Batch, types.Receipts, error) {
+// ProduceAndStoreBatch produces a new batch, signs it and stores it.
+func (oc *ObscuroChain) ProduceAndStoreBatch(block *common.L1Block, genesisBatchStored bool) (*core.Batch, types.Receipts, error) {
 	l2Head, err := oc.produceBatch(block, genesisBatchStored)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not produce batch. Cause: %w", err)

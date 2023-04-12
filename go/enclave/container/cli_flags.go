@@ -22,7 +22,6 @@ const (
 	messageBusAddressName         = "messageBusAddress"
 	sequencerIDName               = "sequencerID"
 	obscuroGenesisName            = "obscuroGenesis"
-	CadenceName                   = "Cadence"
 	debugNamespaceEnabledName     = "debugNamespaceEnabled"
 )
 
@@ -50,7 +49,6 @@ func getFlagUsageMap() map[string]string {
 		messageBusAddressName:         "The address of the L1 message bus contract owned by the management contract.",
 		sequencerIDName:               "The 20 bytes of the address of the sequencer for this network",
 		obscuroGenesisName:            "The json string with the obscuro genesis",
-		CadenceName:                   "The amounts of batches between each rollup",
 		debugNamespaceEnabledName:     "Whether the debug namespace is enabled",
 	}
 }
