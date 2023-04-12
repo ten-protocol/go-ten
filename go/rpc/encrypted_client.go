@@ -263,35 +263,52 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 		return nil
 	}
 
+	// If the enclave has produced a plaintext error we give the
+	// plaintext error back
 	if rawResult.Error() != nil {
 		return rawResult.Error()
 	}
 
+	// If there is no encrypted response then this is equivalent to nil response
 	if rawResult.EncUserResponse == nil || len(rawResult.EncUserResponse) == 0 {
 		return ErrNilResponse
 	}
 
-	// method is sensitive, so we decrypt it before unmarshalling the result
+	// We decrypt the user response from the enclave response.
 	decrypted, err := c.decryptResponse(rawResult.EncUserResponse)
 	if err != nil {
 		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
 	}
 
+	// We decode the UserResponse but keep the result as a json object
+	// this method returns the user error if any and the result encoded as json.
 	decodedResult, decodedError := responses.DecodeResponse[json.RawMessage](decrypted)
+
+	// If there is a user error that was decrypted we return it
 	if decodedError != nil {
+		// EstimateGas and Call methods return EVM Errors that are json objects
+		// and contain multiple keys that normally do not get serialized
 		if method == EstimateGas || method == Call {
 			var result evm.SerialisableError
 			err = json.Unmarshal([]byte(decodedError.Error()), &result)
 			if err != nil {
 				return err
 			}
+			// Return the evm user error.
 			return result
 		}
 
+		// Return the user error.
 		return decodedError
 	}
 
+	// We get the bytes behind the raw json object.
+	// note that RawJson messages simply return the bytes
+	// and never error.
 	resultBytes, _ := decodedResult.MarshalJSON()
+
+	// We put the raw json in the passed result object.
+	// This works for structs, strings, integers and interface types.
 	err = json.Unmarshal(resultBytes, result)
 	if err != nil {
 		return fmt.Errorf("could not populate the response object with the json_rpc result. Cause: %w", err)
