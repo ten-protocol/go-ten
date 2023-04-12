@@ -86,7 +86,10 @@ func (e *EthBlockProvider) HealthStatus() host.L1BlockProviderStatus {
 	e.healthLock.Lock()
 	defer e.healthLock.Unlock()
 
-	return *e.healthStatus
+	if e.healthStatus != nil {
+		return *e.healthStatus
+	}
+	return host.L1BlockProviderStatus{}
 }
 
 // streamBlocks is the main loop. It should be run in a separate go routine. It will stream catch-up blocks from requested height until it
