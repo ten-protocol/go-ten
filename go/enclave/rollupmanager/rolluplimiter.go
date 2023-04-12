@@ -17,7 +17,7 @@ var (
 // a protocol limit, but a miner imposed limit and it might be hard to find someone
 // to include a transaction if it goes above it
 // todo - figure out the best number, optimism uses 132KB
-const MaxTransactionSizeLimiter = RollupLimiter(64 * 1024)
+const MaxTransactionSize = 64 * 1024
 
 type RollupLimiter uint64
 
