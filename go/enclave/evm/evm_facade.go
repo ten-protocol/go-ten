@@ -6,7 +6,6 @@ import (
 	"math"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -34,7 +33,6 @@ func ExecuteTransactions(
 	storage db.Storage,
 	chainConfig *params.ChainConfig,
 	fromTxIndex int,
-	limiter core.BatchSizeLimiter,
 	logger gethlog.Logger,
 ) map[common.TxHash]interface{} {
 	chain, vmCfg, gp := initParams(storage, true, logger)
@@ -48,20 +46,7 @@ func ExecuteTransactions(
 		return nil
 	}
 
-	spaceExceeded := false
-
 	for i, t := range txs {
-		if spaceExceeded {
-			result[t.Hash()] = core.ErrInsufficientSpace
-			continue
-		}
-
-		if err := limiter.AcceptTransaction(t); err != nil {
-			spaceExceeded = true
-			result[t.Hash()] = core.ErrInsufficientSpace
-			continue
-		}
-
 		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i, header.Hash())
 		if err != nil {
 			result[t.Hash()] = err
@@ -70,12 +55,6 @@ func ExecuteTransactions(
 		}
 		result[t.Hash()] = r
 		logReceipt(r, logger)
-		// TODO - applyTransaction finalises the stateDB and we cannot rever to a snapshot;
-		// This means that cross chain messages can exceed the limiter but we cannot revert.
-		// For now we will just have the limiter set low enough to comply with block gas limit
-		if err := limiter.ProcessReceipt(r); err != nil {
-			spaceExceeded = true
-		}
 	}
 	s.Finalise(true)
 	return result

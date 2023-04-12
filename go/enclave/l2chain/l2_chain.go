@@ -472,8 +472,7 @@ func (oc *ObscuroChain) produceGenesisBatch(blkHash common.L1BlockHash) (*core.B
 func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stateDB *state.StateDB) (common.L2BatchHash, []*common.L2Tx, []*types.Receipt, []*types.Receipt) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
-	limiter := core.NewBatchSizeLimiter(core.BatchMaxTransactionData, *oc.crossChainProcessors.Local.GetBusAddress(), crosschain.CrossChainEventID)
-	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, oc.storage, oc.chainConfig, 0, limiter, oc.logger)
+	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, oc.storage, oc.chainConfig, 0, oc.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
@@ -507,7 +506,7 @@ func (oc *ObscuroChain) processState(batch *core.Batch, txs []*common.L2Tx, stat
 
 	messages := oc.crossChainProcessors.Local.RetrieveInboundMessages(parentProof, batchProof, stateDB)
 	transactions := oc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
-	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, oc.storage, oc.chainConfig, len(executedTransactions), core.NewUnlimitedSizePool(), oc.logger)
+	syntheticTransactionsResponses := evm.ExecuteTransactions(transactions, stateDB, batch.Header, oc.storage, oc.chainConfig, len(executedTransactions), oc.logger)
 	synthReceipts := make([]*types.Receipt, len(syntheticTransactionsResponses))
 	if len(syntheticTransactionsResponses) != len(transactions) {
 		oc.logger.Crit("Sanity check. Some synthetic transactions failed.")
@@ -791,9 +790,20 @@ func (oc *ObscuroChain) produceBatch(block *types.Block, genesisBatchStored bool
 		return nil, fmt.Errorf("could not create batch. Cause: %w", err)
 	}
 
+	limiter := core.NewBatchSizeLimiter(core.BatchMaxTransactionData, *oc.crossChainProcessors.Local.GetBusAddress(), crosschain.CrossChainEventID)
 	newBatchTxs, err = oc.mempool.CurrentTxs(headBatch, oc.storage)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve current transactions. Cause: %w", err)
+	}
+
+	for i, tx := range newBatchTxs {
+		err := limiter.AcceptTransaction(tx)
+		if err != nil && errors.Is(err, core.ErrInsufficientSpace) {
+			newBatchTxs = newBatchTxs[0:i]
+			break
+		} else if err != nil {
+			return nil, fmt.Errorf("could not filter transactions through limiter. Cause: %w", err)
+		}
 	}
 
 	newBatchState, err = oc.storage.CreateStateDB(batch.Header.ParentHash)
