@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 	"testing"
 	"time"
 
@@ -68,8 +69,9 @@ func TestBlockProviderHappyPath_HistoricThenStream(t *testing.T) {
 func setupBlockProvider(mockEthClient EthClient) EthBlockProvider {
 	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut, log.NodeIDKey, "test")
 	blockProvider := EthBlockProvider{
-		ethClient: mockEthClient,
-		logger:    logger,
+		ethClient:  mockEthClient,
+		logger:     logger,
+		healthLock: &sync.Mutex{},
 	}
 	return blockProvider
 }
