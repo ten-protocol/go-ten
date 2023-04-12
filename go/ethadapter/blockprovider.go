@@ -29,8 +29,9 @@ var (
 
 func NewEthBlockProvider(ethClient EthClient, logger gethlog.Logger) *EthBlockProvider {
 	return &EthBlockProvider{
-		ethClient: ethClient,
-		logger:    logger.New(log.PackageKey, "blockprovider"),
+		ethClient:  ethClient,
+		logger:     logger.New(log.PackageKey, "blockprovider"),
+		healthLock: &sync.Mutex{},
 	}
 }
 
@@ -39,7 +40,7 @@ type EthBlockProvider struct {
 	ethClient         EthClient
 	logger            gethlog.Logger
 	lastBlockReceived time.Time
-	healthLock        sync.Mutex
+	healthLock        *sync.Mutex
 	healthStatus      *host.L1BlockProviderStatus
 }
 
@@ -274,7 +275,7 @@ func (e *EthBlockProvider) updateHealthStatus(err error) {
 
 	if err != nil {
 		e.healthStatus = &host.L1BlockProviderStatus{
-			Status:  err.Error(),
+			Error:   err.Error(),
 			Healthy: false,
 		}
 		return

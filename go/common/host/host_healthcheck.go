@@ -27,6 +27,6 @@ type P2PStatus struct {
 
 // L1BlockProviderStatus represents the status of the L1 Block Provider
 type L1BlockProviderStatus struct {
-	Status  string
+	Error   string
 	Healthy bool
 }
