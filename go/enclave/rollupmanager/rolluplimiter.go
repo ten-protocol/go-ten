@@ -12,6 +12,13 @@ var (
 	ErrSizeExceedsLimit = errors.New("data size exceeds remaining limit")
 )
 
+// MaxTransactionSizeLimiter - configured to be close to what the ethereum clients
+// have configured as the maximum size a transaction can have. Note that this isn't
+// a protocol limit, but a miner imposed limit and it might be hard to find someone
+// to include a transaction if it goes above it
+// todo - figure out the best number, optimism uses 132KB
+const MaxTransactionSizeLimiter = RollupLimiter(64 * 1024)
+
 type RollupLimiter uint64
 
 func (rl *RollupLimiter) Consume(encodable interface{}) error {

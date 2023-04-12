@@ -34,7 +34,7 @@ func ExecuteTransactions(
 	storage db.Storage,
 	chainConfig *params.ChainConfig,
 	fromTxIndex int,
-	limiter *core.BatchSizeLimiter,
+	limiter core.BatchSizeLimiter,
 	logger gethlog.Logger,
 ) map[common.TxHash]interface{} {
 	chain, vmCfg, gp := initParams(storage, true, logger)

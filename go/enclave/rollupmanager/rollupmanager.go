@@ -129,7 +129,7 @@ func (re *rollupManager) CreateRollup() (*common.ExtRollup, error) {
 		return nil, fmt.Errorf("current head batch matches the rollup head bash")
 	}
 
-	limiter := RollupLimiter(1024 * 64)
+	limiter := RollupLimiter(MaxTransactionSizeLimiter)
 
 	extBatches := make([]*common.ExtBatch, 0)
 	for _, batch := range batches {
