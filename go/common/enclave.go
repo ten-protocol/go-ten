@@ -1,13 +1,16 @@
 package common
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/responses"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // Status represents the enclave's current status - the status and behaviour of the host is a function of the status of the enclave
@@ -104,6 +107,9 @@ type Enclave interface {
 	HealthCheck() (bool, error)
 
 	GenerateRollup() (*ExtRollup, error)
+
+	// DebugTraceTransaction returns the trace of a transaction
+	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

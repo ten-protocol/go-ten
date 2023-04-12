@@ -297,12 +297,15 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 		h.logger.Error("unable to HealthCheck enclave", log.ErrKey, err)
 	}
 
+	l1BlockProviderStatus := h.l1BlockProvider.HealthStatus()
+
 	// Overall health is achieved when all parts are healthy
-	obscuroNodeHealth := h.p2p.HealthCheck() && enclaveHealthy
+	obscuroNodeHealth := h.p2p.HealthCheck() && l1BlockProviderStatus.Healthy && enclaveHealthy
 
 	return &hostcommon.HealthCheck{
 		HealthCheckHost: &hostcommon.HealthCheckHost{
-			P2PStatus: h.p2p.Status(),
+			P2PStatus:       h.p2p.Status(),
+			L1BlockProvider: &l1BlockProviderStatus,
 		},
 		HealthCheckEnclave: &hostcommon.HealthCheckEnclave{
 			EnclaveHealthy: enclaveHealthy,

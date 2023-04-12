@@ -29,6 +29,7 @@ type Config struct {
 	enclaveDebug              bool
 	nodeName                  string
 	hostInMemDB               bool
+	debugNamespaceEnabled     bool
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -182,5 +183,11 @@ func WithPCCSAddr(s string) Option {
 func WithInMemoryDB(b bool) Option {
 	return func(c *Config) {
 		c.hostInMemDB = b
+	}
+}
+
+func WithDebugNamespaceEnabled(b bool) Option {
+	return func(c *Config) {
+		c.debugNamespaceEnabled = b
 	}
 }

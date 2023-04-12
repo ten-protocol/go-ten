@@ -266,6 +266,7 @@ jobs:
                -host_p2p_port=10000 \
                -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
                -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
+               -is_debug_namespace_enabled=true \
                start'
 
 

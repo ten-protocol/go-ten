@@ -15,30 +15,31 @@ var (
 
 // NodeConfigCLI represents the configurations passed into the node over CLI
 type NodeConfigCLI struct {
-	nodeAction             string
-	nodeType               string
-	isGenesis              bool
-	isSGXEnabled           bool
-	enclaveDockerImage     string
-	hostDockerImage        string
-	l1Host                 string
-	l1WSPort               int
-	hostP2PPort            int
-	hostP2PHost            string
-	hostP2PPublicAddr      string
-	enclaveHTTPPort        int
-	enclaveWSPort          int
-	privateKey             string
-	hostID                 string
-	sequencerID            string
-	managementContractAddr string
-	messageBusContractAddr string
-	l1Start                string
-	pccsAddr               string
-	edgelessDBImage        string
-	hostHTTPPort           int
-	hostWSPort             int
-	nodeName               string
+	nodeAction              string
+	nodeType                string
+	isGenesis               bool
+	isSGXEnabled            bool
+	enclaveDockerImage      string
+	hostDockerImage         string
+	l1Host                  string
+	l1WSPort                int
+	hostP2PPort             int
+	hostP2PHost             string
+	hostP2PPublicAddr       string
+	enclaveHTTPPort         int
+	enclaveWSPort           int
+	privateKey              string
+	hostID                  string
+	sequencerID             string
+	managementContractAddr  string
+	messageBusContractAddr  string
+	l1Start                 string
+	pccsAddr                string
+	edgelessDBImage         string
+	hostHTTPPort            int
+	hostWSPort              int
+	nodeName                string
+	isDebugNamespaceEnabled bool
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -69,6 +70,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	l1Start := flag.String(l1StartBlockFlag, "", flagUsageMap[l1StartBlockFlag])
 	pccsAddr := flag.String(pccsAddrFlag, "", flagUsageMap[pccsAddrFlag])
 	edgelessDBImage := flag.String(edgelessDBImageFlag, "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2", flagUsageMap[edgelessDBImageFlag])
+	isDebugNamespaceEnabled := flag.Bool(isDebugNamespaceEnabledFlag, false, flagUsageMap[isDebugNamespaceEnabledFlag])
 
 	flag.Parse()
 	cfg.nodeName = *nodeName
@@ -94,6 +96,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.edgelessDBImage = *edgelessDBImage
 	cfg.hostHTTPPort = *hostHTTPPort
 	cfg.hostWSPort = *hostWSPort
+	cfg.isDebugNamespaceEnabled = *isDebugNamespaceEnabled
 
 	cfg.nodeAction = flag.Arg(0)
 	if !validateNodeAction(cfg.nodeAction) {

@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
@@ -10,7 +11,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/tracers"
+	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 	"github.com/obscuronet/go-obscuro/go/responses"
 
@@ -46,6 +50,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
+	_ "github.com/obscuronet/go-obscuro/go/common/tracers/native" // make sure the tracers are loaded
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -74,6 +80,7 @@ type enclaveImpl struct {
 
 	transactionBlobCrypto crypto.TransactionBlobCrypto
 	profiler              *profiler.Profiler
+	debugger              *debugger.Debugger
 	logger                gethlog.Logger
 
 	stopInterrupt *int32
@@ -143,15 +150,25 @@ func NewEnclave(
 		attestationProvider = &DummyAttestationProvider{}
 	}
 
-	// todo (#1053) - this has to be read from the database when the node restarts
-	// first time the node starts we derive the obscuro key from the master seed received after the shared secret exchange
-	logger.Info("Generating the Obscuro key")
-
-	// todo (#1053) - save this to the db
-	enclaveKey, err := gethcrypto.GenerateKey()
+	// attempt to fetch the enclave key from the database
+	enclaveKey, err := storage.GetEnclaveKey()
 	if err != nil {
-		logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
+		if !errors.Is(err, errutil.ErrNotFound) {
+			logger.Crit("Failed to fetch enclave key", log.ErrKey, err)
+		}
+		// enclave key not found - new key should be generated
+		// todo (#1053) - revisit the crypto for this key generation/lifecycle before production
+		logger.Info("Generating the Obscuro key")
+		enclaveKey, err = gethcrypto.GenerateKey()
+		if err != nil {
+			logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
+		}
+		err = storage.StoreEnclaveKey(enclaveKey)
+		if err != nil {
+			logger.Crit("Failed to store enclave key.", log.ErrKey, err)
+		}
 	}
+
 	serializedEnclavePubKey := gethcrypto.CompressPubkey(&enclaveKey.PublicKey)
 	logger.Info(fmt.Sprintf("Generated public key %s", gethcommon.Bytes2Hex(serializedEnclavePubKey)))
 
@@ -195,6 +212,9 @@ func NewEnclave(
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
 
+	// TODO ensure debug is allowed/disallowed
+	debug := debugger.New(chain, storage, &chainConfig)
+
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
 	return &enclaveImpl{
@@ -215,6 +235,7 @@ func NewEnclave(
 		transactionBlobCrypto: transactionBlobCrypto,
 		profiler:              prof,
 		logger:                logger,
+		debugger:              debug,
 		stopInterrupt:         new(int32),
 	}
 }
@@ -1056,6 +1077,19 @@ func (e *enclaveImpl) HealthCheck() (bool, error) {
 	// todo (#1148) - enclave healthcheck operations
 	enclaveHealthy := true
 	return storageHealthy && enclaveHealthy, nil
+}
+
+func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
+	// ensure the enclave is running
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
+	if !e.config.DebugNamespaceEnabled {
+		return nil, fmt.Errorf("debug namespace not enabled")
+	}
+
+	return e.debugger.DebugTraceTransaction(context.Background(), txHash, config)
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

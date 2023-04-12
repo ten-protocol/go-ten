@@ -63,6 +63,7 @@ func (t *Testnet) Start() error {
 		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
 		node.WithL1Start(networkConfig.L1StartHash),
 		node.WithInMemoryDB(true),
+		node.WithDebugNamespaceEnabled(true),
 	)
 
 	sequencerNode, err := node.NewDockerNode(sequencerNodeConfig)

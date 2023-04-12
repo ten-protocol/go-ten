@@ -79,7 +79,8 @@ type ReconnectingBlockProvider interface {
 	// StartStreamingFromHeight and StartStreamingFromHash return the streaming channel and a function to cancel/clean-up the stream with
 	StartStreamingFromHeight(height *big.Int) (*BlockStream, error)
 	StartStreamingFromHash(latestHash gethcommon.Hash) (*BlockStream, error)
-	IsLatest(hash *types.Block) bool // returns true if hash is of the latest known L1 head block
+	IsLatest(hash *types.Block) bool     // returns true if hash is of the latest known L1 head block
+	HealthStatus() L1BlockProviderStatus // returns whether the blockprovider is healthy
 }
 
 type BlockStream struct {
