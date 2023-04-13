@@ -14,7 +14,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 
 	"google.golang.org/grpc"
 
@@ -125,8 +124,8 @@ func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBl
 }
 
 func (s *RPCServer) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
-	encryptedHash, err := s.enclave.SubmitTx(request.EncryptedTx)
-	return &generated.SubmitTxResponse{EncryptedHash: encryptedHash}, err
+	enclaveResponse := s.enclave.SubmitTx(request.EncryptedTx)
+	return &generated.SubmitTxResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
 }
 
 func (s *RPCServer) SubmitBatch(_ context.Context, request *generated.SubmitBatchRequest) (*generated.SubmitBatchResponse, error) {
@@ -135,25 +134,13 @@ func (s *RPCServer) SubmitBatch(_ context.Context, request *generated.SubmitBatc
 }
 
 func (s *RPCServer) ObsCall(_ context.Context, request *generated.ObsCallRequest) (*generated.ObsCallResponse, error) {
-	result, err := s.enclave.ObsCall(request.EncryptedParams)
-	if err != nil {
-		// handle complex errors from the EVM
-		errResponse, processErr := serializeEVMError(err)
-		if processErr != nil {
-			// unable to serialize the error
-			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
-		}
-		return &generated.ObsCallResponse{Error: errResponse}, nil
-	}
-	return &generated.ObsCallResponse{Result: result}, nil
+	enclaveResp := s.enclave.ObsCall(request.EncryptedParams)
+	return &generated.ObsCallResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetTransactionCount(_ context.Context, request *generated.GetTransactionCountRequest) (*generated.GetTransactionCountResponse, error) {
-	result, err := s.enclave.GetTransactionCount(request.EncryptedParams)
-	if err != nil {
-		return nil, err
-	}
-	return &generated.GetTransactionCountResponse{Result: result}, nil
+	enclaveResp := s.enclave.GetTransactionCount(request.EncryptedParams)
+	return &generated.GetTransactionCountResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
@@ -163,19 +150,13 @@ func (s *RPCServer) Stop(context.Context, *generated.StopRequest) (*generated.St
 }
 
 func (s *RPCServer) GetTransaction(_ context.Context, request *generated.GetTransactionRequest) (*generated.GetTransactionResponse, error) {
-	encryptedTx, err := s.enclave.GetTransaction(request.EncryptedParams)
-	if err != nil {
-		return nil, err
-	}
-	return &generated.GetTransactionResponse{EncryptedTx: encryptedTx}, nil
+	enclaveResp := s.enclave.GetTransaction(request.EncryptedParams)
+	return &generated.GetTransactionResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetTransactionReceipt(_ context.Context, request *generated.GetTransactionReceiptRequest) (*generated.GetTransactionReceiptResponse, error) {
-	encryptedTxReceipt, err := s.enclave.GetTransactionReceipt(request.EncryptedParams)
-	if err != nil {
-		return nil, err
-	}
-	return &generated.GetTransactionReceiptResponse{EncryptedTxReceipt: encryptedTxReceipt}, nil
+	enclaveResponse := s.enclave.GetTransactionReceipt(request.EncryptedParams)
+	return &generated.GetTransactionReceiptResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
 }
 
 func (s *RPCServer) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {
@@ -187,11 +168,8 @@ func (s *RPCServer) AddViewingKey(_ context.Context, request *generated.AddViewi
 }
 
 func (s *RPCServer) GetBalance(_ context.Context, request *generated.GetBalanceRequest) (*generated.GetBalanceResponse, error) {
-	encryptedBalance, err := s.enclave.GetBalance(request.EncryptedParams)
-	if err != nil {
-		return nil, err
-	}
-	return &generated.GetBalanceResponse{EncryptedBalance: encryptedBalance}, nil
+	enclaveResp := s.enclave.GetBalance(request.EncryptedParams)
+	return &generated.GetBalanceResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetCode(_ context.Context, request *generated.GetCodeRequest) (*generated.GetCodeResponse, error) {
@@ -216,25 +194,13 @@ func (s *RPCServer) Unsubscribe(_ context.Context, req *generated.UnsubscribeReq
 }
 
 func (s *RPCServer) EstimateGas(_ context.Context, req *generated.EstimateGasRequest) (*generated.EstimateGasResponse, error) {
-	encryptedBalance, err := s.enclave.EstimateGas(req.EncryptedParams)
-	if err != nil {
-		// handle complex errors from the EVM
-		errResponse, processErr := serializeEVMError(err)
-		if processErr != nil {
-			// unable to serialize the error
-			return nil, fmt.Errorf("unable to serialise the EVM error - %w", processErr)
-		}
-		return &generated.EstimateGasResponse{Error: errResponse}, nil
-	}
-	return &generated.EstimateGasResponse{EncryptedResponse: encryptedBalance}, nil
+	enclaveResp := s.enclave.EstimateGas(req.EncryptedParams)
+	return &generated.EstimateGasResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetLogs(_ context.Context, req *generated.GetLogsRequest) (*generated.GetLogsResponse, error) {
-	encryptedLogs, err := s.enclave.GetLogs(req.EncryptedParams)
-	if err != nil {
-		return nil, err
-	}
-	return &generated.GetLogsResponse{EncryptedResponse: encryptedLogs}, nil
+	enclaveResp := s.enclave.GetLogs(req.EncryptedParams)
+	return &generated.GetLogsResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) HealthCheck(_ context.Context, _ *generated.EmptyArgs) (*generated.HealthCheckResponse, error) {
@@ -288,26 +254,4 @@ func (s *RPCServer) decodeReceipts(encodedReceipts []byte) types.Receipts {
 	}
 
 	return receipts
-}
-
-// serializeEVMError serialises EVM errors into the RPC response
-// always returns a SerialisableError byte slice
-func serializeEVMError(err error) ([]byte, error) {
-	var errReturn interface{}
-
-	// check if it's a serialized error and handle any error wrapping that might have occurred
-	var e *evm.SerialisableError
-	if ok := errors.As(err, &e); ok {
-		errReturn = e
-	} else {
-		// it's a generic error, serialise it
-		errReturn = &evm.SerialisableError{Err: err.Error()}
-	}
-
-	// serialise the error object returned by the evm into a json
-	errSerializedBytes, marshallErr := json.Marshal(errReturn)
-	if marshallErr != nil {
-		return nil, marshallErr
-	}
-	return errSerializedBytes, nil
 }

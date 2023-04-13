@@ -110,7 +110,7 @@ func (n *ContractDeployer) PrintLogs(cli *client.Client) {
 	// Read the container logs
 	out, err := cli.ContainerLogs(context.Background(), n.containerID, logsOptions)
 	if err != nil {
-		fmt.Printf("Error printing out container %s logs... %v", n.containerID, err)
+		fmt.Printf("Error printing out container %s logs... %v\n", n.containerID, err)
 	}
 	defer out.Close()
 
