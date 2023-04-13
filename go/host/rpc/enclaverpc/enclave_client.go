@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/retry"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -41,22 +43,25 @@ func NewClient(config *config.HostConfig, logger gethlog.Logger) *Client {
 	if err != nil {
 		logger.Crit("Failed to connect to enclave RPC service.", log.ErrKey, err)
 	}
+	connection.Connect()
+	// perform an initial sleep because that Connect() method is not blocking and the retry immediately checks the status
+	time.Sleep(500 * time.Millisecond)
 
 	// We wait for the RPC connection to be ready.
-	currentTime := time.Now()
-	deadline := currentTime.Add(60 * time.Second)
-	currentState := connection.GetState()
-	for currentState == connectivity.Idle || currentState == connectivity.Connecting || currentState == connectivity.TransientFailure {
-		connection.Connect()
-		if time.Now().After(deadline) {
-			break
+	err = retry.Do(func() error {
+		currState := connection.GetState()
+		if currState != connectivity.Ready {
+			logger.Info("retrying connection until enclave is available", "status", currState.String())
+			connection.Connect()
+			return fmt.Errorf("connection is not ready, status=%s", currState)
 		}
-		time.Sleep(500 * time.Millisecond)
-		currentState = connection.GetState()
-	}
+		// connection is ready, break out of the loop
+		return nil
+	}, retry.NewBackoffAndRetryForeverStrategy([]time.Duration{500 * time.Millisecond, 1 * time.Second, 5 * time.Second}, 10*time.Second))
 
-	if currentState != connectivity.Ready {
-		logger.Crit(fmt.Sprintf("RPC connection failed to establish. Current state is %s", currentState))
+	if err != nil {
+		// this should not happen as we retry forever...
+		logger.Crit("failed to connect to enclave", log.ErrKey, err)
 	}
 
 	return &Client{
