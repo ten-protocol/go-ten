@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
+	"github.com/obscuronet/go-obscuro/go/enclave/actors"
+	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
@@ -69,6 +71,9 @@ type enclaveImpl struct {
 	crossChainProcessors *crosschain.Processors
 
 	chain *l2chain.ObscuroChain
+
+	liteChain l2chain.ChainInterface
+	sequencer actors.Sequencer
 
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
@@ -194,6 +199,43 @@ func NewEnclave(
 		logger,
 	)
 
+	consumer := components.NewBlockConsumer(storage, crossChainProcessors, logger)
+	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, logger)
+	registry := components.NewBatchRegistry(storage, logger)
+	rProducer := components.NewRollupProducer(transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, registry, consumer, logger)
+	sigVerifier := components.NewSignatureValidator(config.SequencerID, storage)
+	rConsumer := components.NewRollupConsumer(mgmtContractLib, transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
+
+	sequencer := actors.NewSequencer(
+		consumer,
+		producer,
+		registry,
+		rProducer,
+		rConsumer,
+		logger,
+		config.HostID,
+		&chainConfig,
+		enclaveKey,
+		memp,
+		storage,
+		transactionBlobCrypto,
+	)
+
+	liteChain := l2chain.NewLite(
+		config.HostID,
+		config.NodeType,
+		storage,
+		&chainConfig,
+		config.SequencerID,
+		genesis,
+		logger,
+		registry,
+	)
+
+	if config.NodeType != common.Sequencer {
+		liteChain = chain
+	}
+
 	rollupManager := rollupmanager.New(
 		mgmtContractLib,
 		transactionBlobCrypto,
@@ -235,6 +277,9 @@ func NewEnclave(
 		logger:                logger,
 		debugger:              debug,
 		stopInterrupt:         new(int32),
+
+		liteChain: liteChain,
+		sequencer: sequencer,
 	}
 }
 
@@ -271,6 +316,37 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	br, err := common.ParseBlockAndReceipts(&block, &receipts, e.crossChainProcessors.Enabled())
 	if err != nil {
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
+	}
+
+	if e.config.NodeType == common.Sequencer {
+		_, err = e.sequencer.ReceiveBlock(br, isLatest)
+		if err != nil {
+			return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
+		}
+
+		batch, _ := e.sequencer.CreateBatch()
+		bsr := e.produceBlockSubmissionResponse(nil, nil)
+
+		if batch != nil {
+			bsr = e.produceBlockSubmissionResponse(batch.Hash(), batch)
+			if batch.Header.Number.Uint64()%e.config.Cadence == 0 {
+				rollup, err := e.sequencer.CreateRollup()
+				if err == nil {
+					bsr.ProducedRollup = rollup
+				}
+			}
+		}
+
+		bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
+		if bsr.ProducedBatch != nil {
+			err = e.removeOldMempoolTxs(bsr.ProducedBatch.Header)
+			if err != nil {
+				e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
+				return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
+			}
+		}
+
+		return bsr, nil
 	}
 
 	// We update the enclave state based on the L1 block.
@@ -446,7 +522,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (commo
 		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}
 
-	execResult, err := e.chain.ObsCall(apiArgs, blkNumber)
+	execResult, err := e.liteChain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
 		return nil, err
@@ -747,7 +823,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
 	}
 
-	encryptAddress, balance, err := e.chain.GetBalance(*accountAddress, blockNumber)
+	encryptAddress, balance, err := e.liteChain.GetBalance(*accountAddress, blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get balance - %w", err)
 	}
@@ -1077,7 +1153,7 @@ func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *trac
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
 func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
 	args.Gas = (*hexutil.Uint64)(&gas)
-	result, err := e.chain.ObsCallAtBlock(args, blkNumber)
+	result, err := e.liteChain.ObsCallAtBlock(args, blkNumber)
 	if err != nil {
 		if errors.Is(err, gethcore.ErrIntrinsicGas) {
 			return true, nil, nil // Special case, raise gas limit

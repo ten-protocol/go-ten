@@ -269,7 +269,7 @@ func (oc *ObscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 	return result, nil
 }
 
-func (oc *ObscuroChain) updateL1State(block types.Block, receipts types.Receipts, isLatest bool) (*blockIngestionType, error) {
+func (oc *ObscuroChain) updateL1State(block types.Block, receipts types.Receipts, isLatest bool) (*BlockIngestionType, error) {
 	// We check whether we've already processed the block.
 	_, err := oc.storage.FetchBlock(block.Hash())
 	if err == nil {
@@ -301,7 +301,7 @@ func (oc *ObscuroChain) updateL1State(block types.Block, receipts types.Receipts
 
 // Inserts the block into the L1 chain if it exists and the block is not the genesis block
 // note: this method shouldn't be called for blocks we've seen before
-func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*blockIngestionType, error) {
+func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*BlockIngestionType, error) {
 	if oc.l1Blockchain != nil {
 		_, err := oc.l1Blockchain.InsertChain(types.Blocks{block})
 		if err != nil {
@@ -314,7 +314,7 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// todo (@matt) - we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
-			return &blockIngestionType{isLatest: isLatest, fork: false, preGenesis: true}, nil
+			return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: true}, nil
 		}
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 
@@ -345,18 +345,18 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 		}
 
 		// ingested block is on a different branch to the previously ingested block - we may have to rewind L2 state
-		return &blockIngestionType{isLatest: isLatest, fork: true, preGenesis: false}, nil
+		return &BlockIngestionType{IsLatest: isLatest, Fork: true, PreGenesis: false}, nil
 	}
 
 	// this is the typical, happy-path case. The ingested block's parent was the previously ingested block.
-	return &blockIngestionType{isLatest: isLatest, fork: false, preGenesis: false}, nil
+	return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: false}, nil
 }
 
 // Updates the L1 and L2 chain heads, and returns the new L2 head hash and the produced batch, if there is one.
-func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *blockIngestionType) (*common.L2BatchHash, *core.Batch, error) {
+func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *BlockIngestionType) (*common.L2BatchHash, *core.Batch, error) {
 	// before proceeding we check if L2 needs to be rolled back because of the L1 block
 	// (eventually this will be bound to just the hash of L1 message data rather than L1 block hashes - so less likely to reorg)
-	if ingestionType.fork {
+	if ingestionType.Fork {
 		err := oc.rollbackL2ToLatestValidBatch(block)
 		if err != nil {
 			return nil, nil, err
@@ -383,7 +383,7 @@ func (oc *ObscuroChain) updateL1AndL2Heads(block *types.Block, ingestionType *bl
 
 	// If we're the sequencer and we're on the latest block, we produce a new L2 head to replace the old one.
 	var producedBatch *core.Batch
-	if oc.nodeType == common.Sequencer && ingestionType.isLatest {
+	if oc.nodeType == common.Sequencer && ingestionType.IsLatest {
 		l2Head, l2HeadTxReceipts, err = oc.produceAndStoreBatch(block, genesisBatchStored)
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not produce and store new batch. Cause: %w", err)
