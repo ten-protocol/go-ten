@@ -121,7 +121,7 @@ func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBl
 	if err != nil {
 		return nil, err
 	}
-	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
+	return &generated.SubmitBlockResponse{BlockSubmissionResponse: msg}, nil
 }
 
 func (s *RPCServer) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {

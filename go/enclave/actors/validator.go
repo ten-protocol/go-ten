@@ -28,11 +28,55 @@ type obsValidator struct {
 	storage     db.Storage
 }
 
-func NewValidator() ObsValidator {
-	return &obsValidator{}
+func NewValidator(
+	consumer components.BlockConsumer,
+	producer components.BatchProducer,
+	registry components.BatchRegistry,
+	rollupConsumer components.RollupConsumer,
+
+	chainConfig *params.ChainConfig,
+
+	sequencerID gethcommon.Address,
+	storage db.Storage,
+) ObsValidator {
+	return &obsValidator{
+		consumer:       consumer,
+		producer:       producer,
+		registry:       registry,
+		rollupConsumer: rollupConsumer,
+		chainConfig:    chainConfig,
+		sequencerID:    sequencerID,
+		storage:        storage,
+	}
+}
+
+func (ov *obsValidator) GetLatestHead() (*core.Batch, error) {
+	return ov.registry.GetHeadBatch()
+}
+
+func (ov *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, error) {
+	// genesis
+	if incomingBatch.NumberU64() != 0 {
+		return false, nil
+	}
+
+	batch, _, err := ov.producer.CreateGenesisState(incomingBatch.Header.L1Proof, ov.sequencerID, incomingBatch.Header.Time)
+	if err != nil {
+		return true, err
+	}
+
+	if !bytes.Equal(incomingBatch.Hash().Bytes(), batch.Hash().Bytes()) {
+		return true, fmt.Errorf("received bad genesis batch")
+	}
+
+	return true, ov.registry.StoreBatch(incomingBatch, nil)
 }
 
 func (ov *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
+	if handled, err := ov.handleGenesisBatch(incomingBatch); handled {
+		return err
+	}
+
 	if batch, err := ov.registry.GetBatch(*incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return err
 	} else if batch != nil {
@@ -59,6 +103,10 @@ func (ov *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
 
 	if !bytes.Equal(cb.Batch.Hash().Bytes(), incomingBatch.Hash().Bytes()) {
 		return fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", incomingBatch.Hash().Hex(), cb.Batch.Hash().Hex())
+	}
+
+	if _, err := cb.Commit(true); err != nil {
+		return fmt.Errorf("cannot commit stateDB for incoming valid batch. Cause: %w", err)
 	}
 
 	return ov.registry.StoreBatch(incomingBatch, cb.Receipts)

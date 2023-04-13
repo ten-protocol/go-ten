@@ -22,6 +22,7 @@ type Sequencer interface {
 type ObsValidator interface {
 	ValidateAndStoreBatch(*core.Batch) error
 	ReceiveBlock(*common.BlockAndReceipts, bool) (*components.BlockIngestionType, error)
+	GetLatestHead() (*core.Batch, error)
 
 	ObscuroActor
 }

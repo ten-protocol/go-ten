@@ -46,7 +46,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupmanager"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
@@ -66,14 +65,15 @@ type enclaveImpl struct {
 	mempool              mempool.Manager
 	l1Blockchain         *gethcore.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
-	rollupManager        rollupmanager.RollupManager
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
-	chain *l2chain.ObscuroChain
-
 	liteChain l2chain.ChainInterface
 	sequencer actors.Sequencer
+	validator actors.ObsValidator
+
+	GlobalGasCap uint64   //         5_000_000_000, // todo (#627) - make config
+	BaseFee      *big.Int //              gethcommon.Big0,
 
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
@@ -221,6 +221,8 @@ func NewEnclave(
 		transactionBlobCrypto,
 	)
 
+	validator := actors.NewValidator(consumer, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage)
+
 	liteChain := l2chain.NewLite(
 		config.HostID,
 		config.NodeType,
@@ -232,20 +234,6 @@ func NewEnclave(
 		registry,
 	)
 
-	if config.NodeType != common.Sequencer {
-		liteChain = chain
-	}
-
-	rollupManager := rollupmanager.New(
-		mgmtContractLib,
-		transactionBlobCrypto,
-		config.ObscuroChainID,
-		config.L1ChainID,
-		storage,
-		chain,
-		logger,
-	)
-
 	// ensure cached chain state data is up-to-date using the persisted batch data
 	err = chain.ResyncStateDB()
 	if err != nil {
@@ -253,7 +241,7 @@ func NewEnclave(
 	}
 
 	// TODO ensure debug is allowed/disallowed
-	debug := debugger.New(chain, storage, &chainConfig)
+	debug := debugger.New(liteChain, storage, &chainConfig)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
@@ -264,10 +252,8 @@ func NewEnclave(
 		mempool:               memp,
 		l1Blockchain:          l1Blockchain,
 		rpcEncryptionManager:  rpcEncryptionManager,
-		rollupManager:         rollupManager,
 		subscriptionManager:   subscriptionManager,
 		crossChainProcessors:  crossChainProcessors,
-		chain:                 chain,
 		mgmtContractLib:       mgmtContractLib,
 		attestationProvider:   attestationProvider,
 		enclaveKey:            enclaveKey,
@@ -278,8 +264,11 @@ func NewEnclave(
 		debugger:              debug,
 		stopInterrupt:         new(int32),
 
-		liteChain: liteChain,
-		sequencer: sequencer,
+		liteChain:    liteChain,
+		sequencer:    sequencer,
+		validator:    validator,
+		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
+		BaseFee:      gethcommon.Big0,
 	}
 }
 
@@ -347,66 +336,22 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 		}
 
 		return bsr, nil
-	}
-
-	// We update the enclave state based on the L1 block.
-	newL2Head, producedBatch, err := e.chain.ProcessL1Block(block, receipts, isLatest)
-	if err != nil {
-		e.logger.Warn("ProcessL1Block failed", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
-		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
-	}
-	e.logger.Info("ProcessL1Block successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
-
-	_, err = e.rollupManager.ProcessL1Block(br)
-	if err != nil {
-		e.logger.Error("Error processing L1 block for rollups", log.ErrKey, err)
-	}
-
-	// We prepare the block submission response.
-	// todo (@stefan) - fix subscribed logs for validators who are being synchronized only through L1
-	blockSubmissionResponse := e.produceBlockSubmissionResponse(newL2Head, producedBatch)
-
-	if producedBatch != nil && (producedBatch.Header.Number.Uint64()%e.config.Cadence == 0) {
-		rollup, err := e.rollupManager.CreateRollup()
+	} else if e.config.NodeType == common.Validator {
+		_, err := e.validator.ReceiveBlock(br, isLatest)
 		if err != nil {
-			e.logger.Error("Failed to produce rollup", log.ErrKey, err)
-		} else {
-			blockSubmissionResponse.ProducedRollup = rollup.ToExtRollup(e.transactionBlobCrypto)
+			return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 		}
-	}
+		bsr := e.produceBlockSubmissionResponse(nil, nil)
 
-	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(),
-		"newBatch", describeBSR(blockSubmissionResponse))
-	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
-
-	// We remove any transactions considered immune to re-orgs from the mempool.
-	if blockSubmissionResponse.ProducedBatch != nil {
-		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedBatch.Header)
-		if err != nil {
-			e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
-			return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
+		l2Head, _ := e.validator.GetLatestHead()
+		if l2Head != nil {
+			bsr = e.produceBlockSubmissionResponse(l2Head.Hash(), nil)
 		}
+		bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
+		return bsr, nil
 	}
 
-	return blockSubmissionResponse, nil
-}
-
-// useful description of the BSR for debugging
-func describeBSR(response *common.BlockSubmissionResponse) string {
-	if response.RejectError != nil {
-		return fmt.Sprintf("BlockSubmissionResponse failed with err=%s", response.RejectError.Error())
-	}
-	producedBatch := "no batch produced"
-	if response.ProducedBatch != nil {
-		producedBatch = fmt.Sprintf("newBatch{num=%d, numTx=%d, hash=%s}",
-			response.ProducedBatch.Header.Number, len(response.ProducedBatch.TxHashes), response.ProducedBatch.Hash())
-	}
-	producedRollup := "no rollup produced"
-	if response.ProducedRollup != nil {
-		producedRollup = fmt.Sprintf("newRollup{num=%d, numBatches=%d, hash=%s}",
-			response.ProducedRollup.Header.Number, len(response.ProducedRollup.Batches), response.ProducedRollup.Hash())
-	}
-	return fmt.Sprintf("%s, %s", producedBatch, producedRollup)
+	return nil, nil
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -459,7 +404,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 
 	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
-	if err := e.chain.UpdateL2Chain(batch); err != nil {
+	if err := e.validator.ValidateAndStoreBatch(batch); err != nil {
 		return fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err)
 	}
 
@@ -475,12 +420,7 @@ func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
 		return nil, errors.New("only sequencer can generate rollups")
 	}
 
-	rollup, err := e.rollupManager.CreateRollup()
-	if err != nil {
-		return nil, err
-	}
-
-	return rollup.ToExtRollup(e.transactionBlobCrypto), nil
+	return e.sequencer.CreateRollup()
 }
 
 // ObsCall handles param decryption, validation and encryption
@@ -923,7 +863,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// todo (@pedro) - hook the correct blockNumber from the API call (paramList[1])
-	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.chain.GlobalGasCap)
+	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.GlobalGasCap)
 	if err != nil {
 		return nil, fmt.Errorf("unable to estimate transaction - %w", err)
 	}
@@ -1035,7 +975,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 			}
 			hi = block.GasLimit()
 		*/
-		hi = e.chain.GlobalGasCap
+		hi = e.GlobalGasCap
 	}
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int
@@ -1050,7 +990,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 	}
 	// Recap the highest gas limit with account's available balance.
 	if feeCap.BitLen() != 0 { //nolint:nestif
-		balance, err := e.chain.GetBalanceAtBlock(*args.From, blkNumber)
+		balance, err := e.liteChain.GetBalanceAtBlock(*args.From, blkNumber)
 		if err != nil {
 			return 0, fmt.Errorf("unable to fetch account balance - %w", err)
 		}

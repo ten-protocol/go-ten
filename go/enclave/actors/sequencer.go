@@ -92,7 +92,7 @@ func (s *sequencer) CreateBatch() (*core.Batch, error) {
 
 // TODO - This is iffy, the producer commits the stateDB
 func (s *sequencer) initGenesis(block *common.L1Block) (*core.Batch, error) {
-	batch, msgBusTx, err := s.producer.CreateGenesisState(block.Hash(), s.hostID)
+	batch, msgBusTx, err := s.producer.CreateGenesisState(block.Hash(), s.hostID, uint64(time.Now().Unix()))
 	if err != nil {
 		return nil, err
 	}

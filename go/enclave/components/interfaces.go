@@ -57,7 +57,7 @@ type BatchProducer interface {
 	// Call with same BatchContext should always produce identical extBatch - idempotent
 	// Should be safe to call in parallel
 	ComputeBatch(*BatchContext) (*ComputedBatch, error)
-	CreateGenesisState(common.L1BlockHash, common.L2Address) (*core.Batch, *types.Transaction, error)
+	CreateGenesisState(common.L1BlockHash, common.L2Address, uint64) (*core.Batch, *types.Transaction, error)
 }
 
 type BatchRegistry interface {

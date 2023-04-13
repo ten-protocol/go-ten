@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
-	"time"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -167,7 +166,7 @@ func (oc *batchProducer) processTransactions(batch *core.Batch, tCount int, txs 
 	return executedTransactions, txReceipts, nil
 }
 
-func (oc *batchProducer) CreateGenesisState(blkHash common.L1BlockHash, aggregatorAddress common.L2Address) (*core.Batch, *types.Transaction, error) {
+func (oc *batchProducer) CreateGenesisState(blkHash common.L1BlockHash, aggregatorAddress common.L2Address, timeNow uint64) (*core.Batch, *types.Transaction, error) {
 	preFundGenesisState, err := oc.genesis.GetGenesisRoot(oc.storage)
 	if err != nil {
 		return nil, nil, err
@@ -182,7 +181,7 @@ func (oc *batchProducer) CreateGenesisState(blkHash common.L1BlockHash, aggregat
 			TxHash:      types.EmptyRootHash,
 			Number:      big.NewInt(int64(0)),
 			ReceiptHash: types.EmptyRootHash,
-			Time:        uint64(time.Now().Unix()),
+			Time:        timeNow,
 		},
 		Transactions: []*common.L2Tx{},
 	}
