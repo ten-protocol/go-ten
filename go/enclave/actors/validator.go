@@ -120,7 +120,8 @@ func (ov *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool)
 
 	rollups, err := ov.rollupConsumer.ProcessL1Block(br)
 	if err != nil {
-		return nil, err
+		//todo - log err?
+		return ingestion, nil
 	}
 
 	for _, rollup := range rollups {

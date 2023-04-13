@@ -12,7 +12,7 @@ type ObscuroActor interface {
 }
 
 type Sequencer interface {
-	CreateBatch() (*core.Batch, error)
+	CreateBatch(*common.L1Block) (*core.Batch, error)
 	CreateRollup() (*common.ExtRollup, error)
 	IsReady() bool
 

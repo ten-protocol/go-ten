@@ -308,12 +308,16 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	}
 
 	if e.config.NodeType == common.Sequencer {
-		_, err = e.sequencer.ReceiveBlock(br, isLatest)
+		result, err := e.sequencer.ReceiveBlock(br, isLatest)
 		if err != nil {
 			return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 		}
 
-		batch, _ := e.sequencer.CreateBatch()
+		if result.Fork {
+			e.logger.Info("Forked")
+		}
+
+		batch, _ := e.sequencer.CreateBatch(br.Block)
 		bsr := e.produceBlockSubmissionResponse(nil, nil)
 
 		if batch != nil {

@@ -72,15 +72,20 @@ func (s *sequencer) IsReady() bool {
 	return false
 }
 
-func (s *sequencer) CreateBatch() (*core.Batch, error) {
+func (s *sequencer) CreateBatch(block *common.L1Block) (*core.Batch, error) {
 	hasGenesis, err := s.registry.HasGenesisBatch()
 	if err != nil {
 		return nil, fmt.Errorf("unknown genesis batch state. Cause: %w", err)
 	}
 
-	block, err := s.consumer.GetHead()
-	if err != nil {
-		return nil, fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
+	if block == nil {
+		// L1 Head is only updated when isLatest: true
+		// when a block is specified it will override this and allow
+		// building batches for unfinished forks.
+		block, err = s.consumer.GetHead()
+		if err != nil {
+			return nil, fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
+		}
 	}
 
 	if !hasGenesis {
@@ -118,11 +123,31 @@ func (s *sequencer) extendHead(block *common.L1Block) (*core.Batch, error) {
 		return nil, err
 	}
 
+	// We find the ancestral batch for the block as it might be different
+	// than the current head; Alternatively we might have just processed a fork
+	// which would've updated the head to an unfinished fork so we need to get
+	// the correct batch that is building on the latest known final chain
+	ancestralBatch, err := s.registry.FindAncestralBatchFor(block)
+	if err != nil {
+		return nil, err
+	}
+
+	if ancestralBatch.NumberU64() != headBatch.NumberU64() {
+		return nil, fmt.Errorf("cant continue head for block that has decadent ancestor. Cause: %w", err)
+	}
+
+	// After we have determined that the ancestral batch we have is identical to head
+	// batch (which can be on another fork) we set the head batch to it as it is guaranteed
+	// to be in our chain.
+	headBatch = ancestralBatch
+
 	transactions, err := s.mempool.CurrentTxs(headBatch, s.storage)
 	if err != nil {
 		return nil, err
 	}
 
+	// As we are incrementing the chain to a new max height, across all forks,
+	// we generate the randomness for this batch.
 	rand, err := crypto.GeneratePublicRandomness()
 	if err != nil {
 		return nil, err
@@ -132,7 +157,7 @@ func (s *sequencer) extendHead(block *common.L1Block) (*core.Batch, error) {
 		BlockPtr:     block.Hash(),
 		ParentPtr:    *headBatch.Hash(),
 		Transactions: transactions,
-		AtTime:       uint64(time.Now().Unix()),
+		AtTime:       uint64(time.Now().Unix()), // todo - time is set only here; take from l1 block?
 		Randomness:   gethcommon.BytesToHash(rand),
 		Creator:      s.hostID,
 		ChainConfig:  s.chainConfig,
@@ -219,14 +244,14 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 		}
 	}
 
-	currHead = ancestralBatch
+	currHeadPtr := ancestralBatch
 	for i := len(orphanedBatches) - 1; i >= 0; i-- {
 		orphan := orphanedBatches[i]
 
 		// Extend the chain with identical cousin batches
 		cb, err := s.producer.ComputeBatch(&components.BatchContext{
 			BlockPtr:     br.Block.Hash(),
-			ParentPtr:    *currHead.Hash(),
+			ParentPtr:    *currHeadPtr.Hash(),
 			Transactions: orphan.Transactions,
 			AtTime:       orphan.Header.Time,
 			Randomness:   orphan.Header.MixDigest,
@@ -249,6 +274,12 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 
 		if err := s.registry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
 			return fmt.Errorf("failed storing batch. Cause: %w", err)
+		}
+		currHeadPtr = cb.Batch
+
+		if i == 0 {
+			s.storage.SetHeadBatchPointer(cb.Batch)
+			return s.storage.UpdateHeadBatch(br.Block.Hash(), cb.Batch, cb.Receipts)
 		}
 	}
 
