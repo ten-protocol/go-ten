@@ -71,6 +71,7 @@ type enclaveImpl struct {
 	liteChain l2chain.ChainInterface
 	sequencer actors.Sequencer
 	validator actors.ObsValidator
+	registry  components.BatchRegistry
 
 	GlobalGasCap uint64   //         5_000_000_000, // todo (#627) - make config
 	BaseFee      *big.Int //              gethcommon.Big0,
@@ -264,9 +265,11 @@ func NewEnclave(
 		debugger:              debug,
 		stopInterrupt:         new(int32),
 
-		liteChain:    liteChain,
-		sequencer:    sequencer,
-		validator:    validator,
+		liteChain: liteChain,
+		sequencer: sequencer,
+		validator: validator,
+		registry:  registry,
+
 		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
 		BaseFee:      gethcommon.Big0,
 	}
@@ -291,6 +294,24 @@ func (e *enclaveImpl) Status() (common.Status, error) {
 // StopClient is only implemented by the RPC wrapper
 func (e *enclaveImpl) StopClient() error {
 	return nil // The enclave is local so there is no client to stop
+}
+
+func (e *enclaveImpl) StreamBatches() chan *common.ExtBatch {
+	encryptedBatchChan := make(chan *common.ExtBatch)
+
+	go func() {
+		batchChan := e.registry.Subscribe()
+		for {
+			batch, ok := <-batchChan
+			if !ok {
+				close(encryptedBatchChan)
+			}
+			e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
+			encryptedBatchChan <- batch.ToExtBatch(e.transactionBlobCrypto)
+		}
+	}()
+
+	return encryptedBatchChan
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.

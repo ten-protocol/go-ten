@@ -74,6 +74,12 @@ service EnclaveProto {
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
 
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
+
+  rpc StreamBatches(EmptyArgs) returns (stream EncodedBatch) {}
+}
+
+message EncodedBatch {
+  bytes batch = 1;
 }
 
 

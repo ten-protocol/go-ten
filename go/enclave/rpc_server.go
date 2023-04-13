@@ -269,6 +269,25 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 	return &generated.DebugTraceTransactionResponse{Msg: string(traceTx)}, err
 }
 
+func (s *RPCServer) StreamBatches(_ *generated.EmptyArgs, stream generated.EnclaveProto_StreamBatchesServer) error {
+	batchChan := s.enclave.StreamBatches()
+	for {
+		batch, ok := <-batchChan
+		if !ok {
+			break
+		}
+
+		encoded, err := batch.Encoded()
+		if err != nil {
+			close(batchChan)
+			return nil
+		}
+		stream.Send(&generated.EncodedBatch{Batch: encoded})
+	}
+
+	return nil
+}
+
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

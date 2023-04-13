@@ -31,8 +31,10 @@ type EnclaveProtoClient interface {
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
+	//
+	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
+	//
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
@@ -69,6 +71,7 @@ type EnclaveProtoClient interface {
 	HealthCheck(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
 	DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error)
+	StreamBatches(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (EnclaveProto_StreamBatchesClient, error)
 }
 
 type enclaveProtoClient struct {
@@ -277,6 +280,38 @@ func (c *enclaveProtoClient) DebugTraceTransaction(ctx context.Context, in *Debu
 	return out, nil
 }
 
+func (c *enclaveProtoClient) StreamBatches(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (EnclaveProto_StreamBatchesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &EnclaveProto_ServiceDesc.Streams[0], "/generated.EnclaveProto/StreamBatches", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &enclaveProtoStreamBatchesClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type EnclaveProto_StreamBatchesClient interface {
+	Recv() (*EncodedBatch, error)
+	grpc.ClientStream
+}
+
+type enclaveProtoStreamBatchesClient struct {
+	grpc.ClientStream
+}
+
+func (x *enclaveProtoStreamBatchesClient) Recv() (*EncodedBatch, error) {
+	m := new(EncodedBatch)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -290,8 +325,10 @@ type EnclaveProtoServer interface {
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
+	//
+	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
+	//
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
@@ -328,6 +365,7 @@ type EnclaveProtoServer interface {
 	HealthCheck(context.Context, *EmptyArgs) (*HealthCheckResponse, error)
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
 	DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error)
+	StreamBatches(*EmptyArgs, EnclaveProto_StreamBatchesServer) error
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -400,6 +438,9 @@ func (UnimplementedEnclaveProtoServer) CreateRollup(context.Context, *CreateRoll
 }
 func (UnimplementedEnclaveProtoServer) DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DebugTraceTransaction not implemented")
+}
+func (UnimplementedEnclaveProtoServer) StreamBatches(*EmptyArgs, EnclaveProto_StreamBatchesServer) error {
+	return status.Errorf(codes.Unimplemented, "method StreamBatches not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -810,6 +851,27 @@ func _EnclaveProto_DebugTraceTransaction_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_StreamBatches_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(EmptyArgs)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(EnclaveProtoServer).StreamBatches(m, &enclaveProtoStreamBatchesServer{stream})
+}
+
+type EnclaveProto_StreamBatchesServer interface {
+	Send(*EncodedBatch) error
+	grpc.ServerStream
+}
+
+type enclaveProtoStreamBatchesServer struct {
+	grpc.ServerStream
+}
+
+func (x *enclaveProtoStreamBatchesServer) Send(m *EncodedBatch) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -906,6 +968,12 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_DebugTraceTransaction_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamBatches",
+			Handler:       _EnclaveProto_StreamBatches_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "enclave.proto",
 }

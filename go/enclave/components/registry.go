@@ -19,6 +19,8 @@ import (
 type batchRegistry struct {
 	storage db.Storage
 	logger  gethlog.Logger
+
+	subscription chan *core.Batch
 }
 
 func NewBatchRegistry(storage db.Storage, logger gethlog.Logger) BatchRegistry {
@@ -36,6 +38,8 @@ func (br *batchRegistry) StoreBatch(batch *core.Batch, receipts types.Receipts) 
 	if err := br.storage.StoreBatch(batch, receipts); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
+
+	//br.subscription <- batch
 
 	return nil
 }
@@ -82,7 +86,8 @@ func (br *batchRegistry) GetBatch(batchHash common.L2BatchHash) (*core.Batch, er
 }
 
 func (br *batchRegistry) Subscribe() chan *core.Batch {
-	return make(chan *core.Batch)
+	br.subscription = make(chan *core.Batch, 100)
+	return br.subscription
 }
 
 func (br *batchRegistry) FindAncestralBatchFor(block *common.L1Block) (*core.Batch, error) {

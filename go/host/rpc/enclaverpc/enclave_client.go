@@ -371,3 +371,36 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	}
 	return json.RawMessage(resp.Msg), nil
 }
+
+func (c *Client) StreamBatches() chan *common.ExtBatch {
+	batchChan := make(chan *common.ExtBatch, 10)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	stream, err := c.protoClient.StreamBatches(timeoutCtx, &generated.EmptyArgs{})
+	if err != nil {
+		close(batchChan)
+		return batchChan
+	}
+
+	go func() {
+		for {
+			batchMsg, err := stream.Recv()
+			if err != nil {
+				//log error?
+				close(batchChan)
+				break
+			}
+
+			var decoded *common.ExtBatch
+			if err := json.Unmarshal(batchMsg.Batch, decoded); err != nil {
+				close(batchChan)
+				break
+			}
+
+			batchChan <- decoded
+		}
+	}()
+
+	return batchChan
+}

@@ -351,6 +351,16 @@ func (h *host) startProcessing() {
 		}
 	}
 
+	if h.config.NodeType == common.Sequencer {
+		go func() {
+			return
+			batchStreamChan := h.enclaveClient.StreamBatches()
+			for {
+				h.storeAndDistributeBatch(<-batchStreamChan)
+			}
+		}()
+	}
+
 	// Main Processing Loop -
 	// - Process new blocks from the L1 node
 	// - Process new Transactions gossiped from L2 Peers
