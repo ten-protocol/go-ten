@@ -2,6 +2,64 @@
 ---
 # Obscuro Testnet Change Log
 
+# April 2023-04-13 (v0.12)
+* Robustness fixes for event log subscriptions, including ensuring no dropping of event logs, removal of any duplicates, 
+  and ensuring correct ordering based on their block insertion. 
+* Event log subscriptions will now infer the correct viewing key to use for relevancy checks performed by an Obscuro
+  node. This is based on filter criteria in the subscription, e.g. when a particular address field is included 
+  in the filter list, if a viewing key for that address is registered, that key will be used. Note that subscriptions to 
+  all events, where those events might contain data used in the relevancy checks, will not be able to infer the viewing 
+  key to use, and as such will use the first registered key made through that instance of the wallet extension. 
+* A list of the PRs merged in this release is as below;
+    * `25dc4cd9` Block provider now contributes to health status (#1225)
+    * `978e3509` Renaming docker volumes (#1224)
+    * `827d67bc` Workaround for xchain message finality (#1220)
+    * `56589db7` Persist enclave key (#1223)
+    * `845d7d34` Is debug namespace enables flag (#1222)
+    * `a3b220d1` Disabled notifications for npm (#1221)
+    * `96e4029b` Adding debug_traceTransaction endpoint and functionality (#1214)
+    * `37835960` Add different manual tests (#1217)
+    * `c1425fbf` Reconnect client on the block provider (#1216)
+    * `b0983690` Fix npe (#1215)
+    * `e5efecc6` Fix sqlite init logic (#1213)
+    * `05a7065f` Normalise data field to fix event dups bug (#1212)
+    * `0fc9d164` Fix bug and improve log (#1211)
+    * `bb92ae19` Add more logging in the verbose we (#1210)
+    * `02d885ea` Review of todos part two (#1209)
+    * `c1033393` Setup ego signer for testnets (#1208)
+    * `7c2e8985` Pull the updated docker images in testnet upgrade script (#1207)
+    * `13d8f102` Fix the block hash of log messages and receipts (#1206)
+    * `4766f27b` Pedro/log tx rollup hash (#1204)
+    * `6e81b9e2` Remove -a option (#1203)
+    * `81aacd56` Eth2network now pushed as part of the deploy flow (#1201)
+    * `e8903b38` Add logic to discover the authenticated client to be used for subscriptions (#1196)
+    * `cad27131` Fix filtering logic (#1199)
+    * `90b04263` Fix local network launcher for enclave persistence (#1198)
+    * `48acdc3f` Use docker mount for enclave persistence (#1195)
+    * `31562358` Rename offchain to obscall and fix tx execution logs (#1194)
+    * `f3f73da6` Changes to the testnet launcher, better logging (#1192)
+    * `124eb4cf` Fix names of types aliases (#1193)
+    * `c6316cbb` Store events in sql table (#1182)
+    * `17a7c44b` Todo review number 1 edits (#1191)
+    * `927b970d` L1_host not output properly in upgrade gh action (#1190)
+    * `013e8f32` Wipe and re-clone obscuro code on testnet node upgrade (#1186)
+    * `f7d4cd35` Revert "refactoring how errors are done. (#1153)" (#1189)
+    * `8dd0f1f6` Resolve faucet docs images (#1188)
+    * `24659498` Add back in the faucet steps using discord (#1187)
+    * `00fedf0f` Run scheduled dev-testnet deployment at 3:05am tues to sat (#1185)
+    * `9af0f70c` Add in the release notes for v0.11 (#1177)
+    * `45984ad1` Replaced 1.17->1.18 (#1184)
+    * `c010d003` Refactoring how errors are done (#1153)
+    * `6b96286d` Add docker_buildkit=1 (#1183)
+    * `c3b76592` Remove unused host flow controls (#1181)
+    * `3afc850e` Fix: node launcher was ignoring the l1 start param (#1180)
+    * `18420198` Simplify sqlite creation logic (#1179)
+    * `81483e76` Remove db interfaces (#1178)
+    * `e7343851` Close database and guard enclave methods (#1175)
+    * `9c9337c4` Removing the external api calls section (#1176)
+    * `8106a432` Expose underlying sql database (#1171)
+    * `235de492` Extract the mgmt contract deployment block for node starts (#1174)
+
 # March 2023-03-22 (v0.11)
 * A list of the PRs merged in this release is as below;
     * `1d22729e` Fixed nil ptr case. (#1172)
