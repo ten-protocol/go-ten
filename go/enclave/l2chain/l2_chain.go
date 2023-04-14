@@ -1,137 +1,51 @@
 package l2chain
 
 import (
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"math/big"
 	"sort"
-	"sync"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 // ObscuroChain represents the canonical L2 chain, and manages the state.
 type ObscuroChain struct {
-	hostID      gethcommon.Address
-	nodeType    common.NodeType
 	chainConfig *params.ChainConfig
-	sequencerID gethcommon.Address
 
 	storage              db.Storage
-	l1Blockchain         *gethcore.BlockChain
-	mempool              mempool.Manager
 	genesis              *genesis.Genesis
 	crossChainProcessors *crosschain.Processors
 
-	enclavePrivateKey    *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
-	blockProcessingMutex sync.Mutex
-	logger               gethlog.Logger
-
-	// Gas usage values
-	// todo (#627) - use the ethconfig.Config instead
-	GlobalGasCap uint64
-	BaseFee      *big.Int
+	logger gethlog.Logger
 }
 
 func New(
-	hostID gethcommon.Address,
-	nodeType common.NodeType,
 	storage db.Storage,
-	l1Blockchain *gethcore.BlockChain,
 	crossChainProcessors *crosschain.Processors,
-	mempool mempool.Manager,
-	privateKey *ecdsa.PrivateKey,
 	chainConfig *params.ChainConfig,
-	sequencerID gethcommon.Address,
 	genesis *genesis.Genesis,
 	logger gethlog.Logger,
 ) *ObscuroChain {
 	return &ObscuroChain{
-		hostID:               hostID,
-		nodeType:             nodeType,
 		storage:              storage,
-		l1Blockchain:         l1Blockchain,
-		mempool:              mempool,
 		crossChainProcessors: crossChainProcessors,
-		enclavePrivateKey:    privateKey,
 		chainConfig:          chainConfig,
-		blockProcessingMutex: sync.Mutex{},
 		logger:               logger,
-		GlobalGasCap:         5_000_000_000, // todo (#627) - make config
-		BaseFee:              gethcommon.Big0,
-		sequencerID:          sequencerID,
 		genesis:              genesis,
 	}
-}
-
-// Inserts the block into the L1 chain if it exists and the block is not the genesis block
-// note: this method shouldn't be called for blocks we've seen before
-func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool) (*BlockIngestionType, error) {
-	if oc.l1Blockchain != nil {
-		_, err := oc.l1Blockchain.InsertChain(types.Blocks{block})
-		if err != nil {
-			return nil, fmt.Errorf("block was invalid: %w", err)
-		}
-	}
-	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	prevL1Head, err := oc.storage.FetchHeadBlock()
-
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			// todo (@matt) - we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
-			return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: true}, nil
-		}
-		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
-
-		// we do a basic sanity check, comparing the received block to the head block on the chain
-	} else if block.ParentHash() != prevL1Head.Hash() {
-		lcaBlock, err := gethutil.LCA(block, prevL1Head, oc.storage)
-		if err != nil {
-			return nil, common.ErrBlockAncestorNotFound
-		}
-		oc.logger.Trace("parent not found",
-			"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
-			"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
-			"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
-		)
-		if lcaBlock.NumberU64() >= prevL1Head.NumberU64() {
-			// This is an unexpected error scenario (a bug) because if:
-			// lca == prevL1Head:
-			//   if prev L1 head is (e.g) a grandfather of ingested block, and block's parent has been seen (else LCA would error),
-			//   then why is ingested block's parent not the prev l1 head
-			// lca > prevL1Head:
-			//   this would imply ingested block is earlier on the same branch as l1 head, but ingested block should not have been seen before
-			oc.logger.Error("unexpected blockchain state, incoming block is not child of L1 head and not an earlier fork of L1 head",
-				"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
-				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
-				"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
-			)
-			return nil, errors.New("unexpected blockchain state")
-		}
-
-		// ingested block is on a different branch to the previously ingested block - we may have to rewind L2 state
-		return &BlockIngestionType{IsLatest: isLatest, Fork: true, PreGenesis: false}, nil
-	}
-
-	// this is the typical, happy-path case. The ingested block's parent was the previously ingested block.
-	return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: false}, nil
 }
 
 // This is where transactions are executed and the state is calculated.

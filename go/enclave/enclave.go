@@ -74,6 +74,7 @@ type enclaveImpl struct {
 	service   services.ObscuroActor
 	registry  components.BatchRegistry
 
+	// todo (#627) - use the ethconfig.Config instead
 	GlobalGasCap uint64   //         5_000_000_000, // todo (#627) - make config
 	BaseFee      *big.Int //              gethcommon.Big0,
 
@@ -188,15 +189,9 @@ func NewEnclave(
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 	chain := l2chain.New(
-		config.HostID,
-		config.NodeType,
 		storage,
-		l1Blockchain,
 		crossChainProcessors,
-		memp,
-		enclaveKey,
 		&chainConfig,
-		config.SequencerID,
 		genesis,
 		logger,
 	)
