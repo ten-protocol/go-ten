@@ -875,20 +875,21 @@ func (h *host) startBatchStreaming() {
 	defer h.logger.Info("Stopping batch streaming")
 
 	// TODO: Update this to start from persisted head
-	streamChan := h.enclaveClient.StreamBatches(nil)
+	streamChan, stop := h.enclaveClient.StreamBatches(nil)
 	var lastBatch *common.ExtBatch = nil
 	for {
 		select {
 		case resp, ok := <-streamChan:
 			if !ok {
+				stop()
 				h.logger.Warn("Batch streaming failed. Reconneting from latest received batch after 3 seconds")
 				time.Sleep(3 * time.Second)
 
 				if lastBatch != nil {
 					bHash := lastBatch.Hash()
-					streamChan = h.EnclaveClient().StreamBatches(&bHash)
+					streamChan, stop = h.EnclaveClient().StreamBatches(&bHash)
 				} else {
-					streamChan = h.enclaveClient.StreamBatches(nil)
+					streamChan, stop = h.enclaveClient.StreamBatches(nil)
 				}
 				continue
 			}
@@ -907,7 +908,7 @@ func (h *host) startBatchStreaming() {
 				h.logger.Trace(fmt.Sprintf("Received batch from stream: %s", lastBatch.Hash().Hex()))
 			}
 		case <-h.exitHostCh:
-			close(streamChan)
+			stop()
 			return
 		}
 	}

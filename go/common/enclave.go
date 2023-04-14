@@ -113,7 +113,7 @@ type Enclave interface {
 	// DebugTraceTransaction returns the trace of a transaction
 	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error)
 
-	StreamBatches(*L2BatchHash) chan StreamBatchResponse
+	StreamBatches(*L2BatchHash) (chan StreamBatchResponse, func())
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

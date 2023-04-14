@@ -378,7 +378,7 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	return json.RawMessage(resp.Msg), nil
 }
 
-func (c *Client) StreamBatches(from *common.L2BatchHash) chan common.StreamBatchResponse {
+func (c *Client) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatchResponse, func()) {
 	batchChan := make(chan common.StreamBatchResponse, 10)
 	timeoutCtx, cancel := context.WithCancel(context.Background())
 
@@ -392,12 +392,20 @@ func (c *Client) StreamBatches(from *common.L2BatchHash) chan common.StreamBatch
 		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
 		close(batchChan)
 		cancel()
-		return batchChan
+		return batchChan, func() {}
 	}
+
+	stop := false
 
 	go func() {
 		defer cancel()
 		for {
+			// todo - atomic
+			if stop {
+				stream.CloseSend()
+				break
+			}
+
 			batchMsg, err := stream.Recv()
 			if err != nil {
 				c.logger.Error("Error receiving batch from stream.", log.ErrKey, err)
@@ -417,5 +425,5 @@ func (c *Client) StreamBatches(from *common.L2BatchHash) chan common.StreamBatch
 		}
 	}()
 
-	return batchChan
+	return batchChan, func() { stop = true }
 }

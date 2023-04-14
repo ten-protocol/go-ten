@@ -35,6 +35,10 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (*ge
 	var subscribedLogBytes []byte
 	var err error
 
+	if response == nil {
+		return nil, nil
+	}
+
 	producedBatchMsg := ToExtBatchMsg(response.ProducedBatch)
 	producedRollupMsg := ToExtRollupMsg(response.ProducedRollup)
 

@@ -252,7 +252,9 @@ func (s *RPCServer) StreamBatches(request *generated.StreamBatchesRequest, strea
 		fromHash = &knownHead
 	}
 
-	batchChan := s.enclave.StreamBatches(fromHash)
+	batchChan, stop := s.enclave.StreamBatches(fromHash)
+	defer stop()
+
 	for {
 		batchResp, ok := <-batchChan
 		if !ok {

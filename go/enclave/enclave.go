@@ -354,8 +354,11 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 	outChannel <- resp
 }
 
-func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) chan common.StreamBatchResponse {
+func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatchResponse, func()) {
 	encryptedBatchChan := make(chan common.StreamBatchResponse, 100)
+
+	//todo - figure out a better approach
+	stop := false
 
 	go func() {
 		// TODO - There is a risk that batchChan will
@@ -368,7 +371,7 @@ func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) chan common.Stream
 
 		e.sendMissingMatches(from, encryptedBatchChan)
 
-		for {
+		for !stop {
 			batch, ok := <-batchChan
 			if !ok {
 				e.logger.Warn("Registry closed batch channel.")
@@ -384,7 +387,9 @@ func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) chan common.Stream
 		}
 	}()
 
-	return encryptedBatchChan
+	return encryptedBatchChan, func() {
+		stop = true
+	}
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
