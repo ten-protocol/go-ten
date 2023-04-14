@@ -29,3 +29,12 @@ func (api *NetworkDebug) TraceTransaction(ctx context.Context, hash gethcommon.H
 	}
 	return response, nil
 }
+
+// LogVisibility returns the events for a given transactions
+func (api *NetworkDebug) LogVisibility(ctx context.Context, hash gethcommon.Hash) (interface{}, error) {
+	response, err := api.host.EnclaveClient().DebugLogVisibility(hash)
+	if err != nil {
+		return "", err
+	}
+	return response, nil
+}

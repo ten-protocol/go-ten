@@ -69,6 +69,7 @@ type EnclaveProtoClient interface {
 	HealthCheck(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
 	DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error)
+	DebugLogVisibility(ctx context.Context, in *DebugLogVisibilityRequest, opts ...grpc.CallOption) (*DebugLogVisibilityResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -277,6 +278,15 @@ func (c *enclaveProtoClient) DebugTraceTransaction(ctx context.Context, in *Debu
 	return out, nil
 }
 
+func (c *enclaveProtoClient) DebugLogVisibility(ctx context.Context, in *DebugLogVisibilityRequest, opts ...grpc.CallOption) (*DebugLogVisibilityResponse, error) {
+	out := new(DebugLogVisibilityResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/DebugLogVisibility", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -328,6 +338,7 @@ type EnclaveProtoServer interface {
 	HealthCheck(context.Context, *EmptyArgs) (*HealthCheckResponse, error)
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
 	DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error)
+	DebugLogVisibility(context.Context, *DebugLogVisibilityRequest) (*DebugLogVisibilityResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -400,6 +411,9 @@ func (UnimplementedEnclaveProtoServer) CreateRollup(context.Context, *CreateRoll
 }
 func (UnimplementedEnclaveProtoServer) DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DebugTraceTransaction not implemented")
+}
+func (UnimplementedEnclaveProtoServer) DebugLogVisibility(context.Context, *DebugLogVisibilityRequest) (*DebugLogVisibilityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DebugLogVisibility not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -810,6 +824,24 @@ func _EnclaveProto_DebugTraceTransaction_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_DebugLogVisibility_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DebugLogVisibilityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).DebugLogVisibility(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/DebugLogVisibility",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).DebugLogVisibility(ctx, req.(*DebugLogVisibilityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -904,6 +936,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DebugTraceTransaction",
 			Handler:    _EnclaveProto_DebugTraceTransaction_Handler,
+		},
+		{
+			MethodName: "DebugLogVisibility",
+			Handler:    _EnclaveProto_DebugLogVisibility_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

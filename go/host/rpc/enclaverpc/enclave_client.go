@@ -376,3 +376,16 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	}
 	return json.RawMessage(resp.Msg), nil
 }
+
+func (c *Client) DebugLogVisibility(hash gethcommon.Hash) (json.RawMessage, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.DebugLogVisibility(timeoutCtx, &generated.DebugLogVisibilityRequest{
+		TxHash: hash.Bytes(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(resp.Msg), nil
+}

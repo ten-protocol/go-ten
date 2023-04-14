@@ -6,6 +6,7 @@ import (
 	sql2 "database/sql"
 	"errors"
 	"fmt"
+
 	"math/big"
 	"strings"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -488,9 +490,9 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 		return nil, fmt.Errorf("logs can only be requested for an account")
 	}
 
-	result := make([]*types.Log, 0)
 	// todo - remove the "distinct" once the fast-finality work is completed
 	// currently the events seem to be stored twice because of some weird logic in the rollup/batch processing.
+	// Note: the where 1=1 clauses allows for an easier query building
 	query := "select distinct topic0, topic1, topic2, topic3, topic4, datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address from events where 1=1 "
 	var queryParams []any
 
@@ -506,6 +508,13 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
+	return s.getLogs(query, queryParams)
+}
+
+// getLogs executes the query to the storage
+func (s *storageImpl) getLogs(query string, queryParams []any) ([]*types.Log, error) {
+	result := make([]*types.Log, 0)
+
 	rows, err := s.db.GetSQLDB().Query(query, queryParams...)
 	if err != nil {
 		return nil, err
@@ -515,7 +524,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 			Topics: []gethcommon.Hash{},
 		}
 		var t0, t1, t2, t3, t4 sql2.NullString
-		err := rows.Scan(&t0, &t1, &t2, &t3, &t4, &l.Data, &l.BlockHash, &l.BlockNumber, &l.TxHash, &l.TxIndex, &l.Index, &l.Address)
+		err = rows.Scan(&t0, &t1, &t2, &t3, &t4, &l.Data, &l.BlockHash, &l.BlockNumber, &l.TxHash, &l.TxIndex, &l.Index, &l.Address)
 		if err != nil {
 			return nil, fmt.Errorf("could not load log entry from db: %w", err)
 		}
@@ -537,15 +546,91 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 
 		result = append(result, &l)
 	}
-	err = rows.Close()
-	if err != nil {
-		return result, err
-	}
 
-	return result, nil
+	return result, rows.Close()
 }
 
-func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
+func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error) {
+	var queryParams []any
+
+	query := `select distinct 
+    			relAddress1, relAddress2, relAddress3, relAddress4,
+    			lifecycleEvent,
+    			topic0, topic1, topic2, topic3, topic4, 
+    			datablob, blockHash, blockNumber, txHash, txIdx, logIdx, address 
+				from events 
+				where txHash = ?`
+
+	queryParams = append(queryParams, txHash.Bytes())
+
+	result := make([]*tracers.DebugLogs, 0)
+
+	rows, err := s.db.GetSQLDB().Query(query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		l := tracers.DebugLogs{
+			Log: types.Log{
+				Topics: []gethcommon.Hash{},
+			},
+			LifecycleEvent: false,
+		}
+
+		var t0, t1, t2, t3, t4 sql2.NullString
+		var relAddress1, relAddress2, relAddress3, relAddress4 sql2.NullByte
+		err = rows.Scan(
+			&relAddress1,
+			&relAddress2,
+			&relAddress3,
+			&relAddress4,
+			&l.LifecycleEvent,
+			&t0, &t1, &t2, &t3, &t4,
+			&l.Data,
+			&l.BlockHash,
+			&l.BlockNumber,
+			&l.TxHash,
+			&l.TxIndex,
+			&l.Index,
+			&l.Address,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("could not load log entry from db: %w", err)
+		}
+
+		for _, topic := range []sql2.NullString{t0, t1, t2, t3, t4} {
+			if topic.Valid {
+				l.Topics = append(l.Topics, hash(topic))
+			}
+		}
+
+		//mappedHashes := map[int]*gethcommon.Hash{
+		//	1: &l.RelAddress1,
+		//	2: &l.RelAddress2,
+		//	3: &l.RelAddress3,
+		//	4: &l.RelAddress4,
+		//}
+		//for idx, relAddr := range []sql2.NullByte{relAddress1, relAddress2, relAddress3, relAddress4} {
+		//	if relAddr.Valid {
+		//		newRelAddr := hash2(relAddr)
+		//		mappedHashes[idx] = &newRelAddr
+		//	}
+		//}
+
+		result = append(result, &l)
+	}
+
+	return result, rows.Close()
+
+}
+
+func (s *storageImpl) FilterLogs(
+	requestingAccount *gethcommon.Address,
+	fromBlock, toBlock *big.Int,
+	blockHash *common.L2BatchHash,
+	addresses []gethcommon.Address,
+	topics [][]gethcommon.Hash,
+) ([]*types.Log, error) {
 	queryParams := []any{}
 	query := ""
 	if blockHash != nil {
@@ -590,6 +675,17 @@ func (s *storageImpl) FilterLogs(requestingAccount *gethcommon.Address, fromBloc
 
 func hash(ns sql2.NullString) gethcommon.Hash {
 	value, err := ns.Value()
+	if err != nil {
+		return [32]byte{}
+	}
+	s := value.(string)
+	result := gethcommon.Hash{}
+	result.SetBytes([]byte(s))
+	return result
+}
+
+func hash2(b sql2.NullByte) gethcommon.Hash {
+	value, err := b.Value()
 	if err != nil {
 		return [32]byte{}
 	}

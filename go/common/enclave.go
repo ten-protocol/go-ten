@@ -109,6 +109,9 @@ type Enclave interface {
 
 	// DebugTraceTransaction returns the trace of a transaction
 	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error)
+
+	// DebugLogVisibility returns the logs of a transaction
+	DebugLogVisibility(hash gethcommon.Hash) (json.RawMessage, error)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
