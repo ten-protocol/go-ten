@@ -503,12 +503,6 @@ func (e *enclaveImpl) CreateBatch() (*common.ExtBatch, error) {
 		return nil, err
 	}
 
-	err = e.removeOldMempoolTxs(batch.Header)
-	if err != nil {
-		e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, batch.Number(), log.BlockHashKey, batch.Hash(), log.ErrKey, err)
-		return nil, fmt.Errorf("could not remove mempool transactions. Cause: %w", err)
-	}
-
 	e.subscriptionLogs(batch.Number())
 
 	return batch.ToExtBatch(e.transactionBlobCrypto), nil
@@ -1355,24 +1349,6 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 	}
 	forAddress := gethcommon.HexToAddress(forAddressHex)
 	return &filter, &forAddress, nil
-}
-
-// Removes transactions from the mempool that are considered immune to re-orgs (i.e. over X batches deep).
-func (e *enclaveImpl) removeOldMempoolTxs(batchHeader *common.BatchHeader) error {
-	if batchHeader == nil {
-		return nil
-	}
-
-	hr, err := e.storage.FetchBatch(batchHeader.Hash())
-	if err != nil {
-		return fmt.Errorf("could not retrieve batch. This should not happen because this batch was just processed. Cause: %w", err)
-	}
-	err = e.mempool.RemoveMempoolTxs(hr, e.storage)
-	if err != nil {
-		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
-	}
-
-	return nil
 }
 
 func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {

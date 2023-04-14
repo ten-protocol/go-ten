@@ -184,6 +184,10 @@ func (s *sequencer) extendHead(block *common.L1Block) (*core.Batch, error) {
 		return nil, fmt.Errorf("failed storing batch. Cause: %w", err)
 	}
 
+	if err := s.mempool.RemoveMempoolTxs(cb.Batch, s.storage); err != nil {
+		return nil, fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
+	}
+
 	return cb.Batch, nil
 }
 
