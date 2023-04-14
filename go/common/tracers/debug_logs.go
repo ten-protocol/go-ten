@@ -2,6 +2,7 @@ package tracers
 
 import (
 	"encoding/json"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
