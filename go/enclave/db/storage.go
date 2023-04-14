@@ -6,7 +6,6 @@ import (
 	sql2 "database/sql"
 	"errors"
 	"fmt"
-
 	"math/big"
 	"strings"
 
@@ -490,6 +489,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 		return nil, fmt.Errorf("logs can only be requested for an account")
 	}
 
+	result := make([]*types.Log, 0)
 	// todo - remove the "distinct" once the fast-finality work is completed
 	// currently the events seem to be stored twice because of some weird logic in the rollup/batch processing.
 	// Note: the where 1=1 clauses allows for an easier query building
@@ -508,13 +508,6 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
-	return s.getLogs(query, queryParams)
-}
-
-// getLogs executes the query to the storage
-func (s *storageImpl) getLogs(query string, queryParams []any) ([]*types.Log, error) {
-	result := make([]*types.Log, 0)
-
 	rows, err := s.db.GetSQLDB().Query(query, queryParams...)
 	if err != nil {
 		return nil, err
@@ -528,20 +521,11 @@ func (s *storageImpl) getLogs(query string, queryParams []any) ([]*types.Log, er
 		if err != nil {
 			return nil, fmt.Errorf("could not load log entry from db: %w", err)
 		}
-		if t0.Valid {
-			l.Topics = append(l.Topics, hash(t0))
-		}
-		if t1.Valid {
-			l.Topics = append(l.Topics, hash(t1))
-		}
-		if t2.Valid {
-			l.Topics = append(l.Topics, hash(t2))
-		}
-		if t3.Valid {
-			l.Topics = append(l.Topics, hash(t3))
-		}
-		if t4.Valid {
-			l.Topics = append(l.Topics, hash(t4))
+
+		for _, topic := range []sql2.NullString{t0, t1, t2, t3, t4} {
+			if topic.Valid {
+				l.Topics = append(l.Topics, hashString(topic))
+			}
 		}
 
 		result = append(result, &l)
@@ -569,6 +553,7 @@ func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, 
 	if err != nil {
 		return nil, err
 	}
+
 	for rows.Next() {
 		l := tracers.DebugLogs{
 			Log: types.Log{
@@ -600,28 +585,28 @@ func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, 
 
 		for _, topic := range []sql2.NullString{t0, t1, t2, t3, t4} {
 			if topic.Valid {
-				l.Topics = append(l.Topics, hash(topic))
+				l.Topics = append(l.Topics, hashString(topic))
 			}
 		}
 
-		//mappedHashes := map[int]*gethcommon.Hash{
-		//	1: &l.RelAddress1,
-		//	2: &l.RelAddress2,
-		//	3: &l.RelAddress3,
-		//	4: &l.RelAddress4,
-		//}
-		//for idx, relAddr := range []sql2.NullByte{relAddress1, relAddress2, relAddress3, relAddress4} {
-		//	if relAddr.Valid {
-		//		newRelAddr := hash2(relAddr)
-		//		mappedHashes[idx] = &newRelAddr
-		//	}
-		//}
+		mappedHashes := map[int]*gethcommon.Hash{
+			1: &l.RelAddress1,
+			2: &l.RelAddress2,
+			3: &l.RelAddress3,
+			4: &l.RelAddress4,
+		}
+
+		for idx, relAddr := range []sql2.NullByte{relAddress1, relAddress2, relAddress3, relAddress4} {
+			if relAddr.Valid {
+				newRelAddr := hashBytes(relAddr)
+				mappedHashes[idx] = &newRelAddr
+			}
+		}
 
 		result = append(result, &l)
 	}
 
 	return result, rows.Close()
-
 }
 
 func (s *storageImpl) FilterLogs(
@@ -673,7 +658,7 @@ func (s *storageImpl) FilterLogs(
 	return s.loadLogs(requestingAccount, query, queryParams)
 }
 
-func hash(ns sql2.NullString) gethcommon.Hash {
+func hashString(ns sql2.NullString) gethcommon.Hash {
 	value, err := ns.Value()
 	if err != nil {
 		return [32]byte{}
@@ -684,7 +669,7 @@ func hash(ns sql2.NullString) gethcommon.Hash {
 	return result
 }
 
-func hash2(b sql2.NullByte) gethcommon.Hash {
+func hashBytes(b sql2.NullByte) gethcommon.Hash {
 	value, err := b.Value()
 	if err != nil {
 		return [32]byte{}

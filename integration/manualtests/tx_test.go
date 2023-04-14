@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
 	"math/big"
 	"os"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -220,7 +220,7 @@ func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
 		t.Fatalf("Tx Failed")
 	}
 
-	abiJsonString := `
+	abiJSONString := `
 [
 	{
 		"anonymous": false,
@@ -269,7 +269,7 @@ func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
 	}
 ]`
 
-	myAbi, err := abi.JSON(strings.NewReader(abiJsonString))
+	myAbi, err := abi.JSON(strings.NewReader(abiJSONString))
 	assert.Nil(t, err)
 
 	pack, err := myAbi.Pack("store", big.NewInt(1))
@@ -289,7 +289,7 @@ func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
 	signedTx, err = l2Wallet.SignTransaction(estimatedTx)
 	assert.Nil(t, err)
 
-	err = authClient.SendTransaction(ctx, signedTx)
+	_, err = authClient.SendTransaction(ctx, signedTx)
 	assert.Nil(t, err)
 
 	fmt.Printf("Created Tx: %s \n", signedTx.Hash().Hex())
@@ -318,7 +318,6 @@ func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
 	if receipt.Status == 0 {
 		t.Fatalf("Tx Failed")
 	}
-
 }
 
 func TestL2IssueTxWaitReceipt(t *testing.T) {
