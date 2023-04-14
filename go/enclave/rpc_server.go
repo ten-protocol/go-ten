@@ -235,12 +235,12 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 	return &generated.DebugTraceTransactionResponse{Msg: string(traceTx)}, err
 }
 
-func (s *RPCServer) DebugLogVisibility(_ context.Context, req *generated.DebugLogVisibilityRequest) (*generated.DebugLogVisibilityResponse, error) {
+func (s *RPCServer) DebugEventLogRelevancy(_ context.Context, req *generated.DebugEventLogRelevancyRequest) (*generated.DebugEventLogRelevancyResponse, error) {
 	txHash := gethcommon.BytesToHash(req.TxHash)
 
-	logs, err := s.enclave.DebugLogVisibility(txHash)
+	logs, err := s.enclave.DebugEventLogRelevancy(txHash)
 
-	return &generated.DebugLogVisibilityResponse{Msg: string(logs)}, err
+	return &generated.DebugEventLogRelevancyResponse{Msg: string(logs)}, err
 }
 
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {

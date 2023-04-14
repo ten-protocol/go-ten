@@ -10,7 +10,7 @@ page details which Debug JSON-RPC API methods are supported.
 Obscuro nodes support the following JSON-RPC API methods over both HTTP and websockets:
 
 * `debug_traceTransaction`
-* `debug_LogVisibility`: returns a list of log entries, each containing the relevancy and lifecycleEvent fields.
+* `debug_eventLogRelevancy`: returns a list of log entries, each containing the relevancy and lifecycleEvent fields.
 
 ## debug_LogVisibility
 
@@ -18,7 +18,7 @@ Request Payload:
 ```go
 {
     "jsonrpc": "2.0",
-    "method": "debug_logVisibility",
+    "method": "debug_eventLogRelevancy",
     "params": [
         "0xb29737963fd6768587ede453ab90ff7668115db16915a7833705ef134e793814"
     ],

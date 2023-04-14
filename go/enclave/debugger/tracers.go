@@ -49,7 +49,7 @@ func New(chain *l2chain.ObscuroChain, storage db.Storage, config *params.ChainCo
 	}
 }
 
-func (d *Debugger) DebugLogVisibility(txHash gethcommon.Hash) (json.RawMessage, error) {
+func (d *Debugger) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMessage, error) {
 	logs, err := d.storage.DebugGetLogs(txHash)
 	if err != nil {
 		return nil, err

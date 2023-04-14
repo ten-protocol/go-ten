@@ -1093,7 +1093,7 @@ func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *trac
 	return e.debugger.DebugTraceTransaction(context.Background(), txHash, config)
 }
 
-func (e *enclaveImpl) DebugLogVisibility(txHash gethcommon.Hash) (json.RawMessage, error) {
+func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMessage, error) {
 	// ensure the enclave is running
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, nil
@@ -1104,7 +1104,7 @@ func (e *enclaveImpl) DebugLogVisibility(txHash gethcommon.Hash) (json.RawMessag
 		return nil, fmt.Errorf("debug namespace not enabled")
 	}
 
-	return e.debugger.DebugLogVisibility(txHash)
+	return e.debugger.DebugEventLogRelevancy(txHash)
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

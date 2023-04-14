@@ -75,14 +75,14 @@ service EnclaveProto {
 
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
 
-  rpc DebugLogVisibility(DebugLogVisibilityRequest) returns (DebugLogVisibilityResponse) {}
+  rpc DebugEventLogRelevancy(DebugEventLogRelevancyRequest) returns (DebugEventLogRelevancyResponse) {}
 
 }
 
-message DebugLogVisibilityRequest{
+message DebugEventLogRelevancyRequest{
   bytes txHash = 1;
 }
-message DebugLogVisibilityResponse{
+message DebugEventLogRelevancyResponse{
   string msg = 1;
   string error = 2;
 }

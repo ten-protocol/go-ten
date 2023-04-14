@@ -69,7 +69,7 @@ type EnclaveProtoClient interface {
 	HealthCheck(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
 	DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error)
-	DebugLogVisibility(ctx context.Context, in *DebugLogVisibilityRequest, opts ...grpc.CallOption) (*DebugLogVisibilityResponse, error)
+	DebugEventLogRelevancy(ctx context.Context, in *DebugEventLogRelevancyRequest, opts ...grpc.CallOption) (*DebugEventLogRelevancyResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -278,9 +278,9 @@ func (c *enclaveProtoClient) DebugTraceTransaction(ctx context.Context, in *Debu
 	return out, nil
 }
 
-func (c *enclaveProtoClient) DebugLogVisibility(ctx context.Context, in *DebugLogVisibilityRequest, opts ...grpc.CallOption) (*DebugLogVisibilityResponse, error) {
-	out := new(DebugLogVisibilityResponse)
-	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/DebugLogVisibility", in, out, opts...)
+func (c *enclaveProtoClient) DebugEventLogRelevancy(ctx context.Context, in *DebugEventLogRelevancyRequest, opts ...grpc.CallOption) (*DebugEventLogRelevancyResponse, error) {
+	out := new(DebugEventLogRelevancyResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/DebugEventLogRelevancy", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -338,7 +338,7 @@ type EnclaveProtoServer interface {
 	HealthCheck(context.Context, *EmptyArgs) (*HealthCheckResponse, error)
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
 	DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error)
-	DebugLogVisibility(context.Context, *DebugLogVisibilityRequest) (*DebugLogVisibilityResponse, error)
+	DebugEventLogRelevancy(context.Context, *DebugEventLogRelevancyRequest) (*DebugEventLogRelevancyResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -412,8 +412,8 @@ func (UnimplementedEnclaveProtoServer) CreateRollup(context.Context, *CreateRoll
 func (UnimplementedEnclaveProtoServer) DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DebugTraceTransaction not implemented")
 }
-func (UnimplementedEnclaveProtoServer) DebugLogVisibility(context.Context, *DebugLogVisibilityRequest) (*DebugLogVisibilityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DebugLogVisibility not implemented")
+func (UnimplementedEnclaveProtoServer) DebugEventLogRelevancy(context.Context, *DebugEventLogRelevancyRequest) (*DebugEventLogRelevancyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DebugEventLogRelevancy not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -824,20 +824,20 @@ func _EnclaveProto_DebugTraceTransaction_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveProto_DebugLogVisibility_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DebugLogVisibilityRequest)
+func _EnclaveProto_DebugEventLogRelevancy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DebugEventLogRelevancyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EnclaveProtoServer).DebugLogVisibility(ctx, in)
+		return srv.(EnclaveProtoServer).DebugEventLogRelevancy(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/generated.EnclaveProto/DebugLogVisibility",
+		FullMethod: "/generated.EnclaveProto/DebugEventLogRelevancy",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).DebugLogVisibility(ctx, req.(*DebugLogVisibilityRequest))
+		return srv.(EnclaveProtoServer).DebugEventLogRelevancy(ctx, req.(*DebugEventLogRelevancyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -938,8 +938,8 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EnclaveProto_DebugTraceTransaction_Handler,
 		},
 		{
-			MethodName: "DebugLogVisibility",
-			Handler:    _EnclaveProto_DebugLogVisibility_Handler,
+			MethodName: "DebugEventLogRelevancy",
+			Handler:    _EnclaveProto_DebugEventLogRelevancy_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
