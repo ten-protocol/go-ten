@@ -887,9 +887,15 @@ func (h *host) startBatchStreaming() {
 		select {
 		case resp, ok := <-streamChan:
 			if !ok {
-				h.logger.Warn("Batch streaming failed. Reconneting from latest received batch")
-				bHash := lastBatch.Hash()
-				streamChan = h.EnclaveClient().StreamBatches(&bHash)
+				h.logger.Warn("Batch streaming failed. Reconneting from latest received batch after 3 seconds")
+				time.Sleep(3 * time.Second)
+
+				if lastBatch != nil {
+					bHash := lastBatch.Hash()
+					streamChan = h.EnclaveClient().StreamBatches(&bHash)
+				} else {
+					streamChan = h.enclaveClient.StreamBatches(nil)
+				}
 				continue
 			}
 
@@ -904,7 +910,7 @@ func (h *host) startBatchStreaming() {
 
 			if resp.Batch != nil {
 				lastBatch = resp.Batch
-				h.logger.Trace("Received batch from stream: %s", lastBatch.Hash())
+				h.logger.Trace("Received batch from stream: %s", lastBatch.Hash().Hex())
 			}
 		case <-h.exitHostCh:
 			close(streamChan)

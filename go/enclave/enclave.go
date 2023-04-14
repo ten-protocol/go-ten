@@ -302,6 +302,10 @@ func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) chan common.Stream
 	encryptedBatchChan := make(chan common.StreamBatchResponse, 100)
 
 	go func() {
+		// TODO - There is a risk that batchChan will
+		// contain duplicates with the search from <-> head.
+		// This is because we subscribe now but if "from"
+		// is provided we get the head later.
 		batchChan := e.registry.Subscribe()
 		defer close(encryptedBatchChan)
 		defer e.registry.Unsubscribe()
@@ -365,6 +369,12 @@ func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) chan common.Stream
 				e.logger.Info("Registry closed batch channel.")
 				break
 			}
+
+			// todo - remove testing breaker
+			if batch.NumberU64()%5 == 4 {
+				break
+			}
+
 			e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
 
 			resp := common.StreamBatchResponse{

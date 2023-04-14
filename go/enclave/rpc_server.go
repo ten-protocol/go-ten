@@ -283,7 +283,8 @@ func (s *RPCServer) StreamBatches(request *generated.StreamBatchesRequest, strea
 
 	var fromHash *common.L2BatchHash = nil
 	if request.KnownHead != nil {
-		*fromHash = gethcommon.BytesToHash(request.KnownHead)
+		knownHead := gethcommon.BytesToHash(request.KnownHead)
+		fromHash = &knownHead
 	}
 
 	batchChan := s.enclave.StreamBatches(fromHash)
