@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 )
@@ -13,6 +14,12 @@ import (
 type (
 	StateRoot = common.Hash
 	TxHash    = common.Hash
+
+	EncryptedSubscriptionLogs = map[rpc.ID][]byte
+	StreamBatchResponse       struct {
+		Batch *ExtBatch
+		Logs  EncryptedSubscriptionLogs
+	}
 
 	// MainNet aliases
 	L1Address     = common.Address

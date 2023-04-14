@@ -39,7 +39,7 @@ func (br *batchRegistry) StoreBatch(batch *core.Batch, receipts types.Receipts) 
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	//br.subscription <- batch
+	go func() { br.subscription <- batch }()
 
 	return nil
 }

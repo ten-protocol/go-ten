@@ -345,6 +345,7 @@ func (h *host) startProcessing() {
 	if h.config.NodeType == common.Sequencer {
 		go h.startBatchProduction()  // periodically request a new batch from enclave
 		go h.startRollupProduction() // periodically request a new rollup from enclave
+		go h.startBatchStreaming()
 	}
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
@@ -447,8 +448,6 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	if err != nil {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
-
-	h.logEventManager.SendLogsToSubscribers(blockSubmissionResponse)
 
 	err = h.publishSharedSecretResponses(blockSubmissionResponse.ProducedSecretResponses)
 	if err != nil {
@@ -863,14 +862,28 @@ func (h *host) startBatchProduction() {
 		select {
 		case <-batchProdTicker.C:
 			h.logger.Info("create batch")
-			producedBatch, err := h.enclaveClient.CreateBatch()
+			_, err := h.enclaveClient.CreateBatch()
 			if err != nil {
 				h.logger.Warn("unable to produce batch", log.ErrKey, err)
-			} else {
-				h.logger.Info("storing batch")
-				h.storeAndDistributeBatch(producedBatch)
 			}
 		case <-h.exitHostCh:
+			return
+		}
+	}
+}
+
+func (h *host) startBatchStreaming() {
+	defer h.logger.Info("Stopping batch streaming")
+
+	streamChan := h.enclaveClient.StreamBatches()
+	for {
+		select {
+		case resp := <-streamChan:
+			h.logger.Info("storing batch")
+			h.storeAndDistributeBatch(resp.Batch)
+			h.logEventManager.SendLogsToSubscribers(&resp.Logs)
+		case <-h.exitHostCh:
+			close(streamChan)
 			return
 		}
 	}

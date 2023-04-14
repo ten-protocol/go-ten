@@ -296,8 +296,8 @@ func (e *enclaveImpl) StopClient() error {
 	return nil // The enclave is local so there is no client to stop
 }
 
-func (e *enclaveImpl) StreamBatches() chan *common.ExtBatch {
-	encryptedBatchChan := make(chan *common.ExtBatch)
+func (e *enclaveImpl) StreamBatches() chan common.StreamBatchResponse {
+	encryptedBatchChan := make(chan common.StreamBatchResponse)
 
 	go func() {
 		batchChan := e.registry.Subscribe()
@@ -305,9 +305,21 @@ func (e *enclaveImpl) StreamBatches() chan *common.ExtBatch {
 			batch, ok := <-batchChan
 			if !ok {
 				close(encryptedBatchChan)
+				break
 			}
 			e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
-			encryptedBatchChan <- batch.ToExtBatch(e.transactionBlobCrypto)
+
+			logs, err := e.subscriptionLogs(batch.Number())
+			if err != nil {
+				e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
+				close(encryptedBatchChan)
+				break
+			}
+
+			encryptedBatchChan <- common.StreamBatchResponse{
+				Batch: batch.ToExtBatch(e.transactionBlobCrypto),
+				Logs:  logs,
+			}
 		}
 	}()
 
@@ -423,13 +435,13 @@ func (e *enclaveImpl) CreateBatch() (*common.ExtBatch, error) {
 		return nil, err
 	}
 
-	if batch != nil {
-		err = e.removeOldMempoolTxs(batch.Header)
-		if err != nil {
-			e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, batch.Number(), log.BlockHashKey, batch.Hash(), log.ErrKey, err)
-			return nil, fmt.Errorf("could not remove mempool transactions. Cause: %w", err)
-		}
+	err = e.removeOldMempoolTxs(batch.Header)
+	if err != nil {
+		e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, batch.Number(), log.BlockHashKey, batch.Hash(), log.ErrKey, err)
+		return nil, fmt.Errorf("could not remove mempool transactions. Cause: %w", err)
 	}
+
+	e.subscriptionLogs(batch.Number())
 
 	return batch.ToExtBatch(e.transactionBlobCrypto), nil
 }
@@ -1314,7 +1326,7 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash,
 }
 
 // Retrieves and encrypts the logs for the block.
-func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]byte, error) {
+func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (common.EncryptedSubscriptionLogs, error) {
 	result := map[gethrpc.ID][]*types.Log{}
 
 	// Go through each subscription and collect the logs

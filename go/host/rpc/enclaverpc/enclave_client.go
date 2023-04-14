@@ -383,8 +383,8 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	return json.RawMessage(resp.Msg), nil
 }
 
-func (c *Client) StreamBatches() chan *common.ExtBatch {
-	batchChan := make(chan *common.ExtBatch, 10)
+func (c *Client) StreamBatches() chan common.StreamBatchResponse {
+	batchChan := make(chan common.StreamBatchResponse, 10)
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -403,8 +403,8 @@ func (c *Client) StreamBatches() chan *common.ExtBatch {
 				break
 			}
 
-			var decoded *common.ExtBatch
-			if err := json.Unmarshal(batchMsg.Batch, decoded); err != nil {
+			var decoded common.StreamBatchResponse
+			if err := json.Unmarshal(batchMsg.Batch, &decoded); err != nil {
 				close(batchChan)
 				break
 			}

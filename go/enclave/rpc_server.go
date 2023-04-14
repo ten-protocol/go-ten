@@ -282,12 +282,12 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 func (s *RPCServer) StreamBatches(_ *generated.EmptyArgs, stream generated.EnclaveProto_StreamBatchesServer) error {
 	batchChan := s.enclave.StreamBatches()
 	for {
-		batch, ok := <-batchChan
+		batchResp, ok := <-batchChan
 		if !ok {
 			break
 		}
 
-		encoded, err := batch.Encoded()
+		encoded, err := json.Marshal(batchResp)
 		if err != nil {
 			close(batchChan)
 			return nil
