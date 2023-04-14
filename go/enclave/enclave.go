@@ -292,6 +292,68 @@ func (e *enclaveImpl) StopClient() error {
 	return nil // The enclave is local so there is no client to stop
 }
 
+func (e *enclaveImpl) sendMissingMatches(from *common.L2BatchHash, outChannel chan common.StreamBatchResponse) error {
+	if from != nil {
+		from, err := e.registry.GetBatch(*from)
+		if err != nil {
+			e.logger.Error("Error while attempting to stream from batch", log.ErrKey, err)
+			return err
+		}
+
+		to, err := e.registry.GetHeadBatch()
+		if err != nil {
+			e.logger.Error("Unable to get head batch while attempting to stream", log.ErrKey, err)
+			return err
+		}
+
+		missingBatches := make([]*core.Batch, 0)
+		for !bytes.Equal(to.Hash().Bytes(), from.Hash().Bytes()) {
+			if to.NumberU64() == 0 {
+				e.logger.Error("Reached genesis when seeking missing batches to stream", log.ErrKey, err)
+				return err
+			}
+
+			if from.NumberU64() == to.NumberU64() {
+				from, err = e.registry.GetBatch(from.Header.ParentHash)
+				if err != nil {
+					e.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
+					return err
+				}
+			}
+
+			missingBatches = append(missingBatches, to)
+			to, err = e.registry.GetBatch(to.Header.ParentHash)
+			if err != nil {
+				e.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
+				return err
+			}
+		}
+
+		for i := len(missingBatches) - 1; i >= 0; i-- {
+			batch := missingBatches[i]
+			e.sendBatch(batch, outChannel)
+		}
+	}
+
+	return nil
+}
+
+func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamBatchResponse) {
+	e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
+	resp := common.StreamBatchResponse{
+		Batch: batch.ToExtBatch(e.transactionBlobCrypto),
+	}
+
+	logs, err := e.subscriptionLogs(batch.Number())
+	if err != nil {
+		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
+	} else {
+		resp.Logs = logs
+	}
+
+	outChannel <- resp
+}
+
 func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) chan common.StreamBatchResponse {
 	encryptedBatchChan := make(chan common.StreamBatchResponse, 100)
 
@@ -304,63 +366,12 @@ func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) chan common.Stream
 		defer close(encryptedBatchChan)
 		defer e.registry.Unsubscribe()
 
-		if from != nil {
-			from, err := e.registry.GetBatch(*from)
-			if err != nil {
-				e.logger.Error("Error while attempting to stream from batch", log.ErrKey, err)
-				return
-			}
-
-			to, err := e.registry.GetHeadBatch()
-			if err != nil {
-				e.logger.Error("Unable to get head batch while attempting to stream", log.ErrKey, err)
-				return
-			}
-
-			missingBatches := make([]*core.Batch, 0)
-			for !bytes.Equal(to.Hash().Bytes(), from.Hash().Bytes()) {
-				if to.NumberU64() == 0 {
-					e.logger.Error("Reached genesis when seeking missing batches to stream", log.ErrKey, err)
-					return
-				}
-
-				if from.NumberU64() == to.NumberU64() {
-					from, err = e.registry.GetBatch(from.Header.ParentHash)
-					if err != nil {
-						e.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
-						return
-					}
-				}
-
-				missingBatches = append(missingBatches, to)
-				to, err = e.registry.GetBatch(to.Header.ParentHash)
-				if err != nil {
-					e.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
-					return
-				}
-			}
-
-			for i := len(missingBatches) - 1; i >= 0; i-- {
-				batch := missingBatches[i]
-				resp := common.StreamBatchResponse{
-					Batch: batch.ToExtBatch(e.transactionBlobCrypto),
-				}
-
-				logs, err := e.subscriptionLogs(batch.Number())
-				if err != nil {
-					e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
-				} else {
-					resp.Logs = logs
-				}
-
-				encryptedBatchChan <- resp
-			}
-		}
+		e.sendMissingMatches(from, encryptedBatchChan)
 
 		for {
 			batch, ok := <-batchChan
 			if !ok {
-				e.logger.Info("Registry closed batch channel.")
+				e.logger.Warn("Registry closed batch channel.")
 				break
 			}
 
@@ -369,20 +380,7 @@ func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) chan common.Stream
 				break
 			}
 
-			e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
-
-			resp := common.StreamBatchResponse{
-				Batch: batch.ToExtBatch(e.transactionBlobCrypto),
-			}
-
-			logs, err := e.subscriptionLogs(batch.Number())
-			if err != nil {
-				e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
-			} else {
-				resp.Logs = logs
-			}
-
-			encryptedBatchChan <- resp
+			e.sendBatch(batch, encryptedBatchChan)
 		}
 	}()
 
