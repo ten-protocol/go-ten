@@ -78,7 +78,11 @@ service EnclaveProto {
 
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
 
-  rpc StreamBatches(EmptyArgs) returns (stream EncodedBatch) {}
+  rpc StreamBatches(StreamBatchesRequest) returns (stream EncodedBatch) {}
+}
+
+message StreamBatchesRequest {
+  optional bytes knownHead = 1;
 }
 
 message EncodedBatch {

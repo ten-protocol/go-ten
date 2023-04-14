@@ -383,11 +383,17 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	return json.RawMessage(resp.Msg), nil
 }
 
-func (c *Client) StreamBatches() chan common.StreamBatchResponse {
+func (c *Client) StreamBatches(from *common.L2BatchHash) chan common.StreamBatchResponse {
 	batchChan := make(chan common.StreamBatchResponse, 10)
 	timeoutCtx, cancel := context.WithCancel(context.Background())
 
-	stream, err := c.protoClient.StreamBatches(timeoutCtx, &generated.EmptyArgs{})
+	request := &generated.StreamBatchesRequest{}
+	if from != nil {
+		request.KnownHead = from.Bytes()
+	}
+
+	stream, err := c.protoClient.StreamBatches(timeoutCtx, request)
+
 	if err != nil {
 		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
 		close(batchChan)

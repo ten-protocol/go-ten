@@ -279,8 +279,14 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 	return &generated.DebugTraceTransactionResponse{Msg: string(traceTx)}, err
 }
 
-func (s *RPCServer) StreamBatches(_ *generated.EmptyArgs, stream generated.EnclaveProto_StreamBatchesServer) error {
-	batchChan := s.enclave.StreamBatches()
+func (s *RPCServer) StreamBatches(request *generated.StreamBatchesRequest, stream generated.EnclaveProto_StreamBatchesServer) error {
+
+	var fromHash *common.L2BatchHash = nil
+	if request.KnownHead != nil {
+		*fromHash = gethcommon.BytesToHash(request.KnownHead)
+	}
+
+	batchChan := s.enclave.StreamBatches(fromHash)
 	for {
 		batchResp, ok := <-batchChan
 		if !ok {

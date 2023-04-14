@@ -3,6 +3,7 @@ package components
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -20,7 +21,8 @@ type batchRegistry struct {
 	storage db.Storage
 	logger  gethlog.Logger
 
-	subscription chan *core.Batch
+	subscription      *chan *core.Batch
+	subscriptionMutex sync.Mutex
 }
 
 func NewBatchRegistry(storage db.Storage, logger gethlog.Logger) BatchRegistry {
@@ -39,7 +41,16 @@ func (br *batchRegistry) StoreBatch(batch *core.Batch, receipts types.Receipts) 
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	go func() { br.subscription <- batch }()
+	// TODO - we probably dont want to spawn a goroutine everytime
+	go func() {
+		br.subscriptionMutex.Lock()
+		subscriptionChan := br.subscription
+		br.subscriptionMutex.Unlock()
+
+		if subscriptionChan != nil {
+			*subscriptionChan <- batch
+		}
+	}()
 
 	return nil
 }
@@ -86,8 +97,18 @@ func (br *batchRegistry) GetBatch(batchHash common.L2BatchHash) (*core.Batch, er
 }
 
 func (br *batchRegistry) Subscribe() chan *core.Batch {
-	br.subscription = make(chan *core.Batch, 100)
-	return br.subscription
+	br.subscriptionMutex.Lock()
+	defer br.subscriptionMutex.Unlock()
+	subChannel := make(chan *core.Batch, 100)
+	br.subscription = &subChannel
+	return *br.subscription
+}
+
+func (br *batchRegistry) Unsubscribe() {
+	br.subscriptionMutex.Lock()
+	defer br.subscriptionMutex.Unlock()
+	close(*br.subscription)
+	br.subscription = nil
 }
 
 func (br *batchRegistry) FindAncestralBatchFor(block *common.L1Block) (*core.Batch, error) {

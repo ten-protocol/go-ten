@@ -72,7 +72,7 @@ type EnclaveProtoClient interface {
 	CreateBatch(ctx context.Context, in *CreateBatchRequest, opts ...grpc.CallOption) (*CreateBatchResponse, error)
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
 	DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error)
-	StreamBatches(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (EnclaveProto_StreamBatchesClient, error)
+	StreamBatches(ctx context.Context, in *StreamBatchesRequest, opts ...grpc.CallOption) (EnclaveProto_StreamBatchesClient, error)
 }
 
 type enclaveProtoClient struct {
@@ -290,7 +290,7 @@ func (c *enclaveProtoClient) DebugTraceTransaction(ctx context.Context, in *Debu
 	return out, nil
 }
 
-func (c *enclaveProtoClient) StreamBatches(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (EnclaveProto_StreamBatchesClient, error) {
+func (c *enclaveProtoClient) StreamBatches(ctx context.Context, in *StreamBatchesRequest, opts ...grpc.CallOption) (EnclaveProto_StreamBatchesClient, error) {
 	stream, err := c.cc.NewStream(ctx, &EnclaveProto_ServiceDesc.Streams[0], "/generated.EnclaveProto/StreamBatches", opts...)
 	if err != nil {
 		return nil, err
@@ -376,7 +376,7 @@ type EnclaveProtoServer interface {
 	CreateBatch(context.Context, *CreateBatchRequest) (*CreateBatchResponse, error)
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
 	DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error)
-	StreamBatches(*EmptyArgs, EnclaveProto_StreamBatchesServer) error
+	StreamBatches(*StreamBatchesRequest, EnclaveProto_StreamBatchesServer) error
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -453,7 +453,7 @@ func (UnimplementedEnclaveProtoServer) CreateRollup(context.Context, *CreateRoll
 func (UnimplementedEnclaveProtoServer) DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DebugTraceTransaction not implemented")
 }
-func (UnimplementedEnclaveProtoServer) StreamBatches(*EmptyArgs, EnclaveProto_StreamBatchesServer) error {
+func (UnimplementedEnclaveProtoServer) StreamBatches(*StreamBatchesRequest, EnclaveProto_StreamBatchesServer) error {
 	return status.Errorf(codes.Unimplemented, "method StreamBatches not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
@@ -884,7 +884,7 @@ func _EnclaveProto_DebugTraceTransaction_Handler(srv interface{}, ctx context.Co
 }
 
 func _EnclaveProto_StreamBatches_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(EmptyArgs)
+	m := new(StreamBatchesRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}

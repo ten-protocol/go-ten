@@ -880,21 +880,31 @@ func (h *host) startBatchProduction() {
 func (h *host) startBatchStreaming() {
 	defer h.logger.Info("Stopping batch streaming")
 
-	streamChan := h.enclaveClient.StreamBatches()
+	// TODO: Update this to start from persisted head
+	streamChan := h.enclaveClient.StreamBatches(nil)
+	var lastBatch *common.ExtBatch = nil
 	for {
 		select {
 		case resp, ok := <-streamChan:
 			if !ok {
-				panic("TODO: reconnect to stream batches")
+				h.logger.Warn("Batch streaming failed. Reconneting from latest received batch")
+				bHash := lastBatch.Hash()
+				streamChan = h.EnclaveClient().StreamBatches(&bHash)
+				continue
 			}
 
 			if h.config.NodeType == common.Sequencer {
-				h.logger.Info("storing batch")
+				h.logger.Info("Storing batch from stream")
 				h.storeAndDistributeBatch(resp.Batch)
 			}
 
 			if resp.Logs != nil {
 				h.logEventManager.SendLogsToSubscribers(&resp.Logs)
+			}
+
+			if resp.Batch != nil {
+				lastBatch = resp.Batch
+				h.logger.Trace("Received batch from stream: %s", lastBatch.Hash())
 			}
 		case <-h.exitHostCh:
 			close(streamChan)
