@@ -41,17 +41,19 @@ func (br *batchRegistry) StoreBatch(batch *core.Batch, receipts types.Receipts) 
 	}
 
 	// TODO - we probably dont want to spawn a goroutine everytime
-	go func() {
-		br.subscriptionMutex.Lock()
-		subscriptionChan := br.subscription
-		br.subscriptionMutex.Unlock()
-
-		if subscriptionChan != nil {
-			*subscriptionChan <- batch
-		}
-	}()
+	go br.updateSubscribers(batch)
 
 	return nil
+}
+
+func (br *batchRegistry) updateSubscribers(batch *core.Batch) {
+	br.subscriptionMutex.Lock()
+	subscriptionChan := br.subscription
+	br.subscriptionMutex.Unlock()
+
+	if subscriptionChan != nil {
+		*subscriptionChan <- batch
+	}
 }
 
 func (br *batchRegistry) updateHeadPointers(batch *core.Batch, receipts types.Receipts) error {
