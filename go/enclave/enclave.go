@@ -225,7 +225,7 @@ func NewEnclave(
 			transactionBlobCrypto,
 		)
 	} else {
-		service = services.NewValidator(consumer, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage)
+		service = services.NewValidator(consumer, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, logger)
 	}
 
 	liteChain := l2chain.NewLite(

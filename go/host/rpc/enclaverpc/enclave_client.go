@@ -400,7 +400,7 @@ func (c *Client) StreamBatches(from *common.L2BatchHash) chan common.StreamBatch
 		for {
 			batchMsg, err := stream.Recv()
 			if err != nil {
-				c.logger.Error("Error receving batch from stream.", log.ErrKey, err)
+				c.logger.Error("Error receiving batch from stream.", log.ErrKey, err)
 				// log error?
 				close(batchChan)
 				break

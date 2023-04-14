@@ -8,9 +8,11 @@ import (
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
@@ -26,6 +28,7 @@ type obsValidator struct {
 
 	sequencerID gethcommon.Address
 	storage     db.Storage
+	logger      gethlog.Logger
 }
 
 func NewValidator(
@@ -38,6 +41,7 @@ func NewValidator(
 
 	sequencerID gethcommon.Address,
 	storage db.Storage,
+	logger gethlog.Logger,
 ) ObsValidator {
 	return &obsValidator{
 		consumer:       consumer,
@@ -47,6 +51,7 @@ func NewValidator(
 		chainConfig:    chainConfig,
 		sequencerID:    sequencerID,
 		storage:        storage,
+		logger:         logger,
 	}
 }
 
@@ -120,16 +125,27 @@ func (ov *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool)
 	rollups, err := ov.rollupConsumer.ProcessL1Block(br)
 	if err != nil {
 		// todo - log err?
+		ov.logger.Error("Encountered error processing l1 block", log.ErrKey, err)
 		return ingestion, nil
 	}
 
 	for _, rollup := range rollups {
-		for _, batch := range rollup.Batches {
-			ov.ValidateAndStoreBatch(batch)
+		if err := ov.verifyRollup(rollup); err != nil {
+			return nil, err
 		}
 	}
 
 	return ingestion, nil
+}
+
+func (ov *obsValidator) verifyRollup(rollup *core.Rollup) error {
+	for _, batch := range rollup.Batches {
+		if err := ov.ValidateAndStoreBatch(batch); err != nil {
+			ov.logger.Error("Attempted to store incorect batch: %s", batch.Hash().Hex())
+			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
+		}
+	}
+	return nil
 }
 
 func (ov *obsValidator) CheckSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {

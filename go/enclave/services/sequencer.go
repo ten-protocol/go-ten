@@ -202,7 +202,10 @@ func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*c
 		return nil, err
 	}
 
-	s.rollupConsumer.ProcessL1Block(br)
+	if _, err := s.rollupConsumer.ProcessL1Block(br); err != nil {
+		s.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
+		//Unsure what to do here; block has been stored
+	}
 
 	if !ingestion.Fork {
 		return ingestion, nil
@@ -280,8 +283,11 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 		}
 		currHeadPtr = cb.Batch
 
+		// i equals 0 at the heighest batch number
 		if i == 0 {
-			s.storage.SetHeadBatchPointer(cb.Batch)
+			if err := s.storage.SetHeadBatchPointer(cb.Batch); err != nil {
+				return fmt.Errorf("failed setting head batch ptr. Cause: %w", err)
+			}
 			return s.storage.UpdateHeadBatch(br.Block.Hash(), cb.Batch, cb.Receipts)
 		}
 	}
