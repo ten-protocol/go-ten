@@ -77,7 +77,7 @@ func TestL1IssueContractInteractWaitReceipt(t *testing.T) {
 	fmt.Printf("Deployed Store Contract")
 	err = awaitL1Tx(ethClient, signedTx)
 	assert.Nil(t, err)
-	fmt.Printf("Sucessfully minted Tx: %s \n", signedTx.Hash().Hex())
+	fmt.Printf("Successfully minted Tx: %s \n", signedTx.Hash().Hex())
 }
 
 func TestL1IssueTxWaitReceipt(t *testing.T) {
@@ -110,7 +110,7 @@ func TestL1IssueTxWaitReceipt(t *testing.T) {
 
 	err = awaitL1Tx(ethClient, signedTx)
 	assert.Nil(t, err)
-	fmt.Printf("Sucessfully minted Tx: %s \n", signedTx.Hash().Hex())
+	fmt.Printf("Successfully minted Tx: %s \n", signedTx.Hash().Hex())
 }
 
 func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
@@ -152,7 +152,7 @@ func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
 
 	err = awaitL2Tx(authClient, signedTx)
 	assert.Nil(t, err)
-	fmt.Printf("Sucessfully minted Tx: %s \n", signedTx.Hash().Hex())
+	fmt.Printf("Successfully minted Tx: %s \n", signedTx.Hash().Hex())
 }
 
 func TestL2IssueTxWaitReceipt(t *testing.T) {
@@ -193,5 +193,5 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 
 	err = awaitL2Tx(authClient, signedTx)
 	assert.Nil(t, err)
-	fmt.Printf("Sucessfully minted Tx: %s \n", signedTx.Hash().Hex())
+	fmt.Printf("Successfully minted Tx: %s \n", signedTx.Hash().Hex())
 }

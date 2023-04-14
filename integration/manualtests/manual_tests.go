@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"time"
-
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -32,7 +32,7 @@ func awaitL1Tx(ethClient ethadapter.EthClient, signedTx *types.Transaction) erro
 	}
 
 	if receipt == nil {
-		return fmt.Errorf("Did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
+		return fmt.Errorf("did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
 	}
 	if receipt.Status == 0 {
 		return fmt.Errorf("tx Failed")
@@ -63,7 +63,7 @@ func awaitL2Tx(authClient *obsclient.AuthObsClient, signedTx *types.Transaction)
 	}
 
 	if receipt == nil {
-		return fmt.Errorf("Did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
+		return fmt.Errorf("did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
 	}
 	if receipt.Status == 0 {
 		return fmt.Errorf("tx Failed")
