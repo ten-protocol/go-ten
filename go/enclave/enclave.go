@@ -13,8 +13,10 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
+	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 
@@ -333,47 +335,51 @@ func describeBSR(response *common.BlockSubmissionResponse) string {
 	return fmt.Sprintf("%s, %s", producedBatch, producedRollup)
 }
 
-func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
+func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil
+		return responses.AsEmptyResponse()
 	}
 
 	encodedTx, err := e.rpcEncryptionManager.DecryptBytes(tx)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
+		err = fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
+		return responses.AsPlaintextError(err)
 	}
 	decryptedTx, err := rpc.ExtractTx(encodedTx)
 	if err != nil {
 		e.logger.Info("could not decrypt transaction. ", log.ErrKey, err)
-		return nil, fmt.Errorf("could not decrypt transaction. Cause: %w", err)
+		return responses.AsPlaintextError(fmt.Errorf("could not decrypt transaction. Cause: %w", err))
 	}
 
+	e.logger.Info(fmt.Sprintf("Submitted transaction = %s", decryptedTx.Hash().Hex()))
+
+	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
+	if err != nil {
+		if errors.Is(err, types.ErrInvalidSig) {
+			return responses.AsPlaintextError(fmt.Errorf("transaction contains invalid signature"))
+		}
+		return responses.AsPlaintextError(fmt.Errorf("could not recover from address. Cause: %w", err))
+	}
+
+	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(viewingKeyAddress)
+
 	if e.crossChainProcessors.Local.IsSyntheticTransaction(*decryptedTx) {
-		return nil, fmt.Errorf("synthetic transaction coming from external rpc")
+		return responses.AsPlaintextError(fmt.Errorf("synthetic transaction coming from external rpc"))
 	}
 	if err = e.checkGas(decryptedTx); err != nil {
 		e.logger.Info("", log.ErrKey, err.Error())
-		return nil, err
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
 	// Only the sequencer needs to maintain a transaction mempool. Other node types can return early.
 	if e.config.NodeType == common.Sequencer {
 		if err = e.mempool.AddMempoolTx(decryptedTx); err != nil {
-			return nil, err
+			return responses.AsEncryptedError(err, encryptor)
 		}
 	}
 
-	txHashBytes := []byte(decryptedTx.Hash().Hex())
-	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_sendRawTransaction response. Cause: %w", err)
-	}
-	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txHashBytes)
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_sendRawTransaction request. Cause: %w", err)
-	}
-
-	return encryptedResult, nil
+	hash := decryptedTx.Hash().Hex()
+	return responses.AsEncryptedResponse(&hash, encryptor)
 }
 
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
@@ -409,47 +415,59 @@ func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
 
 // ObsCall handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_call)
-func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
+func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) responses.Call {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil
+		return responses.AsEmptyResponse()
 	}
 
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
+		err = fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
+		return responses.AsPlaintextError(err)
 	}
 
 	// extract params from byte slice to array of strings
 	var paramList []interface{}
 	err = json.Unmarshal(paramBytes, &paramList)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode eth_call params - %w", err)
+		err = fmt.Errorf("unable to decode eth_call params - %w", err)
+		return responses.AsPlaintextError(err)
 	}
 
 	// params are [TransactionArgs, BlockNumber]
 	if len(paramList) != 2 {
-		return nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
+		err = fmt.Errorf("required exactly two params, but received %d", len(paramList))
+		return responses.AsPlaintextError(err)
 	}
 
 	apiArgs, err := gethencoding.ExtractEthCall(paramList[0])
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
+		err = fmt.Errorf("unable to decode EthCall Params - %w", err)
+		return responses.AsPlaintextError(err)
 	}
 
 	// encryption will fail if no From address is provided
 	if apiArgs.From == nil {
-		return nil, fmt.Errorf("no from address provided")
+		err = fmt.Errorf("no from address provided")
+		return responses.AsPlaintextError(err)
 	}
+
+	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(*apiArgs.From)
 
 	blkNumber, err := gethencoding.ExtractBlockNumber(paramList[1])
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+		err = fmt.Errorf("unable to extract requested block number - %w", err)
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
 	execResult, err := e.chain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
-		return nil, err
+		evmErr, err := serializeEVMError(err)
+		if err == nil {
+			err = fmt.Errorf(string(evmErr))
+		}
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
 	// encrypt the result payload
@@ -458,63 +476,62 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (commo
 		encodedResult = hexutil.Encode(execResult.ReturnData)
 	}
 
-	encryptedResult, err := e.rpcEncryptionManager.EncryptWithViewingKey(*apiArgs.From, []byte(encodedResult))
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_call request. Cause: %w", err)
-	}
-
-	return encryptedResult, nil
+	return responses.AsEncryptedResponse(&encodedResult, encryptor)
 }
 
-func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (common.EncryptedResponseGetTxCount, error) {
+func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) responses.TxCount {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil
+		return responses.AsEmptyResponse()
 	}
 
 	var nonce uint64
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
 
 	address, err := rpc.ExtractAddress(paramBytes)
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
+
+	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(address)
+
 	l2Head, err := e.storage.FetchHeadBatch()
 	if err == nil {
 		// todo - we should return an error when head state is not available, but for current test situations with race
 		//  conditions we allow it to return zero while head state is uninitialized
 		s, err := e.storage.CreateStateDB(*l2Head.Hash())
 		if err != nil {
-			return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+			err = fmt.Errorf("could not create stateDB. Cause: %w", err)
+			return responses.AsPlaintextError(err)
 		}
 		nonce = s.GetNonce(address)
 	}
 
-	encCount, err := e.rpcEncryptionManager.EncryptWithViewingKey(address, []byte(hexutil.EncodeUint64(nonce)))
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionCount request. Cause: %w", err)
-	}
-	return encCount, nil
+	encoded := hexutil.EncodeUint64(nonce)
+	return responses.AsEncryptedResponse(&encoded, encryptor)
 }
 
-func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
+func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) responses.TxByHash {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil
+		return responses.AsEmptyResponse()
 	}
 
 	hashBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt encrypted RPC request params. Cause: %w", err)
+		err = fmt.Errorf("could not decrypt encrypted RPC request params. Cause: %w", err)
+		return responses.AsPlaintextError(err)
 	}
 	var paramList []string
 	err = json.Unmarshal(hashBytes, &paramList)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
+		err = fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
+		return responses.AsPlaintextError(err)
 	}
 	if len(paramList) == 0 {
-		return nil, fmt.Errorf("required at least one param, but received zero")
+		err = fmt.Errorf("required at least one param, but received zero")
+		return responses.AsPlaintextError(err)
 	}
 	txHash := gethcommon.HexToHash(paramList[0])
 
@@ -522,95 +539,87 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			return nil, nil
+			return responses.AsEmptyResponse()
 		}
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
 
 	viewingKeyAddress, err := rpc.GetSender(tx)
 	if err != nil {
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionByHash response. Cause: %w", err)
+		err = fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionByHash response. Cause: %w", err)
+		return responses.AsPlaintextError(err)
 	}
+
+	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(viewingKeyAddress)
 
 	// Unlike in the Geth impl, we hardcode the use of a London signer.
 	// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
 	signer := types.NewLondonSigner(tx.ChainId())
 	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
 
-	txBytes, err := json.Marshal(rpcTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal transaction to JSON. Cause: %w", err)
-	}
-	return e.rpcEncryptionManager.EncryptWithViewingKey(viewingKeyAddress, txBytes)
+	return responses.AsEncryptedResponse(rpcTx, encryptor)
 }
 
-func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
+func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) responses.TxReceipt {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil
+		return responses.AsEmptyResponse()
 	}
 
 	// We decrypt the transaction bytes.
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)
+		return responses.AsPlaintextError(fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err))
 	}
 	txHash, err := rpc.ExtractTxHash(paramBytes)
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
 
 	// We retrieve the transaction.
 	tx, txBatchHash, txBatchHeight, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			return nil, nil
+			return responses.AsEmptyResponse()
 		}
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
+
+	// We retrieve the sender's address.
+	sender, err := rpc.GetSender(tx)
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err))
+	}
+
+	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(sender)
 
 	// Only return receipts for transactions included in the canonical chain.
 	r, err := e.storage.FetchBatchByHeight(txBatchHeight)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve batch containing transaction. Cause: %w", err)
+		err = fmt.Errorf("could not retrieve batch containing transaction. Cause: %w", err)
+		return responses.AsPlaintextError(err)
 	}
 	if !bytes.Equal(r.Hash().Bytes(), txBatchHash.Bytes()) {
-		return nil, fmt.Errorf("transaction not included in the canonical chain")
+		err = fmt.Errorf("transaction not included in the canonical chain")
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
 	// We retrieve the transaction receipt.
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			return nil, nil
+			return responses.AsEmptyResponse()
 		}
-		return nil, fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-
-	// We retrieve the sender's address.
-	sender, err := rpc.GetSender(tx)
-	if err != nil {
-		return nil, fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)
+		err := fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
 	// We filter out irrelevant logs.
 	txReceipt.Logs, err = e.subscriptionManager.FilterLogs(txReceipt.Logs, txBatchHash, &sender, &filters.FilterCriteria{})
 	if err != nil {
-		return nil, fmt.Errorf("could not filter logs. Cause: %w", err)
+		return responses.AsEncryptedError(fmt.Errorf("could not filter logs. Cause: %w", err), encryptor)
 	}
 
-	// We marshal the receipt to JSON.
-	txReceiptBytes, err := txReceipt.MarshalJSON()
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal transaction receipt to JSON in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-
-	// We encrypt the receipt.
-	encryptedTxReceipt, err := e.rpcEncryptionManager.EncryptWithViewingKey(sender, txReceiptBytes)
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getTransactionReceipt request. Cause: %w", err)
-	}
-
-	return encryptedTxReceipt, nil
+	return responses.AsEncryptedResponse(txReceipt, encryptor)
 }
 
 func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
@@ -716,48 +725,53 @@ func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 
 // GetBalance handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_getBalance)
-func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
+func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) responses.Balance {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil
+		return responses.AsEmptyResponse()
 	}
 
 	// Decrypt the request.
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
+		err = fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
+		return responses.AsPlaintextError(err)
 	}
 
 	// Extract the params from the request.
 	var paramList []string
 	err = json.Unmarshal(paramBytes, &paramList)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
+		err = fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
+		return responses.AsPlaintextError(err)
 	}
 	if len(paramList) != 2 {
-		return nil, fmt.Errorf("required exactly two params, but received %d", len(paramList))
+		err = fmt.Errorf("required exactly two params, but received %d", len(paramList))
+		return responses.AsPlaintextError(err)
 	}
 
 	accountAddress, err := gethencoding.ExtractAddress(paramList[0])
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract requested address - %w", err)
+		err = fmt.Errorf("unable to extract requested address - %w", err)
+		return responses.AsPlaintextError(err)
 	}
+
+	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(*accountAddress)
 
 	blockNumber, err := gethencoding.ExtractBlockNumber(paramList[1])
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+		err = fmt.Errorf("unable to extract requested block number - %w", err)
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
 	encryptAddress, balance, err := e.chain.GetBalance(*accountAddress, blockNumber)
 	if err != nil {
-		return nil, fmt.Errorf("unable to get balance - %w", err)
+		err = fmt.Errorf("unable to get balance - %w", err)
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
-	encryptedBalance, err := e.rpcEncryptionManager.EncryptWithViewingKey(*encryptAddress, []byte(balance.String()))
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_getBalance request. Cause: %w", err)
-	}
+	encryptor = e.rpcEncryptionManager.CreateEncryptorFor(*encryptAddress)
 
-	return encryptedBalance, nil
+	return responses.AsEncryptedResponse(balance, encryptor)
 }
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2BatchHash) ([]byte, error) {
@@ -807,86 +821,99 @@ func (e *enclaveImpl) Stop() error {
 
 // EstimateGas decrypts CallMsg data, runs the gas estimation for the data.
 // Using the callMsg.From Viewing Key, returns the encrypted gas estimation
-func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, error) {
+func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) responses.Gas {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil
+		return responses.AsEmptyResponse()
 	}
 
 	// decrypt the input with the enclave PK
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decrypt params in EstimateGas request. Cause: %w", err)
+		err = fmt.Errorf("unable to decrypt params in EstimateGas request. Cause: %w", err)
+		return responses.AsPlaintextError(err)
 	}
 
 	// extract params from byte slice to array of strings
 	var paramList []interface{}
 	err = json.Unmarshal(paramBytes, &paramList)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode EthCall params - %w", err)
+		err = fmt.Errorf("unable to decode EthCall params - %w", err)
+		return responses.AsPlaintextError(err)
 	}
 
 	// params are [callMsg, block number (optional) ]
 	if len(paramList) < 1 {
-		return nil, fmt.Errorf("required at least 1 params, but received %d", len(paramList))
+		err = fmt.Errorf("required at least 1 params, but received %d", len(paramList))
+		return responses.AsPlaintextError(err)
 	}
 
 	callMsg, err := gethencoding.ExtractEthCall(paramList[0])
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode EthCall Params - %w", err)
+		err = fmt.Errorf("unable to decode EthCall Params - %w", err)
+		return responses.AsPlaintextError(err)
 	}
 
 	// encryption will fail if From address is not provided
 	if callMsg.From == nil {
-		return nil, fmt.Errorf("no from address provided")
+		err = fmt.Errorf("no from address provided")
+		return responses.AsPlaintextError(err)
 	}
+
+	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(*callMsg.From)
 
 	// extract optional block number - defaults to the latest block if not avail
 	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList, 1)
 	if err != nil {
-		return nil, fmt.Errorf("unable to extract requested block number - %w", err)
+		err = fmt.Errorf("unable to extract requested block number - %w", err)
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
 	// todo (@pedro) - hook the correct blockNumber from the API call (paramList[1])
 	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.chain.GlobalGasCap)
 	if err != nil {
-		return nil, fmt.Errorf("unable to estimate transaction - %w", err)
+		err = fmt.Errorf("unable to estimate transaction - %w", err)
+		evmErr, err := serializeEVMError(err)
+		if err == nil {
+			err = fmt.Errorf(string(evmErr))
+		}
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
-	// encrypt the gas cost with the callMsg.From viewing key
-	encryptedGasCost, err := e.rpcEncryptionManager.EncryptWithViewingKey(*callMsg.From, []byte(hexutil.EncodeUint64(uint64(gasEstimate))))
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to eth_estimateGas request. Cause: %w", err)
-	}
-	return encryptedGasCost, nil
+	return responses.AsEncryptedResponse(&gasEstimate, encryptor)
 }
 
-func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) { //nolint:gocognit
+func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) responses.Logs {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil
+		return responses.AsEmptyResponse()
 	}
 
 	// We decrypt the params.
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decrypt params in GetLogs request. Cause: %w", err)
+		err = fmt.Errorf("unable to decrypt params in GetLogs request. Cause: %w", err)
+		return responses.AsPlaintextError(err)
 	}
 
 	// We extract the arguments from the param bytes.
 	filter, forAddress, err := extractGetLogsParams(paramBytes)
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
 
+	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(*forAddress)
+	// todo logic to check that the filter is valid
+	// can't have both from and blockhash
+	// from <=to
 	// todo (@stefan) - return user error
 	if filter.BlockHash != nil && filter.FromBlock != nil {
-		return nil, fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock")
+		return responses.AsEncryptedError(fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock"), encryptor)
 	}
 
 	from := filter.FromBlock
 	if from != nil && from.Int64() < 0 {
 		batch, err := e.storage.FetchHeadBatch()
 		if err != nil {
-			return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
+			return responses.AsPlaintextError(fmt.Errorf("could not retrieve head batch. Cause: %w", err))
 		}
 		from = batch.Number()
 	}
@@ -895,7 +922,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 	if from == nil && filter.BlockHash != nil {
 		batch, err := e.storage.FetchBatch(*filter.BlockHash)
 		if err != nil {
-			return nil, fmt.Errorf("could not retrieve batch with hash %s. Cause: %w", filter.BlockHash.Hex(), err)
+			return responses.AsEncryptedError(fmt.Errorf("could not retrieve batch with hash %s. Cause: %w", filter.BlockHash.Hex(), err), encryptor)
 		}
 		from = batch.Number()
 	}
@@ -907,25 +934,17 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (co
 	}
 
 	if from != nil && to != nil && from.Cmp(to) > 0 {
-		return nil, fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to)
+		return responses.AsEncryptedError(fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to), encryptor)
 	}
 
 	// We retrieve the relevant logs that match the filter.
 	filteredLogs, err := e.storage.FilterLogs(forAddress, from, to, nil, filter.Addresses, filter.Topics)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
+		err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
-	// We encode and encrypt the logs with the viewing key for the requester's address.
-	logBytes, err := json.Marshal(filteredLogs)
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
-	}
-	encryptedLogs, err := e.rpcEncryptionManager.EncryptWithViewingKey(*forAddress, logBytes)
-	if err != nil {
-		return nil, fmt.Errorf("enclave could not respond securely to GetLogs request. Cause: %w", err)
-	}
-	return encryptedLogs, nil
+	return responses.AsEncryptedResponse(&filteredLogs, encryptor)
 }
 
 // DoEstimateGas returns the estimation of minimum gas required to execute transaction
@@ -1346,4 +1365,24 @@ func (e *enclaveImpl) rejectBlockErr(cause error) *common.BlockRejectError {
 		L1Head:  hash,
 		Wrapped: cause,
 	}
+}
+
+func serializeEVMError(err error) ([]byte, error) {
+	var errReturn interface{}
+
+	// check if it's a serialized error and handle any error wrapping that might have occurred
+	var e *evm.SerialisableError
+	if ok := errors.As(err, &e); ok {
+		errReturn = e
+	} else {
+		// it's a generic error, serialise it
+		errReturn = &evm.SerialisableError{Err: err.Error()}
+	}
+
+	// serialise the error object returned by the evm into a json
+	errSerializedBytes, marshallErr := json.Marshal(errReturn)
+	if marshallErr != nil {
+		return nil, marshallErr
+	}
+	return errSerializedBytes, nil
 }

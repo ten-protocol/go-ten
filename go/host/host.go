@@ -22,6 +22,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
 	"github.com/obscuronet/go-obscuro/go/host/db"
 	"github.com/obscuronet/go-obscuro/go/host/events"
+	"github.com/obscuronet/go-obscuro/go/responses"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -220,22 +221,19 @@ func (h *host) EnclaveClient() common.Enclave {
 	return h.enclaveClient
 }
 
-func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
+func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
-	encryptedResponse, err := h.enclaveClient.SubmitTx(encryptedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not submit transaction. Cause: %w", err)
-	}
+	enclaveResponse := h.enclaveClient.SubmitTx(encryptedTx)
 
 	if h.config.NodeType != common.Sequencer {
-		err = h.p2p.SendTxToSequencer(encryptedTx)
+		err := h.p2p.SendTxToSequencer(encryptedTx)
 		if err != nil {
 			return nil, fmt.Errorf("could not broadcast transaction to sequencer. Cause: %w", err)
 		}
 	}
 
-	return encryptedResponse, nil
+	return &enclaveResponse, nil
 }
 
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
@@ -366,8 +364,8 @@ func (h *host) startProcessing() {
 
 		case tx := <-h.txP2PCh:
 			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
-			if _, err := h.enclaveClient.SubmitTx(tx); err != nil {
-				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
+			if resp := h.enclaveClient.SubmitTx(tx); resp.Error() != nil {
+				h.logger.Warn("Could not submit transaction. ", log.ErrKey, resp.Error())
 			}
 
 		// TODO - #718 - Adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.
@@ -452,10 +450,17 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 
 	if blockSubmissionResponse.ProducedBatch != nil && blockSubmissionResponse.ProducedBatch.Header != nil {
 		// TODO - #718 - Unlink batch production from L1 cadence.
+		batch := blockSubmissionResponse.ProducedBatch
+		size, _ := batch.Size()
+		h.logger.Info(fmt.Sprintf("Publishing batch b_num %d, size %d , b=%s", batch.Header.Number, size, batch.SDump()))
 		h.storeAndDistributeBatch(blockSubmissionResponse.ProducedBatch)
 	}
 
 	if blockSubmissionResponse.ProducedRollup != nil && blockSubmissionResponse.ProducedRollup.Header != nil {
+		rp := blockSubmissionResponse.ProducedRollup
+		h.logger.Info(fmt.Sprintf("Publishing rollup with b_num %d-%d",
+			rp.Batches[0].Header.Number,
+			rp.Batches[len(rp.Batches)-1].Header.Number))
 		h.publishRollup(blockSubmissionResponse.ProducedRollup)
 	}
 
@@ -498,8 +503,8 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 				return err.Error()
 			}
 
-			return string(header[:])
-		}}, "rollup_hash", producedRollup.Header.Hash().Hex())
+			return string(header)
+		}}, "rollup_hash", producedRollup.Header.Hash().Hex(), "batches_len", len(producedRollup.Batches))
 
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
 	rollupTx, err = h.ethClient.EstimateGasAndGasPrice(rollupTx, h.ethWallet.Address())
@@ -550,6 +555,8 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt 
 	if err != nil {
 		return err
 	}
+
+	h.logger.Trace(fmt.Sprintf("Broadcasting l1 transaction of size %d", len(signedTx.Data())))
 
 	err = retry.Do(func() error {
 		return h.ethClient.SendTransaction(signedTx)

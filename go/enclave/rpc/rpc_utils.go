@@ -54,11 +54,11 @@ func ExtractAddress(getTransactionCountParams []byte) (gethcommon.Address, error
 // GetSender returns the address whose viewing key should be used to encrypt the response,
 // given a transaction.
 func GetSender(tx *common.L2Tx) (gethcommon.Address, error) {
-	// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
-	signer := types.NewLondonSigner(tx.ChainId())
-	sender, err := signer.Sender(tx)
+	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
+	msg, err := tx.AsMessage(types.LatestSignerForChainID(tx.ChainId()), tx.GasTipCap())
 	if err != nil {
 		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
 	}
-	return sender, nil
+
+	return msg.From(), nil
 }

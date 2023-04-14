@@ -16,8 +16,6 @@
 name: '[M] Deploy Testnet L1'
 
 on:
-  schedule:
-    - cron: '05 3 * * 2-6'
   workflow_dispatch:
     inputs:
       testnet_type:
@@ -46,7 +44,7 @@ jobs:
           echo "L1_CONTAINER_NAME=testnet-eth2network" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
-        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' || (github.event_name == 'schedule') }}
+        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
           echo "ETH2NETWORK_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_eth2network:latest" >> $GITHUB_ENV
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_testnet_l1network:latest" >> $GITHUB_ENV
@@ -103,8 +101,3 @@ jobs:
           ports: '8025 8026 9000 9001'
           cpu: 2
           memory: 8
-
-      - name: 'Dispatch trigger'
-        if: ${{ github.event_name == 'schedule' }}
-        run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/go-obscuro/dispatches --data '{ "event_type": "l1_dev_deployment", "client_payload": { "ref": "main", "env": "dev-testnet" }'
