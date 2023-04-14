@@ -524,13 +524,14 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 
 		for _, topic := range []sql2.NullString{t0, t1, t2, t3, t4} {
 			if topic.Valid {
-				l.Topics = append(l.Topics, hashString(topic))
+				l.Topics = append(l.Topics, stringToHash(topic))
 			}
 		}
 
 		result = append(result, &l)
 	}
 
+	// rows.Close should be evaluated and handled properly. A choice should be made whether we want the data even if the Close() fails
 	return result, rows.Close()
 }
 
@@ -585,27 +586,19 @@ func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, 
 
 		for _, topic := range []sql2.NullString{t0, t1, t2, t3, t4} {
 			if topic.Valid {
-				l.Topics = append(l.Topics, hashString(topic))
+				l.Topics = append(l.Topics, stringToHash(topic))
 			}
 		}
 
-		mappedHashes := map[int]*gethcommon.Hash{
-			1: &l.RelAddress1,
-			2: &l.RelAddress2,
-			3: &l.RelAddress3,
-			4: &l.RelAddress4,
-		}
-
-		for idx, relAddr := range []sql2.NullByte{relAddress1, relAddress2, relAddress3, relAddress4} {
-			if relAddr.Valid {
-				newRelAddr := hashBytes(relAddr)
-				mappedHashes[idx] = &newRelAddr
-			}
-		}
+		l.RelAddress1 = bytesToHash(relAddress1)
+		l.RelAddress2 = bytesToHash(relAddress2)
+		l.RelAddress3 = bytesToHash(relAddress3)
+		l.RelAddress4 = bytesToHash(relAddress4)
 
 		result = append(result, &l)
 	}
 
+	// rows.Close should be evaluated and handled properly. A choice should be made whether we want the data even if the Close() fails
 	return result, rows.Close()
 }
 
@@ -658,7 +651,7 @@ func (s *storageImpl) FilterLogs(
 	return s.loadLogs(requestingAccount, query, queryParams)
 }
 
-func hashString(ns sql2.NullString) gethcommon.Hash {
+func stringToHash(ns sql2.NullString) gethcommon.Hash {
 	value, err := ns.Value()
 	if err != nil {
 		return [32]byte{}
@@ -669,13 +662,19 @@ func hashString(ns sql2.NullString) gethcommon.Hash {
 	return result
 }
 
-func hashBytes(b sql2.NullByte) gethcommon.Hash {
+func bytesToHash(b sql2.NullByte) gethcommon.Hash {
+	result := gethcommon.Hash{}
+
+	if !b.Valid {
+		return result
+	}
+
 	value, err := b.Value()
 	if err != nil {
-		return [32]byte{}
+		return result
 	}
 	s := value.(string)
-	result := gethcommon.Hash{}
+
 	result.SetBytes([]byte(s))
 	return result
 }
