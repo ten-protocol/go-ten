@@ -306,6 +306,10 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 	return nil
 }
 
+func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
+	return s.mempool.AddMempoolTx(transaction)
+}
+
 func (s *sequencer) signBatch(batch *core.Batch) error {
 	var err error
 	h := batch.Hash()

@@ -9,6 +9,7 @@ import (
 type ObscuroActor interface {
 	//	SubmitTx() //todo
 	ReceiveBlock(*common.BlockAndReceipts, bool) (*components.BlockIngestionType, error)
+	SubmitTransaction(*common.L2Tx) error
 }
 
 type Sequencer interface {

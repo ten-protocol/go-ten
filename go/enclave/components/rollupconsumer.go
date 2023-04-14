@@ -132,7 +132,7 @@ func (rc *rollupConsumer) extractRollups(br *common.BlockAndReceipts, blockResol
 
 // Validates and stores the rollup in a given block.
 // todo (#718) - design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P)
-func (rc *rollupConsumer) processRollups(br *common.BlockAndReceipts) ([]*core.Rollup, error) { //nolint:gocognit
+func (rc *rollupConsumer) processRollups(br *common.BlockAndReceipts) ([]*core.Rollup, error) {
 	block := br.Block
 
 	latestRollup, err := rc.getLatestRollupBeforeBlock(block)

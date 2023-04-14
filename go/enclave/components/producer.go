@@ -81,7 +81,7 @@ func (bp *batchProducer) ComputeBatch(context *BatchContext) (*ComputedBatch, er
 		return nil, fmt.Errorf("failed to retrieve block for batch. Cause: %w", err)
 	}
 
-	var parentBlock *types.Block = block
+	parentBlock := block
 	if parent.Header.L1Proof != block.Hash() {
 		var err error
 		parentBlock, err = bp.storage.FetchBlock(parent.Header.L1Proof)

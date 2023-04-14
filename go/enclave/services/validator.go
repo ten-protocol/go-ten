@@ -165,3 +165,8 @@ func (ov *obsValidator) CheckSequencerSignature(headerHash *gethcommon.Hash, agg
 	}
 	return nil
 }
+
+func (ov *obsValidator) SubmitTransaction(transaction *common.L2Tx) error {
+	ov.logger.Trace(fmt.Sprintf("Transaction %s submitted to validator but there is nothing to do with it.", transaction.Hash().Hex()))
+	return nil
+}

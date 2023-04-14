@@ -11,8 +11,7 @@ import (
 )
 
 func TestInvalidBlocksAreRejected(t *testing.T) {
-
-	//todo - how does this test even work, storage is never set and we attempt to fetch head block?
+	// todo - how does this test even work, storage is never set and we attempt to fetch head block?
 	blockConsumer := blockConsumer{}
 
 	invalidHeaders := []types.Header{

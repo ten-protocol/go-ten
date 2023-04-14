@@ -64,7 +64,6 @@ type enclaveImpl struct {
 	config               config.EnclaveConfig
 	storage              db.Storage
 	blockResolver        db.BlockResolver
-	mempool              mempool.Manager
 	l1Blockchain         *gethcore.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
 	subscriptionManager  *events.SubscriptionManager
@@ -249,7 +248,6 @@ func NewEnclave(
 		config:                config,
 		storage:               storage,
 		blockResolver:         storage,
-		mempool:               memp,
 		l1Blockchain:          l1Blockchain,
 		rpcEncryptionManager:  rpcEncryptionManager,
 		subscriptionManager:   subscriptionManager,
@@ -456,11 +454,8 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 		return responses.AsEncryptedError(err, encryptor)
 	}
 
-	// Only the sequencer needs to maintain a transaction mempool. Other node types can return early.
-	if e.config.NodeType == common.Sequencer {
-		if err = e.mempool.AddMempoolTx(decryptedTx); err != nil {
-			return responses.AsEncryptedError(err, encryptor)
-		}
+	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
+		return responses.AsEncryptedError(err, encryptor)
 	}
 
 	hash := decryptedTx.Hash().Hex()
@@ -502,8 +497,6 @@ func (e *enclaveImpl) CreateBatch() (*common.ExtBatch, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	e.subscriptionLogs(batch.Number())
 
 	return batch.ToExtBatch(e.transactionBlobCrypto), nil
 }

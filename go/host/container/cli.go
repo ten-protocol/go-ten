@@ -154,7 +154,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		return &config.HostInputConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
 	}
 
-	var batchInterval, rollupInterval time.Duration = 1 * time.Second, 5 * time.Second
+	batchInterval, rollupInterval := 1*time.Second, 5*time.Second
 	if interval, err := time.ParseDuration(tomlConfig.BatchInterval); err == nil {
 		batchInterval = interval
 	}
