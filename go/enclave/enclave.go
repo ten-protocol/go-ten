@@ -357,7 +357,7 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatchResponse, func()) {
 	encryptedBatchChan := make(chan common.StreamBatchResponse, 100)
 
-	//todo - figure out a better approach
+	// todo - figure out a better approach
 	stop := false
 
 	go func() {
@@ -369,7 +369,10 @@ func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) (chan common.Strea
 		defer close(encryptedBatchChan)
 		defer e.registry.Unsubscribe()
 
-		e.sendMissingMatches(from, encryptedBatchChan)
+		if err := e.sendMissingMatches(from, encryptedBatchChan); err != nil {
+			e.logger.Error("Unable to send missing batches", log.ErrKey, err)
+			return
+		}
 
 		for !stop {
 			batch, ok := <-batchChan
