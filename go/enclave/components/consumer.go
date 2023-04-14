@@ -91,7 +91,6 @@ func (oc *blockConsumer) ingestBlock(block *common.L1Block, isLatest bool) (*Blo
 			oc.logger.Trace("parent not found",
 				"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
 				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
-				"lcaHeight", lcaBlock.NumberU64(), "lcaHash", lcaBlock.Hash(),
 			)
 			return nil, common.ErrBlockAncestorNotFound
 		}

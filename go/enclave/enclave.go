@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/enclave/actors"
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
+	"github.com/obscuronet/go-obscuro/go/enclave/services"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 
@@ -69,8 +69,7 @@ type enclaveImpl struct {
 	crossChainProcessors *crosschain.Processors
 
 	liteChain l2chain.ChainInterface
-	sequencer actors.Sequencer
-	validator actors.ObsValidator
+	service   services.ObscuroActor
 	registry  components.BatchRegistry
 
 	GlobalGasCap uint64   //         5_000_000_000, // todo (#627) - make config
@@ -207,22 +206,26 @@ func NewEnclave(
 	sigVerifier := components.NewSignatureValidator(config.SequencerID, storage)
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
 
-	sequencer := actors.NewSequencer(
-		consumer,
-		producer,
-		registry,
-		rProducer,
-		rConsumer,
-		logger,
-		config.HostID,
-		&chainConfig,
-		enclaveKey,
-		memp,
-		storage,
-		transactionBlobCrypto,
-	)
+	var service services.ObscuroActor
+	if config.NodeType == common.Sequencer {
 
-	validator := actors.NewValidator(consumer, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage)
+		service = services.NewSequencer(
+			consumer,
+			producer,
+			registry,
+			rProducer,
+			rConsumer,
+			logger,
+			config.HostID,
+			&chainConfig,
+			enclaveKey,
+			memp,
+			storage,
+			transactionBlobCrypto,
+		)
+	} else {
+		service = services.NewValidator(consumer, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage)
+	}
 
 	liteChain := l2chain.NewLite(
 		config.HostID,
@@ -266,9 +269,8 @@ func NewEnclave(
 		stopInterrupt:         new(int32),
 
 		liteChain: liteChain,
-		sequencer: sequencer,
-		validator: validator,
 		registry:  registry,
+		service:   service,
 
 		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
 		BaseFee:      gethcommon.Big0,
@@ -342,36 +344,20 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	if e.config.NodeType == common.Sequencer {
-		result, err := e.sequencer.ReceiveBlock(br, isLatest)
-		if err != nil {
-			return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
-		}
-
-		if result.Fork {
-			e.logger.Info("Forked")
-		}
-
-		bsr := e.produceBlockSubmissionResponse(nil, nil)
-
-		bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
-		return bsr, nil
-	} else if e.config.NodeType == common.Validator {
-		_, err := e.validator.ReceiveBlock(br, isLatest)
-		if err != nil {
-			return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
-		}
-		bsr := e.produceBlockSubmissionResponse(nil, nil)
-
-		l2Head, _ := e.validator.GetLatestHead()
-		if l2Head != nil {
-			bsr = e.produceBlockSubmissionResponse(l2Head.Hash(), nil)
-		}
-		bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
-		return bsr, nil
+	result, err := e.service.ReceiveBlock(br, isLatest)
+	if err != nil {
+		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	return nil, nil
+	if result.Fork {
+		e.logger.Info("Forked")
+	}
+
+	bsr := e.produceBlockSubmissionResponse(nil, nil)
+
+	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
+	return bsr, nil
+
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
@@ -417,6 +403,22 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseS
 	return encryptedResult, nil
 }
 
+func (e *enclaveImpl) Validator() services.ObsValidator {
+	validator, ok := e.service.(services.ObsValidator)
+	if !ok {
+		panic("enclave service is not a validator but validator was requested!")
+	}
+	return validator
+}
+
+func (e *enclaveImpl) Sequencer() services.Sequencer {
+	sequencer, ok := e.service.(services.Sequencer)
+	if !ok {
+		panic("enclave service is not a sequencer but sequencer was requested!")
+	}
+	return sequencer
+}
+
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil
@@ -424,7 +426,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 
 	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
-	if err := e.validator.ValidateAndStoreBatch(batch); err != nil {
+	if err := e.Validator().ValidateAndStoreBatch(batch); err != nil {
 		return fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err)
 	}
 
@@ -432,7 +434,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 }
 
 func (e *enclaveImpl) CreateBatch() (*common.ExtBatch, error) {
-	batch, err := e.sequencer.CreateBatch(nil)
+	batch, err := e.Sequencer().CreateBatch(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -453,11 +455,7 @@ func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, error) {
 		return nil, nil //nolint:nilnil
 	}
 
-	if e.config.NodeType != common.Sequencer {
-		return nil, errors.New("only sequencer can generate rollups")
-	}
-
-	return e.sequencer.CreateRollup()
+	return e.Sequencer().CreateRollup()
 }
 
 // ObsCall handles param decryption, validation and encryption
