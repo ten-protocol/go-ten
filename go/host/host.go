@@ -904,7 +904,7 @@ func (h *host) startBatchStreaming() {
 
 			if resp.Batch != nil {
 				lastBatch = resp.Batch
-				h.logger.Trace("Received batch from stream: %s", lastBatch.Hash().Hex())
+				h.logger.Trace(fmt.Sprintf("Received batch from stream: %s", lastBatch.Hash().Hex()))
 			}
 		case <-h.exitHostCh:
 			close(streamChan)

@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -36,6 +37,10 @@ type sequencer struct {
 	mempool           mempool.Manager
 	storage           db.Storage
 	encryption        crypto.TransactionBlobCrypto
+
+	// This is used to coordinate creating
+	// new batches and creating fork batches.
+	batchProductionMutex sync.Mutex
 }
 
 func NewSequencer(
@@ -75,6 +80,9 @@ func (s *sequencer) IsReady() bool {
 }
 
 func (s *sequencer) CreateBatch(block *common.L1Block) (*core.Batch, error) {
+	s.batchProductionMutex.Lock()
+	defer s.batchProductionMutex.Unlock()
+
 	hasGenesis, err := s.registry.HasGenesisBatch()
 	if err != nil {
 		return nil, fmt.Errorf("unknown genesis batch state. Cause: %w", err)
@@ -219,6 +227,9 @@ func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*c
 }
 
 func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
+	s.batchProductionMutex.Lock()
+	defer s.batchProductionMutex.Unlock()
+
 	headBatch, err := s.registry.GetHeadBatch()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
