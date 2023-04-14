@@ -10,10 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 func awaitL1Tx(ethClient ethadapter.EthClient, signedTx *types.Transaction) error {
@@ -69,16 +65,4 @@ func awaitL2Tx(authClient *obsclient.AuthObsClient, signedTx *types.Transaction)
 		return fmt.Errorf("tx Failed")
 	}
 	return nil
-}
-
-func createAuthedClient(l2Host string, l2Port int, l2wallet wallet.Wallet) (*obsclient.AuthObsClient, error) {
-	vk, err := rpc.GenerateAndSignViewingKey(l2wallet)
-	if err != nil {
-		return nil, err
-	}
-	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s:%d", l2Host, l2Port), vk, gethlog.New())
-	if err != nil {
-		return nil, err
-	}
-	return obsclient.NewAuthObsClient(client), nil
 }

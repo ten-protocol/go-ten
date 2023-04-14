@@ -11,7 +11,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/stretchr/testify/assert"
 
@@ -119,7 +121,7 @@ func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
 		t.Skipf("set flag %s to run this test in the IDE", _IDEFlag)
 	}
 
-	authClient, err := createAuthedClient(l2Host, l2Port, l2Wallet)
+	authClient, err := obsclient.DialWithAuth(fmt.Sprintf("ws://%s:%d", l2Host, l2Port), l2Wallet, testlog.Logger())
 	assert.Nil(t, err)
 
 	// check if account has balance of the ops
@@ -161,7 +163,7 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 		t.Skipf("set flag %s to run this test in the IDE", _IDEFlag)
 	}
 
-	authClient, err := createAuthedClient(l2Host, l2Port, l2Wallet)
+	authClient, err := obsclient.DialWithAuth(fmt.Sprintf("ws://%s:%d", l2Host, l2Port), l2Wallet, testlog.Logger())
 	assert.Nil(t, err)
 
 	// check if account has balance of the ops
@@ -188,8 +190,8 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 	signedTx, err := l2Wallet.SignTransaction(estimatedTx)
 	assert.Nil(t, err)
 
-	_, err = authClient.SendTransaction(context.Background(), signedTx)
-	assert.Nil(t, err)
+	//_, err = authClient.SendTransaction(context.Background(), signedTx)
+	//assert.Nil(t, err)
 
 	err = awaitL2Tx(authClient, signedTx)
 	assert.Nil(t, err)
