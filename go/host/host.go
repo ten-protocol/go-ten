@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -70,10 +69,6 @@ type host struct {
 	logger gethlog.Logger
 
 	metricRegistry gethmetrics.Registry
-
-	// we don't want to make simultaneous requests to the enclave for major state update functions (e.g. SubmitL1Block,
-	// GenerateBatch, CreateRollup), so we use this lock to synchronize those requests
-	enclaveWriteLock sync.Mutex
 }
 
 func NewHost(

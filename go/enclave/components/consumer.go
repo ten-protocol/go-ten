@@ -27,15 +27,15 @@ func NewBlockConsumer(storage db.Storage, cc *crosschain.Processors, logger geth
 	}
 }
 
-func (oc *blockConsumer) ConsumeBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
-	ingestion, err := oc.tryAndInsertBlock(br, isLatest)
+func (bc *blockConsumer) ConsumeBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
+	ingestion, err := bc.tryAndInsertBlock(br, isLatest)
 	if err != nil {
 		return nil, err
 	}
 
 	if !ingestion.PreGenesis {
 		// This requires block to be stored first ... but can permanently fail a block
-		err = oc.crossChainProcessors.Remote.StoreCrossChainMessages(br.Block, *br.Receipts)
+		err = bc.crossChainProcessors.Remote.StoreCrossChainMessages(br.Block, *br.Receipts)
 		if err != nil {
 			return nil, errors.New("failed to process cross chain messages")
 		}
@@ -44,10 +44,10 @@ func (oc *blockConsumer) ConsumeBlock(br *common.BlockAndReceipts, isLatest bool
 	return ingestion, nil
 }
 
-func (oc *blockConsumer) tryAndInsertBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
+func (bc *blockConsumer) tryAndInsertBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
 	block := br.Block
 
-	_, err := oc.storage.FetchBlock(block.Hash())
+	_, err := bc.storage.FetchBlock(block.Hash())
 	if err == nil {
 		return nil, common.ErrBlockAlreadyProcessed
 	}
@@ -57,25 +57,25 @@ func (oc *blockConsumer) tryAndInsertBlock(br *common.BlockAndReceipts, isLatest
 	}
 
 	// We insert the block into the L1 chain and store it.
-	ingestionType, err := oc.ingestBlock(block, isLatest)
+	ingestionType, err := bc.ingestBlock(block, isLatest)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
 		return nil, err
 	}
-	oc.logger.Trace("block inserted successfully",
+	bc.logger.Trace("block inserted successfully",
 		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
 
-	oc.storage.StoreBlock(block)
+	bc.storage.StoreBlock(block)
 	if isLatest {
-		oc.storage.UpdateL1Head(block.Hash())
+		return ingestionType, bc.storage.UpdateL1Head(block.Hash())
 	}
 
 	return ingestionType, nil
 }
 
-func (oc *blockConsumer) ingestBlock(block *common.L1Block, isLatest bool) (*BlockIngestionType, error) {
+func (bc *blockConsumer) ingestBlock(block *common.L1Block, isLatest bool) (*BlockIngestionType, error) {
 	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
-	prevL1Head, err := oc.storage.FetchHeadBlock()
+	prevL1Head, err := bc.storage.FetchHeadBlock()
 
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -86,9 +86,9 @@ func (oc *blockConsumer) ingestBlock(block *common.L1Block, isLatest bool) (*Blo
 
 		// we do a basic sanity check, comparing the received block to the head block on the chain
 	} else if block.ParentHash() != prevL1Head.Hash() {
-		lcaBlock, err := gethutil.LCA(block, prevL1Head, oc.storage)
+		lcaBlock, err := gethutil.LCA(block, prevL1Head, bc.storage)
 		if err != nil {
-			oc.logger.Trace("parent not found",
+			bc.logger.Trace("parent not found",
 				"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
 				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
 			)

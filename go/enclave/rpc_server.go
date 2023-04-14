@@ -266,7 +266,15 @@ func (s *RPCServer) StreamBatches(request *generated.StreamBatchesRequest, strea
 			close(batchChan)
 			return nil
 		}
-		stream.Send(&generated.EncodedBatch{Batch: encoded})
+
+		if err := stream.Send(&generated.EncodedBatch{Batch: encoded}); err != nil {
+			s.logger.Error("Failed streaming batch back to client", log.ErrKey, err)
+			close(batchChan)
+
+			// not quite sure there is any point to this, we failed to send a batch
+			// so error will probably not get sent either.
+			return err
+		}
 	}
 
 	return nil

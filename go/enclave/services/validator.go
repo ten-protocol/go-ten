@@ -141,7 +141,7 @@ func (ov *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool)
 func (ov *obsValidator) verifyRollup(rollup *core.Rollup) error {
 	for _, batch := range rollup.Batches {
 		if err := ov.ValidateAndStoreBatch(batch); err != nil {
-			ov.logger.Error("Attempted to store incorect batch: %s", batch.Hash().Hex())
+			ov.logger.Error("Attempted to store incorrect batch: %s", batch.Hash().Hex())
 			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
 		}
 	}

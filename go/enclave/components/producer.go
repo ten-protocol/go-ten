@@ -35,16 +35,16 @@ func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *ge
 	}
 }
 
-func (oc *batchProducer) populateOutboundCrossChainData(batch *core.Batch, block *types.Block, receipts types.Receipts) error {
-	crossChainMessages, err := oc.crossChainProcessors.Local.ExtractOutboundMessages(receipts)
+func (bp *batchProducer) populateOutboundCrossChainData(batch *core.Batch, block *types.Block, receipts types.Receipts) error {
+	crossChainMessages, err := bp.crossChainProcessors.Local.ExtractOutboundMessages(receipts)
 	if err != nil {
-		oc.logger.Error("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
+		bp.logger.Error("Extracting messages L2->L1 failed", err, log.CmpKey, log.CrossChainCmp)
 		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
 	}
 
 	batch.Header.CrossChainMessages = crossChainMessages
 
-	oc.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
+	bp.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
 
 	batch.Header.LatestInboundCrossChainHash = block.Hash()
@@ -53,7 +53,7 @@ func (oc *batchProducer) populateOutboundCrossChainData(batch *core.Batch, block
 	return nil
 }
 
-func (oc *batchProducer) populateHeader(batch *core.Batch, receipts types.Receipts) {
+func (bp *batchProducer) populateHeader(batch *core.Batch, receipts types.Receipts) {
 	if len(receipts) == 0 {
 		batch.Header.ReceiptHash = types.EmptyRootHash
 	} else {
@@ -68,15 +68,15 @@ func (oc *batchProducer) populateHeader(batch *core.Batch, receipts types.Receip
 	}
 }
 
-func (oc *batchProducer) ComputeBatch(context *BatchContext) (*ComputedBatch, error) {
+func (bp *batchProducer) ComputeBatch(context *BatchContext) (*ComputedBatch, error) {
 	// These variables will be used to create the new batch
 
-	parent, err := oc.storage.FetchBatch(context.ParentPtr)
+	parent, err := bp.storage.FetchBatch(context.ParentPtr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve parent batch. Cause: %w", err)
 	}
 
-	block, err := oc.storage.FetchBlock(context.BlockPtr)
+	block, err := bp.storage.FetchBlock(context.BlockPtr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve block for batch. Cause: %w", err)
 	}
@@ -84,42 +84,45 @@ func (oc *batchProducer) ComputeBatch(context *BatchContext) (*ComputedBatch, er
 	var parentBlock *types.Block = block
 	if parent.Header.L1Proof != block.Hash() {
 		var err error
-		parentBlock, err = oc.storage.FetchBlock(parent.Header.L1Proof)
+		parentBlock, err = bp.storage.FetchBlock(parent.Header.L1Proof)
 		if err != nil {
-			oc.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
+			bp.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
 		}
 	}
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
 	batch := core.DeterministicEmptyBatch(context.Creator, parent.Header, block, context.Randomness, context.AtTime)
 
-	stateDB, err := oc.storage.CreateStateDB(batch.Header.ParentHash)
+	stateDB, err := bp.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
-	messages := oc.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
-	crossChainTransactions := oc.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
+	messages := bp.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
+	crossChainTransactions := bp.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 
-	successfulTxs, txReceipts, err := oc.processTransactions(batch, 0, context.Transactions, stateDB, context.ChainConfig)
+	successfulTxs, txReceipts, err := bp.processTransactions(batch, 0, context.Transactions, stateDB, context.ChainConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	ccSuccessfulTxs, ccReceipts, err := oc.processTransactions(batch, len(successfulTxs), crossChainTransactions, stateDB, context.ChainConfig)
+	ccSuccessfulTxs, ccReceipts, err := bp.processTransactions(batch, len(successfulTxs), crossChainTransactions, stateDB, context.ChainConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := oc.verifyInboundCrossChainTransactions(crossChainTransactions, ccSuccessfulTxs, ccReceipts); err != nil {
+	if err := bp.verifyInboundCrossChainTransactions(crossChainTransactions, ccSuccessfulTxs, ccReceipts); err != nil {
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
 	batch.Header.Root = stateDB.IntermediateRoot(false)
 	batch.Transactions = successfulTxs
 
-	oc.populateOutboundCrossChainData(batch, block, txReceipts)
-	oc.populateHeader(batch, allReceipts(txReceipts, ccReceipts))
+	if err := bp.populateOutboundCrossChainData(batch, block, txReceipts); err != nil {
+		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
+	}
+
+	bp.populateHeader(batch, allReceipts(txReceipts, ccReceipts))
 
 	return &ComputedBatch{
 		Batch:    batch,
@@ -128,7 +131,7 @@ func (oc *batchProducer) ComputeBatch(context *BatchContext) (*ComputedBatch, er
 	}, nil
 }
 
-func (oc *batchProducer) verifyInboundCrossChainTransactions(transactions types.Transactions, executedTxs types.Transactions, receipts types.Receipts) error {
+func (bp *batchProducer) verifyInboundCrossChainTransactions(transactions types.Transactions, executedTxs types.Transactions, receipts types.Receipts) error {
 	if transactions.Len() != executedTxs.Len() {
 		return fmt.Errorf("some synthetic transactions have not been executed")
 	}
@@ -142,11 +145,11 @@ func (oc *batchProducer) verifyInboundCrossChainTransactions(transactions types.
 	return nil
 }
 
-func (oc *batchProducer) processTransactions(batch *core.Batch, tCount int, txs []*common.L2Tx, stateDB *state.StateDB, cc *params.ChainConfig) ([]*common.L2Tx, []*types.Receipt, error) {
+func (bp *batchProducer) processTransactions(batch *core.Batch, tCount int, txs []*common.L2Tx, stateDB *state.StateDB, cc *params.ChainConfig) ([]*common.L2Tx, []*types.Receipt, error) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, oc.storage, cc, 0, oc.logger)
+	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, bp.storage, cc, 0, bp.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
@@ -158,7 +161,7 @@ func (oc *batchProducer) processTransactions(batch *core.Batch, tCount int, txs 
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
-			oc.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*batch.Hash()), result))
+			bp.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*batch.Hash()), result))
 		}
 	}
 	sort.Sort(sortByTxIndex(txReceipts))
@@ -166,8 +169,8 @@ func (oc *batchProducer) processTransactions(batch *core.Batch, tCount int, txs 
 	return executedTransactions, txReceipts, nil
 }
 
-func (oc *batchProducer) CreateGenesisState(blkHash common.L1BlockHash, aggregatorAddress common.L2Address, timeNow uint64) (*core.Batch, *types.Transaction, error) {
-	preFundGenesisState, err := oc.genesis.GetGenesisRoot(oc.storage)
+func (bp *batchProducer) CreateGenesisState(blkHash common.L1BlockHash, aggregatorAddress common.L2Address, timeNow uint64) (*core.Batch, *types.Transaction, error) {
+	preFundGenesisState, err := bp.genesis.GetGenesisRoot(bp.storage)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -187,12 +190,12 @@ func (oc *batchProducer) CreateGenesisState(blkHash common.L1BlockHash, aggregat
 	}
 
 	// todo (#1577) - figure out a better way to bootstrap the system contracts
-	deployTx, err := oc.crossChainProcessors.Local.GenerateMessageBusDeployTx()
+	deployTx, err := bp.crossChainProcessors.Local.GenerateMessageBusDeployTx()
 	if err != nil {
-		oc.logger.Crit("Could not create message bus deployment transaction", "Error", err)
+		bp.logger.Crit("Could not create message bus deployment transaction", "Error", err)
 	}
 
-	if err = oc.genesis.CommitGenesisState(oc.storage); err != nil {
+	if err = bp.genesis.CommitGenesisState(bp.storage); err != nil {
 		return nil, nil, fmt.Errorf("could not apply genesis preallocation. Cause: %w", err)
 	}
 	return genesisBatch, deployTx, nil
