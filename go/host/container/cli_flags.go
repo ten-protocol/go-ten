@@ -30,6 +30,8 @@ const (
 	useInMemoryDBName            = "useInMemoryDB"
 	levelDBPathName              = "levelDBPath"
 	debugNamespaceEnabledName    = "debugNamespaceEnabled"
+	batchIntervalName            = "batchInterval"
+	rollupIntervalName           = "rollupInterval"
 )
 
 // Returns a map of the flag usages.
@@ -64,5 +66,7 @@ func getFlagUsageMap() map[string]string {
 		useInMemoryDBName:            "Whether the host will use an in-memory DB rather than persist data",
 		levelDBPathName:              "Filepath for the levelDB persistence dir (can be empty if a throwaway file in /tmp/ is acceptable or if using InMemory DB)",
 		debugNamespaceEnabledName:    "Whether the debug names is enabled",
+		batchIntervalName:            "How many seconds between each batch",
+		rollupIntervalName:           "How many seconds between each rollup",
 	}
 }
