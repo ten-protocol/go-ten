@@ -338,28 +338,9 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 			e.logger.Info("Forked")
 		}
 
-		batch, _ := e.sequencer.CreateBatch(br.Block)
 		bsr := e.produceBlockSubmissionResponse(nil, nil)
 
-		if batch != nil {
-			bsr = e.produceBlockSubmissionResponse(batch.Hash(), batch)
-			if batch.Header.Number.Uint64()%e.config.Cadence == 0 {
-				rollup, err := e.sequencer.CreateRollup()
-				if err == nil {
-					bsr.ProducedRollup = rollup
-				}
-			}
-		}
-
 		bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
-		if bsr.ProducedBatch != nil {
-			err = e.removeOldMempoolTxs(bsr.ProducedBatch.Header)
-			if err != nil {
-				e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
-				return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
-			}
-		}
-
 		return bsr, nil
 	} else if e.config.NodeType == common.Validator {
 		_, err := e.validator.ReceiveBlock(br, isLatest)
@@ -436,7 +417,24 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 	return nil
 }
 
-func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
+func (e *enclaveImpl) CreateBatch() (*common.ExtBatch, error) {
+	batch, err := e.sequencer.CreateBatch(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if batch != nil {
+		err = e.removeOldMempoolTxs(batch.Header)
+		if err != nil {
+			e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, batch.Number(), log.BlockHashKey, batch.Hash(), log.ErrKey, err)
+			return nil, fmt.Errorf("could not remove mempool transactions. Cause: %w", err)
+		}
+	}
+
+	return batch.ToExtBatch(e.transactionBlobCrypto), nil
+}
+
+func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, error) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, nil //nolint:nilnil
 	}

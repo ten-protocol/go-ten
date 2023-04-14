@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -68,6 +69,10 @@ type host struct {
 	logger gethlog.Logger
 
 	metricRegistry gethmetrics.Registry
+
+	// we don't want to make simultaneous requests to the enclave for major state update functions (e.g. SubmitL1Block,
+	// GenerateBatch, CreateRollup), so we use this lock to synchronize those requests
+	enclaveWriteLock sync.Mutex
 }
 
 func NewHost(
@@ -337,6 +342,10 @@ func (h *host) waitForEnclave() common.Status {
 // starts the host main processing loop
 func (h *host) startProcessing() {
 	h.p2p.StartListening(h)
+	if h.config.NodeType == common.Sequencer {
+		go h.startBatchProduction()  // periodically request a new batch from enclave
+		go h.startRollupProduction() // periodically request a new rollup from enclave
+	}
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
 	// stream ch during the main loop if enclave gets out-of-sync, and we need to stream from an earlier block
@@ -349,16 +358,6 @@ func (h *host) startProcessing() {
 		if err != nil {
 			h.logger.Crit("unable to stream l1 blocks for enclave", log.ErrKey, err)
 		}
-	}
-
-	if h.config.NodeType == common.Sequencer {
-		go func() {
-			return
-			batchStreamChan := h.enclaveClient.StreamBatches()
-			for {
-				h.storeAndDistributeBatch(<-batchStreamChan)
-			}
-		}()
 	}
 
 	// Main Processing Loop -
@@ -440,6 +439,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 
 	// submit each block to the enclave for ingestion plus validation
 	blockSubmissionResponse, err := h.enclaveClient.SubmitL1Block(*block, h.extractReceipts(block), isLatestBlock)
+
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
@@ -453,20 +453,6 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	err = h.publishSharedSecretResponses(blockSubmissionResponse.ProducedSecretResponses)
 	if err != nil {
 		h.logger.Error("failed to publish response to secret request", log.ErrKey, err)
-	}
-
-	// If we're not the sequencer, we do not need to publish and distribute batches or rollups.
-	if h.config.NodeType != common.Sequencer {
-		return nil
-	}
-
-	if blockSubmissionResponse.ProducedBatch != nil && blockSubmissionResponse.ProducedBatch.Header != nil {
-		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.storeAndDistributeBatch(blockSubmissionResponse.ProducedBatch)
-	}
-
-	if blockSubmissionResponse.ProducedRollup != nil && blockSubmissionResponse.ProducedRollup.Header != nil {
-		h.publishRollup(blockSubmissionResponse.ProducedRollup)
 	}
 
 	return nil
@@ -864,6 +850,52 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	}
 
 	return nil
+}
+
+func (h *host) startBatchProduction() {
+	defer h.logger.Info("Stopping batch production")
+	interval := h.config.BatchInterval
+	if interval == 0 {
+		interval = 3 * time.Second
+	}
+	batchProdTicker := time.NewTicker(interval)
+	for {
+		select {
+		case <-batchProdTicker.C:
+			h.logger.Info("create batch")
+			producedBatch, err := h.enclaveClient.CreateBatch()
+			if err != nil {
+				h.logger.Warn("unable to produce batch", log.ErrKey, err)
+			} else {
+				h.logger.Info("storing batch")
+				h.storeAndDistributeBatch(producedBatch)
+			}
+		case <-h.exitHostCh:
+			return
+		}
+	}
+}
+
+func (h *host) startRollupProduction() {
+	defer h.logger.Info("Stopping rollup production")
+	interval := h.config.RollupInterval
+	if interval == 0 {
+		interval = 5 * time.Second
+	}
+	rollupTicker := time.NewTicker(interval)
+	for {
+		select {
+		case <-rollupTicker.C:
+			producedRollup, err := h.enclaveClient.CreateRollup()
+			if err != nil {
+				h.logger.Warn("unable to produce rollup", log.ErrKey, err)
+			} else {
+				h.publishRollup(producedRollup)
+			}
+		case <-h.exitHostCh:
+			return
+		}
+	}
 }
 
 // TODO - #718 - Only allow requests for batches since last rollup, to avoid DoS attacks.

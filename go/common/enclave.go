@@ -105,7 +105,9 @@ type Enclave interface {
 	// HealthCheck returns whether the enclave is in a healthy state
 	HealthCheck() (bool, error)
 
-	GenerateRollup() (*ExtRollup, error)
+	CreateBatch() (*ExtBatch, error)
+
+	CreateRollup() (*ExtRollup, error)
 
 	// DebugTraceTransaction returns the trace of a transaction
 	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error)

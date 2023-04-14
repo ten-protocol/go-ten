@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -217,6 +219,9 @@ func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*c
 func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 	headBatch, err := s.registry.GetHeadBatch()
 	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			return nil
+		}
 		return fmt.Errorf("failed retrieving head batch. Cause: %w", err)
 	}
 

@@ -93,12 +93,18 @@ func (br *batchRegistry) Subscribe() chan *core.Batch {
 func (br *batchRegistry) FindAncestralBatchFor(block *common.L1Block) (*core.Batch, error) {
 	currentBlock := block
 	var ancestorBatch *core.Batch = nil
+
+	br.logger.Trace("Searching for ancestral batch")
 	// todo - this for loop should have more edge cases.
 	for ancestorBatch == nil {
 		currentBlock, err := br.storage.FetchBlock(currentBlock.ParentHash())
 		if err != nil {
 			br.logger.Crit("Failure resolving ancestors for incoming fork block!", log.ErrKey, err)
 			return nil, err
+		}
+
+		if currentBlock.NumberU64() == common.L1GenesisHeight {
+			return nil, fmt.Errorf("reached genesis block")
 		}
 
 		ancestorBatch, err = br.GetHeadBatchFor(currentBlock.Hash())

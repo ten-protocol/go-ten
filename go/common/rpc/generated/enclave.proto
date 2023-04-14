@@ -71,7 +71,10 @@ service EnclaveProto {
   // HealthCheck returns the health status of enclave + db
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
 
+  rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
+
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
+
 
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
 
@@ -91,6 +94,13 @@ message DebugTraceTransactionResponse{
   string msg = 1;
   string error = 2;
 }
+
+message CreateBatchRequest{}
+message CreateBatchResponse{
+  ExtBatchMsg msg = 1;
+  string error = 2;
+}
+
 
 message CreateRollupRequest{}
 message CreateRollupResponse{
