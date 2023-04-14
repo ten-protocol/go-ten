@@ -55,10 +55,6 @@ func NewValidator(
 	}
 }
 
-func (ov *obsValidator) GetLatestHead() (*core.Batch, error) {
-	return ov.registry.GetHeadBatch()
-}
-
 func (ov *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, error) {
 	// genesis
 	if incomingBatch.NumberU64() != 0 {

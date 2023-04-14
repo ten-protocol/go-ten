@@ -14,14 +14,11 @@ type ObscuroActor interface {
 type Sequencer interface {
 	CreateBatch(*common.L1Block) (*core.Batch, error)
 	CreateRollup() (*common.ExtRollup, error)
-	IsReady() bool
 
 	ObscuroActor
 }
 
 type ObsValidator interface {
 	ValidateAndStoreBatch(*core.Batch) error
-	GetLatestHead() (*core.Batch, error)
-
 	ObscuroActor
 }

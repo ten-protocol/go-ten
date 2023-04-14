@@ -75,10 +75,6 @@ func NewSequencer(
 	}
 }
 
-func (s *sequencer) IsReady() bool {
-	return false
-}
-
 func (s *sequencer) CreateBatch(block *common.L1Block) (*core.Batch, error) {
 	s.batchProductionMutex.Lock()
 	defer s.batchProductionMutex.Unlock()
