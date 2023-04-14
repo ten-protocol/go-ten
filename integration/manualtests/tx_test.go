@@ -180,7 +180,7 @@ func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
 	signedTx, err := l2Wallet.SignTransaction(estimatedTx)
 	assert.Nil(t, err)
 
-	err = authClient.SendTransaction(ctx, signedTx)
+	_, err = authClient.SendTransaction(ctx, signedTx)
 	assert.Nil(t, err)
 
 	fmt.Printf("Created Tx: %s \n", signedTx.Hash().Hex())
@@ -249,7 +249,7 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 	signedTx, err := l2Wallet.SignTransaction(estimatedTx)
 	assert.Nil(t, err)
 
-	err = authClient.SendTransaction(ctx, signedTx)
+	_, err = authClient.SendTransaction(ctx, signedTx)
 	assert.Nil(t, err)
 
 	fmt.Printf("Created Tx: %s \n", signedTx.Hash().Hex())

@@ -185,10 +185,14 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 
 		ti.stats.Transfer()
 
-		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		txHash, err := obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
 			continue
+		}
+
+		if *txHash != signedTx.Hash() {
+			panic("The hash of the submitted transaction does not match the hash coming back!")
 		}
 
 		// todo - retrieve receipt
@@ -223,10 +227,9 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		ti.stats.Transfer()
 
-		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		_, err = obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
-			continue
 		}
 
 		// todo - retrieve receipt
@@ -266,15 +269,14 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 
 		ti.stats.Deposit(big.NewInt(int64(v)))
 
-		err = obscuroClient.SendTransaction(ti.ctx, signedTx)
+		_, err = obscuroClient.SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Info("Failed to issue deposit via RPC.", log.ErrKey, err)
-			continue
+		} else {
+			go ti.TxTracker.trackTransferL2Tx(signedTx)
 		}
-
 		// todo - retrieve receipt
 
-		go ti.TxTracker.trackTransferL2Tx(signedTx)
 		sleepRndBtw(ti.avgBlockDuration/3, ti.avgBlockDuration)
 	}
 	// TODO: Rework this when old contract deployer is phased out?
@@ -300,7 +302,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 
-		err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
+		_, err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Warn("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
 		}
@@ -343,7 +345,6 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
 	//if nonce%3 == 0 {
 	//	value = max
 	//}
-
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,

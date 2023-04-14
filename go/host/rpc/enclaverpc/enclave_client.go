@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/retry"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -16,7 +18,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/enclave/evm"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -41,22 +43,25 @@ func NewClient(config *config.HostConfig, logger gethlog.Logger) *Client {
 	if err != nil {
 		logger.Crit("Failed to connect to enclave RPC service.", log.ErrKey, err)
 	}
+	connection.Connect()
+	// perform an initial sleep because that Connect() method is not blocking and the retry immediately checks the status
+	time.Sleep(500 * time.Millisecond)
 
 	// We wait for the RPC connection to be ready.
-	currentTime := time.Now()
-	deadline := currentTime.Add(60 * time.Second)
-	currentState := connection.GetState()
-	for currentState == connectivity.Idle || currentState == connectivity.Connecting || currentState == connectivity.TransientFailure {
-		connection.Connect()
-		if time.Now().After(deadline) {
-			break
+	err = retry.Do(func() error {
+		currState := connection.GetState()
+		if currState != connectivity.Ready {
+			logger.Info("retrying connection until enclave is available", "status", currState.String())
+			connection.Connect()
+			return fmt.Errorf("connection is not ready, status=%s", currState)
 		}
-		time.Sleep(500 * time.Millisecond)
-		currentState = connection.GetState()
-	}
+		// connection is ready, break out of the loop
+		return nil
+	}, retry.NewBackoffAndRetryForeverStrategy([]time.Duration{500 * time.Millisecond, 1 * time.Second, 5 * time.Second}, 10*time.Second))
 
-	if currentState != connectivity.Ready {
-		logger.Crit(fmt.Sprintf("RPC connection failed to establish. Current state is %s", currentState))
+	if err != nil {
+		// this should not happen as we retry forever...
+		logger.Crit("failed to connect to enclave", log.ErrKey, err)
 	}
 
 	return &Client{
@@ -151,15 +156,16 @@ func (c *Client) SubmitL1Block(block types.Block, receipts types.Receipts, isLat
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) SubmitTx(tx common.EncryptedTx) (common.EncryptedResponseSendRawTx, error) {
+func (c *Client) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
-	return response.EncryptedHash, err
+
+	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
 func (c *Client) SubmitBatch(batch *common.ExtBatch) error {
@@ -174,7 +180,7 @@ func (c *Client) SubmitBatch(batch *common.ExtBatch) error {
 	return nil
 }
 
-func (c *Client) ObsCall(encryptedParams common.EncryptedParamsCall) (common.EncryptedResponseCall, error) {
+func (c *Client) ObsCall(encryptedParams common.EncryptedParamsCall) responses.Call {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -182,32 +188,20 @@ func (c *Client) ObsCall(encryptedParams common.EncryptedParamsCall) (common.Enc
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
-	if len(response.Error) > 0 {
-		// The enclave always returns a SerialisableError
-		var result evm.SerialisableError
-		err = json.Unmarshal(response.Error, &result)
-		if err != nil {
-			return nil, err
-		}
-		return nil, result
-	}
-	return response.Result, nil
+	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
-func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (common.EncryptedResponseGetTxCount, error) {
+func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) responses.TxCount {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetTransactionCount(timeoutCtx, &generated.GetTransactionCountRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
-	if response.Error != "" {
-		return nil, errors.New(response.Error)
-	}
-	return response.Result, nil
+	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
 func (c *Client) Stop() error {
@@ -221,26 +215,26 @@ func (c *Client) Stop() error {
 	return nil
 }
 
-func (c *Client) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (common.EncryptedResponseGetTxByHash, error) {
+func (c *Client) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) responses.TxByHash {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	resp, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
-	return resp.EncryptedTx, nil
+	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
-func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (common.EncryptedResponseGetTxReceipt, error) {
+func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) responses.TxReceipt {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetTransactionReceipt(timeoutCtx, &generated.GetTransactionReceiptRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
-	return response.EncryptedTxReceipt, nil
+	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
 func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
@@ -257,7 +251,7 @@ func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
 	return nil
 }
 
-func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (common.EncryptedResponseGetBalance, error) {
+func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) responses.Balance {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -265,9 +259,9 @@ func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (c
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
-	return resp.EncryptedBalance, nil
+	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
 func (c *Client) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, error) {
@@ -305,7 +299,7 @@ func (c *Client) Unsubscribe(id gethrpc.ID) error {
 	return err
 }
 
-func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (common.EncryptedResponseEstimateGas, error) {
+func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) responses.Gas {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -313,12 +307,13 @@ func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) 
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
-	return resp.EncryptedResponse, nil
+
+	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
-func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.EncryptedResponseGetLogs, error) {
+func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) responses.Logs {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -326,9 +321,9 @@ func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (common.
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return nil, err
+		return responses.AsPlaintextError(err)
 	}
-	return resp.EncryptedResponse, nil
+	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
 func (c *Client) HealthCheck() (bool, error) {
