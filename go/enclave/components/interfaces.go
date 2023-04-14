@@ -62,16 +62,21 @@ type BatchProducer interface {
 
 type BatchRegistry interface {
 	StoreBatch(*core.Batch, types.Receipts) error
+
 	GetHeadBatch() (*core.Batch, error)
 	GetHeadBatchFor(common.L1BlockHash) (*core.Batch, error)
 	GetBatch(common.L2BatchHash) (*core.Batch, error)
+
+	FindAncestralBatchFor(*common.L1Block) (*core.Batch, error)
+	BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error)
+
+	GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
+	GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error)
+
 	Subscribe() chan *core.Batch
 	Unsubscribe()
-	FindAncestralBatchFor(*common.L1Block) (*core.Batch, error)
+
 	HasGenesisBatch() (bool, error)
-	GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
-	BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error)
-	GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error)
 }
 
 func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {

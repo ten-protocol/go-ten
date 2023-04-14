@@ -121,8 +121,7 @@ func (br *batchRegistry) FindAncestralBatchFor(block *common.L1Block) (*core.Bat
 	for ancestorBatch == nil {
 		currentBlock, err = br.storage.FetchBlock(currentBlock.ParentHash())
 		if err != nil {
-			br.logger.Crit("Failure resolving ancestors for incoming fork block!", log.ErrKey, err)
-			return nil, err
+			return nil, fmt.Errorf("unable to find parent for block in ancestral chain. Cause: %w", err)
 		}
 
 		if currentBlock.NumberU64() == common.L1GenesisHeight {
