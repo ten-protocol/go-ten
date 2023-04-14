@@ -345,8 +345,9 @@ func (h *host) startProcessing() {
 	if h.config.NodeType == common.Sequencer {
 		go h.startBatchProduction()  // periodically request a new batch from enclave
 		go h.startRollupProduction() // periodically request a new rollup from enclave
-		go h.startBatchStreaming()
 	}
+
+	go h.startBatchStreaming() //streams batches and events from the enclave.
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
 	// stream ch during the main loop if enclave gets out-of-sync, and we need to stream from an earlier block
@@ -444,6 +445,10 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
+	if blockSubmissionResponse == nil {
+		return fmt.Errorf("no block submission response given for a submitted l1 block")
+	}
+
 	err = h.db.AddBlockHeader(block.Header())
 	if err != nil {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
@@ -855,7 +860,7 @@ func (h *host) startBatchProduction() {
 	defer h.logger.Info("Stopping batch production")
 	interval := h.config.BatchInterval
 	if interval == 0 {
-		interval = 3 * time.Second
+		interval = 1 * time.Second
 	}
 	batchProdTicker := time.NewTicker(interval)
 	for {
@@ -878,10 +883,19 @@ func (h *host) startBatchStreaming() {
 	streamChan := h.enclaveClient.StreamBatches()
 	for {
 		select {
-		case resp := <-streamChan:
-			h.logger.Info("storing batch")
-			h.storeAndDistributeBatch(resp.Batch)
-			h.logEventManager.SendLogsToSubscribers(&resp.Logs)
+		case resp, ok := <-streamChan:
+			if !ok {
+				panic("TODO: reconnect to stream batches")
+			}
+
+			if h.config.NodeType == common.Sequencer {
+				h.logger.Info("storing batch")
+				h.storeAndDistributeBatch(resp.Batch)
+			}
+
+			if resp.Logs != nil {
+				h.logEventManager.SendLogsToSubscribers(&resp.Logs)
+			}
 		case <-h.exitHostCh:
 			close(streamChan)
 			return

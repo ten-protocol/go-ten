@@ -284,11 +284,13 @@ func (s *RPCServer) StreamBatches(_ *generated.EmptyArgs, stream generated.Encla
 	for {
 		batchResp, ok := <-batchChan
 		if !ok {
+			s.logger.Info("Enclave closed batch channel.")
 			break
 		}
 
 		encoded, err := json.Marshal(batchResp)
 		if err != nil {
+			s.logger.Error("Error marshalling batch response", log.ErrKey, err)
 			close(batchChan)
 			return nil
 		}

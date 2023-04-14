@@ -385,19 +385,22 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 
 func (c *Client) StreamBatches() chan common.StreamBatchResponse {
 	batchChan := make(chan common.StreamBatchResponse, 10)
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
+	timeoutCtx, cancel := context.WithCancel(context.Background())
 
 	stream, err := c.protoClient.StreamBatches(timeoutCtx, &generated.EmptyArgs{})
 	if err != nil {
+		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
 		close(batchChan)
+		cancel()
 		return batchChan
 	}
 
 	go func() {
+		defer cancel()
 		for {
 			batchMsg, err := stream.Recv()
 			if err != nil {
+				c.logger.Error("Error receving batch from stream.", log.ErrKey, err)
 				//log error?
 				close(batchChan)
 				break
@@ -405,6 +408,7 @@ func (c *Client) StreamBatches() chan common.StreamBatchResponse {
 
 			var decoded common.StreamBatchResponse
 			if err := json.Unmarshal(batchMsg.Batch, &decoded); err != nil {
+				c.logger.Error("Error unmarshling batch from stream.", log.ErrKey, err)
 				close(batchChan)
 				break
 			}

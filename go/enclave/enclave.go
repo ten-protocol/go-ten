@@ -304,22 +304,24 @@ func (e *enclaveImpl) StreamBatches() chan common.StreamBatchResponse {
 		for {
 			batch, ok := <-batchChan
 			if !ok {
+				e.logger.Info("Registry closed batch channel.")
 				close(encryptedBatchChan)
 				break
 			}
 			e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
 
+			resp := common.StreamBatchResponse{
+				Batch: batch.ToExtBatch(e.transactionBlobCrypto),
+			}
+
 			logs, err := e.subscriptionLogs(batch.Number())
 			if err != nil {
 				e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
-				close(encryptedBatchChan)
-				break
+			} else {
+				resp.Logs = logs
 			}
 
-			encryptedBatchChan <- common.StreamBatchResponse{
-				Batch: batch.ToExtBatch(e.transactionBlobCrypto),
-				Logs:  logs,
-			}
+			encryptedBatchChan <- resp
 		}
 	}()
 

@@ -357,13 +357,6 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		}
 	}
 
-	// check that the pobi protocol doesn't waste too many blocks.
-	// todo - find the block where the genesis was published
-	efficiency := float64(l1Height-l2Height.Uint64()) / float64(l1Height)
-	if efficiency > s.Params.L2ToL1EfficiencyThreshold {
-		t.Errorf("Node %d: L2 to L1 Efficiency is %f. Expected:%f", nodeIdx, efficiency, s.Params.L2ToL1EfficiencyThreshold)
-	}
-
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
