@@ -12,7 +12,6 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
@@ -130,8 +129,7 @@ func (br *batchRegistry) FindAncestralBatchFor(block *common.L1Block) (*core.Bat
 
 		ancestorBatch, err = br.GetHeadBatchFor(currentBlock.Hash())
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-			br.logger.Crit("Failure while looking for latest ancestral batch!", log.ErrKey, err)
-			return nil, err
+			return nil, fmt.Errorf("unable to get latest ancestral batch. Cause: %w", err)
 		}
 	}
 
