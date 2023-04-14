@@ -154,23 +154,23 @@ func (br *batchRegistry) HasGenesisBatch() (bool, error) {
 	return genesisBatchStored, nil
 }
 
-func (oc *batchRegistry) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error) {
+func (br *batchRegistry) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error) {
 	batches := make([]*core.Batch, 0)
 
 	var batch *core.Batch
 	var err error
 	if batchHash == gethcommon.BigToHash(gethcommon.Big0) {
-		if batch, err = oc.storage.FetchBatchByHeight(0); err != nil {
+		if batch, err = br.storage.FetchBatchByHeight(0); err != nil {
 			return nil, err
 		}
 		batches = append(batches, batch)
 	} else {
-		if batch, err = oc.storage.FetchBatch(batchHash); err != nil {
+		if batch, err = br.storage.FetchBatch(batchHash); err != nil {
 			return nil, err
 		}
 	}
 
-	headBatch, err := oc.storage.FetchHeadBatch()
+	headBatch, err := br.storage.FetchHeadBatch()
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (oc *batchRegistry) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch,
 	}
 
 	for batch.Number().Cmp(headBatch.Number()) != 0 {
-		batch, _ = oc.storage.FetchBatchByHeight(batch.NumberU64() + 1)
+		batch, _ = br.storage.FetchBatchByHeight(batch.NumberU64() + 1)
 		batches = append(batches, batch)
 	}
 

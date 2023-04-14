@@ -149,7 +149,7 @@ func (bp *batchProducer) processTransactions(batch *core.Batch, tCount int, txs 
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, bp.storage, cc, 0, bp.logger)
+	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, bp.storage, cc, tCount, bp.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {
