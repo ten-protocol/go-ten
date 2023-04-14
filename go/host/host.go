@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/kamilsk/breaker"
 	"github.com/naoina/toml"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -52,7 +54,7 @@ type host struct {
 	enclaveClient common.Enclave       // For communication with the enclave
 
 	// control the host lifecycle
-	exitHostCh chan bool
+	interrupter breaker.Interface
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
@@ -95,9 +97,6 @@ func NewHost(
 		ethClient:     ethClient,
 		enclaveClient: enclaveClient,
 
-		// lifecycle channels
-		exitHostCh: make(chan bool),
-
 		// incoming data
 		l1BlockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
 		txP2PCh:         make(chan common.EncryptedTx),
@@ -133,6 +132,13 @@ func NewHost(
 
 // Start validates the host config and starts the Host in a go routine - immediately returns after
 func (h *host) Start() error {
+	h.interrupter = breaker.Multiplex(
+		breaker.BreakBySignal(
+			os.Kill,
+			os.Interrupt,
+		),
+	)
+
 	h.validateConfig()
 
 	tomlConfig, err := toml.Marshal(h.config)
@@ -272,7 +278,7 @@ func (h *host) Stop() {
 
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
-	h.exitHostCh <- true
+	h.interrupter.Close()
 
 	if err := h.enclaveClient.Stop(); err != nil {
 		h.logger.Error("could not stop enclave server", log.ErrKey, err)
@@ -386,7 +392,7 @@ func (h *host) startProcessing() {
 				h.logger.Error("Could not handle batch request. ", log.ErrKey, err)
 			}
 
-		case <-h.exitHostCh:
+		case <-h.interrupter.Done():
 			return
 		}
 	}
@@ -768,7 +774,7 @@ func (h *host) awaitSecret(fromHeight *big.Int) error {
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select)
 			h.logger.Warn(fmt.Sprintf(" Waiting for secret from the L1. No blocks received for over %s", blockStreamWarningTimeout))
 
-		case <-h.exitHostCh:
+		case <-h.interrupter.Done():
 			return nil
 		}
 	}
@@ -865,7 +871,7 @@ func (h *host) startBatchProduction() {
 			if err != nil {
 				h.logger.Warn("unable to produce batch", log.ErrKey, err)
 			}
-		case <-h.exitHostCh:
+		case <-h.interrupter.Done():
 			return
 		}
 	}
@@ -907,7 +913,7 @@ func (h *host) startBatchStreaming() {
 				lastBatch = resp.Batch
 				h.logger.Trace(fmt.Sprintf("Received batch from stream: %s", lastBatch.Hash().Hex()))
 			}
-		case <-h.exitHostCh:
+		case <-h.interrupter.Done():
 			stop()
 			return
 		}
@@ -930,7 +936,7 @@ func (h *host) startRollupProduction() {
 			} else {
 				h.publishRollup(producedRollup)
 			}
-		case <-h.exitHostCh:
+		case <-h.interrupter.Done():
 			return
 		}
 	}
