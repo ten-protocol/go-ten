@@ -51,6 +51,7 @@ func NewRollupConsumer(
 		verifier:              verifier,
 	}
 }
+
 func (rc *rollupConsumer) ProcessL1Block(b *common.BlockAndReceipts) ([]*core.Rollup, error) {
 	return rc.processRollups(b)
 }

@@ -246,7 +246,6 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 }
 
 func (s *RPCServer) StreamBatches(request *generated.StreamBatchesRequest, stream generated.EnclaveProto_StreamBatchesServer) error {
-
 	var fromHash *common.L2BatchHash = nil
 	if request.KnownHead != nil {
 		knownHead := gethcommon.BytesToHash(request.KnownHead)

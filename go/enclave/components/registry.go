@@ -93,6 +93,7 @@ func (br *batchRegistry) GetHeadBatch() (*core.Batch, error) {
 func (br *batchRegistry) GetHeadBatchFor(blockHash common.L1BlockHash) (*core.Batch, error) {
 	return br.storage.FetchHeadBatchForBlock(blockHash)
 }
+
 func (br *batchRegistry) GetBatch(batchHash common.L2BatchHash) (*core.Batch, error) {
 	return br.storage.FetchBatch(batchHash)
 }

@@ -345,7 +345,7 @@ func (h *host) startProcessing() {
 		go h.startRollupProduction() // periodically request a new rollup from enclave
 	}
 
-	go h.startBatchStreaming() //streams batches and events from the enclave.
+	go h.startBatchStreaming() // streams batches and events from the enclave.
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
 	// stream ch during the main loop if enclave gets out-of-sync, and we need to stream from an earlier block
@@ -439,7 +439,6 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 
 	// submit each block to the enclave for ingestion plus validation
 	blockSubmissionResponse, err := h.enclaveClient.SubmitL1Block(*block, h.extractReceipts(block), isLatestBlock)
-
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}

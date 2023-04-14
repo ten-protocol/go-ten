@@ -388,7 +388,6 @@ func (c *Client) StreamBatches(from *common.L2BatchHash) chan common.StreamBatch
 	}
 
 	stream, err := c.protoClient.StreamBatches(timeoutCtx, request)
-
 	if err != nil {
 		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
 		close(batchChan)
@@ -402,7 +401,7 @@ func (c *Client) StreamBatches(from *common.L2BatchHash) chan common.StreamBatch
 			batchMsg, err := stream.Recv()
 			if err != nil {
 				c.logger.Error("Error receving batch from stream.", log.ErrKey, err)
-				//log error?
+				// log error?
 				close(batchChan)
 				break
 			}

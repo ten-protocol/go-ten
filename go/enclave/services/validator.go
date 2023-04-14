@@ -96,7 +96,6 @@ func (ov *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
 		Creator:      incomingBatch.Header.Agg,
 		ChainConfig:  ov.chainConfig,
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed computing batch. Cause: %w", err)
 	}
@@ -120,7 +119,7 @@ func (ov *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool)
 
 	rollups, err := ov.rollupConsumer.ProcessL1Block(br)
 	if err != nil {
-		//todo - log err?
+		// todo - log err?
 		return ingestion, nil
 	}
 

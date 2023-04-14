@@ -210,7 +210,6 @@ func NewEnclave(
 
 	var service services.ObscuroActor
 	if config.NodeType == common.Sequencer {
-
 		service = services.NewSequencer(
 			consumer,
 			producer,
@@ -424,7 +423,6 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 
 	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
 	return bsr, nil
-
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) responses.RawTx {

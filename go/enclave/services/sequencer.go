@@ -164,13 +164,12 @@ func (s *sequencer) extendHead(block *common.L1Block) (*core.Batch, error) {
 		Creator:      s.hostID,
 		ChainConfig:  s.chainConfig,
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch. Cause: %w", err)
 	}
 
 	if _, err := cb.Commit(true); err != nil {
-		return nil, fmt.Errorf("failed commiting batch state. Cause: %w", err)
+		return nil, fmt.Errorf("failed committing batch state. Cause: %w", err)
 	}
 
 	if err := s.signBatch(cb.Batch); err != nil {
@@ -263,14 +262,13 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 			Creator:      s.hostID,
 			ChainConfig:  s.chainConfig,
 		})
-
 		if err != nil {
 			s.logger.Crit("Error recalculating l2chain for forked block", log.ErrKey, err)
 			return err
 		}
 
 		if _, err := cb.Commit(true); err != nil {
-			return fmt.Errorf("failed commiting stateDB for computed batch. Cause: %w", err)
+			return fmt.Errorf("failed committing stateDB for computed batch. Cause: %w", err)
 		}
 
 		if err := s.signBatch(cb.Batch); err != nil {
