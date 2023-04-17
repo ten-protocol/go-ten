@@ -106,13 +106,19 @@ type Enclave interface {
 	// HealthCheck returns whether the enclave is in a healthy state
 	HealthCheck() (bool, error)
 
+	// CreateBatch - creates a new head batch extending the previous one for the latest known L1 head if the node is
+	// a sequencer. Will panic otherwise.
 	CreateBatch() (*ExtBatch, error)
 
+	// CreateRollup - will create a new rollup by going through the sequencer if the node is a sequencer
+	// or panic otherwise.
 	CreateRollup() (*ExtRollup, error)
 
 	// DebugTraceTransaction returns the trace of a transaction
 	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error)
 
+	// StreamBatches - will stream the batches following the L2 batch hash given along with any newly created batches
+	// in the right order. All will be queued in the channel that has been returned
 	StreamBatches(*L2BatchHash) (chan StreamBatchResponse, func())
 }
 
