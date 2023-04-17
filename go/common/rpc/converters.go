@@ -36,7 +36,7 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (*ge
 	var err error
 
 	if response == nil {
-		return nil, nil
+		return nil, fmt.Errorf("no response that could be converted to a message")
 	}
 
 	producedBatchMsg := ToExtBatchMsg(response.ProducedBatch)

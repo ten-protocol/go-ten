@@ -70,7 +70,7 @@ type enclaveImpl struct {
 	crossChainProcessors *crosschain.Processors
 
 	liteChain l2chain.ChainInterface
-	service   services.ObscuroActor
+	service   services.ObscuroService
 	registry  components.BatchRegistry
 
 	// todo (#627) - use the ethconfig.Config instead
@@ -195,7 +195,7 @@ func NewEnclave(
 	sigVerifier := components.NewSignatureValidator(config.SequencerID, storage)
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
 
-	var service services.ObscuroActor
+	var service services.ObscuroService
 	if config.NodeType == common.Sequencer {
 		service = services.NewSequencer(
 			consumer,
@@ -285,47 +285,49 @@ func (e *enclaveImpl) StopClient() error {
 	return nil // The enclave is local so there is no client to stop
 }
 
-func (e *enclaveImpl) sendMissingMatches(from *common.L2BatchHash, outChannel chan common.StreamBatchResponse) error {
-	if from != nil {
-		from, err := e.registry.GetBatch(*from)
-		if err != nil {
-			e.logger.Error("Error while attempting to stream from batch", log.ErrKey, err)
+func (e *enclaveImpl) sendMissingMatches(fromHash *common.L2BatchHash, outChannel chan common.StreamBatchResponse) error {
+	if fromHash == nil {
+		return nil
+	}
+
+	from, err := e.registry.GetBatch(*fromHash)
+	if err != nil {
+		e.logger.Error("Error while attempting to stream from batch", log.ErrKey, err)
+		return err
+	}
+
+	to, err := e.registry.GetHeadBatch()
+	if err != nil {
+		e.logger.Error("Unable to get head batch while attempting to stream", log.ErrKey, err)
+		return err
+	}
+
+	missingBatches := make([]*core.Batch, 0)
+	for !bytes.Equal(to.Hash().Bytes(), from.Hash().Bytes()) {
+		if to.NumberU64() == 0 {
+			e.logger.Error("Reached genesis when seeking missing batches to stream", log.ErrKey, err)
 			return err
 		}
 
-		to, err := e.registry.GetHeadBatch()
-		if err != nil {
-			e.logger.Error("Unable to get head batch while attempting to stream", log.ErrKey, err)
-			return err
-		}
-
-		missingBatches := make([]*core.Batch, 0)
-		for !bytes.Equal(to.Hash().Bytes(), from.Hash().Bytes()) {
-			if to.NumberU64() == 0 {
-				e.logger.Error("Reached genesis when seeking missing batches to stream", log.ErrKey, err)
-				return err
-			}
-
-			if from.NumberU64() == to.NumberU64() {
-				from, err = e.registry.GetBatch(from.Header.ParentHash)
-				if err != nil {
-					e.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
-					return err
-				}
-			}
-
-			missingBatches = append(missingBatches, to)
-			to, err = e.registry.GetBatch(to.Header.ParentHash)
+		if from.NumberU64() == to.NumberU64() {
+			from, err = e.registry.GetBatch(from.Header.ParentHash)
 			if err != nil {
 				e.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
 				return err
 			}
 		}
 
-		for i := len(missingBatches) - 1; i >= 0; i-- {
-			batch := missingBatches[i]
-			e.sendBatch(batch, outChannel)
+		missingBatches = append(missingBatches, to)
+		to, err = e.registry.GetBatch(to.Header.ParentHash)
+		if err != nil {
+			e.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
+			return err
 		}
+	}
+
+	for i := len(missingBatches) - 1; i >= 0; i-- {
+		batch := missingBatches[i]
+		e.sendBatch(batch, outChannel)
 	}
 
 	return nil
