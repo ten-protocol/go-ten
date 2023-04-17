@@ -169,7 +169,7 @@ func (bp *batchProducer) processTransactions(batch *core.Batch, tCount int, txs 
 	return executedTransactions, txReceipts, nil
 }
 
-func (bp *batchProducer) CreateGenesisState(blkHash common.L1BlockHash, aggregatorAddress common.L2Address, timeNow uint64) (*core.Batch, *types.Transaction, error) {
+func (bp *batchProducer) CreateGenesisState(blkHash common.L1BlockHash, sequencerAddress common.L2Address, timeNow uint64) (*core.Batch, *types.Transaction, error) {
 	preFundGenesisState, err := bp.genesis.GetGenesisRoot(bp.storage)
 	if err != nil {
 		return nil, nil, err
@@ -177,7 +177,7 @@ func (bp *batchProducer) CreateGenesisState(blkHash common.L1BlockHash, aggregat
 
 	genesisBatch := &core.Batch{
 		Header: &common.BatchHeader{
-			Agg:         aggregatorAddress,
+			Agg:         sequencerAddress,
 			ParentHash:  common.L2BatchHash{},
 			L1Proof:     blkHash,
 			Root:        *preFundGenesisState,

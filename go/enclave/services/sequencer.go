@@ -23,9 +23,9 @@ import (
 )
 
 type sequencer struct {
-	consumer       components.BlockConsumer
-	producer       components.BatchProducer
-	registry       components.BatchRegistry
+	blockConsumer  components.BlockConsumer
+	batchProducer  components.BatchProducer
+	batchRegistry  components.BatchRegistry
 	rollupProducer components.RollupProducer
 	rollupConsumer components.RollupConsumer
 
@@ -60,9 +60,9 @@ func NewSequencer(
 	encryption crypto.TransactionBlobCrypto,
 ) Sequencer {
 	return &sequencer{
-		consumer:          consumer,
-		producer:          producer,
-		registry:          registry,
+		blockConsumer:     consumer,
+		batchProducer:     producer,
+		batchRegistry:     registry,
 		rollupProducer:    rollupProducer,
 		rollupConsumer:    rollupConsumer,
 		logger:            logger,
@@ -79,7 +79,7 @@ func (s *sequencer) CreateBatch(block *common.L1Block) (*core.Batch, error) {
 	s.batchProductionMutex.Lock()
 	defer s.batchProductionMutex.Unlock()
 
-	hasGenesis, err := s.registry.HasGenesisBatch()
+	hasGenesis, err := s.batchRegistry.HasGenesisBatch()
 	if err != nil {
 		return nil, fmt.Errorf("unknown genesis batch state. Cause: %w", err)
 	}
@@ -88,7 +88,7 @@ func (s *sequencer) CreateBatch(block *common.L1Block) (*core.Batch, error) {
 		// L1 Head is only updated when isLatest: true
 		// when a block is specified it will override this and allow
 		// building batches for unfinished forks.
-		block, err = s.consumer.GetHead()
+		block, err = s.blockConsumer.GetHead()
 		if err != nil {
 			return nil, fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
 		}
@@ -103,7 +103,7 @@ func (s *sequencer) CreateBatch(block *common.L1Block) (*core.Batch, error) {
 
 // TODO - This is iffy, the producer commits the stateDB
 func (s *sequencer) initGenesis(block *common.L1Block) (*core.Batch, error) {
-	batch, msgBusTx, err := s.producer.CreateGenesisState(block.Hash(), s.hostID, uint64(time.Now().Unix()))
+	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(block.Hash(), s.hostID, uint64(time.Now().Unix()))
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +116,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) (*core.Batch, error) {
 		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.registry.StoreBatch(batch, nil); err != nil {
+	if err := s.batchRegistry.StoreBatch(batch, nil); err != nil {
 		return nil, fmt.Errorf("failed storing batch. Cause: %w", err)
 	}
 
@@ -124,7 +124,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) (*core.Batch, error) {
 }
 
 func (s *sequencer) extendHead(block *common.L1Block) (*core.Batch, error) {
-	headBatch, err := s.registry.GetHeadBatch()
+	headBatch, err := s.batchRegistry.GetHeadBatch()
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (s *sequencer) extendHead(block *common.L1Block) (*core.Batch, error) {
 	// than the current head; Alternatively we might have just processed a fork
 	// which would've updated the head to an unfinished fork so we need to get
 	// the correct batch that is building on the latest known final chain
-	ancestralBatch, err := s.registry.FindAncestralBatchFor(block)
+	ancestralBatch, err := s.batchRegistry.FindAncestralBatchFor(block)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (s *sequencer) extendHead(block *common.L1Block) (*core.Batch, error) {
 		return nil, err
 	}
 
-	cb, err := s.producer.ComputeBatch(&components.BatchContext{
+	cb, err := s.batchProducer.ComputeBatch(&components.BatchContext{
 		BlockPtr:     block.Hash(),
 		ParentPtr:    *headBatch.Hash(),
 		Transactions: transactions,
@@ -180,7 +180,7 @@ func (s *sequencer) extendHead(block *common.L1Block) (*core.Batch, error) {
 		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.registry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
+	if err := s.batchRegistry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
 		return nil, fmt.Errorf("failed storing batch. Cause: %w", err)
 	}
 
@@ -205,7 +205,7 @@ func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
 }
 
 func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	ingestion, err := s.consumer.ConsumeBlock(br, isLatest)
+	ingestion, err := s.blockConsumer.ConsumeBlock(br, isLatest)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 	s.batchProductionMutex.Lock()
 	defer s.batchProductionMutex.Unlock()
 
-	headBatch, err := s.registry.GetHeadBatch()
+	headBatch, err := s.batchRegistry.GetHeadBatch()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil
@@ -238,7 +238,7 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 		return fmt.Errorf("failed retrieving head batch. Cause: %w", err)
 	}
 
-	ancestralBatch, err := s.registry.FindAncestralBatchFor(br.Block)
+	ancestralBatch, err := s.batchRegistry.FindAncestralBatchFor(br.Block)
 	if err != nil {
 		return fmt.Errorf("failed to find ancestral batch for block: %s", br.Block.Hash())
 	}
@@ -255,7 +255,7 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 	orphanedBatches := make([]*core.Batch, 0)
 	for currHead.NumberU64() > ancestralBatch.NumberU64() {
 		orphanedBatches = append(orphanedBatches, currHead)
-		currHead, err = s.registry.GetBatch(currHead.Header.ParentHash)
+		currHead, err = s.batchRegistry.GetBatch(currHead.Header.ParentHash)
 		if err != nil {
 			s.logger.Crit("Failure while looking for previously stored batch!", log.ErrKey, err)
 			return err
@@ -267,7 +267,7 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 		orphan := orphanedBatches[i]
 
 		// Extend the chain with identical cousin batches
-		cb, err := s.producer.ComputeBatch(&components.BatchContext{
+		cb, err := s.batchProducer.ComputeBatch(&components.BatchContext{
 			BlockPtr:     br.Block.Hash(),
 			ParentPtr:    *currHeadPtr.Hash(),
 			Transactions: orphan.Transactions,
@@ -289,7 +289,7 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 			return fmt.Errorf("failed signing batch. Cause: %w", err)
 		}
 
-		if err := s.registry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
+		if err := s.batchRegistry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
 			return fmt.Errorf("failed storing batch. Cause: %w", err)
 		}
 		currHeadPtr = cb.Batch

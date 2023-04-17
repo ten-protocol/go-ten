@@ -19,9 +19,9 @@ import (
 )
 
 type obsValidator struct {
-	consumer       components.BlockConsumer
-	producer       components.BatchProducer
-	registry       components.BatchRegistry
+	blockConsumer  components.BlockConsumer
+	batchProducer  components.BatchProducer
+	batchRegistry  components.BatchRegistry
 	rollupConsumer components.RollupConsumer
 
 	chainConfig *params.ChainConfig
@@ -44,9 +44,9 @@ func NewValidator(
 	logger gethlog.Logger,
 ) ObsValidator {
 	return &obsValidator{
-		consumer:       consumer,
-		producer:       producer,
-		registry:       registry,
+		blockConsumer:  consumer,
+		batchProducer:  producer,
+		batchRegistry:  registry,
 		rollupConsumer: rollupConsumer,
 		chainConfig:    chainConfig,
 		sequencerID:    sequencerID,
@@ -61,7 +61,7 @@ func (ov *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, err
 		return false, nil
 	}
 
-	batch, _, err := ov.producer.CreateGenesisState(incomingBatch.Header.L1Proof, ov.sequencerID, incomingBatch.Header.Time)
+	batch, _, err := ov.batchProducer.CreateGenesisState(incomingBatch.Header.L1Proof, ov.sequencerID, incomingBatch.Header.Time)
 	if err != nil {
 		return true, err
 	}
@@ -70,7 +70,7 @@ func (ov *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, err
 		return true, fmt.Errorf("received bad genesis batch")
 	}
 
-	return true, ov.registry.StoreBatch(incomingBatch, nil)
+	return true, ov.batchRegistry.StoreBatch(incomingBatch, nil)
 }
 
 func (ov *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
@@ -78,7 +78,7 @@ func (ov *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
 		return err
 	}
 
-	if batch, err := ov.registry.GetBatch(*incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
+	if batch, err := ov.batchRegistry.GetBatch(*incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return err
 	} else if batch != nil {
 		return nil // already know about this one
@@ -88,7 +88,7 @@ func (ov *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
 		return err
 	}
 
-	cb, err := ov.producer.ComputeBatch(&components.BatchContext{
+	cb, err := ov.batchProducer.ComputeBatch(&components.BatchContext{
 		BlockPtr:     incomingBatch.Header.L1Proof,
 		ParentPtr:    incomingBatch.Header.ParentHash,
 		Transactions: incomingBatch.Transactions,
@@ -109,11 +109,11 @@ func (ov *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
 		return fmt.Errorf("cannot commit stateDB for incoming valid batch. Cause: %w", err)
 	}
 
-	return ov.registry.StoreBatch(incomingBatch, cb.Receipts)
+	return ov.batchRegistry.StoreBatch(incomingBatch, cb.Receipts)
 }
 
 func (ov *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	ingestion, err := ov.consumer.ConsumeBlock(br, isLatest)
+	ingestion, err := ov.blockConsumer.ConsumeBlock(br, isLatest)
 	if err != nil {
 		return nil, err
 	}
