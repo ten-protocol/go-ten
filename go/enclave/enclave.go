@@ -187,13 +187,6 @@ func NewEnclave(
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
-	chain := l2chain.New(
-		storage,
-		crossChainProcessors,
-		&chainConfig,
-		genesis,
-		logger,
-	)
 
 	consumer := components.NewBlockConsumer(storage, crossChainProcessors, logger)
 	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, logger)
@@ -234,7 +227,7 @@ func NewEnclave(
 	)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
-	err = chain.ResyncStateDB()
+	err = restoreStateDBCache(storage, producer, genesis, &chainConfig, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
@@ -1455,4 +1448,106 @@ func serializeEVMError(err error) ([]byte, error) {
 		return nil, marshallErr
 	}
 	return errSerializedBytes, nil
+}
+
+// this function looks at the batch chain and makes sure the resulting stateDB snapshots are available, replaying them if needed
+// (if there had been a clean shutdown and all stateDB data was persisted this should do nothing)
+func restoreStateDBCache(storage db.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
+	batch, err := storage.FetchHeadBatch()
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			// there is no head batch, this is probably a new node - there is no state to rebuild
+			logger.Info("no head batch found in DB after restart", log.ErrKey, err)
+			return nil
+		}
+		return fmt.Errorf("unexpected error fetching head batch to resync- %w", err)
+	}
+	if !stateDBAvailableForBatch(storage, batch.Hash()) {
+		logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
+		err = replayBatchesToValidState(storage, producer, gen, chainCfg, logger)
+		if err != nil {
+			return fmt.Errorf("unable to replay batches to restore valid state - %w", err)
+		}
+	}
+	return nil
+}
+
+// The enclave caches a stateDB instance against each batch hash, this is the input state when producing the following
+// batch in the chain and is used to query state at a certain height.
+//
+// This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
+func stateDBAvailableForBatch(storage db.Storage, hash *common.L2BatchHash) bool {
+	_, err := storage.CreateStateDB(*hash)
+	return err == nil
+}
+
+// replayBatchesToValidState is used to repopulate the stateDB cache with data from persisted batches. Two step process:
+// 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
+// 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
+// todo (#1416) - get unit test coverage around this (and L2 Chain code more widely, see ticket #1416 )
+func replayBatchesToValidState(storage db.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
+	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
+	// todo - consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
+	var batchesToReplay []*core.Batch
+	// `batchToReplayFrom` variable will eventually be the latest batch for which we are able to produce a StateDB
+	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
+	batchToReplayFrom, err := storage.FetchHeadBatch()
+	if err != nil {
+		return fmt.Errorf("no head batch found in DB but expected to replay batches - %w", err)
+	}
+	// loop backwards building a slice of all batches that don't have cached stateDB data available
+	for !stateDBAvailableForBatch(storage, batchToReplayFrom.Hash()) {
+		batchesToReplay = append(batchesToReplay, batchToReplayFrom)
+		if batchToReplayFrom.NumberU64() == 0 {
+			// no more parents to check, replaying from genesis
+			break
+		}
+		batchToReplayFrom, err = storage.FetchBatch(batchToReplayFrom.Header.ParentHash)
+		if err != nil {
+			return fmt.Errorf("unable to fetch previous batch while rolling back to stable state - %w", err)
+		}
+	}
+	logger.Info("replaying batch data into stateDB cache", "fromBatch", batchesToReplay[len(batchesToReplay)-1].NumberU64(),
+		"toBatch", batchesToReplay[0].NumberU64())
+	// loop through the slice of batches without stateDB data to cache the state (loop in reverse because slice is newest to oldest)
+	for i := len(batchesToReplay) - 1; i >= 0; i-- {
+		batch := batchesToReplay[i]
+
+		// if genesis batch then create the genesis state before continuing on with remaining batches
+		if batch.NumberU64() == 0 {
+			err := gen.CommitGenesisState(storage)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		// calculate the stateDB after this batch and store it in the cache
+		err = calculateAndStoreStateDB(batch, producer, chainCfg)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProducer, chainConfig *params.ChainConfig) error {
+	computedBatch, err := producer.ComputeBatch(&components.BatchContext{
+		BlockPtr:     batch.Header.L1Proof,
+		ParentPtr:    batch.Header.ParentHash,
+		Transactions: batch.Transactions,
+		AtTime:       batch.Header.Time,
+		Randomness:   batch.Header.MixDigest,
+		Creator:      batch.Header.Agg,
+		ChainConfig:  chainConfig,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = computedBatch.Commit(true)
+	if err != nil {
+		return err
+	}
+	return nil
 }
