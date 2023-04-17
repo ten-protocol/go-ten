@@ -53,7 +53,6 @@ type ComputedBatch struct {
 	Commit   func(bool) (gethcommon.Hash, error)
 }
 type BatchProducer interface {
-
 	// ComputeBatch - will formulate a batch and execute the transactions according to the
 	// state provided in the BatchContext.
 	// Call with same BatchContext should always produce identical extBatch - idempotent
