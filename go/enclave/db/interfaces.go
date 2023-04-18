@@ -5,13 +5,14 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // BlockResolver stores new blocks and returns information on existing blocks
@@ -118,8 +119,12 @@ type Storage interface {
 
 	// HealthCheck returns whether the storage is deemed healthy or not
 	HealthCheck() (bool, error)
+
 	// FilterLogs - applies the properties the relevancy checks for the requestingAccount to all the stored log events
 	// nil values will be ignored. Make sure to set all fields to the right values before calling this function
 	// the blockHash should always be nil.
 	FilterLogs(requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error)
+
+	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
+	DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error)
 }

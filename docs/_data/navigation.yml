@@ -65,3 +65,5 @@ sidebar-list:
         url: api/apis
       - title: Sensitive APIs
         url: api/sensitive-apis
+      - title: Debug APIs
+        url: api/debug-apis

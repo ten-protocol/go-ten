@@ -366,3 +366,16 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	}
 	return json.RawMessage(resp.Msg), nil
 }
+
+func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.DebugEventLogRelevancy(timeoutCtx, &generated.DebugEventLogRelevancyRequest{
+		TxHash: hash.Bytes(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return json.RawMessage(resp.Msg), nil
+}

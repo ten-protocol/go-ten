@@ -49,6 +49,20 @@ func New(chain *l2chain.ObscuroChain, storage db.Storage, config *params.ChainCo
 	}
 }
 
+func (d *Debugger) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMessage, error) {
+	logs, err := d.storage.DebugGetLogs(txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	jsonRaw, err := json.Marshal(logs)
+	if err != nil {
+		return nil, err
+	}
+
+	return jsonRaw, nil
+}
+
 func (d *Debugger) DebugTraceTransaction(ctx context.Context, txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
 	_, blockHash, blockNumber, index, err := d.storage.GetTransaction(txHash)
 	if err != nil {

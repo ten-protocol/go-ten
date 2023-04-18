@@ -31,10 +31,8 @@ type EnclaveProtoClient interface {
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-	//
-	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
-	//
+	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
@@ -71,6 +69,7 @@ type EnclaveProtoClient interface {
 	HealthCheck(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
 	DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error)
+	DebugEventLogRelevancy(ctx context.Context, in *DebugEventLogRelevancyRequest, opts ...grpc.CallOption) (*DebugEventLogRelevancyResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -279,6 +278,15 @@ func (c *enclaveProtoClient) DebugTraceTransaction(ctx context.Context, in *Debu
 	return out, nil
 }
 
+func (c *enclaveProtoClient) DebugEventLogRelevancy(ctx context.Context, in *DebugEventLogRelevancyRequest, opts ...grpc.CallOption) (*DebugEventLogRelevancyResponse, error) {
+	out := new(DebugEventLogRelevancyResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/DebugEventLogRelevancy", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -292,10 +300,8 @@ type EnclaveProtoServer interface {
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-	//
-	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
-	//
+	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
@@ -332,6 +338,7 @@ type EnclaveProtoServer interface {
 	HealthCheck(context.Context, *EmptyArgs) (*HealthCheckResponse, error)
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
 	DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error)
+	DebugEventLogRelevancy(context.Context, *DebugEventLogRelevancyRequest) (*DebugEventLogRelevancyResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -404,6 +411,9 @@ func (UnimplementedEnclaveProtoServer) CreateRollup(context.Context, *CreateRoll
 }
 func (UnimplementedEnclaveProtoServer) DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DebugTraceTransaction not implemented")
+}
+func (UnimplementedEnclaveProtoServer) DebugEventLogRelevancy(context.Context, *DebugEventLogRelevancyRequest) (*DebugEventLogRelevancyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DebugEventLogRelevancy not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -814,6 +824,24 @@ func _EnclaveProto_DebugTraceTransaction_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_DebugEventLogRelevancy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DebugEventLogRelevancyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).DebugEventLogRelevancy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/DebugEventLogRelevancy",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).DebugEventLogRelevancy(ctx, req.(*DebugEventLogRelevancyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -908,6 +936,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DebugTraceTransaction",
 			Handler:    _EnclaveProto_DebugTraceTransaction_Handler,
+		},
+		{
+			MethodName: "DebugEventLogRelevancy",
+			Handler:    _EnclaveProto_DebugEventLogRelevancy_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

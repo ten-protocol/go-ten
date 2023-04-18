@@ -29,3 +29,12 @@ func (api *NetworkDebug) TraceTransaction(ctx context.Context, hash gethcommon.H
 	}
 	return response, nil
 }
+
+// EventLogRelevancy returns the events for a given transactions and the revelancy params
+func (api *NetworkDebug) EventLogRelevancy(ctx context.Context, hash gethcommon.Hash) (interface{}, error) {
+	response, err := api.host.EnclaveClient().DebugEventLogRelevancy(hash)
+	if err != nil {
+		return "", err
+	}
+	return response, nil
+}
