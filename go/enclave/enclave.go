@@ -352,6 +352,11 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatchResponse, func()) {
 	encryptedBatchChan := make(chan common.StreamBatchResponse, 100)
 
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		close(encryptedBatchChan)
+		return encryptedBatchChan, func() {}
+	}
+
 	// todo - figure out a better approach
 	stop := false
 
@@ -494,6 +499,10 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 }
 
 func (e *enclaveImpl) CreateBatch() (*common.ExtBatch, error) {
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, fmt.Errorf("shutting down")
+	}
+
 	batch, err := e.Sequencer().CreateBatch(nil)
 	if err != nil {
 		return nil, err
@@ -504,7 +513,7 @@ func (e *enclaveImpl) CreateBatch() (*common.ExtBatch, error) {
 
 func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, error) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil //nolint:nilnil
+		return nil, fmt.Errorf("shutting down")
 	}
 
 	return e.Sequencer().CreateRollup()

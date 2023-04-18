@@ -272,13 +272,15 @@ func (h *host) Unsubscribe(id rpc.ID) {
 }
 
 func (h *host) Stop() {
+	h.logger.Info("Host received a stop command. Attemtping shutdown...")
+	h.interrupter.Close()
+
 	if err := h.p2p.StopListening(); err != nil {
 		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
-	h.interrupter.Close()
 
 	if err := h.enclaveClient.Stop(); err != nil {
 		h.logger.Error("could not stop enclave server", log.ErrKey, err)
@@ -893,7 +895,7 @@ func (h *host) startBatchStreaming() {
 
 				if lastBatch != nil {
 					bHash := lastBatch.Hash()
-					streamChan, stop = h.EnclaveClient().StreamBatches(&bHash)
+					streamChan, stop = h.enclaveClient.StreamBatches(&bHash)
 				} else {
 					streamChan, stop = h.enclaveClient.StreamBatches(nil)
 				}
