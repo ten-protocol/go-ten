@@ -531,8 +531,11 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 		result = append(result, &l)
 	}
 
-	// rows.Close should be evaluated and handled properly. A choice should be made whether we want the data even if the Close() fails
-	return result, rows.Close()
+	if err = rows.Close(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error) {
@@ -598,8 +601,11 @@ func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, 
 		result = append(result, &l)
 	}
 
-	// rows.Close should be evaluated and handled properly. A choice should be made whether we want the data even if the Close() fails
-	return result, rows.Close()
+	if err = rows.Close(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (s *storageImpl) FilterLogs(
@@ -662,19 +668,19 @@ func stringToHash(ns sql2.NullString) gethcommon.Hash {
 	return result
 }
 
-func bytesToHash(b sql2.NullByte) gethcommon.Hash {
+func bytesToHash(b sql2.NullByte) *gethcommon.Hash {
 	result := gethcommon.Hash{}
 
 	if !b.Valid {
-		return result
+		return nil
 	}
 
 	value, err := b.Value()
 	if err != nil {
-		return result
+		return nil
 	}
 	s := value.(string)
 
 	result.SetBytes([]byte(s))
-	return result
+	return &result
 }
