@@ -73,6 +73,7 @@ type EnclaveProtoClient interface {
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
 	DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error)
 	StreamBatches(ctx context.Context, in *StreamBatchesRequest, opts ...grpc.CallOption) (EnclaveProto_StreamBatchesClient, error)
+	DebugEventLogRelevancy(ctx context.Context, in *DebugEventLogRelevancyRequest, opts ...grpc.CallOption) (*DebugEventLogRelevancyResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -322,6 +323,15 @@ func (x *enclaveProtoStreamBatchesClient) Recv() (*EncodedBatch, error) {
 	return m, nil
 }
 
+func (c *enclaveProtoClient) DebugEventLogRelevancy(ctx context.Context, in *DebugEventLogRelevancyRequest, opts ...grpc.CallOption) (*DebugEventLogRelevancyResponse, error) {
+	out := new(DebugEventLogRelevancyResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/DebugEventLogRelevancy", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -377,6 +387,7 @@ type EnclaveProtoServer interface {
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
 	DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error)
 	StreamBatches(*StreamBatchesRequest, EnclaveProto_StreamBatchesServer) error
+	DebugEventLogRelevancy(context.Context, *DebugEventLogRelevancyRequest) (*DebugEventLogRelevancyResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -455,6 +466,9 @@ func (UnimplementedEnclaveProtoServer) DebugTraceTransaction(context.Context, *D
 }
 func (UnimplementedEnclaveProtoServer) StreamBatches(*StreamBatchesRequest, EnclaveProto_StreamBatchesServer) error {
 	return status.Errorf(codes.Unimplemented, "method StreamBatches not implemented")
+}
+func (UnimplementedEnclaveProtoServer) DebugEventLogRelevancy(context.Context, *DebugEventLogRelevancyRequest) (*DebugEventLogRelevancyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DebugEventLogRelevancy not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -904,6 +918,24 @@ func (x *enclaveProtoStreamBatchesServer) Send(m *EncodedBatch) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _EnclaveProto_DebugEventLogRelevancy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DebugEventLogRelevancyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).DebugEventLogRelevancy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/DebugEventLogRelevancy",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).DebugEventLogRelevancy(ctx, req.(*DebugEventLogRelevancyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1002,6 +1034,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DebugTraceTransaction",
 			Handler:    _EnclaveProto_DebugTraceTransaction_Handler,
+		},
+		{
+			MethodName: "DebugEventLogRelevancy",
+			Handler:    _EnclaveProto_DebugEventLogRelevancy_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

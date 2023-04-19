@@ -79,6 +79,8 @@ service EnclaveProto {
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
 
   rpc StreamBatches(StreamBatchesRequest) returns (stream EncodedBatch) {}
+
+  rpc DebugEventLogRelevancy(DebugEventLogRelevancyRequest) returns (DebugEventLogRelevancyResponse) {}
 }
 
 message StreamBatchesRequest {
@@ -89,6 +91,13 @@ message EncodedBatch {
   bytes batch = 1;
 }
 
+message DebugEventLogRelevancyRequest{
+  bytes txHash = 1;
+}
+message DebugEventLogRelevancyResponse{
+  string msg = 1;
+  string error = 2;
+}
 
 message DebugTraceTransactionRequest{
   bytes txHash = 1;

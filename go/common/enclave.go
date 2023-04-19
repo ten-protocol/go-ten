@@ -120,6 +120,8 @@ type Enclave interface {
 	// StreamBatches - will stream the batches following the L2 batch hash given along with any newly created batches
 	// in the right order. All will be queued in the channel that has been returned
 	StreamBatches(*L2BatchHash) (chan StreamBatchResponse, func())
+	// DebugEventLogRelevancy returns the logs of a transaction
+	DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, error)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

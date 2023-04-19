@@ -1191,11 +1191,26 @@ func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *trac
 		return nil, nil
 	}
 
+	// ensure the debug namespace is enabled
 	if !e.config.DebugNamespaceEnabled {
 		return nil, fmt.Errorf("debug namespace not enabled")
 	}
 
 	return e.debugger.DebugTraceTransaction(context.Background(), txHash, config)
+}
+
+func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMessage, error) {
+	// ensure the enclave is running
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		return nil, nil
+	}
+
+	// ensure the debug namespace is enabled
+	if !e.config.DebugNamespaceEnabled {
+		return nil, fmt.Errorf("debug namespace not enabled")
+	}
+
+	return e.debugger.DebugEventLogRelevancy(txHash)
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction
