@@ -71,14 +71,6 @@ func NewChain(
 	}
 }
 
-type ChainInterface interface {
-	GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error)
-	GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error)
-	ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error)
-	ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error)
-	GetChainStateAtTransaction(batch *core.Batch, txIndex int, reexec uint64) (gethcore.Message, vm.BlockContext, *state.StateDB, error)
-}
-
 func (oc *ObscuroChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
 	// get account balance at certain block/height
 	balance, err := oc.GetBalanceAtBlock(accountAddress, blockNumber)
