@@ -36,7 +36,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -o ../bin/wallet_extension_linux
 
 # Standalone stage to perform npm install
-FROM node:lts-alpine as install-npm-deps
+FROM node:19-alpine as install-npm-deps
 
 COPY ./contracts/package.json /home/obscuro/go-obscuro/contracts/package.json
 WORKDIR /home/obscuro/go-obscuro/contracts
