@@ -272,7 +272,7 @@ func (h *host) Unsubscribe(id rpc.ID) {
 }
 
 func (h *host) Stop() {
-	h.logger.Info("Host received a stop command. Attemtping shutdown...")
+	h.logger.Info("Host received a stop command. Attempting shutdown...")
 	h.interrupter.Close()
 
 	if err := h.p2p.StopListening(); err != nil {

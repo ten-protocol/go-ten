@@ -430,6 +430,7 @@ func (c *Client) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatc
 
 	return batchChan, func() { stop = true }
 }
+
 func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
