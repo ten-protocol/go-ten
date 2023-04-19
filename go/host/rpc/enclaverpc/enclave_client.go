@@ -383,14 +383,14 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 
 func (c *Client) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatchResponse, func()) {
 	batchChan := make(chan common.StreamBatchResponse, 10)
-	timeoutCtx, cancel := context.WithCancel(context.Background())
+	cancelCtx, cancel := context.WithCancel(context.Background())
 
 	request := &generated.StreamBatchesRequest{}
 	if from != nil {
 		request.KnownHead = from.Bytes()
 	}
 
-	stream, err := c.protoClient.StreamBatches(timeoutCtx, request)
+	stream, err := c.protoClient.StreamBatches(cancelCtx, request)
 	if err != nil {
 		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
 		close(batchChan)
@@ -399,32 +399,32 @@ func (c *Client) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatc
 	}
 
 	stop := false
+	stopIt := func() {
+		c.logger.Info("Closing batch stream.")
+		if err := stream.CloseSend(); err != nil {
+			c.logger.Error("Client is unable to close batch stream", log.ErrKey, err)
+		}
+
+		cancel()
+		close(batchChan)
+	}
 
 	go func() {
-		defer cancel()
+		defer stopIt()
 		for {
-			// todo - atomic
 			if stop {
-				c.logger.Info("Closing batch stream.")
-				if err := stream.CloseSend(); err != nil {
-					c.logger.Error("Client is unable to close batch stream", log.ErrKey, err)
-				}
-
 				break
 			}
 
 			batchMsg, err := stream.Recv()
 			if err != nil {
 				c.logger.Error("Error receiving batch from stream.", log.ErrKey, err)
-				// log error?
-				close(batchChan)
 				break
 			}
 
 			var decoded common.StreamBatchResponse
 			if err := json.Unmarshal(batchMsg.Batch, &decoded); err != nil {
 				c.logger.Error("Error unmarshling batch from stream.", log.ErrKey, err)
-				close(batchChan)
 				break
 			}
 

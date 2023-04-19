@@ -898,6 +898,9 @@ func (h *host) startBatchStreaming() {
 	var lastBatch *common.ExtBatch = nil
 	for {
 		select {
+		case <-h.interrupter.Done():
+			stop()
+			return
 		case resp, ok := <-streamChan:
 			if !ok {
 				stop()
@@ -926,9 +929,6 @@ func (h *host) startBatchStreaming() {
 				lastBatch = resp.Batch
 				h.logger.Trace(fmt.Sprintf("Received batch from stream: %s", lastBatch.Hash().Hex()))
 			}
-		case <-h.interrupter.Done():
-			stop()
-			return
 		}
 	}
 }
