@@ -74,6 +74,8 @@ tools.
    MetaMask. Responses to sensitive RPC requests will now be encrypted with the viewing key and decrypted
    automatically by the wallet extension. Your balance in MetaMask will be set to 0 at the beginning.
    You can get testnet OBX from [faucet](https://docs.obscu.ro/testnet/faucet/) (you may need to switch to another network and back again to force MetaMask to refresh balance).
+   
+   Once a viewing key is generated it will be persisted across restarts of the wallet extension, saved in the user home space under `~/.obscuro/wallet_extension_persistence`.
 
 # Auditing the source
 
