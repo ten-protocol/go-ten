@@ -103,6 +103,7 @@ func (e *EthBlockProvider) streamBlocks(ctx context.Context, fromHeight *big.Int
 	for {
 		select {
 		case <-ctx.Done():
+			e.logger.Info("L1 block stream cancelled from context.")
 			return
 		default:
 			var block *types.Block

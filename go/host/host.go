@@ -395,6 +395,7 @@ func (h *host) startProcessing() {
 			}
 
 		case <-h.interrupter.Done():
+			blockStream.Stop()
 			return
 		}
 	}
