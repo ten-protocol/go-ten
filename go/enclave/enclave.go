@@ -381,11 +381,6 @@ func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) (chan common.Strea
 				break
 			}
 
-			// todo - remove testing breaker
-			if batch.NumberU64()%5 == 4 {
-				break
-			}
-
 			e.sendBatch(batch, encryptedBatchChan)
 		}
 	}()
@@ -915,6 +910,10 @@ func (e *enclaveImpl) Stop() error {
 
 	if e.profiler != nil {
 		return e.profiler.Stop()
+	}
+
+	if e.registry != nil {
+		e.registry.Unsubscribe()
 	}
 
 	time.Sleep(time.Second)

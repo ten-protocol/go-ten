@@ -109,8 +109,10 @@ func (br *batchRegistry) Subscribe() chan *core.Batch {
 func (br *batchRegistry) Unsubscribe() {
 	br.subscriptionMutex.Lock()
 	defer br.subscriptionMutex.Unlock()
-	close(*br.subscription)
-	br.subscription = nil
+	if br.subscription != nil {
+		close(*br.subscription)
+		br.subscription = nil
+	}
 }
 
 func (br *batchRegistry) FindAncestralBatchFor(block *common.L1Block) (*core.Batch, error) {

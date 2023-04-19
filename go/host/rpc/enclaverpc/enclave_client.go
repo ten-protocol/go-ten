@@ -405,6 +405,7 @@ func (c *Client) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatc
 		for {
 			// todo - atomic
 			if stop {
+				c.logger.Info("Closing batch stream.")
 				if err := stream.CloseSend(); err != nil {
 					c.logger.Error("Client is unable to close batch stream", log.ErrKey, err)
 				}
@@ -431,7 +432,9 @@ func (c *Client) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatc
 		}
 	}()
 
-	return batchChan, func() { stop = true }
+	return batchChan, func() {
+		stop = true
+	}
 }
 
 func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, error) {
