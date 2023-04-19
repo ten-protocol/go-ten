@@ -230,7 +230,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 		}(client)
 	}
 
-	if waitTimeout(&wg, 30*time.Second) {
+	if waitTimeout(&wg, 2*time.Minute) {
 		panic("Timed out waiting for the Obscuro nodes to stop")
 	} else {
 		testlog.Logger().Info("Obscuro nodes stopped")

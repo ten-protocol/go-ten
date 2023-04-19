@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -54,7 +55,8 @@ type host struct {
 	enclaveClient common.Enclave       // For communication with the enclave
 
 	// control the host lifecycle
-	interrupter breaker.Interface
+	interrupter   breaker.Interface
+	shutdownGroup sync.WaitGroup
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
@@ -274,6 +276,7 @@ func (h *host) Unsubscribe(id rpc.ID) {
 func (h *host) Stop() {
 	h.logger.Info("Host received a stop command. Attempting shutdown...")
 	h.interrupter.Close()
+	h.shutdownGroup.Wait()
 
 	if err := h.p2p.StopListening(); err != nil {
 		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
@@ -861,6 +864,10 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 
 func (h *host) startBatchProduction() {
 	defer h.logger.Info("Stopping batch production")
+
+	h.shutdownGroup.Add(1)
+	defer h.shutdownGroup.Done()
+
 	interval := h.config.BatchInterval
 	if interval == 0 {
 		interval = 1 * time.Second
@@ -882,6 +889,9 @@ func (h *host) startBatchProduction() {
 
 func (h *host) startBatchStreaming() {
 	defer h.logger.Info("Stopping batch streaming")
+
+	h.shutdownGroup.Add(1)
+	defer h.shutdownGroup.Done()
 
 	// TODO: Update this to start from persisted head
 	streamChan, stop := h.enclaveClient.StreamBatches(nil)
@@ -925,6 +935,10 @@ func (h *host) startBatchStreaming() {
 
 func (h *host) startRollupProduction() {
 	defer h.logger.Info("Stopping rollup production")
+
+	h.shutdownGroup.Add(1)
+	defer h.shutdownGroup.Done()
+
 	interval := h.config.RollupInterval
 	if interval == 0 {
 		interval = 5 * time.Second

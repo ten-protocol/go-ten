@@ -73,6 +73,7 @@ func NewClient(config *config.HostConfig, logger gethlog.Logger) *Client {
 }
 
 func (c *Client) StopClient() error {
+	c.logger.Info("Closing rpc server connection.")
 	return c.connection.Close()
 }
 
@@ -205,6 +206,8 @@ func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTx
 }
 
 func (c *Client) Stop() error {
+	c.logger.Info("Shutting down enclave client.")
+
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 

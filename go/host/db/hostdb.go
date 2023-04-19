@@ -37,6 +37,7 @@ type DB struct {
 
 // Stop is especially important for graceful shutdown of LevelDB as it may flush data to disk that is currently in cache
 func (db *DB) Stop() error {
+	db.logger.Info("Closing the host DB.")
 	err := db.kvStore.Close()
 	if err != nil {
 		return err
