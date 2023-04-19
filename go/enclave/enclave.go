@@ -69,9 +69,9 @@ type enclaveImpl struct {
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
-	liteChain l2chain.ChainInterface
-	service   services.ObscuroService
-	registry  components.BatchRegistry
+	chain    l2chain.ChainInterface
+	service  services.ObscuroService
+	registry components.BatchRegistry
 
 	// todo (#627) - use the ethconfig.Config instead
 	GlobalGasCap uint64   //         5_000_000_000, // todo (#627) - make config
@@ -215,7 +215,7 @@ func NewEnclave(
 		service = services.NewValidator(consumer, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, logger)
 	}
 
-	liteChain := l2chain.NewLite(
+	chain := l2chain.NewChain(
 		config.HostID,
 		config.NodeType,
 		storage,
@@ -233,7 +233,7 @@ func NewEnclave(
 	}
 
 	// TODO ensure debug is allowed/disallowed
-	debug := debugger.New(liteChain, storage, &chainConfig)
+	debug := debugger.New(chain, storage, &chainConfig)
 
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
@@ -255,9 +255,9 @@ func NewEnclave(
 		debugger:              debug,
 		stopInterrupt:         new(int32),
 
-		liteChain: liteChain,
-		registry:  registry,
-		service:   service,
+		chain:    chain,
+		registry: registry,
+		service:  service,
 
 		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
 		BaseFee:      gethcommon.Big0,
@@ -566,7 +566,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) respon
 		return responses.AsEncryptedError(err, encryptor)
 	}
 
-	execResult, err := e.liteChain.ObsCall(apiArgs, blkNumber)
+	execResult, err := e.chain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
 		evmErr, err := serializeEVMError(err)
@@ -869,7 +869,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return responses.AsEncryptedError(err, encryptor)
 	}
 
-	encryptAddress, balance, err := e.liteChain.GetBalance(*accountAddress, blockNumber)
+	encryptAddress, balance, err := e.chain.GetBalance(*accountAddress, blockNumber)
 	if err != nil {
 		err = fmt.Errorf("unable to get balance - %w", err)
 		return responses.AsEncryptedError(err, encryptor)
@@ -1099,7 +1099,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 	}
 	// Recap the highest gas limit with account's available balance.
 	if feeCap.BitLen() != 0 { //nolint:nestif
-		balance, err := e.liteChain.GetBalanceAtBlock(*args.From, blkNumber)
+		balance, err := e.chain.GetBalanceAtBlock(*args.From, blkNumber)
 		if err != nil {
 			return 0, fmt.Errorf("unable to fetch account balance - %w", err)
 		}
@@ -1217,7 +1217,7 @@ func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMe
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
 func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
 	args.Gas = (*hexutil.Uint64)(&gas)
-	result, err := e.liteChain.ObsCallAtBlock(args, blkNumber)
+	result, err := e.chain.ObsCallAtBlock(args, blkNumber)
 	if err != nil {
 		if errors.Is(err, gethcore.ErrIntrinsicGas) {
 			return true, nil, nil // Special case, raise gas limit

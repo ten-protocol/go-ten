@@ -618,7 +618,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 }
 
 func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber, w wallet.Wallet, expectedAmount *big.Int) error {
-	balance, err := enclave.(*enclaveImpl).liteChain.GetBalanceAtBlock(w.Address(), &blkNumber)
+	balance, err := enclave.(*enclaveImpl).chain.GetBalanceAtBlock(w.Address(), &blkNumber)
 	if err != nil {
 		return err
 	}
