@@ -55,13 +55,13 @@ func NewValidator(
 	}
 }
 
-func (ov *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, error) {
+func (val *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, error) {
 	// genesis
 	if incomingBatch.NumberU64() != 0 {
 		return false, nil
 	}
 
-	batch, _, err := ov.batchProducer.CreateGenesisState(incomingBatch.Header.L1Proof, ov.sequencerID, incomingBatch.Header.Time)
+	batch, _, err := val.batchProducer.CreateGenesisState(incomingBatch.Header.L1Proof, val.sequencerID, incomingBatch.Header.Time)
 	if err != nil {
 		return true, err
 	}
@@ -70,32 +70,32 @@ func (ov *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, err
 		return true, fmt.Errorf("received bad genesis batch")
 	}
 
-	return true, ov.batchRegistry.StoreBatch(incomingBatch, nil)
+	return true, val.batchRegistry.StoreBatch(incomingBatch, nil)
 }
 
-func (ov *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
-	if handled, err := ov.handleGenesisBatch(incomingBatch); handled {
+func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
+	if handled, err := val.handleGenesisBatch(incomingBatch); handled {
 		return err
 	}
 
-	if batch, err := ov.batchRegistry.GetBatch(*incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
+	if batch, err := val.batchRegistry.GetBatch(*incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return err
 	} else if batch != nil {
 		return nil // already know about this one
 	}
 
-	if err := ov.CheckSequencerSignature(incomingBatch.Hash(), &incomingBatch.Header.Agg, incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
+	if err := val.CheckSequencerSignature(incomingBatch.Hash(), &incomingBatch.Header.Agg, incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
 		return err
 	}
 
-	cb, err := ov.batchProducer.ComputeBatch(&components.BatchContext{
+	cb, err := val.batchProducer.ComputeBatch(&components.BatchContext{
 		BlockPtr:     incomingBatch.Header.L1Proof,
 		ParentPtr:    incomingBatch.Header.ParentHash,
 		Transactions: incomingBatch.Transactions,
 		AtTime:       incomingBatch.Header.Time,
 		Randomness:   incomingBatch.Header.MixDigest,
 		Creator:      incomingBatch.Header.Agg,
-		ChainConfig:  ov.chainConfig,
+		ChainConfig:  val.chainConfig,
 	})
 	if err != nil {
 		return fmt.Errorf("failed computing batch. Cause: %w", err)
@@ -109,24 +109,24 @@ func (ov *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
 		return fmt.Errorf("cannot commit stateDB for incoming valid batch. Cause: %w", err)
 	}
 
-	return ov.batchRegistry.StoreBatch(incomingBatch, cb.Receipts)
+	return val.batchRegistry.StoreBatch(incomingBatch, cb.Receipts)
 }
 
-func (ov *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	ingestion, err := ov.blockConsumer.ConsumeBlock(br, isLatest)
+func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
+	ingestion, err := val.blockConsumer.ConsumeBlock(br, isLatest)
 	if err != nil {
 		return nil, err
 	}
 
-	rollups, err := ov.rollupConsumer.ProcessL1Block(br)
+	rollups, err := val.rollupConsumer.ProcessL1Block(br)
 	if err != nil {
 		// todo - log err?
-		ov.logger.Error("Encountered error processing l1 block", log.ErrKey, err)
+		val.logger.Error("Encountered error processing l1 block", log.ErrKey, err)
 		return ingestion, nil
 	}
 
 	for _, rollup := range rollups {
-		if err := ov.verifyRollup(rollup); err != nil {
+		if err := val.verifyRollup(rollup); err != nil {
 			return nil, err
 		}
 	}
@@ -134,28 +134,28 @@ func (ov *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool)
 	return ingestion, nil
 }
 
-func (ov *obsValidator) verifyRollup(rollup *core.Rollup) error {
+func (val *obsValidator) verifyRollup(rollup *core.Rollup) error {
 	for _, batch := range rollup.Batches {
-		if err := ov.ValidateAndStoreBatch(batch); err != nil {
-			ov.logger.Error("Attempted to store incorrect batch: %s", batch.Hash().Hex())
+		if err := val.ValidateAndStoreBatch(batch); err != nil {
+			val.logger.Error("Attempted to store incorrect batch: %s", batch.Hash().Hex())
 			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
 		}
 	}
 	return nil
 }
 
-func (ov *obsValidator) CheckSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
+func (val *obsValidator) CheckSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
 	// todo (#718) - sequencer identities should be retrieved from the L1 management contract
-	if !bytes.Equal(aggregator.Bytes(), ov.sequencerID.Bytes()) {
-		return fmt.Errorf("expected batch to be produced by sequencer %s, but was produced by %s", ov.sequencerID.Hex(), aggregator.Hex())
+	if !bytes.Equal(aggregator.Bytes(), val.sequencerID.Bytes()) {
+		return fmt.Errorf("expected batch to be produced by sequencer %s, but was produced by %s", val.sequencerID.Hex(), aggregator.Hex())
 	}
 
 	if sigR == nil || sigS == nil {
 		return fmt.Errorf("missing signature on batch")
 	}
 
-	pubKey, err := ov.storage.FetchAttestedKey(*aggregator)
+	pubKey, err := val.storage.FetchAttestedKey(*aggregator)
 	if err != nil {
 		return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", aggregator, err)
 	}
@@ -166,7 +166,7 @@ func (ov *obsValidator) CheckSequencerSignature(headerHash *gethcommon.Hash, agg
 	return nil
 }
 
-func (ov *obsValidator) SubmitTransaction(transaction *common.L2Tx) error {
-	ov.logger.Trace(fmt.Sprintf("Transaction %s submitted to validator but there is nothing to do with it.", transaction.Hash().Hex()))
+func (val *obsValidator) SubmitTransaction(transaction *common.L2Tx) error {
+	val.logger.Trace(fmt.Sprintf("Transaction %s submitted to validator but there is nothing to do with it.", transaction.Hash().Hex()))
 	return nil
 }

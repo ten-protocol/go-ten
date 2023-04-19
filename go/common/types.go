@@ -15,8 +15,14 @@ type (
 	StateRoot = common.Hash
 	TxHash    = common.Hash
 
+	// EncryptedSubscriptionLogs - Alias for the event subscription updates going
+	// out of the enclave.
 	EncryptedSubscriptionLogs = map[rpc.ID][]byte
-	StreamBatchResponse       struct {
+
+	// StreamBatchResponse - the struct encoded for each response message
+	// when streaming batches out of the enclave.
+	// The properties inside need to be encrypted according to the privacy rules.
+	StreamBatchResponse struct {
 		Batch *ExtBatch
 		Logs  EncryptedSubscriptionLogs
 	}
