@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -28,16 +27,12 @@ import (
 )
 
 type ObscuroChain struct {
-	hostID      gethcommon.Address
-	nodeType    common.NodeType
 	chainConfig *params.ChainConfig
-	sequencerID gethcommon.Address
 
 	storage db.Storage
 	genesis *genesis.Genesis
 
-	blockProcessingMutex sync.Mutex
-	logger               gethlog.Logger
+	logger gethlog.Logger
 
 	// Gas usage values
 	// todo (#627) - use the ethconfig.Config instead
@@ -47,27 +42,20 @@ type ObscuroChain struct {
 }
 
 func NewChain(
-	hostID gethcommon.Address,
-	nodeType common.NodeType,
 	storage db.Storage,
 	chainConfig *params.ChainConfig,
-	sequencerID gethcommon.Address,
 	genesis *genesis.Genesis,
 	logger gethlog.Logger,
 	registry components.BatchRegistry,
 ) ChainInterface {
 	return &ObscuroChain{
-		hostID:               hostID,
-		nodeType:             nodeType,
-		storage:              storage,
-		chainConfig:          chainConfig,
-		blockProcessingMutex: sync.Mutex{},
-		logger:               logger,
-		GlobalGasCap:         5_000_000_000, // todo (#627) - make config
-		BaseFee:              gethcommon.Big0,
-		sequencerID:          sequencerID,
-		genesis:              genesis,
-		Registry:             registry,
+		storage:      storage,
+		chainConfig:  chainConfig,
+		logger:       logger,
+		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
+		BaseFee:      gethcommon.Big0,
+		genesis:      genesis,
+		Registry:     registry,
 	}
 }
 

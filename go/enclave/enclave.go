@@ -216,11 +216,8 @@ func NewEnclave(
 	}
 
 	chain := l2chain.NewChain(
-		config.HostID,
-		config.NodeType,
 		storage,
 		&chainConfig,
-		config.SequencerID,
 		genesis,
 		logger,
 		registry,
