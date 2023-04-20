@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+var InternalErrorStr = "Internal Error"
+
 // This is the encoded & encrypted form of a UserResponse[Type]
 type EncryptedUserResponse []byte
 

@@ -17,7 +17,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/host/p2p"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
+	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaveclient"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -135,7 +135,8 @@ func createSocketObscuroHostContainer(
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 	hostP2P := p2p.NewSocketP2PLayer(hostConfig, hostLogger.New(log.CmpKey, log.P2PCmp), metricsService.Registry())
-	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, id))
+	enclaveClient := enclaveclient.NewEnclaveRPCClient(hostConfig, testlog.Logger().New(log.NodeIDKey, id))
+	// enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, id))
 	rpcServer := clientrpc.NewServer(hostConfig, hostLogger)
 
 	return container.NewHostContainer(hostConfig, hostP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, rpcServer, hostLogger, metricsService)

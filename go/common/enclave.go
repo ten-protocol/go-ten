@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // Status represents the enclave's current status - the status and behaviour of the host is a function of the status of the enclave
@@ -25,6 +25,11 @@ const (
 
 // Enclave represents the API of the service that runs inside the TEE.
 type Enclave interface {
+	EnclaveInternal
+	EnclaveExternal
+}
+
+type EnclaveInternal interface {
 	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
 	Status() (Status, error)
 
@@ -45,11 +50,13 @@ type Enclave interface {
 	// submitting a block before receiving ancestors of it, will result in it being ignored
 	SubmitL1Block(block L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, error)
 
-	// SubmitTx - user transactions
-	SubmitTx(tx EncryptedTx) responses.RawTx
-
 	// SubmitBatch submits a batch received from the sequencer for processing.
 	SubmitBatch(batch *ExtBatch) error
+}
+
+type EnclaveExternal interface {
+	// SubmitTx - user transactions
+	SubmitTx(tx EncryptedTx) responses.RawTx
 
 	// ObsCall - Execute a smart contract to retrieve data. The equivalent of "Eth_call"
 	// Todo - return the result with a block delay. To prevent frontrunning.

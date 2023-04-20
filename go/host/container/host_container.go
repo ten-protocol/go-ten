@@ -3,6 +3,8 @@ package container
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaveclient"
+
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -14,7 +16,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/p2p"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -108,7 +109,8 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostConta
 	cfg.ID = ethWallet.Address()
 
 	fmt.Println("Connecting to the enclave...")
-	enclaveClient := enclaverpc.NewClient(cfg, logger)
+	enclaveClient := enclaveclient.NewEnclaveRPCClient(cfg, logger)
+	// enclaveClient := enclaverpc.NewClient(cfg, logger)
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
 	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, metricsService.Registry())
