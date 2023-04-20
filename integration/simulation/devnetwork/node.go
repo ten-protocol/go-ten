@@ -132,7 +132,6 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	// create an enclave client
 
 	enclaveClient := enclaveclient.NewEnclaveRPCClient(hostConfig, testlog.Logger().New(log.NodeIDKey, n.operatorIdx))
-	// enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, n.operatorIdx))
 	rpcServer := clientrpc.NewServer(hostConfig, n.logger)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&hostConfig.ManagementContractAddress, n.logger)
 	return hostcontainer.NewHostContainer(hostConfig, nodeP2p, n.l1Client, enclaveClient, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger))
