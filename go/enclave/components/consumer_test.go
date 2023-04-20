@@ -14,7 +14,7 @@ func TestInvalidBlocksAreRejected(t *testing.T) {
 	t.Skipf("skipping test that relied on l1blockchain previously which hasn't been used in a while")
 
 	// todo - how does this test even work, storage is never set and we attempt to fetch head block?
-	blockConsumer := blockConsumer{}
+	blockConsumer := l1BlockProcessor{}
 
 	invalidHeaders := []types.Header{
 		{ParentHash: common.HexToHash("0x0")},                                                            // Unknown ancestor.

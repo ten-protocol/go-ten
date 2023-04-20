@@ -25,8 +25,8 @@ type BlockIngestionType struct {
 	PreGenesis bool
 }
 
-type BlockConsumer interface {
-	ConsumeBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error)
+type L1BlockProcessor interface {
+	Process(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error)
 	GetHead() (*common.L1Block, error)
 }
 

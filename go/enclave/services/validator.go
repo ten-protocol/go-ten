@@ -19,7 +19,7 @@ import (
 )
 
 type obsValidator struct {
-	blockConsumer  components.BlockConsumer
+	blockConsumer  components.L1BlockProcessor
 	batchProducer  components.BatchProducer
 	batchRegistry  components.BatchRegistry
 	rollupConsumer components.RollupConsumer
@@ -32,7 +32,7 @@ type obsValidator struct {
 }
 
 func NewValidator(
-	consumer components.BlockConsumer,
+	consumer components.L1BlockProcessor,
 	producer components.BatchProducer,
 	registry components.BatchRegistry,
 	rollupConsumer components.RollupConsumer,
@@ -113,7 +113,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 }
 
 func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	ingestion, err := val.blockConsumer.ConsumeBlock(br, isLatest)
+	ingestion, err := val.blockConsumer.Process(br, isLatest)
 	if err != nil {
 		return nil, err
 	}

@@ -495,7 +495,7 @@ func (e *enclaveImpl) CreateBatch() (*common.ExtBatch, error) {
 		return nil, fmt.Errorf("shutting down")
 	}
 
-	batch, err := e.Sequencer().CreateBatch(nil)
+	batch, err := e.Sequencer().CreateBatch()
 	if err != nil {
 		return nil, err
 	}

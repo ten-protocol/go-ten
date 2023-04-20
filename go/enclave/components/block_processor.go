@@ -13,21 +13,21 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-type blockConsumer struct {
+type l1BlockProcessor struct {
 	storage              db.Storage
 	logger               gethlog.Logger
 	crossChainProcessors *crosschain.Processors
 }
 
-func NewBlockConsumer(storage db.Storage, cc *crosschain.Processors, logger gethlog.Logger) BlockConsumer {
-	return &blockConsumer{
+func NewBlockConsumer(storage db.Storage, cc *crosschain.Processors, logger gethlog.Logger) L1BlockProcessor {
+	return &l1BlockProcessor{
 		storage:              storage,
 		logger:               logger,
 		crossChainProcessors: cc,
 	}
 }
 
-func (bc *blockConsumer) ConsumeBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
+func (bc *l1BlockProcessor) Process(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
 	ingestion, err := bc.tryAndInsertBlock(br, isLatest)
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func (bc *blockConsumer) ConsumeBlock(br *common.BlockAndReceipts, isLatest bool
 	return ingestion, nil
 }
 
-func (bc *blockConsumer) tryAndInsertBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
+func (bc *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
 	block := br.Block
 
 	_, err := bc.storage.FetchBlock(block.Hash())
@@ -73,7 +73,7 @@ func (bc *blockConsumer) tryAndInsertBlock(br *common.BlockAndReceipts, isLatest
 	return ingestionType, nil
 }
 
-func (bc *blockConsumer) ingestBlock(block *common.L1Block, isLatest bool) (*BlockIngestionType, error) {
+func (bc *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*BlockIngestionType, error) {
 	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
 	prevL1Head, err := bc.storage.FetchHeadBlock()
 
@@ -105,6 +105,6 @@ func (bc *blockConsumer) ingestBlock(block *common.L1Block, isLatest bool) (*Blo
 	return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: false}, nil
 }
 
-func (bc *blockConsumer) GetHead() (*common.L1Block, error) {
+func (bc *l1BlockProcessor) GetHead() (*common.L1Block, error) {
 	return bc.storage.FetchHeadBlock()
 }

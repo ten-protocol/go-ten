@@ -23,7 +23,7 @@ import (
 )
 
 type sequencer struct {
-	blockConsumer  components.BlockConsumer
+	blockConsumer  components.L1BlockProcessor
 	batchProducer  components.BatchProducer
 	batchRegistry  components.BatchRegistry
 	rollupProducer components.RollupProducer
@@ -44,7 +44,7 @@ type sequencer struct {
 }
 
 func NewSequencer(
-	consumer components.BlockConsumer,
+	consumer components.L1BlockProcessor,
 	producer components.BatchProducer,
 	registry components.BatchRegistry,
 	rollupProducer components.RollupProducer,
@@ -203,7 +203,7 @@ func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
 }
 
 func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	ingestion, err := s.blockConsumer.ConsumeBlock(br, isLatest)
+	ingestion, err := s.blockConsumer.Process(br, isLatest)
 	if err != nil {
 		return nil, err
 	}

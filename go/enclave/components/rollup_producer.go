@@ -34,7 +34,7 @@ type rollupProducer struct {
 	storage db.Storage
 
 	registry      BatchRegistry
-	blockConsumer BlockConsumer
+	blockConsumer L1BlockProcessor
 }
 
 func NewRollupProducer(
@@ -43,7 +43,7 @@ func NewRollupProducer(
 	ethereumChainID int64,
 	storage db.Storage,
 	registry BatchRegistry,
-	blockConsumer BlockConsumer,
+	blockConsumer L1BlockProcessor,
 	logger gethlog.Logger,
 ) RollupProducer {
 	return &rollupProducer{
