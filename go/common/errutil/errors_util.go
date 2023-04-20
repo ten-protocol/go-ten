@@ -12,29 +12,3 @@ var (
 	ErrNotFound = ethereum.NotFound
 	ErrNoImpl   = errors.New("not implemented")
 )
-
-// SystemError represents an error that's for system consumption only
-type SystemError struct {
-	msg string
-	err error
-}
-
-func NewSystemErr(err error) error {
-	return &SystemError{
-		msg: err.Error(),
-		err: err,
-	}
-}
-
-func (e SystemError) Error() string {
-	return e.msg
-}
-
-func (e SystemError) Unwrap() error {
-	return e.err
-}
-
-func (e SystemError) Is(target error) bool {
-	_, ok := target.(*SystemError) //nolint: errorlint
-	return ok || errors.Is(e.err, target)
-}
