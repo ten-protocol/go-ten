@@ -75,7 +75,7 @@ func NewSequencer(
 	}
 }
 
-func (s *sequencer) CreateBatch(block *common.L1Block) (*core.Batch, error) {
+func (s *sequencer) CreateBatch() (*core.Batch, error) {
 	s.batchProductionMutex.Lock()
 	defer s.batchProductionMutex.Unlock()
 
@@ -84,21 +84,19 @@ func (s *sequencer) CreateBatch(block *common.L1Block) (*core.Batch, error) {
 		return nil, fmt.Errorf("unknown genesis batch state. Cause: %w", err)
 	}
 
-	if block == nil {
-		// L1 Head is only updated when isLatest: true
-		// when a block is specified it will override this and allow
-		// building batches for unfinished forks.
-		block, err = s.blockConsumer.GetHead()
-		if err != nil {
-			return nil, fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
-		}
+	// L1 Head is only updated when isLatest: true
+	// when a block is specified it will override this and allow
+	// building batches for unfinished forks.
+	block, err := s.blockConsumer.GetHead()
+	if err != nil {
+		return nil, fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
 	}
 
 	if !hasGenesis {
 		return s.initGenesis(block)
 	}
 
-	return s.extendHead(block)
+	return s.createNewHeadBatch(block)
 }
 
 // TODO - This is iffy, the producer commits the stateDB
@@ -123,7 +121,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) (*core.Batch, error) {
 	return batch, nil
 }
 
-func (s *sequencer) extendHead(block *common.L1Block) (*core.Batch, error) {
+func (s *sequencer) createNewHeadBatch(block *common.L1Block) (*core.Batch, error) {
 	headBatch, err := s.batchRegistry.GetHeadBatch()
 	if err != nil {
 		return nil, err
