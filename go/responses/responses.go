@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+var InternalErrMsg = "internal system error"
+
 // This is the encoded & encrypted form of a UserResponse[Type]
 type EncryptedUserResponse []byte
 
@@ -47,6 +49,13 @@ func AsEmptyResponse() EnclaveResponse {
 	return EnclaveResponse{
 		EncUserResponse: nil,
 		Err:             nil,
+	}
+}
+
+// AsSystemErr - generates a plaintext response containing a visible error.
+func AsSystemErr() EnclaveResponse {
+	return EnclaveResponse{
+		Err: &InternalErrMsg,
 	}
 }
 
