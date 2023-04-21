@@ -222,13 +222,8 @@ func (s *RPCServer) CreateRollup(_ context.Context, _ *generated.CreateRollupReq
 }
 
 func (s *RPCServer) CreateBatch(_ context.Context, _ *generated.CreateBatchRequest) (*generated.CreateBatchResponse, error) {
-	rollup, err := s.enclave.CreateBatch()
-
-	msg := rpc.ToExtBatchMsg(rollup)
-
-	return &generated.CreateBatchResponse{
-		Msg: &msg,
-	}, err
+	err := s.enclave.CreateBatch()
+	return &generated.CreateBatchResponse{}, err
 }
 
 func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.DebugTraceTransactionRequest) (*generated.DebugTraceTransactionResponse, error) {

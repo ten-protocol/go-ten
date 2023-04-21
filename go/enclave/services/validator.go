@@ -56,11 +56,6 @@ func NewValidator(
 }
 
 func (val *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, error) {
-	// genesis
-	if incomingBatch.NumberU64() != 0 {
-		return false, nil
-	}
-
 	batch, _, err := val.batchProducer.CreateGenesisState(incomingBatch.Header.L1Proof, val.sequencerID, incomingBatch.Header.Time)
 	if err != nil {
 		return true, err
@@ -74,8 +69,10 @@ func (val *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, er
 }
 
 func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error {
-	if handled, err := val.handleGenesisBatch(incomingBatch); handled {
-		return err
+	if incomingBatch.NumberU64() == 0 {
+		if handled, err := val.handleGenesisBatch(incomingBatch); handled {
+			return err
+		}
 	}
 
 	if batch, err := val.batchRegistry.GetBatch(*incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -88,6 +85,11 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		return err
 	}
 
+	// Validators recompute the entire batch using the same batch context
+	// if they have all necessary prerequisites like having the l1 block processed
+	// and the parent hash. This recomputed batch is then checked against the incoming batch.
+	// If the sequencer has tampered with something the hash will not add up and validation will
+	// produce an error.
 	cb, err := val.batchProducer.ComputeBatch(&components.BatchContext{
 		BlockPtr:     incomingBatch.Header.L1Proof,
 		ParentPtr:    incomingBatch.Header.ParentHash,

@@ -22,7 +22,7 @@ type ObscuroService interface {
 
 type Sequencer interface {
 	// CreateBatch - creates a new head batch for the latest known L1 head block.
-	CreateBatch() (*core.Batch, error)
+	CreateBatch() error
 
 	// CreateRollup - creates a new rollup from the latest recorded rollup in the head l1 chain
 	// and adds as many batches to it as possible.

@@ -1,6 +1,6 @@
 // Package debugger: This file was copied/adapted from geth - go-ethereum/eth/tracers
 //
-//nolint
+// nolint
 package debugger
 
 import (
@@ -36,12 +36,12 @@ const (
 )
 
 type Debugger struct {
-	chain       l2chain.ChainInterface
+	chain       l2chain.ObscuroChain
 	storage     db.Storage
 	chainConfig *params.ChainConfig
 }
 
-func New(chain l2chain.ChainInterface, storage db.Storage, config *params.ChainConfig) *Debugger {
+func New(chain l2chain.ObscuroChain, storage db.Storage, config *params.ChainConfig) *Debugger {
 	return &Debugger{
 		chain:       chain,
 		chainConfig: config,

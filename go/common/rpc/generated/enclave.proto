@@ -110,7 +110,6 @@ message DebugTraceTransactionResponse{
 
 message CreateBatchRequest{}
 message CreateBatchResponse{
-  ExtBatchMsg msg = 1;
   string error = 2;
 }
 

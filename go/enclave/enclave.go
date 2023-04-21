@@ -69,7 +69,7 @@ type enclaveImpl struct {
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
-	chain    l2chain.ChainInterface
+	chain    l2chain.ObscuroChain
 	service  services.ObscuroService
 	registry components.BatchRegistry
 
@@ -490,17 +490,12 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
 	return nil
 }
 
-func (e *enclaveImpl) CreateBatch() (*common.ExtBatch, error) {
+func (e *enclaveImpl) CreateBatch() error {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, fmt.Errorf("shutting down")
+		return fmt.Errorf("shutting down")
 	}
 
-	batch, err := e.Sequencer().CreateBatch()
-	if err != nil {
-		return nil, err
-	}
-
-	return batch.ToExtBatch(e.transactionBlobCrypto), nil
+	return e.Sequencer().CreateBatch()
 }
 
 func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, error) {

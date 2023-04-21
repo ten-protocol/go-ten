@@ -108,7 +108,7 @@ type Enclave interface {
 
 	// CreateBatch - creates a new head batch extending the previous one for the latest known L1 head if the node is
 	// a sequencer. Will panic otherwise.
-	CreateBatch() (*ExtBatch, error)
+	CreateBatch() error
 
 	// CreateRollup - will create a new rollup by going through the sequencer if the node is a sequencer
 	// or panic otherwise.

@@ -26,7 +26,7 @@ import (
 	"github.com/status-im/keycard-go/hexutils"
 )
 
-type ObscuroChain struct {
+type obscuroChain struct {
 	chainConfig *params.ChainConfig
 
 	storage db.Storage
@@ -47,8 +47,8 @@ func NewChain(
 	genesis *genesis.Genesis,
 	logger gethlog.Logger,
 	registry components.BatchRegistry,
-) ChainInterface {
-	return &ObscuroChain{
+) ObscuroChain {
+	return &obscuroChain{
 		storage:      storage,
 		chainConfig:  chainConfig,
 		logger:       logger,
@@ -59,7 +59,7 @@ func NewChain(
 	}
 }
 
-func (oc *ObscuroChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
+func (oc *obscuroChain) GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error) {
 	// get account balance at certain block/height
 	balance, err := oc.GetBalanceAtBlock(accountAddress, blockNumber)
 	if err != nil {
@@ -96,7 +96,7 @@ func (oc *ObscuroChain) GetBalance(accountAddress gethcommon.Address, blockNumbe
 	return &address, balance, nil
 }
 
-func (oc *ObscuroChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
+func (oc *obscuroChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
 	chainState, err := oc.Registry.GetBatchStateAtHeight(blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
@@ -105,7 +105,7 @@ func (oc *ObscuroChain) GetBalanceAtBlock(accountAddr gethcommon.Address, blockN
 	return (*hexutil.Big)(chainState.GetBalance(accountAddr)), nil
 }
 
-func (oc *ObscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+func (oc *obscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
 	result, err := oc.ObsCallAtBlock(apiArgs, blockNumber)
 	if err != nil {
 		oc.logger.Info(fmt.Sprintf("Obs_Call: failed to execute contract %s.", apiArgs.To), log.CtrErrKey, err.Error())
@@ -124,7 +124,7 @@ func (oc *ObscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *g
 	return result, nil
 }
 
-func (oc *ObscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
 	// todo (#627) - review this during gas mechanics implementation
 	callMsg, err := apiArgs.ToMessage(oc.GlobalGasCap, oc.BaseFee)
 	if err != nil {
@@ -169,7 +169,7 @@ func (oc *ObscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 
 // GetChainStateAtTransaction Returns the state of the chain at certain block height after executing transactions up to the selected transaction
 // TODO make this cacheable
-func (oc *ObscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex int, reexec uint64) (gethcore.Message, vm.BlockContext, *state.StateDB, error) {
+func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex int, reexec uint64) (gethcore.Message, vm.BlockContext, *state.StateDB, error) {
 	// Short circuit if it's genesis batch.
 	if batch.NumberU64() == 0 {
 		return nil, vm.BlockContext{}, nil, errors.New("no transaction in genesis")
@@ -223,7 +223,7 @@ func (oc *ObscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 }
 
 // Returns the whether the account is a contract or not at a certain height
-func (oc *ObscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
+func (oc *obscuroChain) isAccountContractAtBlock(accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (bool, error) {
 	chainState, err := oc.Registry.GetBatchStateAtHeight(blockNumber)
 	if err != nil {
 		return false, fmt.Errorf("unable to get blockchain state - %w", err)

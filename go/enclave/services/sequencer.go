@@ -75,13 +75,13 @@ func NewSequencer(
 	}
 }
 
-func (s *sequencer) CreateBatch() (*core.Batch, error) {
+func (s *sequencer) CreateBatch() error {
 	s.batchProductionMutex.Lock()
 	defer s.batchProductionMutex.Unlock()
 
 	hasGenesis, err := s.batchRegistry.HasGenesisBatch()
 	if err != nil {
-		return nil, fmt.Errorf("unknown genesis batch state. Cause: %w", err)
+		return fmt.Errorf("unknown genesis batch state. Cause: %w", err)
 	}
 
 	// L1 Head is only updated when isLatest: true
@@ -89,7 +89,7 @@ func (s *sequencer) CreateBatch() (*core.Batch, error) {
 	// building batches for unfinished forks.
 	block, err := s.blockConsumer.GetHead()
 	if err != nil {
-		return nil, fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
+		return fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
 	}
 
 	if !hasGenesis {
@@ -100,31 +100,31 @@ func (s *sequencer) CreateBatch() (*core.Batch, error) {
 }
 
 // TODO - This is iffy, the producer commits the stateDB
-func (s *sequencer) initGenesis(block *common.L1Block) (*core.Batch, error) {
+func (s *sequencer) initGenesis(block *common.L1Block) error {
 	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(block.Hash(), s.hostID, uint64(time.Now().Unix()))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := s.mempool.AddMempoolTx(msgBusTx); err != nil {
-		return nil, fmt.Errorf("failed to queue message bus creation transaction to genesis. Cause: %w", err)
+		return fmt.Errorf("failed to queue message bus creation transaction to genesis. Cause: %w", err)
 	}
 
 	if err := s.signBatch(batch); err != nil {
-		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
+		return fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
 	if err := s.batchRegistry.StoreBatch(batch, nil); err != nil {
-		return nil, fmt.Errorf("failed storing batch. Cause: %w", err)
+		return fmt.Errorf("failed storing batch. Cause: %w", err)
 	}
 
-	return batch, nil
+	return nil
 }
 
-func (s *sequencer) createNewHeadBatch(block *common.L1Block) (*core.Batch, error) {
+func (s *sequencer) createNewHeadBatch(block *common.L1Block) error {
 	headBatch, err := s.batchRegistry.GetHeadBatch()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// We find the ancestral batch for the block as it might be different
@@ -133,11 +133,11 @@ func (s *sequencer) createNewHeadBatch(block *common.L1Block) (*core.Batch, erro
 	// the correct batch that is building on the latest known final chain
 	ancestralBatch, err := s.batchRegistry.FindAncestralBatchFor(block)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if ancestralBatch.NumberU64() != headBatch.NumberU64() {
-		return nil, fmt.Errorf("cant continue head for block that has decadent ancestor. Cause: %w", err)
+		return fmt.Errorf("cant continue head for block that has decadent ancestor. Cause: %w", err)
 	}
 
 	// After we have determined that the ancestral batch we have is identical to head
@@ -147,14 +147,14 @@ func (s *sequencer) createNewHeadBatch(block *common.L1Block) (*core.Batch, erro
 
 	transactions, err := s.mempool.CurrentTxs(headBatch, s.storage)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// As we are incrementing the chain to a new max height, across all forks,
 	// we generate the randomness for this batch.
 	rand, err := crypto.GeneratePublicRandomness()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	cb, err := s.batchProducer.ComputeBatch(&components.BatchContext{
@@ -167,26 +167,26 @@ func (s *sequencer) createNewHeadBatch(block *common.L1Block) (*core.Batch, erro
 		ChainConfig:  s.chainConfig,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed computing batch. Cause: %w", err)
+		return fmt.Errorf("failed computing batch. Cause: %w", err)
 	}
 
 	if _, err := cb.Commit(true); err != nil {
-		return nil, fmt.Errorf("failed committing batch state. Cause: %w", err)
+		return fmt.Errorf("failed committing batch state. Cause: %w", err)
 	}
 
 	if err := s.signBatch(cb.Batch); err != nil {
-		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
+		return fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
 	if err := s.batchRegistry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
-		return nil, fmt.Errorf("failed storing batch. Cause: %w", err)
+		return fmt.Errorf("failed storing batch. Cause: %w", err)
 	}
 
 	if err := s.mempool.RemoveMempoolTxs(cb.Batch, s.storage); err != nil {
-		return nil, fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
+		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
 	}
 
-	return cb.Batch, nil
+	return nil
 }
 
 func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {

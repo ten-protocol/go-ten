@@ -11,9 +11,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
-// ChainInterface - the interface that provides the data access layer to the obscuro l2.
+// ObscuroChain - the interface that provides the data access layer to the obscuro l2.
 // Operations here should be read only.
-type ChainInterface interface {
+type ObscuroChain interface {
 	// GetBalance - Returns the balance of an address given the standard provided BlockNumber which in our case is batch number.
 	// Note this method also returns the address we should encrypt the balance for, unlike `GetBalanceAtBlock`
 	GetBalance(accountAddress gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*gethcommon.Address, *hexutil.Big, error)

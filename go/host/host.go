@@ -877,7 +877,7 @@ func (h *host) startBatchProduction() {
 		select {
 		case <-batchProdTicker.C:
 			h.logger.Info("create batch")
-			_, err := h.enclaveClient.CreateBatch()
+			err := h.enclaveClient.CreateBatch()
 			if err != nil {
 				h.logger.Warn("unable to produce batch", log.ErrKey, err)
 			}
