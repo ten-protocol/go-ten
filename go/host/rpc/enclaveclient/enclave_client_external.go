@@ -9,11 +9,11 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/responses"
+	"google.golang.org/grpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"google.golang.org/grpc"
 )
 
 // EnclaveExternalClient implements the common.EnclaveExternal interface for external facing requests (RPC)

@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
@@ -15,6 +14,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/config"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 // EnclaveInternalClient implements the common.EnclaveInternal interface for internal requests (host)

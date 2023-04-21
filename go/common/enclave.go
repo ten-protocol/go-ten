@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rpc"
 )
 
 // Status represents the enclave's current status - the status and behaviour of the host is a function of the status of the enclave
