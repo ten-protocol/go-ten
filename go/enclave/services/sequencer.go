@@ -85,18 +85,18 @@ func (s *sequencer) CreateBatch() error {
 	}
 
 	// L1 Head is only updated when isLatest: true
-	// when a block is specified it will override this and allow
+	// when a l1HeadBlock is specified it will override this and allow
 	// building batches for unfinished forks.
-	block, err := s.blockConsumer.GetHead()
+	l1HeadBlock, err := s.blockConsumer.GetHead()
 	if err != nil {
 		return fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
 	}
 
 	if !hasGenesis {
-		return s.initGenesis(block)
+		return s.initGenesis(l1HeadBlock)
 	}
 
-	return s.createNewHeadBatch(block)
+	return s.createNewHeadBatch(l1HeadBlock)
 }
 
 // TODO - This is iffy, the producer commits the stateDB
@@ -121,7 +121,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 	return nil
 }
 
-func (s *sequencer) createNewHeadBatch(block *common.L1Block) error {
+func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	headBatch, err := s.batchRegistry.GetHeadBatch()
 	if err != nil {
 		return err
@@ -131,7 +131,7 @@ func (s *sequencer) createNewHeadBatch(block *common.L1Block) error {
 	// than the current head; Alternatively we might have just processed a fork
 	// which would've updated the head to an unfinished fork so we need to get
 	// the correct batch that is building on the latest known final chain
-	ancestralBatch, err := s.batchRegistry.FindAncestralBatchFor(block)
+	ancestralBatch, err := s.batchRegistry.FindAncestralBatchFor(l1HeadBlock)
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func (s *sequencer) createNewHeadBatch(block *common.L1Block) error {
 	}
 
 	cb, err := s.batchProducer.ComputeBatch(&components.BatchContext{
-		BlockPtr:     block.Hash(),
+		BlockPtr:     l1HeadBlock.Hash(),
 		ParentPtr:    *headBatch.Hash(),
 		Transactions: transactions,
 		AtTime:       uint64(time.Now().Unix()), // todo - time is set only here; take from l1 block?
