@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc/connectivity"
 )
 
-// Client implements enclave.Enclave and should be used by the host when communicating with the enclave via RPC.
+// EnclaveInternalClient implements the common.EnclaveInternal interface for internal requests (host)
 type EnclaveInternalClient struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
@@ -30,7 +30,7 @@ func NewEnclaveInternalClient(
 	connection *grpc.ClientConn,
 	config *config.HostConfig,
 	logger gethlog.Logger,
-) *EnclaveInternalClient {
+) common.EnclaveInternal {
 	return &EnclaveInternalClient{
 		protoClient: protoClient,
 		connection:  connection,
@@ -144,4 +144,15 @@ func (c *EnclaveInternalClient) Stop() error {
 		return fmt.Errorf("could not stop enclave: %w", err)
 	}
 	return nil
+}
+
+func (c *EnclaveInternalClient) GenerateRollup() (*common.ExtRollup, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	resp, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{})
+	if err != nil {
+		return nil, err
+	}
+	return rpc.FromExtRollupMsg(resp.Msg), nil
 }

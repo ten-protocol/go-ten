@@ -33,6 +33,12 @@ type EnclaveInternal interface {
 	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
 	Status() (Status, error)
 
+	// Stop gracefully stops the enclave
+	Stop() error
+
+	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
+	StopClient() error
+
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation() (*AttestationReport, error)
 
@@ -52,6 +58,8 @@ type EnclaveInternal interface {
 
 	// SubmitBatch submits a batch received from the sequencer for processing.
 	SubmitBatch(batch *ExtBatch) error
+
+	GenerateRollup() (*ExtRollup, error)
 }
 
 type EnclaveExternal interface {
@@ -64,9 +72,6 @@ type EnclaveExternal interface {
 
 	// GetTransactionCount returns the nonce of the wallet with the given address (encrypted with the acc viewing key)
 	GetTransactionCount(encryptedParams EncryptedParamsGetTxCount) responses.TxCount
-
-	// Stop gracefully stops the enclave
-	Stop() error
 
 	// GetTransaction returns a transaction in JSON format, encrypted with the viewing key for the transaction's `from` field.
 	GetTransaction(encryptedParams EncryptedParamsGetTxByHash) responses.TxByHash
@@ -101,9 +106,6 @@ type EnclaveExternal interface {
 	// the given ID, nothing is deleted.
 	Unsubscribe(id rpc.ID) error
 
-	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
-	StopClient() error
-
 	// EstimateGas tries to estimate the gas needed to execute a specific transaction based on the pending state.
 	EstimateGas(encryptedParams EncryptedParamsEstimateGas) responses.Gas
 
@@ -112,8 +114,6 @@ type EnclaveExternal interface {
 
 	// HealthCheck returns whether the enclave is in a healthy state
 	HealthCheck() (bool, error)
-
-	GenerateRollup() (*ExtRollup, error)
 
 	// DebugTraceTransaction returns the trace of a transaction
 	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error)

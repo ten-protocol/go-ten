@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -17,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 )
 
+// EnclaveExternalClient implements the common.EnclaveExternal interface for external facing requests (RPC)
 type EnclaveExternalClient struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
@@ -29,7 +29,7 @@ func NewEnclaveExternalClient(
 	connection *grpc.ClientConn,
 	config *config.HostConfig,
 	logger gethlog.Logger,
-) *EnclaveExternalClient {
+) common.EnclaveExternal {
 	return &EnclaveExternalClient{
 		protoClient: protoClient,
 		connection:  connection,
@@ -194,17 +194,6 @@ func (c *EnclaveExternalClient) HealthCheck() (bool, error) {
 		return false, err
 	}
 	return resp.Status, nil
-}
-
-func (c *EnclaveExternalClient) GenerateRollup() (*common.ExtRollup, error) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	resp, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{})
-	if err != nil {
-		return nil, err
-	}
-	return rpc.FromExtRollupMsg(resp.Msg), nil
 }
 
 func (c *EnclaveExternalClient) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
