@@ -240,7 +240,7 @@ func (c *contractLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.
 		c.logger.Crit("could not decode genesis attestation request.", log.ErrKey, err)
 	}
 
-	// todo - add the other fields
+	// todo (#1275) - add the other fields
 	return &ethadapter.L1InitializeSecretTx{
 		Attestation: att,
 	}
