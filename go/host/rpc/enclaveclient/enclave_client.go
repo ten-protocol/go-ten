@@ -46,12 +46,12 @@ func NewEnclaveRPCClient(config *config.HostConfig, logger gethlog.Logger) commo
 	protoClient := generated.NewEnclaveProtoClient(connection)
 	return &EnclaveRPCClient{
 		// this casting guarantees the new structs are fulfilling the common.Enclave interface + the RPCClient struct
-		EnclaveInternalClient: NewEnclaveInternalClient(protoClient, connection, config, logger).(*EnclaveInternalClient),
-		EnclaveExternalClient: NewEnclaveExternalClient(protoClient, connection, config, logger).(*EnclaveExternalClient),
+		EnclaveUserClient:   NewEnclaveUserClient(protoClient, connection, config, logger).(*EnclaveUserClient),
+		EnclaveSystemClient: NewEnclaveSystemClient(protoClient, connection, config, logger).(*EnclaveSystemClient),
 	}
 }
 
 type EnclaveRPCClient struct {
-	*EnclaveInternalClient
-	*EnclaveExternalClient
+	*EnclaveUserClient
+	*EnclaveSystemClient
 }

@@ -16,21 +16,21 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
-// EnclaveExternalClient implements the common.EnclaveExternal interface for external facing requests (RPC)
-type EnclaveExternalClient struct {
+// EnclaveSystemClient implements the common.EnclaveUserMethods interface for external facing requests (RPC)
+type EnclaveSystemClient struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
 	config      *config.HostConfig
 	logger      gethlog.Logger
 }
 
-func NewEnclaveExternalClient(
+func NewEnclaveSystemClient(
 	protoClient generated.EnclaveProtoClient,
 	connection *grpc.ClientConn,
 	config *config.HostConfig,
 	logger gethlog.Logger,
-) common.EnclaveExternal {
-	return &EnclaveExternalClient{
+) common.EnclaveUserMethods {
+	return &EnclaveSystemClient{
 		protoClient: protoClient,
 		connection:  connection,
 		config:      config,
@@ -38,7 +38,7 @@ func NewEnclaveExternalClient(
 	}
 }
 
-func (c *EnclaveExternalClient) SubmitTx(tx common.EncryptedTx) responses.RawTx {
+func (c *EnclaveSystemClient) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -50,7 +50,7 @@ func (c *EnclaveExternalClient) SubmitTx(tx common.EncryptedTx) responses.RawTx 
 	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
-func (c *EnclaveExternalClient) ObsCall(encryptedParams common.EncryptedParamsCall) responses.Call {
+func (c *EnclaveSystemClient) ObsCall(encryptedParams common.EncryptedParamsCall) responses.Call {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -63,7 +63,7 @@ func (c *EnclaveExternalClient) ObsCall(encryptedParams common.EncryptedParamsCa
 	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
-func (c *EnclaveExternalClient) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) responses.TxCount {
+func (c *EnclaveSystemClient) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) responses.TxCount {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -74,7 +74,7 @@ func (c *EnclaveExternalClient) GetTransactionCount(encryptedParams common.Encry
 	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
-func (c *EnclaveExternalClient) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) responses.TxByHash {
+func (c *EnclaveSystemClient) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) responses.TxByHash {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -85,7 +85,7 @@ func (c *EnclaveExternalClient) GetTransaction(encryptedParams common.EncryptedP
 	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
-func (c *EnclaveExternalClient) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) responses.TxReceipt {
+func (c *EnclaveSystemClient) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) responses.TxReceipt {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -96,7 +96,7 @@ func (c *EnclaveExternalClient) GetTransactionReceipt(encryptedParams common.Enc
 	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
-func (c *EnclaveExternalClient) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+func (c *EnclaveSystemClient) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -110,7 +110,7 @@ func (c *EnclaveExternalClient) AddViewingKey(viewingKeyBytes []byte, signature 
 	return nil
 }
 
-func (c *EnclaveExternalClient) GetBalance(encryptedParams common.EncryptedParamsGetBalance) responses.Balance {
+func (c *EnclaveSystemClient) GetBalance(encryptedParams common.EncryptedParamsGetBalance) responses.Balance {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -123,7 +123,7 @@ func (c *EnclaveExternalClient) GetBalance(encryptedParams common.EncryptedParam
 	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
-func (c *EnclaveExternalClient) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, error) {
+func (c *EnclaveSystemClient) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -137,7 +137,7 @@ func (c *EnclaveExternalClient) GetCode(address gethcommon.Address, batchHash *g
 	return resp.Code, nil
 }
 
-func (c *EnclaveExternalClient) Subscribe(id gethrpc.ID, encryptedParams common.EncryptedParamsLogSubscription) error {
+func (c *EnclaveSystemClient) Subscribe(id gethrpc.ID, encryptedParams common.EncryptedParamsLogSubscription) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -148,7 +148,7 @@ func (c *EnclaveExternalClient) Subscribe(id gethrpc.ID, encryptedParams common.
 	return err
 }
 
-func (c *EnclaveExternalClient) Unsubscribe(id gethrpc.ID) error {
+func (c *EnclaveSystemClient) Unsubscribe(id gethrpc.ID) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -158,7 +158,7 @@ func (c *EnclaveExternalClient) Unsubscribe(id gethrpc.ID) error {
 	return err
 }
 
-func (c *EnclaveExternalClient) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) responses.Gas {
+func (c *EnclaveSystemClient) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) responses.Gas {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -172,7 +172,7 @@ func (c *EnclaveExternalClient) EstimateGas(encryptedParams common.EncryptedPara
 	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
-func (c *EnclaveExternalClient) GetLogs(encryptedParams common.EncryptedParamsGetLogs) responses.Logs {
+func (c *EnclaveSystemClient) GetLogs(encryptedParams common.EncryptedParamsGetLogs) responses.Logs {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -185,7 +185,7 @@ func (c *EnclaveExternalClient) GetLogs(encryptedParams common.EncryptedParamsGe
 	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
-func (c *EnclaveExternalClient) HealthCheck() (bool, error) {
+func (c *EnclaveSystemClient) HealthCheck() (bool, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -196,7 +196,7 @@ func (c *EnclaveExternalClient) HealthCheck() (bool, error) {
 	return resp.Status, nil
 }
 
-func (c *EnclaveExternalClient) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
+func (c *EnclaveSystemClient) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -215,7 +215,7 @@ func (c *EnclaveExternalClient) DebugTraceTransaction(hash gethcommon.Hash, conf
 	return json.RawMessage(resp.Msg), nil
 }
 
-func (c *EnclaveExternalClient) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, error) {
+func (c *EnclaveSystemClient) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 

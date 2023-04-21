@@ -25,11 +25,12 @@ const (
 
 // Enclave represents the API of the service that runs inside the TEE.
 type Enclave interface {
-	EnclaveInternal
-	EnclaveExternal
+	EnclaveSystemMethods
+	EnclaveUserMethods
 }
 
-type EnclaveInternal interface {
+// EnclaveSystemMethods represent the methods used by the system or host
+type EnclaveSystemMethods interface {
 	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
 	Status() (Status, error)
 
@@ -62,7 +63,8 @@ type EnclaveInternal interface {
 	GenerateRollup() (*ExtRollup, error)
 }
 
-type EnclaveExternal interface {
+// EnclaveUserMethods represent the methods exposed externally to the user via RPC
+type EnclaveUserMethods interface {
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) responses.RawTx
 

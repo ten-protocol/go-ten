@@ -18,21 +18,21 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-// EnclaveInternalClient implements the common.EnclaveInternal interface for internal requests (host)
-type EnclaveInternalClient struct {
+// EnclaveUserClient implements the common.EnclaveSystemMethods interface for internal requests (host)
+type EnclaveUserClient struct {
 	protoClient generated.EnclaveProtoClient
 	connection  *grpc.ClientConn
 	config      *config.HostConfig
 	logger      gethlog.Logger
 }
 
-func NewEnclaveInternalClient(
+func NewEnclaveUserClient(
 	protoClient generated.EnclaveProtoClient,
 	connection *grpc.ClientConn,
 	config *config.HostConfig,
 	logger gethlog.Logger,
-) common.EnclaveInternal {
-	return &EnclaveInternalClient{
+) common.EnclaveSystemMethods {
+	return &EnclaveUserClient{
 		protoClient: protoClient,
 		connection:  connection,
 		config:      config,
@@ -40,11 +40,11 @@ func NewEnclaveInternalClient(
 	}
 }
 
-func (c *EnclaveInternalClient) StopClient() error {
+func (c *EnclaveUserClient) StopClient() error {
 	return c.connection.Close()
 }
 
-func (c *EnclaveInternalClient) Status() (common.Status, error) {
+func (c *EnclaveUserClient) Status() (common.Status, error) {
 	if c.connection.GetState() != connectivity.Ready {
 		return common.Unavailable, errors.New("RPC connection is not ready")
 	}
@@ -62,7 +62,7 @@ func (c *EnclaveInternalClient) Status() (common.Status, error) {
 	return common.Status(resp.GetStatus()), nil
 }
 
-func (c *EnclaveInternalClient) Attestation() (*common.AttestationReport, error) {
+func (c *EnclaveUserClient) Attestation() (*common.AttestationReport, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -73,7 +73,7 @@ func (c *EnclaveInternalClient) Attestation() (*common.AttestationReport, error)
 	return rpc.FromAttestationReportMsg(response.AttestationReportMsg), nil
 }
 
-func (c *EnclaveInternalClient) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
+func (c *EnclaveUserClient) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -84,7 +84,7 @@ func (c *EnclaveInternalClient) GenerateSecret() (common.EncryptedSharedEnclaveS
 	return response.EncryptedSharedEnclaveSecret, nil
 }
 
-func (c *EnclaveInternalClient) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
+func (c *EnclaveUserClient) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -98,7 +98,7 @@ func (c *EnclaveInternalClient) InitEnclave(secret common.EncryptedSharedEnclave
 	return nil
 }
 
-func (c *EnclaveInternalClient) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (c *EnclaveUserClient) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -124,7 +124,7 @@ func (c *EnclaveInternalClient) SubmitL1Block(block types.Block, receipts types.
 	return blockSubmissionResponse, nil
 }
 
-func (c *EnclaveInternalClient) SubmitBatch(batch *common.ExtBatch) error {
+func (c *EnclaveUserClient) SubmitBatch(batch *common.ExtBatch) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -136,7 +136,7 @@ func (c *EnclaveInternalClient) SubmitBatch(batch *common.ExtBatch) error {
 	return nil
 }
 
-func (c *EnclaveInternalClient) Stop() error {
+func (c *EnclaveUserClient) Stop() error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -147,7 +147,7 @@ func (c *EnclaveInternalClient) Stop() error {
 	return nil
 }
 
-func (c *EnclaveInternalClient) GenerateRollup() (*common.ExtRollup, error) {
+func (c *EnclaveUserClient) GenerateRollup() (*common.ExtRollup, error) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
