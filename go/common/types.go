@@ -64,6 +64,10 @@ type SystemError interface {
 	Error() string
 }
 
+type EnclaveResponse interface {
+	// TODO use this instead of responses.EnclaveResponse
+}
+
 // AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
 type AttestationReport struct {
 	Report      []byte         // the signed bytes of the report which includes some encrypted identifying data

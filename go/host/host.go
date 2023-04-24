@@ -224,7 +224,10 @@ func (h *host) EnclaveClient() common.Enclave {
 func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
-	enclaveResponse := h.enclaveClient.SubmitTx(encryptedTx)
+	enclaveResponse, _ := h.enclaveClient.SubmitTx(encryptedTx)
+	if enclaveResponse.Error() != nil {
+		h.logger.Warn("Could not submit transaction. ", log.ErrKey, enclaveResponse.Error())
+	}
 
 	if h.config.NodeType != common.Sequencer {
 		err := h.p2p.SendTxToSequencer(encryptedTx)
@@ -233,7 +236,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 		}
 	}
 
-	return &enclaveResponse, nil
+	return enclaveResponse, nil
 }
 
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
@@ -364,7 +367,7 @@ func (h *host) startProcessing() {
 
 		case tx := <-h.txP2PCh:
 			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
-			if resp := h.enclaveClient.SubmitTx(tx); resp.Error() != nil {
+			if resp, _ := h.enclaveClient.SubmitTx(tx); resp.Error() != nil {
 				h.logger.Warn("Could not submit transaction. ", log.ErrKey, resp.Error())
 			}
 

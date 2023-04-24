@@ -37,39 +37,39 @@ func (er *EnclaveResponse) Error() error {
 // AsPlaintextResponse - creates the plaintext part of the enclave response
 // It would be visible that there is an enclave response,
 // but the bytes in it will still be encrypted
-func AsPlaintextResponse(encResp EncryptedUserResponse) EnclaveResponse {
-	return EnclaveResponse{
+func AsPlaintextResponse(encResp EncryptedUserResponse) *EnclaveResponse {
+	return &EnclaveResponse{
 		EncUserResponse: encResp,
 	}
 }
 
 // AsEmptyResponse - Creates an empty enclave response. Useful for when no error
 // encountered but also no result found.
-func AsEmptyResponse() EnclaveResponse {
-	return EnclaveResponse{
+func AsEmptyResponse() *EnclaveResponse {
+	return &EnclaveResponse{
 		EncUserResponse: nil,
 		Err:             nil,
 	}
 }
 
 // AsSystemErr - generates a plaintext response containing a visible error.
-func AsSystemErr() EnclaveResponse {
-	return EnclaveResponse{
+func AsSystemErr() *EnclaveResponse {
+	return &EnclaveResponse{
 		Err: &InternalErrMsg,
 	}
 }
 
 // AsPlaintextError - generates a plaintext response containing a visible to the host error.
-func AsPlaintextError(err error) EnclaveResponse {
+func AsPlaintextError(err error) *EnclaveResponse {
 	errStr := err.Error()
-	return EnclaveResponse{
+	return &EnclaveResponse{
 		Err: &errStr,
 	}
 }
 
 // AsEncryptedResponse - wraps the data passed into the proper format, serializes it and encrypts it.
 // It is then encoded in a plaintext response.
-func AsEncryptedResponse[T any](data *T, encrypt ViewingKeyEncryptor) EnclaveResponse {
+func AsEncryptedResponse[T any](data *T, encrypt ViewingKeyEncryptor) *EnclaveResponse {
 	userResp := UserResponse[T]{
 		Result: data,
 	}
@@ -88,7 +88,7 @@ func AsEncryptedResponse[T any](data *T, encrypt ViewingKeyEncryptor) EnclaveRes
 }
 
 // AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
-func AsEncryptedError(err error, encrypt ViewingKeyEncryptor) EnclaveResponse {
+func AsEncryptedError(err error, encrypt ViewingKeyEncryptor) *EnclaveResponse {
 	errStr := err.Error()
 	userResp := UserResponse[string]{
 		ErrStr: &errStr,

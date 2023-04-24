@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
@@ -78,7 +78,7 @@ func (c *Client) StopClient() common.SystemError {
 
 func (c *Client) Status() (common.Status, common.SystemError) {
 	if c.connection.GetState() != connectivity.Ready {
-		return common.Unavailable, errors.New("RPC connection is not ready")
+		return common.Unavailable, errutil.NewSystemErr(fmt.Errorf("RPC connection is not ready"))
 	}
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
@@ -156,16 +156,16 @@ func (c *Client) SubmitL1Block(block types.Block, receipts types.Receipts, isLat
 	return blockSubmissionResponse, nil
 }
 
-func (c *Client) SubmitTx(tx common.EncryptedTx) responses.RawTx {
+func (c *Client) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
 	if err != nil {
-		return c.handleSystemErr(err)
+		return c.handleSystemErr(err), nil
 	}
 
-	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
 func (c *Client) SubmitBatch(batch *common.ExtBatch) common.SystemError {
@@ -180,7 +180,7 @@ func (c *Client) SubmitBatch(batch *common.ExtBatch) common.SystemError {
 	return nil
 }
 
-func (c *Client) ObsCall(encryptedParams common.EncryptedParamsCall) responses.Call {
+func (c *Client) ObsCall(encryptedParams common.EncryptedParamsCall) (*responses.Call, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -188,20 +188,20 @@ func (c *Client) ObsCall(encryptedParams common.EncryptedParamsCall) responses.C
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return c.handleSystemErr(err)
+		return c.handleSystemErr(err), nil
 	}
-	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
-func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) responses.TxCount {
+func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (*responses.TxCount, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetTransactionCount(timeoutCtx, &generated.GetTransactionCountRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return c.handleSystemErr(err)
+		return c.handleSystemErr(err), nil
 	}
-	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
 func (c *Client) Stop() common.SystemError {
@@ -215,26 +215,26 @@ func (c *Client) Stop() common.SystemError {
 	return nil
 }
 
-func (c *Client) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) responses.TxByHash {
+func (c *Client) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (*responses.TxByHash, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	resp, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return c.handleSystemErr(err)
+		return c.handleSystemErr(err), nil
 	}
-	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
+	return responses.ToEnclaveResponse(resp.EncodedEnclaveResponse), nil
 }
 
-func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) responses.TxReceipt {
+func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.TxReceipt, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetTransactionReceipt(timeoutCtx, &generated.GetTransactionReceiptRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return c.handleSystemErr(err)
+		return c.handleSystemErr(err), nil
 	}
-	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
 func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) common.SystemError {
@@ -251,7 +251,7 @@ func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) common.
 	return nil
 }
 
-func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) responses.Balance {
+func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (*responses.Balance, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -259,9 +259,9 @@ func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) re
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return c.handleSystemErr(err)
+		return c.handleSystemErr(err), nil
 	}
-	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
+	return responses.ToEnclaveResponse(resp.EncodedEnclaveResponse), nil
 }
 
 func (c *Client) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, common.SystemError) {
@@ -299,7 +299,7 @@ func (c *Client) Unsubscribe(id gethrpc.ID) common.SystemError {
 	return err
 }
 
-func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) responses.Gas {
+func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (*responses.Gas, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -307,13 +307,13 @@ func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) 
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return c.handleSystemErr(err)
+		return c.handleSystemErr(err), nil
 	}
 
-	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
+	return responses.ToEnclaveResponse(resp.EncodedEnclaveResponse), nil
 }
 
-func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) responses.Logs {
+func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -321,9 +321,9 @@ func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) response
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return c.handleSystemErr(err)
+		return c.handleSystemErr(err), nil
 	}
-	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
+	return responses.ToEnclaveResponse(resp.EncodedEnclaveResponse), nil
 }
 
 func (c *Client) HealthCheck() (bool, common.SystemError) {
@@ -381,7 +381,7 @@ func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, 
 }
 
 // handleSystemErr ensures that SystemError errors are properly handled
-func (c *Client) handleSystemErr(err error) responses.EnclaveResponse {
+func (c *Client) handleSystemErr(err error) *responses.EnclaveResponse {
 	c.logger.Error("enclave client RPC err - ", log.ErrKey, err)
 	return responses.AsSystemErr()
 }

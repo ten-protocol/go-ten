@@ -46,26 +46,26 @@ type Enclave interface {
 	SubmitL1Block(block L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, SystemError)
 
 	// SubmitTx - user transactions
-	SubmitTx(tx EncryptedTx) responses.RawTx
+	SubmitTx(tx EncryptedTx) (*responses.RawTx, SystemError)
 
 	// SubmitBatch submits a batch received from the sequencer for processing.
 	SubmitBatch(batch *ExtBatch) SystemError
 
 	// ObsCall - Execute a smart contract to retrieve data. The equivalent of "Eth_call"
 	// Todo - return the result with a block delay. To prevent frontrunning.
-	ObsCall(encryptedParams EncryptedParamsCall) responses.Call
+	ObsCall(encryptedParams EncryptedParamsCall) (*responses.Call, SystemError)
 
 	// GetTransactionCount returns the nonce of the wallet with the given address (encrypted with the acc viewing key)
-	GetTransactionCount(encryptedParams EncryptedParamsGetTxCount) responses.TxCount
+	GetTransactionCount(encryptedParams EncryptedParamsGetTxCount) (*responses.TxCount, SystemError)
 
 	// Stop gracefully stops the enclave
 	Stop() SystemError
 
 	// GetTransaction returns a transaction in JSON format, encrypted with the viewing key for the transaction's `from` field.
-	GetTransaction(encryptedParams EncryptedParamsGetTxByHash) responses.TxByHash
+	GetTransaction(encryptedParams EncryptedParamsGetTxByHash) (*responses.TxByHash, SystemError)
 
 	// GetTransactionReceipt returns a transaction receipt given its signed hash, or nil if the transaction is unknown
-	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) responses.TxReceipt
+	GetTransactionReceipt(encryptedParams EncryptedParamsGetTxReceipt) (*responses.TxReceipt, SystemError)
 
 	// AddViewingKey - Decrypts, verifies and saves viewing keys.
 	// Viewing keys are asymmetric keys generated inside the wallet extension, and then signed by the wallet (e.g.
@@ -80,7 +80,7 @@ type Enclave interface {
 
 	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the
 	// address.
-	GetBalance(encryptedParams EncryptedParamsGetBalance) responses.Balance
+	GetBalance(encryptedParams EncryptedParamsGetBalance) (*responses.Balance, SystemError)
 
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.
 	GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, SystemError)
@@ -98,10 +98,10 @@ type Enclave interface {
 	StopClient() SystemError
 
 	// EstimateGas tries to estimate the gas needed to execute a specific transaction based on the pending state.
-	EstimateGas(encryptedParams EncryptedParamsEstimateGas) responses.Gas
+	EstimateGas(encryptedParams EncryptedParamsEstimateGas) (*responses.Gas, SystemError)
 
 	// GetLogs returns all the logs matching the filter.
-	GetLogs(encryptedParams EncryptedParamsGetLogs) responses.Logs
+	GetLogs(encryptedParams EncryptedParamsGetLogs) (*responses.Logs, SystemError)
 
 	// HealthCheck returns whether the enclave is in a healthy state
 	HealthCheck() (bool, SystemError)
