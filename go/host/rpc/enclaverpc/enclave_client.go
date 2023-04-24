@@ -72,11 +72,11 @@ func NewClient(config *config.HostConfig, logger gethlog.Logger) *Client {
 	}
 }
 
-func (c *Client) StopClient() error {
+func (c *Client) StopClient() common.SystemError {
 	return c.connection.Close()
 }
 
-func (c *Client) Status() (common.Status, error) {
+func (c *Client) Status() (common.Status, common.SystemError) {
 	if c.connection.GetState() != connectivity.Ready {
 		return common.Unavailable, errors.New("RPC connection is not ready")
 	}
@@ -94,7 +94,7 @@ func (c *Client) Status() (common.Status, error) {
 	return common.Status(resp.GetStatus()), nil
 }
 
-func (c *Client) Attestation() (*common.AttestationReport, error) {
+func (c *Client) Attestation() (*common.AttestationReport, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -105,7 +105,7 @@ func (c *Client) Attestation() (*common.AttestationReport, error) {
 	return rpc.FromAttestationReportMsg(response.AttestationReportMsg), nil
 }
 
-func (c *Client) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
+func (c *Client) GenerateSecret() (common.EncryptedSharedEnclaveSecret, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -116,7 +116,7 @@ func (c *Client) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
 	return response.EncryptedSharedEnclaveSecret, nil
 }
 
-func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
+func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) common.SystemError {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -130,7 +130,7 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	return nil
 }
 
-func (c *Client) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (c *Client) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -168,7 +168,7 @@ func (c *Client) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
-func (c *Client) SubmitBatch(batch *common.ExtBatch) error {
+func (c *Client) SubmitBatch(batch *common.ExtBatch) common.SystemError {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -204,7 +204,7 @@ func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTx
 	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
-func (c *Client) Stop() error {
+func (c *Client) Stop() common.SystemError {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -237,7 +237,7 @@ func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGet
 	return *responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
-func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
+func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) common.SystemError {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -264,7 +264,7 @@ func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) re
 	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
-func (c *Client) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, error) {
+func (c *Client) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -278,7 +278,7 @@ func (c *Client) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash)
 	return resp.Code, nil
 }
 
-func (c *Client) Subscribe(id gethrpc.ID, encryptedParams common.EncryptedParamsLogSubscription) error {
+func (c *Client) Subscribe(id gethrpc.ID, encryptedParams common.EncryptedParamsLogSubscription) common.SystemError {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -289,7 +289,7 @@ func (c *Client) Subscribe(id gethrpc.ID, encryptedParams common.EncryptedParams
 	return err
 }
 
-func (c *Client) Unsubscribe(id gethrpc.ID) error {
+func (c *Client) Unsubscribe(id gethrpc.ID) common.SystemError {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -326,7 +326,7 @@ func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) response
 	return *responses.ToEnclaveResponse(resp.EncodedEnclaveResponse)
 }
 
-func (c *Client) HealthCheck() (bool, error) {
+func (c *Client) HealthCheck() (bool, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -337,7 +337,7 @@ func (c *Client) HealthCheck() (bool, error) {
 	return resp.Status, nil
 }
 
-func (c *Client) GenerateRollup() (*common.ExtRollup, error) {
+func (c *Client) GenerateRollup() (*common.ExtRollup, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -348,7 +348,7 @@ func (c *Client) GenerateRollup() (*common.ExtRollup, error) {
 	return rpc.FromExtRollupMsg(resp.Msg), nil
 }
 
-func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
+func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -367,7 +367,7 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	return json.RawMessage(resp.Msg), nil
 }
 
-func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, error) {
+func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 

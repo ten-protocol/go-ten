@@ -26,16 +26,16 @@ const (
 // Enclave represents the API of the service that runs inside the TEE.
 type Enclave interface {
 	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
-	Status() (Status, error)
+	Status() (Status, SystemError)
 
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
-	Attestation() (*AttestationReport, error)
+	Attestation() (*AttestationReport, SystemError)
 
 	// GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-	GenerateSecret() (EncryptedSharedEnclaveSecret, error)
+	GenerateSecret() (EncryptedSharedEnclaveSecret, SystemError)
 
 	// InitEnclave - initialise an enclave with a seed received by another enclave
-	InitEnclave(secret EncryptedSharedEnclaveSecret) error
+	InitEnclave(secret EncryptedSharedEnclaveSecret) SystemError
 
 	// SubmitL1Block - Used for the host to submit L1 blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
@@ -43,13 +43,13 @@ type Enclave interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitL1Block(block L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, error)
+	SubmitL1Block(block L1Block, receipts L1Receipts, isLatest bool) (*BlockSubmissionResponse, SystemError)
 
 	// SubmitTx - user transactions
 	SubmitTx(tx EncryptedTx) responses.RawTx
 
 	// SubmitBatch submits a batch received from the sequencer for processing.
-	SubmitBatch(batch *ExtBatch) error
+	SubmitBatch(batch *ExtBatch) SystemError
 
 	// ObsCall - Execute a smart contract to retrieve data. The equivalent of "Eth_call"
 	// Todo - return the result with a block delay. To prevent frontrunning.
@@ -59,7 +59,7 @@ type Enclave interface {
 	GetTransactionCount(encryptedParams EncryptedParamsGetTxCount) responses.TxCount
 
 	// Stop gracefully stops the enclave
-	Stop() error
+	Stop() SystemError
 
 	// GetTransaction returns a transaction in JSON format, encrypted with the viewing key for the transaction's `from` field.
 	GetTransaction(encryptedParams EncryptedParamsGetTxByHash) responses.TxByHash
@@ -76,26 +76,26 @@ type Enclave interface {
 	// public key from the signature. By hashing the public key, we can then determine the address of the account.
 	// At the end, we save the viewing key (which is a public key) against the account, and use it to encrypt any
 	// "eth_call" and "eth_getBalance" requests that have that address as a "from" field.
-	AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error
+	AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) SystemError
 
 	// GetBalance returns the balance of the address on the Obscuro network, encrypted with the viewing key for the
 	// address.
 	GetBalance(encryptedParams EncryptedParamsGetBalance) responses.Balance
 
 	// GetCode returns the code stored at the given address in the state for the given rollup hash.
-	GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, error)
+	GetCode(address gethcommon.Address, rollupHash *gethcommon.Hash) ([]byte, SystemError)
 
 	// Subscribe adds a log subscription to the enclave under the given ID, provided the request is authenticated
 	// correctly. The events will be populated in the BlockSubmissionResponse. If there is an existing subscription
 	// with the given ID, it is overwritten.
-	Subscribe(id rpc.ID, encryptedParams EncryptedParamsLogSubscription) error
+	Subscribe(id rpc.ID, encryptedParams EncryptedParamsLogSubscription) SystemError
 
 	// Unsubscribe removes the log subscription with the given ID from the enclave. If there is no subscription with
 	// the given ID, nothing is deleted.
-	Unsubscribe(id rpc.ID) error
+	Unsubscribe(id rpc.ID) SystemError
 
 	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
-	StopClient() error
+	StopClient() SystemError
 
 	// EstimateGas tries to estimate the gas needed to execute a specific transaction based on the pending state.
 	EstimateGas(encryptedParams EncryptedParamsEstimateGas) responses.Gas
@@ -104,15 +104,15 @@ type Enclave interface {
 	GetLogs(encryptedParams EncryptedParamsGetLogs) responses.Logs
 
 	// HealthCheck returns whether the enclave is in a healthy state
-	HealthCheck() (bool, error)
+	HealthCheck() (bool, SystemError)
 
-	GenerateRollup() (*ExtRollup, error)
+	GenerateRollup() (*ExtRollup, SystemError)
 
 	// DebugTraceTransaction returns the trace of a transaction
-	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error)
+	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, SystemError)
 
 	// DebugEventLogRelevancy returns the logs of a transaction
-	DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, error)
+	DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

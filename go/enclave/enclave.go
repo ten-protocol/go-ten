@@ -241,7 +241,7 @@ func NewEnclave(
 }
 
 // Status is only implemented by the RPC wrapper
-func (e *enclaveImpl) Status() (common.Status, error) {
+func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return common.Unavailable, nil
 	}
@@ -251,20 +251,20 @@ func (e *enclaveImpl) Status() (common.Status, error) {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return common.AwaitingSecret, nil
 		}
-		return common.Unavailable, err
+		return common.Unavailable, e.systemError(err)
 	}
 	return common.Running, nil // The enclave is local so it is always ready
 }
 
 // StopClient is only implemented by the RPC wrapper
-func (e *enclaveImpl) StopClient() error {
+func (e *enclaveImpl) StopClient() common.SystemError {
 	return nil // The enclave is local so there is no client to stop
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, error) {
+func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil //nolint:nilnil
+		return nil, e.systemError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
 	}
 
 	e.logger.Info("SubmitL1Block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
@@ -272,6 +272,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	// If the block and receipts do not match, reject the block.
 	br, err := common.ParseBlockAndReceipts(&block, &receipts, e.crossChainProcessors.Enabled())
 	if err != nil {
+		// todo review system error and reject block error
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
@@ -382,32 +383,32 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	return responses.AsEncryptedResponse(&hash, encryptor)
 }
 
-func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) error {
+func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil
+		return e.systemError(fmt.Errorf("requested SubmitBatch with the enclave stopping"))
 	}
 
 	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
 	if err := e.chain.UpdateL2Chain(batch); err != nil {
-		return fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err)
+		return e.systemError(fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err))
 	}
 
 	return nil
 }
 
-func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
+func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, common.SystemError) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil //nolint:nilnil
+		return nil, e.systemError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
 	}
 
 	if e.config.NodeType != common.Sequencer {
-		return nil, errors.New("only sequencer can generate rollups")
+		return nil, e.systemError(errors.New("only sequencer can generate rollups"))
 	}
 
 	rollup, err := e.rollupManager.CreateRollup()
 	if err != nil {
-		return nil, err
+		return nil, e.systemError(err)
 	}
 
 	return rollup.ToExtRollup(e.transactionBlobCrypto), nil
@@ -631,55 +632,52 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	return responses.AsEncryptedResponse(txReceipt, encryptor)
 }
 
-func (e *enclaveImpl) Attestation() (*common.AttestationReport, error) {
+func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemError) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil //nolint:nilnil
+		return nil, e.systemError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
 	if e.enclavePubKey == nil {
-		e.logger.Error("public key not initialized, we can't produce the attestation report")
-		return nil, fmt.Errorf("public key not initialized, we can't produce the attestation report")
+		return nil, e.systemError(fmt.Errorf("public key not initialized, we can't produce the attestation report"))
 	}
 	report, err := e.attestationProvider.GetReport(e.enclavePubKey, e.config.HostID, e.config.HostAddress)
 	if err != nil {
-		e.logger.Error("could not produce remote report")
-		return nil, fmt.Errorf("could not produce remote report")
+		return nil, e.systemError(fmt.Errorf("could not produce remote report"))
 	}
 	return report, nil
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
-func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, error) {
+func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, common.SystemError) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil
+		return nil, e.systemError(fmt.Errorf("requested GenerateSecret with the enclave stopping"))
 	}
 
 	secret := crypto.GenerateEntropy(e.logger)
 	err := e.storage.StoreSecret(secret)
 	if err != nil {
-		return nil, fmt.Errorf("could not store secret. Cause: %w", err)
+		return nil, e.systemError(fmt.Errorf("could not store secret. Cause: %w", err))
 	}
 	encSec, err := crypto.EncryptSecret(e.enclavePubKey, secret, e.logger)
 	if err != nil {
-		e.logger.Error("failed to encrypt secret.", log.ErrKey, err)
-		return nil, fmt.Errorf("failed to encrypt secret. Cause: %w", err)
+		return nil, e.systemError(fmt.Errorf("failed to encrypt secret. Cause: %w", err))
 	}
 	return encSec, nil
 }
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
-func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) error {
+func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.SystemError {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil
+		return e.systemError(fmt.Errorf("requested InitEnclave with the enclave stopping"))
 	}
 
 	secret, err := crypto.DecryptSecret(s, e.enclaveKey)
 	if err != nil {
-		return err
+		return e.systemError(err)
 	}
 	err = e.storage.StoreSecret(*secret)
 	if err != nil {
-		return fmt.Errorf("could not store secret. Cause: %w", err)
+		return e.systemError(fmt.Errorf("could not store secret. Cause: %w", err))
 	}
 	e.logger.Trace(fmt.Sprintf("Secret decrypted and stored. Secret: %v", secret))
 	return nil
@@ -709,12 +707,12 @@ func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationR
 	return crypto.EncryptSecret(att.PubKey, *secret, e.logger)
 }
 
-func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
+func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) common.SystemError {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil
+		return e.systemError(fmt.Errorf("requested AddViewingKey with the enclave stopping"))
 	}
 
-	return e.rpcEncryptionManager.AddViewingKey(encryptedViewingKeyBytes, signature)
+	return e.systemError(e.rpcEncryptionManager.AddViewingKey(encryptedViewingKeyBytes, signature))
 }
 
 // storeAttestation stores the attested keys of other nodes so we can decrypt their rollups
@@ -783,7 +781,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 	return responses.AsEncryptedResponse(balance, encryptor)
 }
 
-func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2BatchHash) ([]byte, error) {
+func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2BatchHash) ([]byte, common.SystemError) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, nil
 	}
@@ -795,7 +793,7 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2Ba
 	return stateDB.GetCode(address), nil
 }
 
-func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) error {
+func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil
 	}
@@ -803,7 +801,7 @@ func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.Encr
 	return e.subscriptionManager.AddSubscription(id, encryptedSubscription)
 }
 
-func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) error {
+func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) common.SystemError {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil
 	}
@@ -812,7 +810,7 @@ func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) error {
 	return nil
 }
 
-func (e *enclaveImpl) Stop() error {
+func (e *enclaveImpl) Stop() common.SystemError {
 	// block all requests
 	atomic.StoreInt32(e.stopInterrupt, 1)
 
@@ -967,7 +965,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) res
 // This is a copy of https://github.com/ethereum/go-ethereum/blob/master/internal/ethapi/api.go#L1055
 // there's a high complexity to the method due to geth business rules (which is mimic'd here)
 // once the work of obscuro gas mechanics is established this method should be simplified
-func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, error) { //nolint: gocognit
+func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, common.SystemError) { //nolint: gocognit
 	// Binary search the gas requirement, as it may be higher than the amount used
 	var (
 		lo  = params.TxGas - 1
@@ -1078,9 +1076,9 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 }
 
 // HealthCheck returns whether the enclave is deemed healthy
-func (e *enclaveImpl) HealthCheck() (bool, error) {
+func (e *enclaveImpl) HealthCheck() (bool, common.SystemError) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return false, nil
+		return false, e.systemError(fmt.Errorf("requested HealthCheck with the enclave stopping"))
 	}
 
 	// check the storage health
@@ -1095,7 +1093,7 @@ func (e *enclaveImpl) HealthCheck() (bool, error) {
 	return storageHealthy && enclaveHealthy, nil
 }
 
-func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
+func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
 	// ensure the enclave is running
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, nil
@@ -1109,7 +1107,7 @@ func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *trac
 	return e.debugger.DebugTraceTransaction(context.Background(), txHash, config)
 }
 
-func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMessage, error) {
+func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMessage, common.SystemError) {
 	// ensure the enclave is running
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, nil
@@ -1421,4 +1419,14 @@ func (e *enclaveImpl) handleEncryptedError(err error, encryptor responses.Viewin
 	}
 
 	return responses.AsEncryptedError(err, encryptor)
+}
+
+// handleEncryptedError ensures that SystemError errors are properly handled for possible EncryptedErrors
+func (e *enclaveImpl) systemError(err error) common.SystemError {
+	if err == nil {
+		return nil
+	}
+
+	e.logger.Error("enclave system err - ", log.ErrKey, err)
+	return errutil.NewSystemErr(err)
 }
