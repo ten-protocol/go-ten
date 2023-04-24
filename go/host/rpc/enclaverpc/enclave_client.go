@@ -380,6 +380,7 @@ func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, 
 	return json.RawMessage(resp.Msg), nil
 }
 
+// handleSystemErr ensures that SystemError errors are properly handled
 func (c *Client) handleSystemErr(err error) responses.EnclaveResponse {
 	c.logger.Error("enclave client RPC err - ", log.ErrKey, err)
 	return responses.AsSystemErr()

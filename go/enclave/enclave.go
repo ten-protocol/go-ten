@@ -337,7 +337,7 @@ func describeBSR(response *common.BlockSubmissionResponse) string {
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsEmptyResponse()
+		return e.handleSystemErr(errutil.NewSystemErr(fmt.Errorf("requested SubmitTx with the enclave stopping")))
 	}
 
 	encodedTx, err := e.rpcEncryptionManager.DecryptBytes(tx)
@@ -417,7 +417,8 @@ func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, error) {
 // and requests the Rollup chain to execute the payload (eth_call)
 func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) responses.Call {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsEmptyResponse()
+		return e.handleSystemErr(errutil.NewSystemErr(fmt.Errorf("requested ObsCall with the enclave stopping")))
+
 	}
 
 	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
@@ -462,6 +463,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) respon
 
 	execResult, err := e.chain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
+		// TODO check if there is a db error here
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
 		evmErr, err := serializeEVMError(err)
 		if err == nil {
@@ -481,7 +483,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) respon
 
 func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) responses.TxCount {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsEmptyResponse()
+		return e.handleSystemErr(errutil.NewSystemErr(fmt.Errorf("requested GetTransactionCount with the enclave stopping")))
 	}
 
 	var nonce uint64
@@ -503,8 +505,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 		//  conditions we allow it to return zero while head state is uninitialized
 		s, err := e.storage.CreateStateDB(*l2Head.Hash())
 		if err != nil {
-			err = fmt.Errorf("could not create stateDB. Cause: %w", err)
-			return responses.AsPlaintextError(err)
+			return e.handleSystemErr(fmt.Errorf("could not create stateDB. Cause: %w", err))
 		}
 		nonce = s.GetNonce(address)
 	}
@@ -515,7 +516,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 
 func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) responses.TxByHash {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsEmptyResponse()
+		return e.handleSystemErr(errutil.NewSystemErr(fmt.Errorf("requested GetTransaction with the enclave stopping")))
 	}
 
 	hashBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
@@ -562,7 +563,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) responses.TxReceipt {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsEmptyResponse()
+		return e.handleSystemErr(errutil.NewSystemErr(fmt.Errorf("requested GetTransactionReceipt with the enclave stopping")))
 	}
 
 	// We decrypt the transaction bytes.
@@ -727,7 +728,7 @@ func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 // and requests the Rollup chain to execute the payload (eth_getBalance)
 func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) responses.Balance {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsEmptyResponse()
+		return e.handleSystemErr(errutil.NewSystemErr(fmt.Errorf("requested GetBalance with the enclave stopping")))
 	}
 
 	// Decrypt the request.
@@ -823,7 +824,7 @@ func (e *enclaveImpl) Stop() error {
 // Using the callMsg.From Viewing Key, returns the encrypted gas estimation
 func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) responses.Gas {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsEmptyResponse()
+		return e.handleSystemErr(errutil.NewSystemErr(fmt.Errorf("requested EstimateGas with the enclave stopping")))
 	}
 
 	// decrypt the input with the enclave PK
@@ -884,7 +885,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) responses.Logs {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return responses.AsEmptyResponse()
+		return e.handleSystemErr(errutil.NewSystemErr(fmt.Errorf("requested GetLogs with the enclave stopping")))
 	}
 
 	// We decrypt the params.
@@ -1385,4 +1386,14 @@ func serializeEVMError(err error) ([]byte, error) {
 		return nil, marshallErr
 	}
 	return errSerializedBytes, nil
+}
+
+// handleSystemErr ensures that SystemError errors are properly handled
+func (e *enclaveImpl) handleSystemErr(err error) responses.EnclaveResponse {
+	if errors.Is(err, errutil.SystemError{}) {
+		e.logger.Error("enclave system err - ", log.ErrKey, err)
+		return responses.AsSystemErr()
+	}
+
+	return responses.AsPlaintextError(err)
 }

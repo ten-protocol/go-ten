@@ -356,7 +356,7 @@ func (s *storageImpl) CreateStateDB(hash common.L2BatchHash) (*state.StateDB, er
 
 	statedb, err := state.New(batch.Header.Root, s.stateDB, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
+		return nil, errutil.NewSystemErr(fmt.Errorf("could not create state DB. Cause: %w", err))
 	}
 
 	return statedb, nil
