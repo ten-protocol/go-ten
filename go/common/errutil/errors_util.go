@@ -13,7 +13,7 @@ var (
 	ErrNoImpl   = errors.New("not implemented")
 )
 
-// SystemError represents an error that's for system consumption only
+// SystemError represents an internal error that's for system consumption only
 type SystemError struct {
 	msg string
 	err error

@@ -2,9 +2,7 @@ package responses
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 )
 
 var InternalErrMsg = "internal system error"
@@ -64,9 +62,6 @@ func AsSystemErr() EnclaveResponse {
 // AsPlaintextError - generates a plaintext response containing a visible to the host error.
 func AsPlaintextError(err error) EnclaveResponse {
 	errStr := err.Error()
-	if errors.Is(err, errutil.SystemError{}) {
-		return AsSystemErr()
-	}
 	return EnclaveResponse{
 		Err: &errStr,
 	}

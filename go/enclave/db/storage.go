@@ -532,7 +532,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	}
 
 	if err = rows.Close(); err != nil {
-		return nil, err
+		return nil, errutil.NewSystemErr(err)
 	}
 
 	return result, nil
