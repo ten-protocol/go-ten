@@ -35,6 +35,6 @@ func (e SystemError) Unwrap() error {
 }
 
 func (e SystemError) Is(target error) bool {
-	_, ok := target.(*SystemError)
+	_, ok := target.(*SystemError) //nolint: errorlint
 	return ok || errors.Is(e.err, target)
 }
