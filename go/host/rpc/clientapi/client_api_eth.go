@@ -153,7 +153,6 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 
 // Converts a batch header to a key/value map.
 // todo (#1620) - include all the fields of the rollup header that do not exist in the Geth block headers as well
-//   (not just withdrawals)
 func headerToMap(header *common.BatchHeader) map[string]interface{} {
 	return map[string]interface{}{
 		// The fields present in Geth's `types/Header` struct.
