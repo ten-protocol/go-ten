@@ -229,7 +229,7 @@ func (re *rollupManager) processRollups(br *common.BlockAndReceipts) ([]*core.Ro
 		for _, batch := range rollup.Batches {
 			b, _ := re.storage.FetchBatch(*batch.Hash())
 			// only store the batch if not found in the db
-			// todo (@matt) - this needs to be clarified
+			// todo (@matt) - this needs to be clarified if still exists after the FF refactor
 			if b != nil {
 				continue
 			}
