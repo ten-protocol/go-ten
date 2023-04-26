@@ -447,7 +447,6 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	}
 
 	if blockSubmissionResponse.ProducedBatch != nil && blockSubmissionResponse.ProducedBatch.Header != nil {
-		// todo (@matt / @stefan) - unlink batch production from L1 cadence.
 		batch := blockSubmissionResponse.ProducedBatch
 		size, _ := batch.Size()
 		h.logger.Info(fmt.Sprintf("Publishing batch b_num %d, size %d , b=%s", batch.Header.Number, size, batch.SDump()))

@@ -71,7 +71,7 @@ func NewInMemoryDB(regMetrics gethmetrics.Registry, logger gethlog.Logger) *DB {
 func NewLevelDBBackedDB(dbPath string, regMetrics gethmetrics.Registry, logger gethlog.Logger) (*DB, error) {
 	var err error
 	if dbPath == "" {
-		// todo (@matt) - remove this option before prod
+		// todo (#1618) - we should remove this option before prod, if you want a temp DB it should be wired in via the config
 		dbPath, err = os.MkdirTemp("", "leveldb_*")
 		if err != nil {
 			return nil, fmt.Errorf("could not create temp leveldb directory - %w", err)

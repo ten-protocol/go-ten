@@ -69,7 +69,6 @@ func (e *gethRPCClient) Info() Info {
 }
 
 func (e *gethRPCClient) BlocksBetween(startingBlock *types.Block, lastBlock *types.Block) []*types.Block {
-	// todo (@matt) - this should be a stream
 	var blocksBetween []*types.Block
 	var err error
 
@@ -152,9 +151,8 @@ func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscripti
 		return err
 	}, retry.NewTimeoutStrategy(connRetryMaxWait, connRetryInterval))
 	if err != nil {
-		// todo (@matt) - handle this scenario better after refactor of node.go (health monitor report L1 unavailable,
-		//   be able to recover without restarting host)
-		// couldn't connect after timeout period, cannot continue
+		// todo (#1638) - handle this scenario better. Health monitor to report L1 unavailable to node operator, be able to recover without restarting host.
+		// couldn't connect after timeout period, will not continue
 		e.logger.Crit("could not subscribe for new head blocks.", log.ErrKey, err)
 	}
 
