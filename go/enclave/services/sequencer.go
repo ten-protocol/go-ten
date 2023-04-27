@@ -100,7 +100,7 @@ func (s *sequencer) CreateBatch() error {
 // TODO - This is iffy, the producer commits the stateDB. The producer
 // should only create batches and stateDBs but not commit them to the database,
 // this is the responsibility of the sequencer. Refactor the code so genesis state
-// won't be commited by the producer.
+// won't be committed by the producer.
 func (s *sequencer) initGenesis(block *common.L1Block) error {
 	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(block.Hash(), s.hostID, uint64(time.Now().Unix()))
 	if err != nil {

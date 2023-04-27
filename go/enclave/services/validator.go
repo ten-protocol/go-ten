@@ -58,11 +58,11 @@ func NewValidator(
 func (val *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, error) {
 	batch, _, err := val.batchProducer.CreateGenesisState(incomingBatch.Header.L1Proof, val.sequencerID, incomingBatch.Header.Time)
 	if err != nil {
-		return true, err
+		return false, err
 	}
 
 	if !bytes.Equal(incomingBatch.Hash().Bytes(), batch.Hash().Bytes()) {
-		return true, fmt.Errorf("received bad genesis batch")
+		return false, fmt.Errorf("received bad genesis batch")
 	}
 
 	return true, val.batchRegistry.StoreBatch(incomingBatch, nil)
