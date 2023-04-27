@@ -140,7 +140,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	// the same. Difference in numbers means ancestor was built on
 	// a different chain.
 	if ancestralBatch.NumberU64() != headBatch.NumberU64() {
-		if err := s.handleFork(l1HeadBlock); err != nil {
+		if err := s.handleFork(l1HeadBlock, ancestralBatch); err != nil {
 			return fmt.Errorf("failed handling fork: Cause: %w", err)
 		}
 		return s.createNewHeadBatch(l1HeadBlock)
@@ -226,18 +226,13 @@ func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*c
 	return ingestion, nil
 }
 
-func (s *sequencer) handleFork(block *common.L1Block) error {
+func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch) error {
 	headBatch, err := s.batchRegistry.GetHeadBatch()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil
 		}
 		return fmt.Errorf("failed retrieving head batch. Cause: %w", err)
-	}
-
-	ancestralBatch, err := s.batchRegistry.FindAncestralBatchFor(block)
-	if err != nil {
-		return fmt.Errorf("failed to find ancestral batch for block: %s", block.Hash())
 	}
 
 	if bytes.Equal(headBatch.Header.Hash().Bytes(), ancestralBatch.Hash().Bytes()) {
