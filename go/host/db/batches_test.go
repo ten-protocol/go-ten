@@ -272,4 +272,4 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	}
 }
 
-// TODO - #718 - Add tests of writing and reading extbatches.
+// todo (#718) - add tests of writing and reading extbatches.
