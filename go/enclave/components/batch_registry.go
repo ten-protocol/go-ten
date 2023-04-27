@@ -123,11 +123,6 @@ func (br *batchRegistry) FindAncestralBatchFor(block *common.L1Block) (*core.Bat
 	br.logger.Trace("Searching for ancestral batch")
 	// todo - this for loop should have more edge cases.
 	for ancestorBatch == nil {
-		currentBlock, err = br.storage.FetchBlock(currentBlock.ParentHash())
-		if err != nil {
-			return nil, fmt.Errorf("unable to find parent for block in ancestral chain. Cause: %w", err)
-		}
-
 		if currentBlock.NumberU64() == common.L1GenesisHeight {
 			return nil, fmt.Errorf("reached genesis block")
 		}
@@ -135,6 +130,11 @@ func (br *batchRegistry) FindAncestralBatchFor(block *common.L1Block) (*core.Bat
 		ancestorBatch, err = br.GetHeadBatchFor(currentBlock.Hash())
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("unable to get latest ancestral batch. Cause: %w", err)
+		}
+
+		currentBlock, err = br.storage.FetchBlock(currentBlock.ParentHash())
+		if err != nil {
+			return nil, fmt.Errorf("unable to find parent for block in ancestral chain. Cause: %w", err)
 		}
 	}
 

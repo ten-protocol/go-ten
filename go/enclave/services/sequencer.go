@@ -127,17 +127,23 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return err
 	}
 
-	// We find the ancestral batch for the block as it might be different
-	// than the current head; Alternatively we might have just processed a fork
-	// which would've updated the head to an unfinished fork so we need to get
-	// the correct batch that is building on the latest known final chain
+	// We get the latest known batch for this block's chain of parents.
+	// This includes the block so if there are any head batches linked to it
+	// they will get picked up.
 	ancestralBatch, err := s.batchRegistry.FindAncestralBatchFor(l1HeadBlock)
 	if err != nil {
 		return err
 	}
 
+	// If the l1 head block is not a fork then headBatch should
+	// be equal to ancestralBatch. Thus they numbers should also be
+	// the same. Difference in numbers means ancestor was built on
+	// a different chain.
 	if ancestralBatch.NumberU64() != headBatch.NumberU64() {
-		return fmt.Errorf("cant continue head for block that has decadent ancestor. Cause: %w", err)
+		if err := s.handleFork(l1HeadBlock); err != nil {
+			return fmt.Errorf("failed handling fork: Cause: %w", err)
+		}
+		return s.createNewHeadBatch(l1HeadBlock)
 	}
 
 	// After we have determined that the ancestral batch we have is identical to head
@@ -217,17 +223,10 @@ func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*c
 		return ingestion, nil
 	}
 
-	if err := s.handleFork(br); err != nil {
-		return nil, fmt.Errorf("failed handling fork: Cause: %w", err)
-	}
-
 	return ingestion, nil
 }
 
-func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
-	s.batchProductionMutex.Lock()
-	defer s.batchProductionMutex.Unlock()
-
+func (s *sequencer) handleFork(block *common.L1Block) error {
 	headBatch, err := s.batchRegistry.GetHeadBatch()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -236,9 +235,9 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 		return fmt.Errorf("failed retrieving head batch. Cause: %w", err)
 	}
 
-	ancestralBatch, err := s.batchRegistry.FindAncestralBatchFor(br.Block)
+	ancestralBatch, err := s.batchRegistry.FindAncestralBatchFor(block)
 	if err != nil {
-		return fmt.Errorf("failed to find ancestral batch for block: %s", br.Block.Hash())
+		return fmt.Errorf("failed to find ancestral batch for block: %s", block.Hash())
 	}
 
 	if bytes.Equal(headBatch.Header.Hash().Bytes(), ancestralBatch.Hash().Bytes()) {
@@ -266,7 +265,7 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 
 		// Extend the chain with identical cousin batches
 		cb, err := s.batchProducer.ComputeBatch(&components.BatchContext{
-			BlockPtr:     br.Block.Hash(),
+			BlockPtr:     block.Hash(),
 			ParentPtr:    *currHeadPtr.Hash(),
 			Transactions: orphan.Transactions,
 			AtTime:       orphan.Header.Time,
@@ -297,7 +296,7 @@ func (s *sequencer) handleFork(br *common.BlockAndReceipts) error {
 			if err := s.storage.SetHeadBatchPointer(cb.Batch); err != nil {
 				return fmt.Errorf("failed setting head batch ptr. Cause: %w", err)
 			}
-			return s.storage.UpdateHeadBatch(br.Block.Hash(), cb.Batch, cb.Receipts)
+			return s.storage.UpdateHeadBatch(block.Hash(), cb.Batch, cb.Receipts)
 		}
 	}
 
