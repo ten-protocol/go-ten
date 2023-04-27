@@ -85,8 +85,6 @@ func (s *sequencer) CreateBatch() error {
 	}
 
 	// L1 Head is only updated when isLatest: true
-	// when a l1HeadBlock is specified it will override this and allow
-	// building batches for unfinished forks.
 	l1HeadBlock, err := s.blockConsumer.GetHead()
 	if err != nil {
 		return fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
@@ -99,7 +97,10 @@ func (s *sequencer) CreateBatch() error {
 	return s.createNewHeadBatch(l1HeadBlock)
 }
 
-// TODO - This is iffy, the producer commits the stateDB
+// TODO - This is iffy, the producer commits the stateDB. The producer
+// should only create batches and stateDBs but not commit them to the database,
+// this is the responsibility of the sequencer. Refactor the code so genesis state
+// won't be commited by the producer.
 func (s *sequencer) initGenesis(block *common.L1Block) error {
 	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(block.Hash(), s.hostID, uint64(time.Now().Unix()))
 	if err != nil {
