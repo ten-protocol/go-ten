@@ -1,6 +1,6 @@
 // Package debugger: This file was copied/adapted from geth - go-ethereum/eth/tracers
 //
-// nolint
+//nolint
 package debugger
 
 import (
