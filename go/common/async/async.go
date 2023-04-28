@@ -37,7 +37,7 @@ func Schedule(delay time.Duration, fun ScheduledFunc) {
 }
 
 // WaitTimeout waits for the waitgroup for the specified max timeout.
-// Returns true if waiting timed out.
+// Returns the error if waiting timed out.
 func WaitTimeout(wg *sync.WaitGroup, timeout time.Duration) error {
 	c := make(chan struct{})
 	go func() {
