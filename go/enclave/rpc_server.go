@@ -88,11 +88,10 @@ func (s *RPCServer) GenerateSecret(context.Context, *generated.GenerateSecretReq
 }
 
 func (s *RPCServer) InitEnclave(_ context.Context, request *generated.InitEnclaveRequest) (*generated.InitEnclaveResponse, error) {
-	errStr := ""
 	if err := s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret); err != nil {
-		errStr = err.Error()
+		return nil, err
 	}
-	return &generated.InitEnclaveResponse{Error: errStr}, nil
+	return &generated.InitEnclaveResponse{}, nil
 }
 
 func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
@@ -226,7 +225,7 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 
 	err := json.Unmarshal(req.Config, &config)
 	if err != nil {
-		return &generated.DebugTraceTransactionResponse{}, fmt.Errorf("unable to unmarshall config - %w", err)
+		return nil, fmt.Errorf("unable to unmarshall config - %w", err)
 	}
 
 	traceTx, err := s.enclave.DebugTraceTransaction(txHash, &config)

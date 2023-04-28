@@ -84,7 +84,6 @@ message DebugEventLogRelevancyRequest{
 }
 message DebugEventLogRelevancyResponse{
   string msg = 1;
-  string error = 2;
 }
 
 message DebugTraceTransactionRequest{
@@ -93,7 +92,6 @@ message DebugTraceTransactionRequest{
 }
 message DebugTraceTransactionResponse{
   string msg = 1;
-  string error = 2;
 }
 
 message CreateRollupRequest{}
@@ -120,9 +118,7 @@ message GenerateSecretResponse {
 message InitEnclaveRequest {
   bytes encryptedSharedEnclaveSecret = 1;
 }
-message InitEnclaveResponse {
-  string error = 1;
-}
+message InitEnclaveResponse {}
 
 message StartRequest {
   bytes encodedBlock = 1;
