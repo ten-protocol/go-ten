@@ -2,12 +2,13 @@ package network
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/async"
 	"math/big"
 	"net"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/async"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/container"

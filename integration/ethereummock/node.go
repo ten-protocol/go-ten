@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/async"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/async"
 
 	"github.com/google/uuid"
 
