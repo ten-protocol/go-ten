@@ -120,7 +120,7 @@ func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams co
 }
 
 // GetCode returns the code stored at the given address in the state for the given batch height or batch hash.
-// TODO - Instead of converting the block number of hash client-side, do it on the enclave.
+// todo (#1620) - instead of converting the block number of hash client-side, do it on the enclave
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	// requested a number
 	if batchNumber, ok := blockNrOrHash.Number(); ok {
@@ -160,7 +160,7 @@ func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams 
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
-	// TODO - Return a non-dummy fee history.
+	// todo (#1621) - return a non-dummy fee history
 	return &FeeHistoryResult{
 		OldestBlock:  (*hexutil.Big)(big.NewInt(0)),
 		Reward:       [][]*hexutil.Big{},
@@ -170,7 +170,7 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 }
 
 // Converts a batch header to a key/value map.
-// TODO - Include all the fields of the rollup header that do not exist in the Geth block headers as well (not just withdrawals).
+// todo (#1620) - include all the fields of the rollup header that do not exist in the Geth block headers as well
 func headerToMap(header *common.BatchHeader) map[string]interface{} {
 	return map[string]interface{}{
 		// The fields present in Geth's `types/Header` struct.
@@ -221,7 +221,6 @@ func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*ge
 	}
 
 	if batchNumber == rpc.PendingBlockNumber {
-		// todo Dependent on the current pending batch - leaving it for a different iteration as it will need more thought
 		return nil, errutil.ErrNoImpl
 	}
 

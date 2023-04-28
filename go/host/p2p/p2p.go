@@ -45,7 +45,7 @@ type msgType uint8
 
 // Associates an encoded message to its type.
 type message struct {
-	Sender   string // TODO this needs to be authed in the future
+	Sender   string // todo (#1619) - this needs to be authed in the future
 	Type     msgType
 	Contents []byte
 }
@@ -135,7 +135,7 @@ func (p *p2pImpl) RequestBatchesFromSequencer(batchRequest *common.BatchRequest)
 	}
 
 	msg := message{Sender: p.ourAddress, Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
-	// TODO - #718 - Allow missing batches to be requested from peers other than sequencer?
+	// todo (#718) - allow missing batches to be requested from peers other than sequencer?
 	sequencer, err := p.getSequencer()
 	if err != nil {
 		return fmt.Errorf("failed to find sequencer - %w", err)
@@ -287,7 +287,7 @@ func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
 }
 
 // Retrieves the sequencer's address.
-// TODO - #718 - Use better method to identify the sequencer?
+// todo (#718) - use better method to identify the sequencer?
 func (p *p2pImpl) getSequencer() (string, error) {
 	if len(p.peerAddresses) == 0 {
 		return "", errUnknownSequencer
