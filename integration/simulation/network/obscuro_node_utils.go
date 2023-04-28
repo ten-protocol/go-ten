@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"net"
@@ -223,7 +224,9 @@ func StopObscuroNodes(clients []rpc.Client) {
 		wg.Add(1)
 		go func(c rpc.Client) {
 			defer wg.Done()
-			err := c.Call(nil, rpc.StopHost)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			err := c.CallContext(ctx, nil, rpc.StopHost)
 			if err != nil {
 				testlog.Logger().Error("Could not stop Obscuro node.", log.ErrKey, err)
 			}
@@ -231,7 +234,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 		}(client)
 	}
 
-	if waitTimeout(&wg, 2*time.Minute) {
+	if waitTimeout(&wg, 20*time.Second) {
 		panic("Timed out waiting for the Obscuro nodes to stop")
 	} else {
 		testlog.Logger().Info("Obscuro nodes stopped")
