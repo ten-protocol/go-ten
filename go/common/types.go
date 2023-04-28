@@ -59,13 +59,9 @@ const (
 	HeightCommittedBlocks = 15
 )
 
-// SystemError represents internal errors in the enclave
+// SystemError is the interface for the internal errors generated in the Enclave and consumed by the Host
 type SystemError interface {
 	Error() string
-}
-
-type EnclaveResponse interface {
-	// TODO use this instead of responses.EnclaveResponse
 }
 
 // AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it

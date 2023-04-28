@@ -111,33 +111,44 @@ func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.En
 }
 
 // SendRawTransaction sends the encrypted transaction.
-func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.EnclaveResponse, error) {
-	enclaveResponse, err := api.host.SubmitAndBroadcastTx(encryptedParams)
-	if err != nil {
-		return nil, err
+func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.SubmitAndBroadcastTx(encryptedParams)
+	if sysError != nil {
+		return api.handleSysError(sysError)
 	}
-	return enclaveResponse, nil
+	return *enclaveResponse, nil
 }
 
 // GetCode returns the code stored at the given address in the state for the given batch height or batch hash.
 // todo (#1620) - instead of converting the block number of hash client-side, do it on the enclave
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+	var batchHash *gethcommon.Hash
+
 	// requested a number
 	if batchNumber, ok := blockNrOrHash.Number(); ok {
-		batchHash, err := api.batchNumberToBatchHash(batchNumber)
+		hash, err := api.batchNumberToBatchHash(batchNumber)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch with height %d. Cause: %w", batchNumber, err)
 		}
-
-		return api.host.EnclaveClient().GetCode(address, batchHash)
+		batchHash = hash
 	}
 
 	// requested a hash
-	if batchHash, ok := blockNrOrHash.Hash(); ok {
-		return api.host.EnclaveClient().GetCode(address, &batchHash)
+	if hash, ok := blockNrOrHash.Hash(); ok {
+		batchHash = &hash
 	}
 
-	return nil, errors.New("invalid arguments; neither batch height nor batch hash specified")
+	if batchHash == nil {
+		return nil, errors.New("invalid arguments; neither batch height nor batch hash specified")
+	}
+
+	code, sysError := api.host.EnclaveClient().GetCode(address, batchHash)
+	if sysError != nil {
+		api.logger.Warn("Enclave System Error Response", log.ErrKey, sysError)
+		return nil, fmt.Errorf(responses.InternalErrMsg)
+	}
+
+	return code, nil
 }
 
 func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (responses.EnclaveResponse, error) {

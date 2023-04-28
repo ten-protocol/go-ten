@@ -63,6 +63,7 @@ func (s *RPCServer) StartServer() error {
 
 // Status returns the current status of the RPCServer as an enum value (see common.Status for details)
 func (s *RPCServer) Status(context.Context, *generated.StatusRequest) (*generated.StatusResponse, error) {
+	// TODO (#1644) No need to return error inside the StatusResponse
 	errStr := ""
 	status, err := s.enclave.Status()
 	if err != nil {
@@ -72,23 +73,24 @@ func (s *RPCServer) Status(context.Context, *generated.StatusRequest) (*generate
 }
 
 func (s *RPCServer) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
-	attestation, err := s.enclave.Attestation()
-	if err != nil {
-		return nil, err
+	attestation, sysError := s.enclave.Attestation()
+	if sysError != nil {
+		return nil, sysError
 	}
 	msg := rpc.ToAttestationReportMsg(attestation)
 	return &generated.AttestationResponse{AttestationReportMsg: &msg}, nil
 }
 
 func (s *RPCServer) GenerateSecret(context.Context, *generated.GenerateSecretRequest) (*generated.GenerateSecretResponse, error) {
-	secret, err := s.enclave.GenerateSecret()
-	if err != nil {
-		return nil, err
+	secret, sysError := s.enclave.GenerateSecret()
+	if sysError != nil {
+		return nil, sysError
 	}
 	return &generated.GenerateSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
 func (s *RPCServer) InitEnclave(_ context.Context, request *generated.InitEnclaveRequest) (*generated.InitEnclaveResponse, error) {
+	// TODO (#1644) No need to return error inside the InitEnclaveResponse
 	errStr := ""
 	if err := s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret); err != nil {
 		errStr = err.Error()
@@ -133,7 +135,11 @@ func (s *RPCServer) SubmitTx(_ context.Context, request *generated.SubmitTxReque
 
 func (s *RPCServer) SubmitBatch(_ context.Context, request *generated.SubmitBatchRequest) (*generated.SubmitBatchResponse, error) {
 	batch := rpc.FromExtBatchMsg(request.Batch)
-	return &generated.SubmitBatchResponse{}, s.enclave.SubmitBatch(batch)
+	sysError := s.enclave.SubmitBatch(batch)
+	if sysError != nil {
+		return nil, sysError
+	}
+	return &generated.SubmitBatchResponse{}, nil
 }
 
 func (s *RPCServer) ObsCall(_ context.Context, request *generated.ObsCallRequest) (*generated.ObsCallResponse, error) {
@@ -141,7 +147,7 @@ func (s *RPCServer) ObsCall(_ context.Context, request *generated.ObsCallRequest
 	if sysError != nil {
 		return nil, sysError
 	}
-	return &generated.ObsCallResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, sysError
+	return &generated.ObsCallResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetTransactionCount(_ context.Context, request *generated.GetTransactionCountRequest) (*generated.GetTransactionCountResponse, error) {
@@ -168,7 +174,10 @@ func (s *RPCServer) GetTransaction(_ context.Context, request *generated.GetTran
 
 func (s *RPCServer) GetTransactionReceipt(_ context.Context, request *generated.GetTransactionReceiptRequest) (*generated.GetTransactionReceiptResponse, error) {
 	enclaveResponse, sysError := s.enclave.GetTransactionReceipt(request.EncryptedParams)
-	return &generated.GetTransactionReceiptResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, sysError
+	if sysError != nil {
+		return nil, sysError
+	}
+	return &generated.GetTransactionReceiptResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
 }
 
 func (s *RPCServer) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {

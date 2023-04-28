@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// InternalErrMsg is the common response returned to the user when an InternalError occurs
 var InternalErrMsg = "internal system error"
 
 // This is the encoded & encrypted form of a UserResponse[Type]
