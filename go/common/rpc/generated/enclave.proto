@@ -228,7 +228,6 @@ message GetLogsResponse {
 
 message HealthCheckResponse {
   bool status = 1;
-  bytes error = 2;
 }
 
 message EmptyArgs {}
