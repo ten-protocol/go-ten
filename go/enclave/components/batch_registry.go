@@ -79,7 +79,7 @@ func (br *batchRegistry) updateBlockPointers(batch *core.Batch, receipts types.R
 
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("unexpected error while getting head batch for block. Cause: %w", err)
-	} else if head != nil && batch.NumberU64() <= head.NumberU64() {
+	} else if head != nil && batch.NumberU64() < head.NumberU64() {
 		return fmt.Errorf("inappropriate update from previous head with height %d to new head with height %d for same l1 block", head.NumberU64(), batch.NumberU64())
 	}
 
