@@ -2,7 +2,6 @@ package common
 
 import (
 	"math/big"
-	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -11,34 +10,8 @@ import (
 )
 
 type (
-	Latency       func() time.Duration
-	ScheduledFunc func()
+	Latency func() time.Duration
 )
-
-// ScheduleInterrupt runs the function after the delay and can be interrupted
-func ScheduleInterrupt(delay time.Duration, interrupt *int32, fun ScheduledFunc) {
-	ticker := time.NewTicker(delay)
-
-	go func() {
-		<-ticker.C
-		if atomic.LoadInt32(interrupt) == 1 {
-			return
-		}
-
-		fun()
-		ticker.Stop()
-	}()
-}
-
-// Schedule runs the function after the delay
-func Schedule(delay time.Duration, fun ScheduledFunc) {
-	ticker := time.NewTicker(delay)
-	go func() {
-		<-ticker.C
-		ticker.Stop()
-		fun()
-	}()
-}
 
 func MaxInt(x, y uint32) uint32 {
 	if x < y {

@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/async"
+
 	"github.com/google/uuid"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -351,7 +353,7 @@ func (m *Node) startMining() {
 
 			// Generate a random number, and wait for that number of ms. Equivalent to PoW
 			// Include all rollups received during this period.
-			common.ScheduleInterrupt(m.cfg.PowTime(), interrupt, func() {
+			async.Schedule(m.cfg.PowTime(), func() {
 				toInclude := findNotIncludedTxs(canonicalBlock, mempool, m.Resolver, m.db)
 				// todo - iterate through the rollup transactions and include only the ones with the proof on the canonical chain
 				if atomic.LoadInt32(m.interrupt) == 1 {
