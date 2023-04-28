@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/async"
 	"math/big"
 	"net"
 	"strings"
@@ -230,7 +231,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 		}(client)
 	}
 
-	if waitTimeout(&wg, 20*time.Second) {
+	if err := async.WaitTimeout(&wg, 20*time.Second); err != nil {
 		panic("Timed out waiting for the Obscuro nodes to stop")
 	} else {
 		testlog.Logger().Info("Obscuro nodes stopped")
@@ -255,26 +256,10 @@ func CheckHostRPCServersStopped(hostRPCAddresses []string) {
 		}(hostRPCAddress)
 	}
 
-	if waitTimeout(&wg, 10*time.Second) {
-		panic("Timed out waiting for the Obscuro host RPC addresses to become available")
+	if err := async.WaitTimeout(&wg, 10*time.Second); err != nil {
+		panic(fmt.Sprintf("Timed out waiting for the Obscuro host RPC addresses to become available - %s", err))
 	} else {
 		testlog.Logger().Info("Obscuro host RPC addresses freed")
-	}
-}
-
-// waitTimeout waits for the waitgroup for the specified max timeout.
-// Returns true if waiting timed out.
-func waitTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
-	c := make(chan struct{})
-	go func() {
-		defer close(c)
-		wg.Wait()
-	}()
-	select {
-	case <-c:
-		return false // completed normally
-	case <-time.After(timeout):
-		return true // timed out
 	}
 }
 
