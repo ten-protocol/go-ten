@@ -97,7 +97,6 @@ message DebugTraceTransactionResponse{
 message CreateRollupRequest{}
 message CreateRollupResponse{
   ExtRollupMsg msg = 1;
-  string error = 2;
 }
 
 message StatusRequest {}
