@@ -63,12 +63,11 @@ func (s *RPCServer) StartServer() error {
 
 // Status returns the current status of the RPCServer as an enum value (see common.Status for details)
 func (s *RPCServer) Status(context.Context, *generated.StatusRequest) (*generated.StatusResponse, error) {
-	errStr := ""
 	status, err := s.enclave.Status()
 	if err != nil {
-		errStr = err.Error()
+		return nil, err
 	}
-	return &generated.StatusResponse{Status: int32(status), Error: errStr}, nil
+	return &generated.StatusResponse{Status: int32(status)}, err
 }
 
 func (s *RPCServer) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {

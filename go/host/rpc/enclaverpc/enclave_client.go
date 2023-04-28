@@ -88,9 +88,6 @@ func (c *Client) Status() (common.Status, error) {
 	if err != nil {
 		return common.Unavailable, err
 	}
-	if resp.GetError() != "" {
-		return common.Unavailable, errors.New(resp.GetError())
-	}
 	return common.Status(resp.GetStatus()), nil
 }
 

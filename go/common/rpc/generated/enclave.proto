@@ -105,7 +105,6 @@ message CreateRollupResponse{
 message StatusRequest {}
 message StatusResponse {
   int32 status = 1;
-  string error = 2;
 }
 
 message AttestationRequest {}
