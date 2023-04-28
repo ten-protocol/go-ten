@@ -3,28 +3,12 @@ package async
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
 type (
 	ScheduledFunc func()
 )
-
-// ScheduleInterrupt runs the function after the delay and can be interrupted
-func ScheduleInterrupt(delay time.Duration, interrupt *int32, fun ScheduledFunc) {
-	ticker := time.NewTicker(delay)
-
-	go func() {
-		<-ticker.C
-		if atomic.LoadInt32(interrupt) == 1 {
-			return
-		}
-
-		fun()
-		ticker.Stop()
-	}()
-}
 
 // Schedule runs the function after the delay
 func Schedule(delay time.Duration, fun ScheduledFunc) {
