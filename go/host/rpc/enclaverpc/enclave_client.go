@@ -88,9 +88,6 @@ func (c *Client) Status() (common.Status, error) {
 	if err != nil {
 		return common.Unavailable, err
 	}
-	if resp.GetError() != "" {
-		return common.Unavailable, errors.New(resp.GetError())
-	}
 	return common.Status(resp.GetStatus()), nil
 }
 
@@ -120,13 +117,11 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) error {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	resp, err := c.protoClient.InitEnclave(timeoutCtx, &generated.InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
+	_, err := c.protoClient.InitEnclave(timeoutCtx, &generated.InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
 	if err != nil {
 		return err
 	}
-	if resp.GetError() != "" {
-		return errors.New(resp.GetError())
-	}
+
 	return nil
 }
 
