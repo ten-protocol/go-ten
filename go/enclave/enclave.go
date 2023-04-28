@@ -318,24 +318,6 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	return blockSubmissionResponse, nil
 }
 
-// useful description of the BSR for debugging
-func describeBSR(response *common.BlockSubmissionResponse) string {
-	if response.RejectError != nil {
-		return fmt.Sprintf("BlockSubmissionResponse failed with err=%s", response.RejectError.Error())
-	}
-	producedBatch := "no batch produced"
-	if response.ProducedBatch != nil {
-		producedBatch = fmt.Sprintf("newBatch{num=%d, numTx=%d, hash=%s}",
-			response.ProducedBatch.Header.Number, len(response.ProducedBatch.TxHashes), response.ProducedBatch.Hash())
-	}
-	producedRollup := "no rollup produced"
-	if response.ProducedRollup != nil {
-		producedRollup = fmt.Sprintf("newRollup{num=%d, numBatches=%d, hash=%s}",
-			response.ProducedRollup.Header.Number, len(response.ProducedRollup.Batches), response.ProducedRollup.Hash())
-	}
-	return fmt.Sprintf("%s, %s", producedBatch, producedRollup)
-}
-
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.SystemError) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, e.internalError(fmt.Errorf("requested SubmitTx with the enclave stopping"))
@@ -1416,6 +1398,24 @@ func serializeEVMError(err error) ([]byte, error) {
 		return nil, marshallErr
 	}
 	return errSerializedBytes, nil
+}
+
+// useful description of the BSR for debugging
+func describeBSR(response *common.BlockSubmissionResponse) string {
+	if response.RejectError != nil {
+		return fmt.Sprintf("BlockSubmissionResponse failed with err=%s", response.RejectError.Error())
+	}
+	producedBatch := "no batch produced"
+	if response.ProducedBatch != nil {
+		producedBatch = fmt.Sprintf("newBatch{num=%d, numTx=%d, hash=%s}",
+			response.ProducedBatch.Header.Number, len(response.ProducedBatch.TxHashes), response.ProducedBatch.Hash())
+	}
+	producedRollup := "no rollup produced"
+	if response.ProducedRollup != nil {
+		producedRollup = fmt.Sprintf("newRollup{num=%d, numBatches=%d, hash=%s}",
+			response.ProducedRollup.Header.Number, len(response.ProducedRollup.Batches), response.ProducedRollup.Hash())
+	}
+	return fmt.Sprintf("%s, %s", producedBatch, producedRollup)
 }
 
 // handlePlainTextError captures possible underlying SystemErrors errors or returns PlaintextError

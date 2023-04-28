@@ -63,13 +63,11 @@ func (s *RPCServer) StartServer() error {
 
 // Status returns the current status of the RPCServer as an enum value (see common.Status for details)
 func (s *RPCServer) Status(context.Context, *generated.StatusRequest) (*generated.StatusResponse, error) {
-	// TODO (#1644) No need to return error inside the StatusResponse
-	errStr := ""
-	status, err := s.enclave.Status()
-	if err != nil {
-		errStr = err.Error()
+	status, sysError := s.enclave.Status()
+	if sysError != nil {
+		return nil, sysError
 	}
-	return &generated.StatusResponse{Status: int32(status), Error: errStr}, nil
+	return &generated.StatusResponse{Status: int32(status)}, nil
 }
 
 func (s *RPCServer) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
@@ -90,12 +88,10 @@ func (s *RPCServer) GenerateSecret(context.Context, *generated.GenerateSecretReq
 }
 
 func (s *RPCServer) InitEnclave(_ context.Context, request *generated.InitEnclaveRequest) (*generated.InitEnclaveResponse, error) {
-	// TODO (#1644) No need to return error inside the InitEnclaveResponse
-	errStr := ""
-	if err := s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret); err != nil {
-		errStr = err.Error()
+	if sysError := s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret); sysError != nil {
+		return nil, sysError
 	}
-	return &generated.InitEnclaveResponse{Error: errStr}, nil
+	return &generated.InitEnclaveResponse{}, nil
 }
 
 func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
@@ -263,7 +259,7 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 
 	err := json.Unmarshal(req.Config, &config)
 	if err != nil {
-		return &generated.DebugTraceTransactionResponse{}, fmt.Errorf("unable to unmarshall config - %w", err)
+		return nil, fmt.Errorf("unable to unmarshall config - %w", err)
 	}
 
 	traceTx, err := s.enclave.DebugTraceTransaction(txHash, &config)
