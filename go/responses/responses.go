@@ -2,7 +2,11 @@ package responses
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 )
 
 // InternalErrMsg is the common response returned to the user when an InternalError occurs
@@ -116,6 +120,33 @@ func ToEnclaveResponse(encoded []byte) *EnclaveResponse {
 		panic(err) // Todo change when stable.
 	}
 	return &resp
+}
+
+// ToInternalError - Converts an error to an InternalError
+func ToInternalError(err error) common.SystemError {
+	if err == nil {
+		return nil
+	}
+
+	return errutil.NewInternalErr(err)
+}
+
+// HandlePlainTextError captures possible underlying SystemErrors errors or returns PlaintextError
+func HandlePlainTextError(err error) (*EnclaveResponse, common.SystemError) {
+	if errors.Is(err, errutil.InternalError{}) {
+		return nil, ToInternalError(err)
+	}
+
+	return AsPlaintextError(err), nil
+}
+
+// HandleEncryptedError captures possible underlying SystemErrors errors or returns EncryptedError
+func HandleEncryptedError(err error, encryptor ViewingKeyEncryptor) (*EnclaveResponse, common.SystemError) {
+	if errors.Is(err, errutil.InternalError{}) {
+		return nil, ToInternalError(err)
+	}
+
+	return AsEncryptedError(err, encryptor), nil
 }
 
 // DecodeResponse - Extracts the user response from a decrypted bytes field and returns the
