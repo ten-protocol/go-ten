@@ -77,7 +77,7 @@ func (c *Client) StopClient() common.SystemError {
 
 func (c *Client) Status() (common.Status, common.SystemError) {
 	if c.connection.GetState() != connectivity.Ready {
-		return common.Unavailable, syserr.NewInternalErr(fmt.Errorf("RPC connection is not ready"))
+		return common.Unavailable, syserr.New(fmt.Errorf("RPC connection is not ready"))
 	}
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)

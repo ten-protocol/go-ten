@@ -8,7 +8,7 @@ type InternalError struct {
 	err error
 }
 
-func NewInternalErr(err error) error {
+func New(err error) error {
 	return &InternalError{
 		msg: err.Error(),
 		err: err,
