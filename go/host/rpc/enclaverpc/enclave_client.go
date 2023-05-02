@@ -156,7 +156,7 @@ func (c *Client) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.Syste
 
 	response, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
 	if err != nil {
-		return c.handleSystemErr(err), nil
+		return nil, err
 	}
 
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
@@ -182,7 +182,7 @@ func (c *Client) ObsCall(encryptedParams common.EncryptedParamsCall) (*responses
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return c.handleSystemErr(err), nil
+		return nil, err
 	}
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
@@ -193,7 +193,7 @@ func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTx
 
 	response, err := c.protoClient.GetTransactionCount(timeoutCtx, &generated.GetTransactionCountRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return c.handleSystemErr(err), nil
+		return nil, err
 	}
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
@@ -215,7 +215,7 @@ func (c *Client) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHas
 
 	resp, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return c.handleSystemErr(err), nil
+		return nil, err
 	}
 	return responses.ToEnclaveResponse(resp.EncodedEnclaveResponse), nil
 }
@@ -226,7 +226,7 @@ func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGet
 
 	response, err := c.protoClient.GetTransactionReceipt(timeoutCtx, &generated.GetTransactionReceiptRequest{EncryptedParams: encryptedParams})
 	if err != nil {
-		return c.handleSystemErr(err), nil
+		return nil, err
 	}
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
@@ -253,7 +253,7 @@ func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (*
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return c.handleSystemErr(err), nil
+		return nil, err
 	}
 	return responses.ToEnclaveResponse(resp.EncodedEnclaveResponse), nil
 }
@@ -301,7 +301,7 @@ func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) 
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return c.handleSystemErr(err), nil
+		return nil, err
 	}
 
 	return responses.ToEnclaveResponse(resp.EncodedEnclaveResponse), nil
@@ -315,7 +315,7 @@ func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*respon
 		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
-		return c.handleSystemErr(err), nil
+		return nil, err
 	}
 	return responses.ToEnclaveResponse(resp.EncodedEnclaveResponse), nil
 }
@@ -372,10 +372,4 @@ func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, 
 		return nil, err
 	}
 	return json.RawMessage(resp.Msg), nil
-}
-
-// handleSystemErr ensures that SystemError errors are properly handled
-func (c *Client) handleSystemErr(err error) *responses.EnclaveResponse {
-	c.logger.Error("enclave client RPC err - ", log.ErrKey, err)
-	return responses.AsSystemErr()
 }

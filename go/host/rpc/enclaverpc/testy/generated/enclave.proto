@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option go_package = "rpc/generated";
+
+package generated;
+
+service TestProto {
+  rpc ReplyWithStatusError(StatusRequest) returns (StatusResponse) {}
+
+  rpc ReplyWithErrorPayload(StatusRequest) returns (StatusResponseWithError) {}
+}
+message StatusRequest {}
+message StatusResponse {
+  int32 status = 1;
+}
+
+message StatusResponseWithError {
+  int32 status = 1;
+  Error error = 2;
+}
+
+message Error {
+  string errString = 1;
+  int32 errorCode = 2;
+}
