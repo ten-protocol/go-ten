@@ -2,7 +2,6 @@ package responses
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -128,24 +127,6 @@ func ToInternalError(err error) error {
 	}
 
 	return errutil.NewInternalErr(err)
-}
-
-// HandlePlainTextError captures possible underlying SystemErrors errors or returns PlaintextError
-func HandlePlainTextError(err error) (*EnclaveResponse, error) {
-	if errors.Is(err, errutil.InternalError{}) {
-		return nil, ToInternalError(err)
-	}
-
-	return AsPlaintextError(err), nil
-}
-
-// HandleEncryptedError captures possible underlying SystemErrors errors or returns EncryptedError
-func HandleEncryptedError(err error, encryptor ViewingKeyEncryptor) (*EnclaveResponse, error) {
-	if errors.Is(err, errutil.InternalError{}) {
-		return nil, ToInternalError(err)
-	}
-
-	return AsEncryptedError(err, encryptor), nil
 }
 
 // DecodeResponse - Extracts the user response from a decrypted bytes field and returns the
