@@ -243,7 +243,7 @@ func NewEnclave(
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return common.Unavailable, nil
+		return common.Unavailable, e.internalError(fmt.Errorf("requested Status with the enclave stopping"))
 	}
 
 	_, err := e.storage.FetchSecret()
@@ -667,10 +667,6 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.
 
 // ShareSecret verifies the request and if it trusts the report and the public key it will return the secret encrypted with that public key.
 func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		return nil, nil
-	}
-
 	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
 	data, err := e.attestationProvider.VerifyReport(att)
 	if err != nil {
