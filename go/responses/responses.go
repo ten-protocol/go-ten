@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 )
 
@@ -123,7 +122,7 @@ func ToEnclaveResponse(encoded []byte) *EnclaveResponse {
 }
 
 // ToInternalError - Converts an error to an InternalError
-func ToInternalError(err error) common.SystemError {
+func ToInternalError(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -132,7 +131,7 @@ func ToInternalError(err error) common.SystemError {
 }
 
 // HandlePlainTextError captures possible underlying SystemErrors errors or returns PlaintextError
-func HandlePlainTextError(err error) (*EnclaveResponse, common.SystemError) {
+func HandlePlainTextError(err error) (*EnclaveResponse, error) {
 	if errors.Is(err, errutil.InternalError{}) {
 		return nil, ToInternalError(err)
 	}
@@ -141,7 +140,7 @@ func HandlePlainTextError(err error) (*EnclaveResponse, common.SystemError) {
 }
 
 // HandleEncryptedError captures possible underlying SystemErrors errors or returns EncryptedError
-func HandleEncryptedError(err error, encryptor ViewingKeyEncryptor) (*EnclaveResponse, common.SystemError) {
+func HandleEncryptedError(err error, encryptor ViewingKeyEncryptor) (*EnclaveResponse, error) {
 	if errors.Is(err, errutil.InternalError{}) {
 		return nil, ToInternalError(err)
 	}
