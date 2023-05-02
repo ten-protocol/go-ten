@@ -10,11 +10,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
+	"github.com/obscuronet/go-obscuro/go/common/syserr"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/responses"
@@ -77,7 +77,7 @@ func (c *Client) StopClient() common.SystemError {
 
 func (c *Client) Status() (common.Status, common.SystemError) {
 	if c.connection.GetState() != connectivity.Ready {
-		return common.Unavailable, errutil.NewInternalErr(fmt.Errorf("RPC connection is not ready"))
+		return common.Unavailable, syserr.NewInternalErr(fmt.Errorf("RPC connection is not ready"))
 	}
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)

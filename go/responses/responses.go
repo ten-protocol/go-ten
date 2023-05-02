@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/syserr"
 )
 
 // InternalErrMsg is the common response returned to the user when an InternalError occurs
@@ -126,7 +126,7 @@ func ToInternalError(err error) error {
 		return nil
 	}
 
-	return errutil.NewInternalErr(err)
+	return syserr.NewInternalErr(err)
 }
 
 // DecodeResponse - Extracts the user response from a decrypted bytes field and returns the

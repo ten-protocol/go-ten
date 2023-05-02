@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/syserr"
+
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
@@ -448,7 +450,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
 
 		// make sure it's not some internal error
-		if errors.Is(err, errutil.InternalError{}) {
+		if errors.Is(err, syserr.InternalError{}) {
 			return nil, responses.ToInternalError(err)
 		}
 
@@ -493,7 +495,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 		//  conditions we allow it to return zero while head state is uninitialized
 		s, err := e.storage.CreateStateDB(*l2Head.Hash())
 		if err != nil {
-			if errors.Is(err, errutil.InternalError{}) {
+			if errors.Is(err, syserr.InternalError{}) {
 				return nil, responses.ToInternalError(err)
 			}
 			return responses.AsPlaintextError(fmt.Errorf("could not create stateDB. Cause: %w", err)), nil
@@ -611,7 +613,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// We filter out irrelevant logs.
 	txReceipt.Logs, err = e.subscriptionManager.FilterLogs(txReceipt.Logs, txBatchHash, &sender, &filters.FilterCriteria{})
 	if err != nil {
-		if errors.Is(err, errutil.InternalError{}) {
+		if errors.Is(err, syserr.InternalError{}) {
 			return nil, responses.ToInternalError(err)
 		}
 		return responses.AsEncryptedError(fmt.Errorf("could not filter logs. Cause: %w", err), encryptor), nil
@@ -864,7 +866,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
 		// make sure it's not some internal error
-		if errors.Is(err, errutil.InternalError{}) {
+		if errors.Is(err, syserr.InternalError{}) {
 			return nil, responses.ToInternalError(err)
 		}
 
@@ -879,6 +881,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	return responses.AsEncryptedResponse(&gasEstimate, encryptor), nil
 }
 
+//nolint
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
 	if atomic.LoadInt32(e.stopInterrupt) == 1 {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))
@@ -919,7 +922,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	if from == nil && filter.BlockHash != nil {
 		batch, err := e.storage.FetchBatch(*filter.BlockHash)
 		if err != nil {
-			if errors.Is(err, errutil.InternalError{}) {
+			if errors.Is(err, syserr.InternalError{}) {
 				return nil, responses.ToInternalError(err)
 			}
 			return responses.AsEncryptedError(fmt.Errorf("could not retrieve batch with hash %s. Cause: %w", filter.BlockHash.Hex(), err), encryptor), nil
@@ -940,7 +943,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	// We retrieve the relevant logs that match the filter.
 	filteredLogs, err := e.storage.FilterLogs(forAddress, from, to, nil, filter.Addresses, filter.Topics)
 	if err != nil {
-		if errors.Is(err, errutil.InternalError{}) {
+		if errors.Is(err, syserr.InternalError{}) {
 			return nil, responses.ToInternalError(err)
 		}
 		err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
@@ -1095,7 +1098,7 @@ func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *trac
 
 	jsonMsg, err := e.debugger.DebugTraceTransaction(context.Background(), txHash, config)
 	if err != nil {
-		if errors.Is(err, errutil.InternalError{}) {
+		if errors.Is(err, syserr.InternalError{}) {
 			return nil, responses.ToInternalError(err)
 		}
 		// TODO *Pedro* MOVE THIS TO Enclave Response
@@ -1118,7 +1121,7 @@ func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMe
 
 	jsonMsg, err := e.debugger.DebugEventLogRelevancy(txHash)
 	if err != nil {
-		if errors.Is(err, errutil.InternalError{}) {
+		if errors.Is(err, syserr.InternalError{}) {
 			return nil, responses.ToInternalError(err)
 		}
 		// TODO *Pedro* MOVE THIS TO Enclave Response
