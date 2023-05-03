@@ -79,7 +79,7 @@ service EnclaveProto {
 
 }
 
-message Error{
+message SystemError{
   int32 errorCode = 1;
   string errorString = 2;
 }
@@ -89,7 +89,7 @@ message DebugEventLogRelevancyRequest{
 }
 message DebugEventLogRelevancyResponse{
   string msg = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message DebugTraceTransactionRequest{
@@ -98,25 +98,25 @@ message DebugTraceTransactionRequest{
 }
 message DebugTraceTransactionResponse{
   string msg = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message CreateRollupRequest{}
 message CreateRollupResponse{
   ExtRollupMsg msg = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message StatusRequest {}
 message StatusResponse {
-  Error error = 1;
+  SystemError systemError = 1;
   int32 status = 2;
 
 }
 
 message AttestationRequest {}
 message AttestationResponse {
-  Error error = 1;
+  SystemError systemError = 1;
   AttestationReportMsg attestationReportMsg = 2;
 
 }
@@ -124,21 +124,21 @@ message AttestationResponse {
 message GenerateSecretRequest {}
 message GenerateSecretResponse {
   bytes encryptedSharedEnclaveSecret = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message InitEnclaveRequest {
   bytes encryptedSharedEnclaveSecret = 1;
 }
 message InitEnclaveResponse {
-  Error error = 1;
+  SystemError systemError = 1;
 }
 
 message StartRequest {
   bytes encodedBlock = 1;
 }
 message StartResponse {
-  Error error = 1;
+  SystemError systemError = 1;
 }
 
 message SubmitBlockRequest {
@@ -149,7 +149,7 @@ message SubmitBlockRequest {
 }
 message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message SubmitTxRequest {
@@ -157,14 +157,14 @@ message SubmitTxRequest {
 }
 message SubmitTxResponse {
   bytes encodedEnclaveResponse = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message SubmitBatchRequest {
   ExtBatchMsg batch = 1;
 }
 message SubmitBatchResponse {
-  Error error = 1;
+  SystemError systemError = 1;
 }
 
 message ObsCallRequest {
@@ -172,7 +172,7 @@ message ObsCallRequest {
 }
 message ObsCallResponse {
   bytes encodedEnclaveResponse = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message GetTransactionCountRequest {
@@ -180,12 +180,12 @@ message GetTransactionCountRequest {
 }
 message GetTransactionCountResponse {
   bytes encodedEnclaveResponse = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message StopRequest {}
 message StopResponse {
-  Error error = 1;
+  SystemError systemError = 1;
 }
 
 message GetTransactionRequest {
@@ -193,7 +193,7 @@ message GetTransactionRequest {
 }
 message GetTransactionResponse {
   bytes encodedEnclaveResponse = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message GetTransactionReceiptRequest {
@@ -201,7 +201,7 @@ message GetTransactionReceiptRequest {
 }
 message GetTransactionReceiptResponse {
   bytes encodedEnclaveResponse = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message AddViewingKeyRequest {
@@ -209,7 +209,7 @@ message AddViewingKeyRequest {
   bytes signature = 2;
 }
 message AddViewingKeyResponse {
-  Error error = 1;
+  SystemError systemError = 1;
 }
 
 message GetBalanceRequest {
@@ -217,7 +217,7 @@ message GetBalanceRequest {
 }
 message GetBalanceResponse {
   bytes encodedEnclaveResponse = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message GetCodeRequest {
@@ -226,7 +226,7 @@ message GetCodeRequest {
 }
 message GetCodeResponse {
   bytes code = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message SubscribeRequest {
@@ -234,14 +234,14 @@ message SubscribeRequest {
   bytes encryptedSubscription = 2;
 }
 message SubscribeResponse {
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message UnsubscribeRequest {
   bytes id = 1;
 }
 message UnsubscribeResponse {
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message EstimateGasRequest {
@@ -250,7 +250,7 @@ message EstimateGasRequest {
 
 message EstimateGasResponse {
   bytes encodedEnclaveResponse = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message GetLogsRequest {
@@ -259,12 +259,12 @@ message GetLogsRequest {
 
 message GetLogsResponse {
   bytes encodedEnclaveResponse = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message HealthCheckResponse {
   bool status = 1;
-  Error error = 2;
+  SystemError systemError = 2;
 }
 
 message EmptyArgs {}
@@ -276,7 +276,7 @@ message AttestationReportMsg {
   bytes PubKey = 2; // Public key to encrypt traffic back to this enclave
   bytes Owner = 3;
   string HostAddress = 4; // The IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
-  Error error = 5;
+  SystemError systemError = 5;
 }
 
 message BlockSubmissionResponseMsg {
@@ -369,7 +369,7 @@ message SecretResponseMsg {
   bytes Secret = 1;
   bytes RequesterID = 2;
   string HostAddress = 3;
-  Error error = 4;
+  SystemError systemError = 4;
 }
 
 message WithdrawalMsg {

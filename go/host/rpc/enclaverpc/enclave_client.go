@@ -392,40 +392,40 @@ func (c *Client) handleErr(rpcResp interface{}, connError error) error {
 	}
 
 	if rpcResp != nil {
-		var internalErr *generated.Error
+		var internalErr *generated.SystemError
 		switch typedErr := rpcResp.(type) {
 		case *generated.AttestationResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.StatusResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.GenerateSecretResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.SubmitTxResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.ObsCallResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.GetTransactionCountResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.GetTransactionResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.GetTransactionReceiptResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.GetBalanceResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.GetCodeResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.EstimateGasResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.GetLogsResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.CreateRollupResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.DebugTraceTransactionResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.DebugEventLogRelevancyResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		case *generated.HealthCheckResponse:
-			internalErr = typedErr.GetError()
+			internalErr = typedErr.GetSystemError()
 		default:
 			panic("Unexpected RPC error - this should never happen")
 		}
