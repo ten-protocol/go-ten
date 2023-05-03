@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/async"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
@@ -48,7 +50,7 @@ func (n *MockEthNetwork) BroadcastBlock(b common.EncodedL1Block, p common.Encode
 	for _, m := range n.AllNodes {
 		if m.Info().L2ID != n.CurrentNode.Info().L2ID {
 			t := m
-			common.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
+			async.Schedule(n.delay(), func() { t.P2PReceiveBlock(b, p) })
 		} else {
 			m.logger.Info(printBlock(bl, m))
 		}
@@ -65,7 +67,7 @@ func (n *MockEthNetwork) BroadcastTx(tx *types.Transaction) {
 			// the time to broadcast a tx is half that of a L1 block, because it is smaller.
 			// todo - find a better way to express this
 			d := n.delay() / 2
-			common.Schedule(d, func() { t.P2PGossipTx(tx) })
+			async.Schedule(d, func() { t.P2PGossipTx(tx) })
 		}
 	}
 }
