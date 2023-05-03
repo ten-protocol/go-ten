@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"math/big"
 	"sync/atomic"
-	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/syserr"
 
@@ -803,8 +802,7 @@ func (e *enclaveImpl) Stop() common.SystemError {
 	if e.profiler != nil {
 		return e.profiler.Stop()
 	}
-
-	time.Sleep(time.Second)
+	// todo @pedro review this stop cycle
 	err := e.storage.Close()
 	if err != nil {
 		e.logger.Error("Could not stop db", log.ErrKey, err)

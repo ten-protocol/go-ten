@@ -126,7 +126,7 @@ func ToInternalError(err error) error {
 		return nil
 	}
 
-	return syserr.New(err)
+	return syserr.NewInternalError(err)
 }
 
 // DecodeResponse - Extracts the user response from a decrypted bytes field and returns the

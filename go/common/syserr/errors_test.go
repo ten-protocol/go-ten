@@ -10,7 +10,7 @@ import (
 func TestCustomUserSystemError(t *testing.T) {
 	hideError := errors.New("hidden error type")
 	randomTypeErr := errors.New("random error type")
-	systemError := New(hideError)
+	systemError := NewInternalError(hideError)
 
 	assert.True(t, errors.Is(systemError, &InternalError{}))
 	assert.True(t, errors.Is(systemError, hideError))

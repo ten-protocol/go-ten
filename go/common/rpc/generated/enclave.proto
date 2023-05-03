@@ -79,11 +79,17 @@ service EnclaveProto {
 
 }
 
+message Error{
+  int32 errorCode = 1;
+  string errorString = 2;
+}
+
 message DebugEventLogRelevancyRequest{
   bytes txHash = 1;
 }
 message DebugEventLogRelevancyResponse{
   string msg = 1;
+  Error error = 2;
 }
 
 message DebugTraceTransactionRequest{
@@ -92,37 +98,48 @@ message DebugTraceTransactionRequest{
 }
 message DebugTraceTransactionResponse{
   string msg = 1;
+  Error error = 2;
 }
 
 message CreateRollupRequest{}
 message CreateRollupResponse{
   ExtRollupMsg msg = 1;
+  Error error = 2;
 }
 
 message StatusRequest {}
 message StatusResponse {
-  int32 status = 1;
+  Error error = 1;
+  int32 status = 2;
+
 }
 
 message AttestationRequest {}
 message AttestationResponse {
-  AttestationReportMsg attestationReportMsg = 1;
+  Error error = 1;
+  AttestationReportMsg attestationReportMsg = 2;
+
 }
 
 message GenerateSecretRequest {}
 message GenerateSecretResponse {
   bytes encryptedSharedEnclaveSecret = 1;
+  Error error = 2;
 }
 
 message InitEnclaveRequest {
   bytes encryptedSharedEnclaveSecret = 1;
 }
-message InitEnclaveResponse {}
+message InitEnclaveResponse {
+  Error error = 1;
+}
 
 message StartRequest {
   bytes encodedBlock = 1;
 }
-message StartResponse {}
+message StartResponse {
+  Error error = 1;
+}
 
 message SubmitBlockRequest {
   bytes encodedBlock = 1;
@@ -132,6 +149,7 @@ message SubmitBlockRequest {
 }
 message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
+  Error error = 2;
 }
 
 message SubmitTxRequest {
@@ -139,12 +157,14 @@ message SubmitTxRequest {
 }
 message SubmitTxResponse {
   bytes encodedEnclaveResponse = 1;
+  Error error = 2;
 }
 
 message SubmitBatchRequest {
   ExtBatchMsg batch = 1;
 }
 message SubmitBatchResponse {
+  Error error = 1;
 }
 
 message ObsCallRequest {
@@ -152,6 +172,7 @@ message ObsCallRequest {
 }
 message ObsCallResponse {
   bytes encodedEnclaveResponse = 1;
+  Error error = 2;
 }
 
 message GetTransactionCountRequest {
@@ -159,16 +180,20 @@ message GetTransactionCountRequest {
 }
 message GetTransactionCountResponse {
   bytes encodedEnclaveResponse = 1;
+  Error error = 2;
 }
 
 message StopRequest {}
-message StopResponse {}
+message StopResponse {
+  Error error = 1;
+}
 
 message GetTransactionRequest {
   bytes encryptedParams = 1;
 }
 message GetTransactionResponse {
   bytes encodedEnclaveResponse = 1;
+  Error error = 2;
 }
 
 message GetTransactionReceiptRequest {
@@ -176,19 +201,23 @@ message GetTransactionReceiptRequest {
 }
 message GetTransactionReceiptResponse {
   bytes encodedEnclaveResponse = 1;
+  Error error = 2;
 }
 
 message AddViewingKeyRequest {
   bytes viewingKey = 1;
   bytes signature = 2;
 }
-message AddViewingKeyResponse {}
+message AddViewingKeyResponse {
+  Error error = 1;
+}
 
 message GetBalanceRequest {
   bytes encryptedParams = 1;
 }
 message GetBalanceResponse {
   bytes encodedEnclaveResponse = 1;
+  Error error = 2;
 }
 
 message GetCodeRequest {
@@ -197,18 +226,23 @@ message GetCodeRequest {
 }
 message GetCodeResponse {
   bytes code = 1;
+  Error error = 2;
 }
 
 message SubscribeRequest {
   bytes id = 1;
   bytes encryptedSubscription = 2;
 }
-message SubscribeResponse {}
+message SubscribeResponse {
+  Error error = 2;
+}
 
 message UnsubscribeRequest {
   bytes id = 1;
 }
-message UnsubscribeResponse {}
+message UnsubscribeResponse {
+  Error error = 2;
+}
 
 message EstimateGasRequest {
   bytes encryptedParams = 1;
@@ -216,6 +250,7 @@ message EstimateGasRequest {
 
 message EstimateGasResponse {
   bytes encodedEnclaveResponse = 1;
+  Error error = 2;
 }
 
 message GetLogsRequest {
@@ -224,10 +259,12 @@ message GetLogsRequest {
 
 message GetLogsResponse {
   bytes encodedEnclaveResponse = 1;
+  Error error = 2;
 }
 
 message HealthCheckResponse {
   bool status = 1;
+  Error error = 2;
 }
 
 message EmptyArgs {}
@@ -239,6 +276,7 @@ message AttestationReportMsg {
   bytes PubKey = 2; // Public key to encrypt traffic back to this enclave
   bytes Owner = 3;
   string HostAddress = 4; // The IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
+  Error error = 5;
 }
 
 message BlockSubmissionResponseMsg {
@@ -331,6 +369,7 @@ message SecretResponseMsg {
   bytes Secret = 1;
   bytes RequesterID = 2;
   string HostAddress = 3;
+  Error error = 4;
 }
 
 message WithdrawalMsg {
