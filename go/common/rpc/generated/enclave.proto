@@ -76,7 +76,6 @@ service EnclaveProto {
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
 
   rpc DebugEventLogRelevancy(DebugEventLogRelevancyRequest) returns (DebugEventLogRelevancyResponse) {}
-
 }
 
 message SystemError{
@@ -109,16 +108,14 @@ message CreateRollupResponse{
 
 message StatusRequest {}
 message StatusResponse {
-  SystemError systemError = 1;
-  int32 status = 2;
-
+  int32 status = 1;
+  SystemError systemError = 2;
 }
 
 message AttestationRequest {}
 message AttestationResponse {
-  SystemError systemError = 1;
-  AttestationReportMsg attestationReportMsg = 2;
-
+  AttestationReportMsg attestationReportMsg = 1;
+  SystemError systemError = 2;
 }
 
 message GenerateSecretRequest {}

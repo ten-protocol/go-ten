@@ -83,24 +83,29 @@ func (c *Client) Status() (common.Status, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	status, err := c.protoClient.Status(timeoutCtx, &generated.StatusRequest{})
-	if sysErr := c.handleErr(status, err); sysErr != nil {
-		return common.Unavailable, sysErr
+	response, err := c.protoClient.Status(timeoutCtx, &generated.StatusRequest{})
+	if err != nil {
+		return common.Unavailable, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return common.Unavailable, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	return common.Status(status.GetStatus()), nil
+	return common.Status(response.GetStatus()), nil
 }
 
 func (c *Client) Attestation() (*common.AttestationReport, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	attestation, err := c.protoClient.Attestation(timeoutCtx, &generated.AttestationRequest{})
-	if sysErr := c.handleErr(attestation, err); sysErr != nil {
-		return nil, sysErr
+	response, err := c.protoClient.Attestation(timeoutCtx, &generated.AttestationRequest{})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
 	}
-
-	return rpc.FromAttestationReportMsg(attestation.AttestationReportMsg), nil
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+	return rpc.FromAttestationReportMsg(response.AttestationReportMsg), nil
 }
 
 func (c *Client) GenerateSecret() (common.EncryptedSharedEnclaveSecret, common.SystemError) {
@@ -108,8 +113,11 @@ func (c *Client) GenerateSecret() (common.EncryptedSharedEnclaveSecret, common.S
 	defer cancel()
 
 	response, err := c.protoClient.GenerateSecret(timeoutCtx, &generated.GenerateSecretRequest{})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
 	return response.EncryptedSharedEnclaveSecret, nil
@@ -158,8 +166,11 @@ func (c *Client) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.Syste
 	defer cancel()
 
 	response, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
@@ -184,9 +195,13 @@ func (c *Client) ObsCall(encryptedParams common.EncryptedParamsCall) (*responses
 	response, err := c.protoClient.ObsCall(timeoutCtx, &generated.ObsCallRequest{
 		EncryptedParams: encryptedParams,
 	})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
 	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
@@ -195,9 +210,13 @@ func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTx
 	defer cancel()
 
 	response, err := c.protoClient.GetTransactionCount(timeoutCtx, &generated.GetTransactionCountRequest{EncryptedParams: encryptedParams})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
 	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
@@ -217,9 +236,13 @@ func (c *Client) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHas
 	defer cancel()
 
 	response, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{EncryptedParams: encryptedParams})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
 	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
@@ -228,9 +251,13 @@ func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGet
 	defer cancel()
 
 	response, err := c.protoClient.GetTransactionReceipt(timeoutCtx, &generated.GetTransactionReceiptRequest{EncryptedParams: encryptedParams})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
 	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
@@ -255,9 +282,13 @@ func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (*
 	response, err := c.protoClient.GetBalance(timeoutCtx, &generated.GetBalanceRequest{
 		EncryptedParams: encryptedParams,
 	})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
 	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
@@ -269,9 +300,13 @@ func (c *Client) GetCode(address gethcommon.Address, batchHash *gethcommon.Hash)
 		Address:    address.Bytes(),
 		RollupHash: batchHash.Bytes(),
 	})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
 	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
 	return response.Code, nil
 }
 
@@ -309,8 +344,11 @@ func (c *Client) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) 
 	response, err := c.protoClient.EstimateGas(timeoutCtx, &generated.EstimateGasRequest{
 		EncryptedParams: encryptedParams,
 	})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
@@ -323,9 +361,13 @@ func (c *Client) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*respon
 	response, err := c.protoClient.GetLogs(timeoutCtx, &generated.GetLogsRequest{
 		EncryptedParams: encryptedParams,
 	})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
 	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
@@ -334,8 +376,11 @@ func (c *Client) HealthCheck() (bool, common.SystemError) {
 	defer cancel()
 
 	response, err := c.protoClient.HealthCheck(timeoutCtx, &generated.EmptyArgs{})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return false, sysErr
+	if err != nil {
+		return false, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return false, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 	return response.Status, nil
 }
@@ -345,9 +390,13 @@ func (c *Client) GenerateRollup() (*common.ExtRollup, common.SystemError) {
 	defer cancel()
 
 	response, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
 	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
 	return rpc.FromExtRollupMsg(response.Msg), nil
 }
 
@@ -364,9 +413,13 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 		TxHash: hash.Bytes(),
 		Config: confBytes,
 	})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
 	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
 	return json.RawMessage(response.Msg), nil
 }
 
@@ -377,63 +430,11 @@ func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, 
 	response, err := c.protoClient.DebugEventLogRelevancy(timeoutCtx, &generated.DebugEventLogRelevancyRequest{
 		TxHash: hash.Bytes(),
 	})
-	if sysErr := c.handleErr(response, err); sysErr != nil {
-		return nil, sysErr
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 	return json.RawMessage(response.Msg), nil
-}
-
-// handleErr ensures to check for errors in both the RPC connection and in the RPC response object
-// creates different errors depending on the error found
-func (c *Client) handleErr(rpcResp interface{}, connError error) error {
-	if connError != nil {
-		c.logger.Error("enclave client RPC Connection err - ", log.ErrKey, connError)
-		return syserr.NewRPCError(connError)
-	}
-
-	if rpcResp != nil {
-		var internalErr *generated.SystemError
-		switch typedErr := rpcResp.(type) {
-		case *generated.AttestationResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.StatusResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.GenerateSecretResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.SubmitTxResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.ObsCallResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.GetTransactionCountResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.GetTransactionResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.GetTransactionReceiptResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.GetBalanceResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.GetCodeResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.EstimateGasResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.GetLogsResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.CreateRollupResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.DebugTraceTransactionResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.DebugEventLogRelevancyResponse:
-			internalErr = typedErr.GetSystemError()
-		case *generated.HealthCheckResponse:
-			internalErr = typedErr.GetSystemError()
-		default:
-			panic("Unexpected RPC error - this should never happen")
-		}
-
-		if internalErr != nil {
-			c.logger.Error("enclave client RPC Message err - ", log.ErrKey, internalErr.GetErrorString())
-			return syserr.NewInternalError(fmt.Errorf("%s", internalErr))
-		}
-	}
-	return nil
 }

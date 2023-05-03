@@ -494,10 +494,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 		//  conditions we allow it to return zero while head state is uninitialized
 		s, err := e.storage.CreateStateDB(*l2Head.Hash())
 		if err != nil {
-			if errors.Is(err, syserr.InternalError{}) {
-				return nil, responses.ToInternalError(err)
-			}
-			return responses.AsPlaintextError(fmt.Errorf("could not create stateDB. Cause: %w", err)), nil
+			return nil, responses.ToInternalError(err)
 		}
 		nonce = s.GetNonce(address)
 	}
@@ -605,17 +602,14 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 			// like geth return an empty response when a not-found tx is requested
 			return responses.AsEmptyResponse(), nil
 		}
-		err := fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
+		err = fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 		return responses.AsEncryptedError(err, encryptor), nil
 	}
 
 	// We filter out irrelevant logs.
 	txReceipt.Logs, err = e.subscriptionManager.FilterLogs(txReceipt.Logs, txBatchHash, &sender, &filters.FilterCriteria{})
 	if err != nil {
-		if errors.Is(err, syserr.InternalError{}) {
-			return nil, responses.ToInternalError(err)
-		}
-		return responses.AsEncryptedError(fmt.Errorf("could not filter logs. Cause: %w", err), encryptor), nil
+		return nil, responses.ToInternalError(err)
 	}
 
 	return responses.AsEncryptedResponse(txReceipt, encryptor), nil
@@ -920,10 +914,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	if from == nil && filter.BlockHash != nil {
 		batch, err := e.storage.FetchBatch(*filter.BlockHash)
 		if err != nil {
-			if errors.Is(err, syserr.InternalError{}) {
-				return nil, responses.ToInternalError(err)
-			}
-			return responses.AsEncryptedError(fmt.Errorf("could not retrieve batch with hash %s. Cause: %w", filter.BlockHash.Hex(), err), encryptor), nil
+			return nil, responses.ToInternalError(err)
 		}
 		from = batch.Number()
 	}
