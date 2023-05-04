@@ -68,35 +68,35 @@ func (api *DummyAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,reviv
 	return (*hexutil.Big)(chainID), err
 }
 
-func (api *DummyAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
+func (api *DummyAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (*responses.EnclaveResponse, error) {
 	return api.reEncryptParams(encryptedParams)
 }
 
-func (api *DummyAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (responses.EnclaveResponse, error) {
+func (api *DummyAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (*responses.EnclaveResponse, error) {
 	return api.reEncryptParams(encryptedParams)
 }
 
 func (api *DummyAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*responses.EnclaveResponse, error) {
 	reEncryptParams, err := api.reEncryptParams(encryptedParams)
-	return &reEncryptParams, err
+	return reEncryptParams, err
 }
 
-func (api *DummyAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (responses.EnclaveResponse, error) {
+func (api *DummyAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (*responses.EnclaveResponse, error) {
 	return api.reEncryptParams(encryptedParams)
 }
 
 func (api *DummyAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.EnclaveResponse, error) {
 	reEncryptParams, err := api.reEncryptParams(encryptedParams)
-	return &reEncryptParams, err
+	return reEncryptParams, err
 }
 
-func (api *DummyAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (responses.EnclaveResponse, error) {
+func (api *DummyAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.EnclaveResponse, error) {
 	return api.reEncryptParams(encryptedParams)
 }
 
 func (api *DummyAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas, _ *rpc.BlockNumberOrHash) (*responses.EnclaveResponse, error) {
 	reEncryptParams, err := api.reEncryptParams(encryptedParams)
-	return &reEncryptParams, err
+	return reEncryptParams, err
 }
 
 func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedParamsLogSubscription) (*rpc.Subscription, error) {
@@ -161,11 +161,11 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 
 func (api *DummyAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (*responses.EnclaveResponse, error) {
 	reEncryptParams, err := api.reEncryptParams(encryptedParams)
-	return &reEncryptParams, err
+	return reEncryptParams, err
 }
 
 // Decrypts the params with the enclave key, and returns them encrypted with the viewing key set via `setViewingKey`.
-func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (responses.EnclaveResponse, error) {
+func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.EnclaveResponse, error) {
 	params, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
 	if err != nil {
 		return responses.AsEmptyResponse(), fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)

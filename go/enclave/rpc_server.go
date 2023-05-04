@@ -63,35 +63,30 @@ func (s *RPCServer) StartServer() error {
 
 // Status returns the current status of the RPCServer as an enum value (see common.Status for details)
 func (s *RPCServer) Status(context.Context, *generated.StatusRequest) (*generated.StatusResponse, error) {
-	status, err := s.enclave.Status()
-	if err != nil {
-		return nil, err
-	}
-	return &generated.StatusResponse{Status: int32(status)}, err
+	status, sysError := s.enclave.Status()
+	return &generated.StatusResponse{Status: int32(status), SystemError: toRPCError(sysError)}, nil
 }
 
 func (s *RPCServer) Attestation(context.Context, *generated.AttestationRequest) (*generated.AttestationResponse, error) {
-	attestation, err := s.enclave.Attestation()
-	if err != nil {
-		return nil, err
+	attestation, sysError := s.enclave.Attestation()
+	if sysError != nil {
+		return &generated.AttestationResponse{SystemError: toRPCError(sysError)}, nil
 	}
 	msg := rpc.ToAttestationReportMsg(attestation)
 	return &generated.AttestationResponse{AttestationReportMsg: &msg}, nil
 }
 
 func (s *RPCServer) GenerateSecret(context.Context, *generated.GenerateSecretRequest) (*generated.GenerateSecretResponse, error) {
-	secret, err := s.enclave.GenerateSecret()
-	if err != nil {
-		return nil, err
+	secret, sysError := s.enclave.GenerateSecret()
+	if sysError != nil {
+		return &generated.GenerateSecretResponse{SystemError: toRPCError(sysError)}, nil
 	}
 	return &generated.GenerateSecretResponse{EncryptedSharedEnclaveSecret: secret}, nil
 }
 
 func (s *RPCServer) InitEnclave(_ context.Context, request *generated.InitEnclaveRequest) (*generated.InitEnclaveResponse, error) {
-	if err := s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret); err != nil {
-		return nil, err
-	}
-	return &generated.InitEnclaveResponse{}, nil
+	sysError := s.enclave.InitEnclave(request.EncryptedSharedEnclaveSecret)
+	return &generated.InitEnclaveResponse{SystemError: toRPCError(sysError)}, nil
 }
 
 func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
@@ -122,51 +117,66 @@ func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBl
 }
 
 func (s *RPCServer) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
-	enclaveResponse := s.enclave.SubmitTx(request.EncryptedTx)
+	enclaveResponse, sysError := s.enclave.SubmitTx(request.EncryptedTx)
+	if sysError != nil {
+		return &generated.SubmitTxResponse{SystemError: toRPCError(sysError)}, nil
+	}
 	return &generated.SubmitTxResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
 }
 
 func (s *RPCServer) SubmitBatch(_ context.Context, request *generated.SubmitBatchRequest) (*generated.SubmitBatchResponse, error) {
 	batch := rpc.FromExtBatchMsg(request.Batch)
-	return &generated.SubmitBatchResponse{}, s.enclave.SubmitBatch(batch)
+	sysError := s.enclave.SubmitBatch(batch)
+	return &generated.SubmitBatchResponse{SystemError: toRPCError(sysError)}, nil
 }
 
 func (s *RPCServer) ObsCall(_ context.Context, request *generated.ObsCallRequest) (*generated.ObsCallResponse, error) {
-	enclaveResp := s.enclave.ObsCall(request.EncryptedParams)
+	enclaveResp, sysError := s.enclave.ObsCall(request.EncryptedParams)
+	if sysError != nil {
+		return &generated.ObsCallResponse{SystemError: toRPCError(sysError)}, nil
+	}
 	return &generated.ObsCallResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetTransactionCount(_ context.Context, request *generated.GetTransactionCountRequest) (*generated.GetTransactionCountResponse, error) {
-	enclaveResp := s.enclave.GetTransactionCount(request.EncryptedParams)
+	enclaveResp, sysError := s.enclave.GetTransactionCount(request.EncryptedParams)
+	if sysError != nil {
+		return &generated.GetTransactionCountResponse{SystemError: toRPCError(sysError)}, nil
+	}
 	return &generated.GetTransactionCountResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
 	defer s.grpcServer.GracefulStop()
-	err := s.enclave.Stop()
-	return &generated.StopResponse{}, err
+	return &generated.StopResponse{SystemError: toRPCError(s.enclave.Stop())}, nil
 }
 
 func (s *RPCServer) GetTransaction(_ context.Context, request *generated.GetTransactionRequest) (*generated.GetTransactionResponse, error) {
-	enclaveResp := s.enclave.GetTransaction(request.EncryptedParams)
+	enclaveResp, sysError := s.enclave.GetTransaction(request.EncryptedParams)
+	if sysError != nil {
+		return &generated.GetTransactionResponse{SystemError: toRPCError(sysError)}, nil
+	}
 	return &generated.GetTransactionResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetTransactionReceipt(_ context.Context, request *generated.GetTransactionReceiptRequest) (*generated.GetTransactionReceiptResponse, error) {
-	enclaveResponse := s.enclave.GetTransactionReceipt(request.EncryptedParams)
+	enclaveResponse, sysError := s.enclave.GetTransactionReceipt(request.EncryptedParams)
+	if sysError != nil {
+		return &generated.GetTransactionReceiptResponse{SystemError: toRPCError(sysError)}, nil
+	}
 	return &generated.GetTransactionReceiptResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
 }
 
 func (s *RPCServer) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {
-	err := s.enclave.AddViewingKey(request.ViewingKey, request.Signature)
-	if err != nil {
-		return nil, err
-	}
-	return &generated.AddViewingKeyResponse{}, nil
+	sysError := s.enclave.AddViewingKey(request.ViewingKey, request.Signature)
+	return &generated.AddViewingKeyResponse{SystemError: toRPCError(sysError)}, nil
 }
 
 func (s *RPCServer) GetBalance(_ context.Context, request *generated.GetBalanceRequest) (*generated.GetBalanceResponse, error) {
-	enclaveResp := s.enclave.GetBalance(request.EncryptedParams)
+	enclaveResp, sysError := s.enclave.GetBalance(request.EncryptedParams)
+	if sysError != nil {
+		return &generated.GetBalanceResponse{SystemError: toRPCError(sysError)}, nil
+	}
 	return &generated.GetBalanceResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
@@ -174,49 +184,55 @@ func (s *RPCServer) GetCode(_ context.Context, request *generated.GetCodeRequest
 	address := gethcommon.BytesToAddress(request.Address)
 	rollupHash := gethcommon.BytesToHash(request.RollupHash)
 
-	code, err := s.enclave.GetCode(address, &rollupHash)
-	if err != nil {
-		return nil, err
+	code, sysError := s.enclave.GetCode(address, &rollupHash)
+	if sysError != nil {
+		return &generated.GetCodeResponse{SystemError: toRPCError(sysError)}, nil
 	}
 	return &generated.GetCodeResponse{Code: code}, nil
 }
 
 func (s *RPCServer) Subscribe(_ context.Context, req *generated.SubscribeRequest) (*generated.SubscribeResponse, error) {
-	err := s.enclave.Subscribe(gethrpc.ID(req.Id), req.EncryptedSubscription)
-	return &generated.SubscribeResponse{}, err
+	sysError := s.enclave.Subscribe(gethrpc.ID(req.Id), req.EncryptedSubscription)
+	return &generated.SubscribeResponse{SystemError: toRPCError(sysError)}, nil
 }
 
 func (s *RPCServer) Unsubscribe(_ context.Context, req *generated.UnsubscribeRequest) (*generated.UnsubscribeResponse, error) {
-	err := s.enclave.Unsubscribe(gethrpc.ID(req.Id))
-	return &generated.UnsubscribeResponse{}, err
+	sysError := s.enclave.Unsubscribe(gethrpc.ID(req.Id))
+	return &generated.UnsubscribeResponse{SystemError: toRPCError(sysError)}, nil
 }
 
 func (s *RPCServer) EstimateGas(_ context.Context, req *generated.EstimateGasRequest) (*generated.EstimateGasResponse, error) {
-	enclaveResp := s.enclave.EstimateGas(req.EncryptedParams)
+	enclaveResp, sysError := s.enclave.EstimateGas(req.EncryptedParams)
+	if sysError != nil {
+		return &generated.EstimateGasResponse{SystemError: toRPCError(sysError)}, nil
+	}
 	return &generated.EstimateGasResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) GetLogs(_ context.Context, req *generated.GetLogsRequest) (*generated.GetLogsResponse, error) {
-	enclaveResp := s.enclave.GetLogs(req.EncryptedParams)
+	enclaveResp, sysError := s.enclave.GetLogs(req.EncryptedParams)
+	if sysError != nil {
+		return &generated.GetLogsResponse{SystemError: toRPCError(sysError)}, nil
+	}
 	return &generated.GetLogsResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) HealthCheck(_ context.Context, _ *generated.EmptyArgs) (*generated.HealthCheckResponse, error) {
-	healthy, err := s.enclave.HealthCheck()
-	if err != nil {
-		return nil, err
+	healthy, sysError := s.enclave.HealthCheck()
+	if sysError != nil {
+		return &generated.HealthCheckResponse{SystemError: toRPCError(sysError)}, nil
 	}
 	return &generated.HealthCheckResponse{Status: healthy}, nil
 }
 
 func (s *RPCServer) CreateRollup(_ context.Context, _ *generated.CreateRollupRequest) (*generated.CreateRollupResponse, error) {
 	rollup, err := s.enclave.GenerateRollup()
-
 	msg := rpc.ToExtRollupMsg(rollup)
 
 	return &generated.CreateRollupResponse{
-		Msg: &msg,
-	}, err
+		Msg:         &msg,
+		SystemError: toRPCError(err),
+	}, nil
 }
 
 func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.DebugTraceTransactionRequest) (*generated.DebugTraceTransactionResponse, error) {
@@ -225,12 +241,13 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 
 	err := json.Unmarshal(req.Config, &config)
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshall config - %w", err)
+		return &generated.DebugTraceTransactionResponse{
+			SystemError: toRPCError(fmt.Errorf("unable to unmarshall config - %w", err)),
+		}, nil
 	}
 
 	traceTx, err := s.enclave.DebugTraceTransaction(txHash, &config)
-
-	return &generated.DebugTraceTransactionResponse{Msg: string(traceTx)}, err
+	return &generated.DebugTraceTransactionResponse{Msg: string(traceTx), SystemError: toRPCError(err)}, nil
 }
 
 func (s *RPCServer) DebugEventLogRelevancy(_ context.Context, req *generated.DebugEventLogRelevancyRequest) (*generated.DebugEventLogRelevancyResponse, error) {
@@ -238,7 +255,7 @@ func (s *RPCServer) DebugEventLogRelevancy(_ context.Context, req *generated.Deb
 
 	logs, err := s.enclave.DebugEventLogRelevancy(txHash)
 
-	return &generated.DebugEventLogRelevancyResponse{Msg: string(logs)}, err
+	return &generated.DebugEventLogRelevancyResponse{Msg: string(logs), SystemError: toRPCError(err)}, nil
 }
 
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
@@ -260,4 +277,14 @@ func (s *RPCServer) decodeReceipts(encodedReceipts []byte) types.Receipts {
 	}
 
 	return receipts
+}
+
+func toRPCError(err common.SystemError) *generated.SystemError {
+	if err == nil {
+		return nil
+	}
+	return &generated.SystemError{
+		ErrorCode:   1,
+		ErrorString: err.Error(),
+	}
 }

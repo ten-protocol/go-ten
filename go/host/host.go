@@ -222,7 +222,15 @@ func (h *host) EnclaveClient() common.Enclave {
 func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
-	enclaveResponse := h.enclaveClient.SubmitTx(encryptedTx)
+	enclaveResponse, sysError := h.enclaveClient.SubmitTx(encryptedTx)
+	// TODO (#1643) properly return tx error and avoid submitting failed txs to the sequencer
+	if sysError != nil {
+		h.logger.Warn("Could not submit transaction due to sysError.", log.ErrKey, sysError)
+		return nil, sysError
+	}
+	if enclaveResponse.Error() != nil {
+		h.logger.Warn("Could not submit transaction.", log.ErrKey, enclaveResponse.Error())
+	}
 
 	if h.config.NodeType != common.Sequencer {
 		err := h.p2p.SendTxToSequencer(encryptedTx)
@@ -231,7 +239,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 		}
 	}
 
-	return &enclaveResponse, nil
+	return enclaveResponse, nil
 }
 
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
@@ -362,8 +370,13 @@ func (h *host) startProcessing() {
 			}
 
 		case tx := <-h.txP2PCh:
-			if resp := h.enclaveClient.SubmitTx(tx); resp.Error() != nil {
-				h.logger.Warn("Could not submit transaction. ", log.ErrKey, resp.Error())
+			resp, sysError := h.enclaveClient.SubmitTx(tx)
+			if sysError != nil {
+				h.logger.Warn("Could not submit transaction due to sysError", log.ErrKey, sysError)
+				continue
+			}
+			if resp.Error() != nil {
+				h.logger.Warn("Could not submit transaction", log.ErrKey, resp.Error())
 			}
 
 		// todo (#718) - adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.

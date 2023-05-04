@@ -74,70 +74,99 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the
 // `address` field and encoded as hex.
 func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (responses.EnclaveResponse, error) {
-	enclaveResponse := api.host.EnclaveClient().GetBalance(encryptedParams)
-	return enclaveResponse, nil
+	enclaveResponse, sysError := api.host.EnclaveClient().GetBalance(encryptedParams)
+	if sysError != nil {
+		return api.handleSysError(sysError)
+	}
+	return *enclaveResponse, nil
 }
 
 // Call returns the result of executing the smart contract as a user, encrypted with the viewing key corresponding to
 // the `from` field and encoded as hex.
 func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
-	enclaveResponse := api.host.EnclaveClient().ObsCall(encryptedParams)
-	return enclaveResponse, nil
+	enclaveResponse, sysError := api.host.EnclaveClient().ObsCall(encryptedParams)
+	if sysError != nil {
+		return api.handleSysError(sysError)
+	}
+	return *enclaveResponse, nil
 }
 
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash, encrypted with the viewing key
 // corresponding to the original transaction submitter and encoded as hex, or nil if no matching transaction exists.
 func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (responses.EnclaveResponse, error) {
-	enclaveResponse := api.host.EnclaveClient().GetTransactionReceipt(encryptedParams)
-	return enclaveResponse, nil
+	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionReceipt(encryptedParams)
+	if sysError != nil {
+		return api.handleSysError(sysError)
+	}
+	return *enclaveResponse, nil
 }
 
 // EstimateGas requests the enclave the gas estimation based on the callMsg supplied params (encrypted)
 func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas) (responses.EnclaveResponse, error) {
-	enclaveResponse := api.host.EnclaveClient().EstimateGas(encryptedParams)
-	return enclaveResponse, nil
+	enclaveResponse, sysError := api.host.EnclaveClient().EstimateGas(encryptedParams)
+	if sysError != nil {
+		return api.handleSysError(sysError)
+	}
+	return *enclaveResponse, nil
 }
 
 // SendRawTransaction sends the encrypted transaction.
-func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.EnclaveResponse, error) {
-	enclaveResponse, err := api.host.SubmitAndBroadcastTx(encryptedParams)
-	if err != nil {
-		return nil, err
+func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (responses.EnclaveResponse, error) {
+	enclaveResponse, sysError := api.host.SubmitAndBroadcastTx(encryptedParams)
+	if sysError != nil {
+		return api.handleSysError(sysError)
 	}
-	return enclaveResponse, nil
+	return *enclaveResponse, nil
 }
 
 // GetCode returns the code stored at the given address in the state for the given batch height or batch hash.
 // todo (#1620) - instead of converting the block number of hash client-side, do it on the enclave
 func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+	var batchHash *gethcommon.Hash
+
 	// requested a number
 	if batchNumber, ok := blockNrOrHash.Number(); ok {
-		batchHash, err := api.batchNumberToBatchHash(batchNumber)
+		hash, err := api.batchNumberToBatchHash(batchNumber)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch with height %d. Cause: %w", batchNumber, err)
 		}
-
-		return api.host.EnclaveClient().GetCode(address, batchHash)
+		batchHash = hash
 	}
 
 	// requested a hash
-	if batchHash, ok := blockNrOrHash.Hash(); ok {
-		return api.host.EnclaveClient().GetCode(address, &batchHash)
+	if hash, ok := blockNrOrHash.Hash(); ok {
+		batchHash = &hash
 	}
 
-	return nil, errors.New("invalid arguments; neither batch height nor batch hash specified")
+	if batchHash == nil {
+		return nil, errors.New("invalid arguments; neither batch height nor batch hash specified")
+	}
+
+	code, sysError := api.host.EnclaveClient().GetCode(address, batchHash)
+	if sysError != nil {
+		api.logger.Warn("Enclave System Error Response", log.ErrKey, sysError)
+		return nil, fmt.Errorf(responses.InternalErrMsg)
+	}
+
+	return code, nil
 }
 
 func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (responses.EnclaveResponse, error) {
-	enclaveResponse := api.host.EnclaveClient().GetTransactionCount(encryptedParams)
-	return enclaveResponse, nil
+	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionCount(encryptedParams)
+	if sysError != nil {
+		return api.handleSysError(sysError)
+	}
+	return *enclaveResponse, nil
 }
 
 // GetTransactionByHash returns the transaction with the given hash, encrypted with the viewing key corresponding to the
 // `from` field and encoded as hex, or nil if no matching transaction exists.
 func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (responses.EnclaveResponse, error) {
-	enclaveResponse := api.host.EnclaveClient().GetTransaction(encryptedParams)
-	return enclaveResponse, nil
+	enclaveResponse, sysError := api.host.EnclaveClient().GetTransaction(encryptedParams)
+	if sysError != nil {
+		return api.handleSysError(sysError)
+	}
+	return *enclaveResponse, nil
 }
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
@@ -212,4 +241,11 @@ func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*ge
 		return nil, err
 	}
 	return batchHash, nil
+}
+
+func (api *EthereumAPI) handleSysError(sysError common.SystemError) (responses.EnclaveResponse, error) {
+	api.logger.Warn("Enclave System Error Response", log.ErrKey, sysError)
+	return responses.EnclaveResponse{
+		Err: &responses.InternalErrMsg,
+	}, nil
 }

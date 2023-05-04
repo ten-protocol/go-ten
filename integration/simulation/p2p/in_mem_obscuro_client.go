@@ -131,8 +131,8 @@ func (c *inMemObscuroClient) sendRawTransaction(result interface{}, args []inter
 	}
 
 	encryptedResponse, err := c.ethAPI.SendRawTransaction(context.Background(), encBytes)
-	if encryptedResponse != nil {
-		*result.(*responses.EnclaveResponse) = *encryptedResponse
+	if err == nil {
+		*result.(*responses.EnclaveResponse) = encryptedResponse
 	}
 
 	return err
