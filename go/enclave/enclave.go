@@ -273,7 +273,6 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	// If the block and receipts do not match, reject the block.
 	br, err := common.ParseBlockAndReceipts(&block, &receipts, e.crossChainProcessors.Enabled())
 	if err != nil {
-		// TODO (#1645) review system error and reject block error
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
@@ -1367,14 +1366,14 @@ func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]b
 	return e.subscriptionManager.EncryptLogs(result)
 }
 
-func (e *enclaveImpl) rejectBlockErr(cause error) *common.BlockRejectError {
+func (e *enclaveImpl) rejectBlockErr(cause error) *errutil.BlockRejectError {
 	var hash common.L1BlockHash
 	l1Head, err := e.storage.FetchHeadBlock()
 	// todo - handle error
 	if err == nil {
 		hash = l1Head.Hash()
 	}
-	return &common.BlockRejectError{
+	return &errutil.BlockRejectError{
 		L1Head:  hash,
 		Wrapped: cause,
 	}

@@ -10,11 +10,11 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
-
 	"google.golang.org/grpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -94,17 +94,17 @@ func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBl
 	receipts := s.decodeReceipts(request.EncodedReceipts)
 	blockSubmissionResponse, err := s.enclave.SubmitL1Block(bl, receipts, request.IsLatest)
 	if err != nil {
-		var rejErr *common.BlockRejectError
+		var rejErr *errutil.BlockRejectError
 		isReject := errors.As(err, &rejErr)
 		if isReject {
-			// todo (@stefan) - we should avoid errors in response messages and use the gRPC error objects for this stuff
-			//  (standardized across all enclave responses)
-			msg, err := rpc.ToBlockSubmissionRejectionMsg(rejErr)
-			if err == nil {
-				// send back reject err response
-				return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
-			}
-			s.logger.Warn("failed to process the BlockRejectError, falling back to original error")
+			return &generated.SubmitBlockResponse{
+				BlockSubmissionResponse: &generated.BlockSubmissionResponseMsg{
+					Error: &generated.BlockSubmissionErrorMsg{
+						Cause:  rejErr.Wrapped.Error(),
+						L1Head: rejErr.L1Head.Bytes(),
+					},
+				},
+			}, nil
 		}
 		return nil, err
 	}

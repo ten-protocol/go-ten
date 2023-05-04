@@ -273,7 +273,7 @@ func (oc *ObscuroChain) updateL1State(block types.Block, receipts types.Receipts
 	// We check whether we've already processed the block.
 	_, err := oc.storage.FetchBlock(block.Hash())
 	if err == nil {
-		return nil, common.ErrBlockAlreadyProcessed
+		return nil, errutil.ErrBlockAlreadyProcessed
 	}
 	if !errors.Is(err, errutil.ErrNotFound) {
 		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
@@ -322,7 +322,7 @@ func (oc *ObscuroChain) insertBlockIntoL1Chain(block *types.Block, isLatest bool
 	} else if block.ParentHash() != prevL1Head.Hash() {
 		lcaBlock, err := gethutil.LCA(block, prevL1Head, oc.storage)
 		if err != nil {
-			return nil, common.ErrBlockAncestorNotFound
+			return nil, errutil.ErrBlockAncestorNotFound
 		}
 		oc.logger.Trace("parent not found",
 			"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
