@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -17,9 +12,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -157,7 +156,7 @@ func secret(storage db.Storage) []byte {
 }
 
 func newErrorWithReasonAndCode(err error) error {
-	result := &SerialisableError{
+	result := &errutil.SerialisableError{
 		Err: err.Error(),
 	}
 
@@ -180,28 +179,9 @@ func newRevertError(result *gethcore.ExecutionResult) error {
 	if errUnpack == nil {
 		err = fmt.Errorf("execution reverted: %v", reason)
 	}
-	return &SerialisableError{
+	return &errutil.SerialisableError{
 		Err:    err.Error(),
 		Reason: hexutil.Encode(result.Revert()),
 		Code:   3, // todo - magic number, really needs thought around the value and made a constant
 	}
-}
-
-// SerialisableError is an API error that encompasses an EVM error with a code and a reason
-type SerialisableError struct {
-	Err    string
-	Reason interface{}
-	Code   int
-}
-
-func (e SerialisableError) Error() string {
-	return e.Err
-}
-
-func (e SerialisableError) ErrorCode() int {
-	return e.Code
-}
-
-func (e SerialisableError) ErrorData() interface{} {
-	return e.Reason
 }

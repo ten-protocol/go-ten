@@ -11,44 +11,35 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
-	"github.com/obscuronet/go-obscuro/go/enclave/evm"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
-	"github.com/obscuronet/go-obscuro/go/responses"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/obscuronet/go-obscuro/go/common/gethapi"
-
-	"github.com/ethereum/go-ethereum/eth/filters"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
+	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/gethapi"
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
+	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
+	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 	"github.com/obscuronet/go-obscuro/go/enclave/rollupmanager"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	_ "github.com/obscuronet/go-obscuro/go/common/tracers/native" // make sure the tracers are loaded
 
@@ -1353,12 +1344,12 @@ func serializeEVMError(err error) ([]byte, error) {
 	var errReturn interface{}
 
 	// check if it's a serialized error and handle any error wrapping that might have occurred
-	var e *evm.SerialisableError
+	var e *errutil.SerialisableError
 	if ok := errors.As(err, &e); ok {
 		errReturn = e
 	} else {
 		// it's a generic error, serialise it
-		errReturn = &evm.SerialisableError{Err: err.Error()}
+		errReturn = &errutil.SerialisableError{Err: err.Error()}
 	}
 
 	// serialise the error object returned by the evm into a json
