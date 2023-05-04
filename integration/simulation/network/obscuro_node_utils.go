@@ -229,9 +229,9 @@ func StopObscuroNodes(clients []rpc.Client) {
 			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
 				testlog.Logger().Error("Could not stop Obscuro node.", log.ErrKey, err)
-				//return err
+				// return err
 			}
-			//c.Stop()
+			// c.Stop()
 			return nil
 		})
 	}
