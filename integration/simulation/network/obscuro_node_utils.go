@@ -1,6 +1,7 @@
 package network
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"net"
@@ -8,9 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/async"
-
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/async"
 	"github.com/obscuronet/go-obscuro/go/common/container"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -25,6 +25,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"golang.org/x/sync/errgroup"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
@@ -219,24 +220,27 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 
 // StopObscuroNodes stops the Obscuro nodes and their RPC clients.
 func StopObscuroNodes(clients []rpc.Client) {
-	var wg sync.WaitGroup
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	eg, _ := errgroup.WithContext(ctx)
 	for _, client := range clients {
-		wg.Add(1)
-		go func(c rpc.Client) {
-			defer wg.Done()
+		c := client
+		eg.Go(func() error {
 			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
 				testlog.Logger().Error("Could not stop Obscuro node.", log.ErrKey, err)
+				//return err
 			}
-			c.Stop()
-		}(client)
+			//c.Stop()
+			return nil
+		})
 	}
 
-	if err := async.WaitTimeout(&wg, 20*time.Second); err != nil {
-		panic("Timed out waiting for the Obscuro nodes to stop")
-	} else {
-		testlog.Logger().Info("Obscuro nodes stopped")
+	err := eg.Wait()
+	if err != nil {
+		panic(fmt.Sprintf("Error waiting for the Obscuro nodes to stop - %s", err))
 	}
+	testlog.Logger().Info("Obscuro nodes stopped")
 }
 
 // CheckHostRPCServersStopped checks whether the hosts' RPC server addresses have been freed up.

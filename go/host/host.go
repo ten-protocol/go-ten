@@ -276,8 +276,6 @@ func (h *host) Stop() {
 		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
 	}
 
-	// Leave some time for all processing to finish before exiting the main loop.
-	time.Sleep(time.Second)
 	h.exitHostCh <- true
 
 	if err := h.enclaveClient.Stop(); err != nil {
