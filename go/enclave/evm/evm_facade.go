@@ -156,7 +156,7 @@ func secret(storage db.Storage) []byte {
 }
 
 func newErrorWithReasonAndCode(err error) error {
-	result := &errutil.SerialisableError{
+	result := &errutil.EVMSerialisableError{
 		Err: err.Error(),
 	}
 
@@ -179,7 +179,7 @@ func newRevertError(result *gethcore.ExecutionResult) error {
 	if errUnpack == nil {
 		err = fmt.Errorf("execution reverted: %v", reason)
 	}
-	return &errutil.SerialisableError{
+	return &errutil.EVMSerialisableError{
 		Err:    err.Error(),
 		Reason: hexutil.Encode(result.Revert()),
 		Code:   3, // todo - magic number, really needs thought around the value and made a constant

@@ -1344,12 +1344,12 @@ func serializeEVMError(err error) ([]byte, error) {
 	var errReturn interface{}
 
 	// check if it's a serialized error and handle any error wrapping that might have occurred
-	var e *errutil.SerialisableError
+	var e *errutil.EVMSerialisableError
 	if ok := errors.As(err, &e); ok {
 		errReturn = e
 	} else {
 		// it's a generic error, serialise it
-		errReturn = &errutil.SerialisableError{Err: err.Error()}
+		errReturn = &errutil.EVMSerialisableError{Err: err.Error()}
 	}
 
 	// serialise the error object returned by the evm into a json

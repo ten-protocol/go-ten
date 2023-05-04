@@ -1,20 +1,20 @@
 package errutil
 
-// SerialisableError is an API error that encompasses an EVM error with a code and a reason
-type SerialisableError struct {
+// EVMSerialisableError is an API error that encompasses an EVM error with a code and a reason
+type EVMSerialisableError struct {
 	Err    string
 	Reason interface{}
 	Code   int
 }
 
-func (e SerialisableError) Error() string {
+func (e EVMSerialisableError) Error() string {
 	return e.Err
 }
 
-func (e SerialisableError) ErrorCode() int {
+func (e EVMSerialisableError) ErrorCode() int {
 	return e.Code
 }
 
-func (e SerialisableError) ErrorData() interface{} {
+func (e EVMSerialisableError) ErrorData() interface{} {
 	return e.Reason
 }

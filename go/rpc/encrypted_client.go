@@ -283,7 +283,7 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 		// EstimateGas and Call methods return EVM Errors that are json objects
 		// and contain multiple keys that normally do not get serialized
 		if method == EstimateGas || method == Call {
-			var result errutil.SerialisableError
+			var result errutil.EVMSerialisableError
 			err = json.Unmarshal([]byte(decodedError.Error()), &result)
 			if err != nil {
 				return err
