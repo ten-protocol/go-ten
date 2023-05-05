@@ -286,5 +286,8 @@ Users might suspect someone else knows their UserdId.
 
 Note: forgotten userIds are not a problem, because they have high enough entropy.
 
-There must be a UI which calls the revokation endpoint.
+There must be a UI which calls the revocation endpoint.
 
+Note that if the OG operator comes into possession of a UserId, they can circumvent the revocation by launching the service
+against a snapshot of the database. To prevent this, revocations could be published on ledger, and make them a first 
+class citizen.
