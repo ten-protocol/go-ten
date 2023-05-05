@@ -8,9 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync/atomic"
-
-	"github.com/obscuronet/go-obscuro/go/common/syserr"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -25,6 +22,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
+	"github.com/obscuronet/go-obscuro/go/common/syserr"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -75,7 +74,7 @@ type enclaveImpl struct {
 	debugger              *debugger.Debugger
 	logger                gethlog.Logger
 
-	stopInterrupt *int32
+	stopControl *stopcontrol.StopControl
 }
 
 // NewEnclave creates a new enclave.
@@ -228,13 +227,13 @@ func NewEnclave(
 		profiler:              prof,
 		logger:                logger,
 		debugger:              debug,
-		stopInterrupt:         new(int32),
+		stopControl:           stopcontrol.New(),
 	}
 }
 
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return common.Unavailable, responses.ToInternalError(fmt.Errorf("requested Status with the enclave stopping"))
 	}
 
@@ -255,7 +254,7 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
 	}
 
@@ -311,7 +310,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitTx with the enclave stopping"))
 	}
 
@@ -358,7 +357,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 }
 
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested SubmitBatch with the enclave stopping"))
 	}
 
@@ -372,7 +371,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 }
 
 func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
 	}
 
@@ -391,7 +390,7 @@ func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, common.SystemError) {
 // ObsCall handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_call)
 func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*responses.Call, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
@@ -462,7 +461,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 }
 
 func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (*responses.TxCount, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionCount with the enclave stopping"))
 	}
 
@@ -495,7 +494,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 }
 
 func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (*responses.TxByHash, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransaction with the enclave stopping"))
 	}
 
@@ -543,7 +542,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.TxReceipt, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionReceipt with the enclave stopping"))
 	}
 
@@ -607,7 +606,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 }
 
 func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
@@ -623,7 +622,7 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemErr
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
 func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateSecret with the enclave stopping"))
 	}
 
@@ -641,7 +640,7 @@ func (e *enclaveImpl) GenerateSecret() (common.EncryptedSharedEnclaveSecret, com
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
 func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.SystemError {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested InitEnclave with the enclave stopping"))
 	}
 
@@ -678,7 +677,7 @@ func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationR
 }
 
 func (e *enclaveImpl) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) common.SystemError {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested AddViewingKey with the enclave stopping"))
 	}
 
@@ -703,7 +702,7 @@ func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
 // GetBalance handles param decryption, validation and encryption
 // and requests the Rollup chain to execute the payload (eth_getBalance)
 func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (*responses.Balance, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetBalance with the enclave stopping"))
 	}
 
@@ -752,7 +751,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 }
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2BatchHash) ([]byte, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
 	}
 
@@ -764,7 +763,7 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2Ba
 }
 
 func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the enclave stopping"))
 	}
 
@@ -772,7 +771,7 @@ func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.Encr
 }
 
 func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) common.SystemError {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested Unsubscribe with the enclave stopping"))
 	}
 
@@ -782,7 +781,7 @@ func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) common.SystemError {
 
 func (e *enclaveImpl) Stop() common.SystemError {
 	// block all requests
-	atomic.StoreInt32(e.stopInterrupt, 1)
+	e.stopControl.Stop()
 
 	if e.profiler != nil {
 		if err := e.profiler.Stop(); err != nil {
@@ -802,7 +801,7 @@ func (e *enclaveImpl) Stop() common.SystemError {
 // EstimateGas decrypts CallMsg data, runs the gas estimation for the data.
 // Using the callMsg.From Viewing Key, returns the encrypted gas estimation
 func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimateGas) (*responses.Gas, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested EstimateGas with the enclave stopping"))
 	}
 
@@ -870,7 +869,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 
 //nolint
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))
 	}
 
@@ -1053,7 +1052,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 
 // HealthCheck returns whether the enclave is deemed healthy
 func (e *enclaveImpl) HealthCheck() (bool, common.SystemError) {
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return false, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the enclave stopping"))
 	}
 
@@ -1071,7 +1070,7 @@ func (e *enclaveImpl) HealthCheck() (bool, common.SystemError) {
 
 func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
 	// ensure the enclave is running
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested DebugTraceTransaction with the enclave stopping"))
 	}
 
@@ -1094,7 +1093,7 @@ func (e *enclaveImpl) DebugTraceTransaction(txHash gethcommon.Hash, config *trac
 
 func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMessage, common.SystemError) {
 	// ensure the enclave is running
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested DebugEventLogRelevancy with the enclave stopping"))
 	}
 

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,6 +16,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
@@ -56,7 +56,7 @@ type host struct {
 	exitHostCh chan bool
 
 	// ignore incoming requests
-	stopInterrupt *int32
+	stopControl *stopcontrol.StopControl
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
@@ -119,7 +119,7 @@ func NewHost(
 		logger:         logger,
 		metricRegistry: regMetrics,
 
-		stopInterrupt: new(int32),
+		stopControl: stopcontrol.New(),
 	}
 
 	var prof *profiler.Profiler
@@ -139,7 +139,7 @@ func NewHost(
 
 // Start validates the host config and starts the Host in a go routine - immediately returns after
 func (h *host) Start() error {
-	if atomic.LoadInt32(h.stopInterrupt) == 1 {
+	if h.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested Start with the host stopping"))
 	}
 	h.validateConfig()
@@ -229,7 +229,7 @@ func (h *host) EnclaveClient() common.Enclave {
 }
 
 func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
-	if atomic.LoadInt32(h.stopInterrupt) == 1 {
+	if h.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitAndBroadcastTx with the host stopping"))
 	}
 	encryptedTx := common.EncryptedTx(encryptedParams)
@@ -267,7 +267,7 @@ func (h *host) ReceiveBatchRequest(batchRequest common.EncodedBatchRequest) {
 }
 
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
-	if atomic.LoadInt32(h.stopInterrupt) == 1 {
+	if h.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the host stopping"))
 	}
 	err := h.EnclaveClient().Subscribe(id, encryptedLogSubscription)
@@ -279,7 +279,7 @@ func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 }
 
 func (h *host) Unsubscribe(id rpc.ID) {
-	if atomic.LoadInt32(h.stopInterrupt) == 1 {
+	if h.stopControl.IsStopping() {
 		h.logger.Error("requested Subscribe with the host stopping")
 	}
 	err := h.EnclaveClient().Unsubscribe(id)
@@ -291,7 +291,7 @@ func (h *host) Unsubscribe(id rpc.ID) {
 
 func (h *host) Stop() error {
 	// block all incoming requests
-	atomic.StoreInt32(h.stopInterrupt, 1)
+	h.stopControl.Stop()
 
 	if err := h.p2p.StopListening(); err != nil {
 		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
@@ -322,7 +322,7 @@ func (h *host) Stop() error {
 
 // HealthCheck returns whether the host, enclave and DB are healthy
 func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
-	if atomic.LoadInt32(h.stopInterrupt) == 1 {
+	if h.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the host stopping"))
 	}
 
