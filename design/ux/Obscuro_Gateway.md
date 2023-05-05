@@ -21,7 +21,7 @@ The role of the current WE is to manage a list of authenticated viewing keys (AV
 The AVKs are stored on the local computer in a file.
 
 The diagram below depicts the setup once the OG is implemented.
-
+![Architecture diagram](resources/og_arch.png)
 ```plantuml
 @startuml
 'https://plantuml.com/deployment-diagram
@@ -72,6 +72,7 @@ Notice that the OG is a multi-tenant WE running inside SGX and storing the authe
 The key reason for the OG is to allow implementing a 3-click user onboarding process.
 
 See below for a proposed flow:
+![UX diagram](resources/og_ux.png)
 
 ```plantuml
 @startuml
