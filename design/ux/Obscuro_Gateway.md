@@ -166,10 +166,10 @@ The first thing, the WE will lookup the userId and then operate in "Wallet Exten
 
 ### Create User - GET "/join"
 
-Generates a key-pair.
-Hashes the public key - this is the UserId.
-Stores in the db: UserId, PrivateKey 
-Return UserId
+- Generates a key-pair.
+- Hashes the public key - this is the UserId.
+- Stores in the db: UserId, PrivateKey 
+- Return UserId
 
 Note: Has to be protected against DDOS attacks.
 
