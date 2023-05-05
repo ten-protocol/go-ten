@@ -25,7 +25,7 @@ type ContractDeployer struct {
 func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 	return &ContractDeployer{
 		cfg: cfg,
-	}, nil // todo: add validation
+	}, nil // todo (@pedro) - add validation
 }
 
 func (n *ContractDeployer) Start() error {

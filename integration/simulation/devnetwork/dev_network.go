@@ -32,7 +32,7 @@ var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)
 type InMemDevNetwork struct {
 	logger gethlog.Logger
 
-	// todo: replace this with a struct for accs/contracts that are controlled by network admins
+	// todo (@matt) - replace this with a struct for accs/contracts that are controlled by network admins
 	// 	(don't pollute with "user" wallets, they will be controlled by the individual network test runners)
 	networkWallets *params.SimWallets
 
@@ -85,7 +85,7 @@ func (s *InMemDevNetwork) ValidatorRPCAddress(idx int) string {
 }
 
 // GetL1Client returns the first client we have for our local L1 network
-// todo: this allows tests some basic L1 verification but in future this will need support more manipulation of L1 nodes,
+// todo (@matt) - this allows tests some basic L1 verification but in future this will need support more manipulation of L1 nodes,
 //
 //	(to allow us to simulate various scenarios where L1 is unavailable, under attack, etc.)
 func (s *InMemDevNetwork) GetL1Client() (ethadapter.EthClient, error) {
@@ -110,7 +110,7 @@ func (s *InMemDevNetwork) Start() {
 }
 
 func (s *InMemDevNetwork) DeployL1StandardContracts() {
-	// todo: separate out L1 contract deployment from the geth network setup to give better sim control
+	// todo (@matt) - separate out L1 contract deployment from the geth network setup to give better sim control
 }
 
 func (s *InMemDevNetwork) startNodes() {

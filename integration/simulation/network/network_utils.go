@@ -131,7 +131,7 @@ func createSocketObscuroHostContainer(
 		UseInMemoryDB:             true,
 	}
 
-	// TODO change this to use the NewHostContainerFromConfig - depends on https://github.com/obscuronet/obscuro-internal/issues/1303
+	// todo (@pedro) - change this to use the NewHostContainerFromConfig - depends on https://github.com/obscuronet/obscuro-internal/issues/1303
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 	hostP2P := p2p.NewSocketP2PLayer(hostConfig, hostLogger.New(log.CmpKey, log.P2PCmp), metricsService.Registry())

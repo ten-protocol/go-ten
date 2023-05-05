@@ -73,7 +73,7 @@ func (n *InMemNodeOperator) Start() error {
 // StartHost starts the host process in a new thread
 func (n *InMemNodeOperator) StartHost() error {
 	// even if host was running previously we recreate the container to ensure state is like a new process
-	// todo: check if host is still running, stop or error?
+	// todo (@matt) - check if host is still running, stop or error?
 	n.host = n.createHostContainer()
 	go func() {
 		err := n.host.Start()
@@ -88,7 +88,7 @@ func (n *InMemNodeOperator) StartHost() error {
 // StartEnclave starts the enclave process in
 func (n *InMemNodeOperator) StartEnclave() error {
 	// even if enclave was running previously we recreate the container to ensure state is like a new process
-	// todo: check if enclave is still running?
+	// todo (@matt) - check if enclave is still running?
 	n.enclave = n.createEnclaveContainer()
 	return n.enclave.Start()
 }
@@ -200,7 +200,7 @@ func (n *InMemNodeOperator) StopEnclave() error {
 func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common.NodeType, l1Data *params.L1SetupData,
 	l1Client ethadapter.EthClient, l1Wallet wallet.Wallet, logger gethlog.Logger,
 ) *InMemNodeOperator {
-	// todo: put sqlite and levelDB storage in the same temp dir
+	// todo (@matt) - put sqlite and levelDB storage in the same temp dir
 	sqliteDBPath, err := sql.CreateTempDBFile()
 	if err != nil {
 		panic("failed to create temp sqlite db path")

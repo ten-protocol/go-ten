@@ -20,7 +20,6 @@ import (
 // Implementation notes:
 // - This is a work in progress, so there is a lot of code duplication in the implementations
 // - Once we implement a few more versions: for example using Geth, we'll revisit and create better abstractions.
-// TODO Decompose the network so we can pick and choose different types of l1 and obscuro nodes
 type Network interface {
 	// Create - returns the started Ethereum nodes and the started Obscuro node clients.
 	// Responsible with spinning up all resources required for the test
@@ -41,7 +40,7 @@ type RPCHandles struct {
 	// an RPC client per node per wallet, with a viewing key set up (on the client and registered on its corresponding host enclave),
 	//	to mimic user acc interaction via a wallet extension
 	// map of owner addresses to RPC clients for that owner (one per L2 node)
-	// todo: simplify this with a client per node when we have clients that can support multiple wallets
+	// todo (@matt) - simplify this with a client per node when we have clients that can support multiple wallets
 	AuthObsClients map[string][]*obsclient.AuthObsClient
 }
 

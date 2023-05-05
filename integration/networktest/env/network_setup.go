@@ -7,7 +7,7 @@ import (
 func Testnet() networktest.Environment {
 	connector := NewTestnetConnector(
 		"http://testnet.obscu.ro:13000",
-		[]string{"http://testnet.obscu.ro:13000"}, // for now we'll just use sequencer as validator node... (todo)
+		[]string{"http://testnet.obscu.ro:13000"}, // for now we'll just use sequencer as validator node... todo (@matt)
 		"http://testnet-faucet.uksouth.azurecontainer.io/fund/obx",
 		"testnet-eth2network.uksouth.azurecontainer.io",
 		9000,
@@ -18,7 +18,7 @@ func Testnet() networktest.Environment {
 func DevTestnet() networktest.Environment {
 	connector := NewTestnetConnector(
 		"http://dev-testnet.obscu.ro:13000",
-		[]string{"http://dev-testnet.obscu.ro:13000"}, // for now we'll just use sequencer as validator node... (todo)
+		[]string{"http://dev-testnet.obscu.ro:13000"}, // for now we'll just use sequencer as validator node... todo (@matt)
 		"http://dev-testnet-faucet.uksouth.azurecontainer.io/fund/obx",
 		"dev-testnet-eth2network.uksouth.azurecontainer.io",
 		9000,

@@ -23,7 +23,7 @@ type Testnet struct {
 }
 
 func NewTestnetLauncher(cfg *Config) *Testnet {
-	// todo bind testnet specific options like number of nodes, etc
+	// todo (@pedro) - bind testnet specific options like number of nodes, etc
 	return &Testnet{cfg: cfg}
 }
 

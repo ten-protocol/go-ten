@@ -6,7 +6,7 @@ import (
 
 func main() {
 	cliConfig := ParseConfigCLI()
-	// todo: allow for multiple operation (start, stop, status)
+	// todo (#1618) - allow for multiple operation (start, stop, status)
 
 	nodeCfg := node.NewNodeConfig(
 		node.WithNodeName(cliConfig.nodeName),

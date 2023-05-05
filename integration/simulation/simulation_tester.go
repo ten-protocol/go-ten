@@ -30,7 +30,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	rand.Seed(time.Now().UnixNano())
 	uuid.EnableRandPool()
 
-	stats := simstats.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better
+	stats := simstats.NewStats(params.NumberOfNodes)
 
 	fmt.Printf("Creating network\n")
 	testlog.Logger().Info("Creating network")

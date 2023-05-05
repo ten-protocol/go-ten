@@ -21,11 +21,11 @@ type DockerNode struct {
 func NewDockerNode(cfg *Config) (*DockerNode, error) {
 	return &DockerNode{
 		cfg: cfg,
-	}, nil // todo: add config validation
+	}, nil // todo (@pedro) - add config validation
 }
 
 func (d *DockerNode) Start() error {
-	// TODO this should probably be removed in the future
+	// todo (@pedro) - this should probably be removed in the future
 	fmt.Printf("Starting Node %s with config: \n%s\n\n", d.cfg.nodeName, litter.Sdump(*d.cfg))
 
 	err := d.startEdgelessDB()
@@ -47,7 +47,7 @@ func (d *DockerNode) Start() error {
 }
 
 func (d *DockerNode) Upgrade() error {
-	// TODO this should probably be removed in the future
+	// todo (@pedro) - this should probably be removed in the future
 	fmt.Printf("Upgrading node %s with config: %+v\n", d.cfg.nodeName, d.cfg)
 
 	fmt.Println("Stopping existing host and enclave")
@@ -143,7 +143,7 @@ func (d *DockerNode) startEnclave() error {
 
 	cmd = append(cmd,
 		"-hostID", d.cfg.hostID,
-		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveWSPort), // todo review this 0.0.0.0 host bind
+		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveWSPort), // todo (@pedro) - review this 0.0.0.0 host bind
 		"-nodeType", d.cfg.nodeType,
 		"-managementContractAddress", d.cfg.managementContractAddr,
 		"-hostAddress", d.cfg.hostPublicP2PAddr,
