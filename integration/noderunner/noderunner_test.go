@@ -116,7 +116,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	defer func() {
 		// the container stops the enclave
 		if err = hostContainer.Stop(); err != nil {
-			t.Fatal("unable to properly stop the host container")
+			t.Fatalf("unable to properly stop the host container - %s", err)
 		}
 	}()
 

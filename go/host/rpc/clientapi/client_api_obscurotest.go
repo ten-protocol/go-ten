@@ -16,8 +16,12 @@ func NewTestAPI(container container.Container) *TestAPI {
 }
 
 // StopHost gracefully stops the host.
-func (api *TestAPI) StopHost() {
+func (api *TestAPI) StopHost() error {
 	if api.container != nil {
-		_ = api.container.Stop()
+		err := api.container.Stop()
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }

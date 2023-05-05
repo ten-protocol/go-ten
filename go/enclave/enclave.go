@@ -785,13 +785,16 @@ func (e *enclaveImpl) Stop() common.SystemError {
 	atomic.StoreInt32(e.stopInterrupt, 1)
 
 	if e.profiler != nil {
-		return e.profiler.Stop()
+		if err := e.profiler.Stop(); err != nil {
+			return err
+		}
 	}
-	// todo @pedro review this stop cycle
 	err := e.storage.Close()
 	if err != nil {
 		e.logger.Error("Could not stop db", log.ErrKey, err)
+		return err
 	}
+
 	return nil
 }
 
