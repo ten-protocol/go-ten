@@ -52,8 +52,11 @@ type host struct {
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	enclaveClient common.Enclave       // For communication with the enclave
 
-	// control the host lifecycle
+	// shutdown long-running loops
 	exitHostCh chan bool
+
+	// ignore incoming requests
+	stopInterrupt *int32
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
@@ -70,7 +73,6 @@ type host struct {
 	logger gethlog.Logger
 
 	metricRegistry gethmetrics.Registry
-	stopInterrupt  *int32
 }
 
 func NewHost(
@@ -420,6 +422,7 @@ func (h *host) startProcessing() {
 			}
 
 		case <-h.exitHostCh:
+			blockStream.Stop()
 			h.logger.Info("Shutting down: Stopped listening for blocks, batches and transactions.")
 			return
 		}
