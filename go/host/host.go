@@ -398,7 +398,7 @@ func (h *host) startProcessing() {
 }
 
 func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostcommon.BlockStream, err error) *hostcommon.BlockStream {
-	var rejErr *common.BlockRejectError
+	var rejErr *errutil.BlockRejectError
 	if !errors.As(err, &rejErr) {
 		// received unexpected error (no useful information from the enclave)
 		// we log it out and ignore it until the enclave tells us more information
@@ -406,7 +406,7 @@ func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostco
 		return stream
 	}
 	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, log.BlockHashKey, processedBlock.Hash(), log.BlockHeightKey, processedBlock.Number())
-	if errors.Is(rejErr, common.ErrBlockAlreadyProcessed) {
+	if errors.Is(rejErr, errutil.ErrBlockAlreadyProcessed) {
 		// resetting stream after rejection for duplicate is a possible optimisation in future but it's rarely an expensive case and
 		// it's a risky optimisation (need to ensure it can't get stuck in a loop)
 		// Instead we assume that only one or two blocks are being repeated (probably from revisiting a fork that was

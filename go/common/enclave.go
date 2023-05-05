@@ -2,11 +2,9 @@ package common
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/responses"
 
@@ -121,7 +119,7 @@ type BlockSubmissionResponse struct {
 	ProducedRollup          *ExtRollup                // The rollup produced iff the node is a sequencer and it is time to produce a new rollup.
 	ProducedSecretResponses []*ProducedSecretResponse // The responses to any secret requests in the ingested L1 block.
 	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the L1 block and all its ancestors for each subscription ID.
-	RejectError             *BlockRejectError         // If block was rejected, contains information about what block to submit next.
+	RejectError             *errutil.BlockRejectError // If block was rejected, contains information about what block to submit next.
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block
@@ -129,35 +127,4 @@ type ProducedSecretResponse struct {
 	Secret      []byte
 	RequesterID gethcommon.Address
 	HostAddress string
-}
-
-// Standard errors that can be returned from block submission
-var (
-	ErrBlockAlreadyProcessed = errors.New("block already processed")
-	ErrBlockAncestorNotFound = errors.New("block ancestor not found")
-)
-
-// BlockRejectError is used as a standard format for error response from enclave for block submission errors
-// The L1 Head hash tells the host what the enclave knows as the canonical chain head, so it can feed it the appropriate block.
-type BlockRejectError struct {
-	L1Head  gethcommon.Hash
-	Wrapped error
-}
-
-func (r BlockRejectError) Error() string {
-	head := "N/A"
-	if r.L1Head != (gethcommon.Hash{}) {
-		head = r.L1Head.String()
-	}
-	return fmt.Sprintf("%s l1Head=%s", r.Wrapped.Error(), head)
-}
-
-func (r BlockRejectError) Unwrap() error {
-	return r.Wrapped
-}
-
-// Is implementation supports the errors.Is() behaviour. The error being sent over the wire means we lose the typing
-// on the `Wrapped` error, but comparing the string helps in our use cases of standard exported errors above
-func (r BlockRejectError) Is(err error) bool {
-	return strings.Contains(r.Error(), err.Error()) || errors.Is(err, r.Wrapped)
 }
