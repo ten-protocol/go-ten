@@ -227,9 +227,14 @@ I propose to start gradually by adding functionality that doesn't break the WE.
 Note: At this stage there is no functional change of the wallet extension. Just prepararation. 
 
 3. Add the UserId parameter in all request handlers.
+
 Note: still no functional change, except that now all the rpc urls in the test need "?u=1" to work
 
-4. Change the format of the signed string
+4. Change the format of the signed string and implement the authenticate endpoint.
+
+5. Do the rest of the wiring of the userId
+
+6. Implement the "join" endpoint, and make sure everything works E2E
 
 
 ### SGX stream
