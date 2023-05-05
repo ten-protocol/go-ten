@@ -80,8 +80,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		return nil
 
 	case rpc.StopHost:
-		c.testAPI.StopHost()
-		return nil
+		return c.testAPI.StopHost()
 
 	case rpc.AddViewingKey:
 		return c.addViewingKey(args)

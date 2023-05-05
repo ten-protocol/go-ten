@@ -1,14 +1,12 @@
 package network
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"net"
 	"strings"
-	"sync"
 	"time"
-
-	"github.com/obscuronet/go-obscuro/go/common/async"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/container"
@@ -25,6 +23,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"golang.org/x/sync/errgroup"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
@@ -219,49 +218,57 @@ func startRemoteEnclaveServers(params *params.SimParams) {
 
 // StopObscuroNodes stops the Obscuro nodes and their RPC clients.
 func StopObscuroNodes(clients []rpc.Client) {
-	var wg sync.WaitGroup
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	eg, _ := errgroup.WithContext(ctx)
+
 	for _, client := range clients {
-		wg.Add(1)
-		go func(c rpc.Client) {
-			defer wg.Done()
+		c := client
+		eg.Go(func() error {
 			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
 				testlog.Logger().Error("Could not stop Obscuro node.", log.ErrKey, err)
+				return err
 			}
 			c.Stop()
-		}(client)
+			return nil
+		})
 	}
 
-	if err := async.WaitTimeout(&wg, 20*time.Second); err != nil {
-		panic("Timed out waiting for the Obscuro nodes to stop")
-	} else {
-		testlog.Logger().Info("Obscuro nodes stopped")
+	err := eg.Wait()
+	if err != nil {
+		panic(fmt.Sprintf("Error waiting for the Obscuro nodes to stop - %s", err))
 	}
+
+	testlog.Logger().Info("Obscuro nodes stopped")
 }
 
 // CheckHostRPCServersStopped checks whether the hosts' RPC server addresses have been freed up.
 func CheckHostRPCServersStopped(hostRPCAddresses []string) {
-	var wg sync.WaitGroup
-	for _, hostRPCAddress := range hostRPCAddresses {
-		wg.Add(1)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	eg, _ := errgroup.WithContext(ctx)
 
+	for _, hostRPCAddress := range hostRPCAddresses {
+		rpcAddress := hostRPCAddress
 		// We cannot stop the RPC server synchronously. This is because the host itself is being stopped by an RPC
 		// call, so there is a deadlock. The RPC server is waiting for all connections to close, but a single
 		// connection remains open, waiting for the RPC server to close. Instead, we check whether the RPC port
 		// becomes free.
-		go func(rpcAddress string) {
-			defer wg.Done()
+		eg.Go(func() error {
 			for !isAddressAvailable(rpcAddress) {
 				time.Sleep(100 * time.Millisecond)
 			}
-		}(hostRPCAddress)
+			return nil
+		})
 	}
 
-	if err := async.WaitTimeout(&wg, 10*time.Second); err != nil {
+	err := eg.Wait()
+	if err != nil {
 		panic(fmt.Sprintf("Timed out waiting for the Obscuro host RPC addresses to become available - %s", err))
-	} else {
-		testlog.Logger().Info("Obscuro host RPC addresses freed")
 	}
+
+	testlog.Logger().Info("Obscuro host RPC addresses freed")
 }
 
 func isAddressAvailable(address string) bool {

@@ -147,7 +147,8 @@ func (s *RPCServer) GetTransactionCount(_ context.Context, request *generated.Ge
 }
 
 func (s *RPCServer) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
-	defer s.grpcServer.GracefulStop()
+	// stop the grpcServer on its own goroutine to avoid killing the existing connection
+	go s.grpcServer.GracefulStop()
 	return &generated.StopResponse{SystemError: toRPCError(s.enclave.Stop())}, nil
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
@@ -51,8 +52,11 @@ type host struct {
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	enclaveClient common.Enclave       // For communication with the enclave
 
-	// control the host lifecycle
+	// shutdown long-running process loops
 	exitHostCh chan bool
+
+	// ignore incoming requests
+	stopControl *stopcontrol.StopControl
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
@@ -114,6 +118,8 @@ func NewHost(
 
 		logger:         logger,
 		metricRegistry: regMetrics,
+
+		stopControl: stopcontrol.New(),
 	}
 
 	var prof *profiler.Profiler
@@ -133,6 +139,9 @@ func NewHost(
 
 // Start validates the host config and starts the Host in a go routine - immediately returns after
 func (h *host) Start() error {
+	if h.stopControl.IsStopping() {
+		return responses.ToInternalError(fmt.Errorf("requested Start with the host stopping"))
+	}
 	h.validateConfig()
 
 	tomlConfig, err := toml.Marshal(h.config)
@@ -220,6 +229,9 @@ func (h *host) EnclaveClient() common.Enclave {
 }
 
 func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+	if h.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitAndBroadcastTx with the host stopping"))
+	}
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
 	enclaveResponse, sysError := h.enclaveClient.SubmitTx(encryptedTx)
@@ -255,6 +267,9 @@ func (h *host) ReceiveBatchRequest(batchRequest common.EncodedBatchRequest) {
 }
 
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
+	if h.stopControl.IsStopping() {
+		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the host stopping"))
+	}
 	err := h.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
@@ -264,6 +279,9 @@ func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 }
 
 func (h *host) Unsubscribe(id rpc.ID) {
+	if h.stopControl.IsStopping() {
+		h.logger.Error("requested Subscribe with the host stopping")
+	}
 	err := h.EnclaveClient().Unsubscribe(id)
 	if err != nil {
 		h.logger.Error("could not terminate subscription", log.SubIDKey, id, log.ErrKey, err)
@@ -271,9 +289,13 @@ func (h *host) Unsubscribe(id rpc.ID) {
 	h.logEventManager.RemoveSubscription(id)
 }
 
-func (h *host) Stop() {
+func (h *host) Stop() error {
+	// block all incoming requests
+	h.stopControl.Stop()
+
 	if err := h.p2p.StopListening(); err != nil {
 		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
+		return err
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
@@ -282,20 +304,28 @@ func (h *host) Stop() {
 
 	if err := h.enclaveClient.Stop(); err != nil {
 		h.logger.Error("could not stop enclave server", log.ErrKey, err)
+		return err
 	}
 	if err := h.enclaveClient.StopClient(); err != nil {
 		h.logger.Error("failed to stop enclave RPC client", log.ErrKey, err)
+		return err
 	}
 
 	if err := h.db.Stop(); err != nil {
 		h.logger.Error("could not stop DB - %w", err)
+		return err
 	}
 
 	h.logger.Info("Host shut down successfully.")
+	return nil
 }
 
 // HealthCheck returns whether the host, enclave and DB are healthy
 func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
+	if h.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the host stopping"))
+	}
+
 	// check the enclave health, which in turn checks the DB health
 	enclaveHealthy, err := h.enclaveClient.HealthCheck()
 	if err != nil {
@@ -392,6 +422,9 @@ func (h *host) startProcessing() {
 			}
 
 		case <-h.exitHostCh:
+			// make sure the blockstream is shutdown first
+			blockStream.Stop()
+			h.logger.Info("Shutting down: Stopped listening for blocks, batches and transactions.")
 			return
 		}
 	}
