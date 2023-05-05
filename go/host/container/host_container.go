@@ -63,7 +63,7 @@ func (h *HostContainer) Start() error {
 }
 
 func (h *HostContainer) Stop() error {
-	// host will not respond to further requests
+	// host will not respond to further external requests
 	err := h.host.Stop()
 	if err != nil {
 		return err

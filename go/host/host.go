@@ -52,7 +52,7 @@ type host struct {
 	ethClient     ethadapter.EthClient // For communication with the L1 node
 	enclaveClient common.Enclave       // For communication with the enclave
 
-	// shutdown long-running loops
+	// shutdown long-running process loops
 	exitHostCh chan bool
 
 	// ignore incoming requests
@@ -290,7 +290,7 @@ func (h *host) Unsubscribe(id rpc.ID) {
 }
 
 func (h *host) Stop() error {
-	// block all requests
+	// block all incoming requests
 	atomic.StoreInt32(h.stopInterrupt, 1)
 
 	if err := h.p2p.StopListening(); err != nil {
@@ -422,6 +422,7 @@ func (h *host) startProcessing() {
 			}
 
 		case <-h.exitHostCh:
+			// make sure the blockstream is shutdown first
 			blockStream.Stop()
 			h.logger.Info("Shutting down: Stopped listening for blocks, batches and transactions.")
 			return

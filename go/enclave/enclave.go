@@ -786,6 +786,7 @@ func (e *enclaveImpl) Stop() common.SystemError {
 
 	if e.profiler != nil {
 		if err := e.profiler.Stop(); err != nil {
+			e.logger.Error("Could not profiler", log.ErrKey, err)
 			return err
 		}
 	}
