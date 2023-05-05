@@ -19,6 +19,8 @@ It expects to be supplied with a signed viewing key per address, so that it can 
 
 The role of the current WE is to manage a list of authenticated viewing keys (AVK), which it uses behind the scenes to communicate with an Obscuro node. 
 The AVKs are stored on the local computer in a file.
+An AVK is a text containing the hash of the public viewing key signed with the "spending key" that controls a blockchain address.
+
 
 The diagram below depicts the setup once the OG is implemented.
 ![Architecture diagram](resources/og_arch.png)
@@ -66,12 +68,14 @@ Charlie --> "Charlie's MetaMask"
 
 Notice that the OG is a multi-tenant WE running inside SGX and storing the authenticated viewing keys (and other information) in an encrypted database.
 
-
-## High level UX
+## User interactions
 
 The key reason for the OG is to allow implementing a 3-click user onboarding process.
 
-See below for a proposed flow:
+### User on-boarding
+
+Proposed flow:
+
 ![UX diagram](resources/og_ux.png)
 
 ```plantuml
@@ -145,11 +149,19 @@ Note: Any further accounts will be registered similarly for the same UserId.
 
 Note: The user must guard the UserId. Anyone who can read it, will be able to read the data of this user.
 
-Todo - come up with a UX for revoking and generating a new HVK.
-
 The ultimate goal of this protocol is to submit the "Register $UserId for $ACCT" text to the gateway, which is required by an Obscuro node to authenticate viewing keys per address.
 
 Note: Alternative UXes that achieve the same goal are ok.
+
+
+### Register subsequent addresses  
+
+User Alice is onboarded already and has the Obscuro network configured in her wallet with a UserId.
+
+She has to go to the same landing page as above and connect her wallet, instead of hitting "Join".
+When connecting, she can choose a second account.
+The page will automatically detect that it must request a signature for this account, and will open the wallet.
+After signign it will submit to the server
 
 
 ## Multitenancy
@@ -161,17 +173,23 @@ The OG will keep a many-to-one relationship between addresses and users. It will
 Each request to the OG (except "/join") must have the "u" query parameter. 
 The first thing, the WE will lookup the userId and then operate in "Wallet Extension" mode, after loading all addresses.
 
+Note that the system considers the realm of a UserId as completely independent. Multiple users could register the same addrss,
+if they somehow control the spending key. It shouldn't matter since they have different userIds
 
 ## HTTP Endpoints
 
 ### Create User - GET "/join"
 
 - Generates a key-pair.
-- Hashes the public key - this is the UserId.
+- Hashes the public key of the VK - this is the UserId.
 - Stores in the db: UserId, PrivateKey 
 - Return UserId
 
 Note: Has to be protected against DDOS attacks.
+
+### Query address - Get "/query/address?u=$UserId&a=$Address"
+
+This endpoints responds a json of true or false if the address "a" is already registered for user "u" 
 
 ### Authenticate address - POST "/authenticate?u=$UserId"
 JSON Fields:
@@ -187,6 +205,10 @@ Actions:
 - check the UserId corresponds to the one in the text
 - check the signature corresponds to the address and is valid
 - save the text+signature against the userId 
+
+### Revoke UserId - POST "/revoke?u=$UserId"
+
+When this endpoint is triggered, the userId with the authenticated viewing keys should be deleted.
 
 ### ETH RPC endpoints
 All the Eth RPC endpoints are implemented as they are now in the WE. 
@@ -259,6 +281,10 @@ This will allow advanced features.
 This could be used for tax purposes, or to prove holdings.
 
 ## Revocation of userId 
-UserIds could be rotated
 
+Users might suspect someone else knows their UserdId.
+
+Note: forgotten userIds are not a problem, because they have high enough entropy.
+
+There must be a UI which calls the revokation endpoint.
 
