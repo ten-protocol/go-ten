@@ -45,6 +45,7 @@ type Config struct {
 	hostInMemDB               bool
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
+	enclaveCadence            int
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -70,6 +71,7 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.HostID = gethcommon.HexToAddress(c.hostID)
 	cfg.LogPath = testlog.LogFile()
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
+	cfg.Cadence = uint64(c.enclaveCadence)
 
 	return &cfg
 }
@@ -79,9 +81,11 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.PrivateKeyString = c.privateKey
 	cfg.EnclaveRPCAddress = fmt.Sprintf("127.0.0.1:%d", c.enclaveWSPort)
 	cfg.ClientRPCPortWS = uint64(c.hostWSPort)
+	cfg.ClientRPCPortHTTP = uint64(c.hostHTTPPort)
+	cfg.P2PPublicAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
+	cfg.P2PBindAddress = c.hostPublicP2PAddr
 	cfg.L1NodeWebsocketPort = uint(c.l1WSPort)
-	cfg.P2PBindAddress = fmt.Sprintf(c.hostPublicP2PAddr)
-	cfg.L1NodeHost = _localhost
+	cfg.L1NodeHost = c.l1Host
 	cfg.LogPath = testlog.LogFile()
 	cfg.ProfilerEnabled = c.profilerEnabled
 	return cfg
@@ -248,5 +252,11 @@ func WithDebugNamespaceEnabled(b bool) Option {
 func WithProfiler(b bool) Option {
 	return func(c *Config) {
 		c.profilerEnabled = b
+	}
+}
+
+func WithEnclaveCadence(i int) Option {
+	return func(c *Config) {
+		c.enclaveCadence = i
 	}
 }

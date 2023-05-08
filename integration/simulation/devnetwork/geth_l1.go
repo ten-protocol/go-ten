@@ -25,7 +25,7 @@ func NewGethNetwork(networkWallets *params.SimWallets, l1Config *L1Config) L1Net
 }
 
 func (g *gethDockerNetwork) Start() {
-	l1SetupData, l1Clients, gethNetwork := network.SetUpGethNetwork(g.networkWallets, g.l1Config.PortStart, g.l1Config.NumNodes, int(g.l1Config.AvgBlockDuration.Seconds()))
+	l1SetupData, l1Clients, _, gethNetwork := network.SetUpGethNetwork(g.networkWallets, g.l1Config.PortStart, g.l1Config.NumNodes, int(g.l1Config.AvgBlockDuration.Seconds()))
 	g.l1SetupData = l1SetupData
 	g.l1Clients = l1Clients
 	g.ethNetwork = gethNetwork
