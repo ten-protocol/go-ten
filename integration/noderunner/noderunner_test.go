@@ -10,15 +10,13 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
-	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/node"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/eth2network"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
 const (
@@ -36,31 +34,22 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		LogLevel:    gethlog.LvlInfo,
 	})
 
-	enclaveAddr := fmt.Sprintf("%s:%d", _localhost, _startPort+integration.DefaultEnclaveOffset)
-	rpcAddress := fmt.Sprintf("ws://%s:%d", _localhost, _startPort+integration.DefaultGethWSPortOffset)
-
 	privateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatal(err)
 	}
 	hostAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 
-	hostConfig := config.DefaultHostParsedConfig()
-	hostConfig.PrivateKeyString = hex.EncodeToString(crypto.FromECDSA(privateKey))
-	hostConfig.EnclaveRPCAddress = enclaveAddr
-	hostConfig.HasClientRPCHTTP = false
-	hostConfig.ClientRPCPortWS = _startPort + integration.DefaultHostRPCWSOffset
-	hostConfig.L1NodeWebsocketPort = uint(_startPort + integration.DefaultGethWSPortOffset)
-	hostConfig.ProfilerEnabled = true
-	hostConfig.P2PBindAddress = fmt.Sprintf("0.0.0.0:%d", _startPort+integration.DefaultHostP2pOffset)
-	hostConfig.LogPath = testlog.LogFile()
-
-	enclaveConfig := config.DefaultEnclaveConfig()
-	enclaveConfig.HostID = hostAddress
-	enclaveConfig.Address = enclaveAddr
-	enclaveConfig.ProfilerEnabled = true
-	enclaveConfig.LogPath = testlog.LogFile()
-	enclaveConfig.WillAttest = false
+	nodeCfg := node.NewNodeConfig(
+		node.WithPrivateKey(hex.EncodeToString(crypto.FromECDSA(privateKey))),
+		node.WithHostID(hostAddress.String()),
+		node.WithEnclaveWSPort(_startPort+integration.DefaultEnclaveOffset),
+		node.WithHostHTTPPort(_startPort+integration.DefaultHostRPCHTTPOffset),
+		node.WithHostWSPort(_startPort+integration.DefaultHostRPCWSOffset),
+		node.WithL1Host(_localhost),
+		node.WithL1WSPort(_startPort+integration.DefaultGethWSPortOffset),
+		node.WithProfiler(true),
+	)
 
 	binariesPath, err := eth2network.EnsureBinariesExist()
 	if err != nil {
@@ -86,20 +75,15 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		panic(err)
 	}
 
-	go func() {
-		err := enclavecontainer.NewEnclaveContainerFromConfig(enclaveConfig).Start()
-		if err != nil {
-			panic(err)
-		}
-	}()
+	inMemNode, _ := node.NewInMemNode(nodeCfg)
 
-	hostContainer := hostcontainer.NewHostContainerFromConfig(hostConfig)
-	err = hostContainer.Start()
+	err = inMemNode.Start()
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
 
 	// we create the node RPC client
+	rpcAddress := fmt.Sprintf("ws://127.0.0.1:%d", _startPort+integration.DefaultGethWSPortOffset)
 	var obscuroClient rpc.Client
 	wait := 30 // max wait in seconds
 	for {
@@ -115,7 +99,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 	defer func() {
 		// the container stops the enclave
-		if err = hostContainer.Stop(); err != nil {
+		if err = inMemNode.Stop(); err != nil {
 			t.Fatalf("unable to properly stop the host container - %s", err)
 		}
 	}()

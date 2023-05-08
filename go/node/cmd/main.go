@@ -54,9 +54,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		dockerNode.SetNetworkConfig(ntwCfg)
 
-		err = dockerNode.Upgrade()
+		err = dockerNode.Upgrade(ntwCfg)
 	default:
 		panic("unrecognized node action: " + cliConfig.nodeAction)
 	}
