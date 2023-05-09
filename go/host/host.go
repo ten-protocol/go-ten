@@ -969,7 +969,6 @@ func (h *host) startBatchStreaming() {
 			if resp.Logs != nil {
 				h.logEventManager.SendLogsToSubscribers(&resp.Logs)
 			}
-
 		}
 	}
 }
