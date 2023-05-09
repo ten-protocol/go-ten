@@ -3,7 +3,6 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"net/http"
 	"testing"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/eth2network"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
@@ -129,7 +129,5 @@ func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
 		node.WithProfiler(true),
 	)
 
-	inMemNode, _ := node.NewInMemNode(nodeCfg)
-
-	return inMemNode, hostAddress
+	return node.NewInMemNode(nodeCfg), hostAddress
 }
