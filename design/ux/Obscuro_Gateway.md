@@ -161,7 +161,7 @@ User Alice is onboarded already and has the Obscuro network configured in her wa
 She has to go to the same landing page as above and connect her wallet, instead of hitting "Join".
 When connecting, she can choose a second account.
 The page will automatically detect that it must request a signature for this account, and will open the wallet.
-After signign it will submit to the server
+After signing it will submit to the server
 
 
 ## Multitenancy
