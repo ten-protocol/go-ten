@@ -66,10 +66,7 @@ func (t *Testnet) Start() error {
 		node.WithDebugNamespaceEnabled(true),
 	)
 
-	sequencerNode, err := node.NewDockerNode(sequencerNodeConfig)
-	if err != nil {
-		return fmt.Errorf("unable to configure the obscuro node - %w", err)
-	}
+	sequencerNode := node.NewDockerNode(sequencerNodeConfig)
 
 	err = sequencerNode.Start()
 	if err != nil {
@@ -107,10 +104,7 @@ func (t *Testnet) Start() error {
 		node.WithInMemoryDB(true),
 	)
 
-	validatorNode, err := node.NewDockerNode(validatorNodeConfig)
-	if err != nil {
-		return fmt.Errorf("unable to configure the obscuro node - %w", err)
-	}
+	validatorNode := node.NewDockerNode(validatorNodeConfig)
 
 	err = validatorNode.Start()
 	if err != nil {

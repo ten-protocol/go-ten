@@ -69,7 +69,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 		}
 
 		// create the nodes
-		nodes[i], err = node.NewInMemNode(
+		nodes[i] = node.NewInMemNode(
 			node.NewNodeConfig(
 				node.WithGenesis(i == 0),
 				node.WithHostID(hostAddress.String()),
@@ -89,9 +89,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 				node.WithL1WSPort(simParams.StartPort+100),
 			),
 		)
-		if err != nil {
-			testlog.Logger().Crit("unable to create obscuro node ", log.ErrKey, err)
-		}
 
 		// start the nodes
 		err = nodes[i].Start()

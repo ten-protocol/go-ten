@@ -18,10 +18,10 @@ type DockerNode struct {
 	cfg *Config
 }
 
-func NewDockerNode(cfg *Config) (Node, error) {
+func NewDockerNode(cfg *Config) *DockerNode {
 	return &DockerNode{
 		cfg: cfg,
-	}, nil // todo: add config validation
+	}
 }
 
 func (d *DockerNode) Start() error {
