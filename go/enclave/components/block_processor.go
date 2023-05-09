@@ -105,6 +105,6 @@ func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*
 	return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: false}, nil
 }
 
-func (bc *l1BlockProcessor) GetHead() (*common.L1Block, error) {
-	return bc.storage.FetchHeadBlock()
+func (bp *l1BlockProcessor) GetHead() (*common.L1Block, error) {
+	return bp.storage.FetchHeadBlock()
 }

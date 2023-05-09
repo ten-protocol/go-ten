@@ -280,54 +280,6 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 	return nil // The enclave is local so there is no client to stop
 }
 
-func (e *enclaveImpl) sendMissingMatches(fromHash *common.L2BatchHash, outChannel chan common.StreamL2UpdatesResponse) error {
-	if fromHash == nil {
-		return nil
-	}
-
-	from, err := e.registry.GetBatch(*fromHash)
-	if err != nil {
-		e.logger.Error("Error while attempting to stream from batch", log.ErrKey, err)
-		return err
-	}
-
-	to, err := e.registry.GetHeadBatch()
-	if err != nil {
-		e.logger.Error("Unable to get head batch while attempting to stream", log.ErrKey, err)
-		return err
-	}
-
-	missingBatches := make([]*core.Batch, 0)
-	for !bytes.Equal(to.Hash().Bytes(), from.Hash().Bytes()) {
-		if to.NumberU64() == 0 {
-			e.logger.Error("Reached genesis when seeking missing batches to stream", log.ErrKey, err)
-			return err
-		}
-
-		if from.NumberU64() == to.NumberU64() {
-			from, err = e.registry.GetBatch(from.Header.ParentHash)
-			if err != nil {
-				e.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
-				return err
-			}
-		}
-
-		missingBatches = append(missingBatches, to)
-		to, err = e.registry.GetBatch(to.Header.ParentHash)
-		if err != nil {
-			e.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
-			return err
-		}
-	}
-
-	for i := len(missingBatches) - 1; i >= 0; i-- {
-		batch := missingBatches[i]
-		e.sendBatch(batch, outChannel)
-	}
-
-	return nil
-}
-
 func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
 	e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
 	resp := common.StreamL2UpdatesResponse{
@@ -1626,22 +1578,4 @@ func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProduc
 		return err
 	}
 	return nil
-}
-
-// useful description of the BSR for debugging
-func describeBSR(response *common.BlockSubmissionResponse) string {
-	if response.RejectError != nil {
-		return fmt.Sprintf("BlockSubmissionResponse failed with err=%s", response.RejectError.Error())
-	}
-	producedBatch := "no batch produced"
-	if response.ProducedBatch != nil {
-		producedBatch = fmt.Sprintf("newBatch{num=%d, numTx=%d, hash=%s}",
-			response.ProducedBatch.Header.Number, len(response.ProducedBatch.TxHashes), response.ProducedBatch.Hash())
-	}
-	producedRollup := "no rollup produced"
-	if response.ProducedRollup != nil {
-		producedRollup = fmt.Sprintf("newRollup{num=%d, numBatches=%d, hash=%s}",
-			response.ProducedRollup.Header.Number, len(response.ProducedRollup.Batches), response.ProducedRollup.Hash())
-	}
-	return fmt.Sprintf("%s, %s", producedBatch, producedRollup)
 }
