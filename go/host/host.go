@@ -598,7 +598,7 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt 
 		return err
 	}
 
-	h.logger.Trace(fmt.Sprintf("Broadcasting l1 transaction of size %d", len(signedTx.Data())))
+	h.logger.Trace(fmt.Sprintf("Broadcasting l1 transaction %s of size %d", signedTx.Hash(), len(signedTx.Data())))
 
 	err = retry.Do(func() error {
 		return h.ethClient.SendTransaction(signedTx)

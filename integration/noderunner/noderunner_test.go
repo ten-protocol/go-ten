@@ -126,6 +126,7 @@ func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
 		node.WithHostWSPort(_startPort+integration.DefaultHostRPCWSOffset),
 		node.WithL1Host(_localhost),
 		node.WithL1WSPort(_startPort+integration.DefaultGethWSPortOffset),
+		node.WithGenesis(true),
 		node.WithProfiler(true),
 	)
 

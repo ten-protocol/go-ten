@@ -15,9 +15,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/host/container"
-	"github.com/obscuronet/go-obscuro/go/host/p2p"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -95,50 +92,6 @@ func createInMemObscuroNode(
 	mockP2P.CurrentNode = currentContainer.Host()
 
 	return currentContainer
-}
-
-func createSocketObscuroHostContainer(
-	id int64,
-	isGenesis bool,
-	nodeType common.NodeType,
-	p2pAddr string,
-	enclaveAddr string,
-	clientRPCHost string,
-	clientRPCPortHTTP uint64,
-	clientRPCPortWS uint64,
-	ethWallet wallet.Wallet,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	ethClient ethadapter.EthClient,
-	l1StartBlk gethcommon.Hash,
-) *container.HostContainer {
-	hostConfig := &config.HostConfig{
-		ID:                        gethcommon.BigToAddress(big.NewInt(id)),
-		IsGenesis:                 isGenesis,
-		NodeType:                  nodeType,
-		HasClientRPCHTTP:          true,
-		ClientRPCPortHTTP:         clientRPCPortHTTP,
-		HasClientRPCWebsockets:    true,
-		ClientRPCPortWS:           clientRPCPortWS,
-		ClientRPCHost:             clientRPCHost,
-		EnclaveRPCTimeout:         EnclaveClientRPCTimeout,
-		EnclaveRPCAddress:         enclaveAddr,
-		P2PBindAddress:            p2pAddr,
-		P2PPublicAddress:          p2pAddr,
-		L1ChainID:                 integration.EthereumChainID,
-		ObscuroChainID:            integration.ObscuroChainID,
-		L1StartHash:               l1StartBlk,
-		ManagementContractAddress: *mgmtContractLib.GetContractAddr(),
-		UseInMemoryDB:             true,
-	}
-
-	// TODO change this to use the NewHostContainerFromConfig - depends on https://github.com/obscuronet/obscuro-internal/issues/1303
-	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
-	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-	hostP2P := p2p.NewSocketP2PLayer(hostConfig, hostLogger.New(log.CmpKey, log.P2PCmp), metricsService.Registry())
-	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, id))
-	rpcServer := clientrpc.NewServer(hostConfig, hostLogger)
-
-	return container.NewHostContainer(hostConfig, hostP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, rpcServer, hostLogger, metricsService)
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -190,13 +189,9 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 	// Check that all the rollups are produced by aggregators.
 	batchNumber := uint64(0)
 	for idx, rollup := range rollups {
-		nodeID, err := strconv.ParseInt(rollup.Header.Agg.Hex()[2:], 16, 64)
-		if err != nil {
-			t.Errorf("Node %d: Could not parse node's integer ID. Cause: %s", nodeIdx, err)
+		if rollup.Header.Agg.Hex() != s.Params.Wallets.NodeWallets[0].Address().Hex() {
+			t.Errorf("Node %d: Found rollup produced by non-sequencer %s", nodeIdx, s.Params.Wallets.NodeWallets[0].Address().Hex())
 			continue
-		}
-		if network.GetNodeType(int(nodeID)) != common.Sequencer {
-			t.Errorf("Node %d: Found rollup produced by non-sequencer %d", nodeIdx, nodeID)
 		}
 
 		if len(rollup.Batches) == 0 {
