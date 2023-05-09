@@ -15,7 +15,7 @@ type InMemNode struct {
 	host    *hostcontainer.HostContainer
 }
 
-func NewInMemNode(cfg *Config) (Node, error) {
+func NewInMemNode(cfg *Config) (*InMemNode, error) {
 	return &InMemNode{
 		cfg: cfg,
 	}, nil // todo: add config validation

@@ -3,6 +3,7 @@ package noderunner
 import (
 	"encoding/hex"
 	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"net/http"
 	"testing"
 	"time"
@@ -34,22 +35,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		LogLevel:    gethlog.LvlInfo,
 	})
 
-	privateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-	hostAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-
-	nodeCfg := node.NewNodeConfig(
-		node.WithPrivateKey(hex.EncodeToString(crypto.FromECDSA(privateKey))),
-		node.WithHostID(hostAddress.String()),
-		node.WithEnclaveWSPort(_startPort+integration.DefaultEnclaveOffset),
-		node.WithHostHTTPPort(_startPort+integration.DefaultHostRPCHTTPOffset),
-		node.WithHostWSPort(_startPort+integration.DefaultHostRPCWSOffset),
-		node.WithL1Host(_localhost),
-		node.WithL1WSPort(_startPort+integration.DefaultGethWSPortOffset),
-		node.WithProfiler(true),
-	)
+	// todo run the noderunner test with different obscuro node instances
+	newNode, hostAddr := createInMemoryNode(t)
 
 	binariesPath, err := eth2network.EnsureBinariesExist()
 	if err != nil {
@@ -67,7 +54,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		1337,
 		1,
 		1,
-		[]string{hostAddress.String()},
+		[]string{hostAddr.String()},
 	)
 	defer network.Stop() //nolint: errcheck
 	err = network.Start()
@@ -75,9 +62,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		panic(err)
 	}
 
-	inMemNode, _ := node.NewInMemNode(nodeCfg)
-
-	err = inMemNode.Start()
+	err = newNode.Start()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +84,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 	defer func() {
 		// the container stops the enclave
-		if err = inMemNode.Stop(); err != nil {
+		if err = newNode.Stop(); err != nil {
 			t.Fatalf("unable to properly stop the host container - %s", err)
 		}
 	}()
@@ -124,4 +109,27 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 
 	t.Fatalf("Zero rollups have been produced after ten seconds. Something is wrong. Latest error was: %s", err)
+}
+
+func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	hostAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	nodeCfg := node.NewNodeConfig(
+		node.WithPrivateKey(hex.EncodeToString(crypto.FromECDSA(privateKey))),
+		node.WithHostID(hostAddress.String()),
+		node.WithEnclaveWSPort(_startPort+integration.DefaultEnclaveOffset),
+		node.WithHostHTTPPort(_startPort+integration.DefaultHostRPCHTTPOffset),
+		node.WithHostWSPort(_startPort+integration.DefaultHostRPCWSOffset),
+		node.WithL1Host(_localhost),
+		node.WithL1WSPort(_startPort+integration.DefaultGethWSPortOffset),
+		node.WithProfiler(true),
+	)
+
+	inMemNode, _ := node.NewInMemNode(nodeCfg)
+
+	return inMemNode, hostAddress
 }
