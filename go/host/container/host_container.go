@@ -63,14 +63,19 @@ func (h *HostContainer) Start() error {
 }
 
 func (h *HostContainer) Stop() error {
-	h.metricsService.Stop()
-
-	// make sure the rpc server does not request services from a stopped host
-	if h.rpcServer != nil {
-		h.rpcServer.Stop()
+	// host will not respond to further external requests
+	err := h.host.Stop()
+	if err != nil {
+		return err
 	}
 
-	h.host.Stop()
+	h.metricsService.Stop()
+
+	if h.rpcServer != nil {
+		// rpc server cannot be stopped synchronously as it will kill current request
+		go h.rpcServer.Stop()
+	}
+
 	return nil
 }
 

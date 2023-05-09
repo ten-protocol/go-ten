@@ -19,6 +19,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
@@ -57,6 +58,9 @@ type host struct {
 	// control the host lifecycle
 	interrupter   breaker.Interface
 	shutdownGroup sync.WaitGroup
+
+	// ignore incoming requests
+	stopControl *stopcontrol.StopControl
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
@@ -115,6 +119,8 @@ func NewHost(
 
 		logger:         logger,
 		metricRegistry: regMetrics,
+
+		stopControl: stopcontrol.New(),
 	}
 
 	var prof *profiler.Profiler
@@ -134,6 +140,10 @@ func NewHost(
 
 // Start validates the host config and starts the Host in a go routine - immediately returns after
 func (h *host) Start() error {
+	if h.stopControl.IsStopping() {
+		return responses.ToInternalError(fmt.Errorf("requested Start with the host stopping"))
+	}
+
 	h.interrupter = breaker.Multiplex(
 		breaker.BreakBySignal(
 			os.Kill,
@@ -228,9 +238,20 @@ func (h *host) EnclaveClient() common.Enclave {
 }
 
 func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+	if h.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitAndBroadcastTx with the host stopping"))
+	}
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
-	enclaveResponse := h.enclaveClient.SubmitTx(encryptedTx)
+	enclaveResponse, sysError := h.enclaveClient.SubmitTx(encryptedTx)
+	// TODO (#1643) properly return tx error and avoid submitting failed txs to the sequencer
+	if sysError != nil {
+		h.logger.Warn("Could not submit transaction due to sysError.", log.ErrKey, sysError)
+		return nil, sysError
+	}
+	if enclaveResponse.Error() != nil {
+		h.logger.Warn("Could not submit transaction.", log.ErrKey, enclaveResponse.Error())
+	}
 
 	if h.config.NodeType != common.Sequencer {
 		err := h.p2p.SendTxToSequencer(encryptedTx)
@@ -239,7 +260,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 		}
 	}
 
-	return &enclaveResponse, nil
+	return enclaveResponse, nil
 }
 
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
@@ -255,6 +276,9 @@ func (h *host) ReceiveBatchRequest(batchRequest common.EncodedBatchRequest) {
 }
 
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
+	if h.stopControl.IsStopping() {
+		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the host stopping"))
+	}
 	err := h.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
@@ -264,6 +288,9 @@ func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 }
 
 func (h *host) Unsubscribe(id rpc.ID) {
+	if h.stopControl.IsStopping() {
+		h.logger.Error("requested Subscribe with the host stopping")
+	}
 	err := h.EnclaveClient().Unsubscribe(id)
 	if err != nil {
 		h.logger.Error("could not terminate subscription", log.SubIDKey, id, log.ErrKey, err)
@@ -271,13 +298,17 @@ func (h *host) Unsubscribe(id rpc.ID) {
 	h.logEventManager.RemoveSubscription(id)
 }
 
-func (h *host) Stop() {
+func (h *host) Stop() error {
+	// block all incoming requests
+	h.stopControl.Stop()
+
 	h.logger.Info("Host received a stop command. Attempting shutdown...")
 	h.interrupter.Close()
 	h.shutdownGroup.Wait()
 
 	if err := h.p2p.StopListening(); err != nil {
 		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
+		return err
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
@@ -285,20 +316,28 @@ func (h *host) Stop() {
 
 	if err := h.enclaveClient.Stop(); err != nil {
 		h.logger.Error("could not stop enclave server", log.ErrKey, err)
+		return err
 	}
 	if err := h.enclaveClient.StopClient(); err != nil {
 		h.logger.Error("failed to stop enclave RPC client", log.ErrKey, err)
+		return err
 	}
 
 	if err := h.db.Stop(); err != nil {
 		h.logger.Error("could not stop DB - %w", err)
+		return err
 	}
 
 	h.logger.Info("Host shut down successfully.")
+	return nil
 }
 
 // HealthCheck returns whether the host, enclave and DB are healthy
 func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
+	if h.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the host stopping"))
+	}
+
 	// check the enclave health, which in turn checks the DB health
 	enclaveHealthy, err := h.enclaveClient.HealthCheck()
 	if err != nil {
@@ -379,8 +418,13 @@ func (h *host) startProcessing() {
 			}
 
 		case tx := <-h.txP2PCh:
-			if resp := h.enclaveClient.SubmitTx(tx); resp.Error() != nil {
-				h.logger.Warn("Could not submit transaction. ", log.ErrKey, resp.Error())
+			resp, sysError := h.enclaveClient.SubmitTx(tx)
+			if sysError != nil {
+				h.logger.Warn("Could not submit transaction due to sysError", log.ErrKey, sysError)
+				continue
+			}
+			if resp.Error() != nil {
+				h.logger.Warn("Could not submit transaction", log.ErrKey, resp.Error())
 			}
 
 		// todo (#718) - adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.
@@ -403,7 +447,7 @@ func (h *host) startProcessing() {
 }
 
 func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostcommon.BlockStream, err error) *hostcommon.BlockStream {
-	var rejErr *common.BlockRejectError
+	var rejErr *errutil.BlockRejectError
 	if !errors.As(err, &rejErr) {
 		// received unexpected error (no useful information from the enclave)
 		// we log it out and ignore it until the enclave tells us more information
@@ -411,7 +455,7 @@ func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostco
 		return stream
 	}
 	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, log.BlockHashKey, processedBlock.Hash(), log.BlockHeightKey, processedBlock.Number())
-	if errors.Is(rejErr, common.ErrBlockAlreadyProcessed) {
+	if errors.Is(rejErr, errutil.ErrBlockAlreadyProcessed) {
 		// resetting stream after rejection for duplicate is a possible optimisation in future but it's rarely an expensive case and
 		// it's a risky optimisation (need to ensure it can't get stuck in a loop)
 		// Instead we assume that only one or two blocks are being repeated (probably from revisiting a fork that was

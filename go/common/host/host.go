@@ -34,7 +34,7 @@ type Host interface {
 	// Unsubscribe terminates a log subscription between the host and the enclave.
 	Unsubscribe(id rpc.ID)
 	// Stop gracefully stops the host execution.
-	Stop()
+	Stop() error
 
 	// HealthCheck returns the health status of the host + enclave + db
 	HealthCheck() (*HealthCheck, error)

@@ -72,6 +72,11 @@ const (
 	HeightCommittedBlocks = 15
 )
 
+// SystemError is the interface for the internal errors generated in the Enclave and consumed by the Host
+type SystemError interface {
+	Error() string
+}
+
 // AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
 type AttestationReport struct {
 	Report      []byte         // the signed bytes of the report which includes some encrypted identifying data

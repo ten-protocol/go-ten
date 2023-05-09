@@ -2,6 +2,23 @@
 ---
 # Obscuro Testnet Change Log
 
+# May 2023-05-04 (v0.13)
+* A list of the PRs merged in this release is as below;
+    * `6f8264f7` Fix the we cross-os build (#1244)
+    * `325bb0c8` Adding system errors (#1237)
+    * `f346e239` Add wait group wait() timeout function to util (#1242)
+    * `b759f55a` Remove error from proto message payload (#1241)
+    * `fdc9b035` Fix broken link for the pdf version of the whitepaper. (#1238)
+    * `61b9e17f` Update some of the @matt todos (#1240)
+    * `13c87ac1` Updates after backlog review part three (#1239)
+    * `a551408b` Layout update for obscuroscan (#1200)
+    * `eeb1623b` Locking the docker image alpine to 16 (#1233)
+    * `6758cb32` Update wallet extension docs and include a link to obx faucet (#1235)
+    * `a1a30083` Logs are now debuggable from the debug_log visibility endpoint (#1231)
+    * `3497be98` Only perform the l2 deployment on a scheduled basis (#1230)
+    * `3bda160e` Reintroducing encrypted enclave errors (#1197)
+    * `56557a2f` Host to retry forever waiting for the enclave to come up (#1229)
+
 # April 2023-04-13 (v0.12)
 * Robustness fixes for event log subscriptions, including ensuring no dropping of event logs, removal of any duplicates, 
   and ensuring correct ordering based on their block insertion. 

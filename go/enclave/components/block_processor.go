@@ -49,7 +49,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLat
 
 	_, err := bp.storage.FetchBlock(block.Hash())
 	if err == nil {
-		return nil, common.ErrBlockAlreadyProcessed
+		return nil, errutil.ErrBlockAlreadyProcessed
 	}
 
 	if !errors.Is(err, errutil.ErrNotFound) {
@@ -92,7 +92,7 @@ func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*
 				"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
 				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
 			)
-			return nil, common.ErrBlockAncestorNotFound
+			return nil, errutil.ErrBlockAncestorNotFound
 		}
 
 		// todo - this whole check is iffy, we found an lca, who cares where the head is set at.

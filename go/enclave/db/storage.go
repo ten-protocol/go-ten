@@ -9,6 +9,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/obscuronet/go-obscuro/go/common/syserr"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -356,7 +358,7 @@ func (s *storageImpl) CreateStateDB(hash common.L2BatchHash) (*state.StateDB, er
 
 	statedb, err := state.New(batch.Header.Root, s.stateDB, nil)
 	if err != nil {
-		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
+		return nil, syserr.NewInternalError(fmt.Errorf("could not create state DB. Cause: %w", err))
 	}
 
 	return statedb, nil
@@ -532,7 +534,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	}
 
 	if err = rows.Close(); err != nil {
-		return nil, err
+		return nil, syserr.NewInternalError(err)
 	}
 
 	return result, nil

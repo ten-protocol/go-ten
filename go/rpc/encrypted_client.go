@@ -7,25 +7,19 @@ import (
 	"fmt"
 	"reflect"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ethereum/go-ethereum/rlp"
-
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/responses"
 
-	"github.com/ethereum/go-ethereum/eth/filters"
-
-	"github.com/obscuronet/go-obscuro/go/common"
-
-	"github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/ethereum/go-ethereum/crypto"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -289,7 +283,7 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 		// EstimateGas and Call methods return EVM Errors that are json objects
 		// and contain multiple keys that normally do not get serialized
 		if method == EstimateGas || method == Call {
-			var result evm.SerialisableError
+			var result errutil.EVMSerialisableError
 			err = json.Unmarshal([]byte(decodedError.Error()), &result)
 			if err != nil {
 				return err

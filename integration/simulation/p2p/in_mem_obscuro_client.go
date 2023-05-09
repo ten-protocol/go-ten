@@ -80,8 +80,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 		return nil
 
 	case rpc.StopHost:
-		c.testAPI.StopHost()
-		return nil
+		return c.testAPI.StopHost()
 
 	case rpc.AddViewingKey:
 		return c.addViewingKey(args)
@@ -131,8 +130,8 @@ func (c *inMemObscuroClient) sendRawTransaction(result interface{}, args []inter
 	}
 
 	encryptedResponse, err := c.ethAPI.SendRawTransaction(context.Background(), encBytes)
-	if encryptedResponse != nil {
-		*result.(*responses.EnclaveResponse) = *encryptedResponse
+	if err == nil {
+		*result.(*responses.EnclaveResponse) = encryptedResponse
 	}
 
 	return err
