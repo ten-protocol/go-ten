@@ -451,7 +451,6 @@ func (c *Client) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2
 		return batchChan, func() {}
 	}
 
-	stop := false
 	stopIt := func() {
 		c.logger.Info("Closing batch stream.")
 		if err := stream.CloseSend(); err != nil {
@@ -465,10 +464,6 @@ func (c *Client) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2
 	go func() {
 		defer stopIt()
 		for {
-			if stop {
-				break
-			}
-
 			batchMsg, err := stream.Recv()
 			if err != nil {
 				c.logger.Error("Error receiving batch from stream.", log.ErrKey, err)
@@ -486,7 +481,7 @@ func (c *Client) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2
 	}()
 
 	return batchChan, func() {
-		stop = true
+		cancel()
 	}
 }
 
