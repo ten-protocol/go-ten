@@ -47,21 +47,25 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 	)
 
 	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1SetupData.MgmtContractAddress, testlog.Logger())
-	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(&simParams.L1SetupData.MgmtContractAddress,
-		&simParams.L1SetupData.ObxErc20Address, &simParams.L1SetupData.EthErc20Address)
+	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(
+		&simParams.L1SetupData.MgmtContractAddress,
+		&simParams.L1SetupData.ObxErc20Address,
+		&simParams.L1SetupData.EthErc20Address,
+	)
 
+	// get the sequencer Address
 	seqPrivateKey := n.wallets.NodeWallets[0].PrivateKey()
 	seqPrivKey := fmt.Sprintf("%x", crypto.FromECDSA(seqPrivateKey))
-
 	seqHostAddress := crypto.PubkeyToAddress(seqPrivateKey.PublicKey)
 
-	// Start the nodes
+	// create the nodes
 	nodes := make([]node.Node, simParams.NumberOfNodes)
 	var err error
-	nodeTypeStr := "sequencer"
 	for i := 0; i < simParams.NumberOfNodes; i++ {
 		privateKey := seqPrivKey
 		hostAddress := seqHostAddress
+		nodeTypeStr := "sequencer"
+		// if it's not the sequencer
 		if i != 0 {
 			nodeTypeStr = "validator"
 			privateKey = fmt.Sprintf("%x", crypto.FromECDSA(n.wallets.NodeWallets[i].PrivateKey()))
@@ -84,7 +88,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 				node.WithMessageBusContractAddress(simParams.L1SetupData.MessageBusAddr.String()),
 				node.WithNodeType(nodeTypeStr),
 				node.WithL1Host("127.0.0.1"),
-
 				node.WithEnclaveCadence(10),
 				node.WithL1WSPort(simParams.StartPort+100),
 			),
@@ -97,11 +100,11 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 		}
 	}
 
+	// create the l2 and eth connections
 	err = n.createConnections(simParams)
 	if err != nil {
 		testlog.Logger().Crit("unable to create node connections", log.ErrKey, err)
 	}
-
 	walletClients := createAuthClientsPerWallet(n.l2Clients, simParams.Wallets)
 
 	return &RPCHandles{
