@@ -891,7 +891,7 @@ func (h *host) startBatchStreaming() {
 	defer h.shutdownGroup.Done()
 
 	// TODO: Update this to start from persisted head
-	streamChan, stop := h.enclaveClient.StreamBatches(nil)
+	streamChan, stop := h.enclaveClient.StreamL2Updates(nil)
 	var lastBatch *common.ExtBatch = nil
 	for {
 		select {
@@ -906,26 +906,26 @@ func (h *host) startBatchStreaming() {
 
 				if lastBatch != nil {
 					bHash := lastBatch.Hash()
-					streamChan, stop = h.enclaveClient.StreamBatches(&bHash)
+					streamChan, stop = h.enclaveClient.StreamL2Updates(&bHash)
 				} else {
-					streamChan, stop = h.enclaveClient.StreamBatches(nil)
+					streamChan, stop = h.enclaveClient.StreamL2Updates(nil)
 				}
 				continue
 			}
 
-			if h.config.NodeType == common.Sequencer {
-				h.logger.Info("Storing batch from stream")
-				h.storeAndDistributeBatch(resp.Batch)
+			if resp.Batch != nil {
+				lastBatch = resp.Batch
+				h.logger.Trace(fmt.Sprintf("Received batch from stream: %s", lastBatch.Hash().Hex()))
+				if h.config.NodeType == common.Sequencer {
+					h.logger.Info("Storing batch from stream")
+					h.storeAndDistributeBatch(resp.Batch)
+				}
 			}
 
 			if resp.Logs != nil {
 				h.logEventManager.SendLogsToSubscribers(&resp.Logs)
 			}
 
-			if resp.Batch != nil {
-				lastBatch = resp.Batch
-				h.logger.Trace(fmt.Sprintf("Received batch from stream: %s", lastBatch.Hash().Hex()))
-			}
 		}
 	}
 }

@@ -1,4 +1,4 @@
-package services
+package nodetype
 
 import (
 	"bytes"
@@ -19,7 +19,7 @@ import (
 )
 
 type obsValidator struct {
-	blockConsumer  components.L1BlockProcessor
+	blockProcessor components.L1BlockProcessor
 	batchProducer  components.BatchProducer
 	batchRegistry  components.BatchRegistry
 	rollupConsumer components.RollupConsumer
@@ -44,7 +44,7 @@ func NewValidator(
 	logger gethlog.Logger,
 ) ObsValidator {
 	return &obsValidator{
-		blockConsumer:  consumer,
+		blockProcessor: consumer,
 		batchProducer:  producer,
 		batchRegistry:  registry,
 		rollupConsumer: rollupConsumer,
@@ -90,7 +90,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 	// and the parent hash. This recomputed batch is then checked against the incoming batch.
 	// If the sequencer has tampered with something the hash will not add up and validation will
 	// produce an error.
-	cb, err := val.batchProducer.ComputeBatch(&components.BatchContext{
+	cb, err := val.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     incomingBatch.Header.L1Proof,
 		ParentPtr:    incomingBatch.Header.ParentHash,
 		Transactions: incomingBatch.Transactions,
@@ -104,6 +104,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 	}
 
 	if !bytes.Equal(cb.Batch.Hash().Bytes(), incomingBatch.Hash().Bytes()) {
+		// todo @stefan - generate a validator challenge here and return it
 		return fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", incomingBatch.Hash().Hex(), cb.Batch.Hash().Hex())
 	}
 
@@ -115,7 +116,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 }
 
 func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	ingestion, err := val.blockConsumer.Process(br, isLatest)
+	ingestion, err := val.blockProcessor.Process(br, isLatest)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +140,7 @@ func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool
 func (val *obsValidator) verifyRollup(rollup *core.Rollup) error {
 	for _, batch := range rollup.Batches {
 		if err := val.ValidateAndStoreBatch(batch); err != nil {
-			val.logger.Error("Attempted to store incorrect batch: %s", batch.Hash().Hex())
+			val.logger.Error("Attempted to store incorrect batch", "batch_hash", batch.Hash().Hex(), log.ErrKey, err)
 			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
 		}
 	}

@@ -8,7 +8,6 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
@@ -17,7 +16,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 )
 
-type rollupConsumer struct {
+type rollupConsumerImpl struct {
 	MgmtContractLib mgmtcontractlib.MgmtContractLib
 
 	// TransactionBlobCrypto- This contains the required properties to encrypt rollups.
@@ -41,7 +40,7 @@ func NewRollupConsumer(
 	logger gethlog.Logger,
 	verifier *SignatureValidator,
 ) RollupConsumer {
-	return &rollupConsumer{
+	return &rollupConsumerImpl{
 		MgmtContractLib:       mgmtContractLib,
 		TransactionBlobCrypto: transactionBlobCrypto,
 		ObscuroChainID:        obscuroChainID,
@@ -52,39 +51,12 @@ func NewRollupConsumer(
 	}
 }
 
-func (rc *rollupConsumer) ProcessL1Block(b *common.BlockAndReceipts) ([]*core.Rollup, error) {
+func (rc *rollupConsumerImpl) ProcessL1Block(b *common.BlockAndReceipts) ([]*core.Rollup, error) {
 	return rc.processRollups(b)
 }
 
-// getLatestRollupBeforeBlock - Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
-func (rc *rollupConsumer) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
-	for {
-		blockParentHash := block.ParentHash()
-		latestRollup, err := rc.storage.FetchHeadRollupForBlock(&blockParentHash)
-		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("could not fetch current L2 head rollup - %w", err)
-		}
-		if latestRollup != nil {
-			return latestRollup, nil
-		}
-
-		// we scan backwards now to the prev block in the chain and we will lookup to see if that has an entry
-		// todo (@stefan) - is this still required for safety, even though we're storing an entry for every L1 block?
-		block, err = rc.storage.FetchBlock(block.ParentHash())
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				// No more blocks available (enclave does not read the L1 chain from genesis if it knows
-				// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
-				// We have now checked through the entire (relevant) history of the L1 and no rollups were found.
-				return nil, db.ErrNoRollups
-			}
-			return nil, fmt.Errorf("could not fetch parent block - %w", err)
-		}
-	}
-}
-
 // extractRollups - returns a list of the rollups published in this block
-func (rc *rollupConsumer) extractRollups(br *common.BlockAndReceipts, blockResolver db.BlockResolver) []*core.Rollup {
+func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts, blockResolver db.BlockResolver) []*core.Rollup {
 	rollups := make([]*core.Rollup, 0)
 	b := br.Block
 
@@ -132,10 +104,10 @@ func (rc *rollupConsumer) extractRollups(br *common.BlockAndReceipts, blockResol
 
 // Validates and stores the rollup in a given block.
 // todo (#718) - design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P)
-func (rc *rollupConsumer) processRollups(br *common.BlockAndReceipts) ([]*core.Rollup, error) {
+func (rc *rollupConsumerImpl) processRollups(br *common.BlockAndReceipts) ([]*core.Rollup, error) {
 	block := br.Block
 
-	latestRollup, err := rc.getLatestRollupBeforeBlock(block)
+	latestRollup, err := getLatestRollupBeforeBlock(block, rc.storage)
 	if err != nil && !errors.Is(err, db.ErrNoRollups) {
 		return nil, fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
 	}
@@ -196,7 +168,7 @@ func (rc *rollupConsumer) processRollups(br *common.BlockAndReceipts) ([]*core.R
 //   - Has a number exactly 1 higher than the previous rollup
 //   - Links to the previous rollup by hash
 //   - Has a first batch whose parent is the head batch of the previous rollup
-func (rc *rollupConsumer) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRollup *core.Rollup) error {
+func (rc *rollupConsumerImpl) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRollup *core.Rollup) error {
 	if big.NewInt(0).Sub(rollup.Header.Number, previousRollup.Header.Number).Cmp(big.NewInt(1)) != 0 {
 		return fmt.Errorf("found gap in rollups between rollup %d and rollup %d",
 			previousRollup.Header.Number, rollup.Header.Number)

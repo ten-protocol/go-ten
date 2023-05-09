@@ -15,7 +15,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
-	"github.com/obscuronet/go-obscuro/go/enclave/services"
+	"github.com/obscuronet/go-obscuro/go/enclave/nodetype"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 	"github.com/obscuronet/go-obscuro/go/responses"
@@ -70,7 +70,7 @@ type enclaveImpl struct {
 	crossChainProcessors *crosschain.Processors
 
 	chain    l2chain.ObscuroChain
-	service  services.ObscuroService
+	service  nodetype.NodeType
 	registry components.BatchRegistry
 
 	// todo (#627) - use the ethconfig.Config instead
@@ -188,17 +188,17 @@ func NewEnclave(
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 
-	consumer := components.NewBlockConsumer(storage, crossChainProcessors, logger)
+	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, logger)
 	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, logger)
 	registry := components.NewBatchRegistry(storage, logger)
-	rProducer := components.NewRollupProducer(transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, registry, consumer, logger)
+	rProducer := components.NewRollupProducer(transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
 	sigVerifier := components.NewSignatureValidator(config.SequencerID, storage)
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
 
-	var service services.ObscuroService
+	var service nodetype.NodeType
 	if config.NodeType == common.Sequencer {
-		service = services.NewSequencer(
-			consumer,
+		service = nodetype.NewSequencer(
+			blockProcessor,
 			producer,
 			registry,
 			rProducer,
@@ -212,7 +212,7 @@ func NewEnclave(
 			transactionBlobCrypto,
 		)
 	} else {
-		service = services.NewValidator(consumer, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, logger)
+		service = nodetype.NewValidator(blockProcessor, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, logger)
 	}
 
 	chain := l2chain.NewChain(
@@ -282,7 +282,7 @@ func (e *enclaveImpl) StopClient() error {
 	return nil // The enclave is local so there is no client to stop
 }
 
-func (e *enclaveImpl) sendMissingMatches(fromHash *common.L2BatchHash, outChannel chan common.StreamBatchResponse) error {
+func (e *enclaveImpl) sendMissingMatches(fromHash *common.L2BatchHash, outChannel chan common.StreamL2UpdatesResponse) error {
 	if fromHash == nil {
 		return nil
 	}
@@ -330,60 +330,79 @@ func (e *enclaveImpl) sendMissingMatches(fromHash *common.L2BatchHash, outChanne
 	return nil
 }
 
-func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamBatchResponse) {
+func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
 	e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
-	resp := common.StreamBatchResponse{
+	resp := common.StreamL2UpdatesResponse{
 		Batch: batch.ToExtBatch(e.transactionBlobCrypto),
 	}
-
-	logs, err := e.subscriptionLogs(batch.Number())
-	if err != nil {
-		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
-	} else {
-		resp.Logs = logs
-	}
-
 	outChannel <- resp
 }
 
-func (e *enclaveImpl) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatchResponse, func()) {
-	encryptedBatchChan := make(chan common.StreamBatchResponse, 100)
+func (e *enclaveImpl) sendEvents(batchHead uint64, outChannel chan common.StreamL2UpdatesResponse) {
+	logs, err := e.subscriptionLogs(big.NewInt(int64(batchHead)))
+	if err != nil {
+		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
+		return
+	}
+	outChannel <- common.StreamL2UpdatesResponse{
+		Logs: logs,
+	}
+}
 
-	if atomic.LoadInt32(e.stopInterrupt) == 1 {
-		close(encryptedBatchChan)
-		return encryptedBatchChan, func() {}
+func (e *enclaveImpl) sendBatchesFromSubscription(from *common.L2BatchHash, l2UpdatesChannel chan common.StreamL2UpdatesResponse) {
+	// TODO - There is a risk that batchChan will
+	// contain duplicates with the search from <-> head.
+	// This is because we subscribe now but if "from"
+	// is provided we get the head later.
+	batchChan, err := e.registry.Subscribe(from)
+	if err != nil {
+		e.logger.Error("Unable to send missing batches", log.ErrKey, err)
+		return
 	}
 
-	// todo - figure out a better approach
-	stop := false
+	defer close(l2UpdatesChannel)
 
-	go func() {
-		// TODO - There is a risk that batchChan will
-		// contain duplicates with the search from <-> head.
-		// This is because we subscribe now but if "from"
-		// is provided we get the head later.
-		batchChan := e.registry.Subscribe()
-		defer close(encryptedBatchChan)
-		defer e.registry.Unsubscribe()
-
-		if err := e.sendMissingMatches(from, encryptedBatchChan); err != nil {
-			e.logger.Error("Unable to send missing batches", log.ErrKey, err)
-			return
+	for {
+		batch, ok := <-batchChan
+		if !ok {
+			e.logger.Warn("Registry closed batch channel.")
+			break
 		}
 
-		for !stop {
-			batch, ok := <-batchChan
-			if !ok {
-				e.logger.Warn("Registry closed batch channel.")
-				break
-			}
+		e.sendBatch(batch, l2UpdatesChannel)
+	}
+}
 
-			e.sendBatch(batch, encryptedBatchChan)
+func (e *enclaveImpl) sendEventsFromSubscription(l2UpdatesChannel chan common.StreamL2UpdatesResponse) {
+	eventChan := e.registry.SubscribeForEvents()
+	for {
+		eventsHead, ok := <-eventChan
+		if !ok {
+			e.logger.Warn("Registry closed events channel")
+			break
 		}
-	}()
 
-	return encryptedBatchChan, func() {
-		stop = true
+		e.sendEvents(eventsHead, l2UpdatesChannel)
+	}
+}
+
+func (e *enclaveImpl) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2UpdatesResponse, func()) {
+	l2UpdatesChannel := make(chan common.StreamL2UpdatesResponse, 100)
+
+	if atomic.LoadInt32(e.stopInterrupt) == 1 {
+		close(l2UpdatesChannel)
+		return l2UpdatesChannel, func() {}
+	}
+
+	if e.config.NodeType == common.Sequencer {
+		go e.sendBatchesFromSubscription(from, l2UpdatesChannel)
+	}
+
+	go e.sendEventsFromSubscription(l2UpdatesChannel)
+
+	return l2UpdatesChannel, func() {
+		e.registry.Unsubscribe()
+		e.registry.UnsubscribeFromEvents()
 	}
 }
 
@@ -460,16 +479,16 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) responses.RawTx {
 	return responses.AsEncryptedResponse(&hash, encryptor)
 }
 
-func (e *enclaveImpl) Validator() services.ObsValidator {
-	validator, ok := e.service.(services.ObsValidator)
+func (e *enclaveImpl) Validator() nodetype.ObsValidator {
+	validator, ok := e.service.(nodetype.ObsValidator)
 	if !ok {
 		panic("enclave service is not a validator but validator was requested!")
 	}
 	return validator
 }
 
-func (e *enclaveImpl) Sequencer() services.Sequencer {
-	sequencer, ok := e.service.(services.Sequencer)
+func (e *enclaveImpl) Sequencer() nodetype.Sequencer {
+	sequencer, ok := e.service.(nodetype.Sequencer)
 	if !ok {
 		panic("enclave service is not a sequencer but sequencer was requested!")
 	}
@@ -1550,7 +1569,7 @@ func replayBatchesToValidState(storage db.Storage, producer components.BatchProd
 }
 
 func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProducer, chainConfig *params.ChainConfig) error {
-	computedBatch, err := producer.ComputeBatch(&components.BatchContext{
+	computedBatch, err := producer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     batch.Header.L1Proof,
 		ParentPtr:    batch.Header.ParentHash,
 		Transactions: batch.Transactions,

@@ -240,14 +240,14 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 	return &generated.DebugTraceTransactionResponse{Msg: string(traceTx)}, err
 }
 
-func (s *RPCServer) StreamBatches(request *generated.StreamBatchesRequest, stream generated.EnclaveProto_StreamBatchesServer) error {
+func (s *RPCServer) StreamL2Updates(request *generated.StreamL2UpdatesRequest, stream generated.EnclaveProto_StreamL2UpdatesServer) error {
 	var fromHash *common.L2BatchHash = nil
 	if request.KnownHead != nil {
 		knownHead := gethcommon.BytesToHash(request.KnownHead)
 		fromHash = &knownHead
 	}
 
-	batchChan, stop := s.enclave.StreamBatches(fromHash)
+	batchChan, stop := s.enclave.StreamL2Updates(fromHash)
 	defer stop()
 
 	for {
@@ -264,7 +264,7 @@ func (s *RPCServer) StreamBatches(request *generated.StreamBatchesRequest, strea
 			return nil
 		}
 
-		if err := stream.Send(&generated.EncodedBatch{Batch: encoded}); err != nil {
+		if err := stream.Send(&generated.EncodedUpdateResponse{Batch: encoded}); err != nil {
 			s.logger.Error("Failed streaming batch back to client", log.ErrKey, err)
 			close(batchChan)
 

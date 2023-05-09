@@ -19,10 +19,10 @@ type (
 	// out of the enclave.
 	EncryptedSubscriptionLogs = map[rpc.ID][]byte
 
-	// StreamBatchResponse - the struct encoded for each response message
+	// StreamL2UpdatesResponse - the struct encoded for each response message
 	// when streaming batches out of the enclave.
 	// The properties inside need to be encrypted according to the privacy rules.
-	StreamBatchResponse struct {
+	StreamL2UpdatesResponse struct {
 		Batch *ExtBatch
 		Logs  EncryptedSubscriptionLogs
 	}

@@ -1,4 +1,4 @@
-package services
+package nodetype
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ import (
 )
 
 type sequencer struct {
-	blockConsumer  components.L1BlockProcessor
+	blockProcessor components.L1BlockProcessor
 	batchProducer  components.BatchProducer
 	batchRegistry  components.BatchRegistry
 	rollupProducer components.RollupProducer
@@ -60,7 +60,7 @@ func NewSequencer(
 	encryption crypto.TransactionBlobCrypto,
 ) Sequencer {
 	return &sequencer{
-		blockConsumer:     consumer,
+		blockProcessor:    consumer,
 		batchProducer:     producer,
 		batchRegistry:     registry,
 		rollupProducer:    rollupProducer,
@@ -85,7 +85,7 @@ func (s *sequencer) CreateBatch() error {
 	}
 
 	// L1 Head is only updated when isLatest: true
-	l1HeadBlock, err := s.blockConsumer.GetHead()
+	l1HeadBlock, err := s.blockProcessor.GetHead()
 	if err != nil {
 		return fmt.Errorf("failed retrieving l1 head. Cause: %w", err)
 	}
@@ -107,7 +107,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 		return err
 	}
 
-	if err := s.mempool.AddMempoolTx(msgBusTx); err != nil {
+	if err = s.mempool.AddMempoolTx(msgBusTx); err != nil {
 		return fmt.Errorf("failed to queue message bus creation transaction to genesis. Cause: %w", err)
 	}
 
@@ -164,7 +164,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return err
 	}
 
-	cb, err := s.batchProducer.ComputeBatch(&components.BatchContext{
+	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     l1HeadBlock.Hash(),
 		ParentPtr:    *headBatch.Hash(),
 		Transactions: transactions,
@@ -210,7 +210,7 @@ func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
 }
 
 func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	ingestion, err := s.blockConsumer.Process(br, isLatest)
+	ingestion, err := s.blockProcessor.Process(br, isLatest)
 	if err != nil {
 		return nil, err
 	}
@@ -218,10 +218,6 @@ func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*c
 	if _, err := s.rollupConsumer.ProcessL1Block(br); err != nil {
 		s.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
-	}
-
-	if !ingestion.Fork {
-		return ingestion, nil
 	}
 
 	return ingestion, nil
@@ -260,7 +256,7 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 		orphan := orphanedBatches[i]
 
 		// Extend the chain with identical cousin batches
-		cb, err := s.batchProducer.ComputeBatch(&components.BatchContext{
+		cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 			BlockPtr:     block.Hash(),
 			ParentPtr:    *currHeadPtr.Hash(),
 			Transactions: orphan.Transactions,

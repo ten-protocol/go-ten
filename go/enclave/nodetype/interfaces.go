@@ -1,4 +1,4 @@
-package services
+package nodetype
 
 import (
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -6,9 +6,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
-// ObscuroService - the interface for any service type running in Obscuro nodes.
+// NodeType - the interface for any service type running in Obscuro nodes.
 // Should only contain the shared functionality that every service type needs to have.
-type ObscuroService interface {
+type NodeType interface {
 	//	ReceiveBlock - function that accepts L1 blocks and their receipts along with a flag
 	// that signals if the block is the latest one or not. Processing of those blocks and
 	// resulting actions differ between the service types.
@@ -28,7 +28,7 @@ type Sequencer interface {
 	// and adds as many batches to it as possible.
 	CreateRollup() (*common.ExtRollup, error)
 
-	ObscuroService
+	NodeType
 }
 
 type ObsValidator interface {
@@ -37,5 +37,5 @@ type ObsValidator interface {
 	// If the batch is valid it will be stored.
 	ValidateAndStoreBatch(*core.Batch) error
 
-	ObscuroService
+	NodeType
 }

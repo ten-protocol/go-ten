@@ -378,16 +378,16 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	return json.RawMessage(resp.Msg), nil
 }
 
-func (c *Client) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatchResponse, func()) {
-	batchChan := make(chan common.StreamBatchResponse, 10)
+func (c *Client) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2UpdatesResponse, func()) {
+	batchChan := make(chan common.StreamL2UpdatesResponse, 10)
 	cancelCtx, cancel := context.WithCancel(context.Background())
 
-	request := &generated.StreamBatchesRequest{}
+	request := &generated.StreamL2UpdatesRequest{}
 	if from != nil {
 		request.KnownHead = from.Bytes()
 	}
 
-	stream, err := c.protoClient.StreamBatches(cancelCtx, request)
+	stream, err := c.protoClient.StreamL2Updates(cancelCtx, request)
 	if err != nil {
 		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
 		close(batchChan)
@@ -419,7 +419,7 @@ func (c *Client) StreamBatches(from *common.L2BatchHash) (chan common.StreamBatc
 				break
 			}
 
-			var decoded common.StreamBatchResponse
+			var decoded common.StreamL2UpdatesResponse
 			if err := json.Unmarshal(batchMsg.Batch, &decoded); err != nil {
 				c.logger.Error("Error unmarshling batch from stream.", log.ErrKey, err)
 				break

@@ -117,9 +117,9 @@ type Enclave interface {
 	// DebugTraceTransaction returns the trace of a transaction
 	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, error)
 
-	// StreamBatches - will stream the batches following the L2 batch hash given along with any newly created batches
+	// StreamL2Updates - will stream the batches following the L2 batch hash given along with any newly created batches
 	// in the right order. All will be queued in the channel that has been returned
-	StreamBatches(*L2BatchHash) (chan StreamBatchResponse, func())
+	StreamL2Updates(*L2BatchHash) (chan StreamL2UpdatesResponse, func())
 	// DebugEventLogRelevancy returns the logs of a transaction
 	DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, error)
 }

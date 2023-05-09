@@ -31,7 +31,7 @@ type L1BlockProcessor interface {
 }
 
 // Contains all of the data that each batch depends on
-type BatchContext struct {
+type BatchExecutionContext struct {
 	BlockPtr     common.L1BlockHash // Block is needed for the cross chain messages
 	ParentPtr    common.L2BatchHash
 	Transactions common.L2Transactions
@@ -57,7 +57,7 @@ type BatchProducer interface {
 	// state provided in the BatchContext.
 	// Call with same BatchContext should always produce identical extBatch - idempotent
 	// Should be safe to call in parallel
-	ComputeBatch(*BatchContext) (*ComputedBatch, error)
+	ComputeBatch(*BatchExecutionContext) (*ComputedBatch, error)
 
 	// CreateGenesisState - will create and commit the genesis state in the stateDB for the given block hash,
 	// sequencer address and uint64 timestamp representing the time now. In this genesis state is where one can
@@ -103,14 +103,20 @@ type BatchRegistry interface {
 
 	// Subscribe - creates and returns a channel that will be used to push any newly created batches
 	// to the subscriber.
-	Subscribe() chan *core.Batch
+	Subscribe(lastKnownHead *common.L2BatchHash) (chan *core.Batch, error)
 	// Unsubscribe - informs the registry that the subscriber is no longer listening, allowing it to
 	// gracefully terminate any streaming and stop queueing new batches.
 	Unsubscribe()
 
+	SubscribeForEvents() chan uint64
+	UnsubscribeFromEvents()
+
 	// HasGenesisBatch - returns if genesis batch is available yet or not, or error in case
 	// the function is unable to determine.
 	HasGenesisBatch() (bool, error)
+
+	// CommitBatch - Commits any state changes from a batch computation to the database.
+	CommitBatch(cb *ComputedBatch) error
 }
 
 type RollupProducer interface {
@@ -125,14 +131,3 @@ type RollupConsumer interface {
 	// not been seenp previously.
 	ProcessL1Block(b *common.BlockAndReceipts) ([]*core.Rollup, error)
 }
-
-// TODO - find a better place for the following stuff
-func allReceipts(txReceipts []*types.Receipt, depositReceipts []*types.Receipt) types.Receipts {
-	return append(txReceipts, depositReceipts...)
-}
-
-type sortByTxIndex []*types.Receipt
-
-func (c sortByTxIndex) Len() int           { return len(c) }
-func (c sortByTxIndex) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
-func (c sortByTxIndex) Less(i, j int) bool { return c[i].TransactionIndex < c[j].TransactionIndex }

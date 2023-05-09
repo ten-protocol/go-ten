@@ -1,7 +1,5 @@
 package components
 
-// todo (@stefan) - once the cross chain messages based bridge is implemented remove this completely
-
 import (
 	"errors"
 	"fmt"
@@ -10,9 +8,9 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -20,9 +18,9 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-// rollupProducer encapsulates the logic of decoding rollup transactions submitted to the L1 and resolving them
+// rollupProducerImpl encapsulates the logic of decoding rollup transactions submitted to the L1 and resolving them
 // to rollups that the enclave can process.
-type rollupProducer struct {
+type rollupProducerImpl struct {
 	// TransactionBlobCrypto- This contains the required properties to encrypt rollups.
 	TransactionBlobCrypto crypto.TransactionBlobCrypto
 
@@ -33,8 +31,8 @@ type rollupProducer struct {
 
 	storage db.Storage
 
-	registry      BatchRegistry
-	blockConsumer L1BlockProcessor
+	batchRegistry  BatchRegistry
+	blockProcessor L1BlockProcessor
 }
 
 func NewRollupProducer(
@@ -42,31 +40,31 @@ func NewRollupProducer(
 	obscuroChainID int64,
 	ethereumChainID int64,
 	storage db.Storage,
-	registry BatchRegistry,
-	blockConsumer L1BlockProcessor,
+	batchRegistry BatchRegistry,
+	blockProcessor L1BlockProcessor,
 	logger gethlog.Logger,
 ) RollupProducer {
-	return &rollupProducer{
+	return &rollupProducerImpl{
 		TransactionBlobCrypto: transactionBlobCrypto,
 		ObscuroChainID:        obscuroChainID,
 		EthereumChainID:       ethereumChainID,
 		logger:                logger,
-		registry:              registry,
-		blockConsumer:         blockConsumer,
+		batchRegistry:         batchRegistry,
+		blockProcessor:        blockProcessor,
 		storage:               storage,
 	}
 }
 
 // fetchLatestRollup - Will pull the latest rollup based on the current head block from the database or return null
-func (re *rollupProducer) fetchLatestRollup() (*core.Rollup, error) {
-	b, err := re.blockConsumer.GetHead()
+func (re *rollupProducerImpl) fetchLatestRollup() (*core.Rollup, error) {
+	b, err := re.blockProcessor.GetHead()
 	if err != nil {
 		return nil, err
 	}
-	return re.getLatestRollupBeforeBlock(b)
+	return getLatestRollupBeforeBlock(b, re.storage)
 }
 
-func (re *rollupProducer) CreateRollup() (*core.Rollup, error) {
+func (re *rollupProducerImpl) CreateRollup() (*core.Rollup, error) {
 	rollup, err := re.fetchLatestRollup()
 	if err != nil && !errors.Is(err, db.ErrNoRollups) {
 		return nil, err
@@ -77,7 +75,7 @@ func (re *rollupProducer) CreateRollup() (*core.Rollup, error) {
 		hash = rollup.Header.HeadBatchHash
 	}
 
-	batches, err := re.registry.BatchesAfter(hash)
+	batches, err := re.batchRegistry.BatchesAfter(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -92,33 +90,6 @@ func (re *rollupProducer) CreateRollup() (*core.Rollup, error) {
 
 	newRollup := createNextRollup(rollup, batches)
 	return newRollup, nil
-}
-
-// getLatestRollupBeforeBlock - Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
-func (re *rollupProducer) getLatestRollupBeforeBlock(block *common.L1Block) (*core.Rollup, error) {
-	for {
-		blockParentHash := block.ParentHash()
-		latestRollup, err := re.storage.FetchHeadRollupForBlock(&blockParentHash)
-		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("could not fetch current L2 head rollup - %w", err)
-		}
-		if latestRollup != nil {
-			return latestRollup, nil
-		}
-
-		// we scan backwards now to the prev block in the chain and we will lookup to see if that has an entry
-		// todo (@stefan) - is this still required for safety, even though we're storing an entry for every L1 block?
-		block, err = re.storage.FetchBlock(block.ParentHash())
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				// No more blocks available (enclave does not read the L1 chain from genesis if it knows
-				// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
-				// We have now checked through the entire (relevant) history of the L1 and no rollups were found.
-				return nil, db.ErrNoRollups
-			}
-			return nil, fmt.Errorf("could not fetch parent block - %w", err)
-		}
-	}
 }
 
 // createNextRollup - based on a previous rollup and batches will create a new rollup that encapsulate the state
@@ -151,5 +122,34 @@ func createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
 	return &core.Rollup{
 		Header:  rh,
 		Batches: batches,
+	}
+}
+
+// getLatestRollupBeforeBlock - Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
+func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage) (*core.Rollup, error) {
+	for {
+		blockParentHash := block.ParentHash()
+		latestRollup, err := storage.FetchHeadRollupForBlock(&blockParentHash)
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			return nil, fmt.Errorf("could not fetch current L2 head rollup - %w", err)
+		}
+
+		// we found a rollup so we return
+		if latestRollup != nil {
+			return latestRollup, nil
+		}
+
+		// we scan backwards now to the prev block in the chain and we will lookup to see if that has an entry
+		// todo (@stefan) - is this still required for safety, even though we're storing an entry for every L1 block?
+		block, err = storage.FetchBlock(block.ParentHash())
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				// No more blocks available (enclave does not read the L1 chain from genesis if it knows
+				// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
+				// We have now checked through the entire (relevant) history of the L1 and no rollups were found.
+				return nil, db.ErrNoRollups
+			}
+			return nil, fmt.Errorf("could not fetch parent block - %w", err)
+		}
 	}
 }

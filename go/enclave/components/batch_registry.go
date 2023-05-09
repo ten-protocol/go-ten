@@ -1,6 +1,7 @@
 package components
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"sync"
@@ -12,69 +13,101 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-type batchRegistry struct {
+type batchRegistryImpl struct {
 	storage db.Storage
 	logger  gethlog.Logger
 
-	subscription      *chan *core.Batch
+	batchSubscription *chan *core.Batch
+	eventSubscription *chan uint64
+
 	subscriptionMutex sync.Mutex
 }
 
 func NewBatchRegistry(storage db.Storage, logger gethlog.Logger) BatchRegistry {
-	return &batchRegistry{
+	return &batchRegistryImpl{
 		storage: storage,
 		logger:  logger,
 	}
 }
 
-func (br *batchRegistry) StoreBatch(batch *core.Batch, receipts types.Receipts) error {
-	if err := br.updateHeadPointers(batch, receipts); err != nil {
+func (br *batchRegistryImpl) CommitBatch(cb *ComputedBatch) error {
+	_, err := cb.Commit(true)
+	return err
+}
+
+func (br *batchRegistryImpl) SubscribeForEvents() chan uint64 {
+	evSub := make(chan uint64)
+	br.eventSubscription = &evSub
+	return *br.eventSubscription
+}
+
+func (br *batchRegistryImpl) UnsubscribeFromEvents() {
+	br.eventSubscription = nil
+}
+
+// StoreBatch - stores a batch and if it is the new l2 head, then registry will update
+// stored head pointers
+func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receipts) error {
+	// Check if this batch is already stored.
+	if _, err := br.GetBatch(*batch.Hash()); err == nil {
+		br.logger.Warn("Attempted to store batch twice! This indicates issues with the batch processing loop")
+		return nil
+	}
+
+	isHeadBatch, err := br.updateHeadPointers(batch, receipts)
+	if err != nil {
 		return fmt.Errorf("failed updating head pointers. Cause: %w", err)
 	}
 
-	if err := br.storage.StoreBatch(batch, receipts); err != nil {
+	if err = br.storage.StoreBatch(batch, receipts); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
 	// TODO - we probably dont want to spawn a goroutine everytime
-	go br.updateSubscribers(batch)
+	br.notifySubscriber(batch, isHeadBatch)
 
 	return nil
 }
 
-func (br *batchRegistry) updateSubscribers(batch *core.Batch) {
+func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch, isHeadBatch bool) {
 	br.subscriptionMutex.Lock()
-	subscriptionChan := br.subscription
+	subscriptionChan := br.batchSubscription
+	eventChan := br.eventSubscription
 	br.subscriptionMutex.Unlock()
 
 	if subscriptionChan != nil {
 		*subscriptionChan <- batch
 	}
+
+	if br.eventSubscription != nil && isHeadBatch {
+		*eventChan <- batch.NumberU64()
+	}
 }
 
-func (br *batchRegistry) updateHeadPointers(batch *core.Batch, receipts types.Receipts) error {
+func (br *batchRegistryImpl) updateHeadPointers(batch *core.Batch, receipts types.Receipts) (bool, error) {
 	if err := br.updateBlockPointers(batch, receipts); err != nil {
-		return err
+		return false, err
 	}
 
 	return br.updateBatchPointers(batch)
 }
 
-func (br *batchRegistry) updateBatchPointers(batch *core.Batch) error {
+func (br *batchRegistryImpl) updateBatchPointers(batch *core.Batch) (bool, error) {
 	if head, err := br.storage.FetchHeadBatch(); err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return err
+		return false, err
 	} else if head != nil && batch.NumberU64() < head.NumberU64() {
-		return nil
+		return false, nil
 	}
 
-	return br.storage.SetHeadBatchPointer(batch)
+	return true, br.storage.SetHeadBatchPointer(batch)
 }
 
-func (br *batchRegistry) updateBlockPointers(batch *core.Batch, receipts types.Receipts) error {
+func (br *batchRegistryImpl) updateBlockPointers(batch *core.Batch, receipts types.Receipts) error {
 	head, err := br.GetHeadBatchFor(batch.Header.L1Proof)
 
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -86,36 +119,89 @@ func (br *batchRegistry) updateBlockPointers(batch *core.Batch, receipts types.R
 	return br.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, receipts)
 }
 
-func (br *batchRegistry) GetHeadBatch() (*core.Batch, error) {
+func (br *batchRegistryImpl) GetHeadBatch() (*core.Batch, error) {
 	return br.storage.FetchHeadBatch()
 }
 
-func (br *batchRegistry) GetHeadBatchFor(blockHash common.L1BlockHash) (*core.Batch, error) {
+func (br *batchRegistryImpl) GetHeadBatchFor(blockHash common.L1BlockHash) (*core.Batch, error) {
 	return br.storage.FetchHeadBatchForBlock(blockHash)
 }
 
-func (br *batchRegistry) GetBatch(batchHash common.L2BatchHash) (*core.Batch, error) {
+func (br *batchRegistryImpl) GetBatch(batchHash common.L2BatchHash) (*core.Batch, error) {
 	return br.storage.FetchBatch(batchHash)
 }
 
-func (br *batchRegistry) Subscribe() chan *core.Batch {
+func (br *batchRegistryImpl) Subscribe(lastKnownHead *common.L2BatchHash) (chan *core.Batch, error) {
 	br.subscriptionMutex.Lock()
 	defer br.subscriptionMutex.Unlock()
-	subChannel := make(chan *core.Batch, 100)
-	br.subscription = &subChannel
-	return *br.subscription
+	missingBatches, err := br.getMissingBatches(lastKnownHead)
+	if err != nil {
+		return nil, err
+	}
+
+	subChannel := make(chan *core.Batch, len(missingBatches))
+	for i := len(missingBatches) - 1; i >= 0; i-- {
+		batch := missingBatches[i]
+		subChannel <- batch
+	}
+
+	br.batchSubscription = &subChannel
+	return *br.batchSubscription, nil
 }
 
-func (br *batchRegistry) Unsubscribe() {
+func (br *batchRegistryImpl) Unsubscribe() {
 	br.subscriptionMutex.Lock()
 	defer br.subscriptionMutex.Unlock()
-	if br.subscription != nil {
-		close(*br.subscription)
-		br.subscription = nil
+	if br.batchSubscription != nil {
+		close(*br.batchSubscription)
+		br.batchSubscription = nil
 	}
 }
 
-func (br *batchRegistry) FindAncestralBatchFor(block *common.L1Block) (*core.Batch, error) {
+func (br *batchRegistryImpl) getMissingBatches(fromHash *common.L2BatchHash) ([]*core.Batch, error) {
+	if fromHash == nil {
+		return nil, nil
+	}
+
+	from, err := br.GetBatch(*fromHash)
+	if err != nil {
+		br.logger.Error("Error while attempting to stream from batch", log.ErrKey, err)
+		return nil, err
+	}
+
+	to, err := br.GetHeadBatch()
+	if err != nil {
+		br.logger.Error("Unable to get head batch while attempting to stream", log.ErrKey, err)
+		return nil, err
+	}
+
+	missingBatches := make([]*core.Batch, 0)
+	for !bytes.Equal(to.Hash().Bytes(), from.Hash().Bytes()) {
+		if to.NumberU64() == 0 {
+			br.logger.Error("Reached genesis when seeking missing batches to stream", log.ErrKey, err)
+			return nil, err
+		}
+
+		if from.NumberU64() == to.NumberU64() {
+			from, err = br.GetBatch(from.Header.ParentHash)
+			if err != nil {
+				br.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
+				return nil, err
+			}
+		}
+
+		missingBatches = append(missingBatches, to)
+		to, err = br.GetBatch(to.Header.ParentHash)
+		if err != nil {
+			br.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
+			return nil, err
+		}
+	}
+
+	return missingBatches, nil
+}
+
+func (br *batchRegistryImpl) FindAncestralBatchFor(block *common.L1Block) (*core.Batch, error) {
 	currentBlock := block
 	var ancestorBatch *core.Batch = nil
 	var err error
@@ -143,7 +229,7 @@ func (br *batchRegistry) FindAncestralBatchFor(block *common.L1Block) (*core.Bat
 	return ancestorBatch, nil
 }
 
-func (br *batchRegistry) HasGenesisBatch() (bool, error) {
+func (br *batchRegistryImpl) HasGenesisBatch() (bool, error) {
 	genesisBatchStored := true
 	_, err := br.GetHeadBatch()
 	if err != nil {
@@ -156,7 +242,7 @@ func (br *batchRegistry) HasGenesisBatch() (bool, error) {
 	return genesisBatchStored, nil
 }
 
-func (br *batchRegistry) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error) {
+func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error) {
 	batches := make([]*core.Batch, 0)
 
 	var batch *core.Batch
@@ -189,7 +275,7 @@ func (br *batchRegistry) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch,
 	return batches, nil
 }
 
-func (br *batchRegistry) GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
+func (br *batchRegistryImpl) GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
 	// We retrieve the batch of interest.
 	batch, err := br.GetBatchAtHeight(*blockNumber)
 	if err != nil {
@@ -209,7 +295,7 @@ func (br *batchRegistry) GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber)
 	return blockchainState, err
 }
 
-func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error) {
+func (br *batchRegistryImpl) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error) {
 	var batch *core.Batch
 	switch height {
 	case gethrpc.EarliestBlockNumber:
