@@ -34,11 +34,8 @@ func main() {
 		node.WithDebugNamespaceEnabled(cliConfig.isDebugNamespaceEnabled), // false
 	)
 
-	dockerNode, err := node.NewDockerNode(nodeCfg)
-	if err != nil {
-		panic(err)
-	}
-
+	dockerNode := node.NewDockerNode(nodeCfg)
+	var err error
 	switch cliConfig.nodeAction {
 	case startAction:
 		// write the network-level config to disk for future restarts
@@ -54,9 +51,8 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		dockerNode.SetNetworkConfig(ntwCfg)
 
-		err = dockerNode.Upgrade()
+		err = dockerNode.Upgrade(ntwCfg)
 	default:
 		panic("unrecognized node action: " + cliConfig.nodeAction)
 	}

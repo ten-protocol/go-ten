@@ -1,5 +1,19 @@
 package node
 
+import (
+	"fmt"
+
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+)
+
+const (
+	_localhost = "127.0.0.1"
+)
+
 // Option is a function that applies configs to a Config Object
 type Option = func(c *Config)
 
@@ -30,6 +44,7 @@ type Config struct {
 	nodeName                  string
 	hostInMemDB               bool
 	debugNamespaceEnabled     bool
+	profilerEnabled           bool
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -40,6 +55,44 @@ func NewNodeConfig(opts ...Option) *Config {
 	}
 
 	return defaultConfig
+}
+
+func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
+	cfg := config.DefaultEnclaveConfig()
+
+	if c.nodeType == "validator" {
+		cfg.NodeType = common.Validator
+	}
+
+	cfg.MessageBusAddress = gethcommon.HexToAddress(c.messageBusContractAddress)
+	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
+	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
+	cfg.HostID = gethcommon.HexToAddress(c.hostID)
+	cfg.LogPath = testlog.LogFile()
+	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
+
+	return &cfg
+}
+
+func (c *Config) ToHostConfig() *config.HostInputConfig {
+	cfg := config.DefaultHostParsedConfig()
+	cfg.PrivateKeyString = c.privateKey
+	cfg.EnclaveRPCAddress = fmt.Sprintf("127.0.0.1:%d", c.enclaveWSPort)
+	cfg.ClientRPCPortWS = uint64(c.hostWSPort)
+	cfg.L1NodeWebsocketPort = uint(c.l1WSPort)
+	cfg.P2PBindAddress = fmt.Sprintf(c.hostPublicP2PAddr)
+	cfg.L1NodeHost = _localhost
+	cfg.LogPath = testlog.LogFile()
+	cfg.ProfilerEnabled = c.profilerEnabled
+	return cfg
+}
+
+func (c *Config) UpdateNodeConfig(opts ...Option) *Config {
+	for _, opt := range opts {
+		opt(c)
+	}
+
+	return c
 }
 
 func WithNodeName(s string) Option {
@@ -189,5 +242,11 @@ func WithInMemoryDB(b bool) Option {
 func WithDebugNamespaceEnabled(b bool) Option {
 	return func(c *Config) {
 		c.debugNamespaceEnabled = b
+	}
+}
+
+func WithProfiler(b bool) Option {
+	return func(c *Config) {
+		c.profilerEnabled = b
 	}
 }
