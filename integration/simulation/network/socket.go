@@ -2,14 +2,14 @@ package network
 
 import (
 	"fmt"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/node"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/obscuronet/go-obscuro/go/node"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration"
@@ -23,7 +23,6 @@ import (
 type networkOfSocketNodes struct {
 	l2Clients        []rpc.Client
 	hostRPCAddresses []string
-	enclaveAddresses []string
 
 	// geth
 	eth2Network    eth2network.Eth2Network
@@ -72,6 +71,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 		// create the nodes
 		nodes[i], err = node.NewInMemNode(
 			node.NewNodeConfig(
+				node.WithGenesis(i == 0),
 				node.WithHostID(hostAddress.String()),
 				node.WithPrivateKey(privateKey),
 				node.WithSequencerID(seqHostAddress.String()),

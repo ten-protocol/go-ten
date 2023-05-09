@@ -69,6 +69,7 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
 	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
 	cfg.HostID = gethcommon.HexToAddress(c.hostID)
+	cfg.HostAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
 	cfg.LogPath = testlog.LogFile()
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
 	cfg.Cadence = uint64(c.enclaveCadence)
@@ -78,16 +79,27 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 
 func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg := config.DefaultHostParsedConfig()
+
+	if c.nodeType == "validator" {
+		cfg.NodeType = common.Validator
+	}
+
+	cfg.IsGenesis = c.isGenesis
 	cfg.PrivateKeyString = c.privateKey
 	cfg.EnclaveRPCAddress = fmt.Sprintf("127.0.0.1:%d", c.enclaveWSPort)
 	cfg.ClientRPCPortWS = uint64(c.hostWSPort)
 	cfg.ClientRPCPortHTTP = uint64(c.hostHTTPPort)
+
 	cfg.P2PPublicAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
 	cfg.P2PBindAddress = c.hostPublicP2PAddr
+
 	cfg.L1NodeWebsocketPort = uint(c.l1WSPort)
 	cfg.L1NodeHost = c.l1Host
+	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
 	cfg.LogPath = testlog.LogFile()
 	cfg.ProfilerEnabled = c.profilerEnabled
+	cfg.MetricsEnabled = false
+
 	return cfg
 }
 
