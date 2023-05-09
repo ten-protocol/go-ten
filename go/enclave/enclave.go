@@ -358,8 +358,6 @@ func (e *enclaveImpl) sendBatchesFromSubscription(from *common.L2BatchHash, l2Up
 		return
 	}
 
-	defer close(l2UpdatesChannel)
-
 	for {
 		batch, ok := <-batchChan
 		if !ok {
