@@ -3,13 +3,12 @@ package sql
 import (
 	"database/sql"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	_ "github.com/mattn/go-sqlite3" // this imports the sqlite driver to make the sql.Open() connection work
 )
@@ -109,23 +108,11 @@ func initialiseDB(db *sql.DB) error {
 }
 
 func CreateTempDBFile() (string, error) {
-	tempDir := filepath.Join("/tmp", tempDirName, randomStr(5))
+	tempDir := filepath.Join("/tmp", tempDirName, common.RandomStr(5))
 	err := os.MkdirAll(tempDir, os.ModePerm)
 	if err != nil {
 		return "", fmt.Errorf("failed to create sqlite temp dir - %w", err)
 	}
 	tempFile := filepath.Join(tempDir, "enclave.db")
 	return tempFile, nil
-}
-
-// Generates a random string n characters long.
-func randomStr(n int) string {
-	randGen := rand.New(rand.NewSource(time.Now().UnixNano())) //nolint:gosec
-
-	letters := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	suffix := make([]rune, n)
-	for i := range suffix {
-		suffix[i] = letters[randGen.Intn(len(letters))]
-	}
-	return string(suffix)
 }
