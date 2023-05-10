@@ -11,7 +11,11 @@
 # Build stage for downloading dependencies based on the core defined system
 FROM golang:1.18-buster as get-dependencies
 
-# create the base directory
+# Install datadog agent
+RUN DD_API_KEY=none DD_HOSTNAME=none DD_INSTALL_ONLY=true DD_SITE="datadoghq.eu" bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script_agent7.sh)"
+RUN sed -i 's/# logs_enabled: false/logs_enabled: true/' /etc/datadog-agent/datadog.yaml
+COPY .github/workflows/runner-scripts/conf.yml /etc/datadog-agent/conf.d/eth2network.d/conf.yml
+
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
 

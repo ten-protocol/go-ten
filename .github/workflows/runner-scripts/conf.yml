@@ -1,0 +1,9 @@
+logs:
+  - type: file
+    path: "/home/obscuro/go-obscuro/integration/.build/eth2/*/geth*.log"
+    service: "geth"
+    source: "eth2network"
+  - type: file
+    path: "/home/obscuro/go-obscuro/integration/.build/eth2/*/prysm*.log"
+    service: "prysm"
+    source: "eth2network"
