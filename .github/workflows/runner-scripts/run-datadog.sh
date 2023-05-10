@@ -12,6 +12,12 @@ then
     exit 1
 fi
 
+# Install datadog agent
+DD_API_KEY=none DD_HOSTNAME=none DD_INSTALL_ONLY=true DD_SITE="datadoghq.eu" bash -c "$(curl -L https://s3.amazonaws.com/dd-agent/scripts/install_script_agent7.sh)"
+sed -i 's/# logs_enabled: false/logs_enabled: true/' /etc/datadog-agent/datadog.yaml
+mkdir -p /etc/datadog-agent/conf.d/eth2network.d/
+cp -p /home/obscuro/go-obscuro/.github/workflows/runner-scripts/conf.yml /etc/datadog-agent/conf.d/eth2network.d/conf.yml
+
 sed -i "s/api_key: none/api_key: ${DD_API_KEY}/" /etc/datadog-agent/datadog.yaml
 sed -i "s/hostname: none/hostname: ${DD_HOSTNAME}/" /etc/datadog-agent/datadog.yaml
 
