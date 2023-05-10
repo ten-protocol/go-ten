@@ -239,7 +239,7 @@ jobs:
             && sudo apt-get update \
             && sudo snap refresh && sudo snap install --channel=1.17 go --classic \
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
-            && { docker network create --driver bridge node_network || true } \
+            && { docker network create --driver bridge node_network || true; } \
             && docker run -d --name datadog-agent \
                --network node_network \
                -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
