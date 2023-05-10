@@ -235,10 +235,11 @@ jobs:
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
+            && sudo apt-get install -y gcc \
             && sudo apt-get update \
             && sudo snap refresh && sudo snap install --channel=1.17 go --classic \
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
-            && docker network create --driver bridge node_network || true \
+            && { docker network create --driver bridge node_network || true } \
             && docker run -d --name datadog-agent \
                --network node_network \
                -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
