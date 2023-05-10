@@ -237,7 +237,7 @@ jobs:
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
             && sudo apt-get update \
             && sudo apt-get install -y gcc \
-            && sudo snap refresh && sudo snap install --channel=1.17 go --classic \
+            && sudo snap refresh && sudo snap install --channel=1.18 go --classic \
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
             && docker network create --driver bridge node_network || true \
             && docker run -d --name datadog-agent \
