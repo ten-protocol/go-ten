@@ -51,6 +51,10 @@ func NewStorage(backingDB *sql.EnclaveDB, chainConfig *params.ChainConfig, logge
 	}
 }
 
+func (s *storageImpl) NewTransaction() StorageUpdater {
+	return NewStorageUpdater(s.db.NewSQLBatch(), s)
+}
+
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }

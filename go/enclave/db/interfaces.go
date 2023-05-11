@@ -42,6 +42,21 @@ type BatchResolver interface {
 	StoreBatch(batch *core.Batch, receipts []*types.Receipt) error
 }
 
+type BatchUpdater interface {
+	// StoreBatch stores a batch.
+	StoreBatch(batch *core.Batch, receipts []*types.Receipt) error
+	// UpdateHeadBatch updates the canonical L2 head batch for a given L1 block.
+	UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Batch, receipts []*types.Receipt) error
+	// SetHeadBatchPointer updates the canonical L2 head batch for a given L1 block.
+	SetHeadBatchPointer(l2Head *core.Batch) error
+}
+
+type StorageUpdater interface {
+	BatchUpdater
+
+	Commit() error
+}
+
 type RollupResolver interface {
 	// StoreRollup stores a rollup.
 	StoreRollup(rollup *core.Rollup) error
@@ -127,4 +142,6 @@ type Storage interface {
 
 	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
 	DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error)
+
+	NewTransaction() StorageUpdater
 }
