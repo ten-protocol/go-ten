@@ -72,6 +72,20 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
           echo "L1_HOST=${{env.L1_HOST}}" >> $GITHUB_OUTPUT
 
+      - name: 'Fetch latest VM hostnames by env tag and extract build number'
+        id: fetch_hostnames
+        run: |
+          TAG_NAME="${{needs.build.outputs.RESOURCE_TAG_NAME}}"
+          VM_HOSTNAME=$(az vm list --query "[?tags.$TAG_NAME=='true'].{Name:name}[0]" -g Testnet -o tsv)
+          VM_BUILD_NUMBER=$(echo $VM_HOSTNAME | perl -ne 'if (/(-[0-9]{1}-)(\d+)/) { print $2 }') # Extract build number from VM hostname, e.g. D-0-321 -> 321
+          echo "VM_BUILD_NUMBER=${VM_BUILD_NUMBER}" >> $GITHUB_ENV
+          echo "VM_HOSTNAME: ${VM_HOSTNAME}"
+          echo "VM_BUILD_NUMBER: ${VM_BUILD_NUMBER}"
+          if ! [[ $VM_BUILD_NUMBER =~ ^[0-9]+$ ]]; then # fail if build number is not a number
+            echo "Error: Hostname lookup or regex extraction of build number failed."
+            exit 1
+          fi
+
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
         with:
@@ -130,20 +144,6 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Fetch latest VM hostnames by env tag and extract build number'
-        id: fetch_hostnames
-        run: |
-          TAG_NAME="${{needs.build.outputs.RESOURCE_TAG_NAME}}"
-          VM_HOSTNAME=$(az vm list --query "[?tags.$TAG_NAME=='true'].{Name:name}[0]" -g Testnet -o tsv)
-          VM_BUILD_NUMBER=$(echo $VM_HOSTNAME | perl -ne 'if (/(-[0-9]{1}-)(\d+)/) { print $2 }') # Extract build number from VM hostname, e.g. D-0-321 -> 321
-          echo "VM_BUILD_NUMBER=${VM_BUILD_NUMBER}" >> $GITHUB_ENV
-          echo "VM_HOSTNAME: ${VM_HOSTNAME}"
-          echo "VM_BUILD_NUMBER: ${VM_BUILD_NUMBER}"
-          if ! [[ $VM_BUILD_NUMBER =~ ^[0-9]+$ ]]; then # fail if build number is not a number
-            echo "Error: Hostname lookup or regex extraction of build number failed."
-            exit 1
-          fi
-
       - name: 'Update Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
@@ -182,3 +182,4 @@ jobs:
         shell: bash
         run: |
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ env.VM_BUILD_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ env.VM_BUILD_NUMBER }}.uksouth.cloudapp.azure.com --timeout=60
