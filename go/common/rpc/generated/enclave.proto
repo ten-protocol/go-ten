@@ -71,11 +71,24 @@ service EnclaveProto {
   // HealthCheck returns the health status of enclave + db
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
 
+  rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
+
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
+
 
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
 
+  rpc StreamL2Updates(StreamL2UpdatesRequest) returns (stream EncodedUpdateResponse) {}
+
   rpc DebugEventLogRelevancy(DebugEventLogRelevancyRequest) returns (DebugEventLogRelevancyResponse) {}
+}
+
+message StreamL2UpdatesRequest {
+  optional bytes knownHead = 1;
+}
+
+message EncodedUpdateResponse {
+  bytes batch = 1;
 }
 
 message SystemError{
@@ -99,6 +112,12 @@ message DebugTraceTransactionResponse{
   string msg = 1;
   SystemError systemError = 2;
 }
+
+message CreateBatchRequest{}
+message CreateBatchResponse{
+  string error = 2;
+}
+
 
 message CreateRollupRequest{}
 message CreateRollupResponse{

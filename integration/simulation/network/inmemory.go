@@ -61,6 +61,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			p2pLayers[i],
 			&disabledBus,
 			common.Hash{},
+			params.AvgBlockDuration/2,
 		)
 		obscuroClient := p2p.NewInMemObscuroClient(agg)
 

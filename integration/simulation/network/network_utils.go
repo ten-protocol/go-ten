@@ -53,6 +53,7 @@ func createInMemObscuroNode(
 	mockP2P *simp2p.MockP2P,
 	l1BusAddress *gethcommon.Address,
 	l1StartBlk gethcommon.Hash,
+	batchInterval time.Duration,
 ) *container.HostContainer {
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
@@ -64,6 +65,7 @@ func createInMemObscuroNode(
 		P2PPublicAddress:          fmt.Sprintf("%d", id),
 		L1StartHash:               l1StartBlk,
 		ManagementContractAddress: *mgtContractAddress,
+		BatchInterval:             batchInterval,
 	}
 
 	enclaveConfig := config.EnclaveConfig{

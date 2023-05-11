@@ -32,21 +32,32 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 	}
 }
 
-func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
-	subscribedLogBytes, err := json.Marshal(response.SubscribedLogs)
-	if err != nil {
-		return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
+func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (*generated.BlockSubmissionResponseMsg, error) {
+	var subscribedLogBytes []byte
+	var err error
+
+	if response == nil {
+		return nil, fmt.Errorf("no response that could be converted to a message")
 	}
 
 	producedBatchMsg := ToExtBatchMsg(response.ProducedBatch)
 	producedRollupMsg := ToExtRollupMsg(response.ProducedRollup)
 
-	return generated.BlockSubmissionResponseMsg{
+	msg := &generated.BlockSubmissionResponseMsg{
 		ProducedBatch:           &producedBatchMsg,
 		ProducedRollup:          &producedRollupMsg,
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
-	}, nil
+	}
+
+	if response.SubscribedLogs != nil {
+		msg.SubscribedLogs, err = json.Marshal(response.SubscribedLogs)
+		if err != nil {
+			return &generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
+		}
+	}
+
+	return msg, nil
 }
 
 func ToSecretRespMsg(responses []*common.ProducedSecretResponse) []*generated.SecretResponseMsg {
@@ -86,9 +97,12 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 		}
 	}
 	var subscribedLogs map[rpc.ID][]byte
-	if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
-		return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
+	if msg.SubscribedLogs != nil {
+		if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
+			return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
+		}
 	}
+
 	return &common.BlockSubmissionResponse{
 		ProducedBatch:           FromExtBatchMsg(msg.ProducedBatch),
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),

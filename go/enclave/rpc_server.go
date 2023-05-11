@@ -113,7 +113,7 @@ func (s *RPCServer) SubmitL1Block(_ context.Context, request *generated.SubmitBl
 	if err != nil {
 		return nil, err
 	}
-	return &generated.SubmitBlockResponse{BlockSubmissionResponse: &msg}, nil
+	return &generated.SubmitBlockResponse{BlockSubmissionResponse: msg}, nil
 }
 
 func (s *RPCServer) SubmitTx(_ context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
@@ -227,13 +227,19 @@ func (s *RPCServer) HealthCheck(_ context.Context, _ *generated.EmptyArgs) (*gen
 }
 
 func (s *RPCServer) CreateRollup(_ context.Context, _ *generated.CreateRollupRequest) (*generated.CreateRollupResponse, error) {
-	rollup, err := s.enclave.GenerateRollup()
+	rollup, err := s.enclave.CreateRollup()
+
 	msg := rpc.ToExtRollupMsg(rollup)
 
 	return &generated.CreateRollupResponse{
 		Msg:         &msg,
 		SystemError: toRPCError(err),
 	}, nil
+}
+
+func (s *RPCServer) CreateBatch(_ context.Context, _ *generated.CreateBatchRequest) (*generated.CreateBatchResponse, error) {
+	err := s.enclave.CreateBatch()
+	return &generated.CreateBatchResponse{}, err
 }
 
 func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.DebugTraceTransactionRequest) (*generated.DebugTraceTransactionResponse, error) {
@@ -249,6 +255,40 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 
 	traceTx, err := s.enclave.DebugTraceTransaction(txHash, &config)
 	return &generated.DebugTraceTransactionResponse{Msg: string(traceTx), SystemError: toRPCError(err)}, nil
+}
+
+func (s *RPCServer) StreamL2Updates(request *generated.StreamL2UpdatesRequest, stream generated.EnclaveProto_StreamL2UpdatesServer) error {
+	var fromHash *common.L2BatchHash = nil
+	if request.KnownHead != nil {
+		knownHead := gethcommon.BytesToHash(request.KnownHead)
+		fromHash = &knownHead
+	}
+
+	batchChan, stop := s.enclave.StreamL2Updates(fromHash)
+	defer stop()
+
+	for {
+		batchResp, ok := <-batchChan
+		if !ok {
+			s.logger.Info("Enclave closed batch channel.")
+			break
+		}
+
+		encoded, err := json.Marshal(batchResp)
+		if err != nil {
+			s.logger.Error("Error marshalling batch response", log.ErrKey, err)
+			return nil
+		}
+
+		if err := stream.Send(&generated.EncodedUpdateResponse{Batch: encoded}); err != nil {
+			s.logger.Info("Failed streaming batch back to client", log.ErrKey, err)
+			// not quite sure there is any point to this, we failed to send a batch
+			// so error will probably not get sent either.
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *RPCServer) DebugEventLogRelevancy(_ context.Context, req *generated.DebugEventLogRelevancyRequest) (*generated.DebugEventLogRelevancyResponse, error) {

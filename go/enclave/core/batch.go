@@ -8,6 +8,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
@@ -92,4 +93,29 @@ func EmptyBatch(agg gethcommon.Address, parent *common.BatchHeader, blkHash geth
 		Header: &h,
 	}
 	return &b, nil
+}
+
+func DeterministicEmptyBatch(
+	agg gethcommon.Address,
+	parent *common.BatchHeader,
+	block *types.Block,
+	rand gethcommon.Hash,
+	time uint64,
+) *Batch {
+	h := common.BatchHeader{
+		Agg:        agg,
+		ParentHash: parent.Hash(),
+		L1Proof:    block.Hash(),
+		Number:     big.NewInt(0).Add(parent.Number, big.NewInt(1)),
+		// todo (#1548) - Consider how this time should align with the time of the L1 block used as proof.
+		Time: time,
+		// generate true randomness inside the enclave.
+		// note that this randomness will be published in the header of the batch.
+		// the randomness exposed to smart contract is combining this with the shared secret.
+		MixDigest: rand,
+	}
+	b := Batch{
+		Header: &h,
+	}
+	return &b
 }
