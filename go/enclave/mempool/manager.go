@@ -83,10 +83,20 @@ func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.Storage) ([]*
 
 	applicableTransactions := make(common.L2Transactions, 0)
 
-	for _, tx := range txes {
+	addressNonces := make(map[gethcommon.Address]uint64)
+	NonceFor := func(address gethcommon.Address) uint64 {
+		nonce, found := addressNonces[address]
+		if !found {
+			nonce = stateDB.GetNonce(address)
+			addressNonces[address] = nonce
+		}
 
+		return nonce
+	}
+
+	for _, tx := range txes {
 		sender, txNonce, _ := core.ExtractOrderingInfo(db.obscuroChainID, tx)
-		addressNonce := stateDB.GetNonce(*sender)
+		addressNonce := NonceFor(*sender)
 		if txNonce == addressNonce {
 			applicableTransactions = append(applicableTransactions, tx)
 		}

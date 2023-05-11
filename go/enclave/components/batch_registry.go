@@ -72,7 +72,6 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	// TODO - we probably dont want to spawn a goroutine everytime
 	br.notifySubscriber(batch, isHeadBatch)
 
 	return nil
