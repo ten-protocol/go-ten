@@ -195,7 +195,7 @@ jobs:
         id: extract_branch
 
         # The Azure API will sometimes supersede PUT requests that come in close together. This sleep will stagger the VM requests.
-        # It expects host_id to be an int and then multiplies it by 30s (i.e. host 0: sleep 0, host 1: sleep 60,...)
+        # It expects host_id to be an int and then multiplies it by 60s (i.e. host 0: sleep 0, host 1: sleep 60,...)
       - name: 'Stagger VM creation'
         shell: bash
         run: sleep `expr ${{matrix.host_id}} \* 60`
