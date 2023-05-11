@@ -180,7 +180,7 @@ func NewEnclave(
 
 	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl(logger)
 
-	memp := mempool.New(config.ObscuroChainID)
+	memp := mempool.New(config.ObscuroChainID, logger)
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
@@ -968,7 +968,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	return responses.AsEncryptedResponse(&gasEstimate, encryptor), nil
 }
 
-//nolint
+// nolint
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))

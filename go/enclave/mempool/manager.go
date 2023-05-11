@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
@@ -25,15 +27,17 @@ func (c sortByNonce) Less(i, j int) bool { return c[i].Nonce() < c[j].Nonce() }
 type mempoolManager struct {
 	mpMutex        sync.RWMutex // Controls access to `mempool`
 	obscuroChainID int64
+	logger         gethlog.Logger
 	mempool        map[gethcommon.Hash]*common.L2Tx
 	pendingAccTxs  map[gethcommon.Address]common.L2Transactions
 }
 
-func New(chainID int64) Manager {
+func New(chainID int64, logger gethlog.Logger) Manager {
 	return &mempoolManager{
 		mempool:        make(map[gethcommon.Hash]*common.L2Tx),
 		obscuroChainID: chainID,
 		mpMutex:        sync.RWMutex{},
+		logger:         logger,
 	}
 }
 
@@ -99,6 +103,9 @@ func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.Storage) ([]*
 		addressNonce := NonceFor(*sender)
 		if txNonce == addressNonce {
 			applicableTransactions = append(applicableTransactions, tx)
+			db.logger.Info(fmt.Sprintf("Including transaction %s with nonce: %d", tx.Hash().Hex(), tx.Nonce()))
+		} else {
+			db.logger.Info(fmt.Sprintf("Excluding transaction %s with nonce: %d as current is: %d", tx.Hash().Hex(), tx.Nonce(), addressNonce))
 		}
 	}
 
