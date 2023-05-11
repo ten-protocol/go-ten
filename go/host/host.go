@@ -307,7 +307,8 @@ func (h *host) Stop() error {
 	h.shutdownGroup.Wait()
 
 	if err := h.p2p.StopListening(); err != nil {
-		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
+		err = fmt.Errorf("failed to close transaction P2P listener cleanly - %w", err)
+		h.logger.Error("", log.ErrKey, err)
 		return err
 	}
 
@@ -315,11 +316,13 @@ func (h *host) Stop() error {
 	time.Sleep(time.Second)
 
 	if err := h.enclaveClient.Stop(); err != nil {
-		h.logger.Error("could not stop enclave server", log.ErrKey, err)
+		err = fmt.Errorf("could not stop enclave server - %w", err)
+		h.logger.Error("", log.ErrKey, err)
 		return err
 	}
 	if err := h.enclaveClient.StopClient(); err != nil {
-		h.logger.Error("failed to stop enclave RPC client", log.ErrKey, err)
+		err = fmt.Errorf("failed to stop enclave RPC client - %w", err)
+		h.logger.Error("", log.ErrKey, err)
 		return err
 	}
 
