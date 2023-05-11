@@ -189,7 +189,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return fmt.Errorf("failed storing batch. Cause: %w", err)
 	}
 
-	if err := s.mempool.RemoveMempoolTxs(cb.Batch, s.storage); err != nil {
+	if err := s.mempool.RemoveTxs(transactions); err != nil {
 		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
 	}
 

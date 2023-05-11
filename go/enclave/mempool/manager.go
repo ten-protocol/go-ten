@@ -2,13 +2,13 @@ package mempool
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 	"sync"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
@@ -61,55 +61,15 @@ func (db *mempoolManager) FetchMempoolTxs() []*common.L2Tx {
 	return mpCopy
 }
 
-func (db *mempoolManager) RemoveMempoolTxs(batch *core.Batch, resolver db.BatchResolver) error {
+func (db *mempoolManager) RemoveTxs(transactions types.Transactions) error {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 
-	toRemove, err := txsXBatchesAgo(batch, resolver)
-	if err != nil {
-		return fmt.Errorf("error retrieiving historic transactions. Cause: %w", err)
+	for _, tx := range transactions {
+		delete(db.mempool, tx.Hash())
 	}
-
-	newMempool := make(map[gethcommon.Hash]*common.L2Tx)
-	for txHash, tx := range db.mempool {
-		_, f := toRemove[txHash]
-		if !f {
-			newMempool[txHash] = tx
-		}
-	}
-	db.mempool = newMempool
 
 	return nil
-}
-
-// Returns all transactions in the batch `HeightCommittedBlocks` deep.
-func txsXBatchesAgo(initialBatch *core.Batch, resolver db.BatchResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
-	blocksDeep := 0
-	currentBatch := initialBatch
-	var err error
-
-	// todo (#1491) - create method to return the canonical rollup from height N
-	for {
-		if blocksDeep == common.HeightCommittedBlocks {
-			// We've found the rollup `HeightCommittedBlocks` deep.
-			return core.ToMap(currentBatch.Transactions), nil
-		}
-
-		if currentBatch.Header.Number.Uint64() == common.L2GenesisHeight {
-			// There's less than `HeightCommittedBlocks` rollups, so there's no transactions to remove yet.
-			return map[gethcommon.Hash]gethcommon.Hash{}, nil
-		}
-
-		currentBatch, err = resolver.FetchBatch(currentBatch.Header.ParentHash)
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				return nil, fmt.Errorf("found a gap in the rollup chain")
-			}
-			return nil, fmt.Errorf("could not retrieve parent rollup. Cause: %w", err)
-		}
-
-		blocksDeep++
-	}
 }
 
 // CurrentTxs - Calculate transactions to be included in the current batch
