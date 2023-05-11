@@ -106,8 +106,6 @@ func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.Storage) ([]*
 		if txNonce == addressNonce {
 			applicableTransactions = append(applicableTransactions, tx)
 			db.logger.Info(fmt.Sprintf("Including transaction %s with nonce: %d", tx.Hash().Hex(), tx.Nonce()))
-		} else {
-			db.logger.Info(fmt.Sprintf("Excluding transaction %s with nonce: %d as current is: %d", tx.Hash().Hex(), tx.Nonce(), addressNonce))
 		}
 	}
 
