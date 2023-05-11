@@ -193,6 +193,8 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
 	}
 
+	s.logger.Info(fmt.Sprintf("Created new batch %s with %d transactions", cb.Batch.Hash().Hex(), len(cb.Batch.Transactions)))
+
 	return nil
 }
 
