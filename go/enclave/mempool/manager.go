@@ -26,6 +26,7 @@ type mempoolManager struct {
 	mpMutex        sync.RWMutex // Controls access to `mempool`
 	obscuroChainID int64
 	mempool        map[gethcommon.Hash]*common.L2Tx
+	pendingAccTxs  map[gethcommon.Address]common.L2Transactions
 }
 
 func New(chainID int64) Manager {
@@ -39,7 +40,8 @@ func New(chainID int64) Manager {
 func (db *mempoolManager) AddMempoolTx(tx *common.L2Tx) error {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
-	err := core.VerifySignature(db.obscuroChainID, tx)
+
+	_, _, err := core.ExtractOrderingInfo(db.obscuroChainID, tx)
 	if err != nil {
 		return err
 	}
@@ -70,8 +72,25 @@ func (db *mempoolManager) RemoveTxs(transactions types.Transactions) error {
 }
 
 // CurrentTxs - Calculate transactions to be included in the current batch
-func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.BatchResolver) ([]*common.L2Tx, error) {
+func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.Storage) ([]*common.L2Tx, error) {
+	stateDB, err := resolver.CreateStateDB(*head.Hash())
+	if err != nil {
+		return nil, err
+	}
+
 	txes := db.FetchMempoolTxs()
 	sort.Sort(sortByNonce(txes))
-	return txes, nil
+
+	applicableTransactions := make(common.L2Transactions, 0)
+
+	for _, tx := range txes {
+
+		sender, txNonce, _ := core.ExtractOrderingInfo(db.obscuroChainID, tx)
+		addressNonce := stateDB.GetNonce(*sender)
+		if txNonce == addressNonce {
+			applicableTransactions = append(applicableTransactions, tx)
+		}
+	}
+
+	return applicableTransactions, nil
 }

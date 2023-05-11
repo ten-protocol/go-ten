@@ -222,9 +222,10 @@ func (br *batchRegistryImpl) FindAncestralBatchFor(block *common.L1Block) (*core
 			return nil, fmt.Errorf("unable to get latest ancestral batch. Cause: %w", err)
 		}
 
-		currentBlock, err = br.storage.FetchBlock(currentBlock.ParentHash())
+		parentBlockHash := currentBlock.ParentHash()
+		currentBlock, err = br.storage.FetchBlock(parentBlockHash)
 		if err != nil {
-			return nil, fmt.Errorf("unable to find parent for block in ancestral chain. Cause: %w", err)
+			return nil, fmt.Errorf("unable to find parent for block %s in ancestral chain. Cause: %w", parentBlockHash.Hex(), err)
 		}
 	}
 

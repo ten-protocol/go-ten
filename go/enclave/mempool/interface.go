@@ -16,5 +16,5 @@ type Manager interface {
 	RemoveTxs(transactions types.Transactions) error
 
 	// CurrentTxs Returns the transactions that should be included in the current batch
-	CurrentTxs(head *core.Batch, resolver db.BatchResolver) ([]*common.L2Tx, error)
+	CurrentTxs(head *core.Batch, resolver db.Storage) ([]*common.L2Tx, error)
 }
