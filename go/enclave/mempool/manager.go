@@ -92,12 +92,14 @@ func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.Storage) ([]*
 		nonce, found := addressNonces[address]
 		if !found {
 			nonce = stateDB.GetNonce(address)
-		} else {
-			nonce = nonce + 1
 		}
-
 		addressNonces[address] = nonce
 		return nonce
+	}
+
+	IncrementFor := func(address gethcommon.Address) {
+		nonce := addressNonces[address]
+		addressNonces[address] = nonce + 1
 	}
 
 	for _, tx := range txes {
@@ -105,6 +107,7 @@ func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.Storage) ([]*
 		addressNonce := NonceFor(*sender)
 		if txNonce == addressNonce {
 			applicableTransactions = append(applicableTransactions, tx)
+			IncrementFor(*sender)
 			db.logger.Info(fmt.Sprintf("Including transaction %s with nonce: %d", tx.Hash().Hex(), tx.Nonce()))
 		}
 	}
