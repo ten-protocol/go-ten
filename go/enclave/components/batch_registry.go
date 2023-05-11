@@ -22,7 +22,11 @@ type batchRegistryImpl struct {
 	storage db.Storage
 	logger  gethlog.Logger
 
+	// Channel on which batches will be pushed. It is held by another caller outside the
+	// batch registry.
 	batchSubscription *chan *core.Batch
+	// Channel for pushing batch height numbers which are needed in order
+	// to figure out what events to send to subscribers.
 	eventSubscription *chan uint64
 
 	subscriptionMutex sync.Mutex

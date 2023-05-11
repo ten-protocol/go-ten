@@ -10,6 +10,10 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
+const (
+	SubscriptionChannelBuffer = 10
+)
+
 type BlockIngestionType struct {
 	// IsLatest is true if this block was the canonical head of the L1 chain at the time it was submitted to enclave
 	// (if false then we are behind and catching up, expect to be fed another block immediately afterwards)

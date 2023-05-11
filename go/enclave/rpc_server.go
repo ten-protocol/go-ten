@@ -281,7 +281,7 @@ func (s *RPCServer) StreamL2Updates(request *generated.StreamL2UpdatesRequest, s
 		}
 
 		if err := stream.Send(&generated.EncodedUpdateResponse{Batch: encoded}); err != nil {
-			s.logger.Error("Failed streaming batch back to client", log.ErrKey, err)
+			s.logger.Info("Failed streaming batch back to client", log.ErrKey, err)
 			// not quite sure there is any point to this, we failed to send a batch
 			// so error will probably not get sent either.
 			return err

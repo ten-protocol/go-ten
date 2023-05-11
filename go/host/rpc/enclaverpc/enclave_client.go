@@ -389,7 +389,7 @@ func (c *Client) HealthCheck() (bool, common.SystemError) {
 }
 
 func (c *Client) CreateBatch() common.SystemError {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout+10*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	_, err := c.protoClient.CreateBatch(timeoutCtx, &generated.CreateBatchRequest{})
@@ -397,7 +397,7 @@ func (c *Client) CreateBatch() common.SystemError {
 }
 
 func (c *Client) CreateRollup() (*common.ExtRollup, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout+10*time.Second)
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{})
