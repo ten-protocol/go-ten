@@ -195,10 +195,10 @@ jobs:
         id: extract_branch
 
         # The Azure API will sometimes supersede PUT requests that come in close together. This sleep will stagger the VM requests.
-        # It expects host_id to be an int and then multiplies it by 30s (i.e. host 0: sleep 0, host 1: sleep 30,...)
+        # It expects host_id to be an int and then multiplies it by 60s (i.e. host 0: sleep 0, host 1: sleep 60,...)
       - name: 'Stagger VM creation'
         shell: bash
-        run: sleep `expr ${{matrix.host_id}} \* 30`
+        run: sleep `expr ${{matrix.host_id}} \* 60`
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -223,9 +223,10 @@ jobs:
           inlineScript: |
             az vm open-port -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
 
-      - name: 'Wait for Obscuro sequencer to start'
+        # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
+      - name: 'Allow time for VM initialization'
         shell: bash
-        run: if [ 0 != ${{ matrix.host_id }} ]; then echo "Sleeping while sequencer starts" & sleep 60; fi
+        run: sleep 60
 
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
@@ -236,7 +237,8 @@ jobs:
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
             && sudo apt-get update \
-            && sudo snap refresh && sudo snap install --channel=1.17 go --classic \
+            && sudo apt-get install -y gcc \
+            && sudo snap refresh && sudo snap install --channel=1.18 go --classic \
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
             && docker network create --driver bridge node_network || true \
             && docker run -d --name datadog-agent \
