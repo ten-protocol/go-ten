@@ -1,6 +1,6 @@
 module github.com/obscuronet/go-obscuro
 
-go 1.18
+go 1.20
 
 require (
 	github.com/Azure/azure-sdk-for-go v63.2.0+incompatible
@@ -15,7 +15,7 @@ require (
 	github.com/go-sql-driver/mysql v1.4.1
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
-	github.com/kr/pretty v0.2.1
+	github.com/kamilsk/breaker v1.2.1
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/sanity-io/litter v1.5.5
@@ -65,8 +65,6 @@ require (
 	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/huin/goupnp v1.0.2 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
-	github.com/kamilsk/breaker v1.2.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
