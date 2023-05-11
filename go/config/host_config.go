@@ -227,7 +227,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		MetricsHTTPPort:           14000,
 		UseInMemoryDB:             true,
 		DebugNamespaceEnabled:     false,
-		BatchInterval:             3 * time.Second,
+		BatchInterval:             1 * time.Second,
 		RollupInterval:            30 * time.Second,
 	}
 }
