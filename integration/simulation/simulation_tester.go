@@ -27,7 +27,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		testlog.Logger().Info(fmt.Sprintf("goroutine leak monitor - simulation end - %d goroutines currently running", runtime.NumGoroutine()))
 	}()
 	testlog.Logger().Info(fmt.Sprintf("goroutine leak monitor - simulation start - %d goroutines currently running", runtime.NumGoroutine()))
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(time.Now().UnixNano()) //nolint: staticcheck
 	uuid.EnableRandPool()
 
 	stats := simstats.NewStats(params.NumberOfNodes) // todo - temporary object used to collect metrics. Needs to be replaced with something better

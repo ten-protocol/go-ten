@@ -610,11 +610,8 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, rollup.Hash()); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, batch, nil); err != nil {
-		return err
-	}
 
-	return nil
+	return enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, batch, nil)
 }
 
 func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber, w wallet.Wallet, expectedAmount *big.Int) error {

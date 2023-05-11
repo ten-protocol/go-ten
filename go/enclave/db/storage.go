@@ -510,7 +510,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
-	rows, err := s.db.GetSQLDB().Query(query, queryParams...)
+	rows, err := s.db.GetSQLDB().Query(query, queryParams...) //nolint: rowserrcheck
 	if err != nil {
 		return nil, err
 	}
@@ -533,7 +533,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 		result = append(result, &l)
 	}
 
-	if err = rows.Close(); err != nil {
+	if err = rows.Close(); err != nil { //nolint: sqlclosecheck
 		return nil, syserr.NewInternalError(err)
 	}
 
@@ -555,7 +555,7 @@ func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, 
 
 	result := make([]*tracers.DebugLogs, 0)
 
-	rows, err := s.db.GetSQLDB().Query(query, queryParams...)
+	rows, err := s.db.GetSQLDB().Query(query, queryParams...) //nolint: rowserrcheck
 	if err != nil {
 		return nil, err
 	}
@@ -603,7 +603,7 @@ func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, 
 		result = append(result, &l)
 	}
 
-	if err = rows.Close(); err != nil {
+	if err = rows.Close(); err != nil { //nolint: sqlclosecheck
 		return nil, err
 	}
 

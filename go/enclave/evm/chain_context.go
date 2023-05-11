@@ -32,7 +32,7 @@ func (occ *ObscuroChainContext) Engine() consensus.Engine {
 	return &ObscuroNoOpConsensusEngine{logger: occ.logger}
 }
 
-func (occ *ObscuroChainContext) GetHeader(hash common.Hash, height uint64) *types.Header {
+func (occ *ObscuroChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header {
 	batch, err := occ.storage.FetchBatch(hash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {

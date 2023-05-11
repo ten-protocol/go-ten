@@ -968,8 +968,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	return responses.AsEncryptedResponse(&gasEstimate, encryptor), nil
 }
 
-//nolint
-func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
+func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) { //nolint
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))
 	}
@@ -1043,7 +1042,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 // once the work of obscuro gas mechanics is established this method should be simplified
 func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, common.SystemError) { //nolint: gocognit
 	// Binary search the gas requirement, as it may be higher than the amount used
-	var (
+	var ( //nolint: revive
 		lo  = params.TxGas - 1
 		hi  uint64
 		cap uint64 //nolint:predeclared
@@ -1113,7 +1112,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 		e.logger.Warn("Caller gas above allowance, capping", "requested", hi, "cap", gasCap)
 		hi = gasCap
 	}
-	cap = hi
+	cap = hi //nolint: revive
 
 	// Execute the binary search and hone in on an isGasEnough gas limit
 	for lo+1 < hi {

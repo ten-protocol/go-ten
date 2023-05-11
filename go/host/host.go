@@ -936,7 +936,7 @@ func (h *host) startBatchStreaming() {
 
 	// TODO: Update this to start from persisted head
 	streamChan, stop := h.enclaveClient.StreamL2Updates(nil)
-	var lastBatch *common.ExtBatch = nil
+	var lastBatch *common.ExtBatch
 	for {
 		select {
 		case <-h.interrupter.Done():

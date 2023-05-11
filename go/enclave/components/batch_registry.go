@@ -207,7 +207,7 @@ func (br *batchRegistryImpl) getMissingBatches(fromHash *common.L2BatchHash) ([]
 
 func (br *batchRegistryImpl) FindAncestralBatchFor(block *common.L1Block) (*core.Batch, error) {
 	currentBlock := block
-	var ancestorBatch *core.Batch = nil
+	var ancestorBatch *core.Batch
 	var err error
 
 	br.logger.Trace("Searching for ancestral batch")

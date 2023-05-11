@@ -21,7 +21,7 @@ func TestNewRotatingLogWriter(t *testing.T) {
 
 	// Use the rotating log writer with the standard log package
 	data := make([]byte, 1024*1024)
-	rand.Read(data) //nolint:gosec
+	rand.Read(data) //nolint: gosec,staticcheck
 	_, err = writer.Write(data)
 	assert.Nil(t, err)
 
@@ -29,7 +29,7 @@ func TestNewRotatingLogWriter(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	// Use the rotating log writer with the standard log package
-	rand.Read(data) //nolint:gosec
+	rand.Read(data) //nolint: gosec,staticcheck
 	_, err = writer.Write(data)
 	assert.Nil(t, err)
 
