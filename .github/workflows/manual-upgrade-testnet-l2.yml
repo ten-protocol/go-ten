@@ -139,7 +139,7 @@ jobs:
           echo "VM_BUILD_NUMBER=VM_BUILD_NUMBER" >> $GITHUB_ENV
           echo "VM_HOSTNAME: ${VM_HOSTNAME}"
           echo "VM_BUILD_NUMBER: ${VM_BUILD_NUMBER}"
-          if ! [[ $BUILD_NUMBER =~ ^[0-9]+$ ]]; then # fail if build number is not a number
+          if ! [[ $VM_BUILD_NUMBER =~ ^[0-9]+$ ]]; then # fail if build number is not a number
             echo "Error: Hostname lookup or regex extraction of build number failed."
             exit 1
           fi
