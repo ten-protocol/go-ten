@@ -92,9 +92,11 @@ func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.Storage) ([]*
 		nonce, found := addressNonces[address]
 		if !found {
 			nonce = stateDB.GetNonce(address)
-			addressNonces[address] = nonce
+		} else {
+			nonce = nonce + 1
 		}
 
+		addressNonces[address] = nonce
 		return nonce
 	}
 
