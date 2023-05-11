@@ -198,7 +198,7 @@ jobs:
         # It expects host_id to be an int and then multiplies it by 30s (i.e. host 0: sleep 0, host 1: sleep 30,...)
       - name: 'Stagger VM creation'
         shell: bash
-        run: sleep `expr ${{matrix.host_id}} \* 30`
+        run: sleep `expr ${{matrix.host_id}} \* 60`
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -223,7 +223,7 @@ jobs:
           inlineScript: |
             az vm open-port -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
 
-        # To overcome issues with missing dependencies on the VM we need to wait for the VM to be ready
+        # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: 'Allow time for VM initialization'
         shell: bash
         run: sleep 60
