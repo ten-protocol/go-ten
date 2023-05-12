@@ -244,13 +244,13 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
 	enclaveResponse, sysError := h.enclaveClient.SubmitTx(encryptedTx)
-	// TODO (#1643) properly return tx error and avoid submitting failed txs to the sequencer
 	if sysError != nil {
 		h.logger.Warn("Could not submit transaction due to sysError.", log.ErrKey, sysError)
 		return nil, sysError
 	}
 	if enclaveResponse.Error() != nil {
 		h.logger.Warn("Could not submit transaction.", log.ErrKey, enclaveResponse.Error())
+		return enclaveResponse, nil //nolint: nilerr
 	}
 
 	if h.config.NodeType != common.Sequencer {
