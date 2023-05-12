@@ -68,7 +68,7 @@ func createInMemObscuroNode(
 		BatchInterval:             batchInterval,
 	}
 
-	enclaveConfig := config.EnclaveConfig{
+	enclaveConfig := &config.EnclaveConfig{
 		HostID:                    hostConfig.ID,
 		NodeType:                  nodeType,
 		L1ChainID:                 integration.EthereumChainID,

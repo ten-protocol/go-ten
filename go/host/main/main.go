@@ -14,6 +14,6 @@ func main() {
 		panic(fmt.Errorf("could not parse config. Cause: %w", err))
 	}
 
-	hostContainer := hostcontainer.NewHostContainerFromConfig(parsedConfig)
+	hostContainer := hostcontainer.NewHostContainerFromConfig(parsedConfig, nil)
 	container.Serve(hostContainer)
 }

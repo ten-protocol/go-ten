@@ -2,6 +2,7 @@ package wallet
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"sync/atomic"
 
@@ -88,4 +89,15 @@ func (m *inMemoryWallet) SetNonce(nonce uint64) {
 
 func (m *inMemoryWallet) PrivateKey() *ecdsa.PrivateKey {
 	return m.prvKey
+}
+
+func RetrieveAddress(pkStr string) (*common.Address, error) {
+	privateKey, err := crypto.HexToECDSA(pkStr)
+	if err != nil {
+		return nil, fmt.Errorf("could not recover private key from hex - %w", err)
+	}
+
+	addr := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	return &addr, nil
 }
