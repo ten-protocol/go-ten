@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -73,7 +74,11 @@ func (h *HostContainer) Stop() error {
 
 	if h.rpcServer != nil {
 		// rpc server cannot be stopped synchronously as it will kill current request
-		go h.rpcServer.Stop()
+		go func() {
+			// make sure it's not killing the connection before returning the response
+			time.Sleep(time.Second) // todo review this sleep
+			h.rpcServer.Stop()
+		}()
 	}
 
 	return nil
