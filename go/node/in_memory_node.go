@@ -3,6 +3,8 @@ package node
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/sanity-io/litter"
 
 	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
@@ -79,12 +81,13 @@ func (d *InMemNode) Upgrade(networkCfg *NetworkConfig) error {
 
 func (d *InMemNode) startHost() error {
 	hostConfig := d.cfg.ToHostConfig()
-	d.host = hostcontainer.NewHostContainerFromConfig(hostConfig)
+	d.host = hostcontainer.NewHostContainerFromConfig(hostConfig, testlog.Logger())
 	return d.host.Start()
 }
 
 func (d *InMemNode) startEnclave() error {
 	enclaveCfg := d.cfg.ToEnclaveConfig()
-	d.enclave = enclavecontainer.NewEnclaveContainerFromConfig(*enclaveCfg)
+	// if not nil, the node will use the testlog.Logger - NewEnclaveContainerWithLogger will create one otherwise
+	d.enclave = enclavecontainer.NewEnclaveContainerWithLogger(enclaveCfg, testlog.Logger())
 	return d.enclave.Start()
 }

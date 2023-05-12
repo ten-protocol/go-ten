@@ -59,7 +59,7 @@ import (
 )
 
 type enclaveImpl struct {
-	config               config.EnclaveConfig
+	config               *config.EnclaveConfig
 	storage              db.Storage
 	blockResolver        db.BlockResolver
 	l1Blockchain         *gethcore.BlockChain
@@ -93,7 +93,7 @@ type enclaveImpl struct {
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
 func NewEnclave(
-	config config.EnclaveConfig,
+	config *config.EnclaveConfig,
 	genesis *genesis.Genesis,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	logger gethlog.Logger,

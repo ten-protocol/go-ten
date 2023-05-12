@@ -477,7 +477,7 @@ func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wal
 
 // createTestEnclave returns a test instance of the enclave
 func createTestEnclave(prefundedAddresses []genesis.Account, idx int) (common.Enclave, error) {
-	enclaveConfig := config.EnclaveConfig{
+	enclaveConfig := &config.EnclaveConfig{
 		HostID:         gethcommon.BigToAddress(big.NewInt(int64(idx))),
 		L1ChainID:      integration.EthereumChainID,
 		ObscuroChainID: integration.ObscuroChainID,
