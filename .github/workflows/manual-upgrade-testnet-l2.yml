@@ -1,11 +1,18 @@
-# Upgrades an existing Obscuro network on Azure for Testnet and Dev Testnet
+# Upgrades an existing Obscuro network on Azure for Testnet and Dev Testnet.
+
+# The Obscuro network is composed of 2 Obscuro nodes running on individual VMs with SGX. At the moment the workflow can
+# either be triggered manually as a workflow dispatch, or as a scheduled task. When manually triggered the testnet type
+# (dev-testnet or testnet) can be supplied as an input argument. When triggered as a scheduled task, we always default
+# to a dev-testnet deployment. A scheduled deployment of dev-testnet will additionally kick off the E2E tests via
+# repository dispatch.
 #
-# The Obscuro network is composed of 2 obscuro nodes running on individual vms with SGX
-#
+# The scheduled deployment runs at 03:05 on every day-of-week.
 
 name: '[M] Upgrade Testnet L2'
 
 on:
+  schedule:
+    - cron: '05 3 * * *'
   workflow_dispatch:
     inputs:
       testnet_type:
@@ -16,7 +23,6 @@ on:
         options:
           - 'dev-testnet'
           - 'testnet'
-
 
 jobs:
   build:
@@ -54,7 +60,7 @@ jobs:
           echo "L1_HOST=testnet-eth2network.uksouth.azurecontainer.io" >> $GITHUB_ENV
           
       - name: 'Sets env vars for dev-testnet'
-        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
+        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (github.event_name == 'schedule') }}
         run: |
           echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest" >> $GITHUB_ENV
           echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest" >> $GITHUB_ENV
@@ -184,3 +190,18 @@ jobs:
         run: |
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com --timeout=60
+
+  deploy-faucet:
+    runs-on: ubuntu-latest
+    needs:
+      - check-obscuro-is-healthy
+    steps:
+      - name: 'Trigger Faucet deployment for testnet'
+        if: ${{ github.event.inputs.testnet_type  == 'testnet' }}
+        run: |
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/faucet/dispatches --data '{ "event_type": "testnet_deployed", "client_payload": { "ref": "${{ github.ref }}", "env": "testnet", "event": "${{ github.event_name }}" }'
+
+      - name: 'Trigger Faucet deployment for dev-testnet'
+        if: ${{ github.event.inputs.testnet_type  == 'dev-testnet' }}
+        run: |
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/faucet/dispatches --data '{ "event_type": "dev_testnet_deployed", "client_payload": { "ref": "${{ github.ref }}", "env": "dev-testnet", "event": "${{ github.event_name }}" }'
