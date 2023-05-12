@@ -44,7 +44,7 @@ func (e *EnclaveContainer) Stop() error {
 }
 
 // NewEnclaveContainerFromConfig wires up the components of the Enclave and its RPC server. Manages their lifecycle/monitors their status
-func NewEnclaveContainerFromConfig(config config.EnclaveConfig) *EnclaveContainer {
+func NewEnclaveContainerFromConfig(config *config.EnclaveConfig) *EnclaveContainer {
 	// todo - improve this wiring, perhaps setup DB etc. at this level and inject into enclave
 	// (at that point the WithLogger constructor could be a full DI constructor like the HostContainer tries, for testability)
 	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.HostID)
@@ -57,7 +57,7 @@ func NewEnclaveContainerFromConfig(config config.EnclaveConfig) *EnclaveContaine
 }
 
 // NewEnclaveContainerWithLogger is useful for testing etc.
-func NewEnclaveContainerWithLogger(config config.EnclaveConfig, logger gethlog.Logger) *EnclaveContainer {
+func NewEnclaveContainerWithLogger(config *config.EnclaveConfig, logger gethlog.Logger) *EnclaveContainer {
 	contractAddr := config.ManagementContractAddress
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)
 

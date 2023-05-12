@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/obscuronet/go-obscuro/go/common/container"
 	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
@@ -14,6 +13,6 @@ func main() {
 		panic(fmt.Errorf("could not parse config. Cause: %w", err))
 	}
 
-	hostContainer := hostcontainer.NewHostContainerFromConfig(parsedConfig)
+	hostContainer := hostcontainer.NewHostContainerFromConfig(parsedConfig, nil)
 	container.Serve(hostContainer)
 }

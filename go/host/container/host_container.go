@@ -2,7 +2,6 @@ package container
 
 import (
 	"fmt"
-
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -85,16 +84,24 @@ func (h *HostContainer) Host() commonhost.Host {
 
 // NewHostContainerFromConfig uses config to create all HostContainer dependencies and inject them into a new HostContainer
 // (Note: it does not start the HostContainer process, `Start()` must be called on the container)
-func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostContainer {
+func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger gethlog.Logger) *HostContainer {
 	cfg := parsedConfig.ToHostConfig()
 
-	logger := log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath, log.NodeIDKey, cfg.ID)
+	addr, err := wallet.RetrieveAddress(parsedConfig.PrivateKeyString)
+	if err != nil {
+		panic("unable to retrieve the Node ID")
+	}
+	cfg.ID = *addr
+
+	// create the logger if not set - used when the testlogger is injected
+	if logger == nil {
+		logger = log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath, log.NodeIDKey, cfg.ID)
+	}
+
 	fmt.Printf("Building host container with config: %+v\n", cfg)
 	logger.Info(fmt.Sprintf("Building host container with config: %+v", cfg))
 
-	// set the Host ID as the Public Key Address
 	ethWallet := wallet.NewInMemoryWalletFromConfig(cfg.PrivateKeyString, cfg.L1ChainID, log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath))
-	cfg.ID = ethWallet.Address()
 
 	fmt.Println("Connecting to L1 network...")
 	l1Client, err := ethadapter.NewEthClient(cfg.L1NodeHost, cfg.L1NodeWebsocketPort, cfg.L1RPCTimeout, cfg.ID, logger)
@@ -127,15 +134,15 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostConta
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
 func NewHostContainer(
-	cfg *config.HostConfig, // provides various parameters that the host needs to function
-	p2p commonhost.P2P, // provides the inbound and outbound p2p communication layer
-	l1Client ethadapter.EthClient, // provides inbound and outbound L1 connectivity
-	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
+	cfg *config.HostConfig,                      // provides various parameters that the host needs to function
+	p2p commonhost.P2P,                          // provides the inbound and outbound p2p communication layer
+	l1Client ethadapter.EthClient,               // provides inbound and outbound L1 connectivity
+	enclaveClient common.Enclave,                // provides RPC connection to this host's Enclave
 	contractLib mgmtcontractlib.MgmtContractLib, // provides the management contract lib injection
-	hostWallet wallet.Wallet, // provides an L1 wallet for the host's transactions
-	rpcServer clientrpc.Server, // For communication with Obscuro client applications
-	logger gethlog.Logger, // provides logging with context
-	metricsService *metrics.Service, // provides the metrics service for other packages to use
+	hostWallet wallet.Wallet,                    // provides an L1 wallet for the host's transactions
+	rpcServer clientrpc.Server,                  // For communication with Obscuro client applications
+	logger gethlog.Logger,                       // provides logging with context
+	metricsService *metrics.Service,             // provides the metrics service for other packages to use
 ) *HostContainer {
 	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
 
