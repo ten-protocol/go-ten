@@ -58,6 +58,8 @@ func NewEnclaveContainerFromConfig(config *config.EnclaveConfig) *EnclaveContain
 
 // NewEnclaveContainerWithLogger is useful for testing etc.
 func NewEnclaveContainerWithLogger(config *config.EnclaveConfig, logger gethlog.Logger) *EnclaveContainer {
+	logger = logger.New(log.NodeIDKey, config.HostID, log.CmpKey, log.EnclaveCmp)
+
 	contractAddr := config.ManagementContractAddress
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)
 

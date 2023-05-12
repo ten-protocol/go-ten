@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -95,8 +96,9 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 
 	// create the logger if not set - used when the testlogger is injected
 	if logger == nil {
-		logger = log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath, log.NodeIDKey, cfg.ID)
+		logger = log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath)
 	}
+	logger = logger.New(log.NodeIDKey, cfg.ID, log.CmpKey, log.HostCmp)
 
 	fmt.Printf("Building host container with config: %+v\n", cfg)
 	logger.Info(fmt.Sprintf("Building host container with config: %+v", cfg))
@@ -134,15 +136,15 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
 func NewHostContainer(
-	cfg *config.HostConfig,                      // provides various parameters that the host needs to function
-	p2p commonhost.P2P,                          // provides the inbound and outbound p2p communication layer
-	l1Client ethadapter.EthClient,               // provides inbound and outbound L1 connectivity
-	enclaveClient common.Enclave,                // provides RPC connection to this host's Enclave
+	cfg *config.HostConfig, // provides various parameters that the host needs to function
+	p2p commonhost.P2P, // provides the inbound and outbound p2p communication layer
+	l1Client ethadapter.EthClient, // provides inbound and outbound L1 connectivity
+	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
 	contractLib mgmtcontractlib.MgmtContractLib, // provides the management contract lib injection
-	hostWallet wallet.Wallet,                    // provides an L1 wallet for the host's transactions
-	rpcServer clientrpc.Server,                  // For communication with Obscuro client applications
-	logger gethlog.Logger,                       // provides logging with context
-	metricsService *metrics.Service,             // provides the metrics service for other packages to use
+	hostWallet wallet.Wallet, // provides an L1 wallet for the host's transactions
+	rpcServer clientrpc.Server, // For communication with Obscuro client applications
+	logger gethlog.Logger, // provides logging with context
+	metricsService *metrics.Service, // provides the metrics service for other packages to use
 ) *HostContainer {
 	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
 
