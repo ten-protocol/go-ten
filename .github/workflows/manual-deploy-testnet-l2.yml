@@ -351,7 +351,7 @@ jobs:
 #      - check-obscuro-is-healthy
       - build
     steps:
-      - name: python version
+      - name: Set the trigger name based on the testnet type
         env:
           TRIGGER: ${{ github.event.inputs.testnet_type }}
         run: |
