@@ -35,7 +35,6 @@ jobs:
       RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
       L1_HOST: ${{ steps.outputVars.outputs.L1_HOST }}
-      FAUCET_TRIGGER_EVENT: ${{ steps.outputVars.outputs.FAUCET_TRIGGER_EVENT }}
 
     steps:
       - uses: actions/checkout@v2
@@ -60,7 +59,6 @@ jobs:
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
           echo "L1_HOST=testnet-eth2network.uksouth.azurecontainer.io" >> $GITHUB_ENV
-          echo "FAUCET_TRIGGER_EVENT=testnet_deployed" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
@@ -73,7 +71,6 @@ jobs:
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
           echo "L1_HOST=dev-testnet-eth2network.uksouth.azurecontainer.io" >> $GITHUB_ENV
-          echo "FAUCET_TRIGGER_EVENT=dev_testnet_deployed" >> $GITHUB_ENV
 
       - name: 'Output env vars'
         id: outputVars
@@ -86,7 +83,6 @@ jobs:
           echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
           echo "L1_HOST=${{env.L1_HOST}}" >> $GITHUB_OUTPUT
-          echo "FAUCET_TRIGGER_EVENT=${{env.FAUCET_TRIGGER_EVENT}}" >> $GITHUB_OUTPUT
 
 #      - name: 'Login to Azure docker registry'
 #        uses: azure/docker-login@v1
@@ -355,6 +351,12 @@ jobs:
 #      - check-obscuro-is-healthy
       - build
     steps:
+      - name: python version
+        env:
+          TRIGGER=${github.event.inputs.testnet_type/-/_}
+        run: |
+          echo TRIGGER=${TRIGGER} >> $GITHUB_ENV 
+
       - name: 'Trigger Faucet deployment'
         run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/faucet/dispatches --data '{ "event_type": "${{ env.FAUCET_TRIGGER_EVENT }}", "client_payload": { "ref": "${{ github.ref }}", "event": "${{ github.event_name }}" }'
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/faucet/dispatches --data '{ "event_type": "${{ env.TRIGGER }}", "client_payload": { "ref": "${{ github.ref }}", "event": "${{ github.event_name }}" }'
