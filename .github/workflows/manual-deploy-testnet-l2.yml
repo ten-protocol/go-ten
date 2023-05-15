@@ -355,7 +355,7 @@ jobs:
         env:
           TRIGGER: ${{ github.event.inputs.testnet_type }}
         run: |
-          TRIGGER=${TRIGGER/-/_ }
+          TRIGGER=${TRIGGER/-/_}
           echo TRIGGER=${TRIGGER} >> $GITHUB_ENV 
 
       - name: 'Trigger Faucet deployment'
