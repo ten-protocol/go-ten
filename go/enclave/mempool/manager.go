@@ -6,10 +6,10 @@ import (
 	"sync"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -24,6 +24,7 @@ func (c sortByNonce) Len() int           { return len(c) }
 func (c sortByNonce) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c sortByNonce) Less(i, j int) bool { return c[i].Nonce() < c[j].Nonce() }
 
+// todo - optimize this to use a different data structure that does not require a global lock.
 type mempoolManager struct {
 	mpMutex        sync.RWMutex // Controls access to `mempool`
 	obscuroChainID int64
@@ -45,7 +46,9 @@ func (db *mempoolManager) AddMempoolTx(tx *common.L2Tx) error {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 
-	_, _, err := core.ExtractOrderingInfo(db.obscuroChainID, tx)
+	// We do not care about the sender return value at this point, only that
+	// there is no error coming from validating the signature of said sender.
+	_, err := core.GetAuthenticatedSender(db.obscuroChainID, tx)
 	if err != nil {
 		return err
 	}
@@ -76,38 +79,19 @@ func (db *mempoolManager) RemoveTxs(transactions types.Transactions) error {
 }
 
 // CurrentTxs - Calculate transactions to be included in the current batch
-func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.Storage) ([]*common.L2Tx, error) {
-	stateDB, err := resolver.CreateStateDB(*head.Hash())
-	if err != nil {
-		return nil, err
-	}
-
+func (db *mempoolManager) CurrentTxs(stateDB *state.StateDB) ([]*common.L2Tx, error) {
 	txes := db.FetchMempoolTxs()
 	sort.Sort(sortByNonce(txes))
 
 	applicableTransactions := make(common.L2Transactions, 0)
-
-	addressNonces := make(map[gethcommon.Address]uint64)
-	NonceFor := func(address gethcommon.Address) uint64 {
-		nonce, found := addressNonces[address]
-		if !found {
-			nonce = stateDB.GetNonce(address)
-		} else {
-			nonce = nonce + 1
-		}
-
-		addressNonces[address] = nonce
-		return nonce
-	}
+	nonceTracker := NewNonceTracker(stateDB)
 
 	for _, tx := range txes {
-		sender, txNonce, _ := core.ExtractOrderingInfo(db.obscuroChainID, tx)
-		addressNonce := NonceFor(*sender)
-		if txNonce == addressNonce {
+		sender, _ := core.GetAuthenticatedSender(db.obscuroChainID, tx)
+		if tx.Nonce() == nonceTracker.GetNonce(*sender) {
 			applicableTransactions = append(applicableTransactions, tx)
+			nonceTracker.IncrementNonce(*sender)
 			db.logger.Info(fmt.Sprintf("Including transaction %s with nonce: %d", tx.Hash().Hex(), tx.Nonce()))
-		} else {
-			db.logger.Info(fmt.Sprintf("Excluding transaction %s with nonce: %d as current is: %d", tx.Hash().Hex(), tx.Nonce(), addressNonce))
 		}
 	}
 

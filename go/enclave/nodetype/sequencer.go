@@ -152,7 +152,12 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	// to be in our chain.
 	headBatch = ancestralBatch
 
-	transactions, err := s.mempool.CurrentTxs(headBatch, s.storage)
+	stateDB, err := s.storage.CreateStateDB(*headBatch.Hash())
+	if err != nil {
+		return fmt.Errorf("unable to create stateDB for selecting transactions. Cause: %w", err)
+	}
+
+	transactions, err := s.mempool.CurrentTxs(stateDB)
 	if err != nil {
 		return err
 	}

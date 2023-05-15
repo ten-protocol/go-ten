@@ -46,12 +46,12 @@ func VerifySignature(chainID int64, tx *types.Transaction) error {
 	return err
 }
 
-// ExtractOrderingInfo - Get sender and tx nonce from transaction
-func ExtractOrderingInfo(chainID int64, tx *types.Transaction) (*gethcommon.Address, uint64, error) {
+// GetAuthenticatedSender - Get sender and tx nonce from transaction
+func GetAuthenticatedSender(chainID int64, tx *types.Transaction) (*gethcommon.Address, error) {
 	signer := types.NewLondonSigner(big.NewInt(chainID))
 	sender, err := types.Sender(signer, tx)
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
-	return &sender, tx.Nonce(), nil
+	return &sender, nil
 }
