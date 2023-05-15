@@ -84,271 +84,272 @@ jobs:
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
           echo "L1_HOST=${{env.L1_HOST}}" >> $GITHUB_OUTPUT
 
-      - name: 'Login to Azure docker registry'
-        uses: azure/docker-login@v1
-        with:
-          login-server: testnetobscuronet.azurecr.io
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
-      - name: 'Build and push obscuro node images'
-        run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
-          docker push ${{env.L2_HOST_DOCKER_BUILD_TAG}}
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
-          docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/hardhatdeployer.Dockerfile .
-          docker push ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
-
-      - name: 'Deploy Contracts'
-        id: deployContracts
-        shell: bash
-        run: |
-          go run ./testnet/launcher/l1contractdeployer/cmd \
-          -l1_host=${{ env.L1_HOST }} \
-          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
-          -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
-          -contracts_env_file=./testnet/.env
-          source ./testnet/.env
-          echo "Contracts deployed to $MGMTCONTRACTADDR"
-          echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
-          echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_OUTPUT
-          echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_ENV
-          echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
-          echo "L1_START_HASH=$L1START" >> $GITHUB_ENV
-          echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
-
-      - name: 'Save container logs on failure'
-        if: failure()
-        run: |
-          docker logs `docker ps -aqf "name=hh-l1-deployer"` > deploy-l1-contracts.out 2>&1
-
-      # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
-      - name: 'Delete deployed VMs'
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
-
-      # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
-      - name: 'Delete VMs dependencies'
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
-
-      - name: 'Upload container logs on failure'
-        uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: deploy-l1-artifacts
-          path: |
-            deploy-l1-contracts.out
-          retention-days: 2
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        host_id: [ 0,1 ]
-        include:
-          # Hardcoded host addresses
-          - host_addr: 0x0000000000000000000000000000000000000000
-            host_id: 0
-          - host_addr: 0x0000000000000000000000000000000000000001
-            host_id: 1
-          # Hardcoded host prefunded keys
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_0
-            host_id: 0
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_1
-            host_id: 1
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_0
-            host_id: 0
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
-            host_id: 1
-          # Ensure there is a single genesis node
-          - is_genesis: true
-            host_id: 0
-          - is_genesis: false
-            host_id: 1
-          # Ensure there is a single sequencer
-          - node_type: sequencer
-            host_id: 0
-          - node_type: validator
-            host_id: 1
-
-    steps:
-      - name: 'Extract branch name'
-        shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF_NAME})"
-        id: extract_branch
-
-        # The Azure API will sometimes supersede PUT requests that come in close together. This sleep will stagger the VM requests.
-        # It expects host_id to be an int and then multiplies it by 60s (i.e. host 0: sleep 0, host 1: sleep 60,...)
-      - name: 'Stagger VM creation'
-        shell: bash
-        run: sleep `expr ${{matrix.host_id}} \* 60`
-
-      - name: 'Login via Azure CLI'
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az vm create -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
-            --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
-            --tags deploygroup=ObscuroNode-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{needs.build.outputs.RESOURCE_TAG_NAME}}=true \
-            --vnet-name ObscuroHost-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-01VNET --subnet ObscuroHost-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-01Subnet \
-            --size Standard_DC4s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
-            --public-ip-sku Basic --authentication-type password
-
-      - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az vm open-port -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
-
-        # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
-      - name: 'Allow time for VM initialization'
-        shell: bash
-        run: sleep 60
-
-      - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
-            --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro \
-            && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
-            && sudo apt-get update \
-            && sudo apt-get install -y gcc \
-            && sudo snap refresh && sudo snap install --channel=1.18 go --classic \
-            && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
-            && docker network create --driver bridge node_network || true \
-            && docker run -d --name datadog-agent \
-               --network node_network \
-               -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
-               -e DD_LOGS_ENABLED=true \
-               -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
-               -e DD_LOGS_CONFIG_AUTO_MULTI_LINE_DETECTION=true \
-               -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
-               -e DD_SITE="datadoghq.eu"  \
-               -v /var/run/docker.sock:/var/run/docker.sock:ro \
-               -v /proc/:/host/proc/:ro \
-               -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
-               -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
-               datadog/agent:latest \
-            && cd /home/obscuro/go-obscuro/ \
-            && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
-               -is_genesis=${{ matrix.is_genesis }} \
-               -node_type=${{ matrix.node_type }} \
-               -is_sgx_enabled=true \
-               -host_id=${{ secrets[matrix.node_pk_addr] }} \
-               -l1_host=${{needs.build.outputs.L1_HOST}} \
-               -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
-               -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
-               -l1_start=${{needs.build.outputs.L1_START_HASH}} \
-               -private_key=${{ secrets[matrix.node_pk_str] }} \
-               -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
-               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
-               -host_p2p_port=10000 \
-               -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
-               -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
-               -is_debug_namespace_enabled=true \
-               start'
-
-
-  update-loadbalancer:
-    needs:
-      - build
-      - deploy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: 'Login via Azure CLI'
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: 'Remove existing backend nodes from the load balancer'
-        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}
-
-      - name: 'Add load balancer address pool to the IP configuration'
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az network nic ip-config address-pool add \
-              --address-pool Backend-Pool-Obscuro-${{needs.build.outputs.RESOURCE_TESTNET_NAME}} \
-              --ip-config-name ipconfig${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }} \
-              --nic-name ${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
-              --resource-group Testnet \
-              --lb-name ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-loadbalancer
-
-  check-obscuro-is-healthy:
-    needs:
-      - build
-      - deploy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: "Wait until obscuro node is healthy"
-        shell: bash
-        run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
-
-  deploy-l2-contracts:
-    needs:
-      - build
-      - check-obscuro-is-healthy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: 'Deploy L2 contracts'
-        id: deployL2Contracts
-        shell: bash
-        run: |
-          go run ./testnet/launcher/l2contractdeployer/cmd \
-          -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
-          -l1_host=${{ needs.build.outputs.L1_HOST }} \
-          -l2_ws_port=13001 \
-          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
-          -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
-          -l2_hoc_private_key=6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682 \
-          -l2_poc_private_key=4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8 \
-          -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
-          -docker_image=${{needs.build.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
-
-      - name: 'Save container logs on failure'
-        if: failure()
-        run: |
-          docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
-
-      - name: 'Upload container logs on failure'
-        uses: actions/upload-artifact@v3
-        if: failure()
-        with:
-          name: deploy-l2-artifacts
-          path: |
-            deploy-l2-contracts.out
-          retention-days: 2
+#      - name: 'Login to Azure docker registry'
+#        uses: azure/docker-login@v1
+#        with:
+#          login-server: testnetobscuronet.azurecr.io
+#          username: ${{ secrets.REGISTRY_USERNAME }}
+#          password: ${{ secrets.REGISTRY_PASSWORD }}
+#
+#      - name: 'Build and push obscuro node images'
+#        run: |
+#          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
+#          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
+#          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
+#          docker push ${{env.L2_HOST_DOCKER_BUILD_TAG}}
+#          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/contractdeployer.Dockerfile .
+#          docker push ${{env.L2_CONTRACTDEPLOYER_DOCKER_BUILD_TAG}}
+#          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} -f testnet/hardhatdeployer.Dockerfile .
+#          docker push ${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+#
+#      - name: 'Deploy Contracts'
+#        id: deployContracts
+#        shell: bash
+#        run: |
+#          go run ./testnet/launcher/l1contractdeployer/cmd \
+#          -l1_host=${{ env.L1_HOST }} \
+#          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
+#          -docker_image=${{env.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}} \
+#          -contracts_env_file=./testnet/.env
+#          source ./testnet/.env
+#          echo "Contracts deployed to $MGMTCONTRACTADDR"
+#          echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
+#          echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_OUTPUT
+#          echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_ENV
+#          echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
+#          echo "L1_START_HASH=$L1START" >> $GITHUB_ENV
+#          echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
+#
+#      - name: 'Save container logs on failure'
+#        if: failure()
+#        run: |
+#          docker logs `docker ps -aqf "name=hh-l1-deployer"` > deploy-l1-contracts.out 2>&1
+#
+#      # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
+#      - name: 'Delete deployed VMs'
+#        uses: azure/CLI@v1
+#        with:
+#          inlineScript: |
+#            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+#
+#      # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
+#      - name: 'Delete VMs dependencies'
+#        uses: azure/CLI@v1
+#        with:
+#          inlineScript: |
+#            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+#
+#      - name: 'Upload container logs on failure'
+#        uses: actions/upload-artifact@v3
+#        if: failure()
+#        with:
+#          name: deploy-l1-artifacts
+#          path: |
+#            deploy-l1-contracts.out
+#          retention-days: 2
+#
+#  deploy:
+#    needs: build
+#    runs-on: ubuntu-latest
+#
+#    strategy:
+#      matrix:
+#        host_id: [ 0,1 ]
+#        include:
+#          # Hardcoded host addresses
+#          - host_addr: 0x0000000000000000000000000000000000000000
+#            host_id: 0
+#          - host_addr: 0x0000000000000000000000000000000000000001
+#            host_id: 1
+#          # Hardcoded host prefunded keys
+#          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_0
+#            host_id: 0
+#          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_1
+#            host_id: 1
+#          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_0
+#            host_id: 0
+#          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
+#            host_id: 1
+#          # Ensure there is a single genesis node
+#          - is_genesis: true
+#            host_id: 0
+#          - is_genesis: false
+#            host_id: 1
+#          # Ensure there is a single sequencer
+#          - node_type: sequencer
+#            host_id: 0
+#          - node_type: validator
+#            host_id: 1
+#
+#    steps:
+#      - name: 'Extract branch name'
+#        shell: bash
+#        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF_NAME})"
+#        id: extract_branch
+#
+#        # The Azure API will sometimes supersede PUT requests that come in close together. This sleep will stagger the VM requests.
+#        # It expects host_id to be an int and then multiplies it by 60s (i.e. host 0: sleep 0, host 1: sleep 60,...)
+#      - name: 'Stagger VM creation'
+#        shell: bash
+#        run: sleep `expr ${{matrix.host_id}} \* 60`
+#
+#      - name: 'Login via Azure CLI'
+#        uses: azure/login@v1
+#        with:
+#          creds: ${{ secrets.AZURE_CREDENTIALS }}
+#
+#      - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
+#        uses: azure/CLI@v1
+#        with:
+#          inlineScript: |
+#            az vm create -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+#            --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
+#            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
+#            --tags deploygroup=ObscuroNode-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{needs.build.outputs.RESOURCE_TAG_NAME}}=true \
+#            --vnet-name ObscuroHost-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-01VNET --subnet ObscuroHost-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-01Subnet \
+#            --size Standard_DC4s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
+#            --public-ip-sku Basic --authentication-type password
+#
+#      - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
+#        uses: azure/CLI@v1
+#        with:
+#          inlineScript: |
+#            az vm open-port -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  --port 13000,13001,6060,6061,10000
+#
+#        # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
+#      - name: 'Allow time for VM initialization'
+#        shell: bash
+#        run: sleep 60
+#
+#      - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
+#        uses: azure/CLI@v1
+#        with:
+#          inlineScript: |
+#            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
+#            --command-id RunShellScript \
+#            --scripts 'mkdir -p /home/obscuro \
+#            && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
+#            && sudo apt-get update \
+#            && sudo apt-get install -y gcc \
+#            && sudo snap refresh && sudo snap install --channel=1.18 go --classic \
+#            && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
+#            && docker network create --driver bridge node_network || true \
+#            && docker run -d --name datadog-agent \
+#               --network node_network \
+#               -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
+#               -e DD_LOGS_ENABLED=true \
+#               -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
+#               -e DD_LOGS_CONFIG_AUTO_MULTI_LINE_DETECTION=true \
+#               -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
+#               -e DD_SITE="datadoghq.eu"  \
+#               -v /var/run/docker.sock:/var/run/docker.sock:ro \
+#               -v /proc/:/host/proc/:ro \
+#               -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
+#               -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+#               datadog/agent:latest \
+#            && cd /home/obscuro/go-obscuro/ \
+#            && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
+#               -is_genesis=${{ matrix.is_genesis }} \
+#               -node_type=${{ matrix.node_type }} \
+#               -is_sgx_enabled=true \
+#               -host_id=${{ secrets[matrix.node_pk_addr] }} \
+#               -l1_host=${{needs.build.outputs.L1_HOST}} \
+#               -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
+#               -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
+#               -l1_start=${{needs.build.outputs.L1_START_HASH}} \
+#               -private_key=${{ secrets[matrix.node_pk_str] }} \
+#               -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
+#               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
+#               -host_p2p_port=10000 \
+#               -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
+#               -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
+#               -is_debug_namespace_enabled=true \
+#               start'
+#
+#
+#  update-loadbalancer:
+#    needs:
+#      - build
+#      - deploy
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v2
+#
+#      - name: 'Login via Azure CLI'
+#        uses: azure/login@v1
+#        with:
+#          creds: ${{ secrets.AZURE_CREDENTIALS }}
+#
+#      - name: 'Remove existing backend nodes from the load balancer'
+#        run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}
+#
+#      - name: 'Add load balancer address pool to the IP configuration'
+#        uses: azure/CLI@v1
+#        with:
+#          inlineScript: |
+#            az network nic ip-config address-pool add \
+#              --address-pool Backend-Pool-Obscuro-${{needs.build.outputs.RESOURCE_TESTNET_NAME}} \
+#              --ip-config-name ipconfig${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }} \
+#              --nic-name ${{needs.build.outputs.RESOURCE_STARTING_NAME}}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
+#              --resource-group Testnet \
+#              --lb-name ${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-loadbalancer
+#
+#  check-obscuro-is-healthy:
+#    needs:
+#      - build
+#      - deploy
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#
+#      - name: "Wait until obscuro node is healthy"
+#        shell: bash
+#        run: |
+#          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+#          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+#
+#  deploy-l2-contracts:
+#    needs:
+#      - build
+#      - check-obscuro-is-healthy
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v2
+#
+#      - name: 'Deploy L2 contracts'
+#        id: deployL2Contracts
+#        shell: bash
+#        run: |
+#          go run ./testnet/launcher/l2contractdeployer/cmd \
+#          -l2_host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
+#          -l1_host=${{ needs.build.outputs.L1_HOST }} \
+#          -l2_ws_port=13001 \
+#          -private_key=${{ secrets.GETHNETWORK_PREFUNDED_PKSTR_WORKER }} \
+#          -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
+#          -l2_hoc_private_key=6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682 \
+#          -l2_poc_private_key=4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8 \
+#          -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
+#          -docker_image=${{needs.build.outputs.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG}}
+#
+#      - name: 'Save container logs on failure'
+#        if: failure()
+#        run: |
+#          docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
+#
+#      - name: 'Upload container logs on failure'
+#        uses: actions/upload-artifact@v3
+#        if: failure()
+#        with:
+#          name: deploy-l2-artifacts
+#          path: |
+#            deploy-l2-contracts.out
+#          retention-days: 2
 
   deploy-faucet:
     runs-on: ubuntu-latest
     needs:
-      - check-obscuro-is-healthy
+#      - check-obscuro-is-healthy
+      - build
     steps:
       - name: 'Trigger Faucet deployment'
         run: |
