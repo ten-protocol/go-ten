@@ -35,6 +35,7 @@ jobs:
       RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
       L1_HOST: ${{ steps.outputVars.outputs.L1_HOST }}
+      FAUCET_TRIGGER_EVENT: ${{ steps.outputVars.outputs.FAUCET_TRIGGER_EVENT }}
 
     steps:
       - uses: actions/checkout@v2
