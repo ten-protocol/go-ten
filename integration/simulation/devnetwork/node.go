@@ -144,7 +144,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 	hostPort := n.config.PortStart + integration.DefaultHostP2pOffset + n.operatorIdx
 	hostAddr := fmt.Sprintf("%s:%d", network.Localhost, hostPort)
 
-	enclaveConfig := config.EnclaveConfig{
+	enclaveConfig := &config.EnclaveConfig{
 		HostID:                    getHostID(n.operatorIdx),
 		SequencerID:               getHostID(0),
 		HostAddress:               hostAddr,

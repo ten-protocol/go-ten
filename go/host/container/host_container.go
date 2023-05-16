@@ -85,16 +85,25 @@ func (h *HostContainer) Host() commonhost.Host {
 
 // NewHostContainerFromConfig uses config to create all HostContainer dependencies and inject them into a new HostContainer
 // (Note: it does not start the HostContainer process, `Start()` must be called on the container)
-func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostContainer {
+func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger gethlog.Logger) *HostContainer {
 	cfg := parsedConfig.ToHostConfig()
 
-	logger := log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath, log.NodeIDKey, cfg.ID)
+	addr, err := wallet.RetrieveAddress(parsedConfig.PrivateKeyString)
+	if err != nil {
+		panic("unable to retrieve the Node ID")
+	}
+	cfg.ID = *addr
+
+	// create the logger if not set - used when the testlogger is injected
+	if logger == nil {
+		logger = log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath)
+	}
+	logger = logger.New(log.NodeIDKey, cfg.ID, log.CmpKey, log.HostCmp)
+
 	fmt.Printf("Building host container with config: %+v\n", cfg)
 	logger.Info(fmt.Sprintf("Building host container with config: %+v", cfg))
 
-	// set the Host ID as the Public Key Address
 	ethWallet := wallet.NewInMemoryWalletFromConfig(cfg.PrivateKeyString, cfg.L1ChainID, log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath))
-	cfg.ID = ethWallet.Address()
 
 	fmt.Println("Connecting to L1 network...")
 	l1Client, err := ethadapter.NewEthClient(cfg.L1NodeHost, cfg.L1NodeWebsocketPort, cfg.L1RPCTimeout, cfg.ID, logger)

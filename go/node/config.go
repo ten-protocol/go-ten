@@ -74,7 +74,7 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
 	cfg.Cadence = uint64(c.enclaveCadence)
 
-	return &cfg
+	return cfg
 }
 
 func (c *Config) ToHostConfig() *config.HostInputConfig {
