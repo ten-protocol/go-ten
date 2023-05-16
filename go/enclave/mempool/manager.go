@@ -59,9 +59,11 @@ func (db *mempoolManager) FetchMempoolTxs() []*common.L2Tx {
 	db.mpMutex.RLock()
 	defer db.mpMutex.RUnlock()
 
-	mpCopy := make([]*common.L2Tx, 0)
+	mpCopy := make([]*common.L2Tx, len(db.mempool))
+	i := 0
 	for _, tx := range db.mempool {
-		mpCopy = append(mpCopy, tx)
+		mpCopy[i] = tx
+		i++
 	}
 	return mpCopy
 }
