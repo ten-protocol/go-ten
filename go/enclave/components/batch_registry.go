@@ -63,13 +63,19 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 		return nil
 	}
 
-	isHeadBatch, err := br.updateHeadPointers(batch, receipts)
+	dbTransaction := br.storage.NewTransaction()
+
+	isHeadBatch, err := br.updateHeadPointers(batch, receipts, dbTransaction)
 	if err != nil {
 		return fmt.Errorf("failed updating head pointers. Cause: %w", err)
 	}
 
-	if err = br.storage.StoreBatch(batch, receipts); err != nil {
+	if err = dbTransaction.StoreBatch(batch, receipts); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
+	}
+
+	if err = dbTransaction.Commit(); err != nil {
+		return fmt.Errorf("failed to commit batch to db. Cause: %w", err)
 	}
 
 	// TODO - we probably dont want to spawn a goroutine everytime
@@ -93,25 +99,25 @@ func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch, isHeadBatch boo
 	}
 }
 
-func (br *batchRegistryImpl) updateHeadPointers(batch *core.Batch, receipts types.Receipts) (bool, error) {
-	if err := br.updateBlockPointers(batch, receipts); err != nil {
+func (br *batchRegistryImpl) updateHeadPointers(batch *core.Batch, receipts types.Receipts, storageUpdater db.StorageUpdater) (bool, error) {
+	if err := br.updateBlockPointers(batch, receipts, storageUpdater); err != nil {
 		return false, err
 	}
 
-	return br.updateBatchPointers(batch)
+	return br.updateBatchPointers(batch, storageUpdater)
 }
 
-func (br *batchRegistryImpl) updateBatchPointers(batch *core.Batch) (bool, error) {
+func (br *batchRegistryImpl) updateBatchPointers(batch *core.Batch, storageUpdater db.StorageUpdater) (bool, error) {
 	if head, err := br.storage.FetchHeadBatch(); err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return false, err
 	} else if head != nil && batch.NumberU64() < head.NumberU64() {
 		return false, nil
 	}
 
-	return true, br.storage.SetHeadBatchPointer(batch)
+	return true, storageUpdater.SetHeadBatchPointer(batch)
 }
 
-func (br *batchRegistryImpl) updateBlockPointers(batch *core.Batch, receipts types.Receipts) error {
+func (br *batchRegistryImpl) updateBlockPointers(batch *core.Batch, receipts types.Receipts, storageUpdater db.StorageUpdater) error {
 	head, err := br.GetHeadBatchFor(batch.Header.L1Proof)
 
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -120,7 +126,7 @@ func (br *batchRegistryImpl) updateBlockPointers(batch *core.Batch, receipts typ
 		return fmt.Errorf("inappropriate update from previous head with height %d to new head with height %d for same l1 block", head.NumberU64(), batch.NumberU64())
 	}
 
-	return br.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, receipts)
+	return storageUpdater.UpdateHeadBatch(batch.Header.L1Proof, batch, receipts)
 }
 
 func (br *batchRegistryImpl) GetHeadBatch() (*core.Batch, error) {
