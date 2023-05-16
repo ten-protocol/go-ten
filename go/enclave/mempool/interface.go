@@ -14,6 +14,6 @@ type Manager interface {
 	// RemoveTxs removes transactions that are considered immune to re-orgs (i.e. over X batches deep).
 	RemoveTxs(transactions types.Transactions) error
 
-	// SelectTransactions Returns the transactions that should be included in the current batch
-	SelectTransactions(stateDB *state.StateDB) ([]*common.L2Tx, error)
+	// CurrentTxs Returns the transactions that should be included in the current batch
+	CurrentTxs(stateDB *state.StateDB) ([]*common.L2Tx, error)
 }
