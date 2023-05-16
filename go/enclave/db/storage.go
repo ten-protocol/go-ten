@@ -51,8 +51,19 @@ func NewStorage(backingDB *sql.EnclaveDB, chainConfig *params.ChainConfig, logge
 	}
 }
 
-func (s *storageImpl) NewTransaction() StorageUpdater {
-	return NewStorageUpdater(s.db.NewSQLBatch(), s)
+func (s *storageImpl) ModifyStorage(modificationScopeFunc func(StorageUpdater) error) error {
+	updater := NewStorageUpdater(s.db.NewSQLBatch(), s)
+
+	// Call the user provided function and give it access to the storage updater receiver.
+	if err := modificationScopeFunc(updater); err != nil {
+		return err
+	}
+
+	// Commit the changes the user has put into the batch.
+	if err := updater.Commit(); err != nil {
+		return fmt.Errorf("failed modifying storage. Unable to commit. Cause: %w", err)
+	}
+	return nil
 }
 
 func (s *storageImpl) Close() error {

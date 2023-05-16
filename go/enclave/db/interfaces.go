@@ -137,5 +137,5 @@ type Storage interface {
 	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
 	DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error)
 
-	NewTransaction() StorageUpdater
+	ModifyStorage(func(StorageUpdater) error) error
 }

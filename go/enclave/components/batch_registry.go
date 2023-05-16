@@ -63,22 +63,23 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 		return nil
 	}
 
-	dbTransaction := br.storage.NewTransaction()
+	var isHeadBatch bool
+	var err error
+	err = br.storage.ModifyStorage(func(su db.StorageUpdater) error {
+		isHeadBatch, err = br.updateHeadPointers(batch, receipts, su)
+		if err != nil {
+			return fmt.Errorf("failed updating head pointers. Cause: %w", err)
+		}
 
-	isHeadBatch, err := br.updateHeadPointers(batch, receipts, dbTransaction)
+		if err = su.StoreBatch(batch, receipts); err != nil {
+			return fmt.Errorf("failed to store batch. Cause: %w", err)
+		}
+		return nil
+	})
+
 	if err != nil {
-		return fmt.Errorf("failed updating head pointers. Cause: %w", err)
+		return fmt.Errorf("modifying enclave storage failed. Cause: %w", err)
 	}
-
-	if err = dbTransaction.StoreBatch(batch, receipts); err != nil {
-		return fmt.Errorf("failed to store batch. Cause: %w", err)
-	}
-
-	if err = dbTransaction.Commit(); err != nil {
-		return fmt.Errorf("failed to commit batch to db. Cause: %w", err)
-	}
-
-	// TODO - we probably dont want to spawn a goroutine everytime
 	br.notifySubscriber(batch, isHeadBatch)
 
 	return nil

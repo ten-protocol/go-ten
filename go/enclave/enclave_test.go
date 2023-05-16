@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/responses"
 
@@ -611,18 +612,20 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(rollup); err != nil {
 		return err
 	}
-
-	dbTransaction := enclave.(*enclaveImpl).storage.NewTransaction()
-
-	if err = dbTransaction.StoreBatch(batch, nil); err != nil {
-		return err
-	}
 	blockHash := blk.Hash()
 
-	if err = dbTransaction.UpdateHeadBatch(blockHash, batch, nil); err != nil {
-		return err
-	}
-	if err = dbTransaction.Commit(); err != nil {
+	err = enclave.(*enclaveImpl).storage.ModifyStorage(func(su db.StorageUpdater) error {
+		if err = su.StoreBatch(batch, nil); err != nil {
+			return err
+		}
+
+		if err = su.UpdateHeadBatch(blockHash, batch, nil); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
 		return err
 	}
 
