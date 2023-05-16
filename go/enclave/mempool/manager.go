@@ -42,15 +42,15 @@ func New(chainID int64, logger gethlog.Logger) Manager {
 }
 
 func (db *mempoolManager) AddMempoolTx(tx *common.L2Tx) error {
-	db.mpMutex.Lock()
-	defer db.mpMutex.Unlock()
-
 	// We do not care about the sender return value at this point, only that
 	// there is no error coming from validating the signature of said sender.
 	_, err := core.GetAuthenticatedSender(db.obscuroChainID, tx)
 	if err != nil {
 		return err
 	}
+
+	db.mpMutex.Lock()
+	defer db.mpMutex.Unlock()
 	db.mempool[tx.Hash()] = tx
 	return nil
 }
@@ -87,6 +87,10 @@ func (db *mempoolManager) CurrentTxs(stateDB *state.StateDB) ([]*common.L2Tx, er
 
 	for _, tx := range txes {
 		sender, _ := core.GetAuthenticatedSender(db.obscuroChainID, tx)
+		if sender == nil {
+			continue
+		}
+
 		if tx.Nonce() == nonceTracker.GetNonce(*sender) {
 			applicableTransactions = append(applicableTransactions, tx)
 			nonceTracker.IncrementNonce(*sender)

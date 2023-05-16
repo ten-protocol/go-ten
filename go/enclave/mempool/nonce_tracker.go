@@ -5,6 +5,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 )
 
+// NonceTracker - a struct that helps us maintain the nonces for each account.
+// If it gets asked for an account it does not know the nonce for, it will pull it
+// from stateDB. Used when selecting transactions in order to ensure transactions get
+// applied at correct nonces and correct order without any gaps.
 type NonceTracker struct {
 	accountNonces map[gethcommon.Address]uint64
 	stateDB       *state.StateDB
