@@ -180,7 +180,7 @@ func NewEnclave(
 
 	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl(logger)
 
-	memp := mempool.New(config.ObscuroChainID)
+	memp := mempool.New(config.ObscuroChainID, logger)
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 

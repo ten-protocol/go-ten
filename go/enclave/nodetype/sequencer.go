@@ -152,7 +152,12 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	// to be in our chain.
 	headBatch = ancestralBatch
 
-	transactions, err := s.mempool.CurrentTxs(headBatch, s.storage)
+	stateDB, err := s.storage.CreateStateDB(*headBatch.Hash())
+	if err != nil {
+		return fmt.Errorf("unable to create stateDB for selecting transactions. Cause: %w", err)
+	}
+
+	transactions, err := s.mempool.CurrentTxs(stateDB)
 	if err != nil {
 		return err
 	}
@@ -189,7 +194,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return fmt.Errorf("failed storing batch. Cause: %w", err)
 	}
 
-	if err := s.mempool.RemoveMempoolTxs(cb.Batch, s.storage); err != nil {
+	if err := s.mempool.RemoveTxs(transactions); err != nil {
 		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
 	}
 
