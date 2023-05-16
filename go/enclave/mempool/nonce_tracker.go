@@ -32,5 +32,5 @@ func (nt *NonceTracker) nonceFromState(address gethcommon.Address) uint64 {
 }
 
 func (nt *NonceTracker) IncrementNonce(address gethcommon.Address) {
-	nt.accountNonces[address] += 1
+	nt.accountNonces[address]++
 }
