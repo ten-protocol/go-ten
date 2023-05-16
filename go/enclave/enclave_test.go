@@ -541,17 +541,18 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(genesisRollup); err != nil {
 		return err
 	}
-	dbTransaction := enclave.(*enclaveImpl).storage.NewTransaction()
-
-	if err = dbTransaction.StoreBatch(genesisBatch, nil); err != nil {
-		return err
-	}
 	blockHash := blk.Hash()
-	if err = dbTransaction.UpdateHeadBatch(blockHash, genesisBatch, nil); err != nil {
-		return err
-	}
 
-	if err = dbTransaction.Commit(); err != nil {
+	err = enclave.(*enclaveImpl).storage.ModifyStorage(func(su db.StorageUpdater) error {
+		if err := su.StoreBatch(genesisBatch, nil); err != nil {
+			return err
+		}
+		if err := su.UpdateHeadBatch(blockHash, genesisBatch, nil); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 
@@ -615,16 +616,14 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 	blockHash := blk.Hash()
 
 	err = enclave.(*enclaveImpl).storage.ModifyStorage(func(su db.StorageUpdater) error {
-		if err = su.StoreBatch(batch, nil); err != nil {
+		if err := su.StoreBatch(batch, nil); err != nil {
 			return err
 		}
-
-		if err = su.UpdateHeadBatch(blockHash, batch, nil); err != nil {
+		if err := su.UpdateHeadBatch(blockHash, batch, nil); err != nil {
 			return err
 		}
 		return nil
 	})
-
 	if err != nil {
 		return err
 	}
