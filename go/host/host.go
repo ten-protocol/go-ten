@@ -173,7 +173,7 @@ func (h *host) Start() error {
 
 		err := h.refreshP2PPeerList()
 		if err != nil {
-			h.logger.Warn("unable to sync current p2p peer list on startup - %w", err)
+			h.logger.Warn("unable to sync current p2p peer list on startup", log.ErrKey, err)
 		}
 
 		// start the host's main processing loop
