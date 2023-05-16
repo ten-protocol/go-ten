@@ -73,7 +73,7 @@ func (d *DockerNode) Upgrade(networkCfg *NetworkConfig) error {
 	// update network configs
 	d.cfg.UpdateNodeConfig(
 		WithManagementContractAddress(networkCfg.ManagementContractAddress),
-		WithManagementContractAddress(networkCfg.MessageBusAddress),
+		WithMessageBusContractAddress(networkCfg.MessageBusAddress),
 		WithL1Start(networkCfg.L1StartHash),
 	)
 
