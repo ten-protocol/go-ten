@@ -8,6 +8,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/host/db"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -21,7 +22,7 @@ type Host interface {
 	// Start initializes the main loop of the host.
 	Start() error
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
-	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error)
+	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
 	// ReceiveTx processes a transaction received from a peer host.
 	ReceiveTx(tx common.EncryptedTx)
 	// ReceiveBatches receives a set of batches from a peer host.
@@ -33,7 +34,7 @@ type Host interface {
 	// Unsubscribe terminates a log subscription between the host and the enclave.
 	Unsubscribe(id rpc.ID)
 	// Stop gracefully stops the host execution.
-	Stop()
+	Stop() error
 
 	// HealthCheck returns the health status of the host + enclave + db
 	HealthCheck() (*HealthCheck, error)
@@ -78,7 +79,8 @@ type ReconnectingBlockProvider interface {
 	// StartStreamingFromHeight and StartStreamingFromHash return the streaming channel and a function to cancel/clean-up the stream with
 	StartStreamingFromHeight(height *big.Int) (*BlockStream, error)
 	StartStreamingFromHash(latestHash gethcommon.Hash) (*BlockStream, error)
-	IsLatest(hash *types.Block) bool // returns true if hash is of the latest known L1 head block
+	IsLatest(hash *types.Block) bool     // returns true if hash is of the latest known L1 head block
+	HealthStatus() L1BlockProviderStatus // returns whether the blockprovider is healthy
 }
 
 type BlockStream struct {

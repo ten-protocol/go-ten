@@ -56,11 +56,13 @@ type EnclaveConfig struct {
 	ObscuroGenesis string
 	// Cadence
 	Cadence uint64
+	// Whether debug calls are available
+	DebugNamespaceEnabled bool
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
-func DefaultEnclaveConfig() EnclaveConfig {
-	return EnclaveConfig{
+func DefaultEnclaveConfig() *EnclaveConfig {
+	return &EnclaveConfig{
 		HostID:                    gethcommon.BytesToAddress([]byte("")),
 		HostAddress:               "127.0.0.1:10000",
 		Address:                   "127.0.0.1:11000",
@@ -81,5 +83,6 @@ func DefaultEnclaveConfig() EnclaveConfig {
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
 		Cadence:                   10,
+		DebugNamespaceEnabled:     false,
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	"github.com/ethereum/go-ethereum/core/state"
 
@@ -40,7 +41,7 @@ const _testEnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a04
 // _successfulRollupGasPrice can be deterministically calculated when evaluating the management smart contract.
 // It should change only when there are changes to the smart contract or if the gas estimation algorithm is modified.
 // Other changes would mean something is broken.
-const _successfulRollupGasPrice = 386824
+const _successfulRollupGasPrice = 386856
 
 var _enclavePubKey *ecies.PublicKey
 
@@ -113,19 +114,24 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 	}
 
 	// Run gas Estimation
-	gas, err := enclave.EstimateGas(encryptedParams)
+	gas, _ := enclave.EstimateGas(encryptedParams)
+	if gas.Error() != nil {
+		t.Fatal(gas.Error())
+	}
+
+	// decrypt with the VK
+	decryptedResult, err := vk.PrivateKey.Decrypt(gas.EncUserResponse, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// decrypt with the VK
-	decryptedResult, err := vk.PrivateKey.Decrypt(gas, nil, nil)
+	gasEstimate, err := responses.DecodeResponse[string](decryptedResult)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// parse it to Uint64
-	decodeUint64, err := hexutil.DecodeUint64(string(decryptedResult))
+	decodeUint64, err := hexutil.DecodeUint64(*gasEstimate)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,9 +167,9 @@ func gasEstimateNoVKRegistered(t *testing.T, _ wallet.Wallet, enclave common.Enc
 	}
 
 	// Run gas Estimation
-	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "could not encrypt bytes because it does not have a viewing key for account") {
-		t.Fatalf("unexpected error - %s", err)
+	resp, _ := enclave.EstimateGas(encryptedParams)
+	if !assert.ErrorContains(t, resp.Error(), "could not encrypt bytes because it does not have a viewing key for account") {
+		t.Fatalf("unexpected error - %s", resp.Error())
 	}
 }
 
@@ -186,9 +192,9 @@ func gasEstimateNoCallMsgFrom(t *testing.T, _ wallet.Wallet, enclave common.Encl
 	}
 
 	// Run gas Estimation
-	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "no from address provided") {
-		t.Fatalf("unexpected error - %s", err)
+	resp, _ := enclave.EstimateGas(encryptedParams)
+	if !assert.ErrorContains(t, resp.Error(), "no from address provided") {
+		t.Fatalf("unexpected error - %s", resp.Error())
 	}
 }
 
@@ -212,9 +218,9 @@ func gasEstimateInvalidBytes(t *testing.T, w wallet.Wallet, enclave common.Encla
 	}
 
 	// Run gas Estimation
-	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "invalid character") {
-		t.Fatalf("unexpected error - %s", err)
+	resp, _ := enclave.EstimateGas(encryptedParams)
+	if !assert.ErrorContains(t, resp.Error(), "invalid character") {
+		t.Fatalf("unexpected error - %s", resp.Error())
 	}
 }
 
@@ -237,8 +243,8 @@ func gasEstimateInvalidNumParams(t *testing.T, w wallet.Wallet, enclave common.E
 	}
 
 	// Run gas Estimation
-	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "required at least 1 params, but received 0") {
+	resp, _ := enclave.EstimateGas(encryptedParams)
+	if !assert.ErrorContains(t, resp.Error(), "required at least 1 params, but received 0") {
 		t.Fatal("unexpected error")
 	}
 }
@@ -262,8 +268,8 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 	}
 
 	// Run gas Estimation
-	_, err = enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, err, "unexpected type supplied in") {
+	resp, _ := enclave.EstimateGas(encryptedParams)
+	if !assert.ErrorContains(t, resp.Error(), "unexpected type supplied in") {
 		t.Fatal("unexpected error")
 	}
 }
@@ -323,30 +329,30 @@ func getBalanceSuccess(t *testing.T, prefund []genesis.Account, enclave common.E
 	}
 
 	// Run gas Estimation
-	gas, err := enclave.GetBalance(encryptedParams)
+	gas, _ := enclave.GetBalance(encryptedParams)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// decrypt with the VK
-	decryptedResult, err := vk.PrivateKey.Decrypt(gas, nil, nil)
+	decryptedResult, err := vk.PrivateKey.Decrypt(gas.EncUserResponse, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// parse it
-	balance, err := hexutil.DecodeBig(string(decryptedResult))
+	balance, err := responses.DecodeResponse[hexutil.Big](decryptedResult)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// make sure its de expected value
-	if prefund[0].Amount.Cmp(balance) != 0 {
-		t.Errorf("unexpected balance, expected %d, got %d", prefund[0].Amount, balance)
+	if prefund[0].Amount.Cmp(balance.ToInt()) != 0 {
+		t.Errorf("unexpected balance, expected %d, got %d", prefund[0].Amount, balance.ToInt())
 	}
 }
 
-func getBalanceRequestUnsuccessful(t *testing.T, prefund []genesis.Account, enclave common.Enclave, _ *rpc.ViewingKey) {
+func getBalanceRequestUnsuccessful(t *testing.T, prefund []genesis.Account, enclave common.Enclave, vk *rpc.ViewingKey) {
 	type errorTest struct {
 		request  []interface{}
 		errorStr string
@@ -382,9 +388,17 @@ func getBalanceRequestUnsuccessful(t *testing.T, prefund []genesis.Account, encl
 			}
 
 			// Run gas Estimation
-			_, err = enclave.GetBalance(encryptedParams)
+			enclaveResp, _ := enclave.GetBalance(encryptedParams)
+			err = enclaveResp.Error()
+
+			// If there is no enclave error we must get
+			// the internal user error
 			if err == nil {
-				t.Fatal(err)
+				encodedResp, encErr := vk.PrivateKey.Decrypt(enclaveResp.EncUserResponse, nil, nil)
+				if encErr != nil {
+					t.Fatal(encErr)
+				}
+				_, err = responses.DecodeResponse[hexutil.Big](encodedResp)
 			}
 
 			if !assert.ErrorContains(t, err, test.errorStr) {
@@ -463,7 +477,7 @@ func registerWalletViewingKey(t *testing.T, enclave common.Enclave, w wallet.Wal
 
 // createTestEnclave returns a test instance of the enclave
 func createTestEnclave(prefundedAddresses []genesis.Account, idx int) (common.Enclave, error) {
-	enclaveConfig := config.EnclaveConfig{
+	enclaveConfig := &config.EnclaveConfig{
 		HostID:         gethcommon.BigToAddress(big.NewInt(int64(idx))),
 		L1ChainID:      integration.EthereumChainID,
 		ObscuroChainID: integration.ObscuroChainID,

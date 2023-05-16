@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"math"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -15,9 +12,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -40,7 +41,7 @@ func ExecuteTransactions(
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 
-	ethHeader, err := convertToEthHeader(header, secret(storage))
+	ethHeader, err := gethencoding.ConvertToEthHeader(header, secret(storage))
 	if err != nil {
 		logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil
@@ -121,7 +122,7 @@ func ExecuteObsCall(
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
 	chain, vmCfg, gp := initParams(storage, true, nil)
-	ethHeader, err := convertToEthHeader(header, secret(storage))
+	ethHeader, err := gethencoding.ConvertToEthHeader(header, secret(storage))
 	if err != nil {
 		return nil, err
 	}
@@ -157,14 +158,12 @@ func ExecuteObsCall(
 }
 
 func initParams(storage db.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
-	chain := &ObscuroChainContext{storage: storage, logger: l}
-
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 		Debug:     false,
 	}
 	gp := gethcore.GasPool(math.MaxUint64)
-	return chain, vmCfg, &gp
+	return NewObscuroChainContext(storage, l), vmCfg, &gp
 }
 
 // todo (#1053) - this is currently just returning the shared secret
@@ -176,7 +175,7 @@ func secret(storage db.Storage) []byte {
 }
 
 func newErrorWithReasonAndCode(err error) error {
-	result := &SerialisableError{
+	result := &errutil.EVMSerialisableError{
 		Err: err.Error(),
 	}
 
@@ -199,28 +198,9 @@ func newRevertError(result *gethcore.ExecutionResult) error {
 	if errUnpack == nil {
 		err = fmt.Errorf("execution reverted: %v", reason)
 	}
-	return &SerialisableError{
+	return &errutil.EVMSerialisableError{
 		Err:    err.Error(),
 		Reason: hexutil.Encode(result.Revert()),
 		Code:   3, // todo - magic number, really needs thought around the value and made a constant
 	}
-}
-
-// SerialisableError is an API error that encompasses an EVM error with a code and a reason
-type SerialisableError struct {
-	Err    string
-	Reason interface{}
-	Code   int
-}
-
-func (e SerialisableError) Error() string {
-	return e.Err
-}
-
-func (e SerialisableError) ErrorCode() int {
-	return e.Code
-}
-
-func (e SerialisableError) ErrorData() interface{} {
-	return e.Reason
 }

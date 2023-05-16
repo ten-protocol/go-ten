@@ -36,11 +36,12 @@ type EnclaveConfigToml struct {
 	SequencerID               string
 	ObscuroGenesis            string
 	Cadence                   uint64
+	DebugNamespaceEnabled     bool
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags
 // with specific defaults (if the `config` flag isn't specified).
-func ParseConfig() (config.EnclaveConfig, error) {
+func ParseConfig() (*config.EnclaveConfig, error) {
 	cfg := config.DefaultEnclaveConfig()
 	flagUsageMap := getFlagUsageMap()
 
@@ -65,6 +66,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	sequencerID := flag.String(sequencerIDName, cfg.SequencerID.Hex(), flagUsageMap[sequencerIDName])
 	obscuroGenesis := flag.String(obscuroGenesisName, cfg.ObscuroGenesis, flagUsageMap[obscuroGenesisName])
 	Cadence := flag.Uint64(CadenceName, cfg.Cadence, flagUsageMap[CadenceName])
+	debugNamespaceEnabled := flag.Bool(debugNamespaceEnabledName, cfg.DebugNamespaceEnabled, flagUsageMap[debugNamespaceEnabledName])
 
 	flag.Parse()
 
@@ -74,7 +76,7 @@ func ParseConfig() (config.EnclaveConfig, error) {
 
 	nodeType, err := common.ToNodeType(*nodeTypeStr)
 	if err != nil {
-		return config.EnclaveConfig{}, fmt.Errorf("unrecognised node type '%s'", *nodeTypeStr)
+		return nil, fmt.Errorf("unrecognised node type '%s'", *nodeTypeStr)
 	}
 
 	cfg.HostID = gethcommon.HexToAddress(*hostID)
@@ -97,12 +99,13 @@ func ParseConfig() (config.EnclaveConfig, error) {
 	cfg.SequencerID = gethcommon.HexToAddress(*sequencerID)
 	cfg.ObscuroGenesis = *obscuroGenesis
 	cfg.Cadence = *Cadence
+	cfg.DebugNamespaceEnabled = *debugNamespaceEnabled
 
 	return cfg, nil
 }
 
 // Parses the config from the .toml file at configPath.
-func fileBasedConfig(configPath string) (config.EnclaveConfig, error) {
+func fileBasedConfig(configPath string) (*config.EnclaveConfig, error) {
 	bytes, err := os.ReadFile(configPath)
 	if err != nil {
 		panic(fmt.Sprintf("could not read config file at %s. Cause: %s", configPath, err))
@@ -116,10 +119,10 @@ func fileBasedConfig(configPath string) (config.EnclaveConfig, error) {
 
 	nodeType, err := common.ToNodeType(tomlConfig.NodeType)
 	if err != nil {
-		return config.EnclaveConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
+		return nil, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
 	}
 
-	return config.EnclaveConfig{
+	return &config.EnclaveConfig{
 		HostID:                    gethcommon.HexToAddress(tomlConfig.HostID),
 		HostAddress:               tomlConfig.HostAddress,
 		Address:                   tomlConfig.Address,

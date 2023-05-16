@@ -17,7 +17,7 @@ import (
 var ErrSubscriptionNotSupported = errors.New("block subscription not supported")
 
 // EthClient defines the interface for RPC communications with the ethereum nodes
-// TODO Some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
+// todo (#1617) - some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
 type EthClient interface {
 	BlockNumber() (uint64, error)                                                 // retrieves the number of the head block
 	BlockByHash(id gethcommon.Hash) (*types.Block, error)                         // retrieves a block given a hash

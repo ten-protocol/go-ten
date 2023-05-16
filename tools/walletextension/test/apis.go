@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/responses"
 )
 
 const (
@@ -67,35 +68,35 @@ func (api *DummyAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,reviv
 	return (*hexutil.Big)(chainID), err
 }
 
-func (api *DummyAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (string, error) {
+func (api *DummyAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (*responses.EnclaveResponse, error) {
 	return api.reEncryptParams(encryptedParams)
 }
 
-func (api *DummyAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (string, error) {
+func (api *DummyAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (*responses.EnclaveResponse, error) {
 	return api.reEncryptParams(encryptedParams)
 }
 
-func (api *DummyAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*string, error) {
+func (api *DummyAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*responses.EnclaveResponse, error) {
 	reEncryptParams, err := api.reEncryptParams(encryptedParams)
-	return &reEncryptParams, err
+	return reEncryptParams, err
 }
 
-func (api *DummyAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (string, error) {
+func (api *DummyAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (*responses.EnclaveResponse, error) {
 	return api.reEncryptParams(encryptedParams)
 }
 
-func (api *DummyAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*string, error) {
+func (api *DummyAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.EnclaveResponse, error) {
 	reEncryptParams, err := api.reEncryptParams(encryptedParams)
-	return &reEncryptParams, err
+	return reEncryptParams, err
 }
 
-func (api *DummyAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (string, error) {
+func (api *DummyAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.EnclaveResponse, error) {
 	return api.reEncryptParams(encryptedParams)
 }
 
-func (api *DummyAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas, _ *rpc.BlockNumberOrHash) (*string, error) {
+func (api *DummyAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas, _ *rpc.BlockNumberOrHash) (*responses.EnclaveResponse, error) {
 	reEncryptParams, err := api.reEncryptParams(encryptedParams)
-	return &reEncryptParams, err
+	return reEncryptParams, err
 }
 
 func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedParamsLogSubscription) (*rpc.Subscription, error) {
@@ -158,22 +159,23 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 	return subscription, nil
 }
 
-func (api *DummyAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (*string, error) {
+func (api *DummyAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (*responses.EnclaveResponse, error) {
 	reEncryptParams, err := api.reEncryptParams(encryptedParams)
-	return &reEncryptParams, err
+	return reEncryptParams, err
 }
 
 // Decrypts the params with the enclave key, and returns them encrypted with the viewing key set via `setViewingKey`.
-func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (string, error) {
+func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.EnclaveResponse, error) {
 	params, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
 	if err != nil {
-		return "", fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
+		return responses.AsEmptyResponse(), fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
-	encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, params, nil, nil)
-	if err != nil {
-		return "", fmt.Errorf("could not encrypt params with viewing key")
+	encryptor := func(bytes []byte) ([]byte, error) {
+		return ecies.Encrypt(rand.Reader, api.viewingKey, bytes, nil, nil)
 	}
 
-	return gethcommon.Bytes2Hex(encryptedBytes), err
+	strParams := string(params)
+
+	return responses.AsEncryptedResponse(&strParams, encryptor), nil
 }

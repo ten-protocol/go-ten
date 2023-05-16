@@ -28,6 +28,7 @@ const (
 	APINamespaceObscuroScan = "obscuroscan"
 	APINamespaceNetwork     = "net"
 	APINamespaceTest        = "test"
+	APINamespaceDebug       = "debug"
 )
 
 type HostContainer struct {
@@ -62,14 +63,19 @@ func (h *HostContainer) Start() error {
 }
 
 func (h *HostContainer) Stop() error {
-	h.metricsService.Stop()
-
-	// make sure the rpc server does not request services from a stopped host
-	if h.rpcServer != nil {
-		h.rpcServer.Stop()
+	// host will not respond to further external requests
+	err := h.host.Stop()
+	if err != nil {
+		return err
 	}
 
-	h.host.Stop()
+	h.metricsService.Stop()
+
+	if h.rpcServer != nil {
+		// rpc server cannot be stopped synchronously as it will kill current request
+		go h.rpcServer.Stop()
+	}
+
 	return nil
 }
 
@@ -79,16 +85,25 @@ func (h *HostContainer) Host() commonhost.Host {
 
 // NewHostContainerFromConfig uses config to create all HostContainer dependencies and inject them into a new HostContainer
 // (Note: it does not start the HostContainer process, `Start()` must be called on the container)
-func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig) *HostContainer {
+func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger gethlog.Logger) *HostContainer {
 	cfg := parsedConfig.ToHostConfig()
 
-	logger := log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath, log.NodeIDKey, cfg.ID)
+	addr, err := wallet.RetrieveAddress(parsedConfig.PrivateKeyString)
+	if err != nil {
+		panic("unable to retrieve the Node ID")
+	}
+	cfg.ID = *addr
+
+	// create the logger if not set - used when the testlogger is injected
+	if logger == nil {
+		logger = log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath)
+	}
+	logger = logger.New(log.NodeIDKey, cfg.ID, log.CmpKey, log.HostCmp)
+
 	fmt.Printf("Building host container with config: %+v\n", cfg)
 	logger.Info(fmt.Sprintf("Building host container with config: %+v", cfg))
 
-	// set the Host ID as the Public Key Address
 	ethWallet := wallet.NewInMemoryWalletFromConfig(cfg.PrivateKeyString, cfg.L1ChainID, log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath))
-	cfg.ID = ethWallet.Address()
 
 	fmt.Println("Connecting to L1 network...")
 	l1Client, err := ethadapter.NewEthClient(cfg.L1NodeHost, cfg.L1NodeWebsocketPort, cfg.L1RPCTimeout, cfg.ID, logger)
@@ -179,6 +194,17 @@ func NewHostContainer(
 				Public:    true,
 			},
 		})
+
+		if cfg.DebugNamespaceEnabled {
+			rpcServer.RegisterAPIs([]rpc.API{
+				{
+					Namespace: APINamespaceDebug,
+					Version:   APIVersion1,
+					Service:   clientapi.NewNetworkDebug(h),
+					Public:    true,
+				},
+			})
+		}
 	}
 
 	return hostContainer

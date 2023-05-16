@@ -4,8 +4,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/container"
 )
 
-// TODO - Disable these methods on a non-test node.
-
 // TestAPI implements JSON RPC operations required for testing.
 type TestAPI struct {
 	container container.Container
@@ -18,8 +16,12 @@ func NewTestAPI(container container.Container) *TestAPI {
 }
 
 // StopHost gracefully stops the host.
-func (api *TestAPI) StopHost() {
+func (api *TestAPI) StopHost() error {
 	if api.container != nil {
-		_ = api.container.Stop()
+		err := api.container.Stop()
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }

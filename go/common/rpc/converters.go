@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/rpc"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // Functions to convert classes that need to be sent between the host and the enclave to and from their equivalent
@@ -31,31 +32,32 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 	}
 }
 
-func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (generated.BlockSubmissionResponseMsg, error) {
-	subscribedLogBytes, err := json.Marshal(response.SubscribedLogs)
-	if err != nil {
-		return generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
+func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (*generated.BlockSubmissionResponseMsg, error) {
+	var subscribedLogBytes []byte
+	var err error
+
+	if response == nil {
+		return nil, fmt.Errorf("no response that could be converted to a message")
 	}
 
 	producedBatchMsg := ToExtBatchMsg(response.ProducedBatch)
 	producedRollupMsg := ToExtRollupMsg(response.ProducedRollup)
 
-	return generated.BlockSubmissionResponseMsg{
+	msg := &generated.BlockSubmissionResponseMsg{
 		ProducedBatch:           &producedBatchMsg,
 		ProducedRollup:          &producedRollupMsg,
 		SubscribedLogs:          subscribedLogBytes,
 		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
-	}, nil
-}
-
-func ToBlockSubmissionRejectionMsg(rejectError *common.BlockRejectError) (generated.BlockSubmissionResponseMsg, error) {
-	errMsg := &generated.BlockSubmissionErrorMsg{
-		Cause:  rejectError.Wrapped.Error(),
-		L1Head: rejectError.L1Head.Bytes(),
 	}
-	return generated.BlockSubmissionResponseMsg{
-		Error: errMsg,
-	}, nil
+
+	if response.SubscribedLogs != nil {
+		msg.SubscribedLogs, err = json.Marshal(response.SubscribedLogs)
+		if err != nil {
+			return &generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
+		}
+	}
+
+	return msg, nil
 }
 
 func ToSecretRespMsg(responses []*common.ProducedSecretResponse) []*generated.SecretResponseMsg {
@@ -89,15 +91,18 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (*common.BlockSubmissionResponse, error) {
 	if msg.Error != nil {
-		return nil, &common.BlockRejectError{
+		return nil, &errutil.BlockRejectError{
 			L1Head:  gethcommon.BytesToHash(msg.Error.L1Head),
 			Wrapped: errors.New(msg.Error.Cause),
 		}
 	}
 	var subscribedLogs map[rpc.ID][]byte
-	if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
-		return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
+	if msg.SubscribedLogs != nil {
+		if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
+			return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
+		}
 	}
+
 	return &common.BlockSubmissionResponse{
 		ProducedBatch:           FromExtBatchMsg(msg.ProducedBatch),
 		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),

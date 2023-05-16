@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/async"
+
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
@@ -52,7 +54,7 @@ func (netw *MockP2P) SendTxToSequencer(tx common.EncryptedTx) error {
 	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
 		return nil
 	}
-	common.Schedule(netw.delay()/2, func() { netw.Nodes[0].ReceiveTx(tx) })
+	async.Schedule(netw.delay()/2, func() { netw.Nodes[0].ReceiveTx(tx) })
 	return nil
 }
 
@@ -69,7 +71,7 @@ func (netw *MockP2P) BroadcastBatch(batchMsg *host.BatchMsg) error {
 	for _, node := range netw.Nodes {
 		if node.Config().ID.Hex() != netw.CurrentNode.Config().ID.Hex() {
 			tempNode := node
-			common.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatches(encodedBatchMsg) })
+			async.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatches(encodedBatchMsg) })
 		}
 	}
 
@@ -85,7 +87,7 @@ func (netw *MockP2P) RequestBatchesFromSequencer(batchRequest *common.BatchReque
 	if err != nil {
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
 	}
-	common.Schedule(netw.delay()/2, func() { netw.Nodes[0].ReceiveBatchRequest(encodedBatchRequest) })
+	async.Schedule(netw.delay()/2, func() { netw.Nodes[0].ReceiveBatchRequest(encodedBatchRequest) })
 	return nil
 }
 
@@ -106,7 +108,7 @@ func (netw *MockP2P) SendBatches(batchMsg *host.BatchMsg, requesterAddress strin
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
 
-	common.Schedule(netw.delay()/2, func() { requester.ReceiveBatches(encodedBatchMsg) })
+	async.Schedule(netw.delay()/2, func() { requester.ReceiveBatches(encodedBatchMsg) })
 	return nil
 }
 

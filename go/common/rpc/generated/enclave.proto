@@ -71,42 +71,91 @@ service EnclaveProto {
   // HealthCheck returns the health status of enclave + db
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
 
+  rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
+
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
+
+
+  rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
+
+  rpc StreamL2Updates(StreamL2UpdatesRequest) returns (stream EncodedUpdateResponse) {}
+
+  rpc DebugEventLogRelevancy(DebugEventLogRelevancyRequest) returns (DebugEventLogRelevancyResponse) {}
 }
+
+message StreamL2UpdatesRequest {
+  optional bytes knownHead = 1;
+}
+
+message EncodedUpdateResponse {
+  bytes batch = 1;
+}
+
+message SystemError{
+  int32 errorCode = 1;
+  string errorString = 2;
+}
+
+message DebugEventLogRelevancyRequest{
+  bytes txHash = 1;
+}
+message DebugEventLogRelevancyResponse{
+  string msg = 1;
+  SystemError systemError = 2;
+}
+
+message DebugTraceTransactionRequest{
+  bytes txHash = 1;
+  bytes config = 2;
+}
+message DebugTraceTransactionResponse{
+  string msg = 1;
+  SystemError systemError = 2;
+}
+
+message CreateBatchRequest{}
+message CreateBatchResponse{
+  string error = 2;
+}
+
 
 message CreateRollupRequest{}
 message CreateRollupResponse{
   ExtRollupMsg msg = 1;
-  string error = 2;
+  SystemError systemError = 2;
 }
 
 message StatusRequest {}
 message StatusResponse {
   int32 status = 1;
-  string error = 2;
+  SystemError systemError = 2;
 }
 
 message AttestationRequest {}
 message AttestationResponse {
   AttestationReportMsg attestationReportMsg = 1;
+  SystemError systemError = 2;
 }
 
 message GenerateSecretRequest {}
 message GenerateSecretResponse {
   bytes encryptedSharedEnclaveSecret = 1;
+  SystemError systemError = 2;
 }
 
 message InitEnclaveRequest {
   bytes encryptedSharedEnclaveSecret = 1;
 }
 message InitEnclaveResponse {
-  string error = 1;
+  SystemError systemError = 1;
 }
 
 message StartRequest {
   bytes encodedBlock = 1;
 }
-message StartResponse {}
+message StartResponse {
+  SystemError systemError = 1;
+}
 
 message SubmitBlockRequest {
   bytes encodedBlock = 1;
@@ -116,65 +165,75 @@ message SubmitBlockRequest {
 }
 message SubmitBlockResponse {
   BlockSubmissionResponseMsg blockSubmissionResponse = 1;
+  SystemError systemError = 2;
 }
 
 message SubmitTxRequest {
   bytes encryptedTx = 1;
 }
 message SubmitTxResponse {
-  bytes encryptedHash = 1;
+  bytes encodedEnclaveResponse = 1;
+  SystemError systemError = 2;
 }
 
 message SubmitBatchRequest {
   ExtBatchMsg batch = 1;
 }
 message SubmitBatchResponse {
+  SystemError systemError = 1;
 }
 
 message ObsCallRequest {
   bytes encryptedParams = 1;
 }
 message ObsCallResponse {
-  bytes result = 1;
-  bytes error = 2;
+  bytes encodedEnclaveResponse = 1;
+  SystemError systemError = 2;
 }
 
 message GetTransactionCountRequest {
   bytes encryptedParams = 1;
 }
 message GetTransactionCountResponse {
-  bytes result = 1;
-  string error = 2;
+  bytes encodedEnclaveResponse = 1;
+  SystemError systemError = 2;
 }
 
 message StopRequest {}
-message StopResponse {}
+message StopResponse {
+  SystemError systemError = 1;
+}
 
 message GetTransactionRequest {
   bytes encryptedParams = 1;
 }
 message GetTransactionResponse {
-  bytes encryptedTx = 1;
+  bytes encodedEnclaveResponse = 1;
+  SystemError systemError = 2;
 }
 
 message GetTransactionReceiptRequest {
   bytes encryptedParams = 1;
 }
 message GetTransactionReceiptResponse {
-  bytes encryptedTxReceipt = 1;
+  bytes encodedEnclaveResponse = 1;
+  SystemError systemError = 2;
 }
 
 message AddViewingKeyRequest {
   bytes viewingKey = 1;
   bytes signature = 2;
 }
-message AddViewingKeyResponse {}
+message AddViewingKeyResponse {
+  SystemError systemError = 1;
+}
 
 message GetBalanceRequest {
   bytes encryptedParams = 1;
 }
 message GetBalanceResponse {
-  bytes encryptedBalance = 1;
+  bytes encodedEnclaveResponse = 1;
+  SystemError systemError = 2;
 }
 
 message GetCodeRequest {
@@ -183,26 +242,31 @@ message GetCodeRequest {
 }
 message GetCodeResponse {
   bytes code = 1;
+  SystemError systemError = 2;
 }
 
 message SubscribeRequest {
   bytes id = 1;
   bytes encryptedSubscription = 2;
 }
-message SubscribeResponse {}
+message SubscribeResponse {
+  SystemError systemError = 2;
+}
 
 message UnsubscribeRequest {
   bytes id = 1;
 }
-message UnsubscribeResponse {}
+message UnsubscribeResponse {
+  SystemError systemError = 2;
+}
 
 message EstimateGasRequest {
   bytes encryptedParams = 1;
 }
 
 message EstimateGasResponse {
-  bytes encryptedResponse = 1;
-  bytes error = 2;
+  bytes encodedEnclaveResponse = 1;
+  SystemError systemError = 2;
 }
 
 message GetLogsRequest {
@@ -210,12 +274,13 @@ message GetLogsRequest {
 }
 
 message GetLogsResponse {
-  bytes encryptedResponse = 1;
+  bytes encodedEnclaveResponse = 1;
+  SystemError systemError = 2;
 }
 
 message HealthCheckResponse {
   bool status = 1;
-  bytes error = 2;
+  SystemError systemError = 2;
 }
 
 message EmptyArgs {}
@@ -227,6 +292,7 @@ message AttestationReportMsg {
   bytes PubKey = 2; // Public key to encrypt traffic back to this enclave
   bytes Owner = 3;
   string HostAddress = 4; // The IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
+  SystemError systemError = 5;
 }
 
 message BlockSubmissionResponseMsg {
@@ -319,6 +385,7 @@ message SecretResponseMsg {
   bytes Secret = 1;
   bytes RequesterID = 2;
   string HostAddress = 3;
+  SystemError systemError = 4;
 }
 
 message WithdrawalMsg {

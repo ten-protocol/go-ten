@@ -36,14 +36,14 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -o ../bin/wallet_extension_linux
 
 # Standalone stage to perform npm install
-FROM node:lts-alpine as install-npm-deps
+FROM node:16-alpine as install-npm-deps
 
 COPY ./contracts/package.json /home/obscuro/go-obscuro/contracts/package.json
 WORKDIR /home/obscuro/go-obscuro/contracts
 RUN npm install
 
 # Final stage. Compiles the solidity contracts to cache them.
-FROM node:lts-alpine
+FROM node:16-alpine
 
 COPY ./contracts/ /home/obscuro/go-obscuro/contracts/
 WORKDIR /home/obscuro/go-obscuro/contracts
@@ -51,6 +51,7 @@ RUN rm package-lock.json || true
 
 COPY --from=install-npm-deps /home/obscuro/go-obscuro/contracts/ /home/obscuro/go-obscuro/contracts/
 
+RUN npm config set update-notifier false
 RUN npx hardhat compile
 
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/bin /home/obscuro/go-obscuro/tools/walletextension/bin

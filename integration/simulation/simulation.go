@@ -177,7 +177,7 @@ func (s *Simulation) deployObscuroERC20s() {
 				panic(err)
 			}
 
-			err = s.RPCHandles.ObscuroWalletRndClient(owner).SendTransaction(s.ctx, signedTx)
+			_, err = s.RPCHandles.ObscuroWalletRndClient(owner).SendTransaction(s.ctx, signedTx)
 			if err != nil {
 				panic(err)
 			}

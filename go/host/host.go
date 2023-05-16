@@ -5,23 +5,28 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/kamilsk/breaker"
 	"github.com/naoina/toml"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/host/batchmanager"
 	"github.com/obscuronet/go-obscuro/go/host/db"
 	"github.com/obscuronet/go-obscuro/go/host/events"
+	"github.com/obscuronet/go-obscuro/go/responses"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -51,7 +56,11 @@ type host struct {
 	enclaveClient common.Enclave       // For communication with the enclave
 
 	// control the host lifecycle
-	exitHostCh chan bool
+	interrupter   breaker.Interface
+	shutdownGroup sync.WaitGroup
+
+	// ignore incoming requests
+	stopControl *stopcontrol.StopControl
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
@@ -94,9 +103,6 @@ func NewHost(
 		ethClient:     ethClient,
 		enclaveClient: enclaveClient,
 
-		// lifecycle channels
-		exitHostCh: make(chan bool),
-
 		// incoming data
 		l1BlockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
 		txP2PCh:         make(chan common.EncryptedTx),
@@ -113,6 +119,8 @@ func NewHost(
 
 		logger:         logger,
 		metricRegistry: regMetrics,
+
+		stopControl: stopcontrol.New(),
 	}
 
 	var prof *profiler.Profiler
@@ -132,6 +140,17 @@ func NewHost(
 
 // Start validates the host config and starts the Host in a go routine - immediately returns after
 func (h *host) Start() error {
+	if h.stopControl.IsStopping() {
+		return responses.ToInternalError(fmt.Errorf("requested Start with the host stopping"))
+	}
+
+	h.interrupter = breaker.Multiplex(
+		breaker.BreakBySignal(
+			os.Kill,
+			os.Interrupt,
+		),
+	)
+
 	h.validateConfig()
 
 	tomlConfig, err := toml.Marshal(h.config)
@@ -144,9 +163,7 @@ func (h *host) Start() error {
 		// wait for the Enclave to be available
 		enclStatus := h.waitForEnclave()
 
-		// TODO the host should only connect to enclaves with the same ID as the host.ID
-		// TODO Issue: https://github.com/obscuronet/obscuro-internal/issues/1265
-
+		// todo (#1474) - the host should only connect to enclaves with the same ID as the host.ID
 		if enclStatus == common.AwaitingSecret {
 			err = h.requestSecret()
 			if err != nil {
@@ -220,22 +237,30 @@ func (h *host) EnclaveClient() common.Enclave {
 	return h.enclaveClient
 }
 
-func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (common.EncryptedResponseSendRawTx, error) {
+func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+	if h.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitAndBroadcastTx with the host stopping"))
+	}
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
-	encryptedResponse, err := h.enclaveClient.SubmitTx(encryptedTx)
-	if err != nil {
-		return nil, fmt.Errorf("could not submit transaction. Cause: %w", err)
+	enclaveResponse, sysError := h.enclaveClient.SubmitTx(encryptedTx)
+	if sysError != nil {
+		h.logger.Warn("Could not submit transaction due to sysError.", log.ErrKey, sysError)
+		return nil, sysError
+	}
+	if enclaveResponse.Error() != nil {
+		h.logger.Warn("Could not submit transaction.", log.ErrKey, enclaveResponse.Error())
+		return enclaveResponse, nil //nolint: nilerr
 	}
 
 	if h.config.NodeType != common.Sequencer {
-		err = h.p2p.SendTxToSequencer(encryptedTx)
+		err := h.p2p.SendTxToSequencer(encryptedTx)
 		if err != nil {
 			return nil, fmt.Errorf("could not broadcast transaction to sequencer. Cause: %w", err)
 		}
 	}
 
-	return encryptedResponse, nil
+	return enclaveResponse, nil
 }
 
 func (h *host) ReceiveTx(tx common.EncryptedTx) {
@@ -251,6 +276,9 @@ func (h *host) ReceiveBatchRequest(batchRequest common.EncodedBatchRequest) {
 }
 
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
+	if h.stopControl.IsStopping() {
+		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the host stopping"))
+	}
 	err := h.EnclaveClient().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return fmt.Errorf("could not create subscription with enclave. Cause: %w", err)
@@ -260,6 +288,9 @@ func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 }
 
 func (h *host) Unsubscribe(id rpc.ID) {
+	if h.stopControl.IsStopping() {
+		h.logger.Error("requested Subscribe with the host stopping")
+	}
 	err := h.EnclaveClient().Unsubscribe(id)
 	if err != nil {
 		h.logger.Error("could not terminate subscription", log.SubIDKey, id, log.ErrKey, err)
@@ -267,31 +298,46 @@ func (h *host) Unsubscribe(id rpc.ID) {
 	h.logEventManager.RemoveSubscription(id)
 }
 
-func (h *host) Stop() {
+func (h *host) Stop() error {
+	// block all incoming requests
+	h.stopControl.Stop()
+
+	h.logger.Info("Host received a stop command. Attempting shutdown...")
+	h.interrupter.Close()
+	h.shutdownGroup.Wait()
+
 	if err := h.p2p.StopListening(); err != nil {
 		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
+		return err
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
-	h.exitHostCh <- true
 
 	if err := h.enclaveClient.Stop(); err != nil {
 		h.logger.Error("could not stop enclave server", log.ErrKey, err)
+		return err
 	}
 	if err := h.enclaveClient.StopClient(); err != nil {
 		h.logger.Error("failed to stop enclave RPC client", log.ErrKey, err)
+		return err
 	}
 
 	if err := h.db.Stop(); err != nil {
 		h.logger.Error("could not stop DB - %w", err)
+		return err
 	}
 
 	h.logger.Info("Host shut down successfully.")
+	return nil
 }
 
 // HealthCheck returns whether the host, enclave and DB are healthy
 func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
+	if h.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the host stopping"))
+	}
+
 	// check the enclave health, which in turn checks the DB health
 	enclaveHealthy, err := h.enclaveClient.HealthCheck()
 	if err != nil {
@@ -299,12 +345,15 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 		h.logger.Error("unable to HealthCheck enclave", log.ErrKey, err)
 	}
 
+	l1BlockProviderStatus := h.l1BlockProvider.HealthStatus()
+
 	// Overall health is achieved when all parts are healthy
-	obscuroNodeHealth := h.p2p.HealthCheck() && enclaveHealthy
+	obscuroNodeHealth := h.p2p.HealthCheck() && l1BlockProviderStatus.Healthy && enclaveHealthy
 
 	return &hostcommon.HealthCheck{
 		HealthCheckHost: &hostcommon.HealthCheckHost{
-			P2PStatus: h.p2p.Status(),
+			P2PStatus:       h.p2p.Status(),
+			L1BlockProvider: &l1BlockProviderStatus,
 		},
 		HealthCheckEnclave: &hostcommon.HealthCheckEnclave{
 			EnclaveHealthy: enclaveHealthy,
@@ -334,13 +383,20 @@ func (h *host) waitForEnclave() common.Status {
 // starts the host main processing loop
 func (h *host) startProcessing() {
 	h.p2p.StartListening(h)
+	if h.config.NodeType == common.Sequencer {
+		go h.startBatchProduction()  // periodically request a new batch from enclave
+		go h.startRollupProduction() // periodically request a new rollup from enclave
+	}
+
+	go h.startBatchStreaming() // streams batches and events from the enclave.
 
 	// The blockStream channel is a stream of consecutive, canonical blocks. BlockStream may be replaced with a new
 	// stream ch during the main loop if enclave gets out-of-sync, and we need to stream from an earlier block
 	blockStream, err := h.l1BlockProvider.StartStreamingFromHash(h.config.L1StartHash)
 	if err != nil {
 		// maybe start hash wasn't provided or couldn't be found, instead we stream from L1 genesis
-		// note: in production this could be expensive, hence the WARN log message, todo: review whether we should fail here
+		// note: in production this could be expensive, hence the WARN log message
+		// todo (@matt) - review whether we should fail here
 		h.logger.Warn("unable to stream from L1StartHash", log.ErrKey, err, "l1StartHash", h.config.L1StartHash)
 		blockStream, err = h.l1BlockProvider.StartStreamingFromHeight(big.NewInt(1))
 		if err != nil {
@@ -362,14 +418,18 @@ func (h *host) startProcessing() {
 			}
 
 		case tx := <-h.txP2PCh:
-			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
-			if _, err := h.enclaveClient.SubmitTx(tx); err != nil {
-				h.logger.Warn("Could not submit transaction. ", log.ErrKey, err)
+			resp, sysError := h.enclaveClient.SubmitTx(tx)
+			if sysError != nil {
+				h.logger.Warn("Could not submit transaction due to sysError", log.ErrKey, sysError)
+				continue
+			}
+			if resp.Error() != nil {
+				h.logger.Warn("Could not submit transaction", log.ErrKey, resp.Error())
 			}
 
-		// TODO - #718 - Adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.
+		// todo (#718) - adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.
 		case batchMsg := <-h.batchP2PCh:
-			// todo: discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
+			// todo (#1623) - discard p2p messages if enclave won't be able to make use of them (e.g. we're way behind L1 head)
 			if err := h.handleBatches(&batchMsg); err != nil {
 				h.logger.Error("Could not handle batches. ", log.ErrKey, err)
 			}
@@ -379,14 +439,15 @@ func (h *host) startProcessing() {
 				h.logger.Error("Could not handle batch request. ", log.ErrKey, err)
 			}
 
-		case <-h.exitHostCh:
+		case <-h.interrupter.Done():
+			blockStream.Stop()
 			return
 		}
 	}
 }
 
 func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostcommon.BlockStream, err error) *hostcommon.BlockStream {
-	var rejErr *common.BlockRejectError
+	var rejErr *errutil.BlockRejectError
 	if !errors.As(err, &rejErr) {
 		// received unexpected error (no useful information from the enclave)
 		// we log it out and ignore it until the enclave tells us more information
@@ -394,7 +455,7 @@ func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostco
 		return stream
 	}
 	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, log.BlockHashKey, processedBlock.Hash(), log.BlockHeightKey, processedBlock.Number())
-	if errors.Is(rejErr, common.ErrBlockAlreadyProcessed) {
+	if errors.Is(rejErr, errutil.ErrBlockAlreadyProcessed) {
 		// resetting stream after rejection for duplicate is a possible optimisation in future but it's rarely an expensive case and
 		// it's a risky optimisation (need to ensure it can't get stuck in a loop)
 		// Instead we assume that only one or two blocks are being repeated (probably from revisiting a fork that was
@@ -430,30 +491,18 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	if err != nil {
 		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
 	}
+	if blockSubmissionResponse == nil {
+		return fmt.Errorf("no block submission response given for a submitted l1 block")
+	}
+
 	err = h.db.AddBlockHeader(block.Header())
 	if err != nil {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
 
-	h.logEventManager.SendLogsToSubscribers(blockSubmissionResponse)
-
 	err = h.publishSharedSecretResponses(blockSubmissionResponse.ProducedSecretResponses)
 	if err != nil {
 		h.logger.Error("failed to publish response to secret request", log.ErrKey, err)
-	}
-
-	// If we're not the sequencer, we do not need to publish and distribute batches or rollups.
-	if h.config.NodeType != common.Sequencer {
-		return nil
-	}
-
-	if blockSubmissionResponse.ProducedBatch != nil && blockSubmissionResponse.ProducedBatch.Header != nil {
-		// TODO - #718 - Unlink batch production from L1 cadence.
-		h.storeAndDistributeBatch(blockSubmissionResponse.ProducedBatch)
-	}
-
-	if blockSubmissionResponse.ProducedRollup != nil && blockSubmissionResponse.ProducedRollup.Header != nil {
-		h.publishRollup(blockSubmissionResponse.ProducedRollup)
 	}
 
 	return nil
@@ -495,21 +544,20 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 				return err.Error()
 			}
 
-			return string(header[:])
-		}}, "rollup_hash", producedRollup.Header.Hash().Hex())
+			return string(header)
+		}}, "rollup_hash", producedRollup.Header.Hash().Hex(), "batches_len", len(producedRollup.Batches))
 
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
 	rollupTx, err = h.ethClient.EstimateGasAndGasPrice(rollupTx, h.ethWallet.Address())
 	if err != nil {
-		// todo review this nonce management approach
+		// todo (#1624) - make rollup submission a separate workflow (design and implement the flow etc)
 		h.ethWallet.SetNonce(h.ethWallet.GetNonce() - 1)
 		h.logger.Error("could not estimate rollup tx", log.ErrKey, err)
 		return
 	}
 
 	// fire-and-forget (track the receipt asynchronously)
-	// TODO - #718 - Now we have a single sequencer, it is problematic if rollup publication fails. Handle this case
-	//  better.
+	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup, true)
 	if err != nil {
 		h.logger.Error("could not issue rollup tx", log.ErrKey, err)
@@ -548,6 +596,8 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt 
 		return err
 	}
 
+	h.logger.Trace(fmt.Sprintf("Broadcasting l1 transaction %s of size %d", signedTx.Hash(), len(signedTx.Data())))
+
 	err = retry.Do(func() error {
 		return h.ethClient.SendTransaction(signedTx)
 	}, retry.NewDoublingBackoffStrategy(time.Second, tries)) // doubling retry wait (3 tries = 7sec, 7 tries = 63sec)
@@ -563,7 +613,7 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt 
 
 	// else just watch for receipt asynchronously and log if it fails
 	go func() {
-		// todo: consider how to handle the various ways that L1 transactions could fail to improve node operator QoL
+		// todo (#1624) - consider how to handle the various ways that L1 transactions could fail to improve node operator QoL
 		err = h.waitForReceipt(signedTx.Hash())
 		if err != nil {
 			h.logger.Error("L1 transaction failed", log.ErrKey, err)
@@ -661,7 +711,7 @@ func (h *host) publishSharedSecretResponses(scrtResponses []*common.ProducedSecr
 	var err error
 
 	for _, scrtResponse := range scrtResponses {
-		// todo: implement proper protocol so only one host responds to this secret requests initially
+		// todo (#1624) - implement proper protocol so only one host responds to this secret requests initially
 		// 	for now we just have the genesis host respond until protocol implemented
 		if !h.config.IsGenesis {
 			h.logger.Trace("Not genesis node, not publishing response to secret request.",
@@ -675,7 +725,7 @@ func (h *host) publishSharedSecretResponses(scrtResponses []*common.ProducedSecr
 			AttesterID:  h.config.ID,
 			HostAddress: scrtResponse.HostAddress,
 		}
-		// TODO review: l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
+		// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
 		respondSecretTx := h.mgmtContractLib.CreateRespondSecret(l1tx, h.ethWallet.GetNonceAndIncrement(), false)
 		respondSecretTx, err = h.ethClient.EstimateGasAndGasPrice(respondSecretTx, h.ethWallet.Address())
 		if err != nil {
@@ -727,7 +777,7 @@ func (h *host) refreshP2PPeerList() error {
 	return nil
 }
 
-// TODO: Perhaps extract only relevant logs. There were missing ones when requesting
+// todo (@stefan) - perhaps extract only relevant logs. There were missing ones when requesting
 // the logs filtered from geth.
 func (h *host) extractReceipts(block *types.Block) types.Receipts {
 	receipts := make(types.Receipts, 0)
@@ -771,7 +821,7 @@ func (h *host) awaitSecret(fromHeight *big.Int) error {
 			// This will provide useful feedback if things are stuck (and in tests if any goroutines got stranded on this select)
 			h.logger.Warn(fmt.Sprintf(" Waiting for secret from the L1. No blocks received for over %s", blockStreamWarningTimeout))
 
-		case <-h.exitHostCh:
+		case <-h.interrupter.Done():
 			return nil
 		}
 	}
@@ -809,7 +859,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	}
 
 	for _, batch := range batchMsg.Batches {
-		// TODO - #718 - Consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
+		// todo (@stefan) - consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
 
 		// If we do not have the block the batch is tied to, we skip processing the batches for now. We'll catch them
 		// up later, once we've received the L1 block.
@@ -840,8 +890,8 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 		}
 
 		// We only store the batch locally if it stores successfully on the enclave.
-		// TODO - #718 - Edge case when the enclave is restarted and loses some state; move to having enclave as source
-		//  of truth re: stored batches.
+		// todo (@stefan) - edge case when the enclave is restarted and loses some state; move to having enclave as source
+		//  of truth re: stored batches
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
@@ -853,7 +903,103 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	return nil
 }
 
-// TODO - #718 - Only allow requests for batches since last rollup, to avoid DoS attacks.
+func (h *host) startBatchProduction() {
+	defer h.logger.Info("Stopping batch production")
+
+	h.shutdownGroup.Add(1)
+	defer h.shutdownGroup.Done()
+
+	interval := h.config.BatchInterval
+	if interval == 0 {
+		interval = 1 * time.Second
+	}
+	batchProdTicker := time.NewTicker(interval)
+	for {
+		select {
+		case <-batchProdTicker.C:
+			h.logger.Info("create batch")
+			err := h.enclaveClient.CreateBatch()
+			if err != nil {
+				h.logger.Warn("unable to produce batch", log.ErrKey, err)
+			}
+		case <-h.interrupter.Done():
+			return
+		}
+	}
+}
+
+func (h *host) startBatchStreaming() {
+	defer h.logger.Info("Stopping batch streaming")
+
+	h.shutdownGroup.Add(1)
+	defer h.shutdownGroup.Done()
+
+	// TODO: Update this to start from persisted head
+	streamChan, stop := h.enclaveClient.StreamL2Updates(nil)
+	var lastBatch *common.ExtBatch = nil
+	for {
+		select {
+		case <-h.interrupter.Done():
+			stop()
+			return
+		case resp, ok := <-streamChan:
+			if !ok {
+				stop()
+				h.logger.Warn("Batch streaming failed. Reconneting from latest received batch after 3 seconds")
+				time.Sleep(3 * time.Second)
+
+				if lastBatch != nil {
+					bHash := lastBatch.Hash()
+					streamChan, stop = h.enclaveClient.StreamL2Updates(&bHash)
+				} else {
+					streamChan, stop = h.enclaveClient.StreamL2Updates(nil)
+				}
+				continue
+			}
+
+			if resp.Batch != nil {
+				lastBatch = resp.Batch
+				h.logger.Trace(fmt.Sprintf("Received batch from stream: %s", lastBatch.Hash().Hex()))
+				if h.config.NodeType == common.Sequencer {
+					h.logger.Info("Storing batch from stream")
+					h.storeAndDistributeBatch(resp.Batch)
+				}
+			}
+
+			if resp.Logs != nil {
+				h.logEventManager.SendLogsToSubscribers(&resp.Logs)
+			}
+		}
+	}
+}
+
+func (h *host) startRollupProduction() {
+	defer h.logger.Info("Stopping rollup production")
+
+	h.shutdownGroup.Add(1)
+	defer h.shutdownGroup.Done()
+
+	interval := h.config.RollupInterval
+	if interval == 0 {
+		interval = 5 * time.Second
+	}
+	rollupTicker := time.NewTicker(interval)
+	for {
+		select {
+		case <-rollupTicker.C:
+			producedRollup, err := h.enclaveClient.CreateRollup()
+			if err != nil {
+				h.logger.Warn("unable to produce rollup", log.ErrKey, err)
+			} else {
+				h.publishRollup(producedRollup)
+			}
+		case <-h.interrupter.Done():
+			return
+		}
+	}
+}
+
+// todo (#1625) - only allow requests for batches since last rollup, to avoid DoS attacks.
 func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchRequest) error {
 	var batchRequest *common.BatchRequest
 	err := rlp.DecodeBytes(*encodedBatchRequest, &batchRequest)

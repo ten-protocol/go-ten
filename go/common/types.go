@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 )
@@ -13,6 +14,18 @@ import (
 type (
 	StateRoot = common.Hash
 	TxHash    = common.Hash
+
+	// EncryptedSubscriptionLogs - Alias for the event subscription updates going
+	// out of the enclave.
+	EncryptedSubscriptionLogs = map[rpc.ID][]byte
+
+	// StreamL2UpdatesResponse - the struct encoded for each response message
+	// when streaming batches out of the enclave.
+	// The properties inside need to be encrypted according to the privacy rules.
+	StreamL2UpdatesResponse struct {
+		Batch *ExtBatch
+		Logs  EncryptedSubscriptionLogs
+	}
 
 	// MainNet aliases
 	L1Address     = common.Address
@@ -46,17 +59,6 @@ type (
 	EncryptedParamsEstimateGas     []byte // As above, but for an RPC estimateGas request.
 	EncryptedParamsGetLogs         []byte // As above, but for an RPC getLogs request.
 
-	EncryptedResponseGetBalance   []byte // The response for an RPC getBalance request, as a JSON object encrypted with the viewing key of the user.
-	EncryptedResponseCall         []byte // As above, but for an RPC call request.
-	EncryptedResponseGetTxReceipt []byte // As above, but for an RPC getTransactionReceipt request.
-	EncryptedResponseSendRawTx    []byte // As above, but for an RPC sendRawTransaction request.
-	EncryptedResponseGetTxByHash  []byte // As above, but for an RPC getTransactionByHash request.
-	EncryptedResponseGetTxCount   []byte // As above, but for an RPC getTransactionCount request.
-	EncryptedLogSubscription      []byte // As above, but for a log subscription request.
-	EncryptedLogs                 []byte // As above, but for a log subscription response.
-	EncryptedResponseEstimateGas  []byte // As above, but for an RPC estimateGas response.
-	EncryptedResponseGetLogs      []byte // As above, but for an RPC getLogs request.
-
 	Nonce               = uint64
 	EncodedRollup       []byte
 	EncodedBatchMsg     []byte
@@ -69,6 +71,11 @@ const (
 	// HeightCommittedBlocks is the number of blocks deep a transaction must be to be considered safe from reorganisations.
 	HeightCommittedBlocks = 15
 )
+
+// SystemError is the interface for the internal errors generated in the Enclave and consumed by the Host
+type SystemError interface {
+	Error() string
+}
 
 // AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
 type AttestationReport struct {

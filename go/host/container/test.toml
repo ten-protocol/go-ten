@@ -20,3 +20,6 @@ PrivateKeyString = "000000000000000000000000000000000000000000000000000000000000
 L1ChainID = 1337
 ObscuroChainID = 777
 ProfilerEnabled = false
+DebugNamespaceEnabled = false
+BatchInterval = "1.0s"
+RollupInterval = "10.0s"

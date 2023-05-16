@@ -72,7 +72,7 @@ func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient, logger
 		return fmt.Errorf("failed to sign faucet transaction: %w", err)
 	}
 
-	err = faucetClient.SendTransaction(context.TODO(), signedTx)
+	_, err = faucetClient.SendTransaction(context.TODO(), signedTx)
 	if err != nil {
 		return fmt.Errorf("failed to send contract deploy transaction: %w", err)
 	}
@@ -120,7 +120,8 @@ func (o *obscuroDeployer) Nonce(address gethcommon.Address) (uint64, error) {
 }
 
 func (o *obscuroDeployer) SendTransaction(tx *types.Transaction) error {
-	return o.client.SendTransaction(context.TODO(), tx)
+	_, err := o.client.SendTransaction(context.TODO(), tx)
+	return err
 }
 
 func (o *obscuroDeployer) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {

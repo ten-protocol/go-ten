@@ -7,23 +7,19 @@ import (
 	"fmt"
 	"reflect"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ethereum/go-ethereum/rlp"
-
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/ethereum/go-ethereum/eth/filters"
-
-	"github.com/obscuronet/go-obscuro/go/common"
-
-	"github.com/ethereum/go-ethereum/rpc"
-
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/responses"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -91,42 +87,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return c.executeRPCCall(ctx, result, method, args...)
 	}
 
-	// encode the params into a json blob and encrypt them
-	encryptedParams, err := c.encryptArgs(args...)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
-	}
-
-	// we set up a generic rawResult to receive the response (then we can decrypt it as necessary into the requested result type)
-	var rawResult interface{}
-	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
-	if err != nil {
-		return err
-	}
-
-	// if caller not interested in response, we're done
-	if result == nil {
-		return nil
-	}
-
-	if rawResult == nil {
-		// note: some methods return nil for 'not found', caller can check for this ErrKey type to verify
-		return ErrNilResponse
-	}
-
-	// method is sensitive, so we decrypt it before unmarshalling the result
-	decrypted, err := c.decryptHexString(rawResult)
-	if err != nil {
-		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
-	}
-
-	// process the decrypted result to get the desired type and set it on the result pointer
-	err = c.setResult(decrypted, result)
-	if err != nil {
-		return fmt.Errorf("failed to extract result from %s response: %w", method, err)
-	}
-
-	return nil
+	return c.executeSensitiveCall(ctx, result, method, args...)
 }
 
 func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
@@ -277,6 +238,79 @@ func (c *EncRPCClient) setResultToSubID(clientChannel chan common.IDAndEncLog, r
 	return nil
 }
 
+func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+	// encode the params into a json blob and encrypt them
+	encryptedParams, err := c.encryptArgs(args...)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
+	}
+
+	// We setup the rawResult to receive an EnclaveResponse. All sensitive methods should return this
+	var rawResult responses.EnclaveResponse
+	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
+	if err != nil {
+		return err
+	}
+
+	// if caller not interested in response, we're done
+	if result == nil {
+		return nil
+	}
+
+	// If the enclave has produced a plaintext error we give the
+	// plaintext error back
+	if rawResult.Error() != nil {
+		return rawResult.Error()
+	}
+
+	// If there is no encrypted response then this is equivalent to nil response
+	if rawResult.EncUserResponse == nil || len(rawResult.EncUserResponse) == 0 {
+		return ErrNilResponse
+	}
+
+	// We decrypt the user response from the enclave response.
+	decrypted, err := c.decryptResponse(rawResult.EncUserResponse)
+	if err != nil {
+		return fmt.Errorf("could not decrypt response for %s call - %w", method, err)
+	}
+
+	// We decode the UserResponse but keep the result as a json object
+	// this method returns the user error if any and the result encoded as json.
+	decodedResult, decodedError := responses.DecodeResponse[json.RawMessage](decrypted)
+
+	// If there is a user error that was decrypted we return it
+	if decodedError != nil {
+		// EstimateGas and Call methods return EVM Errors that are json objects
+		// and contain multiple keys that normally do not get serialized
+		if method == EstimateGas || method == Call {
+			var result errutil.EVMSerialisableError
+			err = json.Unmarshal([]byte(decodedError.Error()), &result)
+			if err != nil {
+				return err
+			}
+			// Return the evm user error.
+			return result
+		}
+
+		// Return the user error.
+		return decodedError
+	}
+
+	// We get the bytes behind the raw json object.
+	// note that RawJson messages simply return the bytes
+	// and never error.
+	resultBytes, _ := decodedResult.MarshalJSON()
+
+	// We put the raw json in the passed result object.
+	// This works for structs, strings, integers and interface types.
+	err = json.Unmarshal(resultBytes, result)
+	if err != nil {
+		return fmt.Errorf("could not populate the response object with the json_rpc result. Cause: %w", err)
+	}
+
+	return nil
+}
+
 func (c *EncRPCClient) executeRPCCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	if ctx == nil {
 		return c.obscuroClient.Call(result, method, args...)
@@ -311,14 +345,6 @@ func (c *EncRPCClient) encryptParamBytes(params []byte) ([]byte, error) {
 		return nil, fmt.Errorf("could not encrypt the following request params with enclave public key: %s. Cause: %w", params, err)
 	}
 	return encryptedParams, nil
-}
-
-func (c *EncRPCClient) decryptHexString(resultBlob interface{}) ([]byte, error) {
-	resultStr, ok := resultBlob.(string)
-	if !ok {
-		return nil, fmt.Errorf("expected hex string but result was of type %t instead, with value %s", resultBlob, resultBlob)
-	}
-	return c.decryptResponse(gethcommon.Hex2Bytes(resultStr))
 }
 
 func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {

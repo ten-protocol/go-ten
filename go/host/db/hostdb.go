@@ -37,6 +37,7 @@ type DB struct {
 
 // Stop is especially important for graceful shutdown of LevelDB as it may flush data to disk that is currently in cache
 func (db *DB) Stop() error {
+	db.logger.Info("Closing the host DB.")
 	err := db.kvStore.Close()
 	if err != nil {
 		return err
@@ -71,7 +72,7 @@ func NewInMemoryDB(regMetrics gethmetrics.Registry, logger gethlog.Logger) *DB {
 func NewLevelDBBackedDB(dbPath string, regMetrics gethmetrics.Registry, logger gethlog.Logger) (*DB, error) {
 	var err error
 	if dbPath == "" {
-		// todo: remove this option before prod
+		// todo (#1618) - we should remove this option before prod, if you want a temp DB it should be wired in via the config
 		dbPath, err = os.MkdirTemp("", "leveldb_*")
 		if err != nil {
 			return nil, fmt.Errorf("could not create temp leveldb directory - %w", err)
@@ -85,7 +86,7 @@ func NewLevelDBBackedDB(dbPath string, regMetrics gethmetrics.Registry, logger g
 		dbDesc = "existing"
 	}
 
-	// todo these should be configs
+	// todo (#1618) - these should be configs
 	cache := 128
 	handles := 128
 	db, err := leveldb.New(dbPath, cache, handles, "host", false)

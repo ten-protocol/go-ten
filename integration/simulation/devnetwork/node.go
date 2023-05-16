@@ -120,6 +120,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1StartHash:               n.l1Data.ObscuroStartBlock,
 		UseInMemoryDB:             false,
 		LevelDBPath:               n.hostDBFilepath,
+		DebugNamespaceEnabled:     true,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.operatorIdx, log.CmpKey, log.HostCmp)
@@ -143,7 +144,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 	hostPort := n.config.PortStart + integration.DefaultHostP2pOffset + n.operatorIdx
 	hostAddr := fmt.Sprintf("%s:%d", network.Localhost, hostPort)
 
-	enclaveConfig := config.EnclaveConfig{
+	enclaveConfig := &config.EnclaveConfig{
 		HostID:                    getHostID(n.operatorIdx),
 		SequencerID:               getHostID(0),
 		HostAddress:               hostAddr,
@@ -160,6 +161,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		MessageBusAddress:         *n.l1Data.MessageBusAddr,
 		SqliteDBPath:              n.enclaveDBFilepath,
 		Cadence:                   10,
+		DebugNamespaceEnabled:     true,
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }

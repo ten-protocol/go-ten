@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 	"testing"
 	"time"
 
@@ -68,8 +69,9 @@ func TestBlockProviderHappyPath_HistoricThenStream(t *testing.T) {
 func setupBlockProvider(mockEthClient EthClient) EthBlockProvider {
 	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut, log.NodeIDKey, "test")
 	blockProvider := EthBlockProvider{
-		ethClient: mockEthClient,
-		logger:    logger,
+		ethClient:  mockEthClient,
+		logger:     logger,
+		healthLock: &sync.Mutex{},
 	}
 	return blockProvider
 }
@@ -167,32 +169,26 @@ func (e *ethClientMock) BlockByNumber(num *big.Int) (*types.Block, error) {
 }
 
 func (e *ethClientMock) BlockNumber() (uint64, error) {
-	// TODO implement me
 	panic("implement me")
 }
 
 func (e *ethClientMock) SendTransaction(signedTx *types.Transaction) error {
-	// TODO implement me
 	panic("implement me")
 }
 
 func (e *ethClientMock) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {
-	// TODO implement me
 	panic("implement me")
 }
 
 func (e *ethClientMock) Nonce(address gethcommon.Address) (uint64, error) {
-	// TODO implement me
 	panic("implement me")
 }
 
 func (e *ethClientMock) BalanceAt(account gethcommon.Address, blockNumber *big.Int) (*big.Int, error) {
-	// TODO implement me
 	panic("implement me")
 }
 
 func (e *ethClientMock) Info() Info {
-	// TODO implement me
 	panic("implement me")
 }
 
@@ -205,27 +201,22 @@ func (e *ethClientMock) FetchHeadBlock() (*types.Block, error) {
 }
 
 func (e *ethClientMock) BlocksBetween(block *types.Block, head *types.Block) []*types.Block {
-	// TODO implement me
 	panic("implement me")
 }
 
 func (e *ethClientMock) IsBlockAncestor(block *types.Block, proof common.L1BlockHash) bool {
-	// TODO implement me
 	panic("implement me")
 }
 
 func (e *ethClientMock) CallContract(msg ethereum.CallMsg) ([]byte, error) {
-	// TODO implement me
 	panic("implement me")
 }
 
 func (e *ethClientMock) Stop() {
-	// TODO implement me
 	panic("implement me")
 }
 
 func (e *ethClientMock) EthClient() *ethclient.Client {
-	// TODO implement me
 	panic("implement me")
 }
 

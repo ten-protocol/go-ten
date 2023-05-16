@@ -150,6 +150,7 @@ func ensureVolumeExists(cli *client.Client, volumeName string) (*types.Volume, e
 	}
 	for _, v := range allVolumes.Volumes {
 		if v.Name == volumeName {
+			fmt.Printf("Volume %s found - reusing existing volume! \n", volumeName)
 			return v, nil
 		}
 	}
@@ -158,7 +159,7 @@ func ensureVolumeExists(cli *client.Client, volumeName string) (*types.Volume, e
 		Driver: "local",
 		Name:   volumeName,
 	})
-	fmt.Println("volume not found in docker, created: ", volumeName)
+	fmt.Println("Volume not found in docker, created: ", volumeName)
 	return &vol, err
 }
 

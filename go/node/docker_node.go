@@ -12,19 +12,16 @@ import (
 var (
 	_hostDataDir    = "/data"        // this is how the directory is referenced within the host container
 	_enclaveDataDir = "/enclavedata" // this is how the directory is references within the enclave container
-
-	// these mounts are created if they don't exist by the `StartNewContainer` function
-	_defaultHostMount = map[string]string{"host-persistence": _hostDataDir} // used for host database
 )
 
 type DockerNode struct {
 	cfg *Config
 }
 
-func NewDockerNode(cfg *Config) (*DockerNode, error) {
+func NewDockerNode(cfg *Config) *DockerNode {
 	return &DockerNode{
 		cfg: cfg,
-	}, nil // todo: add config validation
+	}
 }
 
 func (d *DockerNode) Start() error {
@@ -49,10 +46,7 @@ func (d *DockerNode) Start() error {
 	return nil
 }
 
-func (d *DockerNode) Upgrade() error {
-	// TODO this should probably be removed in the future
-	fmt.Printf("Upgrading node %s with config: %+v\n", d.cfg.nodeName, d.cfg)
-
+func (d *DockerNode) Stop() error {
 	fmt.Println("Stopping existing host and enclave")
 	err := docker.StopAndRemove(d.cfg.nodeName + "-host")
 	if err != nil {
@@ -63,6 +57,25 @@ func (d *DockerNode) Upgrade() error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (d *DockerNode) Upgrade(networkCfg *NetworkConfig) error {
+	// TODO this should probably be removed in the future
+	fmt.Printf("Upgrading node %s with config: %+v\n", d.cfg.nodeName, d.cfg)
+
+	err := d.Stop()
+	if err != nil {
+		return err
+	}
+
+	// update network configs
+	d.cfg.UpdateNodeConfig(
+		WithManagementContractAddress(networkCfg.ManagementContractAddress),
+		WithManagementContractAddress(networkCfg.MessageBusAddress),
+		WithL1Start(networkCfg.L1StartHash),
+	)
 
 	fmt.Println("Starting upgraded host and enclave")
 	err = d.startEnclave()
@@ -99,6 +112,7 @@ func (d *DockerNode) startHost() error {
 		"-clientRPCPortWs", fmt.Sprintf("%d", d.cfg.hostWSPort),
 		// host persistence hardcoded to use /data dir within the container, this needs to be mounted
 		fmt.Sprintf("-useInMemoryDB=%t", d.cfg.hostInMemDB),
+		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
 	}
 	if !d.cfg.hostInMemDB {
 		cmd = append(cmd, "-levelDBPath", _hostDataDir)
@@ -110,7 +124,9 @@ func (d *DockerNode) startHost() error {
 		d.cfg.hostP2PPort,
 	}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil, _defaultHostMount)
+	hostVolume := map[string]string{d.cfg.nodeName + "-host-volume": _hostDataDir}
+
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-host", d.cfg.hostImage, cmd, exposedPorts, nil, nil, hostVolume)
 
 	return err
 }
@@ -153,6 +169,7 @@ func (d *DockerNode) startEnclave() error {
 		"-useInMemoryDB=false",
 		"-logPath", "sys_out",
 		"-logLevel", fmt.Sprintf("%d", log.LvlInfo),
+		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
 	)
 
 	if d.cfg.sgxEnabled {
@@ -173,7 +190,9 @@ func (d *DockerNode) startEnclave() error {
 		)
 	}
 
-	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, getEnclaveVolumesConf(d.cfg.hostID))
+	enclaveVolume := map[string]string{d.cfg.nodeName + "-enclave-volume": _enclaveDataDir}
+
+	_, err := docker.StartNewContainer(d.cfg.nodeName+"-enclave", d.cfg.enclaveImage, cmd, exposedPorts, envs, devices, enclaveVolume)
 	return err
 }
 
@@ -200,15 +219,4 @@ func (d *DockerNode) startEdgelessDB() error {
 	_, err := docker.StartNewContainer(d.cfg.nodeName+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, nil)
 
 	return err
-}
-
-func (d *DockerNode) SetNetworkConfig(networkCfg *NetworkConfig) {
-	d.cfg.managementContractAddr = networkCfg.ManagementContractAddress
-	d.cfg.messageBusContractAddress = networkCfg.MessageBusAddress
-	d.cfg.l1Start = networkCfg.L1StartHash
-}
-
-// make sure a separate mount is created for every host (so multiple nodes can be run from the same docker system)
-func getEnclaveVolumesConf(hostID string) map[string]string {
-	return map[string]string{"encl-data-" + hostID: _enclaveDataDir}
 }
