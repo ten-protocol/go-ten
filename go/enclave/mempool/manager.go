@@ -30,7 +30,6 @@ type mempoolManager struct {
 	obscuroChainID int64
 	logger         gethlog.Logger
 	mempool        map[gethcommon.Hash]*common.L2Tx
-	pendingAccTxs  map[gethcommon.Address]common.L2Transactions
 }
 
 func New(chainID int64, logger gethlog.Logger) Manager {
