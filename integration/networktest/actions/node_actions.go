@@ -77,6 +77,54 @@ func StartValidatorHost(validatorIdx int) networktest.Action {
 	})
 }
 
+func StopSequencerHost() networktest.Action {
+	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+		fmt.Println("Sequencer: stopping host")
+		sequencer := network.GetSequencerNode()
+		err := sequencer.StopHost()
+		if err != nil {
+			return nil, err
+		}
+		return ctx, nil
+	})
+}
+
+func StartSequencerHost() networktest.Action {
+	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+		fmt.Println("Sequencer: starting host")
+		sequencer := network.GetSequencerNode()
+		err := sequencer.StartHost()
+		if err != nil {
+			return nil, err
+		}
+		return ctx, nil
+	})
+}
+
+func StopSequencerEnclave() networktest.Action {
+	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+		fmt.Println("Sequencer: stopping enclave")
+		sequencer := network.GetSequencerNode()
+		err := sequencer.StopEnclave()
+		if err != nil {
+			return nil, err
+		}
+		return ctx, nil
+	})
+}
+
+func StartSequencerEnclave() networktest.Action {
+	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+		fmt.Println("Sequencer: starting enclave")
+		sequencer := network.GetSequencerNode()
+		err := sequencer.StartEnclave()
+		if err != nil {
+			return nil, err
+		}
+		return ctx, nil
+	})
+}
+
 func WaitForValidatorHealthCheck(validatorIdx int, maxWait time.Duration) networktest.Action {
 	return &waitForValidatorHealthCheckAction{
 		validatorIdx: validatorIdx,
@@ -94,7 +142,7 @@ func (w *waitForValidatorHealthCheckAction) Run(ctx context.Context, network net
 	// poll the health check until success or timeout
 	err := retry.Do(func() error {
 		return networktest.NodeHealthCheck(validator.HostRPCAddress())
-	}, retry.NewTimeoutStrategy(30*time.Second, 1*time.Second))
+	}, retry.NewTimeoutStrategy(w.maxWait, 1*time.Second))
 	if err != nil {
 		return nil, err
 	}
@@ -103,4 +151,18 @@ func (w *waitForValidatorHealthCheckAction) Run(ctx context.Context, network net
 
 func (w *waitForValidatorHealthCheckAction) Verify(_ context.Context, _ networktest.NetworkConnector) error {
 	return nil
+}
+
+func WaitForSequencerHealthCheck(maxWait time.Duration) networktest.Action {
+	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+		sequencer := network.GetSequencerNode()
+		// poll the health check until success or timeout
+		err := retry.Do(func() error {
+			return networktest.NodeHealthCheck(sequencer.HostRPCAddress())
+		}, retry.NewTimeoutStrategy(maxWait, 1*time.Second))
+		if err != nil {
+			return nil, err
+		}
+		return ctx, nil
+	})
 }

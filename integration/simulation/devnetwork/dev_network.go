@@ -152,7 +152,7 @@ func (s *InMemDevNetwork) CleanUp() {
 	go func() {
 		err := s.obscuroSequencer.Stop()
 		if err != nil {
-			panic(err)
+			fmt.Println("failed to stop sequencer", err.Error())
 		}
 	}()
 	go s.l1Network.Stop()
