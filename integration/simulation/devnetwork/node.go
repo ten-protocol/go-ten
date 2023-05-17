@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
@@ -121,6 +122,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		UseInMemoryDB:             false,
 		LevelDBPath:               n.hostDBFilepath,
 		DebugNamespaceEnabled:     true,
+		BatchInterval:             1 * time.Second,
+		RollupInterval:            5 * time.Second,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.operatorIdx, log.CmpKey, log.HostCmp)
