@@ -63,7 +63,7 @@ func checkTransactionsInjected(t *testing.T, s *Simulation) {
 	if len(s.TxInjector.TxTracker.TransferL2Transactions) < txThreshold {
 		t.Errorf("Simulation only issued %d transfer L2 transactions. At least %d expected", len(s.TxInjector.TxTracker.TransferL2Transactions), txThreshold)
 	}
-	//TODO: Reenable when old contract deployer phased out.
+	// todo (@stefan) - reenable when old contract deployer phased out.
 	/*if len(s.TxInjector.TxTracker.WithdrawalL2Transactions) < txThreshold {
 		t.Errorf("Simulation only issued %d withdrawal L2 transactions. At least %d expected", len(s.TxInjector.TxTracker.WithdrawalL2Transactions), txThreshold)
 	}*/
@@ -145,7 +145,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: Found Rollup duplicates: %v", nodeIdx, dups)
 	}
 
-	/* TODO: Reenable while old contract deployer is phased out.
+	/* todo (@stefan) - reenable while old contract deployer is phased out.
 	if s.Stats.TotalDepositedAmount.Cmp(totalDeposited) != 0 {
 		t.Errorf("Node %d: Deposit[%d] amounts don't match. Found %d , expected %d", nodeIdx, len(deposits), totalDeposited, s.Stats.TotalDepositedAmount)
 	}
@@ -286,7 +286,7 @@ func ExtractDataFromEthereumChain(
 
 			switch l1tx := t.(type) {
 			case *ethadapter.L1DepositTx:
-				// TODO: Remove this hack once the old integrated bridge is removed.
+				// todo (@stefan) - remove this hack once the old integrated bridge is removed.
 				deposits = append(deposits, tx.Hash())
 				totalDeposited.Add(totalDeposited, l1tx.Amount)
 				successfulDeposits++
@@ -298,7 +298,7 @@ func ExtractDataFromEthereumChain(
 				rollups = append(rollups, r)
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
-					// todo - once logic is added to the l1 - this can be made into a check
+					// todo (@tudor) - once logic is added to the l1 - this can be made into a check
 					s.Stats.NewRollup(nodeIdx)
 				}
 			}
@@ -403,11 +403,11 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		total.Add(total, bal)
 	}
 
-	/* TODO: Reenable following check once old contract deployer is phased out.
+	/* todo (@stefan) - reenable following check once old contract deployer is phased out.
 	if total.Cmp(totalAmountInSystem) != 0 {
 		t.Errorf("Node %d: The amount of money in accounts does not match the amount deposited. Found %d , expected %d", nodeIdx, total, totalAmountInSystem)
 	} */
-	// TODO Check that processing transactions in the order specified in the list results in the same balances
+	// todo (@stefan) - check that processing transactions in the order specified in the list results in the same balances
 	// (execute deposits and transactions and compare to the state in the rollup)
 
 	heights[nodeIdx] = l2Height.Uint64()

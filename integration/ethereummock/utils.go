@@ -10,7 +10,7 @@ import (
 )
 
 // findNotIncludedTxs - given a list of transactions, it keeps only the ones that were not included in the block
-// todo - inefficient
+// todo (#1491) - inefficient
 func findNotIncludedTxs(head *types.Block, txs []*types.Transaction, r db.BlockResolver, db TxDB) []*types.Transaction {
 	included := allIncludedTransactions(head, r, db)
 	return removeExisting(txs, included)

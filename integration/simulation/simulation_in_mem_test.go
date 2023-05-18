@@ -18,14 +18,14 @@ import (
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupSimTestLog("in-mem")
 
-	// TODO - #718 - Try increasing this back to 7 once faster-finality model is optimised.
+	// todo (#718) - try increasing this back to 7 once faster-finality model is optimised
 	numberOfNodes := 5
 	numberOfSimWallets := 10
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := params.SimParams{
 		NumberOfNodes: numberOfNodes,
-		// TODO - #718 - Try reducing this back to 50 milliseconds once faster-finality model is optimised.
+		//  todo (#718) - try reducing this back to 50 milliseconds once faster-finality model is optimised
 		AvgBlockDuration:          250 * time.Millisecond,
 		SimulationTime:            30 * time.Second,
 		L1EfficiencyThreshold:     0.2,

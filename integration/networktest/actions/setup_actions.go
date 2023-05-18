@@ -22,7 +22,7 @@ func (c *CreateTestUser) String() string {
 func (c *CreateTestUser) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 	logger := testlog.Logger()
 	wal := datagenerator.RandomWallet(integration.ObscuroChainID)
-	// traffic sim users are round robin-ed onto the validators for now (todo: make that overridable)
+	// traffic sim users are round robin-ed onto the validators for now (todo (@matt) - make that overridable)
 	user := userwallet.NewUserWallet(wal.PrivateKey(), network.ValidatorRPCAddress(c.UserID%network.NumValidators()), logger)
 	return storeTestUser(ctx, c.UserID, user), nil
 }

@@ -105,7 +105,7 @@ func (p *Persistence) LoadViewingKeys() map[common.Address]*rpc.ViewingKey {
 	}
 
 	for _, record := range records {
-		// TODO - Determine strategy for invalid persistence entries - delete? Warn? Shutdown? For now, we log a warning.
+		// todo (@ziga) - determine strategy for invalid persistence entries - delete? Warn? Shutdown? For now, we log a warning.
 		if len(record) != persistenceNumComponents {
 			p.logger.Warn(fmt.Sprintf("persistence file entry did not have expected number of components: %s", record))
 			continue

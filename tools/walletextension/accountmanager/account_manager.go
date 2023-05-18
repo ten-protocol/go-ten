@@ -40,7 +40,7 @@ const (
 // account to use to send a request when multiple are registered
 type AccountManager struct {
 	unauthedClient rpc.Client
-	// TODO - Create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
+	// todo (@ziga) - create two types of clients - WS clients, and HTTP clients - to not create WS clients unnecessarily.
 	accountClients map[gethcommon.Address]*rpc.EncRPCClient // An encrypted RPC client per registered account
 	logger         gethlog.Logger
 }
@@ -78,7 +78,7 @@ const emptyFilterCriteria = "[]" // This is the value that gets passed for an em
 // determine the client based on the topics
 // if none is found use the first client and assume this is a lifecycle method
 func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) (rpc.Client, error) {
-	var client rpc.Client //= m.unauthedClient // todo - support lifecycle events through an unauthed client
+	var client rpc.Client //= m.unauthedClient // todo (@ziga) - support lifecycle events through an unauthed client
 
 	// by default use the first client for lifecycle events
 	for _, c := range m.accountClients {
@@ -130,7 +130,7 @@ func (m *AccountManager) executeCall(rpcReq *RPCRequest, rpcResp *interface{}) e
 
 	switch {
 	case suggestedClient != nil: // use the suggested client if there is one
-		// todo: if we have a suggested client, should we still loop through the other clients if it fails?
+		// todo (@ziga) - if we have a suggested client, should we still loop through the other clients if it fails?
 		// 		The call data guessing won't often be wrong but there could be edge-cases there
 		return submitCall(suggestedClient, rpcReq, rpcResp)
 
@@ -183,12 +183,6 @@ func (m *AccountManager) suggestAccountClient(req *RPCRequest, accClients map[ge
 			return accClients[*addr]
 		}
 	}
-
-	// TODO - #1016 - Use the first topic to determine which account to make a log subscription or get logs request from.
-	//  Currently, the request is attempted on all clients.
-
-	// todo: add other mechanisms for determining the correct account to use. E.g. we may want to start caching and
-	// 	 	recent transaction hashes for accounts so that receipt lookups know which acc to use
 
 	return nil
 }

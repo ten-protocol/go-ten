@@ -78,7 +78,7 @@ func NewWalletExtension(config Config, logger gethlog.Logger) *WalletExtension {
 	// We reload the existing viewing keys from persistence.
 	for accountAddr, viewingKey := range walletExtension.persistence.LoadViewingKeys() {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
-		// TODO - Create the clients lazily, to reduce connections to the host.
+		// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
 		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey, logger)
 		if err != nil {
 			logger.Error(fmt.Sprintf("failed to create encrypted RPC client for persisted account %s", accountAddr), log.ErrKey, err)
@@ -254,7 +254,7 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 	} else {
 		respMap[common.JSONKeyResult] = rpcResp
 
-		// TODO fix this upstream on the decode
+		// todo (@ziga) - fix this upstream on the decode
 		// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-658.md
 		adjustStateRoot(rpcResp, respMap)
 	}
@@ -403,7 +403,7 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 
 	vk.SignedKey = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
-	// TODO - Create the clients lazily, to reduce connections to the host.
+	// todo (@ziga) - create the clients lazily, to reduce connections to the host.
 	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk, we.logger)
 	if err != nil {
 		userConn.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))

@@ -14,7 +14,7 @@ PUB_KEY_TWO_ADDR="0x2B5AD5c4795c026514f8317c7a215E218DcCD6cF"
 # additional pre-funded address in the Geth network.
 PUB_KEY_THREE_ADDR="0x6813Eb9362372EEF6200f3b1dbC3f819671cBA69"
 
-# TODO - Use real bridge ERC20 contract addresses.
+# todo (@pedro) - Use real bridge ERC20 contract addresses.
 BRIDGE_ERC20_PLACEHOLDER="bad,bad"
 
 go-obscuro/integration/gethnetwork/main/geth --numNodes=2 --startPort=12000 --websocketStartPort=12100 --prefundedAddrs=$PUB_KEY_ONE_ADDR,$PUB_KEY_TWO_ADDR,$PUB_KEY_THREE_ADDR > ./run_logs.txt 2>&1 &

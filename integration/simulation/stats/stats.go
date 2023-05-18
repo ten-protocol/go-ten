@@ -11,7 +11,6 @@ import (
 )
 
 // Stats - collects information during the simulation. It can be checked programmatically.
-// Todo - this is a temporary placeholder until we introduce a proper metrics framework like prometheus
 type Stats struct {
 	NrMiners int
 
@@ -23,7 +22,6 @@ type Stats struct {
 	NoL1Reorgs  map[gethcommon.Address]int
 	NoL2Recalcs map[gethcommon.Address]int
 	NoL2Blocks  map[int]uint64
-	// todo - actual avg block Duration
 
 	TotalDepositedAmount           *big.Int
 	TotalWithdrawalRequestedAmount *big.Int
