@@ -61,7 +61,7 @@ func (re *rollupProducerImpl) fetchLatestRollup() (*core.Rollup, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getLatestRollupBeforeBlock(b, re.storage)
+	return getLatestRollupBeforeBlock(b, re.storage, re.logger)
 }
 
 func (re *rollupProducerImpl) CreateRollup() (*core.Rollup, error) {
@@ -126,7 +126,7 @@ func createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
 }
 
 // getLatestRollupBeforeBlock - Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
-func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage) (*core.Rollup, error) {
+func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage, logger gethlog.Logger) (*core.Rollup, error) {
 	for {
 		blockParentHash := block.ParentHash()
 		latestRollup, err := storage.FetchHeadRollupForBlock(&blockParentHash)
@@ -151,5 +151,7 @@ func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage) (*cor
 			}
 			return nil, fmt.Errorf("could not fetch parent block - %w", err)
 		}
+		// if we are scanning backwards (when we don't think we need to, and it might be expensive) we want to know about it
+		logger.Info("Scanning backwards for rollup, trying prev block", "height", block.Number(), "hash", block.Hash().Hex())
 	}
 }
