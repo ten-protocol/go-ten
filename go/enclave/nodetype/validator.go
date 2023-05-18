@@ -121,15 +121,16 @@ func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool
 		return nil, err
 	}
 
-	rollups, err := val.rollupConsumer.ProcessL1Block(br)
+	rollup, err := val.rollupConsumer.ProcessL1Block(br)
 	if err != nil {
 		// todo - log err?
 		val.logger.Error("Encountered error processing l1 block", log.ErrKey, err)
 		return ingestion, nil
 	}
 
-	for _, rollup := range rollups {
-		if err := val.verifyRollup(rollup); err != nil {
+	if rollup != nil {
+		// read batch data from rollup, verify and store it
+		if err = val.verifyRollup(rollup); err != nil {
 			return nil, err
 		}
 	}

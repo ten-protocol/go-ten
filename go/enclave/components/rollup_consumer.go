@@ -50,8 +50,8 @@ func NewRollupConsumer(
 	}
 }
 
-func (rc *rollupConsumerImpl) ProcessL1Block(b *common.BlockAndReceipts) ([]*core.Rollup, error) {
-	return rc.processRollups(b)
+func (rc *rollupConsumerImpl) ProcessL1Block(b *common.BlockAndReceipts) (*core.Rollup, error) {
+	return rc.processRollup(b)
 }
 
 // extractRollups - returns a list of the rollups published in this block
@@ -101,9 +101,9 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts, blockR
 	return rollups
 }
 
-// Validates and stores the rollup in a given block.
-// todo (#718) - design a mechanism to detect a case where the rollups never contain any batches (despite batches arriving via P2P)
-func (rc *rollupConsumerImpl) processRollups(br *common.BlockAndReceipts) ([]*core.Rollup, error) {
+// Validates and stores the rollup in a given block. Returns nil, nil when no rollup was found.
+// todo (#718) - design a mechanism to detect a case where the rollup doesn't contain any batches (despite batches arriving via P2P)
+func (rc *rollupConsumerImpl) processRollup(br *common.BlockAndReceipts) (*core.Rollup, error) {
 	block := br.Block
 
 	latestRollup, err := getLatestRollupBeforeBlock(block, rc.storage, rc.logger)
@@ -119,51 +119,49 @@ func (rc *rollupConsumerImpl) processRollups(br *common.BlockAndReceipts) ([]*co
 	}
 
 	if len(rollups) == 0 {
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 
-	validRollups := make([]*core.Rollup, 0)
-
+	var signedRollup *core.Rollup
 	blockHash := block.Hash()
+
+	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
 	for _, rollup := range rollups {
 		if err = rc.verifier.CheckSequencerSignature(rollup.Hash(), &rollup.Header.Agg, rollup.Header.R, rollup.Header.S); err != nil {
 			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
-
-		if !rollup.IsGenesis() {
-			if err = rc.checkRollupsCorrectlyChained(rollup, latestRollup); err != nil {
-				rc.logger.Warn("Rollup was not correctly chained",
-					"height", rollup.NumberU64(), "hash", rollup.Hash(), log.ErrKey, err)
-				// we need to check the other rollups in this block still otherwise a correct one could get missed
-				continue
-			}
+		if signedRollup != nil {
+			// todo (@matt) - make sure this can't be used to DOS the network
+			// we should never receive multiple signed rollups in a single block, the host should only ever publish one
+			return nil, fmt.Errorf("received multiple signed rollups in single block %s", blockHash)
 		}
-
-		// todo (@matt) - store batches from the rollup (important during catch-up)
-
-		// rollup has been verified as the next valid rollup. If there are more rollups to process then we build then on top of this one
-		validRollups = append(validRollups, rollup)
-		latestRollup = rollup
-		if err = rc.storage.StoreRollup(rollup); err != nil {
-			// todo (@matt) - this seems catastrophic, how do we recover the lost rollup in this case?
-			return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
-		}
+		signedRollup = rollup
 	}
-	if len(validRollups) == 0 {
-		// no valid rollups were found in this block
-		return nil, nil
+	if signedRollup == nil {
+		return nil, nil //nolint:nilnil
+	}
+
+	if err = rc.checkRollupsCorrectlyChained(signedRollup, latestRollup); err != nil {
+		rc.logger.Warn("Rollup was not correctly chained",
+			"height", signedRollup.NumberU64(), "hash", signedRollup.Hash(), log.ErrKey, err)
+	}
+
+	// todo (@matt) - store batches from the rollup (important during catch-up)
+
+	if err = rc.storage.StoreRollup(signedRollup); err != nil {
+		// todo (@matt) - this seems catastrophic, how do we recover the lost rollup in this case?
+		return nil, fmt.Errorf("could not store rollup. Cause: %w", err)
 	}
 
 	// we record the latest rollup published against this L1 block hash
-	rollupHash := latestRollup.Header.Hash()
-
+	rollupHash := signedRollup.Header.Hash()
 	err = rc.storage.UpdateHeadRollup(&blockHash, &rollupHash)
 	if err != nil {
 		// todo (@matt) - this also seems catastrophic, would result in bad state unable to ingest further rollups?
 		return nil, fmt.Errorf("unable to update head rollup - %w", err)
 	}
 
-	return validRollups, nil
+	return signedRollup, nil
 }
 
 // Checks that the rollup:
@@ -171,6 +169,10 @@ func (rc *rollupConsumerImpl) processRollups(br *common.BlockAndReceipts) ([]*co
 //   - Links to the previous rollup by hash
 //   - Has a first batch whose parent is the head batch of the previous rollup
 func (rc *rollupConsumerImpl) checkRollupsCorrectlyChained(rollup *core.Rollup, previousRollup *core.Rollup) error {
+	if previousRollup == nil {
+		// genesis rollup has no previous rollup to check
+		return nil
+	}
 	if rollup.NumberU64()-previousRollup.NumberU64() > 1 {
 		return fmt.Errorf("found gap in rollups between rollup %d and rollup %d",
 			previousRollup.NumberU64(), rollup.NumberU64())

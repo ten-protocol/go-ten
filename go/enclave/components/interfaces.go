@@ -130,8 +130,8 @@ type RollupProducer interface {
 }
 
 type RollupConsumer interface {
-	// ProcessL1Block - extracts the rollups from the block's transactions
-	// and verifies their integrity, saving and processing any batches that have
-	// not been seenp previously.
-	ProcessL1Block(b *common.BlockAndReceipts) ([]*core.Rollup, error)
+	// ProcessL1Block - extracts the rollup from the block's transactions
+	// and verifies its integrity, saving and processing any batches that have
+	// not been seen previously.
+	ProcessL1Block(b *common.BlockAndReceipts) (*core.Rollup, error)
 }
