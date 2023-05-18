@@ -350,13 +350,12 @@ jobs:
     needs:
       - check-obscuro-is-healthy
     steps:
-      - name: Set the trigger name based on the testnet type
-        env:
-          TRIGGER: ${{ github.event.inputs.testnet_type }}
+      - name: 'Trigger Faucet deployment for testnet on a new deployment'
+        if: ${{ (github.event.inputs.testnet_type == 'testnet') }}
         run: |
-          TRIGGER=${TRIGGER/-/_}_deployed
-          echo TRIGGER=${TRIGGER} >> $GITHUB_ENV 
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/faucet/dispatches --data '{ "event_type": "testnet-deployed", "client_payload": { "ref": "${{ github.ref }}" }'
 
-      - name: 'Trigger Faucet deployment'
+      - name: 'Trigger Faucet deployment for dev-testnet on a new deployment'
+        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
         run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/faucet/dispatches --data '{ "event_type": "${{ env.TRIGGER }}", "client_payload": { "ref": "${{ github.ref }}", "event": "${{ github.event_name }}" }'
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/faucet/dispatches --data '{ "event_type": "dev-testnet-deployed", "client_payload": { "ref": "${{ github.ref }}" }'
