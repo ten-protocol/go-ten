@@ -142,8 +142,8 @@ func (rc *rollupConsumerImpl) processRollup(br *common.BlockAndReceipts) (*core.
 	}
 
 	if err = rc.checkRollupsCorrectlyChained(signedRollup, latestRollup); err != nil {
-		rc.logger.Warn("Rollup was not correctly chained",
-			"height", signedRollup.NumberU64(), "hash", signedRollup.Hash(), log.ErrKey, err)
+		return nil, fmt.Errorf("rollup was not correctly chained. height=%d hash=%d Cause: %w",
+			signedRollup.NumberU64(), signedRollup.Hash(), err)
 	}
 
 	// todo (@matt) - store batches from the rollup (important during catch-up)
