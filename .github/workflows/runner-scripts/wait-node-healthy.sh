@@ -54,6 +54,8 @@ fi
 net_status=""
 time=0
 
+echo "Running health check against http://${host}:${port}"
+
 while ! [[ $net_status = *\"OverallHealth\":true* ]]
 do
     net_status=$(curl --request POST "http://${host}:${port}" \
@@ -61,8 +63,8 @@ do
                  --data-raw '{ "method":"obscuro_health", "params":null, "id":1, "jsonrpc":"2.0" }') || true
     echo $net_status
 
-    sleep 1
-    ((time=time+1))
+    sleep 2
+    ((time=time+2))
 
     if [[ $time == $timeout ]] ;
     then

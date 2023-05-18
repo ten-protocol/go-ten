@@ -36,12 +36,12 @@ const (
 )
 
 type Debugger struct {
-	chain       *l2chain.ObscuroChain
+	chain       l2chain.ObscuroChain
 	storage     db.Storage
 	chainConfig *params.ChainConfig
 }
 
-func New(chain *l2chain.ObscuroChain, storage db.Storage, config *params.ChainConfig) *Debugger {
+func New(chain l2chain.ObscuroChain, storage db.Storage, config *params.ChainConfig) *Debugger {
 	return &Debugger{
 		chain:       chain,
 		chainConfig: config,
@@ -97,6 +97,7 @@ func (d *Debugger) DebugTraceTransaction(ctx context.Context, txHash gethcommon.
 // traceTx configures a new tracer according to the provided configuration, and
 // executes the given message in the provided environment. The return value will
 // be tracer dependent.
+//
 //nolint:revive
 func (d *Debugger) traceTx(ctx context.Context, message core.Message, txctx *gethtracers.Context, vmctx vm.BlockContext, statedb *state.StateDB, config *tracers.TraceConfig) (json.RawMessage, error) {
 	// Assemble the structured logger or the JavaScript tracer

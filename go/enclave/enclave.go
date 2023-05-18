@@ -8,6 +8,19 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/components"
+	"github.com/obscuronet/go-obscuro/go/enclave/nodetype"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
+	"github.com/obscuronet/go-obscuro/go/responses"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -17,7 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -26,20 +38,16 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/syserr"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
-	"github.com/obscuronet/go-obscuro/go/enclave/rollupmanager"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
-	"github.com/obscuronet/go-obscuro/go/responses"
 
 	_ "github.com/obscuronet/go-obscuro/go/common/tracers/native" // make sure the tracers are loaded
 
@@ -51,17 +59,21 @@ import (
 )
 
 type enclaveImpl struct {
-	config               config.EnclaveConfig
+	config               *config.EnclaveConfig
 	storage              db.Storage
 	blockResolver        db.BlockResolver
-	mempool              mempool.Manager
 	l1Blockchain         *gethcore.BlockChain
 	rpcEncryptionManager rpc.EncryptionManager
-	rollupManager        rollupmanager.RollupManager
 	subscriptionManager  *events.SubscriptionManager
 	crossChainProcessors *crosschain.Processors
 
-	chain *l2chain.ObscuroChain
+	chain    l2chain.ObscuroChain
+	service  nodetype.NodeType
+	registry components.BatchRegistry
+
+	// todo (#627) - use the ethconfig.Config instead
+	GlobalGasCap uint64   //         5_000_000_000, // todo (#627) - make config
+	BaseFee      *big.Int //              gethcommon.Big0,
 
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
@@ -81,7 +93,7 @@ type enclaveImpl struct {
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
 func NewEnclave(
-	config config.EnclaveConfig,
+	config *config.EnclaveConfig,
 	genesis *genesis.Genesis,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	logger gethlog.Logger,
@@ -168,37 +180,49 @@ func NewEnclave(
 
 	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl(logger)
 
-	memp := mempool.New(config.ObscuroChainID)
+	memp := mempool.New(config.ObscuroChainID, logger)
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
-	chain := l2chain.New(
-		config.HostID,
-		config.NodeType,
+
+	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, logger)
+	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, logger)
+	registry := components.NewBatchRegistry(storage, logger)
+	rProducer := components.NewRollupProducer(transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
+	sigVerifier := components.NewSignatureValidator(config.SequencerID, storage)
+	rConsumer := components.NewRollupConsumer(mgmtContractLib, transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
+
+	var service nodetype.NodeType
+	if config.NodeType == common.Sequencer {
+		service = nodetype.NewSequencer(
+			blockProcessor,
+			producer,
+			registry,
+			rProducer,
+			rConsumer,
+			logger,
+			config.HostID,
+			&chainConfig,
+			enclaveKey,
+			memp,
+			storage,
+			transactionBlobCrypto,
+		)
+	} else {
+		service = nodetype.NewValidator(blockProcessor, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, logger)
+	}
+
+	chain := l2chain.NewChain(
 		storage,
-		l1Blockchain,
-		crossChainProcessors,
-		memp,
-		enclaveKey,
 		&chainConfig,
-		config.SequencerID,
 		genesis,
 		logger,
-	)
-
-	rollupManager := rollupmanager.New(
-		mgmtContractLib,
-		transactionBlobCrypto,
-		config.ObscuroChainID,
-		config.L1ChainID,
-		storage,
-		chain,
-		logger,
+		registry,
 	)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
-	err = chain.ResyncStateDB()
+	err = restoreStateDBCache(storage, producer, genesis, &chainConfig, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
@@ -212,13 +236,10 @@ func NewEnclave(
 		config:                config,
 		storage:               storage,
 		blockResolver:         storage,
-		mempool:               memp,
 		l1Blockchain:          l1Blockchain,
 		rpcEncryptionManager:  rpcEncryptionManager,
-		rollupManager:         rollupManager,
 		subscriptionManager:   subscriptionManager,
 		crossChainProcessors:  crossChainProcessors,
-		chain:                 chain,
 		mgmtContractLib:       mgmtContractLib,
 		attestationProvider:   attestationProvider,
 		enclaveKey:            enclaveKey,
@@ -228,6 +249,13 @@ func NewEnclave(
 		logger:                logger,
 		debugger:              debug,
 		stopControl:           stopcontrol.New(),
+
+		chain:    chain,
+		registry: registry,
+		service:  service,
+
+		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
+		BaseFee:      gethcommon.Big0,
 	}
 }
 
@@ -252,6 +280,80 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 	return nil // The enclave is local so there is no client to stop
 }
 
+func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
+	e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
+	resp := common.StreamL2UpdatesResponse{
+		Batch: batch.ToExtBatch(e.transactionBlobCrypto),
+	}
+	outChannel <- resp
+}
+
+func (e *enclaveImpl) sendEvents(batchHead uint64, outChannel chan common.StreamL2UpdatesResponse) {
+	logs, err := e.subscriptionLogs(big.NewInt(int64(batchHead)))
+	if err != nil {
+		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
+		return
+	}
+	outChannel <- common.StreamL2UpdatesResponse{
+		Logs: logs,
+	}
+}
+
+func (e *enclaveImpl) sendBatchesFromSubscription(from *common.L2BatchHash, l2UpdatesChannel chan common.StreamL2UpdatesResponse) {
+	// TODO - There is a risk that batchChan will
+	// contain duplicates with the search from <-> head.
+	// This is because we subscribe now but if "from"
+	// is provided we get the head later.
+	batchChan, err := e.registry.Subscribe(from)
+	if err != nil {
+		e.logger.Error("Unable to send missing batches", log.ErrKey, err)
+		return
+	}
+
+	for {
+		batch, ok := <-batchChan
+		if !ok {
+			e.logger.Warn("Registry closed batch channel.")
+			break
+		}
+
+		e.sendBatch(batch, l2UpdatesChannel)
+	}
+}
+
+func (e *enclaveImpl) sendEventsFromSubscription(l2UpdatesChannel chan common.StreamL2UpdatesResponse) {
+	eventChan := e.registry.SubscribeForEvents()
+	for {
+		eventsHead, ok := <-eventChan
+		if !ok {
+			e.logger.Warn("Registry closed events channel")
+			break
+		}
+
+		e.sendEvents(eventsHead, l2UpdatesChannel)
+	}
+}
+
+func (e *enclaveImpl) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2UpdatesResponse, func()) {
+	l2UpdatesChannel := make(chan common.StreamL2UpdatesResponse, 100)
+
+	if e.stopControl.IsStopping() {
+		close(l2UpdatesChannel)
+		return l2UpdatesChannel, func() {}
+	}
+
+	if e.config.NodeType == common.Sequencer {
+		go e.sendBatchesFromSubscription(from, l2UpdatesChannel)
+	}
+
+	go e.sendEventsFromSubscription(l2UpdatesChannel)
+
+	return l2UpdatesChannel, func() {
+		e.registry.Unsubscribe()
+		e.registry.UnsubscribeFromEvents()
+	}
+}
+
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
 	if e.stopControl.IsStopping() {
@@ -266,46 +368,19 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	// We update the enclave state based on the L1 block.
-	newL2Head, producedBatch, err := e.chain.ProcessL1Block(block, receipts, isLatest)
+	result, err := e.service.ReceiveBlock(br, isLatest)
 	if err != nil {
-		e.logger.Warn("ProcessL1Block failed", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
-	e.logger.Info("ProcessL1Block successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 
-	_, err = e.rollupManager.ProcessL1Block(br)
-	if err != nil {
-		e.logger.Error("Error processing L1 block for rollups", log.ErrKey, err)
+	if result.Fork {
+		e.logger.Info("Forked")
 	}
 
-	// We prepare the block submission response.
-	// todo (@stefan) - fix subscribed logs for validators who are being synchronized only through L1
-	blockSubmissionResponse := e.produceBlockSubmissionResponse(newL2Head, producedBatch)
+	bsr := e.produceBlockSubmissionResponse(nil, nil)
 
-	if producedBatch != nil && (producedBatch.Header.Number.Uint64()%e.config.Cadence == 0) {
-		rollup, err := e.rollupManager.CreateRollup()
-		if err != nil {
-			e.logger.Error("Failed to produce rollup", log.ErrKey, err)
-		} else {
-			blockSubmissionResponse.ProducedRollup = rollup.ToExtRollup(e.transactionBlobCrypto)
-		}
-	}
-
-	e.logger.Info("produceBlockSubmissionResponse successful", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(),
-		"newBatch", describeBSR(blockSubmissionResponse))
-	blockSubmissionResponse.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
-
-	// We remove any transactions considered immune to re-orgs from the mempool.
-	if blockSubmissionResponse.ProducedBatch != nil {
-		err = e.removeOldMempoolTxs(blockSubmissionResponse.ProducedBatch.Header)
-		if err != nil {
-			e.logger.Error("removeOldMempoolTxs fail", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.ErrKey, err)
-			return nil, e.rejectBlockErr(fmt.Errorf("could not remove transactions from mempool. Cause: %w", err))
-		}
-	}
-
-	return blockSubmissionResponse, nil
+	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
+	return bsr, nil
 }
 
 func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.SystemError) {
@@ -344,15 +419,28 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 		return responses.AsEncryptedError(err, encryptor), nil
 	}
 
-	// Only the sequencer needs to maintain a transaction mempool. Other node types can return early.
-	if e.config.NodeType == common.Sequencer {
-		if err = e.mempool.AddMempoolTx(decryptedTx); err != nil {
-			return responses.AsEncryptedError(err, encryptor), nil
-		}
+	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
+		return responses.AsEncryptedError(err, encryptor), nil
 	}
 
 	hash := decryptedTx.Hash().Hex()
 	return responses.AsEncryptedResponse(&hash, encryptor), nil
+}
+
+func (e *enclaveImpl) Validator() nodetype.ObsValidator {
+	validator, ok := e.service.(nodetype.ObsValidator)
+	if !ok {
+		panic("enclave service is not a validator but validator was requested!")
+	}
+	return validator
+}
+
+func (e *enclaveImpl) Sequencer() nodetype.Sequencer {
+	sequencer, ok := e.service.(nodetype.Sequencer)
+	if !ok {
+		panic("enclave service is not a sequencer but sequencer was requested!")
+	}
+	return sequencer
 }
 
 func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError {
@@ -362,28 +450,36 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 
 	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
-	if err := e.chain.UpdateL2Chain(batch); err != nil {
+	if err := e.Validator().ValidateAndStoreBatch(batch); err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err))
 	}
 
 	return nil
 }
 
-func (e *enclaveImpl) GenerateRollup() (*common.ExtRollup, common.SystemError) {
+func (e *enclaveImpl) CreateBatch() common.SystemError {
+	if e.stopControl.IsStopping() {
+		return responses.ToInternalError(fmt.Errorf("requested CreateBatch with the enclave stopping"))
+	}
+
+	err := e.Sequencer().CreateBatch()
+	if err != nil {
+		return responses.ToInternalError(err)
+	}
+
+	return nil
+}
+
+func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
 	}
 
-	if e.config.NodeType != common.Sequencer {
-		return nil, responses.ToInternalError(fmt.Errorf("only sequencer can generate rollups"))
-	}
-
-	rollup, err := e.rollupManager.CreateRollup()
+	rollup, err := e.Sequencer().CreateRollup()
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
-
-	return rollup.ToExtRollup(e.transactionBlobCrypto), nil
+	return rollup, nil
 }
 
 // ObsCall handles param decryption, validation and encryption
@@ -788,6 +884,12 @@ func (e *enclaveImpl) Stop() common.SystemError {
 			return err
 		}
 	}
+
+	if e.registry != nil {
+		e.registry.Unsubscribe()
+	}
+
+	time.Sleep(time.Second)
 	err := e.storage.Close()
 	if err != nil {
 		e.logger.Error("Could not stop db", log.ErrKey, err)
@@ -846,7 +948,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, encryptor), nil
 	}
 
-	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.chain.GlobalGasCap)
+	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.GlobalGasCap)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
@@ -866,8 +968,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	return responses.AsEncryptedResponse(&gasEstimate, encryptor), nil
 }
 
-//nolint
-func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
+func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) { //nolint
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))
 	}
@@ -966,7 +1067,7 @@ func (e *enclaveImpl) DoEstimateGas(args *gethapi.TransactionArgs, blkNumber *ge
 			}
 			hi = block.GasLimit()
 		*/
-		hi = e.chain.GlobalGasCap
+		hi = e.GlobalGasCap
 	}
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int
@@ -1269,24 +1370,6 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 	return &filter, &forAddress, nil
 }
 
-// Removes transactions from the mempool that are considered immune to re-orgs (i.e. over X batches deep).
-func (e *enclaveImpl) removeOldMempoolTxs(batchHeader *common.BatchHeader) error {
-	if batchHeader == nil {
-		return nil
-	}
-
-	hr, err := e.storage.FetchBatch(batchHeader.Hash())
-	if err != nil {
-		return fmt.Errorf("could not retrieve batch. This should not happen because this batch was just processed. Cause: %w", err)
-	}
-	err = e.mempool.RemoveMempoolTxs(hr, e.storage)
-	if err != nil {
-		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
-	}
-
-	return nil
-}
-
 func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
 	if l2Head == nil {
 		// not an error state, we ingested a block but no rollup head found
@@ -1315,21 +1398,22 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash,
 }
 
 // Retrieves and encrypts the logs for the block.
-func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (map[gethrpc.ID][]byte, error) {
+func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (common.EncryptedSubscriptionLogs, error) {
 	result := map[gethrpc.ID][]*types.Log{}
 
+	batch, err := e.storage.FetchHeadBatch()
+	if err != nil {
+		return nil, err
+	}
+
 	// Go through each subscription and collect the logs
-	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
+	err = e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
 		// 1. fetch the logs since the last request
 		var from *big.Int
 		to := upToBatchNr
 
 		if previousHead == nil || previousHead.Int64() <= 0 {
 			// when the subscription is initialised, default from the latest batch
-			batch, err := e.storage.FetchHeadBatch()
-			if err != nil {
-				return err
-			}
 			from = batch.Number()
 		} else {
 			from = big.NewInt(previousHead.Int64() + 1)
@@ -1393,20 +1477,104 @@ func serializeEVMError(err error) ([]byte, error) {
 	return errSerializedBytes, nil
 }
 
-// useful description of the BSR for debugging
-func describeBSR(response *common.BlockSubmissionResponse) string {
-	if response.RejectError != nil {
-		return fmt.Sprintf("BlockSubmissionResponse failed with err=%s", response.RejectError.Error())
+// this function looks at the batch chain and makes sure the resulting stateDB snapshots are available, replaying them if needed
+// (if there had been a clean shutdown and all stateDB data was persisted this should do nothing)
+func restoreStateDBCache(storage db.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
+	batch, err := storage.FetchHeadBatch()
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			// there is no head batch, this is probably a new node - there is no state to rebuild
+			logger.Info("no head batch found in DB after restart", log.ErrKey, err)
+			return nil
+		}
+		return fmt.Errorf("unexpected error fetching head batch to resync- %w", err)
 	}
-	producedBatch := "no batch produced"
-	if response.ProducedBatch != nil {
-		producedBatch = fmt.Sprintf("newBatch{num=%d, numTx=%d, hash=%s}",
-			response.ProducedBatch.Header.Number, len(response.ProducedBatch.TxHashes), response.ProducedBatch.Hash())
+	if !stateDBAvailableForBatch(storage, batch.Hash()) {
+		logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
+		err = replayBatchesToValidState(storage, producer, gen, chainCfg, logger)
+		if err != nil {
+			return fmt.Errorf("unable to replay batches to restore valid state - %w", err)
+		}
 	}
-	producedRollup := "no rollup produced"
-	if response.ProducedRollup != nil {
-		producedRollup = fmt.Sprintf("newRollup{num=%d, numBatches=%d, hash=%s}",
-			response.ProducedRollup.Header.Number, len(response.ProducedRollup.Batches), response.ProducedRollup.Hash())
+	return nil
+}
+
+// The enclave caches a stateDB instance against each batch hash, this is the input state when producing the following
+// batch in the chain and is used to query state at a certain height.
+//
+// This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
+func stateDBAvailableForBatch(storage db.Storage, hash *common.L2BatchHash) bool {
+	_, err := storage.CreateStateDB(*hash)
+	return err == nil
+}
+
+// replayBatchesToValidState is used to repopulate the stateDB cache with data from persisted batches. Two step process:
+// 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
+// 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
+// todo (#1416) - get unit test coverage around this (and L2 Chain code more widely, see ticket #1416 )
+func replayBatchesToValidState(storage db.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
+	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
+	// todo - consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
+	var batchesToReplay []*core.Batch
+	// `batchToReplayFrom` variable will eventually be the latest batch for which we are able to produce a StateDB
+	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
+	batchToReplayFrom, err := storage.FetchHeadBatch()
+	if err != nil {
+		return fmt.Errorf("no head batch found in DB but expected to replay batches - %w", err)
 	}
-	return fmt.Sprintf("%s, %s", producedBatch, producedRollup)
+	// loop backwards building a slice of all batches that don't have cached stateDB data available
+	for !stateDBAvailableForBatch(storage, batchToReplayFrom.Hash()) {
+		batchesToReplay = append(batchesToReplay, batchToReplayFrom)
+		if batchToReplayFrom.NumberU64() == 0 {
+			// no more parents to check, replaying from genesis
+			break
+		}
+		batchToReplayFrom, err = storage.FetchBatch(batchToReplayFrom.Header.ParentHash)
+		if err != nil {
+			return fmt.Errorf("unable to fetch previous batch while rolling back to stable state - %w", err)
+		}
+	}
+	logger.Info("replaying batch data into stateDB cache", "fromBatch", batchesToReplay[len(batchesToReplay)-1].NumberU64(),
+		"toBatch", batchesToReplay[0].NumberU64())
+	// loop through the slice of batches without stateDB data to cache the state (loop in reverse because slice is newest to oldest)
+	for i := len(batchesToReplay) - 1; i >= 0; i-- {
+		batch := batchesToReplay[i]
+
+		// if genesis batch then create the genesis state before continuing on with remaining batches
+		if batch.NumberU64() == 0 {
+			err := gen.CommitGenesisState(storage)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		// calculate the stateDB after this batch and store it in the cache
+		err = calculateAndStoreStateDB(batch, producer, chainCfg)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProducer, chainConfig *params.ChainConfig) error {
+	computedBatch, err := producer.ComputeBatch(&components.BatchExecutionContext{
+		BlockPtr:     batch.Header.L1Proof,
+		ParentPtr:    batch.Header.ParentHash,
+		Transactions: batch.Transactions,
+		AtTime:       batch.Header.Time,
+		Randomness:   batch.Header.MixDigest,
+		Creator:      batch.Header.Agg,
+		ChainConfig:  chainConfig,
+	})
+	if err != nil {
+		return err
+	}
+	_, err = computedBatch.Commit(true)
+	if err != nil {
+		return err
+	}
+	return nil
 }

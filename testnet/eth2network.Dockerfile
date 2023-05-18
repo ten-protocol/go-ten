@@ -11,7 +11,6 @@
 # Build stage for downloading dependencies based on the core defined system
 FROM golang:1.18-buster as get-dependencies
 
-# create the base directory
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
 

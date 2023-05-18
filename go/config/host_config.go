@@ -78,6 +78,12 @@ type HostInputConfig struct {
 
 	// DebugNamespaceEnabled enables the debug namespace handler in the host rpc server
 	DebugNamespaceEnabled bool
+
+	// Min interval before creating the next batch (only used by Sequencer nodes)
+	BatchInterval time.Duration
+
+	// Min interval before creating the next rollup (only used by Sequencer nodes)
+	RollupInterval time.Duration
 }
 
 // ToHostConfig returns a HostConfig given a HostInputConfig
@@ -112,6 +118,8 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		UseInMemoryDB:             p.UseInMemoryDB,
 		LevelDBPath:               p.LevelDBPath,
 		DebugNamespaceEnabled:     p.DebugNamespaceEnabled,
+		BatchInterval:             p.BatchInterval,
+		RollupInterval:            p.RollupInterval,
 	}
 }
 
@@ -181,6 +189,12 @@ type HostConfig struct {
 
 	// DebugNamespaceEnabled enables the debug namespace handler in the host rpc server
 	DebugNamespaceEnabled bool
+
+	// Min interval before creating the next batch (only used by Sequencer nodes)
+	BatchInterval time.Duration
+
+	// Min interval before creating the next rollup (only used by Sequencer nodes)
+	RollupInterval time.Duration
 }
 
 // DefaultHostParsedConfig returns a HostConfig with default values.
@@ -213,5 +227,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		MetricsHTTPPort:           14000,
 		UseInMemoryDB:             true,
 		DebugNamespaceEnabled:     false,
+		BatchInterval:             1 * time.Second,
+		RollupInterval:            5 * time.Second,
 	}
 }

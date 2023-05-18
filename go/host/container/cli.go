@@ -45,6 +45,8 @@ type HostConfigToml struct {
 	UseInMemoryDB             bool
 	LevelDBPath               string
 	DebugNamespaceEnabled     bool
+	BatchInterval             string
+	RollupInterval            string
 }
 
 // ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
@@ -80,6 +82,8 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
 	levelDBPath := flag.String(levelDBPathName, cfg.LevelDBPath, flagUsageMap[levelDBPathName])
 	debugNamespaceEnabled := flag.Bool(debugNamespaceEnabledName, cfg.DebugNamespaceEnabled, flagUsageMap[debugNamespaceEnabledName])
+	batchInterval := flag.String(batchIntervalName, cfg.BatchInterval.String(), flagUsageMap[batchIntervalName])
+	rollupInterval := flag.String(rollupIntervalName, cfg.RollupInterval.String(), flagUsageMap[rollupIntervalName])
 
 	flag.Parse()
 
@@ -120,6 +124,14 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.UseInMemoryDB = *useInMemoryDB
 	cfg.LevelDBPath = *levelDBPath
 	cfg.DebugNamespaceEnabled = *debugNamespaceEnabled
+	cfg.BatchInterval, err = time.ParseDuration(*batchInterval)
+	if err != nil {
+		return nil, err
+	}
+	cfg.RollupInterval, err = time.ParseDuration(*rollupInterval)
+	if err != nil {
+		return nil, err
+	}
 
 	return cfg, nil
 }
@@ -140,6 +152,14 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 	nodeType, err := common.ToNodeType(tomlConfig.NodeType)
 	if err != nil {
 		return &config.HostInputConfig{}, fmt.Errorf("unrecognised node type '%s'", tomlConfig.NodeType)
+	}
+
+	batchInterval, rollupInterval := 1*time.Second, 5*time.Second
+	if interval, err := time.ParseDuration(tomlConfig.BatchInterval); err == nil {
+		batchInterval = interval
+	}
+	if interval, err := time.ParseDuration(tomlConfig.RollupInterval); err == nil {
+		rollupInterval = interval
 	}
 
 	return &config.HostInputConfig{
@@ -170,5 +190,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		MetricsHTTPPort:           tomlConfig.MetricsHTTPPort,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,
 		LevelDBPath:               tomlConfig.LevelDBPath,
+		BatchInterval:             batchInterval,
+		RollupInterval:            rollupInterval,
 	}, nil
 }

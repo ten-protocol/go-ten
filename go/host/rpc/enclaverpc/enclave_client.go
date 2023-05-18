@@ -72,6 +72,7 @@ func NewClient(config *config.HostConfig, logger gethlog.Logger) *Client {
 }
 
 func (c *Client) StopClient() common.SystemError {
+	c.logger.Info("Closing rpc server connection.")
 	return c.connection.Close()
 }
 
@@ -221,6 +222,8 @@ func (c *Client) GetTransactionCount(encryptedParams common.EncryptedParamsGetTx
 }
 
 func (c *Client) Stop() common.SystemError {
+	c.logger.Info("Shutting down enclave client.")
+
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -385,7 +388,15 @@ func (c *Client) HealthCheck() (bool, common.SystemError) {
 	return response.Status, nil
 }
 
-func (c *Client) GenerateRollup() (*common.ExtRollup, common.SystemError) {
+func (c *Client) CreateBatch() common.SystemError {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	_, err := c.protoClient.CreateBatch(timeoutCtx, &generated.CreateBatchRequest{})
+	return err
+}
+
+func (c *Client) CreateRollup() (*common.ExtRollup, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -421,6 +432,57 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	}
 
 	return json.RawMessage(response.Msg), nil
+}
+
+func (c *Client) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2UpdatesResponse, func()) {
+	batchChan := make(chan common.StreamL2UpdatesResponse, 10)
+	cancelCtx, cancel := context.WithCancel(context.Background())
+
+	request := &generated.StreamL2UpdatesRequest{}
+	if from != nil {
+		request.KnownHead = from.Bytes()
+	}
+
+	stream, err := c.protoClient.StreamL2Updates(cancelCtx, request)
+	if err != nil {
+		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
+		close(batchChan)
+		cancel()
+		return batchChan, func() {}
+	}
+
+	stopIt := func() {
+		c.logger.Info("Closing batch stream.")
+		if err := stream.CloseSend(); err != nil {
+			c.logger.Error("Client is unable to close batch stream", log.ErrKey, err)
+		}
+
+		cancel()
+		close(batchChan)
+	}
+
+	go func() {
+		defer stopIt()
+		for {
+			batchMsg, err := stream.Recv()
+			if err != nil {
+				c.logger.Error("Error receiving batch from stream.", log.ErrKey, err)
+				break
+			}
+
+			var decoded common.StreamL2UpdatesResponse
+			if err := json.Unmarshal(batchMsg.Batch, &decoded); err != nil {
+				c.logger.Error("Error unmarshling batch from stream.", log.ErrKey, err)
+				break
+			}
+
+			batchChan <- decoded
+		}
+	}()
+
+	return batchChan, func() {
+		cancel()
+	}
 }
 
 func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, common.SystemError) {

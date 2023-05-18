@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 )
@@ -13,6 +14,18 @@ import (
 type (
 	StateRoot = common.Hash
 	TxHash    = common.Hash
+
+	// EncryptedSubscriptionLogs - Alias for the event subscription updates going
+	// out of the enclave.
+	EncryptedSubscriptionLogs = map[rpc.ID][]byte
+
+	// StreamL2UpdatesResponse - the struct encoded for each response message
+	// when streaming batches out of the enclave.
+	// The properties inside need to be encrypted according to the privacy rules.
+	StreamL2UpdatesResponse struct {
+		Batch *ExtBatch
+		Logs  EncryptedSubscriptionLogs
+	}
 
 	// MainNet aliases
 	L1Address     = common.Address

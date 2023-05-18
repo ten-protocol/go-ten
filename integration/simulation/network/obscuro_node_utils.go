@@ -3,30 +3,22 @@ package network
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"net"
 	"strings"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/container"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/enclave"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"golang.org/x/sync/errgroup"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
 	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
@@ -56,6 +48,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			p2pLayers[i],
 			params.L1SetupData.MessageBusAddr,
 			params.L1SetupData.ObscuroStartBlock,
+			params.AvgBlockDuration/3,
 		)
 		obscuroHosts[i] = obscuroNodes[i].Host()
 	}
@@ -83,71 +76,6 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 	time.Sleep(100 * time.Millisecond)
 
 	return obscuroClients
-}
-
-func startStandaloneObscuroNodes(params *params.SimParams, gethClients []ethadapter.EthClient, enclaveAddresses []string) ([]rpc.Client, []string) {
-	// handle to the obscuro clients
-	nodeRPCAddresses := make([]string, params.NumberOfNodes)
-	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
-	obscuroNodes := make([]container.Container, params.NumberOfNodes)
-
-	for i := 0; i < params.NumberOfNodes; i++ {
-		isGenesis := i == 0
-
-		// We use the convention to determine the rpc ports of the node
-		nodeRPCPortHTTP := params.StartPort + integration.DefaultHostRPCHTTPOffset + i
-		nodeRPCPortWS := params.StartPort + integration.DefaultHostRPCWSOffset + i
-
-		// create an Obscuro node
-		obscuroNodes[i] = createSocketObscuroHostContainer(
-			int64(i),
-			isGenesis,
-			GetNodeType(i),
-			fmt.Sprintf("%s:%d", Localhost, params.StartPort+integration.DefaultHostP2pOffset+i),
-			enclaveAddresses[i],
-			Localhost,
-			uint64(nodeRPCPortHTTP),
-			uint64(nodeRPCPortWS),
-			params.Wallets.NodeWallets[i],
-			params.MgmtContractLib,
-			gethClients[i],
-			params.L1SetupData.ObscuroStartBlock,
-		)
-
-		nodeRPCAddresses[i] = fmt.Sprintf("ws://%s:%d", Localhost, nodeRPCPortWS)
-	}
-
-	// start each obscuro node
-	for _, m := range obscuroNodes {
-		// TODO bubble up errors from the containers/host/enclave Start https://github.com/obscuronet/obscuro-internal/issues/1315
-		err := m.Start()
-		if err != nil {
-			testlog.Logger().Crit("unable to start obscuro node ", log.ErrKey, err)
-		}
-		time.Sleep(params.AvgBlockDuration / 3)
-	}
-
-	// create the RPC clients
-	for i, rpcAddress := range nodeRPCAddresses {
-		var client rpc.Client
-		var err error
-
-		// create a connection to the newly created nodes - panic if no connection is made after some time
-		startTime := time.Now()
-		for connected := false; !connected; time.Sleep(500 * time.Millisecond) {
-			client, err = rpc.NewNetworkClient(rpcAddress)
-			connected = err == nil // The client cannot be created until the node has started.
-			if time.Now().After(startTime.Add(2 * time.Minute)) {
-				testlog.Logger().Crit("failed to create a connect to node after 2 minute")
-			}
-
-			testlog.Logger().Info(fmt.Sprintf("Could not create client %d. Retrying...", i), log.ErrKey, err)
-		}
-
-		obscuroClients[i] = client
-	}
-
-	return obscuroClients, nodeRPCAddresses
 }
 
 func createAuthClientsPerWallet(clients []rpc.Client, wallets *params.SimWallets) map[string][]*obsclient.AuthObsClient {
@@ -178,42 +106,6 @@ func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 		authClients[i] = obsclient.NewAuthObsClient(encClient)
 	}
 	return authClients
-}
-
-func startRemoteEnclaveServers(params *params.SimParams) {
-	for i := 0; i < params.NumberOfNodes; i++ {
-		// create a remote enclave server
-		enclaveAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+integration.DefaultEnclaveOffset+i)
-		hostAddr := fmt.Sprintf("%s:%d", Localhost, params.StartPort+integration.DefaultHostP2pOffset+i)
-
-		// TODO - Change/derive from the default enclave config
-		enclaveConfig := config.EnclaveConfig{
-			HostID:            gethcommon.BigToAddress(big.NewInt(int64(i))),
-			HostAddress:       hostAddr,
-			Address:           enclaveAddr,
-			NodeType:          GetNodeType(i),
-			L1ChainID:         integration.EthereumChainID,
-			ObscuroChainID:    integration.ObscuroChainID,
-			ValidateL1Blocks:  false,
-			WillAttest:        false,
-			GenesisJSON:       nil,
-			UseInMemoryDB:     false,
-			MinGasPrice:       big.NewInt(1),
-			MessageBusAddress: *params.L1SetupData.MessageBusAddr,
-			Cadence:           10,
-		}
-		enclaveLogger := testlog.Logger().New(log.NodeIDKey, i, log.CmpKey, log.EnclaveCmp)
-		encl := enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, params.MgmtContractLib, enclaveLogger)
-		enclaveContainer := enclavecontainer.EnclaveContainer{
-			Enclave:   encl,
-			RPCServer: enclave.NewEnclaveRPCServer(enclaveConfig.Address, encl, enclaveLogger),
-			Logger:    enclaveLogger,
-		}
-		err := enclaveContainer.Start()
-		if err != nil {
-			panic(fmt.Sprintf("could not start enclave server: %s", err))
-		}
-	}
 }
 
 // StopObscuroNodes stops the Obscuro nodes and their RPC clients.

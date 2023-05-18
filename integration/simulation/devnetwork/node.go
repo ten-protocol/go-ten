@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
@@ -121,6 +122,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		UseInMemoryDB:             false,
 		LevelDBPath:               n.hostDBFilepath,
 		DebugNamespaceEnabled:     true,
+		BatchInterval:             1 * time.Second,
+		RollupInterval:            5 * time.Second,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.operatorIdx, log.CmpKey, log.HostCmp)
@@ -144,7 +147,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 	hostPort := n.config.PortStart + integration.DefaultHostP2pOffset + n.operatorIdx
 	hostAddr := fmt.Sprintf("%s:%d", network.Localhost, hostPort)
 
-	enclaveConfig := config.EnclaveConfig{
+	enclaveConfig := &config.EnclaveConfig{
 		HostID:                    getHostID(n.operatorIdx),
 		SequencerID:               getHostID(0),
 		HostAddress:               hostAddr,
