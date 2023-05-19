@@ -54,6 +54,7 @@ func NewStorage(backingDB *sql.EnclaveDB, chainConfig *params.ChainConfig, logge
 func (s *storageImpl) OpenBatch() *sql.Batch {
 	return s.db.NewSQLBatch()
 }
+
 func (s *storageImpl) CommitBatch(dbBatch *sql.Batch) error {
 	return dbBatch.Write()
 }
