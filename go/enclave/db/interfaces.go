@@ -133,6 +133,10 @@ type Storage interface {
 	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
 	DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error)
 
+	// todo (@stefan) - OpenBatch should return a custom type that hides any methods and properties to outside callers
+	// in order to prevent accidental messing up the internal state
+	// OpenBatch - returns a batch struct that allows for grouping write calls to the database together.
 	OpenBatch() *sql.Batch
+	// CommitBatch - finalizes a batch and pushes the changes to the database
 	CommitBatch(dbBatch *sql.Batch) error
 }
