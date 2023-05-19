@@ -66,8 +66,9 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLat
 		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
 
 	bp.storage.StoreBlock(block)
-	if isLatest {
-		return ingestionType, bp.storage.UpdateL1Head(block.Hash())
+	err = bp.storage.UpdateL1Head(block.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("could not update L1 head. Cause: %w", err)
 	}
 
 	return ingestionType, nil
@@ -76,16 +77,16 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLat
 func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*BlockIngestionType, error) {
 	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
 	prevL1Head, err := bp.storage.FetchHeadBlock()
-
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// todo (@matt) - we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
 			return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: true}, nil
 		}
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
-
-		// we do a basic sanity check, comparing the received block to the head block on the chain
-	} else if block.ParentHash() != prevL1Head.Hash() {
+	}
+	isFork := false
+	// we do a basic sanity check, comparing the received block to the head block on the chain
+	if block.ParentHash() != prevL1Head.Hash() {
 		lcaBlock, err := gethutil.LCA(block, prevL1Head, bp.storage)
 		if err != nil {
 			bp.logger.Trace("parent not found",
@@ -95,14 +96,12 @@ func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*
 			return nil, errutil.ErrBlockAncestorNotFound
 		}
 
-		// todo - this whole check is iffy, we found an lca, who cares where the head is set at.
 		if lcaBlock.NumberU64() < prevL1Head.NumberU64() {
 			// fork - least common ancestor for this block and l1 head is before the l1 head.
-			return &BlockIngestionType{IsLatest: isLatest, Fork: true, PreGenesis: false}, nil
+			isFork = true
 		}
 	}
-	// this is the typical, happy-path case. The ingested block's parent was the previously ingested block.
-	return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: false}, nil
+	return &BlockIngestionType{IsLatest: isLatest, Fork: isFork, PreGenesis: false}, nil
 }
 
 func (bp *l1BlockProcessor) GetHead() (*common.L1Block, error) {
