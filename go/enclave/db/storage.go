@@ -188,6 +188,10 @@ func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*c
 }
 
 func (s *storageImpl) UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error {
+	if dbBatch == nil {
+		panic("UpdateHeadBatch called without an instance of sql.Batch")
+	}
+
 	if err := obscurorawdb.SetL2HeadBatch(dbBatch, *l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
@@ -320,6 +324,10 @@ func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB)
 }
 
 func (s *storageImpl) SetHeadBatchPointer(l2Head *core.Batch, dbBatch *sql.Batch) error {
+	if dbBatch == nil {
+		panic("SetHeadBatchPointer called without an instance of sql.Batch")
+	}
+
 	// We update the canonical hash of the batch at this height.
 	if err := obscurorawdb.SetL2HeadBatch(dbBatch, *l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
@@ -431,6 +439,10 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 }
 
 func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error {
+	if dbBatch == nil {
+		panic("StoreBatch called without an instance of sql.Batch")
+	}
+
 	if err := obscurorawdb.WriteBatch(dbBatch, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
