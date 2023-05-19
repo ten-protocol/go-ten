@@ -450,7 +450,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 
 	callStart := time.Now()
 	defer func() {
-		e.logger.Info("SubmitBatch call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String())
+		e.logger.Info(fmt.Sprintf("SubmitBatch call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
 	}()
 
 	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
@@ -469,7 +469,7 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 
 	callStart := time.Now()
 	defer func() {
-		e.logger.Info("CreateBatch call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String())
+		e.logger.Info(fmt.Sprintf("CreateBatch call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
 	}()
 
 	err := e.Sequencer().CreateBatch()
@@ -487,7 +487,7 @@ func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, common.SystemError) {
 
 	callStart := time.Now()
 	defer func() {
-		e.logger.Info("CreateRollup call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String())
+		e.logger.Info(fmt.Sprintf("CreateRollup call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
 	}()
 
 	rollup, err := e.Sequencer().CreateRollup()
