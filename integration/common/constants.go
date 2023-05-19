@@ -13,7 +13,6 @@ import (
 // and these transactions need to be signed. Which means the platform needs to "own" ERC20s.
 
 // ERC20 - the supported ERC20 tokens. A list of made-up tokens used for testing.
-// Todo - this will be removed together will all the keys and addresses.
 type ERC20 string
 
 const (

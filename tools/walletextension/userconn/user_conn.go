@@ -55,7 +55,7 @@ func NewUserConnWS(resp http.ResponseWriter, req *http.Request, logger gethlog.L
 	if err != nil {
 		err = fmt.Errorf("unable to upgrade to websocket connection")
 		logger.Error("unable to upgrade to websocket connection")
-		httpLogAndSendErr(resp, err.Error()) // TODO - Handle error properly for websockets.
+		httpLogAndSendErr(resp, err.Error()) // todo (@ziga) - Handle error properly for websockets.
 		return nil, err
 	}
 

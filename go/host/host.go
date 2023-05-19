@@ -173,7 +173,7 @@ func (h *host) Start() error {
 
 		err := h.refreshP2PPeerList()
 		if err != nil {
-			h.logger.Warn("unable to sync current p2p peer list on startup - %w", err)
+			h.logger.Warn("unable to sync current p2p peer list on startup", log.ErrKey, err)
 		}
 
 		// start the host's main processing loop
@@ -411,7 +411,7 @@ func (h *host) startProcessing() {
 		select {
 		case b := <-blockStream.Stream:
 			isLive := h.l1BlockProvider.IsLatest(b) // checks whether the block is the current head of the L1 (false if there is a newer block available)
-			err := h.processL1Block(b, isLive)
+			err = h.processL1Block(b, isLive)
 			if err != nil {
 				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
 				blockStream = h.handleProcessBlockErr(b, blockStream, err)
@@ -448,28 +448,32 @@ func (h *host) startProcessing() {
 
 func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostcommon.BlockStream, err error) *hostcommon.BlockStream {
 	var rejErr *errutil.BlockRejectError
-	if !errors.As(err, &rejErr) {
+	var resetFrom gethcommon.Hash
+	if errors.As(err, &rejErr) {
+		h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, log.BlockHashKey, processedBlock.Hash(), log.BlockHeightKey, processedBlock.Number())
+		if errors.Is(rejErr, errutil.ErrBlockAlreadyProcessed) {
+			// resetting stream after rejection for duplicate is a possible optimisation in future but it's rarely an expensive case and
+			// it's a risky optimisation (need to ensure it can't get stuck in a loop)
+			// Instead we assume that only one or two blocks are being repeated (probably from revisiting a fork that was
+			// abandoned) and then the enclave will be progressing again
+			return stream
+		}
+		if rejErr.L1Head == (gethcommon.Hash{}) {
+			h.logger.Warn("No L1 head information provided by enclave, continuing with existing stream")
+			return stream
+		}
+		// prepare to reset the stream from the L1 head provided by the enclave
+		resetFrom = rejErr.L1Head
+	} else {
 		// received unexpected error (no useful information from the enclave)
-		// we log it out and ignore it until the enclave tells us more information
-		h.logger.Warn("Error processing block.", log.ErrKey, err)
-		return stream
+		// we log it out and retry the stream from the same block
+		h.logger.Warn("Error processing block, resetting block provider to retry", log.ErrKey, err)
+		resetFrom = processedBlock.Hash()
 	}
-	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, log.BlockHashKey, processedBlock.Hash(), log.BlockHeightKey, processedBlock.Number())
-	if errors.Is(rejErr, errutil.ErrBlockAlreadyProcessed) {
-		// resetting stream after rejection for duplicate is a possible optimisation in future but it's rarely an expensive case and
-		// it's a risky optimisation (need to ensure it can't get stuck in a loop)
-		// Instead we assume that only one or two blocks are being repeated (probably from revisiting a fork that was
-		// abandoned) and then the enclave will be progressing again
-		return stream
-	}
-	if rejErr.L1Head == (gethcommon.Hash{}) {
-		h.logger.Warn("No L1 head information provided by enclave, continuing with existing stream")
-		return stream
-	}
-	h.logger.Info("Resetting block provider stream to enclave latest head.", "streamFrom", rejErr.L1Head)
-	// streaming from the latest canonical ancestor of the enclave's L1 head (we may end up re-streaming some things it's
-	//	already processed, but we tolerate those failures)
-	replacementStream, err := h.l1BlockProvider.StartStreamingFromHash(rejErr.L1Head)
+	h.logger.Info("Resetting block provider stream", "streamFrom", resetFrom)
+	// streaming from the latest canonical ancestor of the enclave's L1 head (we may end up re-streaming some blocks it's
+	//	already processed, but we tolerate those inefficiencies for simplicity for now)
+	replacementStream, err := h.l1BlockProvider.StartStreamingFromHash(resetFrom)
 	if err != nil {
 		h.logger.Warn("Could not reset block provider, continuing with previous stream", log.ErrKey, err)
 		return stream

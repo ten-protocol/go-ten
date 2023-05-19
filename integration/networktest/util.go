@@ -9,7 +9,7 @@ import (
 )
 
 // IDEFlag is used as an environnment variable to allow tests to run that are designed not to run in CI
-// todo: come up with a better method, perhaps using directory-based ignore/include mechanism for `ci` dir only
+// todo (@matt) - come up with a better method, perhaps using directory-based ignore/include mechanism for `ci` dir only
 const IDEFlag = "IDE"
 
 func TestOnlyRunsInIDE(t *testing.T) {

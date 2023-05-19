@@ -25,7 +25,7 @@ func NewDockerNode(cfg *Config) *DockerNode {
 }
 
 func (d *DockerNode) Start() error {
-	// TODO this should probably be removed in the future
+	// todo (@pedro) - this should probably be removed in the future
 	fmt.Printf("Starting Node %s with config: \n%s\n\n", d.cfg.nodeName, litter.Sdump(*d.cfg))
 
 	err := d.startEdgelessDB()
@@ -73,7 +73,7 @@ func (d *DockerNode) Upgrade(networkCfg *NetworkConfig) error {
 	// update network configs
 	d.cfg.UpdateNodeConfig(
 		WithManagementContractAddress(networkCfg.ManagementContractAddress),
-		WithManagementContractAddress(networkCfg.MessageBusAddress),
+		WithMessageBusContractAddress(networkCfg.MessageBusAddress),
 		WithL1Start(networkCfg.L1StartHash),
 	)
 
@@ -159,7 +159,7 @@ func (d *DockerNode) startEnclave() error {
 
 	cmd = append(cmd,
 		"-hostID", d.cfg.hostID,
-		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveWSPort), // todo review this 0.0.0.0 host bind
+		"-address", fmt.Sprintf("0.0.0.0:%d", d.cfg.enclaveWSPort), // todo (@pedro) - review this 0.0.0.0 host bind
 		"-nodeType", d.cfg.nodeType,
 		"-managementContractAddress", d.cfg.managementContractAddr,
 		"-hostAddress", d.cfg.hostPublicP2PAddr,

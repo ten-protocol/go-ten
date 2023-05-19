@@ -109,7 +109,7 @@ func (n *blockResolverInMem) IsBlockAncestor(block *types.Block, maybeAncestor c
 
 	p, err := n.ParentBlock(block)
 	if err != nil {
-		// TODO - If error is not `errutil.ErrNotFound`, throw.
+		// todo (@tudor) - if error is not `errutil.ErrNotFound`, throw
 		return false
 	}
 

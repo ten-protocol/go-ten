@@ -14,7 +14,7 @@ func EnsureTestLogsSetUp(testName string) {
 		return // already setup, do not reconfigure
 	}
 	testlog.Setup(&testlog.Cfg{
-		// todo: walk up the dir tree to find /integration/.build or find best practice solution
+		// todo (@matt) - walk up the dir tree to find /integration/.build or find best practice solution
 		// bit of a hack - tests need to be in a package nested within /tests to get logs in the right place
 		LogDir:      "../../../.build/networktest/",
 		TestType:    "net",

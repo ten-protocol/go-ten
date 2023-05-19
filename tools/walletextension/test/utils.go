@@ -44,7 +44,7 @@ func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *walletextension
 }
 
 func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
-	// todo - log somewhere else?
+	// todo (@ziga) - log somewhere else?
 	logger := log.New(log.WalletExtCmp, int(gethlog.LvlInfo), log.SysOut)
 
 	walExt := walletextension.NewWalletExtension(*walExtCfg, logger)

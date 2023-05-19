@@ -23,7 +23,7 @@ func prepareObscuroDeployer(cfg *Config, wal wallet.Wallet, logger gethlog.Logge
 		return nil, fmt.Errorf("failed to setup obscuro client - %w", err)
 	}
 
-	// todo: this step doesn't belong in the contract_deployer tool, script should fail for underfunded deployer account
+	// todo (#1357) - this step doesn't belong in the contract_deployer tool, script should fail for underfunded deployer account
 	err = fundDeployerWithFaucet(cfg, client, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fund deployer acc from faucet - %w", err)

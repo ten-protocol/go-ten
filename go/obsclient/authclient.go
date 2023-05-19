@@ -72,7 +72,7 @@ func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.
 	if err != nil {
 		return nil, false, err
 	}
-	// todo: revisit isPending result value, included for ethclient equivalence but hardcoded currently
+	// todo (#1491) - revisit isPending result value, included for ethclient equivalence but hardcoded currently
 	return &tx, false, nil
 }
 

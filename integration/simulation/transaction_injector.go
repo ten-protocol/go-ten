@@ -32,7 +32,7 @@ const (
 	nonceTimeoutMillis = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
 
 	// EnclavePublicKeyHex is the public key of the enclave.
-	// TODO - Retrieve this key from the management contract instead.
+	// todo (@stefan) - retrieve this key from the management contract instead
 	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
 
@@ -72,7 +72,6 @@ type TransactionInjector struct {
 }
 
 // NewTransactionInjector returns a transaction manager with a given number of obsWallets
-// todo Add methods that generate deterministic scenarios
 func NewTransactionInjector(
 	avgBlockDuration time.Duration,
 	stats *simstats.Stats,
@@ -195,7 +194,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 			panic("The hash of the submitted transaction does not match the hash coming back!")
 		}
 
-		// todo - retrieve receipt
+		// todo (@pedro) - retrieve receipt
 
 		go ti.TxTracker.trackNativeValueTransferL2Tx(signedTx)
 		sleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
@@ -232,7 +231,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 			ti.logger.Info("Failed to issue transfer via RPC.", log.ErrKey, err)
 		}
 
-		// todo - retrieve receipt
+		// todo (@pedro) - retrieve receipt
 
 		go ti.TxTracker.trackTransferL2Tx(signedTx)
 		sleepRndBtw(ti.avgBlockDuration/10, ti.avgBlockDuration/4)
@@ -241,7 +240,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
-	// TODO - this implementation transfers from the hoc and poc owner contracts
+	// todo (@stefan) - this implementation transfers from the hoc and poc owner contracts
 	// a better implementation should use the bridge
 	fromWalletHoc := ti.wallets.Tokens[testcommon.HOC].L2Owner
 	fromWalletPoc := ti.wallets.Tokens[testcommon.POC].L2Owner
@@ -275,21 +274,22 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		} else {
 			go ti.TxTracker.trackTransferL2Tx(signedTx)
 		}
-		// todo - retrieve receipt
+		// todo (@pedro) - retrieve receipt
+
 		sleepRndBtw(ti.avgBlockDuration/3, ti.avgBlockDuration)
 	}
-	// TODO: Rework this when old contract deployer is phased out?
+	// todo (@stefan) - rework this when old contract deployer is phased out?
 }
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
-	// TODO: Rework this when old contract deployer is phased out?
+	// todo (@stefan) - rework this when old contract deployer is phased out?
 }
 
 // issueInvalidL2Txs creates and issues invalidly-signed L2 transactions proportional to the simulation time.
 // These transactions should be rejected by the nodes, and thus we expect them to not affect the simulation
 func (ti *TransactionInjector) issueInvalidL2Txs() {
-	// todo - also issue transactions with insufficient gas
+	// todo (@tudor) - also issue transactions with insufficient gas
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
@@ -339,11 +339,6 @@ func (ti *TransactionInjector) newCustomObscuroWithdrawalTx(amount uint64) types
 }
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64) types.TxData {
-	// todo - reenable this logic when the nonce logic has been replaced by receipt confirmation
-	//max := big.NewInt(1_000_000_000_000_000_000)
-	//if nonce%3 == 0 {
-	//	value = max
-	//}
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,

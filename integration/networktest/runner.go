@@ -33,7 +33,7 @@ func Run(testName string, t *testing.T, env Environment, action Action) {
 		t.Fatal(err)
 	}
 	fmt.Println("Verifying test:", testName)
-	time.Sleep(2 * time.Second) // allow time for latest test transactions to propagate todo: consider how to configure this sleep
+	time.Sleep(2 * time.Second) // allow time for latest test transactions to propagate todo (@matt) consider how to configure this sleep
 	err = action.Verify(ctx, network)
 	if err != nil {
 		t.Fatal(err)

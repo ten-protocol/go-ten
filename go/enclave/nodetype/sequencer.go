@@ -152,9 +152,13 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	// to be in our chain.
 	headBatch = ancestralBatch
 
-	//batchLimiter := core.NewBatchSizeLimiter(core.BatchMaxTransactionData, *s.blockProcessor.GetCrossChainContractAddress(), crosschain.CrossChainEventID)
+	stateDB, err := s.storage.CreateStateDB(*headBatch.Hash())
+	if err != nil {
+		return fmt.Errorf("unable to create stateDB for selecting transactions. Cause: %w", err)
+	}
 
-	transactions, err := s.mempool.CurrentTxs(headBatch, s.storage)
+	//batchLimiter := core.NewBatchSizeLimiter(core.BatchMaxTransactionData, *s.blockProcessor.GetCrossChainContractAddress(), crosschain.CrossChainEventID)
+	transactions, err := s.mempool.CurrentTxs(stateDB)
 	if err != nil {
 		return err
 	}
@@ -191,7 +195,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return fmt.Errorf("failed storing batch. Cause: %w", err)
 	}
 
-	if err := s.mempool.RemoveMempoolTxs(cb.Batch, s.storage); err != nil {
+	if err := s.mempool.RemoveTxs(transactions); err != nil {
 		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
 	}
 
@@ -217,7 +221,7 @@ func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*c
 		return nil, err
 	}
 
-	if _, err := s.rollupConsumer.ProcessL1Block(br); err != nil {
+	if _, err = s.rollupConsumer.ProcessL1Block(br); err != nil {
 		s.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
 	}
@@ -287,10 +291,14 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 
 		// i equals 0 at the highest batch number
 		if i == 0 {
-			if err := s.storage.SetHeadBatchPointer(cb.Batch); err != nil {
+			dbBatch := s.storage.OpenBatch()
+			if err := s.storage.SetHeadBatchPointer(cb.Batch, dbBatch); err != nil {
 				return fmt.Errorf("failed setting head batch ptr. Cause: %w", err)
 			}
-			return s.storage.UpdateHeadBatch(block.Hash(), cb.Batch, cb.Receipts)
+			if err := s.storage.UpdateHeadBatch(block.Hash(), cb.Batch, cb.Receipts, dbBatch); err != nil {
+				return fmt.Errorf("failed to update head batch. Cause: %w", err)
+			}
+			return s.storage.CommitBatch(dbBatch)
 		}
 	}
 
