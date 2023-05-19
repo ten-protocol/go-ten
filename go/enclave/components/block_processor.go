@@ -96,10 +96,8 @@ func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*
 			return nil, errutil.ErrBlockAncestorNotFound
 		}
 
-		if lcaBlock.NumberU64() < prevL1Head.NumberU64() {
-			// fork - least common ancestor for this block and l1 head is before the l1 head.
-			isFork = true
-		}
+		// fork - least common ancestor for this block and l1 head is before the l1 head.
+		isFork = lcaBlock.NumberU64() < prevL1Head.NumberU64()
 	}
 	return &BlockIngestionType{IsLatest: isLatest, Fork: isFork, PreGenesis: false}, nil
 }
