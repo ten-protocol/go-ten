@@ -249,7 +249,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 		return nil, sysError
 	}
 	if enclaveResponse.Error() != nil {
-		h.logger.Warn("Could not submit transaction.", log.ErrKey, enclaveResponse.Error())
+		h.logger.Trace("Could not submit transaction.", log.ErrKey, enclaveResponse.Error())
 		return enclaveResponse, nil //nolint: nilerr
 	}
 
@@ -424,7 +424,7 @@ func (h *host) startProcessing() {
 				continue
 			}
 			if resp.Error() != nil {
-				h.logger.Warn("Could not submit transaction", log.ErrKey, resp.Error())
+				h.logger.Trace("Could not submit transaction", log.ErrKey, resp.Error())
 			}
 
 		// todo (#718) - adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.
