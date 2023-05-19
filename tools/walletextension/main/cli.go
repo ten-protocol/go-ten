@@ -36,7 +36,7 @@ const (
 	logPathDefault = "wallet_extension_logs.txt"
 	logPathUsage   = "The path to use for the wallet extension's log file"
 
-	databasePathName    = "DatabasePath"
+	databasePathName    = "databasePath"
 	databasePathDefault = ".obscuro/gateway_database.db"
 	databasePathUsage   = "The path for the wallet extension's database file. Default: .obscuro/gateway_database.db"
 
