@@ -448,6 +448,11 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 		return responses.ToInternalError(fmt.Errorf("requested SubmitBatch with the enclave stopping"))
 	}
 
+	callStart := time.Now()
+	defer func() {
+		e.logger.Info(fmt.Sprintf("SubmitBatch call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
+	}()
+
 	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
 	if err := e.Validator().ValidateAndStoreBatch(batch); err != nil {
@@ -462,6 +467,11 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 		return responses.ToInternalError(fmt.Errorf("requested CreateBatch with the enclave stopping"))
 	}
 
+	callStart := time.Now()
+	defer func() {
+		e.logger.Info(fmt.Sprintf("CreateBatch call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
+	}()
+
 	err := e.Sequencer().CreateBatch()
 	if err != nil {
 		return responses.ToInternalError(err)
@@ -474,6 +484,11 @@ func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
 	}
+
+	callStart := time.Now()
+	defer func() {
+		e.logger.Info(fmt.Sprintf("CreateRollup call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
+	}()
 
 	rollup, err := e.Sequencer().CreateRollup()
 	if err != nil {
