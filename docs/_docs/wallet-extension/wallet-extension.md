@@ -58,8 +58,8 @@ tools.
    * `nodePortHTTP` (default: `13000`): The Obscuro node's HTTP RPC port.
    * `nodePortWS` (default: `13001`): The Obscuro node's websockets RPC port.
    * `logPath` (default: `wallet_extension_logs.txt`): The path for the wallet extension's logs.
-   * `persistencePath` (default: `~/.obscuro/wallet_extension_persistence`): The path to use for the wallet extension's 
-      persistence file. 
+   * `databasePath` (default: `~/.obscuro/getway_database`): The path to use for the wallet extension's 
+      database. 
 
    The wallet extension is now listening on the specified host and port. For the remainder of this document, we'll 
    assume that the default ports of `3000` and `3001` were selected.

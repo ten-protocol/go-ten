@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -23,7 +24,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/persistence"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/userconn"
 )
 
@@ -35,6 +36,7 @@ const (
 	PathSubmitViewingKey   = "/submitviewingkey/"
 	staticDir              = "static"
 	wsProtocol             = "ws://"
+	defaultUser            = "defaultUser"
 
 	successMsg = "success"
 )
@@ -51,7 +53,7 @@ type WalletExtension struct {
 	unsignedVKs        map[gethcommon.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	serverHTTPShutdown func(ctx context.Context) error
 	serverWSShutdown   func(ctx context.Context) error
-	persistence        *persistence.Persistence
+	storage            *storage.Storage
 	logger             gethlog.Logger
 	isShutDown         atomicBool
 }
@@ -67,18 +69,29 @@ func NewWalletExtension(config Config, logger gethlog.Logger) *WalletExtension {
 		logger.Crit("unable to create temporary client for request ", log.ErrKey, err)
 	}
 
+	databaseStorage, err := storage.New(config.DBPathOverride)
+	if err != nil {
+		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
+	}
+
 	walletExtension := &WalletExtension{
 		hostAddr:       wsProtocol + config.NodeRPCWebsocketAddress,
 		unsignedVKs:    make(map[gethcommon.Address]*rpc.ViewingKey),
 		accountManager: accountmanager.NewAccountManager(unauthedClient, logger),
-		persistence:    persistence.NewPersistence(config.NodeRPCWebsocketAddress, config.PersistencePathOverride, logger),
+		storage:        databaseStorage,
 		logger:         logger,
 	}
 
-	// We reload the existing viewing keys from persistence.
-	for accountAddr, viewingKey := range walletExtension.persistence.LoadViewingKeys() {
+	// We reload the existing viewing keys from the database.
+	viewingKeys, err := walletExtension.storage.GetUserVKs(defaultUser)
+	if err != nil {
+		logger.Error("Error getting viewing keys for user:", defaultUser)
+		os.Exit(1)
+	}
+
+	for accountAddr, viewingKey := range viewingKeys {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
-		// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
+		// todo(@ziga) - Create the clients lazily, to reduce connections to the host.
 		client, err := rpc.NewEncNetworkClient(walletExtension.hostAddr, viewingKey, logger)
 		if err != nil {
 			logger.Error(fmt.Sprintf("failed to create encrypted RPC client for persisted account %s", accountAddr), log.ErrKey, err)
@@ -403,7 +416,7 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 
 	vk.SignedKey = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
-	// todo (@ziga) - create the clients lazily, to reduce connections to the host.
+	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
 	client, err := rpc.NewEncNetworkClient(we.hostAddr, vk, we.logger)
 	if err != nil {
 		userConn.HandleError(fmt.Sprintf("failed to create encrypted RPC client for account %s. Cause: %s", accAddress, err))
@@ -411,7 +424,12 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 	}
 	we.accountManager.AddClient(accAddress, client)
 
-	we.persistence.PersistViewingKey(vk)
+	err = we.storage.SaveUserVK(defaultUser, vk)
+	if err != nil {
+		userConn.HandleError("error saving viewing key to the database: %w")
+		return
+	}
+
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
 	delete(we.unsignedVKs, accAddress)
 
@@ -429,6 +447,6 @@ type Config struct {
 	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
 	LogPath                 string
-	PersistencePathOverride string // Overrides the persistence file location. Used in tests.
+	DBPathOverride          string // Overrides the database file location. Used in tests.
 	VerboseFlag             bool
 }

@@ -31,13 +31,13 @@ import (
 const jsonID = "1"
 
 func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *walletextension.Config {
-	testPersistencePath, err := os.CreateTemp("", "")
+	testDBPath, err := os.CreateTemp("", "")
 	if err != nil {
 		panic("could not create persistence file for wallet extension tests")
 	}
 	return &walletextension.Config{
 		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", connectPort),
-		PersistencePathOverride: testPersistencePath.Name(),
+		DBPathOverride:          testDBPath.Name(),
 		WalletExtensionPort:     wallHTTPPort,
 		WalletExtensionPortWS:   wallWSPort,
 	}
