@@ -14,5 +14,5 @@ type Manager interface {
 	// RemoveMempoolTxs removes transactions that are considered immune to re-orgs (i.e. over X batches deep).
 	RemoveMempoolTxs(batch *core.Batch, resolver db.BatchResolver) error
 	// CurrentTxs Returns the transactions that should be included in the current batch
-	CurrentTxs(head *core.Batch, resolver db.BatchResolver) ([]*common.L2Tx, error)
+	CurrentTxs(head *core.Batch, resolver db.BatchResolver, batchLimiter core.BatchSizeLimiter) ([]*common.L2Tx, error)
 }

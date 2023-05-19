@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -107,4 +108,8 @@ func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*
 
 func (bp *l1BlockProcessor) GetHead() (*common.L1Block, error) {
 	return bp.storage.FetchHeadBlock()
+}
+
+func (bp *l1BlockProcessor) GetCrossChainContractAddress() *gethcommon.Address {
+	return bp.crossChainProcessors.Remote.GetBusAddress()
 }

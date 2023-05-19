@@ -32,6 +32,7 @@ type BlockIngestionType struct {
 type L1BlockProcessor interface {
 	Process(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error)
 	GetHead() (*common.L1Block, error)
+	GetCrossChainContractAddress() *gethcommon.Address
 }
 
 // Contains all of the data that each batch depends on

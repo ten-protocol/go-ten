@@ -152,6 +152,8 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	// to be in our chain.
 	headBatch = ancestralBatch
 
+	//batchLimiter := core.NewBatchSizeLimiter(core.BatchMaxTransactionData, *s.blockProcessor.GetCrossChainContractAddress(), crosschain.CrossChainEventID)
+
 	transactions, err := s.mempool.CurrentTxs(headBatch, s.storage)
 	if err != nil {
 		return err
