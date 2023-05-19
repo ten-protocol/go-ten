@@ -290,10 +290,14 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 
 		// i equals 0 at the highest batch number
 		if i == 0 {
-			if err := s.storage.SetHeadBatchPointer(cb.Batch); err != nil {
+			dbBatch := s.storage.OpenBatch()
+			if err := s.storage.SetHeadBatchPointer(cb.Batch, dbBatch); err != nil {
 				return fmt.Errorf("failed setting head batch ptr. Cause: %w", err)
 			}
-			return s.storage.UpdateHeadBatch(block.Hash(), cb.Batch, cb.Receipts)
+			if err := s.storage.UpdateHeadBatch(block.Hash(), cb.Batch, cb.Receipts, dbBatch); err != nil {
+				return fmt.Errorf("failed to update head batch. Cause: %w", err)
+			}
+			return s.storage.CommitBatch(dbBatch)
 		}
 	}
 
