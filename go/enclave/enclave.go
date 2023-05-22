@@ -282,8 +282,12 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 
 func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
 	e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
+	extBatch, err := batch.ToExtBatch(e.transactionBlobCrypto)
+	if err != nil {
+		e.logger.Crit("failed to convert batch", log.ErrKey, err)
+	}
 	resp := common.StreamL2UpdatesResponse{
-		Batch: batch.ToExtBatch(e.transactionBlobCrypto),
+		Batch: extBatch,
 	}
 	outChannel <- resp
 }
@@ -454,7 +458,10 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	}()
 
 	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
-	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
+	batch, err := core.ToBatch(extBatch, e.transactionBlobCrypto)
+	if err != nil {
+		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
+	}
 	if err := e.Validator().ValidateAndStoreBatch(batch); err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err))
 	}
@@ -1392,8 +1399,13 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash,
 	}
 
 	var producedExtBatch *common.ExtBatch
+	var err error
 	if producedBatch != nil {
-		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
+		producedExtBatch, err = producedBatch.ToExtBatch(e.transactionBlobCrypto)
+	}
+	if err != nil {
+		e.logger.Crit("Failed to convert batch. Should not happen", log.ErrKey, err)
+		return nil
 	}
 
 	batch, err := e.storage.FetchBatch(*l2Head)

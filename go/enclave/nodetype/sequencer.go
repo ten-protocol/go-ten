@@ -211,7 +211,7 @@ func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
 		return nil, err
 	}
 
-	return rollup.ToExtRollup(s.encryption), nil
+	return rollup.ToExtRollup(s.encryption)
 }
 
 func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {

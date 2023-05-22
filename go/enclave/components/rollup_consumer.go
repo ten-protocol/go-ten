@@ -80,7 +80,12 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts, blockR
 		// Ignore rollups created with proofs from different L1 blocks
 		// In case of L1 reorgs, rollups may end published on a fork
 		if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-			rollups = append(rollups, core.ToRollup(r, rc.TransactionBlobCrypto))
+			rollup, err := core.ToRollup(r, rc.TransactionBlobCrypto)
+			if err != nil {
+				// todo - this should not fail, but generate the proof
+				rc.logger.Crit("Failed to transform rollup", log.ErrKey, err)
+			}
+			rollups = append(rollups, rollup)
 			rc.logger.Info(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
 				common.ShortHash(r.Hash()),
 				common.ShortHash(b.Hash()),

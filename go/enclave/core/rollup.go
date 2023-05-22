@@ -1,8 +1,13 @@
 package core
 
 import (
+	"bytes"
+	"compress/gzip"
+	"io"
 	"math/big"
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -38,26 +43,63 @@ func (r *Rollup) IsGenesis() bool {
 	return r.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
 
-func (r *Rollup) ToExtRollup(txBlobCrypto crypto.TransactionBlobCrypto) *common.ExtRollup {
-	extBatches := make([]*common.ExtBatch, len(r.Batches))
-	for idx, batch := range r.Batches {
-		extBatches[idx] = batch.ToExtBatch(txBlobCrypto)
+func (r *Rollup) ToExtRollup(txBlobCrypto crypto.TransactionBlobCrypto) (*common.ExtRollup, error) {
+	plaintextBatchesBlob, err := rlp.EncodeToBytes(r.Batches)
+	if err != nil {
+		return nil, err
+	}
+
+	compressedBatchesBlob, err := compress(plaintextBatchesBlob)
+	if err != nil {
+		return nil, err
 	}
 
 	return &common.ExtRollup{
 		Header:  r.Header,
-		Batches: extBatches,
-	}
+		Batches: txBlobCrypto.Encrypt(compressedBatchesBlob),
+	}, nil
 }
 
-func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.TransactionBlobCrypto) *Rollup {
-	batches := make([]*Batch, len(encryptedRollup.Batches))
-	for idx, extBatch := range encryptedRollup.Batches {
-		batches[idx] = ToBatch(extBatch, txBlobCrypto)
+func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.TransactionBlobCrypto) (*Rollup, error) {
+	decryptedTxs := txBlobCrypto.Decrypt(encryptedRollup.Batches)
+	encryptedBatches, err := decompress(decryptedTxs)
+	if err != nil {
+		return nil, err
+	}
+
+	batches := make([]*Batch, 0)
+	err = rlp.DecodeBytes(encryptedBatches, &batches)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Rollup{
 		Header:  encryptedRollup.Header,
 		Batches: batches,
+	}, nil
+}
+
+// compress the byte array using gzip
+func compress(in []byte) ([]byte, error) {
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	if _, err := gz.Write(in); err != nil {
+		return nil, err
 	}
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+// Decompress the byte array using gzip
+func decompress(in []byte) ([]byte, error) {
+	reader := bytes.NewReader(in)
+	gz, err := gzip.NewReader(reader)
+	if err != nil {
+		return nil, err
+	}
+	defer gz.Close()
+
+	return io.ReadAll(gz)
 }

@@ -11,8 +11,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 const (
@@ -25,8 +23,8 @@ const (
 
 // TransactionBlobCrypto handles the encryption and decryption of the transaction blobs stored inside a rollup.
 type TransactionBlobCrypto interface {
-	Encrypt(transactions []*common.L2Tx) common.EncryptedTransactions
-	Decrypt(encryptedTxs common.EncryptedTransactions) []*common.L2Tx
+	Encrypt(blob []byte) []byte
+	Decrypt(encryptedTxs []byte) []byte
 }
 
 type TransactionBlobCryptoImpl struct {
@@ -51,37 +49,27 @@ func NewTransactionBlobCryptoImpl(logger gethlog.Logger) TransactionBlobCrypto {
 }
 
 // todo (#1053) - modify this logic so that transactions with different reveal periods are in different blobs, as per the whitepaper.
-func (t TransactionBlobCryptoImpl) Encrypt(transactions []*common.L2Tx) common.EncryptedTransactions {
-	encodedTxs, err := rlp.EncodeToBytes(transactions)
-	if err != nil {
-		t.logger.Crit("could not encrypt L2 transaction.", log.ErrKey, err)
-	}
-
+func (t TransactionBlobCryptoImpl) Encrypt(encodedBatches []byte) []byte {
 	nonce := make([]byte, NonceLength)
-	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		t.logger.Crit("could not generate nonce to encrypt transactions.", log.ErrKey, err)
 	}
 
 	// todo - ensure this nonce is not used too many times (2^32?) with the same key, to avoid risk of repeat.
-	ciphertext := t.transactionCipher.Seal(nil, nonce, encodedTxs, nil)
+	ciphertext := t.transactionCipher.Seal(nil, nonce, encodedBatches, nil)
 	// We prepend the nonce to the ciphertext, so that it can be retrieved when decrypting.
 	return append(nonce, ciphertext...) //nolint:makezero
 }
 
-func (t TransactionBlobCryptoImpl) Decrypt(encryptedTxs common.EncryptedTransactions) []*common.L2Tx {
+func (t TransactionBlobCryptoImpl) Decrypt(encryptedBatches []byte) []byte {
 	// The nonce is prepended to the ciphertext.
-	nonce := encryptedTxs[0:NonceLength]
-	ciphertext := encryptedTxs[NonceLength:]
+	nonce := encryptedBatches[0:NonceLength]
+	ciphertext := encryptedBatches[NonceLength:]
 
-	encodedTxs, err := t.transactionCipher.Open(nil, nonce, ciphertext, nil)
+	encodedBatches, err := t.transactionCipher.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		t.logger.Crit("could not decrypt encrypted L2 transactions.", log.ErrKey, err)
 	}
 
-	var txs []*common.L2Tx
-	if err := rlp.DecodeBytes(encodedTxs, &txs); err != nil {
-		t.logger.Crit("could not decode encoded L2 transactions.", log.ErrKey, err)
-	}
-
-	return txs
+	return encodedBatches
 }

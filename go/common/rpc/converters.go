@@ -261,13 +261,7 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 		return generated.ExtRollupMsg{}
 	}
 
-	batchMsgs := make([]*generated.ExtBatchMsg, len(rollup.Batches))
-	for idx, batch := range rollup.Batches {
-		extBatchMsg := ToExtBatchMsg(batch)
-		batchMsgs[idx] = &extBatchMsg
-	}
-
-	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), Batches: batchMsgs}
+	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), Batches: rollup.Batches}
 }
 
 func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg { //nolint:dupl
@@ -323,16 +317,9 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 		}
 	}
 
-	// We recreate the batches.
-	batches := make([]*common.ExtBatch, len(msg.Batches))
-	for idx, batchMsg := range msg.Batches {
-		batch := FromExtBatchMsg(batchMsg)
-		batches[idx] = batch
-	}
-
 	return &common.ExtRollup{
 		Header:  FromRollupHeaderMsg(msg.Header),
-		Batches: batches,
+		Batches: msg.Batches,
 	}
 }
 
