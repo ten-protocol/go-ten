@@ -278,10 +278,10 @@ func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Ba
 	if headBatch.NumberU64() < batch.NumberU64() {
 		return nil, errors.New("head batch height is in the past compared to requested batch")
 	}
+	// todo @stefan - move this somewhere else, it shouldn't be in the batch registry.
+	rollupLimiter := limiters.NewRollupLimiter(limiters.MaxTransactionSize)
 
 	for batch.Number().Cmp(headBatch.Number()) != 0 {
-		// todo @stefan - move this somewhere else, it shouldn't be in the batch registry.
-		rollupLimiter := limiters.NewRollupLimiter(limiters.MaxTransactionSize)
 		if isFull, err := rollupLimiter.AcceptBatch(batch); err != nil {
 			return nil, err
 		} else if isFull {

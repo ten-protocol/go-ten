@@ -99,15 +99,18 @@ func (db *mempoolManager) CurrentTxs(stateDB *state.StateDB, limiter limiters.Ba
 			continue
 		}
 
-		if err := limiter.AcceptTransaction(tx); err == nil { // Batch still has space
-			applicableTransactions = append(applicableTransactions, tx)
-			nonceTracker.IncrementNonce(*sender)
-			db.logger.Info(fmt.Sprintf("Including transaction %s with nonce: %d", tx.Hash().Hex(), tx.Nonce()))
-		} else if err != nil && errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
-			break
-		} else { // Limiter encountered unexpected error
-			return nil, err
+		err := limiter.AcceptTransaction(tx)
+		if err != nil { // Batch still has space
+			if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
+				break
+			} else { // Limiter encountered unexpected error
+				return nil, err
+			}
 		}
+
+		applicableTransactions = append(applicableTransactions, tx)
+		nonceTracker.IncrementNonce(*sender)
+		db.logger.Info(fmt.Sprintf("Including transaction %s with nonce: %d", tx.Hash().Hex(), tx.Nonce()))
 	}
 
 	return applicableTransactions, nil
