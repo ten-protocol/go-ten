@@ -17,7 +17,7 @@ type batchSizeLimiter struct {
 
 type BatchSizeLimiter interface {
 	AcceptTransaction(tx *types.Transaction) error
-	//ProcessReceipt(receipt *types.Receipt) error //todo @stefan add this again
+	// ProcessReceipt(receipt *types.Receipt) error //todo @stefan add this again
 }
 
 var ErrInsufficientSpace = errors.New("insufficient space in BatchSizeLimiter")
