@@ -61,7 +61,7 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.TransactionBlobCrypto) (
 	if err != nil {
 		return nil, err
 	}
-	compressed, err := compress(bytes)
+	compressed, err := brotliCompress(bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.TransactionBlobCrypto) (
 
 func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.TransactionBlobCrypto) (*Batch, error) {
 	compressed := transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob)
-	encoded, err := decompress(compressed)
+	encoded, err := brotliDecompress(compressed)
 	if err != nil {
 		return nil, err
 	}

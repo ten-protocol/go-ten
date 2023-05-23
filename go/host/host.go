@@ -540,6 +540,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
+	h.logger.Info(fmt.Sprintf("Publishing rollup with height=%d, size=%dKB", producedRollup.Header.Number, len(encodedRollup)/1024))
 
 	h.logger.Trace("Sending transaction to publish rollup", "rollup_header",
 		gethlog.Lazy{Fn: func() string {

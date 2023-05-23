@@ -11,6 +11,7 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
+	"github.com/google/brotli/go/cbrotli"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
@@ -49,7 +50,7 @@ func (r *Rollup) ToExtRollup(txBlobCrypto crypto.TransactionBlobCrypto) (*common
 		return nil, err
 	}
 
-	compressedBatchesBlob, err := compress(plaintextBatchesBlob)
+	compressedBatchesBlob, err := brotliCompress(plaintextBatchesBlob)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +63,7 @@ func (r *Rollup) ToExtRollup(txBlobCrypto crypto.TransactionBlobCrypto) (*common
 
 func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.TransactionBlobCrypto) (*Rollup, error) {
 	decryptedTxs := txBlobCrypto.Decrypt(encryptedRollup.Batches)
-	encryptedBatches, err := decompress(decryptedTxs)
+	encryptedBatches, err := brotliDecompress(decryptedTxs)
 	if err != nil {
 		return nil, err
 	}
@@ -79,8 +80,9 @@ func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.Transaction
 	}, nil
 }
 
-// compress the byte array using gzip
-func compress(in []byte) ([]byte, error) {
+// todo - move these to a service
+// gzipCompress the byte array using gzip
+func gzipCompress(in []byte) ([]byte, error) {
 	var b bytes.Buffer
 	gz := gzip.NewWriter(&b)
 	if _, err := gz.Write(in); err != nil {
@@ -93,7 +95,7 @@ func compress(in []byte) ([]byte, error) {
 }
 
 // Decompress the byte array using gzip
-func decompress(in []byte) ([]byte, error) {
+func gzipDecompress(in []byte) ([]byte, error) {
 	reader := bytes.NewReader(in)
 	gz, err := gzip.NewReader(reader)
 	if err != nil {
@@ -102,4 +104,12 @@ func decompress(in []byte) ([]byte, error) {
 	defer gz.Close()
 
 	return io.ReadAll(gz)
+}
+
+func brotliCompress(in []byte) ([]byte, error) {
+	return cbrotli.Encode(in, cbrotli.WriterOptions{Quality: 11})
+}
+
+func brotliDecompress(in []byte) ([]byte, error) {
+	return cbrotli.Decode(in)
 }
