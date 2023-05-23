@@ -3,7 +3,6 @@ package limiters
 import (
 	"errors"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 )
@@ -13,14 +12,12 @@ import (
 // Acts as a calldata reservation system that accounts for both
 // transactions and cross chain messages.
 type batchSizeLimiter struct {
-	Size            uint64
-	ContractAddress common.Address
-	Topic           common.Hash
+	Size uint64
 }
 
 type BatchSizeLimiter interface {
 	AcceptTransaction(tx *types.Transaction) error
-	ProcessReceipt(receipt *types.Receipt) error
+	//ProcessReceipt(receipt *types.Receipt) error //todo @stefan add this again
 }
 
 var ErrInsufficientSpace = errors.New("insufficient space in BatchSizeLimiter")
@@ -31,11 +28,9 @@ const BatchMaxTransactionData = 25_000
 // NewBatchSizeLimiter - Size is the total space available per batch for calldata in a rollup.
 // contractAddress - the address of the l2 message bus where cross chain events would originate from.
 // topic - the event id of the cross chain message event.
-func NewBatchSizeLimiter(size uint64, contractAddress common.Address, topic common.Hash) BatchSizeLimiter {
+func NewBatchSizeLimiter(size uint64) BatchSizeLimiter {
 	return &batchSizeLimiter{
-		Size:            size,
-		ContractAddress: contractAddress,
-		Topic:           topic,
+		Size: size,
 	}
 }
 
@@ -52,34 +47,6 @@ func (l *batchSizeLimiter) AcceptTransaction(tx *types.Transaction) error {
 	}
 
 	l.Size -= uint64(rlpSize)
-	return nil
-}
-
-// ProcessReceipt - Extracts the cross chain messages from the receipt and reserves space
-// for them as they have to be part of the calldata.
-func (l *batchSizeLimiter) ProcessReceipt(receipt *types.Receipt) error {
-	for _, log := range receipt.Logs {
-		if log.Address != l.ContractAddress {
-			continue
-		}
-		for _, t := range log.Topics {
-			if t != l.Topic {
-				continue // we only want cross chain message events.
-			}
-
-			rlpSize, err := getRlpSize(log)
-			if err != nil {
-				return err
-			}
-
-			if uint64(rlpSize) > l.Size {
-				return ErrInsufficientSpace
-			}
-
-			l.Size -= uint64(rlpSize)
-		}
-	}
-
 	return nil
 }
 

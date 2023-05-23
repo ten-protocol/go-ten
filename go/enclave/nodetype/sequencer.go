@@ -17,7 +17,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
@@ -160,7 +159,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	}
 
 	// todo (@stefan) - limit on receipts too
-	limiter := limiters.NewBatchSizeLimiter(limiters.BatchMaxTransactionData, *s.blockProcessor.GetCrossChainContractAddress(), crosschain.CrossChainEventID)
+	limiter := limiters.NewBatchSizeLimiter(limiters.BatchMaxTransactionData)
 	transactions, err := s.mempool.CurrentTxs(stateDB, limiter)
 	if err != nil {
 		return err
