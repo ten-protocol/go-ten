@@ -51,7 +51,7 @@ func (b *Batch) IsGenesis() bool {
 	return b.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
 
-func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.TransactionBlobCrypto) (*common.ExtBatch, error) {
+func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, compression crypto.DataCompressionService) (*common.ExtBatch, error) {
 	txHashes := make([]gethcommon.Hash, len(b.Transactions))
 	for idx, tx := range b.Transactions {
 		txHashes[idx] = tx.Hash()
@@ -61,7 +61,7 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.TransactionBlobCrypto) (
 	if err != nil {
 		return nil, err
 	}
-	compressed, err := brotliCompress(bytes)
+	compressed, err := compression.Compress(bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -72,9 +72,9 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.TransactionBlobCrypto) (
 	}, nil
 }
 
-func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.TransactionBlobCrypto) (*Batch, error) {
+func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncryptionService, compression crypto.DataCompressionService) (*Batch, error) {
 	compressed := transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob)
-	encoded, err := brotliDecompress(compressed)
+	encoded, err := compression.Decompress(compressed)
 	if err != nil {
 		return nil, err
 	}

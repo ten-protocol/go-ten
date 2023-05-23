@@ -1,9 +1,7 @@
 package core
 
+import "C"
 import (
-	"bytes"
-	"compress/gzip"
-	"io"
 	"math/big"
 	"sync/atomic"
 
@@ -11,7 +9,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
-	"github.com/google/brotli/go/cbrotli"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
@@ -44,13 +41,13 @@ func (r *Rollup) IsGenesis() bool {
 	return r.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
 
-func (r *Rollup) ToExtRollup(txBlobCrypto crypto.TransactionBlobCrypto) (*common.ExtRollup, error) {
+func (r *Rollup) ToExtRollup(txBlobCrypto crypto.DataEncryptionService, compression crypto.DataCompressionService) (*common.ExtRollup, error) {
 	plaintextBatchesBlob, err := rlp.EncodeToBytes(r.Batches)
 	if err != nil {
 		return nil, err
 	}
 
-	compressedBatchesBlob, err := brotliCompress(plaintextBatchesBlob)
+	compressedBatchesBlob, err := compression.Compress(plaintextBatchesBlob)
 	if err != nil {
 		return nil, err
 	}
@@ -61,9 +58,9 @@ func (r *Rollup) ToExtRollup(txBlobCrypto crypto.TransactionBlobCrypto) (*common
 	}, nil
 }
 
-func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.TransactionBlobCrypto) (*Rollup, error) {
+func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.DataEncryptionService, compression crypto.DataCompressionService) (*Rollup, error) {
 	decryptedTxs := txBlobCrypto.Decrypt(encryptedRollup.Batches)
-	encryptedBatches, err := brotliDecompress(decryptedTxs)
+	encryptedBatches, err := compression.Decompress(decryptedTxs)
 	if err != nil {
 		return nil, err
 	}
@@ -78,38 +75,4 @@ func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.Transaction
 		Header:  encryptedRollup.Header,
 		Batches: batches,
 	}, nil
-}
-
-// todo - move these to a service
-// gzipCompress the byte array using gzip
-func gzipCompress(in []byte) ([]byte, error) {
-	var b bytes.Buffer
-	gz := gzip.NewWriter(&b)
-	if _, err := gz.Write(in); err != nil {
-		return nil, err
-	}
-	if err := gz.Close(); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
-}
-
-// Decompress the byte array using gzip
-func gzipDecompress(in []byte) ([]byte, error) {
-	reader := bytes.NewReader(in)
-	gz, err := gzip.NewReader(reader)
-	if err != nil {
-		return nil, err
-	}
-	defer gz.Close()
-
-	return io.ReadAll(gz)
-}
-
-func brotliCompress(in []byte) ([]byte, error) {
-	return cbrotli.Encode(in, cbrotli.WriterOptions{Quality: 11})
-}
-
-func brotliDecompress(in []byte) ([]byte, error) {
-	return cbrotli.Decode(in)
 }

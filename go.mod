@@ -7,13 +7,13 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.25
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11
 	github.com/Azure/go-autorest/autorest/to v0.4.0
+	github.com/andybalholm/brotli v1.0.5
 	github.com/docker/docker v1.4.2-0.20180625184442-8e610b2b55bf
 	github.com/docker/go-connections v0.4.0
 	github.com/edgelesssys/ego v1.1.0
 	github.com/ethereum/go-ethereum v1.10.16
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.4.1
-	github.com/google/brotli/go/cbrotli v0.0.0-20230201092028-ed1995b6bda1
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
 	github.com/kamilsk/breaker v1.2.1

@@ -21,18 +21,18 @@ const (
 	NonceLength = 12
 )
 
-// TransactionBlobCrypto handles the encryption and decryption of the transaction blobs stored inside a rollup.
-type TransactionBlobCrypto interface {
+// DataEncryptionService handles the encryption and decryption of the transaction blobs stored inside a rollup.
+type DataEncryptionService interface {
 	Encrypt(blob []byte) []byte
 	Decrypt(encryptedTxs []byte) []byte
 }
 
-type TransactionBlobCryptoImpl struct {
+type dataEncryptionServiceImpl struct {
 	transactionCipher cipher.AEAD
 	logger            gethlog.Logger
 }
 
-func NewTransactionBlobCryptoImpl(logger gethlog.Logger) TransactionBlobCrypto {
+func NewDataEncryptionService(logger gethlog.Logger) DataEncryptionService {
 	key := gethcommon.Hex2Bytes(RollupEncryptionKeyHex)
 	block, err := aes.NewCipher(key)
 	if err != nil {
@@ -42,14 +42,14 @@ func NewTransactionBlobCryptoImpl(logger gethlog.Logger) TransactionBlobCrypto {
 	if err != nil {
 		logger.Crit("could not initialise wrapper for AES cipher for enclave rollup key. ", log.ErrKey, err)
 	}
-	return TransactionBlobCryptoImpl{
+	return dataEncryptionServiceImpl{
 		transactionCipher: transactionCipher,
 		logger:            logger,
 	}
 }
 
 // todo (#1053) - modify this logic so that transactions with different reveal periods are in different blobs, as per the whitepaper.
-func (t TransactionBlobCryptoImpl) Encrypt(encodedBatches []byte) []byte {
+func (t dataEncryptionServiceImpl) Encrypt(encodedBatches []byte) []byte {
 	nonce := make([]byte, NonceLength)
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		t.logger.Crit("could not generate nonce to encrypt transactions.", log.ErrKey, err)
@@ -61,7 +61,7 @@ func (t TransactionBlobCryptoImpl) Encrypt(encodedBatches []byte) []byte {
 	return append(nonce, ciphertext...) //nolint:makezero
 }
 
-func (t TransactionBlobCryptoImpl) Decrypt(encryptedBatches []byte) []byte {
+func (t dataEncryptionServiceImpl) Decrypt(encryptedBatches []byte) []byte {
 	// The nonce is prepended to the ciphertext.
 	nonce := encryptedBatches[0:NonceLength]
 	ciphertext := encryptedBatches[NonceLength:]

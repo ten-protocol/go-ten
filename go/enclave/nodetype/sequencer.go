@@ -31,12 +31,13 @@ type sequencer struct {
 
 	logger gethlog.Logger
 
-	hostID            gethcommon.Address
-	chainConfig       *params.ChainConfig
-	enclavePrivateKey *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
-	mempool           mempool.Manager
-	storage           db.Storage
-	encryption        crypto.TransactionBlobCrypto
+	hostID                 gethcommon.Address
+	chainConfig            *params.ChainConfig
+	enclavePrivateKey      *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
+	mempool                mempool.Manager
+	storage                db.Storage
+	dataEncryptionService  crypto.DataEncryptionService
+	dataCompressionService crypto.DataCompressionService
 
 	// This is used to coordinate creating
 	// new batches and creating fork batches.
@@ -57,21 +58,23 @@ func NewSequencer(
 	enclavePrivateKey *ecdsa.PrivateKey, // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	mempool mempool.Manager,
 	storage db.Storage,
-	encryption crypto.TransactionBlobCrypto,
+	dataEncryptionService crypto.DataEncryptionService,
+	dataCompressionService crypto.DataCompressionService,
 ) Sequencer {
 	return &sequencer{
-		blockProcessor:    consumer,
-		batchProducer:     producer,
-		batchRegistry:     registry,
-		rollupProducer:    rollupProducer,
-		rollupConsumer:    rollupConsumer,
-		logger:            logger,
-		hostID:            hostID,
-		chainConfig:       chainConfig,
-		enclavePrivateKey: enclavePrivateKey,
-		mempool:           mempool,
-		storage:           storage,
-		encryption:        encryption,
+		blockProcessor:         consumer,
+		batchProducer:          producer,
+		batchRegistry:          registry,
+		rollupProducer:         rollupProducer,
+		rollupConsumer:         rollupConsumer,
+		logger:                 logger,
+		hostID:                 hostID,
+		chainConfig:            chainConfig,
+		enclavePrivateKey:      enclavePrivateKey,
+		mempool:                mempool,
+		storage:                storage,
+		dataEncryptionService:  dataEncryptionService,
+		dataCompressionService: dataCompressionService,
 	}
 }
 
@@ -211,7 +214,7 @@ func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
 		return nil, err
 	}
 
-	return rollup.ToExtRollup(s.encryption)
+	return rollup.ToExtRollup(s.dataEncryptionService, s.dataCompressionService)
 }
 
 func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
