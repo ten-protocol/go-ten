@@ -1,4 +1,4 @@
-package core
+package limiters
 
 import (
 	"errors"
@@ -84,6 +84,7 @@ func (l *batchSizeLimiter) ProcessReceipt(receipt *types.Receipt) error {
 }
 
 func getRlpSize(val interface{}) (int, error) {
+	// todo (@stefan) - this should have a coefficient for compression
 	enc, err := rlp.EncodeToBytes(val)
 	if err != nil {
 		return 0, err

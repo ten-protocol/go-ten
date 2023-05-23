@@ -1,4 +1,4 @@
-package rollupmanager
+package limiters
 
 import (
 	"errors"
@@ -19,19 +19,27 @@ var (
 // todo - figure out the best number, optimism uses 132KB
 const MaxTransactionSize = 64 * 1024
 
-type RollupLimiter uint64
+type RollupLimiter struct {
+	remainingSize uint64
+}
 
-func (rl *RollupLimiter) Consume(encodable interface{}) error {
+func NewRollupLimiter(size uint64) *RollupLimiter {
+	return &RollupLimiter{
+		remainingSize: size,
+	}
+}
+
+func (rl *RollupLimiter) AcceptBatch(encodable interface{}) (bool, error) {
 	encodedData, err := rlp.EncodeToBytes(encodable)
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrFailedToEncode, err)
+		return false, fmt.Errorf("%w: %v", ErrFailedToEncode, err)
 	}
 
 	encodedSize := uint64(len(encodedData))
-	if encodedSize > uint64(*rl) {
-		return fmt.Errorf("%w: data size %d, remaining limit %d", ErrSizeExceedsLimit, encodedSize, *rl)
+	if encodedSize > rl.remainingSize {
+		return true, fmt.Errorf("%w: data size %d, remaining limit %d", ErrSizeExceedsLimit, encodedSize, *rl)
 	}
 
-	*rl -= RollupLimiter(encodedSize)
-	return nil
+	rl.remainingSize -= encodedSize
+	return false, nil
 }

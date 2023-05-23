@@ -17,6 +17,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
+	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 )
 
 type batchRegistryImpl struct {
@@ -279,6 +280,14 @@ func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Ba
 	}
 
 	for batch.Number().Cmp(headBatch.Number()) != 0 {
+		// todo @stefan - move this somewhere else, it shouldn't be in the batch registry.
+		rollupLimiter := limiters.NewRollupLimiter(limiters.MaxTransactionSize)
+		if isFull, err := rollupLimiter.AcceptBatch(batch); err != nil {
+			return nil, err
+		} else if isFull {
+			return batches, nil
+		}
+
 		batch, _ = br.storage.FetchBatchByHeight(batch.NumberU64() + 1)
 		batches = append(batches, batch)
 	}

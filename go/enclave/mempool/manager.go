@@ -1,6 +1,7 @@
 package mempool
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -80,7 +82,7 @@ func (db *mempoolManager) RemoveTxs(transactions types.Transactions) error {
 }
 
 // CurrentTxs - Calculate transactions to be included in the current batch
-func (db *mempoolManager) CurrentTxs(stateDB *state.StateDB) ([]*common.L2Tx, error) {
+func (db *mempoolManager) CurrentTxs(stateDB *state.StateDB, limiter limiters.BatchSizeLimiter) ([]*common.L2Tx, error) {
 	txes := db.FetchMempoolTxs()
 	sort.Sort(sortByNonce(txes))
 
@@ -93,10 +95,18 @@ func (db *mempoolManager) CurrentTxs(stateDB *state.StateDB) ([]*common.L2Tx, er
 			continue
 		}
 
-		if tx.Nonce() == nonceTracker.GetNonce(*sender) {
+		if tx.Nonce() != nonceTracker.GetNonce(*sender) {
+			continue
+		}
+
+		if err := limiter.AcceptTransaction(tx); err == nil { // Batch still has space
 			applicableTransactions = append(applicableTransactions, tx)
 			nonceTracker.IncrementNonce(*sender)
 			db.logger.Info(fmt.Sprintf("Including transaction %s with nonce: %d", tx.Hash().Hex(), tx.Nonce()))
+		} else if err != nil && errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
+			break
+		} else { // Limiter encountered unexpected error
+			return nil, err
 		}
 	}
 
