@@ -100,12 +100,12 @@ func (db *mempoolManager) CurrentTxs(stateDB *state.StateDB, limiter limiters.Ba
 		}
 
 		err := limiter.AcceptTransaction(tx)
-		if err != nil { // Batch still has space
+		if err != nil {
 			if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
 				break
-			} else { // Limiter encountered unexpected error
-				return nil, err
 			}
+			// Limiter encountered unexpected error
+			return nil, err
 		}
 
 		applicableTransactions = append(applicableTransactions, tx)

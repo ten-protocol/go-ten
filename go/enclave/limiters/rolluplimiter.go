@@ -19,17 +19,18 @@ var (
 // todo - figure out the best number, optimism uses 132KB
 const MaxTransactionSize = 64 * 1024
 
-type RollupLimiter struct {
+type rollupLimiter struct {
 	remainingSize uint64
 }
 
-func NewRollupLimiter(size uint64) *RollupLimiter {
-	return &RollupLimiter{
+func NewRollupLimiter(size uint64) RollupLimiter {
+	return &rollupLimiter{
 		remainingSize: size,
 	}
 }
 
-func (rl *RollupLimiter) AcceptBatch(encodable interface{}) (bool, error) {
+// todo (@stefan) figure out how to optimize the serialization out of the limiter
+func (rl *rollupLimiter) AcceptBatch(encodable interface{}) (bool, error) {
 	encodedData, err := rlp.EncodeToBytes(encodable)
 	if err != nil {
 		return false, fmt.Errorf("%w: %v", ErrFailedToEncode, err)

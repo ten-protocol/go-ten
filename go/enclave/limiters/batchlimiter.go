@@ -1,8 +1,6 @@
 package limiters
 
 import (
-	"errors"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 )
@@ -12,25 +10,16 @@ import (
 // Acts as a calldata reservation system that accounts for both
 // transactions and cross chain messages.
 type batchSizeLimiter struct {
-	Size uint64
+	remainingSize uint64 // the available size in the limiter
 }
-
-type BatchSizeLimiter interface {
-	AcceptTransaction(tx *types.Transaction) error
-	// ProcessReceipt(receipt *types.Receipt) error //todo @stefan add this again
-}
-
-var ErrInsufficientSpace = errors.New("insufficient space in BatchSizeLimiter")
 
 // BatchMaxTransactionData - The number where we will cut off processing transactions inside the evm facade.
-const BatchMaxTransactionData = 25_000
+const BatchMaxTransactionData = 25_000 // bytes
 
 // NewBatchSizeLimiter - Size is the total space available per batch for calldata in a rollup.
-// contractAddress - the address of the l2 message bus where cross chain events would originate from.
-// topic - the event id of the cross chain message event.
 func NewBatchSizeLimiter(size uint64) BatchSizeLimiter {
 	return &batchSizeLimiter{
-		Size: size,
+		remainingSize: size,
 	}
 }
 
@@ -42,14 +31,15 @@ func (l *batchSizeLimiter) AcceptTransaction(tx *types.Transaction) error {
 		return err
 	}
 
-	if uint64(rlpSize) > l.Size {
+	if uint64(rlpSize) > l.remainingSize {
 		return ErrInsufficientSpace
 	}
 
-	l.Size -= uint64(rlpSize)
+	l.remainingSize -= uint64(rlpSize)
 	return nil
 }
 
+// todo (@stefan) figure out how to optimize the serialization out of the limiter
 func getRlpSize(val interface{}) (int, error) {
 	// todo (@stefan) - this should have a coefficient for compression
 	enc, err := rlp.EncodeToBytes(val)
