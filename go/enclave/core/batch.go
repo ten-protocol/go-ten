@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"sync/atomic"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -51,7 +53,7 @@ func (b *Batch) IsGenesis() bool {
 	return b.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
 
-func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, compression crypto.DataCompressionService) (*common.ExtBatch, error) {
+func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*common.ExtBatch, error) {
 	txHashes := make([]gethcommon.Hash, len(b.Transactions))
 	for idx, tx := range b.Transactions {
 		txHashes[idx] = tx.Hash()
@@ -72,7 +74,7 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, c
 	}, nil
 }
 
-func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncryptionService, compression crypto.DataCompressionService) (*Batch, error) {
+func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*Batch, error) {
 	compressed := transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob)
 	encoded, err := compression.Decompress(compressed)
 	if err != nil {

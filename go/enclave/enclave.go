@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/nodetype"
 
@@ -82,7 +84,7 @@ type enclaveImpl struct {
 	enclavePubKey []byte            // the public key of the above
 
 	dataEncryptionService  crypto.DataEncryptionService
-	dataCompressionService crypto.DataCompressionService
+	dataCompressionService compression.DataCompressionService
 	profiler               *profiler.Profiler
 	debugger               *debugger.Debugger
 	logger                 gethlog.Logger
@@ -180,7 +182,7 @@ func NewEnclave(
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
 
 	dataEncryptionService := crypto.NewDataEncryptionService(logger)
-	dataCompressionService := crypto.NewBrotliDataCompressionService()
+	dataCompressionService := compression.NewBrotliDataCompressionService()
 
 	memp := mempool.New(config.ObscuroChainID, logger)
 

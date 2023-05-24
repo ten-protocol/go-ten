@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -19,7 +21,7 @@ type rollupConsumerImpl struct {
 	MgmtContractLib mgmtcontractlib.MgmtContractLib
 
 	dataEncryptionService  crypto.DataEncryptionService
-	dataCompressionService crypto.DataCompressionService
+	dataCompressionService compression.DataCompressionService
 
 	ObscuroChainID  int64
 	EthereumChainID int64
@@ -33,7 +35,7 @@ type rollupConsumerImpl struct {
 func NewRollupConsumer(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	dataEncryptionService crypto.DataEncryptionService,
-	dataCompressionService crypto.DataCompressionService,
+	dataCompressionService compression.DataCompressionService,
 	obscuroChainID int64,
 	ethereumChainID int64,
 	storage db.Storage,

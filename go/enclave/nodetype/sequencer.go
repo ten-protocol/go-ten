@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -37,7 +39,7 @@ type sequencer struct {
 	mempool                mempool.Manager
 	storage                db.Storage
 	dataEncryptionService  crypto.DataEncryptionService
-	dataCompressionService crypto.DataCompressionService
+	dataCompressionService compression.DataCompressionService
 
 	// This is used to coordinate creating
 	// new batches and creating fork batches.
@@ -59,7 +61,7 @@ func NewSequencer(
 	mempool mempool.Manager,
 	storage db.Storage,
 	dataEncryptionService crypto.DataEncryptionService,
-	dataCompressionService crypto.DataCompressionService,
+	dataCompressionService compression.DataCompressionService,
 ) Sequencer {
 	return &sequencer{
 		blockProcessor:         consumer,

@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"sync/atomic"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
@@ -41,7 +43,7 @@ func (r *Rollup) IsGenesis() bool {
 	return r.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
 
-func (r *Rollup) ToExtRollup(txBlobCrypto crypto.DataEncryptionService, compression crypto.DataCompressionService) (*common.ExtRollup, error) {
+func (r *Rollup) ToExtRollup(dataEncryptionService crypto.DataEncryptionService, compression compression.DataCompressionService) (*common.ExtRollup, error) {
 	plaintextBatchesBlob, err := rlp.EncodeToBytes(r.Batches)
 	if err != nil {
 		return nil, err
@@ -54,11 +56,11 @@ func (r *Rollup) ToExtRollup(txBlobCrypto crypto.DataEncryptionService, compress
 
 	return &common.ExtRollup{
 		Header:  r.Header,
-		Batches: txBlobCrypto.Encrypt(compressedBatchesBlob),
+		Batches: dataEncryptionService.Encrypt(compressedBatchesBlob),
 	}, nil
 }
 
-func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.DataEncryptionService, compression crypto.DataCompressionService) (*Rollup, error) {
+func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*Rollup, error) {
 	decryptedTxs := txBlobCrypto.Decrypt(encryptedRollup.Batches)
 	encryptedBatches, err := compression.Decompress(decryptedTxs)
 	if err != nil {
