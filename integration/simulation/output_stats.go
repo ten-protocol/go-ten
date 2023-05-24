@@ -96,7 +96,7 @@ func (o *OutputStats) incrementStats(block *types.Block, l1Node ethadapter.EthCl
 			}
 			//if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {
 			//	o.l2RollupCountInL1Blocks++
-			//	for _, batch := range r.Batches {
+			//	for _, batch := range r.BatchPayloads {
 			//		o.l2RollupTxCountInL1Blocks += len(batch.TxHashes)
 			//	}
 			//}

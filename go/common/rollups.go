@@ -8,8 +8,9 @@ import (
 type ExtRollup struct {
 	Header *RollupHeader
 	// todo (#718) - consider compressing these batches before submitting to the L1.
-	Batches []byte // The batches included in the rollup, in external/encrypted form.
-	hash    atomic.Value
+	BatchPayloads []byte // The batches included in the rollup, in external/encrypted form.
+	BatchHeaders  []byte // compressed blob of a serialised list of batch headers
+	hash          atomic.Value
 }
 
 // Hash returns the keccak256 hash of the rollup's header.

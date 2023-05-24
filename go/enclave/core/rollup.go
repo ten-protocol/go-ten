@@ -44,33 +44,68 @@ func (r *Rollup) IsGenesis() bool {
 }
 
 func (r *Rollup) ToExtRollup(dataEncryptionService crypto.DataEncryptionService, compression compression.DataCompressionService) (*common.ExtRollup, error) {
-	plaintextBatchesBlob, err := rlp.EncodeToBytes(r.Batches)
+	headers := make([]*common.BatchHeader, len(r.Batches))
+	transactions := make([][]*common.L2Tx, len(r.Batches))
+	for i, batch := range r.Batches {
+		headers[i] = batch.Header
+		transactions[i] = batch.Transactions
+	}
+
+	plaintextTransactionsBlob, err := rlp.EncodeToBytes(transactions)
 	if err != nil {
 		return nil, err
 	}
 
-	compressedBatchesBlob, err := compression.Compress(plaintextBatchesBlob)
+	headersBlob, err := rlp.EncodeToBytes(headers)
+	if err != nil {
+		return nil, err
+	}
+
+	compressedTransactionsBlob, err := compression.Compress(plaintextTransactionsBlob)
+	if err != nil {
+		return nil, err
+	}
+
+	compressedHeadersBlob, err := compression.Compress(headersBlob)
 	if err != nil {
 		return nil, err
 	}
 
 	return &common.ExtRollup{
-		Header:  r.Header,
-		Batches: dataEncryptionService.Encrypt(compressedBatchesBlob),
+		Header:        r.Header,
+		BatchPayloads: dataEncryptionService.Encrypt(compressedTransactionsBlob),
+		BatchHeaders:  compressedHeadersBlob,
 	}, nil
 }
 
-func ToRollup(encryptedRollup *common.ExtRollup, txBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*Rollup, error) {
-	decryptedTxs := txBlobCrypto.Decrypt(encryptedRollup.Batches)
-	encryptedBatches, err := compression.Decompress(decryptedTxs)
+func ToRollup(encryptedRollup *common.ExtRollup, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService) (*Rollup, error) {
+	headers := make([]common.BatchHeader, 0)
+	headersBlob, err := dataCompressionService.Decompress(encryptedRollup.BatchHeaders)
+	if err != nil {
+		return nil, err
+	}
+	err = rlp.DecodeBytes(headersBlob, &headers)
 	if err != nil {
 		return nil, err
 	}
 
-	batches := make([]*Batch, 0)
-	err = rlp.DecodeBytes(encryptedBatches, &batches)
+	transactions := make([][]*common.L2Tx, 0)
+	decryptedTxs := dataEncryptionService.Decrypt(encryptedRollup.BatchPayloads)
+	encryptedTransactions, err := dataCompressionService.Decompress(decryptedTxs)
 	if err != nil {
 		return nil, err
+	}
+	err = rlp.DecodeBytes(encryptedTransactions, &transactions)
+	if err != nil {
+		return nil, err
+	}
+
+	batches := make([]*Batch, len(headers))
+	for i, header := range headers {
+		batches[i] = &Batch{
+			Header:       &header,
+			Transactions: transactions[i],
+		}
 	}
 
 	return &Rollup{

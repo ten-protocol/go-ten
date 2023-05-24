@@ -194,7 +194,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 			continue
 		}
 
-		if len(rollup.Batches) == 0 {
+		if len(rollup.BatchPayloads) == 0 {
 			t.Errorf("Node %d: No batches in rollup!", nodeIdx)
 			continue
 		}
@@ -204,7 +204,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 			checkRollupPair(t, nodeIdx, prevRollup, rollup)
 		}
 
-		/*		for _, batch := range rollup.Batches {
+		/*		for _, batch := range rollup.BatchPayloads {
 					currHeight := batch.Header.Number.Uint64()
 					if currHeight != 0 && currHeight > batchNumber+1 {
 						t.Errorf("Node %d: Batch gap!", nodeIdx)
@@ -215,7 +215,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 						client := clients[0]
 						batchOnNode, _ := client.RollupHeaderByHash(batch.Header.Hash())
 						if batchOnNode.Hash() != batch.Hash() {
-							t.Errorf("Node %d: Batches mismatch!", nodeIdx)
+							t.Errorf("Node %d: BatchPayloads mismatch!", nodeIdx)
 						}
 					}
 				}
@@ -235,12 +235,12 @@ func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, ro
 		return
 	}
 
-	if len(prevRollup.Batches) == 0 {
+	if len(prevRollup.BatchPayloads) == 0 {
 		return
 	}
 
-	/*	lastBatch := prevRollup.Batches[len(prevRollup.Batches)-1]
-		firstBatch := rollup.Batches[0]
+	/*	lastBatch := prevRollup.BatchPayloads[len(prevRollup.BatchPayloads)-1]
+		firstBatch := rollup.BatchPayloads[0]
 		isValidChain = firstBatch.Header.ParentHash == lastBatch.Header.Hash()
 		if !isValidChain {
 			t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
