@@ -190,7 +190,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 	}
 
 	// Check that all the rollups are produced by aggregators.
-	// batchNumber := uint64(0)
+	batchNumber := uint64(0)
 	for idx, rollup := range rollups {
 		if rollup.Header.Agg.Hex() != s.Params.Wallets.NodeWallets[0].Address().Hex() {
 			t.Errorf("Node %d: Found rollup produced by non-sequencer %s", nodeIdx, s.Params.Wallets.NodeWallets[0].Address().Hex())
@@ -206,23 +206,23 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 			prevRollup := rollups[idx-1]
 			checkRollupPair(t, nodeIdx, prevRollup, rollup)
 		}
+		headers := extractBatchHeaders(rollup)
 
-		/*		for _, batch := range rollup.BatchPayloads {
-					currHeight := batch.Header.Number.Uint64()
-					if currHeight != 0 && currHeight > batchNumber+1 {
-						t.Errorf("Node %d: Batch gap!", nodeIdx)
-					}
-					batchNumber = currHeight
+		for _, batchHeader := range headers {
+			currHeight := batchHeader.Number.Uint64()
+			if currHeight != 0 && currHeight > batchNumber+1 {
+				t.Errorf("Node %d: Batch gap!", nodeIdx)
+			}
+			batchNumber = currHeight
 
-					for _, clients := range s.RPCHandles.AuthObsClients {
-						client := clients[0]
-						batchOnNode, _ := client.RollupHeaderByHash(batch.Header.Hash())
-						if batchOnNode.Hash() != batch.Hash() {
-							t.Errorf("Node %d: BatchPayloads mismatch!", nodeIdx)
-						}
-					}
+			for _, clients := range s.RPCHandles.AuthObsClients {
+				client := clients[0]
+				batchOnNode, _ := client.RollupHeaderByHash(batchHeader.Hash())
+				if batchOnNode.Hash() != batchHeader.Hash() {
+					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
 				}
-		*/
+			}
+		}
 	}
 }
 
@@ -238,13 +238,32 @@ func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, ro
 		return
 	}
 
-	if len(prevRollup.BatchPayloads) == 0 {
+	if len(prevRollup.BatchHeaders) == 0 {
 		return
 	}
 
+	previousHeaders := extractBatchHeaders(prevRollup)
+	currentHeaders := extractBatchHeaders(rollup)
+
+	lastBatch := previousHeaders[len(previousHeaders)-1]
+	firstBatch := currentHeaders[0]
+	isValidChain = firstBatch.ParentHash.Hex() == lastBatch.Hash().Hex()
+	if !isValidChain {
+		t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
+		return
+	}
+
+	isValidChain = prevRollup.Header.HeadBatchHash.Hex() == firstBatch.ParentHash.Hex()
+	if !isValidChain {
+		t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
+		return
+	}
+}
+
+func extractBatchHeaders(rollup *common.ExtRollup) []common.BatchHeader {
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 	headers := make([]common.BatchHeader, 0)
-	headersBlob, err := dataCompressionService.Decompress(prevRollup.BatchHeaders)
+	headersBlob, err := dataCompressionService.Decompress(rollup.BatchHeaders)
 	if err != nil {
 		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
 	}
@@ -252,20 +271,7 @@ func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, ro
 	if err != nil {
 		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
 	}
-
-	lastBatch := headers[len(headers)-1]
-	firstBatch := headers[0]
-	isValidChain = firstBatch.ParentHash == lastBatch.Hash()
-	if !isValidChain {
-		t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
-		return
-	}
-
-	isValidChain = prevRollup.Header.HeadBatchHash == firstBatch.ParentHash
-	if !isValidChain {
-		t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
-		return
-	}
+	return headers
 }
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
