@@ -101,9 +101,9 @@ func ToRollup(encryptedRollup *common.ExtRollup, dataEncryptionService crypto.Da
 	}
 
 	batches := make([]*Batch, len(headers))
-	for i, header := range headers {
+	for i := range headers {
 		batches[i] = &Batch{
-			Header:       &header,
+			Header:       &(headers[i]),
 			Transactions: transactions[i],
 		}
 	}
