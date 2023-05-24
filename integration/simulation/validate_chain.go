@@ -9,6 +9,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 
@@ -239,20 +242,30 @@ func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, ro
 		return
 	}
 
-	/*	lastBatch := prevRollup.BatchPayloads[len(prevRollup.BatchPayloads)-1]
-		firstBatch := rollup.BatchPayloads[0]
-		isValidChain = firstBatch.Header.ParentHash == lastBatch.Header.Hash()
-		if !isValidChain {
-			t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
-			return
-		}
+	dataCompressionService := compression.NewBrotliDataCompressionService()
+	headers := make([]common.BatchHeader, 0)
+	headersBlob, err := dataCompressionService.Decompress(prevRollup.BatchHeaders)
+	if err != nil {
+		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
+	}
+	err = rlp.DecodeBytes(headersBlob, &headers)
+	if err != nil {
+		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
+	}
 
-		isValidChain = prevRollup.Header.HeadBatchHash == firstBatch.Header.ParentHash
-		if !isValidChain {
-			t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
-			return
-		}
-	*/
+	lastBatch := headers[len(headers)-1]
+	firstBatch := headers[0]
+	isValidChain = firstBatch.ParentHash == lastBatch.Hash()
+	if !isValidChain {
+		t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
+		return
+	}
+
+	isValidChain = prevRollup.Header.HeadBatchHash == firstBatch.ParentHash
+	if !isValidChain {
+		t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
+		return
+	}
 }
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
