@@ -20,6 +20,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -514,9 +516,16 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 	// The nonce is prepended to the ciphertext.
 	nonce := encryptedTxBytes[0:crypto.NonceLength]
 	ciphertext := encryptedTxBytes[crypto.NonceLength:]
-	encodedTxs, err := transactionCipher.Open(nil, nonce, ciphertext, nil)
+	compressedTxs, err := transactionCipher.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt encrypted L2 transactions. Cause: %w", err)
+	}
+
+	compressionService := compression.NewBrotliDataCompressionService()
+
+	encodedTxs, err := compressionService.Decompress(compressedTxs)
+	if err != nil {
+		return nil, fmt.Errorf("could not decompress L2 transactions. Cause: %w", err)
 	}
 
 	var cleartextTxs []*common.L2Tx

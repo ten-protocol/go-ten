@@ -31,10 +31,8 @@ type EnclaveProtoClient interface {
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-	//
-	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
-	//
+	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
@@ -345,10 +343,8 @@ type EnclaveProtoServer interface {
 	// Init - initialise an enclave with a seed received by another enclave
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
 	// SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-	//
-	//	a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-	//	b. the latest block published by the L1, to which the enclave should respond with a rollup
-	//
+	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
+	//  b. the latest block published by the L1, to which the enclave should respond with a rollup
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored

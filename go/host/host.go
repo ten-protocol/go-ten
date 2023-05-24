@@ -540,6 +540,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
+	h.logger.Info(fmt.Sprintf("Publishing rollup with height=%d, size=%dKB", producedRollup.Header.Number, len(encodedRollup)/1024))
 
 	h.logger.Trace("Sending transaction to publish rollup", "rollup_header",
 		gethlog.Lazy{Fn: func() string {
@@ -549,7 +550,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 			}
 
 			return string(header)
-		}}, "rollup_hash", producedRollup.Header.Hash().Hex(), "batches_len", len(producedRollup.Batches))
+		}}, "rollup_hash", producedRollup.Header.Hash().Hex(), "batches_len", len(producedRollup.BatchPayloads))
 
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
 	rollupTx, err = h.ethClient.EstimateGasAndGasPrice(rollupTx, h.ethWallet.Address())

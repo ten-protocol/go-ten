@@ -22,7 +22,7 @@ import (
 // to rollups that the enclave can process.
 type rollupProducerImpl struct {
 	// TransactionBlobCrypto- This contains the required properties to encrypt rollups.
-	TransactionBlobCrypto crypto.TransactionBlobCrypto
+	TransactionBlobCrypto crypto.DataEncryptionService
 
 	ObscuroChainID  int64
 	EthereumChainID int64
@@ -36,7 +36,7 @@ type rollupProducerImpl struct {
 }
 
 func NewRollupProducer(
-	transactionBlobCrypto crypto.TransactionBlobCrypto,
+	transactionBlobCrypto crypto.DataEncryptionService,
 	obscuroChainID int64,
 	ethereumChainID int64,
 	storage db.Storage,

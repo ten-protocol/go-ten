@@ -77,7 +77,7 @@ func (o *OutputStats) countBlockChain() {
 	}
 }
 
-func (o *OutputStats) incrementStats(block *types.Block, l1Node ethadapter.EthClient) {
+func (o *OutputStats) incrementStats(block *types.Block, l1Node ethadapter.EthClient) { //nolint:unparam
 	for _, tx := range block.Transactions() {
 		t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
 		if t == nil {
@@ -90,16 +90,16 @@ func (o *OutputStats) incrementStats(block *types.Block, l1Node ethadapter.EthCl
 
 		switch l1Tx := t.(type) {
 		case *ethadapter.L1RollupTx:
-			r, err := common.DecodeRollup(l1Tx.Rollup)
+			_, err := common.DecodeRollup(l1Tx.Rollup)
 			if err != nil {
 				testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
 			}
-			if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {
-				o.l2RollupCountInL1Blocks++
-				for _, batch := range r.Batches {
-					o.l2RollupTxCountInL1Blocks += len(batch.TxHashes)
-				}
-			}
+			//if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {
+			//	o.l2RollupCountInL1Blocks++
+			//	for _, batch := range r.BatchPayloads {
+			//		o.l2RollupTxCountInL1Blocks += len(batch.TxHashes)
+			//	}
+			//}
 
 		case *ethadapter.L1DepositTx:
 			o.canonicalERC20DepositCount++

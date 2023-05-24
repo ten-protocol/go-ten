@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/httputil"
@@ -44,7 +46,11 @@ func TestThrowsIfEncryptedRollupIsInvalid(t *testing.T) {
 // Generates an encrypted transaction blob in Base64 encoding.
 func generateEncryptedTxBlob(txs []*common.L2Tx) []byte {
 	rollup := core.Batch{Header: &common.BatchHeader{}, Transactions: txs}
-	txBlob := rollup.ToExtBatch(crypto.NewTransactionBlobCryptoImpl(nil)).EncryptedTxBlob
+	extB, err := rollup.ToExtBatch(crypto.NewDataEncryptionService(nil), compression.NewBrotliDataCompressionService())
+	if err != nil {
+		panic(err)
+	}
+	txBlob := extB.EncryptedTxBlob
 	return []byte(base64.StdEncoding.EncodeToString(txBlob))
 }
 
