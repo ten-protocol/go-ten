@@ -282,9 +282,9 @@ func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Ba
 	rollupLimiter := limiters.NewRollupLimiter(limiters.MaxTransactionSize)
 
 	for batch.Number().Cmp(headBatch.Number()) != 0 {
-		if isFull, err := rollupLimiter.AcceptBatch(batch); err != nil {
+		if didAcceptBatch, err := rollupLimiter.AcceptBatch(batch); err != nil {
 			return nil, err
-		} else if isFull {
+		} else if !didAcceptBatch {
 			return batches, nil
 		}
 
