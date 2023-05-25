@@ -994,7 +994,7 @@ func (h *host) startRollupProduction() {
 		case <-rollupTicker.C:
 			producedRollup, err := h.enclaveClient.CreateRollup()
 			if err != nil {
-				h.logger.Warn("unable to produce rollup", log.ErrKey, err)
+				h.logger.Error("unable to produce rollup", log.ErrKey, err)
 			} else {
 				h.publishRollup(producedRollup)
 			}
