@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -102,12 +103,7 @@ func (h *userConnHTTP) IsClosed() bool {
 }
 
 func (h *userConnHTTP) ReadRequestParams() map[string]string {
-	params := make(map[string]string)
-	queryParams := h.req.URL.Query()
-	for key, value := range queryParams {
-		params[key] = value[0]
-	}
-	return params
+	return getQueryParams(h.req.URL.Query())
 }
 
 func (w *userConnWS) ReadRequest() ([]byte, error) {
@@ -167,15 +163,19 @@ func (w *userConnWS) IsClosed() bool {
 }
 
 func (w *userConnWS) ReadRequestParams() map[string]string {
-	params := make(map[string]string)
-	queryParams := w.req.URL.Query()
-	for key, value := range queryParams {
-		params[key] = value[0]
-	}
-	return params
+	return getQueryParams(w.req.URL.Query())
 }
 
 // Logs the error, prints it to the console, and returns the error over HTTP.
 func httpLogAndSendErr(resp http.ResponseWriter, msg string) {
 	http.Error(resp, msg, httpCodeErr)
+}
+
+func getQueryParams(query url.Values) map[string]string {
+	params := make(map[string]string)
+	queryParams := query
+	for key, value := range queryParams {
+		params[key] = value[0]
+	}
+	return params
 }
