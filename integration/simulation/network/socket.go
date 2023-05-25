@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/noderunner"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -73,7 +75,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 		}
 
 		// create the nodes
-		nodes[i] = node.NewInMemNode(
+		nodes[i] = noderunner.NewInMemNode(
 			node.NewNodeConfig(
 				node.WithGenesis(i == 0),
 				node.WithHostID(hostAddress.String()),

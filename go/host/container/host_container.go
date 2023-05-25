@@ -96,14 +96,13 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 
 	// create the logger if not set - used when the testlogger is injected
 	if logger == nil {
-		logger = log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath)
+		logger = log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath, log.NodeIDKey, cfg.ID)
 	}
-	logger = logger.New(log.NodeIDKey, cfg.ID, log.CmpKey, log.HostCmp)
 
 	fmt.Printf("Building host container with config: %+v\n", cfg)
 	logger.Info(fmt.Sprintf("Building host container with config: %+v", cfg))
 
-	ethWallet := wallet.NewInMemoryWalletFromConfig(cfg.PrivateKeyString, cfg.L1ChainID, log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath))
+	ethWallet := wallet.NewInMemoryWalletFromConfig(cfg.PrivateKeyString, cfg.L1ChainID, log.New("wallet", cfg.LogLevel, cfg.LogPath))
 
 	fmt.Println("Connecting to L1 network...")
 	l1Client, err := ethadapter.NewEthClient(cfg.L1NodeHost, cfg.L1NodeWebsocketPort, cfg.L1RPCTimeout, cfg.ID, logger)
