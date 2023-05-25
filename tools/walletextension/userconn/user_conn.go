@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -25,6 +26,7 @@ var upgrader = websocket.Upgrader{} // Used to upgrade connections to websocket 
 // UserConn represents a connection to a user.
 type UserConn interface {
 	ReadRequest() ([]byte, error)
+	ReadRequestParams() map[string]string
 	WriteResponse(msg []byte) error
 	HandleError(msg string)
 	SupportsSubscriptions() bool
@@ -43,6 +45,7 @@ type userConnWS struct {
 	conn     *websocket.Conn
 	isClosed bool
 	logger   gethlog.Logger
+	req      *http.Request
 }
 
 func NewUserConnHTTP(resp http.ResponseWriter, req *http.Request, logger gethlog.Logger) UserConn {
@@ -62,6 +65,7 @@ func NewUserConnWS(resp http.ResponseWriter, req *http.Request, logger gethlog.L
 	return &userConnWS{
 		conn:   conn,
 		logger: logger,
+		req:    req,
 	}, nil
 }
 
@@ -96,6 +100,10 @@ func (h *userConnHTTP) SupportsSubscriptions() bool {
 
 func (h *userConnHTTP) IsClosed() bool {
 	return false
+}
+
+func (h *userConnHTTP) ReadRequestParams() map[string]string {
+	return getQueryParams(h.req.URL.Query())
 }
 
 func (w *userConnWS) ReadRequest() ([]byte, error) {
@@ -154,7 +162,20 @@ func (w *userConnWS) IsClosed() bool {
 	return w.isClosed
 }
 
+func (w *userConnWS) ReadRequestParams() map[string]string {
+	return getQueryParams(w.req.URL.Query())
+}
+
 // Logs the error, prints it to the console, and returns the error over HTTP.
 func httpLogAndSendErr(resp http.ResponseWriter, msg string) {
 	http.Error(resp, msg, httpCodeErr)
+}
+
+func getQueryParams(query url.Values) map[string]string {
+	params := make(map[string]string)
+	queryParams := query
+	for key, value := range queryParams {
+		params[key] = value[0]
+	}
+	return params
 }
