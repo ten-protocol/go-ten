@@ -22,7 +22,8 @@ gofumpt -l -w .
 golangci-lint run --verbose --fast
 ```
 
-When your branch is ready for review, another developer must approve the changes. Only then can it be merged into the `main` branch. It's recommended to delete your branch from Github after it has been merged.
+When your branch is ready for review, another developer must approve the changes. Only then can it be merged into the `main` branch. For merging, we normally use `Squash and merge` (it appears in dropdown once PR is approved).
+It's recommended to delete your branch from Github after it has been merged.
 
 ## Running End-to-End Tests
 
