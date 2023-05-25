@@ -27,7 +27,15 @@ import (
 // ExecuteTransactions
 // header - the header of the rollup where this transaction will be included
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
-func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.BatchHeader, storage db.Storage, chainConfig *params.ChainConfig, fromTxIndex int, logger gethlog.Logger) map[common.TxHash]interface{} {
+func ExecuteTransactions(
+	txs []*common.L2Tx,
+	s *state.StateDB,
+	header *common.BatchHeader,
+	storage db.Storage,
+	chainConfig *params.ChainConfig,
+	fromTxIndex int,
+	logger gethlog.Logger,
+) map[common.TxHash]interface{} {
 	chain, vmCfg, gp := initParams(storage, true, logger)
 	zero := uint64(0)
 	usedGas := &zero
@@ -53,7 +61,18 @@ func ExecuteTransactions(txs []*common.L2Tx, s *state.StateDB, header *common.Ba
 	return result
 }
 
-func executeTransaction(s *state.StateDB, cc *params.ChainConfig, chain *ObscuroChainContext, gp *gethcore.GasPool, header *types.Header, t *common.L2Tx, usedGas *uint64, vmCfg vm.Config, tCount int, batchHash common.L2BatchHash) (*types.Receipt, error) {
+func executeTransaction(
+	s *state.StateDB,
+	cc *params.ChainConfig,
+	chain *ObscuroChainContext,
+	gp *gethcore.GasPool,
+	header *types.Header,
+	t *common.L2Tx,
+	usedGas *uint64,
+	vmCfg vm.Config,
+	tCount int,
+	batchHash common.L2BatchHash,
+) (*types.Receipt, error) {
 	s.Prepare(t.Hash(), tCount)
 	snap := s.Snapshot()
 

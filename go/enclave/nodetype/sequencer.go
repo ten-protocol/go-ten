@@ -21,6 +21,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
 
@@ -162,7 +163,9 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return fmt.Errorf("unable to create stateDB for selecting transactions. Cause: %w", err)
 	}
 
-	transactions, err := s.mempool.CurrentTxs(stateDB)
+	// todo (@stefan) - limit on receipts too
+	limiter := limiters.NewBatchSizeLimiter(limiters.BatchMaxTransactionData)
+	transactions, err := s.mempool.CurrentTxs(stateDB, limiter)
 	if err != nil {
 		return err
 	}

@@ -4,6 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 )
 
 type Manager interface {
@@ -15,5 +16,5 @@ type Manager interface {
 	RemoveTxs(transactions types.Transactions) error
 
 	// CurrentTxs Returns the transactions that should be included in the current batch
-	CurrentTxs(stateDB *state.StateDB) ([]*common.L2Tx, error)
+	CurrentTxs(stateDB *state.StateDB, limiter limiters.BatchSizeLimiter) ([]*common.L2Tx, error)
 }
