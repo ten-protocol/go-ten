@@ -7,9 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-var (
-	ErrFailedToEncode = errors.New("failed to encode data")
-)
+var ErrFailedToEncode = errors.New("failed to encode data")
 
 // MaxTransactionSizeLimiter - configured to be close to what the ethereum clients
 // have configured as the maximum size a transaction can have. Note that this isn't
