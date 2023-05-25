@@ -54,10 +54,15 @@ type EnclaveConfig struct {
 	SequencerID gethcommon.Address
 	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
 	ObscuroGenesis string
-	// Cadence
-	Cadence uint64
 	// Whether debug calls are available
 	DebugNamespaceEnabled bool
+	// Maximum bytes a batch can be uncompressed.
+	MaxBatchSize uint64
+	// MaxRollupSize - configured to be close to what the ethereum clients
+	// have configured as the maximum size a transaction can have. Note that this isn't
+	// a protocol limit, but a miner imposed limit and it might be hard to find someone
+	// to include a transaction if it goes above it
+	MaxRollupSize uint64
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -82,7 +87,8 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		MinGasPrice:               big.NewInt(1),
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
-		Cadence:                   10,
 		DebugNamespaceEnabled:     false,
+		MaxBatchSize:              1024 * 200,
+		MaxRollupSize:             1024 * 220,
 	}
 }

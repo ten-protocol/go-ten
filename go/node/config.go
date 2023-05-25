@@ -45,7 +45,6 @@ type Config struct {
 	hostInMemDB               bool
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
-	enclaveCadence            int
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -72,7 +71,6 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.HostAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
 	cfg.LogPath = testlog.LogFile()
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
-	cfg.Cadence = uint64(c.enclaveCadence)
 
 	return cfg
 }
@@ -264,11 +262,5 @@ func WithDebugNamespaceEnabled(b bool) Option {
 func WithProfiler(b bool) Option {
 	return func(c *Config) {
 		c.profilerEnabled = b
-	}
-}
-
-func WithEnclaveCadence(i int) Option {
-	return func(c *Config) {
-		c.enclaveCadence = i
 	}
 }

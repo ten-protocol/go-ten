@@ -254,7 +254,7 @@ func (br *batchRegistryImpl) HasGenesisBatch() (bool, error) {
 	return genesisBatchStored, nil
 }
 
-func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error) {
+func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, error) {
 	batches := make([]*core.Batch, 0)
 
 	var batch *core.Batch
@@ -278,9 +278,6 @@ func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash) ([]*core.Ba
 	if headBatch.NumberU64() < batch.NumberU64() {
 		return nil, errors.New("head batch height is in the past compared to requested batch")
 	}
-	// todo @stefan - move this somewhere else, it shouldn't be in the batch registry.
-	rollupLimiter := limiters.NewRollupLimiter(limiters.MaxTransactionSize)
-
 	for batch.Number().Cmp(headBatch.Number()) != 0 {
 		if isFull, err := rollupLimiter.AcceptBatch(batch); err != nil {
 			return nil, err

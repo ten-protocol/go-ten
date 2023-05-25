@@ -13,9 +13,6 @@ type batchSizeLimiter struct {
 	remainingSize uint64 // the available size in the limiter
 }
 
-// BatchMaxTransactionData - The number where we will cut off processing transactions inside the evm facade.
-const BatchMaxTransactionData = 25_000 // bytes
-
 // NewBatchSizeLimiter - Size is the total space available per batch for calldata in a rollup.
 func NewBatchSizeLimiter(size uint64) BatchSizeLimiter {
 	return &batchSizeLimiter{

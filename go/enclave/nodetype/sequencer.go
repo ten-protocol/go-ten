@@ -25,6 +25,11 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
 
+type SequencerSettings struct {
+	MaxBatchSize  uint64
+	MaxRollupSize uint64
+}
+
 type sequencer struct {
 	blockProcessor components.L1BlockProcessor
 	batchProducer  components.BatchProducer
@@ -41,6 +46,7 @@ type sequencer struct {
 	storage                db.Storage
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
+	settings               SequencerSettings
 
 	// This is used to coordinate creating
 	// new batches and creating fork batches.
@@ -63,6 +69,7 @@ func NewSequencer(
 	storage db.Storage,
 	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
+	settings SequencerSettings,
 ) Sequencer {
 	return &sequencer{
 		blockProcessor:         consumer,
@@ -78,6 +85,7 @@ func NewSequencer(
 		storage:                storage,
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
+		settings:               settings,
 	}
 }
 
@@ -164,7 +172,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	}
 
 	// todo (@stefan) - limit on receipts too
-	limiter := limiters.NewBatchSizeLimiter(limiters.BatchMaxTransactionData)
+	limiter := limiters.NewBatchSizeLimiter(s.settings.MaxBatchSize)
 	transactions, err := s.mempool.CurrentTxs(stateDB, limiter)
 	if err != nil {
 		return err
@@ -210,7 +218,10 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 }
 
 func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
-	rollup, err := s.rollupProducer.CreateRollup()
+	// todo @stefan - move this somewhere else, it shouldn't be in the batch registry.
+	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
+
+	rollup, err := s.rollupProducer.CreateRollup(rollupLimiter)
 	if err != nil {
 		return nil, err
 	}

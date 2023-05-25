@@ -8,6 +8,7 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 )
 
 const (
@@ -96,7 +97,7 @@ type BatchRegistry interface {
 	FindAncestralBatchFor(*common.L1Block) (*core.Batch, error)
 
 	// BatchesAfter - Given a hash, will return batches following it until the head batch
-	BatchesAfter(batchHash gethcommon.Hash) ([]*core.Batch, error)
+	BatchesAfter(batchHash gethcommon.Hash, limiter limiters.RollupLimiter) ([]*core.Batch, error)
 
 	// GetBatchStateAtHeight - creates a stateDB that represents the state committed when
 	// the batch with height matching the blockNumber was created and stored.
@@ -127,7 +128,7 @@ type BatchRegistry interface {
 type RollupProducer interface {
 	// CreateRollup - creates a rollup starting from the end of the last rollup
 	// that has been stored and continues it towards what we consider the current L2 head.
-	CreateRollup() (*core.Rollup, error)
+	CreateRollup(limiter limiters.RollupLimiter) (*core.Rollup, error)
 }
 
 type RollupConsumer interface {
