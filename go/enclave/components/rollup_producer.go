@@ -12,6 +12,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -64,7 +65,7 @@ func (re *rollupProducerImpl) fetchLatestRollup() (*core.Rollup, error) {
 	return getLatestRollupBeforeBlock(b, re.storage, re.logger)
 }
 
-func (re *rollupProducerImpl) CreateRollup() (*core.Rollup, error) {
+func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*core.Rollup, error) {
 	rollup, err := re.fetchLatestRollup()
 	if err != nil && !errors.Is(err, db.ErrNoRollups) {
 		return nil, err
@@ -75,7 +76,7 @@ func (re *rollupProducerImpl) CreateRollup() (*core.Rollup, error) {
 		hash = rollup.Header.HeadBatchHash
 	}
 
-	batches, err := re.batchRegistry.BatchesAfter(hash)
+	batches, err := re.batchRegistry.BatchesAfter(hash, limiter)
 	if err != nil {
 		return nil, err
 	}

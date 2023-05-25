@@ -54,10 +54,12 @@ type EnclaveConfig struct {
 	SequencerID gethcommon.Address
 	// A json string that specifies the prefunded addresses at the genesis of the Obscuro network
 	ObscuroGenesis string
-	// Cadence
-	Cadence uint64
 	// Whether debug calls are available
 	DebugNamespaceEnabled bool
+	// Maximum bytes a batch can be uncompressed.
+	MaxBatchSize uint64
+	// Maximum bytes a rollup can be.
+	MaxRollupSize uint64
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -82,7 +84,8 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		MinGasPrice:               big.NewInt(1),
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
-		Cadence:                   10,
 		DebugNamespaceEnabled:     false,
+		MaxBatchSize:              1024 * 200,
+		MaxRollupSize:             1024 * 220,
 	}
 }

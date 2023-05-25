@@ -88,7 +88,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.
 				node.WithMessageBusContractAddress(simParams.L1SetupData.MessageBusAddr.String()),
 				node.WithNodeType(nodeTypeStr),
 				node.WithL1Host("127.0.0.1"),
-				node.WithEnclaveCadence(10),
 				node.WithL1WSPort(simParams.StartPort+100),
 			),
 		)

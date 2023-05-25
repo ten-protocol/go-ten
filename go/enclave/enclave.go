@@ -213,6 +213,10 @@ func NewEnclave(
 			storage,
 			dataEncryptionService,
 			dataCompressionService,
+			nodetype.SequencerSettings{
+				MaxBatchSize:  config.MaxBatchSize,
+				MaxRollupSize: config.MaxRollupSize,
+			},
 		)
 	} else {
 		service = nodetype.NewValidator(blockProcessor, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, logger)
