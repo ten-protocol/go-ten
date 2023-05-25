@@ -8,8 +8,7 @@ import (
 )
 
 var (
-	ErrFailedToEncode   = errors.New("failed to encode data")
-	ErrSizeExceedsLimit = errors.New("data size exceeds remaining limit")
+	ErrFailedToEncode = errors.New("failed to encode data")
 )
 
 // MaxTransactionSizeLimiter - configured to be close to what the ethereum clients
@@ -38,7 +37,7 @@ func (rl *rollupLimiter) AcceptBatch(encodable interface{}) (bool, error) {
 
 	encodedSize := uint64(len(encodedData))
 	if encodedSize > rl.remainingSize {
-		return true, fmt.Errorf("%w: data size %d, remaining limit %d", ErrSizeExceedsLimit, encodedSize, *rl)
+		return true, nil
 	}
 
 	rl.remainingSize -= encodedSize
