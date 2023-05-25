@@ -114,8 +114,8 @@ func (d *DockerNode) startHost() error {
 		fmt.Sprintf("-useInMemoryDB=%t", d.cfg.hostInMemDB),
 		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
 		// todo (@stefan): once the limiter is in, increase it back to 5 or 10s
-		"-batchInterval=750ms",
-		"-rollupInterval=1500ms",
+		"-batchInterval=1s",
+		"-rollupInterval=5s",
 	}
 	if !d.cfg.hostInMemDB {
 		cmd = append(cmd, "-levelDBPath", _hostDataDir)
