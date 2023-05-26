@@ -8,7 +8,9 @@ import (
 )
 
 type DataCompressionService interface {
+	// CompressRollup - uses the maximum compression level, because the final size matters when publishing to Ethereum
 	CompressRollup(blob []byte) ([]byte, error)
+	// CompressBatch - uses the default compression level, because the compression is for the efficiency of the p2p transfer
 	CompressBatch(blob []byte) ([]byte, error)
 	Decompress(blob []byte) ([]byte, error)
 }
