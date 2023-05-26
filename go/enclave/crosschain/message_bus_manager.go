@@ -37,9 +37,10 @@ func NewObscuroMessageBusManager(
 ) Manager {
 	// todo (#1549) - implement with cryptography epic, remove this key and use the DeriveKey
 	key, _ := crypto.HexToECDSA(ownerKeyHex)
+	logger = logger.New(log.CmpKey, log.CrossChainCmp)
 	wallet := wallet.NewInMemoryWalletFromPK(chainID, key, logger)
 
-	logger.Info(fmt.Sprintf("L2 Cross Chain Owner Address: %s", wallet.Address().Hex()), log.CmpKey, log.CrossChainCmp)
+	logger.Info(fmt.Sprintf("L2 Cross Chain Owner Address: %s", wallet.Address().Hex()))
 
 	// Key is derived, address is predictable, thus address of contract is predictable across all enclaves
 	l2MessageBus := crypto.CreateAddress(wallet.Address(), 0)
@@ -105,13 +106,13 @@ func (m *MessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
 func (m *MessageBusManager) ExtractOutboundMessages(receipts common.L2Receipts) (common.CrossChainMessages, error) {
 	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventID)
 	if err != nil {
-		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err
 	}
 
 	messages, err := convertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
 	if err != nil {
-		m.logger.Error("Error converting messages from L2 message bus!", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		m.logger.Error("Error converting messages from L2 message bus!", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err
 	}
 
@@ -137,10 +138,10 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 			break
 		}
 
-		m.logger.Trace(fmt.Sprintf("Looking for cross chain messages at block %s", b.Hash().Hex()), log.CmpKey, log.CrossChainCmp)
+		m.logger.Trace(fmt.Sprintf("Looking for cross chain messages at block %s", b.Hash().Hex()))
 		messagesForBlock, err := m.storage.GetL1Messages(b.Hash())
 		if err != nil {
-			m.logger.Crit("Reading the key for the block failed with uncommon reason.", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+			m.logger.Crit("Reading the key for the block failed with uncommon reason.", log.ErrKey, err)
 		}
 
 		messages = append(messages, messagesForBlock...) // Ordering here might work in POBI, but might be weird for fast finality
@@ -156,7 +157,7 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 		b = p
 	}
 
-	m.logger.Trace(fmt.Sprintf("Extracted deposit logs %d ->%d: %d.", fromBlock.NumberU64(), toBlock.NumberU64(), len(messages)), log.CmpKey, log.CrossChainCmp)
+	m.logger.Trace(fmt.Sprintf("Extracted deposit logs %d ->%d: %d.", fromBlock.NumberU64(), toBlock.NumberU64(), len(messages)))
 
 	return messages
 }
@@ -172,7 +173,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(messages common.CrossCha
 		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
 		data, err := MessageBusABI.Pack("storeCrossChainMessage", message, delayInBlocks)
 		if err != nil {
-			m.logger.Crit("Failed packing submitOutOfNetwork message!", log.CmpKey, log.CrossChainCmp)
+			m.logger.Crit("Failed packing submitOutOfNetwork message!")
 			return signedTransactions
 
 			// todo (@stefan) - return error

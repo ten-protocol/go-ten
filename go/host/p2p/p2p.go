@@ -178,7 +178,7 @@ func (p *p2pImpl) HealthCheck() bool {
 		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {
 			noMsgReceivedPeers = append(noMsgReceivedPeers, peer)
 			p.logger.Warn("no message from peer in the alert period",
-				log.HostCmp, p.ourAddress,
+				"ourAddress", p.ourAddress,
 				"peer", peer,
 				"alertPeriod", _alertPeriod,
 			)
