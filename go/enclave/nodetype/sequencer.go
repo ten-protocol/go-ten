@@ -166,7 +166,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	// to be in our chain.
 	headBatch = ancestralBatch
 
-	stateDB, err := s.storage.CreateStateDB(*headBatch.Hash())
+	stateDB, err := s.storage.CreateStateDB(headBatch.Hash())
 	if err != nil {
 		return fmt.Errorf("unable to create stateDB for selecting transactions. Cause: %w", err)
 	}
@@ -187,7 +187,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 
 	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     l1HeadBlock.Hash(),
-		ParentPtr:    *headBatch.Hash(),
+		ParentPtr:    headBatch.Hash(),
 		Transactions: transactions,
 		AtTime:       uint64(time.Now().Unix()), // todo - time is set only here; take from l1 block?
 		Randomness:   gethcommon.BytesToHash(rand),
@@ -261,7 +261,7 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 		return fmt.Errorf("failed retrieving head batch. Cause: %w", err)
 	}
 
-	if bytes.Equal(headBatch.Header.Hash().Bytes(), ancestralBatch.Hash().Bytes()) {
+	if bytes.Equal(headBatch.Hash().Bytes(), ancestralBatch.Hash().Bytes()) {
 		return nil
 	}
 
@@ -287,7 +287,7 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 		// Extend the chain with identical cousin batches
 		cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 			BlockPtr:     block.Hash(),
-			ParentPtr:    *currHeadPtr.Hash(),
+			ParentPtr:    currHeadPtr.Hash(),
 			Transactions: orphan.Transactions,
 			AtTime:       orphan.Header.Time,
 			Randomness:   orphan.Header.MixDigest,

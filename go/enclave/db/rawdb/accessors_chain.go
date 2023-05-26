@@ -48,7 +48,7 @@ func WriteBatch(db ethdb.KeyValueWriter, batch *core.Batch) error {
 	if err := writeBatchHeader(db, batch.Header); err != nil {
 		return fmt.Errorf("could not write header. Cause: %w", err)
 	}
-	if err := writeBatchBody(db, *batch.Hash(), batch.Transactions); err != nil {
+	if err := writeBatchBody(db, batch.Hash(), batch.Transactions); err != nil {
 		return fmt.Errorf("could not write body. Cause: %w", err)
 	}
 	return nil
@@ -75,7 +75,7 @@ func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 	if err := writeRollupHeader(db, rollup.Header); err != nil {
 		return fmt.Errorf("could not write header. Cause: %w", err)
 	}
-	if err := writeRollupBody(db, *rollup.Hash(), rollup.Batches); err != nil {
+	if err := writeRollupBody(db, rollup.Hash(), rollup.Batches); err != nil {
 		return fmt.Errorf("could not write body. Cause: %w", err)
 	}
 	return nil
@@ -84,7 +84,8 @@ func WriteRollup(db ethdb.KeyValueWriter, rollup *core.Rollup) error {
 // Stores a batch header into the database and also stores the hash-to-number mapping.
 func writeBatchHeader(db ethdb.KeyValueWriter, header *common.BatchHeader) error {
 	// Write the hash -> number mapping
-	err := writeBatchHeaderNumber(db, header.Hash(), header.Number.Uint64())
+	h := header.Hash()
+	err := writeBatchHeaderNumber(db, h, header.Number.Uint64())
 	if err != nil {
 		return fmt.Errorf("could not write header number. Cause: %w", err)
 	}
@@ -94,7 +95,7 @@ func writeBatchHeader(db ethdb.KeyValueWriter, header *common.BatchHeader) error
 	if err != nil {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
-	key := batchHeaderKey(header.Hash())
+	key := batchHeaderKey(h)
 	if err = db.Put(key, data); err != nil {
 		return fmt.Errorf("could not put header in DB. Cause: %w", err)
 	}

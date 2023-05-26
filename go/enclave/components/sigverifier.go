@@ -22,7 +22,7 @@ func NewSignatureValidator(seqID gethcommon.Address, storage db.Storage) *Signat
 	}
 }
 
-func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash *gethcommon.Hash, sequencer *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
+func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcommon.Hash, sequencer *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
 	// todo (#718) - sequencer identities should be retrieved from the L1 management contract
 	if !bytes.Equal(sequencer.Bytes(), sigChecker.sequencerID.Bytes()) {

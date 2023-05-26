@@ -546,7 +546,8 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 		return err
 	}
 	blockHash := blk.Hash()
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, genesisRollup.Hash()); err != nil {
+	genesisHash := genesisRollup.Hash()
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, &genesisHash); err != nil {
 		return err
 	}
 	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, genesisBatch, nil, dbBatch); err != nil {
@@ -584,7 +585,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 	if err != nil {
 		return err
 	}
-	stateDB, err := enclave.(*enclaveImpl).storage.CreateStateDB(*l2Head.Hash())
+	stateDB, err := enclave.(*enclaveImpl).storage.CreateStateDB(l2Head.Hash())
 	if err != nil {
 		return err
 	}
@@ -614,7 +615,8 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 		return err
 	}
 	blockHash := blk.Hash()
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, rollup.Hash()); err != nil {
+	rollupHash := rollup.Hash()
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, &rollupHash); err != nil {
 		return err
 	}
 	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, batch, nil, dbBatch); err != nil {

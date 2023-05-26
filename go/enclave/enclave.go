@@ -609,7 +609,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err == nil {
 		// todo - we should return an error when head state is not available, but for current test situations with race
 		//  conditions we allow it to return zero while head state is uninitialized
-		s, err := e.storage.CreateStateDB(*l2Head.Hash())
+		s, err := e.storage.CreateStateDB(l2Head.Hash())
 		if err != nil {
 			return nil, responses.ToInternalError(err)
 		}
@@ -1539,8 +1539,8 @@ func restoreStateDBCache(storage db.Storage, producer components.BatchProducer, 
 // batch in the chain and is used to query state at a certain height.
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
-func stateDBAvailableForBatch(storage db.Storage, hash *common.L2BatchHash) bool {
-	_, err := storage.CreateStateDB(*hash)
+func stateDBAvailableForBatch(storage db.Storage, hash common.L2BatchHash) bool {
+	_, err := storage.CreateStateDB(hash)
 	return err == nil
 }
 
