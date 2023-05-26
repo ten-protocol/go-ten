@@ -40,7 +40,7 @@ func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *ge
 func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
 	// These variables will be used to create the new batch
 
-	parent, err := bp.storage.FetchBatch(context.ParentPtr)
+	parent, err := bp.storage.FetchBatchHeader(context.ParentPtr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve parent batch. Cause: %w", err)
 	}
@@ -51,16 +51,16 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}
 
 	parentBlock := block
-	if parent.Header.L1Proof != block.Hash() {
+	if parent.L1Proof != block.Hash() {
 		var err error
-		parentBlock, err = bp.storage.FetchBlock(parent.Header.L1Proof)
+		parentBlock, err = bp.storage.FetchBlock(parent.L1Proof)
 		if err != nil {
 			bp.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
 		}
 	}
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch := core.DeterministicEmptyBatch(context.Creator, parent.Header, block, context.Randomness, context.AtTime)
+	batch := core.DeterministicEmptyBatch(context.Creator, parent, block, context.Randomness, context.AtTime)
 
 	stateDB, err := bp.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
