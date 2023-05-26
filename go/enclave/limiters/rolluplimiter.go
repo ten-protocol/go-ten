@@ -35,9 +35,9 @@ func (rl *rollupLimiter) AcceptBatch(encodable interface{}) (bool, error) {
 
 	encodedSize := uint64(len(encodedData))
 	if encodedSize > rl.remainingSize {
-		return true, nil
+		return false, nil
 	}
 
 	rl.remainingSize -= encodedSize
-	return false, nil
+	return true, nil
 }

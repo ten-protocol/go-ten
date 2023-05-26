@@ -279,9 +279,9 @@ func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash, rollupLimit
 		return nil, errors.New("head batch height is in the past compared to requested batch")
 	}
 	for batch.Number().Cmp(headBatch.Number()) != 0 {
-		if isFull, err := rollupLimiter.AcceptBatch(batch); err != nil {
+		if didAcceptBatch, err := rollupLimiter.AcceptBatch(batch); err != nil {
 			return nil, err
-		} else if isFull {
+		} else if !didAcceptBatch {
 			return batches, nil
 		}
 
