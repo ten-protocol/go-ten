@@ -129,7 +129,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 
 	err := eg.Wait()
 	if err != nil {
-		panic(fmt.Sprintf("Error waiting for the Obscuro nodes to stop - %s", err))
+		testlog.Logger().Error(fmt.Sprintf("Error waiting for the Obscuro nodes to stop - %s", err))
 	}
 
 	testlog.Logger().Info("Obscuro nodes stopped")
