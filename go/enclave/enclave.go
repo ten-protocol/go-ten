@@ -1312,8 +1312,7 @@ func (e *enclaveImpl) processNetworkSecretMsgs(br *common.BlockAndReceipts) []*c
 
 		// this transaction is for a node that has joined the network and needs to be sent the network secret
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
-			e.logger.Info(fmt.Sprintf("Process shared secret request. Block: %d. TxKey: %d",
-				block.NumberU64(), common.ShortHash(tx.Hash())))
+			e.logger.Info("Process shared secret request.", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.TxKey, tx.Hash())
 			resp, err := e.processSecretRequest(scrtReqTx)
 			if err != nil {
 				e.logger.Error("Failed to process shared secret request.", log.ErrKey, err)

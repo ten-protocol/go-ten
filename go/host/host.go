@@ -493,7 +493,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	// submit each block to the enclave for ingestion plus validation
 	blockSubmissionResponse, err := h.enclaveClient.SubmitL1Block(*block, h.extractReceipts(block), isLatestBlock)
 	if err != nil {
-		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
+		return fmt.Errorf("did not ingest block %s. Cause: %w", block.Hash(), err)
 	}
 	if blockSubmissionResponse == nil {
 		return fmt.Errorf("no block submission response given for a submitted l1 block")
@@ -795,11 +795,8 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 			continue
 		}
 
-		h.logger.Trace(fmt.Sprintf("Adding receipt[%d] for block %d, TX: %d",
-			receipt.Status,
-			common.ShortHash(block.Hash()),
-			common.ShortHash(transaction.Hash())),
-			log.CmpKey, log.CrossChainCmp)
+		h.logger.Trace("Adding receipt", "status", receipt.Status, log.TxKey, transaction.Hash(),
+			log.BlockHashKey, block.Hash(), log.CmpKey, log.CrossChainCmp)
 
 		receipts = append(receipts, receipt)
 	}
@@ -817,7 +814,7 @@ func (h *host) awaitSecret(fromHeight *big.Int) error {
 	for {
 		select {
 		case blk := <-blkStream.Stream:
-			h.logger.Trace("checking block for secret resp", "height", blk.Number())
+			h.logger.Trace("checking block for secret resp", log.BlockHeightKey, blk.Number())
 			if h.checkBlockForSecretResponse(blk) {
 				return nil
 			}
