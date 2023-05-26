@@ -60,7 +60,7 @@ func (br *batchRegistryImpl) UnsubscribeFromEvents() {
 // stored head pointers
 func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receipts) error {
 	// Check if this batch is already stored.
-	if _, err := br.GetBatch(*batch.Hash()); err == nil {
+	if _, err := br.GetBatch(batch.Hash()); err == nil {
 		br.logger.Warn("Attempted to store batch twice! This indicates issues with the batch processing loop")
 		return nil
 	}
@@ -300,7 +300,7 @@ func (br *batchRegistryImpl) GetBatchStateAtHeight(blockNumber *gethrpc.BlockNum
 	}
 
 	// We get that of the chain at that height
-	blockchainState, err := br.storage.CreateStateDB(*batch.Hash())
+	blockchainState, err := br.storage.CreateStateDB(batch.Hash())
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}

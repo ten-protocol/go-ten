@@ -47,8 +47,9 @@ func ExecuteTransactions(
 		return nil
 	}
 
+	hash := header.Hash()
 	for i, t := range txs {
-		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i, header.Hash())
+		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i, hash)
 		if err != nil {
 			result[t.Hash()] = err
 			logger.Info("Failed to execute tx:", log.TxKey, t.Hash().Hex(), log.CtrErrKey, err)

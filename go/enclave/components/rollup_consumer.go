@@ -163,7 +163,7 @@ func (rc *rollupConsumerImpl) processRollup(br *common.BlockAndReceipts) (*core.
 	}
 
 	// we record the latest rollup published against this L1 block hash
-	rollupHash := signedRollup.Header.Hash()
+	rollupHash := signedRollup.Hash()
 	err = rc.storage.UpdateHeadRollup(&blockHash, &rollupHash)
 	if err != nil {
 		// todo (@matt) - this also seems catastrophic, would result in bad state unable to ingest further rollups?
@@ -191,7 +191,7 @@ func (rc *rollupConsumerImpl) checkRollupsCorrectlyChained(rollup *core.Rollup, 
 			rollup.NumberU64(), previousRollup.NumberU64())
 	}
 
-	if rollup.Header.ParentHash != *previousRollup.Hash() {
+	if rollup.Header.ParentHash != previousRollup.Hash() {
 		return fmt.Errorf("found gap in rollups. Rollup %d did not reference rollup %d by hash",
 			rollup.Header.Number, previousRollup.Header.Number)
 	}

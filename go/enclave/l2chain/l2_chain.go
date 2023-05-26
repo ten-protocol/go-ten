@@ -147,7 +147,7 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 			callMsg.To(),
 			callMsg.From(),
 			hexutils.BytesToHex(callMsg.Data()),
-			common.ShortHash(*batch.Hash()),
+			common.ShortHash(batch.Hash()),
 			batch.Header.Root.Hex())
 	}})
 

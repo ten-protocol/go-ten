@@ -85,7 +85,7 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 		return nil, fmt.Errorf("no batches for rollup")
 	}
 
-	if batches[len(batches)-1].Header.Hash() == hash {
+	if batches[len(batches)-1].Hash() == hash {
 		return nil, fmt.Errorf("current head batch matches the rollup head bash")
 	}
 
@@ -118,7 +118,7 @@ func createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
 	}
 
 	rh.Number = rollupHeight
-	rh.HeadBatchHash = headBatch.Header.Hash()
+	rh.HeadBatchHash = headBatch.Hash()
 
 	return &core.Rollup{
 		Header:  rh,

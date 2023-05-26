@@ -195,7 +195,7 @@ func (bp *batchProducerImpl) processTransactions(batch *core.Batch, tCount int, 
 			txReceipts = append(txReceipts, rec)
 		} else {
 			// Exclude all errors
-			bp.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(*batch.Hash()), result))
+			bp.logger.Info(fmt.Sprintf("Excluding transaction %s from batch b_%d. Cause: %s", tx.Hash().Hex(), common.ShortHash(batch.Hash()), result))
 		}
 	}
 	sort.Sort(sortByTxIndex(txReceipts))

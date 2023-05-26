@@ -192,10 +192,10 @@ func (s *storageImpl) UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Ba
 		panic("UpdateHeadBatch called without an instance of sql.Batch")
 	}
 
-	if err := obscurorawdb.SetL2HeadBatch(dbBatch, *l2Head.Hash()); err != nil {
+	if err := obscurorawdb.SetL2HeadBatch(dbBatch, l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteL1ToL2BatchMapping(dbBatch, l1Head, *l2Head.Hash()); err != nil {
+	if err := obscurorawdb.WriteL1ToL2BatchMapping(dbBatch, l1Head, l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
@@ -329,7 +329,7 @@ func (s *storageImpl) SetHeadBatchPointer(l2Head *core.Batch, dbBatch *sql.Batch
 	}
 
 	// We update the canonical hash of the batch at this height.
-	if err := obscurorawdb.SetL2HeadBatch(dbBatch, *l2Head.Hash()); err != nil {
+	if err := obscurorawdb.SetL2HeadBatch(dbBatch, l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
 	}
 	return nil
@@ -449,7 +449,7 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 	if err := obscurorawdb.WriteTxLookupEntriesByBatch(dbBatch, batch); err != nil {
 		return fmt.Errorf("could not write transaction lookup entries by batch. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteReceipts(dbBatch, *batch.Hash(), receipts); err != nil {
+	if err := obscurorawdb.WriteReceipts(dbBatch, batch.Hash(), receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
 	if err := obscurorawdb.WriteContractCreationTxs(dbBatch, receipts); err != nil {
