@@ -51,7 +51,7 @@ func ExecuteTransactions(
 		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i, header.Hash())
 		if err != nil {
 			result[t.Hash()] = err
-			logger.Info("Failed to execute tx:", log.TxKey, t.Hash().Hex(), log.CtrErrKey, err)
+			logger.Info("Failed to execute tx:", log.TxKey, t.Hash(), log.CtrErrKey, err)
 			continue
 		}
 		result[t.Hash()] = r
@@ -97,7 +97,7 @@ func executeTransaction(
 }
 
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {
-	logger.Trace("Receipt", log.TxKey, r.TxHash.Hex(), "Result", gethlog.Lazy{Fn: func() string {
+	logger.Trace("Receipt", log.TxKey, r.TxHash, "Result", gethlog.Lazy{Fn: func() string {
 		receiptJSON, err := r.MarshalJSON()
 		if err != nil {
 			if r.Status == types.ReceiptStatusFailed {

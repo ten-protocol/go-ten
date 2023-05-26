@@ -2,9 +2,10 @@ package mempool
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 	"sync"
+
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -110,7 +111,7 @@ func (db *mempoolManager) CurrentTxs(stateDB *state.StateDB, limiter limiters.Ba
 
 		applicableTransactions = append(applicableTransactions, tx)
 		nonceTracker.IncrementNonce(*sender)
-		db.logger.Info(fmt.Sprintf("Including transaction %s with nonce: %d", tx.Hash().Hex(), tx.Nonce()))
+		db.logger.Info("Including transaction in batch", log.TxKey, tx.Hash(), "nonce", tx.Nonce())
 	}
 
 	return applicableTransactions, nil

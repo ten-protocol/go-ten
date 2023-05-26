@@ -1,7 +1,6 @@
 package erc20contractlib
 
 import (
-	"fmt"
 	"math/big"
 	"strings"
 
@@ -36,7 +35,7 @@ func DecodeTransferTx(t *types.Transaction, logger gethlog.Logger) (bool, *gethc
 	}
 	method, err := obscuroERC20ContractABIJSON.MethodById(t.Data()[:methodBytesLen])
 	if err != nil {
-		logger.Trace(fmt.Sprintf("Could not decode tx %s", t.Hash().Hex()), log.ErrKey, err)
+		logger.Trace("Could not decode tx", log.TxKey, t.Hash(), log.ErrKey, err)
 		return false, nil, nil
 	}
 

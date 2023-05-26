@@ -291,7 +291,7 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 }
 
 func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
-	e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
+	e.logger.Info("Streaming batch to client", log.BatchHashKey, batch.Hash())
 	extBatch, err := batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
 	if err != nil {
 		e.logger.Crit("failed to convert batch", log.ErrKey, err)
@@ -413,7 +413,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 		return responses.AsPlaintextError(fmt.Errorf("could not decrypt transaction. Cause: %w", err)), nil
 	}
 
-	e.logger.Info(fmt.Sprintf("Submitted transaction = %s", decryptedTx.Hash().Hex()))
+	e.logger.Info("Submitted transaction", log.TxKey, decryptedTx.Hash())
 
 	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
 	if err != nil {
@@ -464,10 +464,10 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 
 	callStart := time.Now()
 	defer func() {
-		e.logger.Info(fmt.Sprintf("SubmitBatch call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
+		e.logger.Info("SubmitBatch call completed.", "start", callStart, "duration", time.Since(callStart), log.BatchHashKey, extBatch.Hash())
 	}()
 
-	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
+	e.logger.Info("SubmitBatch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	batch, err := core.ToBatch(extBatch, e.dataEncryptionService, e.dataCompressionService)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
@@ -1312,8 +1312,7 @@ func (e *enclaveImpl) processNetworkSecretMsgs(br *common.BlockAndReceipts) []*c
 
 		// this transaction is for a node that has joined the network and needs to be sent the network secret
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
-			e.logger.Info(fmt.Sprintf("Process shared secret request. Block: %d. TxKey: %d",
-				block.NumberU64(), common.ShortHash(tx.Hash())))
+			e.logger.Info("Process shared secret request.", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.TxKey, tx.Hash())
 			resp, err := e.processSecretRequest(scrtReqTx)
 			if err != nil {
 				e.logger.Error("Failed to process shared secret request.", log.ErrKey, err)
