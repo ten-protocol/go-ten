@@ -13,6 +13,8 @@ const (
 	SubIDKey       = "subscription_id"
 	CfgKey         = "cfg"
 	TxKey          = "tx"
+	BatchHashKey   = "batch"
+	BatchHeightKey = "batch_height"
 	CmpKey         = "component"
 	NodeIDKey      = "node_id"
 	NetworkIDKey   = "network_id"

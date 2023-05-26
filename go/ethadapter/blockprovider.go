@@ -126,7 +126,7 @@ func (e *EthBlockProvider) streamBlocks(ctx context.Context, fromHeight *big.Int
 				// retry block above should retry forever until success, so if it does error we treat it as unrecoverable
 				e.logger.Crit("unable to fetch next canonical block, unexpected failure", log.ErrKey, err)
 			}
-			e.logger.Trace("blockProvider streaming block", "height", block.Number(), "hash", block.Hash())
+			e.logger.Trace("blockProvider streaming block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 			streamCh <- block // we block here until consumer takes it
 			// update stream state
 			latestSent = block.Header()

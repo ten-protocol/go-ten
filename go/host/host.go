@@ -573,7 +573,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
 	err := h.db.AddBatchHeader(producedBatch)
 	if err != nil {
-		h.logger.Error("could not store batch", log.ErrKey, err)
+		h.logger.Error("could not store batch", log.BatchHashKey, producedBatch.Hash(), log.ErrKey, err)
 	}
 
 	batchMsg := hostcommon.BatchMsg{
@@ -582,7 +582,7 @@ func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
 	}
 	err = h.p2p.BroadcastBatch(&batchMsg)
 	if err != nil {
-		h.logger.Error("could not broadcast batch", log.ErrKey, err)
+		h.logger.Error("could not broadcast batch", log.BatchHashKey, producedBatch.Hash(), log.ErrKey, err)
 	}
 }
 
@@ -950,7 +950,7 @@ func (h *host) startBatchStreaming() {
 		case resp, ok := <-streamChan:
 			if !ok {
 				stop()
-				h.logger.Warn("Batch streaming failed. Reconneting from latest received batch after 3 seconds")
+				h.logger.Warn("Batch streaming failed. Reconnecting from latest received batch after 3 seconds")
 				time.Sleep(3 * time.Second)
 
 				if lastBatch != nil {
@@ -964,7 +964,7 @@ func (h *host) startBatchStreaming() {
 
 			if resp.Batch != nil {
 				lastBatch = resp.Batch
-				h.logger.Trace(fmt.Sprintf("Received batch from stream: %s", lastBatch.Hash().Hex()))
+				h.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				if h.config.NodeType == common.Sequencer {
 					h.logger.Info("Storing batch from stream")
 					h.storeAndDistributeBatch(resp.Batch)

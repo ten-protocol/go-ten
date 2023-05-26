@@ -43,7 +43,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 	areReceiptsValid := common.VerifyReceiptHash(block, receipts)
 
 	if !areReceiptsValid && m.Enabled() {
-		m.logger.Error("Invalid receipts submitted", "block", common.ShortHash(block.Hash()), log.CmpKey, log.CrossChainCmp)
+		m.logger.Error("Invalid receipts submitted", log.BlockHashKey, block.Hash(), log.CmpKey, log.CrossChainCmp)
 		return fmt.Errorf("receipts do not match the receipt root for the block")
 	}
 
@@ -53,7 +53,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 		return nil
 	}
 
-	lazilyLogReceiptChecksum(fmt.Sprintf("Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)), receipts, m.logger)
+	lazilyLogReceiptChecksum(fmt.Sprintf("Processing block: %s receipts: %d", block.Hash(), len(receipts)), receipts, m.logger)
 	messages, err := m.getCrossChainMessages(block, receipts)
 	if err != nil {
 		m.logger.Error("Converting receipts to messages failed.", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
@@ -61,7 +61,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 	}
 
 	if len(messages) > 0 {
-		m.logger.Trace(fmt.Sprintf("Storing %d messages for block %s", len(messages), block.Hash().Hex()), log.CmpKey, log.CrossChainCmp)
+		m.logger.Trace(fmt.Sprintf("Storing %d messages for block", len(messages)), log.BlockHashKey, block.Hash(), log.CmpKey, log.CrossChainCmp)
 		err = m.storage.StoreL1Messages(block.Hash(), messages)
 		if err != nil {
 			m.logger.Crit("Unable to store the messages", log.CmpKey, log.CrossChainCmp)
@@ -98,7 +98,7 @@ func (m *blockMessageExtractor) getCrossChainMessages(block *common.L1Block, rec
 	}
 
 	m.logger.Trace(fmt.Sprintf("Found %d cross chain messages that will be submitted to L2!", len(messages)),
-		"Block", block.Hash().Hex(),
+		log.BlockHashKey, block.Hash(),
 		log.CmpKey, log.CrossChainCmp)
 
 	return messages, nil
