@@ -90,15 +90,9 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts, blockR
 				rc.logger.Crit("Failed to transform rollup", log.ErrKey, err)
 			}
 			rollups = append(rollups, rollup)
-			rc.logger.Info(fmt.Sprintf("Extracted Rollup r_%d from block b_%d",
-				common.ShortHash(r.Hash()),
-				common.ShortHash(b.Hash()),
-			))
+			rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.RollupHeightKey, r.Header.Number, log.BlockHashKey, b.Hash())
 		} else {
-			rc.logger.Warn(fmt.Sprintf("Ignored rollup r_%d from block b_%d, because it was produced on a fork",
-				common.ShortHash(r.Hash()),
-				common.ShortHash(b.Hash()),
-			))
+			rc.logger.Warn("Ignored rollup from block, because it was produced on a fork", log.RollupHashKey, r.Hash(), log.RollupHeightKey, r.Header.Number, log.BlockHashKey, b.Hash())
 		}
 	}
 

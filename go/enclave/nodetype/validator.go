@@ -141,7 +141,7 @@ func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool
 func (val *obsValidator) verifyRollup(rollup *core.Rollup) error {
 	for _, batch := range rollup.Batches {
 		if err := val.ValidateAndStoreBatch(batch); err != nil {
-			val.logger.Error("Attempted to store incorrect batch", "batch_hash", batch.Hash().Hex(), log.ErrKey, err)
+			val.logger.Error("Attempted to store incorrect batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
 			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
 		}
 	}

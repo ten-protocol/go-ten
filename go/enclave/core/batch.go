@@ -64,7 +64,7 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, c
 	if err != nil {
 		return nil, err
 	}
-	compressed, err := compression.Compress(bytes)
+	compressed, err := compression.CompressBatch(bytes)
 	if err != nil {
 		return nil, err
 	}

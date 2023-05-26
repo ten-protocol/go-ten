@@ -175,12 +175,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		if err != nil {
 			panic(err)
 		}
-		ti.logger.Info(fmt.Sprintf(
-			"Transfer transaction injected into L2. Hash: %d. From address: %d. To address: %d",
-			common.ShortHash(signedTx.Hash()),
-			common.ShortAddress(fromWallet.Address()),
-			common.ShortAddress(toWallet.Address()),
-		))
+		ti.logger.Info("Transfer transaction injected into L2.", log.TxKey, signedTx.Hash(), "fromAddress", fromWallet.Address(), "toAddress", toWallet.Address())
 
 		ti.stats.Transfer()
 
@@ -217,12 +212,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		if err != nil {
 			panic(err)
 		}
-		ti.logger.Info(fmt.Sprintf(
-			"Transfer transaction injected into L2. Hash: %d. From address: %d. To address: %d",
-			common.ShortHash(signedTx.Hash()),
-			common.ShortAddress(fromWallet.Address()),
-			common.ShortAddress(toWallet.Address()),
-		))
+		ti.logger.Info("Transfer transaction injected into L2.", log.TxKey, signedTx.Hash(), "fromAddress", fromWallet.Address(), "toAddress", toWallet.Address())
 
 		ti.stats.Transfer()
 
@@ -259,12 +249,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 		if err != nil {
 			panic(err)
 		}
-		ti.logger.Info(fmt.Sprintf(
-			"Deposit  transaction injected into L2. Hash: %d. From address: %d. To address: %d",
-			common.ShortHash(signedTx.Hash()),
-			common.ShortAddress(fromWallet.Address()),
-			common.ShortAddress(toWallet.Address()),
-		))
+		ti.logger.Info("Deposit  transaction injected into L2.", log.TxKey, signedTx.Hash(), "fromAddress", fromWallet.Address(), "toAddress", toWallet.Address())
 
 		ti.stats.Deposit(big.NewInt(int64(v)))
 

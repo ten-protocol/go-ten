@@ -8,17 +8,21 @@ import (
 
 // These are the keys of the log entries
 const (
-	ErrKey         = "err"
-	CtrErrKey      = "ctr_err"
-	SubIDKey       = "subscription_id"
-	CfgKey         = "cfg"
-	TxKey          = "tx"
-	CmpKey         = "component"
-	NodeIDKey      = "node_id"
-	NetworkIDKey   = "network_id"
-	BlockHeightKey = "block_height"
-	BlockHashKey   = "block_hash"
-	PackageKey     = "package"
+	ErrKey          = "err"
+	CtrErrKey       = "ctr_err"
+	SubIDKey        = "subscription_id"
+	CfgKey          = "cfg"
+	TxKey           = "tx"
+	BatchHashKey    = "batch"
+	BatchHeightKey  = "batch_height"
+	RollupHashKey   = "rollup"
+	RollupHeightKey = "rollup_height"
+	CmpKey          = "component"
+	NodeIDKey       = "node_id"
+	NetworkIDKey    = "network_id"
+	BlockHeightKey  = "block_height"
+	BlockHashKey    = "block_hash"
+	PackageKey      = "package"
 )
 
 // Logging is grouped by the component where it was initialised

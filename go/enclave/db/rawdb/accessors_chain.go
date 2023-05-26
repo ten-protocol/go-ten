@@ -15,7 +15,7 @@ import (
 )
 
 func ReadBatch(db ethdb.KeyValueReader, hash common.L2BatchHash) (*core.Batch, error) {
-	header, err := readBatchHeader(db, hash)
+	header, err := ReadBatchHeader(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)
 	}
@@ -112,8 +112,8 @@ func writeBatchHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, numbe
 	return nil
 }
 
-// Retrieves the batch header corresponding to the hash.
-func readBatchHeader(db ethdb.KeyValueReader, hash common.L2BatchHash) (*common.BatchHeader, error) {
+// ReadBatchHeader Retrieves the batch header corresponding to the hash.
+func ReadBatchHeader(db ethdb.KeyValueReader, hash common.L2BatchHash) (*common.BatchHeader, error) {
 	data, err := readBatchHeaderRLP(db, hash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read header. Cause: %w", err)

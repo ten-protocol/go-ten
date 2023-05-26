@@ -60,7 +60,7 @@ func (br *batchRegistryImpl) UnsubscribeFromEvents() {
 // stored head pointers
 func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receipts) error {
 	// Check if this batch is already stored.
-	if _, err := br.GetBatch(batch.Hash()); err == nil {
+	if _, err := br.storage.FetchBatchHeader(batch.Hash()); err == nil {
 		br.logger.Warn("Attempted to store batch twice! This indicates issues with the batch processing loop")
 		return nil
 	}

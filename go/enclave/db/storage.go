@@ -83,6 +83,15 @@ func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
 	return batch, nil
 }
 
+func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error) {
+	s.assertSecretAvailable()
+	batchHeader, err := obscurorawdb.ReadBatchHeader(s.db, hash)
+	if err != nil {
+		return nil, err
+	}
+	return batchHeader, nil
+}
+
 func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
 	hash, err := obscurorawdb.ReadCanonicalBatchHash(s.db, height)
 	if err != nil {

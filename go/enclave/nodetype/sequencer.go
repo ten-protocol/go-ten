@@ -214,6 +214,9 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
 	}
 
+	s.logger.Info("Created new head batch", log.BatchHashKey, cb.Batch.Hash(),
+		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions))
+
 	return nil
 }
 
@@ -229,6 +232,8 @@ func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
 	if err := s.signRollup(rollup); err != nil {
 		return nil, err
 	}
+
+	s.logger.Info("Created new head rollup", log.RollupHashKey, rollup.Hash(), log.RollupHeightKey, rollup.Number(), "numBatches", len(rollup.Batches))
 
 	return rollup.ToExtRollup(s.dataEncryptionService, s.dataCompressionService)
 }

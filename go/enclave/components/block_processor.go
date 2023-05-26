@@ -64,7 +64,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLat
 		return nil, err
 	}
 	bp.logger.Trace("block inserted successfully",
-		"height", block.NumberU64(), "hash", block.Hash(), "ingestionType", ingestionType)
+		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
 
 	bp.storage.StoreBlock(block)
 	err = bp.storage.UpdateL1Head(block.Hash())

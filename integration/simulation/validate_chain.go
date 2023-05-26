@@ -535,7 +535,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		}
 
 		if receipt.Status == types.ReceiptStatusFailed {
-			testlog.Logger().Info("Transaction receipt had failed status.", log.TxKey, tx.Hash().Hex())
+			testlog.Logger().Info("Transaction receipt had failed status.", log.TxKey, tx.Hash())
 		} else {
 			nrSuccessful++
 		}

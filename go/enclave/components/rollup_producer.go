@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
@@ -153,6 +155,6 @@ func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage, logge
 			return nil, fmt.Errorf("could not fetch parent block - %w", err)
 		}
 		// if we are scanning backwards (when we don't think we need to, and it might be expensive) we want to know about it
-		logger.Info("Scanning backwards for rollup, trying prev block", "height", block.Number(), "hash", block.Hash().Hex())
+		logger.Info("Scanning backwards for rollup, trying prev block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 	}
 }

@@ -58,12 +58,12 @@ func (r *Rollup) ToExtRollup(dataEncryptionService crypto.DataEncryptionService,
 		return nil, err
 	}
 
-	compressedTransactionsBlob, err := compression.Compress(plaintextTransactionsBlob)
+	compressedTransactionsBlob, err := compression.CompressRollup(plaintextTransactionsBlob)
 	if err != nil {
 		return nil, err
 	}
 
-	compressedHeadersBlob, err := compression.Compress(headersBlob)
+	compressedHeadersBlob, err := compression.CompressRollup(headersBlob)
 	if err != nil {
 		return nil, err
 	}

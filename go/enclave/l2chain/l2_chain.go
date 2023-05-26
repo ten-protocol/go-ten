@@ -14,7 +14,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -142,12 +141,12 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
 
-	oc.logger.Trace("Obs_Call:", "Successful result", gethlog.Lazy{Fn: func() string {
-		return fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=b_%d, state=%s",
+	oc.logger.Trace("Obs_Call: Successful result", gethlog.Lazy{Fn: func() string {
+		return fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=%s, state=%s",
 			callMsg.To(),
 			callMsg.From(),
 			hexutils.BytesToHex(callMsg.Data()),
-			common.ShortHash(batch.Hash()),
+			batch.Hash(),
 			batch.Header.Root.Hex())
 	}})
 
