@@ -861,6 +861,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	}
 
 	for _, batch := range batchMsg.Batches {
+		h.logger.Info("Received batch from peer", log.BatchHeightKey, batch.Header.Number, log.BatchHashKey, batch.Hash())
 		// todo (@stefan) - consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
 
 		// If we do not have the block the batch is tied to, we skip processing the batches for now. We'll catch them

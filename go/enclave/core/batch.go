@@ -19,8 +19,7 @@ import (
 type Batch struct {
 	Header *common.BatchHeader
 
-	hash atomic.Value
-	// size   atomic.Value
+	hash atomic.Pointer[common.L2BatchHash]
 
 	Transactions []*common.L2Tx
 }
@@ -29,10 +28,10 @@ type Batch struct {
 // The hash is computed on the first call and cached thereafter.
 func (b *Batch) Hash() common.L2BatchHash {
 	if hash := b.hash.Load(); hash != nil {
-		return hash.(common.L2BatchHash)
+		return *hash
 	}
 	v := b.Header.Hash()
-	b.hash.Store(v)
+	b.hash.Store(&v)
 	return v
 }
 
