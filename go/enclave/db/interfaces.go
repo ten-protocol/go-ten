@@ -35,6 +35,8 @@ type BlockResolver interface {
 type BatchResolver interface {
 	// FetchBatch returns the batch with the given hash.
 	FetchBatch(hash common.L2BatchHash) (*core.Batch, error)
+	// FetchBatchHeader returns the batch header with the given hash.
+	FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error)
 	// FetchBatchByHeight returns the batch on the canonical chain with the given height.
 	FetchBatchByHeight(height uint64) (*core.Batch, error)
 	// FetchHeadBatch returns the current head batch of the canonical chain.

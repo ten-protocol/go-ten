@@ -1038,11 +1038,11 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 
 	// Set from to the height of the block hash
 	if from == nil && filter.BlockHash != nil {
-		batch, err := e.storage.FetchBatch(*filter.BlockHash)
+		batch, err := e.storage.FetchBatchHeader(*filter.BlockHash)
 		if err != nil {
 			return nil, responses.ToInternalError(err)
 		}
-		from = batch.Number()
+		from = batch.Number
 	}
 
 	to := filter.ToBlock
@@ -1418,12 +1418,12 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash,
 		return nil
 	}
 
-	batch, err := e.storage.FetchBatch(*l2Head)
+	batch, err := e.storage.FetchBatchHeader(*l2Head)
 	if err != nil {
 		e.logger.Crit("Failed to retrieve batch. Should not happen", log.ErrKey, err)
 		return nil
 	}
-	logs, err := e.subscriptionLogs(batch.Number())
+	logs, err := e.subscriptionLogs(batch.Number)
 	if err != nil {
 		e.logger.Error("Could not fetch logs", log.ErrKey, err)
 		return nil
