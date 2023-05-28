@@ -17,10 +17,8 @@ import (
 // Batch Data structure only for the internal use of the enclave since transactions are in clear
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Batch struct {
-	Header *common.BatchHeader
-
-	hash atomic.Pointer[common.L2BatchHash]
-
+	Header       *common.BatchHeader
+	hash         atomic.Value
 	Transactions []*common.L2Tx
 }
 
@@ -28,10 +26,10 @@ type Batch struct {
 // The hash is computed on the first call and cached thereafter.
 func (b *Batch) Hash() common.L2BatchHash {
 	if hash := b.hash.Load(); hash != nil {
-		return *hash
+		return hash.(common.L2BatchHash)
 	}
 	v := b.Header.Hash()
-	b.hash.Store(&v)
+	b.hash.Store(v)
 	return v
 }
 

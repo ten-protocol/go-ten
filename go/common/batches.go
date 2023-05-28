@@ -14,17 +14,17 @@ type ExtBatch struct {
 	Header          *BatchHeader
 	TxHashes        []TxHash // The hashes of the transactions included in the batch.
 	EncryptedTxBlob EncryptedTransactions
-	hash            atomic.Pointer[L2BatchHash]
+	hash            atomic.Value
 }
 
 // Hash returns the keccak256 hash of the batch's header.
 // The hash is computed on the first call and cached thereafter.
 func (b *ExtBatch) Hash() L2BatchHash {
 	if hash := b.hash.Load(); hash != nil {
-		return *hash
+		return hash.(L2BatchHash)
 	}
 	v := b.Header.Hash()
-	b.hash.Store(&v)
+	b.hash.Store(v)
 	return v
 }
 

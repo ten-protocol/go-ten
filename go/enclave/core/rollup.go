@@ -17,17 +17,17 @@ import (
 type Rollup struct {
 	Header  *common.RollupHeader
 	Batches []*Batch
-	hash    atomic.Pointer[common.L2BatchHash]
+	hash    atomic.Value
 }
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
 func (r *Rollup) Hash() common.L2BatchHash {
 	if hash := r.hash.Load(); hash != nil {
-		return *hash
+		return hash.(common.L2BatchHash)
 	}
 	v := r.Header.Hash()
-	r.hash.Store(&v)
+	r.hash.Store(v)
 	return v
 }
 
