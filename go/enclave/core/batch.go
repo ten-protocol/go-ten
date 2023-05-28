@@ -17,11 +17,8 @@ import (
 // Batch Data structure only for the internal use of the enclave since transactions are in clear
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Batch struct {
-	Header *common.BatchHeader
-
-	hash atomic.Value
-	// size   atomic.Value
-
+	Header       *common.BatchHeader
+	hash         atomic.Value
 	Transactions []*common.L2Tx
 }
 
