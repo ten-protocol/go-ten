@@ -21,7 +21,7 @@ type ContractDeployer struct {
 func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 	return &ContractDeployer{
 		cfg: cfg,
-	}, nil // todo: add validation
+	}, nil // todo (@pedro) - add validation
 }
 
 func (n *ContractDeployer) Start() error {
@@ -96,7 +96,7 @@ func (n *ContractDeployer) WaitForFinish() error {
 		return err
 	}
 
-	// todo: if we want to read anything from the container logs we can do it here (see RetrieveL1ContractAddresses as example)
+	// if we want to read anything from the container logs we can do it here (see RetrieveL1ContractAddresses as example)
 
 	return nil
 }

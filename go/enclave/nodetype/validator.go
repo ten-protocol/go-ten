@@ -75,7 +75,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		}
 	}
 
-	if batch, err := val.batchRegistry.GetBatch(*incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
+	if batch, err := val.batchRegistry.GetBatch(incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return err
 	} else if batch != nil {
 		return nil // already know about this one
@@ -121,15 +121,16 @@ func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool
 		return nil, err
 	}
 
-	rollups, err := val.rollupConsumer.ProcessL1Block(br)
+	rollup, err := val.rollupConsumer.ProcessL1Block(br)
 	if err != nil {
 		// todo - log err?
 		val.logger.Error("Encountered error processing l1 block", log.ErrKey, err)
 		return ingestion, nil
 	}
 
-	for _, rollup := range rollups {
-		if err := val.verifyRollup(rollup); err != nil {
+	if rollup != nil {
+		// read batch data from rollup, verify and store it
+		if err = val.verifyRollup(rollup); err != nil {
 			return nil, err
 		}
 	}
@@ -140,14 +141,14 @@ func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool
 func (val *obsValidator) verifyRollup(rollup *core.Rollup) error {
 	for _, batch := range rollup.Batches {
 		if err := val.ValidateAndStoreBatch(batch); err != nil {
-			val.logger.Error("Attempted to store incorrect batch", "batch_hash", batch.Hash().Hex(), log.ErrKey, err)
+			val.logger.Error("Attempted to store incorrect batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
 			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
 		}
 	}
 	return nil
 }
 
-func (val *obsValidator) CheckSequencerSignature(headerHash *gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
+func (val *obsValidator) CheckSequencerSignature(headerHash gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
 	// todo (#718) - sequencer identities should be retrieved from the L1 management contract
 	if !bytes.Equal(aggregator.Bytes(), val.sequencerID.Bytes()) {

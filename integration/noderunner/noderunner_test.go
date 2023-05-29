@@ -130,5 +130,5 @@ func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
 		node.WithProfiler(true),
 	)
 
-	return node.NewInMemNode(nodeCfg), hostAddress
+	return NewInMemNode(nodeCfg), hostAddress
 }

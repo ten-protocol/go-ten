@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
@@ -12,6 +14,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -22,7 +25,7 @@ import (
 // to rollups that the enclave can process.
 type rollupProducerImpl struct {
 	// TransactionBlobCrypto- This contains the required properties to encrypt rollups.
-	TransactionBlobCrypto crypto.TransactionBlobCrypto
+	TransactionBlobCrypto crypto.DataEncryptionService
 
 	ObscuroChainID  int64
 	EthereumChainID int64
@@ -36,7 +39,7 @@ type rollupProducerImpl struct {
 }
 
 func NewRollupProducer(
-	transactionBlobCrypto crypto.TransactionBlobCrypto,
+	transactionBlobCrypto crypto.DataEncryptionService,
 	obscuroChainID int64,
 	ethereumChainID int64,
 	storage db.Storage,
@@ -61,10 +64,10 @@ func (re *rollupProducerImpl) fetchLatestRollup() (*core.Rollup, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getLatestRollupBeforeBlock(b, re.storage)
+	return getLatestRollupBeforeBlock(b, re.storage, re.logger)
 }
 
-func (re *rollupProducerImpl) CreateRollup() (*core.Rollup, error) {
+func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*core.Rollup, error) {
 	rollup, err := re.fetchLatestRollup()
 	if err != nil && !errors.Is(err, db.ErrNoRollups) {
 		return nil, err
@@ -75,7 +78,7 @@ func (re *rollupProducerImpl) CreateRollup() (*core.Rollup, error) {
 		hash = rollup.Header.HeadBatchHash
 	}
 
-	batches, err := re.batchRegistry.BatchesAfter(hash)
+	batches, err := re.batchRegistry.BatchesAfter(hash, limiter)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +87,7 @@ func (re *rollupProducerImpl) CreateRollup() (*core.Rollup, error) {
 		return nil, fmt.Errorf("no batches for rollup")
 	}
 
-	if batches[len(batches)-1].Header.Hash() == hash {
+	if batches[len(batches)-1].Hash() == hash {
 		return nil, fmt.Errorf("current head batch matches the rollup head bash")
 	}
 
@@ -117,7 +120,7 @@ func createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
 	}
 
 	rh.Number = rollupHeight
-	rh.HeadBatchHash = headBatch.Header.Hash()
+	rh.HeadBatchHash = headBatch.Hash()
 
 	return &core.Rollup{
 		Header:  rh,
@@ -126,7 +129,7 @@ func createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
 }
 
 // getLatestRollupBeforeBlock - Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
-func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage) (*core.Rollup, error) {
+func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage, logger gethlog.Logger) (*core.Rollup, error) {
 	for {
 		blockParentHash := block.ParentHash()
 		latestRollup, err := storage.FetchHeadRollupForBlock(&blockParentHash)
@@ -151,5 +154,7 @@ func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage) (*cor
 			}
 			return nil, fmt.Errorf("could not fetch parent block - %w", err)
 		}
+		// if we are scanning backwards (when we don't think we need to, and it might be expensive) we want to know about it
+		logger.Info("Scanning backwards for rollup, trying prev block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 	}
 }

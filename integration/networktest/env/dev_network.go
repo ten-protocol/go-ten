@@ -22,7 +22,7 @@ func (d *devNetworkEnv) Prepare() (networktest.NetworkConnector, func(), error) 
 }
 
 func awaitNodesAvailable(_ networktest.NetworkConnector) error { //nolint:unparam
-	// todo: create RPC clients for all the nodes and wait until their health checks pass
+	// todo (@matt) - create RPC clients for all the nodes and wait until their health checks pass
 
 	// for now we just sleep
 	time.Sleep(15 * time.Second)

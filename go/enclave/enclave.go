@@ -10,6 +10,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/nodetype"
 
@@ -81,10 +83,11 @@ type enclaveImpl struct {
 	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
 	enclavePubKey []byte            // the public key of the above
 
-	transactionBlobCrypto crypto.TransactionBlobCrypto
-	profiler              *profiler.Profiler
-	debugger              *debugger.Debugger
-	logger                gethlog.Logger
+	dataEncryptionService  crypto.DataEncryptionService
+	dataCompressionService compression.DataCompressionService
+	profiler               *profiler.Profiler
+	debugger               *debugger.Debugger
+	logger                 gethlog.Logger
 
 	stopControl *stopcontrol.StopControl
 }
@@ -178,9 +181,10 @@ func NewEnclave(
 	obscuroKey := crypto.GetObscuroKey(logger)
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey))
 
-	transactionBlobCrypto := crypto.NewTransactionBlobCryptoImpl(logger)
+	dataEncryptionService := crypto.NewDataEncryptionService(logger)
+	dataCompressionService := compression.NewBrotliDataCompressionService()
 
-	memp := mempool.New(config.ObscuroChainID)
+	memp := mempool.New(config.ObscuroChainID, logger)
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
@@ -189,9 +193,9 @@ func NewEnclave(
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, logger)
 	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, logger)
 	registry := components.NewBatchRegistry(storage, logger)
-	rProducer := components.NewRollupProducer(transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
+	rProducer := components.NewRollupProducer(dataEncryptionService, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
 	sigVerifier := components.NewSignatureValidator(config.SequencerID, storage)
-	rConsumer := components.NewRollupConsumer(mgmtContractLib, transactionBlobCrypto, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
+	rConsumer := components.NewRollupConsumer(mgmtContractLib, dataEncryptionService, dataCompressionService, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
 
 	var service nodetype.NodeType
 	if config.NodeType == common.Sequencer {
@@ -207,7 +211,12 @@ func NewEnclave(
 			enclaveKey,
 			memp,
 			storage,
-			transactionBlobCrypto,
+			dataEncryptionService,
+			dataCompressionService,
+			nodetype.SequencerSettings{
+				MaxBatchSize:  config.MaxBatchSize,
+				MaxRollupSize: config.MaxRollupSize,
+			},
 		)
 	} else {
 		service = nodetype.NewValidator(blockProcessor, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, logger)
@@ -233,22 +242,23 @@ func NewEnclave(
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
 	return &enclaveImpl{
-		config:                config,
-		storage:               storage,
-		blockResolver:         storage,
-		l1Blockchain:          l1Blockchain,
-		rpcEncryptionManager:  rpcEncryptionManager,
-		subscriptionManager:   subscriptionManager,
-		crossChainProcessors:  crossChainProcessors,
-		mgmtContractLib:       mgmtContractLib,
-		attestationProvider:   attestationProvider,
-		enclaveKey:            enclaveKey,
-		enclavePubKey:         serializedEnclavePubKey,
-		transactionBlobCrypto: transactionBlobCrypto,
-		profiler:              prof,
-		logger:                logger,
-		debugger:              debug,
-		stopControl:           stopcontrol.New(),
+		config:                 config,
+		storage:                storage,
+		blockResolver:          storage,
+		l1Blockchain:           l1Blockchain,
+		rpcEncryptionManager:   rpcEncryptionManager,
+		subscriptionManager:    subscriptionManager,
+		crossChainProcessors:   crossChainProcessors,
+		mgmtContractLib:        mgmtContractLib,
+		attestationProvider:    attestationProvider,
+		enclaveKey:             enclaveKey,
+		enclavePubKey:          serializedEnclavePubKey,
+		dataEncryptionService:  dataEncryptionService,
+		dataCompressionService: dataCompressionService,
+		profiler:               prof,
+		logger:                 logger,
+		debugger:               debug,
+		stopControl:            stopcontrol.New(),
 
 		chain:    chain,
 		registry: registry,
@@ -281,9 +291,13 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 }
 
 func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
-	e.logger.Info(fmt.Sprintf("Streaming to client batch %s", batch.Hash().Hex()))
+	e.logger.Info("Streaming batch to client", log.BatchHashKey, batch.Hash())
+	extBatch, err := batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+	if err != nil {
+		e.logger.Crit("failed to convert batch", log.ErrKey, err)
+	}
 	resp := common.StreamL2UpdatesResponse{
-		Batch: batch.ToExtBatch(e.transactionBlobCrypto),
+		Batch: extBatch,
 	}
 	outChannel <- resp
 }
@@ -399,7 +413,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 		return responses.AsPlaintextError(fmt.Errorf("could not decrypt transaction. Cause: %w", err)), nil
 	}
 
-	e.logger.Info(fmt.Sprintf("Submitted transaction = %s", decryptedTx.Hash().Hex()))
+	e.logger.Info("Submitted transaction", log.TxKey, decryptedTx.Hash())
 
 	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
 	if err != nil {
@@ -448,8 +462,16 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 		return responses.ToInternalError(fmt.Errorf("requested SubmitBatch with the enclave stopping"))
 	}
 
-	e.logger.Info("SubmitBatch", "height", extBatch.Header.Number, "hash", extBatch.Hash(), "l1", extBatch.Header.L1Proof)
-	batch := core.ToBatch(extBatch, e.transactionBlobCrypto)
+	callStart := time.Now()
+	defer func() {
+		e.logger.Info("SubmitBatch call completed.", "start", callStart, "duration", time.Since(callStart), log.BatchHashKey, extBatch.Hash())
+	}()
+
+	e.logger.Info("SubmitBatch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
+	batch, err := core.ToBatch(extBatch, e.dataEncryptionService, e.dataCompressionService)
+	if err != nil {
+		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
+	}
 	if err := e.Validator().ValidateAndStoreBatch(batch); err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err))
 	}
@@ -461,6 +483,11 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 	if e.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested CreateBatch with the enclave stopping"))
 	}
+
+	callStart := time.Now()
+	defer func() {
+		e.logger.Info(fmt.Sprintf("CreateBatch call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
+	}()
 
 	err := e.Sequencer().CreateBatch()
 	if err != nil {
@@ -474,6 +501,11 @@ func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
 	}
+
+	callStart := time.Now()
+	defer func() {
+		e.logger.Info(fmt.Sprintf("CreateRollup call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
+	}()
 
 	rollup, err := e.Sequencer().CreateRollup()
 	if err != nil {
@@ -577,7 +609,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if err == nil {
 		// todo - we should return an error when head state is not available, but for current test situations with race
 		//  conditions we allow it to return zero while head state is uninitialized
-		s, err := e.storage.CreateStateDB(*l2Head.Hash())
+		s, err := e.storage.CreateStateDB(l2Head.Hash())
 		if err != nil {
 			return nil, responses.ToInternalError(err)
 		}
@@ -1006,11 +1038,11 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 
 	// Set from to the height of the block hash
 	if from == nil && filter.BlockHash != nil {
-		batch, err := e.storage.FetchBatch(*filter.BlockHash)
+		batch, err := e.storage.FetchBatchHeader(*filter.BlockHash)
 		if err != nil {
 			return nil, responses.ToInternalError(err)
 		}
-		from = batch.Number()
+		from = batch.Number
 	}
 
 	to := filter.ToBlock
@@ -1280,8 +1312,7 @@ func (e *enclaveImpl) processNetworkSecretMsgs(br *common.BlockAndReceipts) []*c
 
 		// this transaction is for a node that has joined the network and needs to be sent the network secret
 		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
-			e.logger.Info(fmt.Sprintf("Process shared secret request. Block: %d. TxKey: %d",
-				block.NumberU64(), common.ShortHash(tx.Hash())))
+			e.logger.Info("Process shared secret request.", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.TxKey, tx.Hash())
 			resp, err := e.processSecretRequest(scrtReqTx)
 			if err != nil {
 				e.logger.Error("Failed to process shared secret request.", log.ErrKey, err)
@@ -1377,16 +1408,21 @@ func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash,
 	}
 
 	var producedExtBatch *common.ExtBatch
+	var err error
 	if producedBatch != nil {
-		producedExtBatch = producedBatch.ToExtBatch(e.transactionBlobCrypto)
+		producedExtBatch, err = producedBatch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+	}
+	if err != nil {
+		e.logger.Crit("Failed to convert batch. Should not happen", log.ErrKey, err)
+		return nil
 	}
 
-	batch, err := e.storage.FetchBatch(*l2Head)
+	batch, err := e.storage.FetchBatchHeader(*l2Head)
 	if err != nil {
 		e.logger.Crit("Failed to retrieve batch. Should not happen", log.ErrKey, err)
 		return nil
 	}
-	logs, err := e.subscriptionLogs(batch.Number())
+	logs, err := e.subscriptionLogs(batch.Number)
 	if err != nil {
 		e.logger.Error("Could not fetch logs", log.ErrKey, err)
 		return nil
@@ -1503,8 +1539,8 @@ func restoreStateDBCache(storage db.Storage, producer components.BatchProducer, 
 // batch in the chain and is used to query state at a certain height.
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
-func stateDBAvailableForBatch(storage db.Storage, hash *common.L2BatchHash) bool {
-	_, err := storage.CreateStateDB(*hash)
+func stateDBAvailableForBatch(storage db.Storage, hash common.L2BatchHash) bool {
+	_, err := storage.CreateStateDB(hash)
 	return err == nil
 }
 

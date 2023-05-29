@@ -3,7 +3,8 @@ package core
 import (
 	"math/big"
 	"sync/atomic"
-	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/compression"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -16,31 +17,29 @@ import (
 // Batch Data structure only for the internal use of the enclave since transactions are in clear
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type Batch struct {
-	Header *common.BatchHeader
-
-	hash atomic.Value
-	// size   atomic.Value
-
+	Header       *common.BatchHeader
+	hash         atomic.Value
 	Transactions []*common.L2Tx
 }
 
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
-func (b *Batch) Hash() *common.L2BatchHash {
-	// Temporarily disabling the caching of the hash because it's causing bugs.
-	// Transforming a Batch to an ExtBatch and then back to a Batch will generate a different hash if caching is enabled.
-	// todo (#1547) - re-enable
-	//if hash := b.hash.Load(); hash != nil {
-	//	return hash.(common.L2BatchHash)
-	//}
+func (b *Batch) Hash() common.L2BatchHash {
+	if hash := b.hash.Load(); hash != nil {
+		return hash.(common.L2BatchHash)
+	}
 	v := b.Header.Hash()
 	b.hash.Store(v)
-	return &v
+	return v
 }
 
 func (b *Batch) Size() (int, error) {
 	bytes, err := rlp.EncodeToBytes(b)
 	return len(bytes), err
+}
+
+func (b *Batch) Encode() ([]byte, error) {
+	return rlp.EncodeToBytes(b)
 }
 
 func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }
@@ -52,47 +51,42 @@ func (b *Batch) IsGenesis() bool {
 	return b.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
 
-func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.TransactionBlobCrypto) *common.ExtBatch {
+func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*common.ExtBatch, error) {
 	txHashes := make([]gethcommon.Hash, len(b.Transactions))
 	for idx, tx := range b.Transactions {
 		txHashes[idx] = tx.Hash()
 	}
 
-	return &common.ExtBatch{
-		Header:          b.Header,
-		TxHashes:        txHashes,
-		EncryptedTxBlob: transactionBlobCrypto.Encrypt(b.Transactions),
-	}
-}
-
-func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.TransactionBlobCrypto) *Batch {
-	return &Batch{
-		Header:       extBatch.Header,
-		Transactions: transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob),
-	}
-}
-
-func EmptyBatch(agg gethcommon.Address, parent *common.BatchHeader, blkHash gethcommon.Hash) (*Batch, error) {
-	rand, err := crypto.GeneratePublicRandomness()
+	bytes, err := rlp.EncodeToBytes(b.Transactions)
 	if err != nil {
 		return nil, err
 	}
-	h := common.BatchHeader{
-		Agg:        agg,
-		ParentHash: parent.Hash(),
-		L1Proof:    blkHash,
-		Number:     big.NewInt(0).Add(parent.Number, big.NewInt(1)),
-		// todo (#1548) - Consider how this time should align with the time of the L1 block used as proof.
-		Time: uint64(time.Now().Unix()),
-		// generate true randomness inside the enclave.
-		// note that this randomness will be published in the header of the batch.
-		// the randomness exposed to smart contract is combining this with the shared secret.
-		MixDigest: gethcommon.BytesToHash(rand),
+	compressed, err := compression.CompressBatch(bytes)
+	if err != nil {
+		return nil, err
 	}
-	b := Batch{
-		Header: &h,
+	return &common.ExtBatch{
+		Header:          b.Header,
+		TxHashes:        txHashes,
+		EncryptedTxBlob: transactionBlobCrypto.Encrypt(compressed),
+	}, nil
+}
+
+func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*Batch, error) {
+	compressed := transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob)
+	encoded, err := compression.Decompress(compressed)
+	if err != nil {
+		return nil, err
 	}
-	return &b, nil
+	var txs []*common.L2Tx
+	err = rlp.DecodeBytes(encoded, &txs)
+	if err != nil {
+		return nil, err
+	}
+	return &Batch{
+		Header:       extBatch.Header,
+		Transactions: txs,
+	}, nil
 }
 
 func DeterministicEmptyBatch(

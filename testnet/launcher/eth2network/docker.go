@@ -19,7 +19,7 @@ type Eth2Network struct {
 func NewDockerEth2Network(cfg *Config) (*Eth2Network, error) {
 	return &Eth2Network{
 		cfg: cfg,
-	}, nil // todo: add validation
+	}, nil // todo (@pedro) - add validation
 }
 
 func (n *Eth2Network) Start() error {

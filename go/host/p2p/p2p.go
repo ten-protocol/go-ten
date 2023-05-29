@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/retry"
+
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
@@ -178,7 +180,7 @@ func (p *p2pImpl) HealthCheck() bool {
 		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {
 			noMsgReceivedPeers = append(noMsgReceivedPeers, peer)
 			p.logger.Warn("no message from peer in the alert period",
-				log.HostCmp, p.ourAddress,
+				"ourAddress", p.ourAddress,
 				"peer", peer,
 				"alertPeriod", _alertPeriod,
 			)
@@ -249,7 +251,7 @@ func (p *p2pImpl) broadcast(msg message) error {
 	var wg sync.WaitGroup
 	for _, address := range p.peerAddresses {
 		wg.Add(1)
-		go p.sendBytes(&wg, address, msgEncoded)
+		go p.sendBytesWithRetry(&wg, address, msgEncoded) //nolint: errcheck
 	}
 	wg.Wait()
 
@@ -262,16 +264,28 @@ func (p *p2pImpl) send(msg message, to string) error {
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to sequencer. Cause: %w", err)
 	}
-	p.sendBytes(nil, to, msgEncoded)
+	err = p.sendBytesWithRetry(nil, to, msgEncoded)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 // Sends the bytes to the provided address.
-func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
+// Until introducing libp2p (or equivalent), we have a simple retry
+func (p *p2pImpl) sendBytesWithRetry(wg *sync.WaitGroup, address string, msgEncoded []byte) error {
 	if wg != nil {
 		defer wg.Done()
 	}
+	// retry for about 2 seconds
+	err := retry.Do(func() error {
+		return p.sendBytes(address, msgEncoded)
+	}, retry.NewDoublingBackoffStrategy(100*time.Millisecond, 5))
+	return err
+}
 
+// Sends the bytes to the provided address.
+func (p *p2pImpl) sendBytes(address string, tx []byte) error {
 	conn, err := net.DialTimeout(tcp, address, p.p2pTimeout)
 	if conn != nil {
 		defer conn.Close()
@@ -279,14 +293,16 @@ func (p *p2pImpl) sendBytes(wg *sync.WaitGroup, address string, tx []byte) {
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
 		p.incHostGaugeMetric(address, _failedConnectSendMessage)
-		return
+		return err
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
 		p.incHostGaugeMetric(address, _failedWriteSendMessage)
+		return err
 	}
+	return nil
 }
 
 // Retrieves the sequencer's address.

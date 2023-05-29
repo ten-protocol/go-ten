@@ -173,7 +173,7 @@ func (h *host) Start() error {
 
 		err := h.refreshP2PPeerList()
 		if err != nil {
-			h.logger.Warn("unable to sync current p2p peer list on startup - %w", err)
+			h.logger.Warn("unable to sync current p2p peer list on startup", log.ErrKey, err)
 		}
 
 		// start the host's main processing loop
@@ -249,7 +249,7 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 		return nil, sysError
 	}
 	if enclaveResponse.Error() != nil {
-		h.logger.Warn("Could not submit transaction.", log.ErrKey, enclaveResponse.Error())
+		h.logger.Trace("Could not submit transaction.", log.ErrKey, enclaveResponse.Error())
 		return enclaveResponse, nil //nolint: nilerr
 	}
 
@@ -407,7 +407,7 @@ func (h *host) startProcessing() {
 		select {
 		case b := <-blockStream.Stream:
 			isLive := h.l1BlockProvider.IsLatest(b) // checks whether the block is the current head of the L1 (false if there is a newer block available)
-			err := h.processL1Block(b, isLive)
+			err = h.processL1Block(b, isLive)
 			if err != nil {
 				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
 				blockStream = h.handleProcessBlockErr(b, blockStream, err)
@@ -420,7 +420,7 @@ func (h *host) startProcessing() {
 				continue
 			}
 			if resp.Error() != nil {
-				h.logger.Warn("Could not submit transaction", log.ErrKey, resp.Error())
+				h.logger.Trace("Could not submit transaction", log.ErrKey, resp.Error())
 			}
 
 		// todo (#718) - adopt a similar approach to blockStream, where we have a BatchProvider that streams new batches.
@@ -444,28 +444,32 @@ func (h *host) startProcessing() {
 
 func (h *host) handleProcessBlockErr(processedBlock *types.Block, stream *hostcommon.BlockStream, err error) *hostcommon.BlockStream {
 	var rejErr *errutil.BlockRejectError
-	if !errors.As(err, &rejErr) {
+	var resetFrom gethcommon.Hash
+	if errors.As(err, &rejErr) {
+		h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, log.BlockHashKey, processedBlock.Hash(), log.BlockHeightKey, processedBlock.Number())
+		if errors.Is(rejErr, errutil.ErrBlockAlreadyProcessed) {
+			// resetting stream after rejection for duplicate is a possible optimisation in future but it's rarely an expensive case and
+			// it's a risky optimisation (need to ensure it can't get stuck in a loop)
+			// Instead we assume that only one or two blocks are being repeated (probably from revisiting a fork that was
+			// abandoned) and then the enclave will be progressing again
+			return stream
+		}
+		if rejErr.L1Head == (gethcommon.Hash{}) {
+			h.logger.Warn("No L1 head information provided by enclave, continuing with existing stream")
+			return stream
+		}
+		// prepare to reset the stream from the L1 head provided by the enclave
+		resetFrom = rejErr.L1Head
+	} else {
 		// received unexpected error (no useful information from the enclave)
-		// we log it out and ignore it until the enclave tells us more information
-		h.logger.Warn("Error processing block.", log.ErrKey, err)
-		return stream
+		// we log it out and retry the stream from the same block
+		h.logger.Warn("Error processing block, resetting block provider to retry", log.ErrKey, err)
+		resetFrom = processedBlock.Hash()
 	}
-	h.logger.Info("Block rejected by enclave.", log.ErrKey, rejErr, log.BlockHashKey, processedBlock.Hash(), log.BlockHeightKey, processedBlock.Number())
-	if errors.Is(rejErr, errutil.ErrBlockAlreadyProcessed) {
-		// resetting stream after rejection for duplicate is a possible optimisation in future but it's rarely an expensive case and
-		// it's a risky optimisation (need to ensure it can't get stuck in a loop)
-		// Instead we assume that only one or two blocks are being repeated (probably from revisiting a fork that was
-		// abandoned) and then the enclave will be progressing again
-		return stream
-	}
-	if rejErr.L1Head == (gethcommon.Hash{}) {
-		h.logger.Warn("No L1 head information provided by enclave, continuing with existing stream")
-		return stream
-	}
-	h.logger.Info("Resetting block provider stream to enclave latest head.", "streamFrom", rejErr.L1Head)
-	// streaming from the latest canonical ancestor of the enclave's L1 head (we may end up re-streaming some things it's
-	//	already processed, but we tolerate those failures)
-	replacementStream, err := h.l1BlockProvider.StartStreamingFromHash(rejErr.L1Head)
+	h.logger.Info("Resetting block provider stream", "streamFrom", resetFrom)
+	// streaming from the latest canonical ancestor of the enclave's L1 head (we may end up re-streaming some blocks it's
+	//	already processed, but we tolerate those inefficiencies for simplicity for now)
+	replacementStream, err := h.l1BlockProvider.StartStreamingFromHash(resetFrom)
 	if err != nil {
 		h.logger.Warn("Could not reset block provider, continuing with previous stream", log.ErrKey, err)
 		return stream
@@ -485,7 +489,7 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	// submit each block to the enclave for ingestion plus validation
 	blockSubmissionResponse, err := h.enclaveClient.SubmitL1Block(*block, h.extractReceipts(block), isLatestBlock)
 	if err != nil {
-		return fmt.Errorf("did not ingest block b_%d. Cause: %w", common.ShortHash(block.Hash()), err)
+		return fmt.Errorf("did not ingest block %s. Cause: %w", block.Hash(), err)
 	}
 	if blockSubmissionResponse == nil {
 		return fmt.Errorf("no block submission response given for a submitted l1 block")
@@ -532,6 +536,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
+	h.logger.Info(fmt.Sprintf("Publishing rollup with height=%d, size=%dKB", producedRollup.Header.Number, len(encodedRollup)/1024))
 
 	h.logger.Trace("Sending transaction to publish rollup", "rollup_header",
 		gethlog.Lazy{Fn: func() string {
@@ -541,7 +546,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 			}
 
 			return string(header)
-		}}, "rollup_hash", producedRollup.Header.Hash().Hex(), "batches_len", len(producedRollup.Batches))
+		}}, "rollup_hash", producedRollup.Header.Hash().Hex(), "batches_len", len(producedRollup.BatchPayloads))
 
 	rollupTx := h.mgmtContractLib.CreateRollup(tx, h.ethWallet.GetNonceAndIncrement())
 	rollupTx, err = h.ethClient.EstimateGasAndGasPrice(rollupTx, h.ethWallet.Address())
@@ -564,7 +569,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
 	err := h.db.AddBatchHeader(producedBatch)
 	if err != nil {
-		h.logger.Error("could not store batch", log.ErrKey, err)
+		h.logger.Error("could not store batch", log.BatchHashKey, producedBatch.Hash(), log.ErrKey, err)
 	}
 
 	batchMsg := hostcommon.BatchMsg{
@@ -573,7 +578,7 @@ func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
 	}
 	err = h.p2p.BroadcastBatch(&batchMsg)
 	if err != nil {
-		h.logger.Error("could not broadcast batch", log.ErrKey, err)
+		h.logger.Error("could not broadcast batch", log.BatchHashKey, producedBatch.Hash(), log.ErrKey, err)
 	}
 }
 
@@ -786,11 +791,8 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 			continue
 		}
 
-		h.logger.Trace(fmt.Sprintf("Adding receipt[%d] for block %d, TX: %d",
-			receipt.Status,
-			common.ShortHash(block.Hash()),
-			common.ShortHash(transaction.Hash())),
-			log.CmpKey, log.CrossChainCmp)
+		h.logger.Trace("Adding receipt", "status", receipt.Status, log.TxKey, transaction.Hash(),
+			log.BlockHashKey, block.Hash(), log.CmpKey, log.CrossChainCmp)
 
 		receipts = append(receipts, receipt)
 	}
@@ -808,7 +810,7 @@ func (h *host) awaitSecret(fromHeight *big.Int) error {
 	for {
 		select {
 		case blk := <-blkStream.Stream:
-			h.logger.Trace("checking block for secret resp", "height", blk.Number())
+			h.logger.Trace("checking block for secret resp", log.BlockHeightKey, blk.Number())
 			if h.checkBlockForSecretResponse(blk) {
 				return nil
 			}
@@ -855,6 +857,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 	}
 
 	for _, batch := range batchMsg.Batches {
+		h.logger.Info("Received batch from peer", log.BatchHeightKey, batch.Header.Number, log.BatchHashKey, batch.Hash())
 		// todo (@stefan) - consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
 
 		// If we do not have the block the batch is tied to, we skip processing the batches for now. We'll catch them
@@ -941,7 +944,7 @@ func (h *host) startBatchStreaming() {
 		case resp, ok := <-streamChan:
 			if !ok {
 				stop()
-				h.logger.Warn("Batch streaming failed. Reconneting from latest received batch after 3 seconds")
+				h.logger.Warn("Batch streaming failed. Reconnecting from latest received batch after 3 seconds")
 				time.Sleep(3 * time.Second)
 
 				if lastBatch != nil {
@@ -955,7 +958,7 @@ func (h *host) startBatchStreaming() {
 
 			if resp.Batch != nil {
 				lastBatch = resp.Batch
-				h.logger.Trace(fmt.Sprintf("Received batch from stream: %s", lastBatch.Hash().Hex()))
+				h.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				if h.config.NodeType == common.Sequencer {
 					h.logger.Info("Storing batch from stream")
 					h.storeAndDistributeBatch(resp.Batch)
@@ -985,7 +988,7 @@ func (h *host) startRollupProduction() {
 		case <-rollupTicker.C:
 			producedRollup, err := h.enclaveClient.CreateRollup()
 			if err != nil {
-				h.logger.Warn("unable to produce rollup", log.ErrKey, err)
+				h.logger.Error("unable to produce rollup", log.ErrKey, err)
 			} else {
 				h.publishRollup(producedRollup)
 			}

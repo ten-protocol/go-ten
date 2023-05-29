@@ -484,7 +484,6 @@ func createTestEnclave(prefundedAddresses []genesis.Account, idx int) (common.En
 		WillAttest:     false,
 		UseInMemoryDB:  true,
 		MinGasPrice:    big.NewInt(1),
-		Cadence:        10,
 	}
 	logger := log.New(log.TestLogCmp, int(gethlog.LvlError), log.SysOut)
 
@@ -540,14 +539,21 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(genesisRollup); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch, nil); err != nil {
+
+	dbBatch := enclave.(*enclaveImpl).storage.OpenBatch()
+
+	if err = enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch, nil, dbBatch); err != nil {
 		return err
 	}
 	blockHash := blk.Hash()
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, genesisRollup.Hash()); err != nil {
+	genesisHash := genesisRollup.Hash()
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, &genesisHash); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, genesisBatch, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, genesisBatch, nil, dbBatch); err != nil {
+		return err
+	}
+	if err = enclave.(*enclaveImpl).storage.CommitBatch(dbBatch); err != nil {
 		return err
 	}
 	return enclave.(*enclaveImpl).storage.UpdateL1Head(blockHash)
@@ -579,7 +585,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 	if err != nil {
 		return err
 	}
-	stateDB, err := enclave.(*enclaveImpl).storage.CreateStateDB(*l2Head.Hash())
+	stateDB, err := enclave.(*enclaveImpl).storage.CreateStateDB(l2Head.Hash())
 	if err != nil {
 		return err
 	}
@@ -599,19 +605,25 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 		Batches: []*core.Batch{batch},
 	}
 
+	dbBatch := enclave.(*enclaveImpl).storage.OpenBatch()
+
 	// We update the database.
 	if err = enclave.(*enclaveImpl).storage.StoreRollup(rollup); err != nil {
 		return err
 	}
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, nil); err != nil {
+	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, nil, dbBatch); err != nil {
 		return err
 	}
 	blockHash := blk.Hash()
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, rollup.Hash()); err != nil {
+	rollupHash := rollup.Hash()
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadRollup(&blockHash, &rollupHash); err != nil {
+		return err
+	}
+	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, batch, nil, dbBatch); err != nil {
 		return err
 	}
 
-	return enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, batch, nil)
+	return enclave.(*enclaveImpl).storage.CommitBatch(dbBatch)
 }
 
 func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber, w wallet.Wallet, expectedAmount *big.Int) error {

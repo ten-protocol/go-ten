@@ -24,7 +24,6 @@ const (
 	// These are the addresses that the end-to-end tests expect to be prefunded when run locally. Corresponds to
 	// private key hex "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb".
 	e2eTestPrefundedL1Addr = "0x13E23Ca74DE0206C56ebaE8D51b5622EFF1E9944"
-	// TODO - Also prefund the L1 HOC and POC addresses used for the end-to-end tests when run locally.
 )
 
 func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, blockDurationSeconds int) (*params.L1SetupData, []ethadapter.EthClient, eth2network.Eth2Network) {
@@ -120,7 +119,7 @@ func StopEth2Network(clients []ethadapter.EthClient, netw eth2network.Eth2Networ
 }
 
 // DeployContract returns receipt of deployment
-// todo -this should live somewhere else
+// todo (@matt) - this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
 	deployContractTx, err := workerClient.EstimateGasAndGasPrice(&types.LegacyTx{
 		Nonce: w.GetNonceAndIncrement(),

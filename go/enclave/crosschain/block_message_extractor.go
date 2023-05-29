@@ -27,7 +27,7 @@ func NewBlockMessageExtractor(
 		busAddress:   busAddress,
 		l2MessageBus: l2BusAddress,
 		storage:      storage,
-		logger:       logger,
+		logger:       logger.New(log.CmpKey, log.CrossChainCmp),
 	}
 }
 
@@ -43,7 +43,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 	areReceiptsValid := common.VerifyReceiptHash(block, receipts)
 
 	if !areReceiptsValid && m.Enabled() {
-		m.logger.Error("Invalid receipts submitted", "block", common.ShortHash(block.Hash()), log.CmpKey, log.CrossChainCmp)
+		m.logger.Error("Invalid receipts submitted", log.BlockHashKey, block.Hash())
 		return fmt.Errorf("receipts do not match the receipt root for the block")
 	}
 
@@ -53,18 +53,18 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 		return nil
 	}
 
-	lazilyLogReceiptChecksum(fmt.Sprintf("Processing block: %s receipts: %d", block.Hash().Hex(), len(receipts)), receipts, m.logger)
+	lazilyLogReceiptChecksum(fmt.Sprintf("Processing block: %s receipts: %d", block.Hash(), len(receipts)), receipts, m.logger)
 	messages, err := m.getCrossChainMessages(block, receipts)
 	if err != nil {
-		m.logger.Error("Converting receipts to messages failed.", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		m.logger.Error("Converting receipts to messages failed.", log.ErrKey, err)
 		return err
 	}
 
 	if len(messages) > 0 {
-		m.logger.Trace(fmt.Sprintf("Storing %d messages for block %s", len(messages), block.Hash().Hex()), log.CmpKey, log.CrossChainCmp)
+		m.logger.Trace(fmt.Sprintf("Storing %d messages for block", len(messages)), log.BlockHashKey, block.Hash())
 		err = m.storage.StoreL1Messages(block.Hash(), messages)
 		if err != nil {
-			m.logger.Crit("Unable to store the messages", log.CmpKey, log.CrossChainCmp)
+			m.logger.Crit("Unable to store the messages")
 			return err
 		}
 	}
@@ -86,20 +86,18 @@ func (m *blockMessageExtractor) getCrossChainMessages(block *common.L1Block, rec
 	// Retrieves the relevant logs from the message bus.
 	logs, err := filterLogsFromReceipts(receipts, m.GetBusAddress(), &CrossChainEventID)
 	if err != nil {
-		m.logger.Error("Error encountered when filtering receipt logs.", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		m.logger.Error("Error encountered when filtering receipt logs.", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err
 	}
-	m.logger.Trace("Extracted cross chain logs from receipts", "logCount", len(logs), log.CmpKey, log.CrossChainCmp)
+	m.logger.Trace("Extracted cross chain logs from receipts", "logCount", len(logs))
 
 	messages, err := convertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
 	if err != nil {
-		m.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		m.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err
 	}
 
-	m.logger.Trace(fmt.Sprintf("Found %d cross chain messages that will be submitted to L2!", len(messages)),
-		"Block", block.Hash().Hex(),
-		log.CmpKey, log.CrossChainCmp)
+	m.logger.Trace(fmt.Sprintf("Found %d cross chain messages that will be submitted to L2!", len(messages)), log.BlockHashKey, block.Hash())
 
 	return messages, nil
 }

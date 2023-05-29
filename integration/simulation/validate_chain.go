@@ -9,6 +9,9 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 
@@ -63,7 +66,7 @@ func checkTransactionsInjected(t *testing.T, s *Simulation) {
 	if len(s.TxInjector.TxTracker.TransferL2Transactions) < txThreshold {
 		t.Errorf("Simulation only issued %d transfer L2 transactions. At least %d expected", len(s.TxInjector.TxTracker.TransferL2Transactions), txThreshold)
 	}
-	//TODO: Reenable when old contract deployer phased out.
+	// todo (@stefan) - reenable when old contract deployer phased out.
 	/*if len(s.TxInjector.TxTracker.WithdrawalL2Transactions) < txThreshold {
 		t.Errorf("Simulation only issued %d withdrawal L2 transactions. At least %d expected", len(s.TxInjector.TxTracker.WithdrawalL2Transactions), txThreshold)
 	}*/
@@ -145,7 +148,7 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: Found Rollup duplicates: %v", nodeIdx, dups)
 	}
 
-	/* TODO: Reenable while old contract deployer is phased out.
+	/* todo (@stefan) - reenable while old contract deployer is phased out.
 	if s.Stats.TotalDepositedAmount.Cmp(totalDeposited) != 0 {
 		t.Errorf("Node %d: Deposit[%d] amounts don't match. Found %d , expected %d", nodeIdx, len(deposits), totalDeposited, s.Stats.TotalDepositedAmount)
 	}
@@ -194,7 +197,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 			continue
 		}
 
-		if len(rollup.Batches) == 0 {
+		if len(rollup.BatchPayloads) == 0 {
 			t.Errorf("Node %d: No batches in rollup!", nodeIdx)
 			continue
 		}
@@ -203,9 +206,10 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 			prevRollup := rollups[idx-1]
 			checkRollupPair(t, nodeIdx, prevRollup, rollup)
 		}
+		headers := extractBatchHeaders(rollup)
 
-		for _, batch := range rollup.Batches {
-			currHeight := batch.Header.Number.Uint64()
+		for _, batchHeader := range headers {
+			currHeight := batchHeader.Number.Uint64()
 			if currHeight != 0 && currHeight > batchNumber+1 {
 				t.Errorf("Node %d: Batch gap!", nodeIdx)
 			}
@@ -213,8 +217,8 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 
 			for _, clients := range s.RPCHandles.AuthObsClients {
 				client := clients[0]
-				batchOnNode, _ := client.RollupHeaderByHash(batch.Header.Hash())
-				if batchOnNode.Hash() != batch.Hash() {
+				batchOnNode, _ := client.RollupHeaderByHash(batchHeader.Hash())
+				if batchOnNode.Hash() != batchHeader.Hash() {
 					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
 				}
 			}
@@ -234,23 +238,40 @@ func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, ro
 		return
 	}
 
-	if len(prevRollup.Batches) == 0 {
+	if len(prevRollup.BatchHeaders) == 0 {
 		return
 	}
 
-	lastBatch := prevRollup.Batches[len(prevRollup.Batches)-1]
-	firstBatch := rollup.Batches[0]
-	isValidChain = firstBatch.Header.ParentHash == lastBatch.Header.Hash()
+	previousHeaders := extractBatchHeaders(prevRollup)
+	currentHeaders := extractBatchHeaders(rollup)
+
+	lastBatch := previousHeaders[len(previousHeaders)-1]
+	firstBatch := currentHeaders[0]
+	isValidChain = firstBatch.ParentHash.Hex() == lastBatch.Hash().Hex()
 	if !isValidChain {
 		t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
 		return
 	}
 
-	isValidChain = prevRollup.Header.HeadBatchHash == firstBatch.Header.ParentHash
+	isValidChain = prevRollup.Header.HeadBatchHash.Hex() == firstBatch.ParentHash.Hex()
 	if !isValidChain {
 		t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
 		return
 	}
+}
+
+func extractBatchHeaders(rollup *common.ExtRollup) []common.BatchHeader {
+	dataCompressionService := compression.NewBrotliDataCompressionService()
+	headers := make([]common.BatchHeader, 0)
+	headersBlob, err := dataCompressionService.Decompress(rollup.BatchHeaders)
+	if err != nil {
+		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
+	}
+	err = rlp.DecodeBytes(headersBlob, &headers)
+	if err != nil {
+		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
+	}
+	return headers
 }
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
@@ -286,7 +307,7 @@ func ExtractDataFromEthereumChain(
 
 			switch l1tx := t.(type) {
 			case *ethadapter.L1DepositTx:
-				// TODO: Remove this hack once the old integrated bridge is removed.
+				// todo (@stefan) - remove this hack once the old integrated bridge is removed.
 				deposits = append(deposits, tx.Hash())
 				totalDeposited.Add(totalDeposited, l1tx.Amount)
 				successfulDeposits++
@@ -298,7 +319,7 @@ func ExtractDataFromEthereumChain(
 				rollups = append(rollups, r)
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
-					// todo - once logic is added to the l1 - this can be made into a check
+					// todo (@tudor) - once logic is added to the l1 - this can be made into a check
 					s.Stats.NewRollup(nodeIdx)
 				}
 			}
@@ -403,11 +424,11 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		total.Add(total, bal)
 	}
 
-	/* TODO: Reenable following check once old contract deployer is phased out.
+	/* todo (@stefan) - reenable following check once old contract deployer is phased out.
 	if total.Cmp(totalAmountInSystem) != 0 {
 		t.Errorf("Node %d: The amount of money in accounts does not match the amount deposited. Found %d , expected %d", nodeIdx, total, totalAmountInSystem)
 	} */
-	// TODO Check that processing transactions in the order specified in the list results in the same balances
+	// todo (@stefan) - check that processing transactions in the order specified in the list results in the same balances
 	// (execute deposits and transactions and compare to the state in the rollup)
 
 	heights[nodeIdx] = l2Height.Uint64()
@@ -514,7 +535,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		}
 
 		if receipt.Status == types.ReceiptStatusFailed {
-			testlog.Logger().Info("Transaction receipt had failed status.", log.TxKey, tx.Hash().Hex())
+			testlog.Logger().Info("Transaction receipt had failed status.", log.TxKey, tx.Hash())
 		} else {
 			nrSuccessful++
 		}

@@ -20,6 +20,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -375,7 +377,7 @@ func (o *Obscuroscan) getRollupByNumOrTxHash(resp http.ResponseWriter, req *http
 }
 
 // Decrypts the provided transaction blob using the provided key.
-// TODO - Use the passed-in key, rather than a hardcoded enclave key.
+// todo (#1665) - use the passed-in key, rather than a hardcoded enclave key.
 func (o *Obscuroscan) decryptTxBlob(resp http.ResponseWriter, req *http.Request) {
 	body := req.Body
 	defer body.Close()
@@ -475,7 +477,7 @@ func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Reques
 
 // Returns the rollup with the given number.
 func (o *Obscuroscan) getRollupByNumber(rollupNumber int64) (*common.ExtRollup, error) {
-	// TODO - If required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
+	// todo (#1665) - if required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
 	rollupHeader, err := o.obsClient.RollupHeaderByNumber(big.NewInt(rollupNumber))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", rollupNumber, err)
@@ -514,9 +516,16 @@ func decryptTxBlob(encryptedTxBytesBase64 []byte) ([]byte, error) {
 	// The nonce is prepended to the ciphertext.
 	nonce := encryptedTxBytes[0:crypto.NonceLength]
 	ciphertext := encryptedTxBytes[crypto.NonceLength:]
-	encodedTxs, err := transactionCipher.Open(nil, nonce, ciphertext, nil)
+	compressedTxs, err := transactionCipher.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt encrypted L2 transactions. Cause: %w", err)
+	}
+
+	compressionService := compression.NewBrotliDataCompressionService()
+
+	encodedTxs, err := compressionService.Decompress(compressedTxs)
+	if err != nil {
+		return nil, fmt.Errorf("could not decompress L2 transactions. Cause: %w", err)
 	}
 
 	var cleartextTxs []*common.L2Tx

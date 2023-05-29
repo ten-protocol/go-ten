@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -19,8 +21,14 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
+
+type SequencerSettings struct {
+	MaxBatchSize  uint64
+	MaxRollupSize uint64
+}
 
 type sequencer struct {
 	blockProcessor components.L1BlockProcessor
@@ -31,12 +39,14 @@ type sequencer struct {
 
 	logger gethlog.Logger
 
-	hostID            gethcommon.Address
-	chainConfig       *params.ChainConfig
-	enclavePrivateKey *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
-	mempool           mempool.Manager
-	storage           db.Storage
-	encryption        crypto.TransactionBlobCrypto
+	hostID                 gethcommon.Address
+	chainConfig            *params.ChainConfig
+	enclavePrivateKey      *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
+	mempool                mempool.Manager
+	storage                db.Storage
+	dataEncryptionService  crypto.DataEncryptionService
+	dataCompressionService compression.DataCompressionService
+	settings               SequencerSettings
 
 	// This is used to coordinate creating
 	// new batches and creating fork batches.
@@ -57,21 +67,25 @@ func NewSequencer(
 	enclavePrivateKey *ecdsa.PrivateKey, // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	mempool mempool.Manager,
 	storage db.Storage,
-	encryption crypto.TransactionBlobCrypto,
+	dataEncryptionService crypto.DataEncryptionService,
+	dataCompressionService compression.DataCompressionService,
+	settings SequencerSettings,
 ) Sequencer {
 	return &sequencer{
-		blockProcessor:    consumer,
-		batchProducer:     producer,
-		batchRegistry:     registry,
-		rollupProducer:    rollupProducer,
-		rollupConsumer:    rollupConsumer,
-		logger:            logger,
-		hostID:            hostID,
-		chainConfig:       chainConfig,
-		enclavePrivateKey: enclavePrivateKey,
-		mempool:           mempool,
-		storage:           storage,
-		encryption:        encryption,
+		blockProcessor:         consumer,
+		batchProducer:          producer,
+		batchRegistry:          registry,
+		rollupProducer:         rollupProducer,
+		rollupConsumer:         rollupConsumer,
+		logger:                 logger,
+		hostID:                 hostID,
+		chainConfig:            chainConfig,
+		enclavePrivateKey:      enclavePrivateKey,
+		mempool:                mempool,
+		storage:                storage,
+		dataEncryptionService:  dataEncryptionService,
+		dataCompressionService: dataCompressionService,
+		settings:               settings,
 	}
 }
 
@@ -152,7 +166,14 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	// to be in our chain.
 	headBatch = ancestralBatch
 
-	transactions, err := s.mempool.CurrentTxs(headBatch, s.storage)
+	stateDB, err := s.storage.CreateStateDB(headBatch.Hash())
+	if err != nil {
+		return fmt.Errorf("unable to create stateDB for selecting transactions. Cause: %w", err)
+	}
+
+	// todo (@stefan) - limit on receipts too
+	limiter := limiters.NewBatchSizeLimiter(s.settings.MaxBatchSize)
+	transactions, err := s.mempool.CurrentTxs(stateDB, limiter)
 	if err != nil {
 		return err
 	}
@@ -166,7 +187,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 
 	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     l1HeadBlock.Hash(),
-		ParentPtr:    *headBatch.Hash(),
+		ParentPtr:    headBatch.Hash(),
 		Transactions: transactions,
 		AtTime:       uint64(time.Now().Unix()), // todo - time is set only here; take from l1 block?
 		Randomness:   gethcommon.BytesToHash(rand),
@@ -189,15 +210,21 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return fmt.Errorf("failed storing batch. Cause: %w", err)
 	}
 
-	if err := s.mempool.RemoveMempoolTxs(cb.Batch, s.storage); err != nil {
+	if err := s.mempool.RemoveTxs(transactions); err != nil {
 		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
 	}
+
+	s.logger.Info("Created new head batch", log.BatchHashKey, cb.Batch.Hash(),
+		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions))
 
 	return nil
 }
 
 func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
-	rollup, err := s.rollupProducer.CreateRollup()
+	// todo @stefan - move this somewhere else, it shouldn't be in the batch registry.
+	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
+
+	rollup, err := s.rollupProducer.CreateRollup(rollupLimiter)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +233,9 @@ func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
 		return nil, err
 	}
 
-	return rollup.ToExtRollup(s.encryption), nil
+	s.logger.Info("Created new head rollup", log.RollupHashKey, rollup.Hash(), log.RollupHeightKey, rollup.Number(), "numBatches", len(rollup.Batches))
+
+	return rollup.ToExtRollup(s.dataEncryptionService, s.dataCompressionService)
 }
 
 func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
@@ -215,7 +244,7 @@ func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*c
 		return nil, err
 	}
 
-	if _, err := s.rollupConsumer.ProcessL1Block(br); err != nil {
+	if _, err = s.rollupConsumer.ProcessL1Block(br); err != nil {
 		s.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
 	}
@@ -232,7 +261,7 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 		return fmt.Errorf("failed retrieving head batch. Cause: %w", err)
 	}
 
-	if bytes.Equal(headBatch.Header.Hash().Bytes(), ancestralBatch.Hash().Bytes()) {
+	if bytes.Equal(headBatch.Hash().Bytes(), ancestralBatch.Hash().Bytes()) {
 		return nil
 	}
 
@@ -258,7 +287,7 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 		// Extend the chain with identical cousin batches
 		cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 			BlockPtr:     block.Hash(),
-			ParentPtr:    *currHeadPtr.Hash(),
+			ParentPtr:    currHeadPtr.Hash(),
 			Transactions: orphan.Transactions,
 			AtTime:       orphan.Header.Time,
 			Randomness:   orphan.Header.MixDigest,
@@ -285,10 +314,14 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 
 		// i equals 0 at the highest batch number
 		if i == 0 {
-			if err := s.storage.SetHeadBatchPointer(cb.Batch); err != nil {
+			dbBatch := s.storage.OpenBatch()
+			if err := s.storage.SetHeadBatchPointer(cb.Batch, dbBatch); err != nil {
 				return fmt.Errorf("failed setting head batch ptr. Cause: %w", err)
 			}
-			return s.storage.UpdateHeadBatch(block.Hash(), cb.Batch, cb.Receipts)
+			if err := s.storage.UpdateHeadBatch(block.Hash(), cb.Batch, cb.Receipts, dbBatch); err != nil {
+				return fmt.Errorf("failed to update head batch. Cause: %w", err)
+			}
+			return s.storage.CommitBatch(dbBatch)
 		}
 	}
 

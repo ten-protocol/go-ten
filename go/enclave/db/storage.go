@@ -51,6 +51,14 @@ func NewStorage(backingDB *sql.EnclaveDB, chainConfig *params.ChainConfig, logge
 	}
 }
 
+func (s *storageImpl) OpenBatch() *sql.Batch {
+	return s.db.NewSQLBatch()
+}
+
+func (s *storageImpl) CommitBatch(dbBatch *sql.Batch) error {
+	return dbBatch.Write()
+}
+
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }
@@ -73,6 +81,15 @@ func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
 		return nil, err
 	}
 	return batch, nil
+}
+
+func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error) {
+	s.assertSecretAvailable()
+	batchHeader, err := obscurorawdb.ReadBatchHeader(s.db, hash)
+	if err != nil {
+		return nil, err
+	}
+	return batchHeader, nil
 }
 
 func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
@@ -179,13 +196,15 @@ func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*c
 	return obscurorawdb.ReadRollup(s.db, *l2HeadBatch)
 }
 
-func (s *storageImpl) UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Batch, receipts []*types.Receipt) error {
-	dbBatch := s.db.NewSQLBatch()
+func (s *storageImpl) UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error {
+	if dbBatch == nil {
+		panic("UpdateHeadBatch called without an instance of sql.Batch")
+	}
 
-	if err := obscurorawdb.SetL2HeadBatch(dbBatch, *l2Head.Hash()); err != nil {
+	if err := obscurorawdb.SetL2HeadBatch(dbBatch, l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteL1ToL2BatchMapping(dbBatch, l1Head, *l2Head.Hash()); err != nil {
+	if err := obscurorawdb.WriteL1ToL2BatchMapping(dbBatch, l1Head, l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write block state. Cause: %w", err)
 	}
 
@@ -199,10 +218,6 @@ func (s *storageImpl) UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Ba
 		if err2 != nil {
 			return fmt.Errorf("could not save logs %w", err2)
 		}
-	}
-
-	if err := dbBatch.Write(); err != nil {
-		return fmt.Errorf("could not save new head. Cause: %w", err)
 	}
 	return nil
 }
@@ -317,15 +332,14 @@ func (s *storageImpl) isEndUserAccount(topic gethcommon.Hash, db *state.StateDB)
 	return false, nil
 }
 
-func (s *storageImpl) SetHeadBatchPointer(l2Head *core.Batch) error {
-	dbBatch := s.db.NewBatch()
+func (s *storageImpl) SetHeadBatchPointer(l2Head *core.Batch, dbBatch *sql.Batch) error {
+	if dbBatch == nil {
+		panic("SetHeadBatchPointer called without an instance of sql.Batch")
+	}
 
 	// We update the canonical hash of the batch at this height.
-	if err := obscurorawdb.SetL2HeadBatch(dbBatch, *l2Head.Hash()); err != nil {
+	if err := obscurorawdb.SetL2HeadBatch(dbBatch, l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
-	}
-	if err := dbBatch.Write(); err != nil {
-		return fmt.Errorf("could not save new head. Cause: %w", err)
 	}
 	return nil
 }
@@ -433,8 +447,10 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
 }
 
-func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) error {
-	dbBatch := s.db.NewBatch()
+func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error {
+	if dbBatch == nil {
+		panic("StoreBatch called without an instance of sql.Batch")
+	}
 
 	if err := obscurorawdb.WriteBatch(dbBatch, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
@@ -442,15 +458,11 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) e
 	if err := obscurorawdb.WriteTxLookupEntriesByBatch(dbBatch, batch); err != nil {
 		return fmt.Errorf("could not write transaction lookup entries by batch. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteReceipts(dbBatch, *batch.Hash(), receipts); err != nil {
+	if err := obscurorawdb.WriteReceipts(dbBatch, batch.Hash(), receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
 	if err := obscurorawdb.WriteContractCreationTxs(dbBatch, receipts); err != nil {
 		return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
-	}
-
-	if err := dbBatch.Write(); err != nil {
-		return fmt.Errorf("could not write batch to storage. Cause: %w", err)
 	}
 	return nil
 }

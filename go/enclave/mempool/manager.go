@@ -2,17 +2,19 @@ package mempool
 
 import (
 	"errors"
-	"fmt"
 	"sort"
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
@@ -25,27 +27,33 @@ func (c sortByNonce) Len() int           { return len(c) }
 func (c sortByNonce) Swap(i, j int)      { c[i], c[j] = c[j], c[i] }
 func (c sortByNonce) Less(i, j int) bool { return c[i].Nonce() < c[j].Nonce() }
 
+// todo - optimize this to use a different data structure that does not require a global lock.
 type mempoolManager struct {
 	mpMutex        sync.RWMutex // Controls access to `mempool`
 	obscuroChainID int64
+	logger         gethlog.Logger
 	mempool        map[gethcommon.Hash]*common.L2Tx
 }
 
-func New(chainID int64) Manager {
+func New(chainID int64, logger gethlog.Logger) Manager {
 	return &mempoolManager{
 		mempool:        make(map[gethcommon.Hash]*common.L2Tx),
 		obscuroChainID: chainID,
 		mpMutex:        sync.RWMutex{},
+		logger:         logger,
 	}
 }
 
 func (db *mempoolManager) AddMempoolTx(tx *common.L2Tx) error {
-	db.mpMutex.Lock()
-	defer db.mpMutex.Unlock()
-	err := core.VerifySignature(db.obscuroChainID, tx)
+	// We do not care about the sender return value at this point, only that
+	// there is no error coming from validating the signature of said sender.
+	_, err := core.GetAuthenticatedSender(db.obscuroChainID, tx)
 	if err != nil {
 		return err
 	}
+
+	db.mpMutex.Lock()
+	defer db.mpMutex.Unlock()
 	db.mempool[tx.Hash()] = tx
 	return nil
 }
@@ -54,125 +62,57 @@ func (db *mempoolManager) FetchMempoolTxs() []*common.L2Tx {
 	db.mpMutex.RLock()
 	defer db.mpMutex.RUnlock()
 
-	mpCopy := make([]*common.L2Tx, 0)
+	mpCopy := make([]*common.L2Tx, len(db.mempool))
+	i := 0
 	for _, tx := range db.mempool {
-		mpCopy = append(mpCopy, tx)
+		mpCopy[i] = tx
+		i++
 	}
 	return mpCopy
 }
 
-func (db *mempoolManager) RemoveMempoolTxs(batch *core.Batch, resolver db.BatchResolver) error {
+func (db *mempoolManager) RemoveTxs(transactions types.Transactions) error {
 	db.mpMutex.Lock()
 	defer db.mpMutex.Unlock()
 
-	toRemove, err := txsXBatchesAgo(batch, resolver)
-	if err != nil {
-		return fmt.Errorf("error retrieiving historic transactions. Cause: %w", err)
+	for _, tx := range transactions {
+		delete(db.mempool, tx.Hash())
 	}
-
-	newMempool := make(map[gethcommon.Hash]*common.L2Tx)
-	for txHash, tx := range db.mempool {
-		_, f := toRemove[txHash]
-		if !f {
-			newMempool[txHash] = tx
-		}
-	}
-	db.mempool = newMempool
 
 	return nil
 }
 
-// Returns all transactions in the batch `HeightCommittedBlocks` deep.
-func txsXBatchesAgo(initialBatch *core.Batch, resolver db.BatchResolver) (map[gethcommon.Hash]gethcommon.Hash, error) {
-	blocksDeep := 0
-	currentBatch := initialBatch
-	var err error
-
-	// todo (#1491) - create method to return the canonical rollup from height N
-	for {
-		if blocksDeep == common.HeightCommittedBlocks {
-			// We've found the rollup `HeightCommittedBlocks` deep.
-			return core.ToMap(currentBatch.Transactions), nil
-		}
-
-		if currentBatch.Header.Number.Uint64() == common.L2GenesisHeight {
-			// There's less than `HeightCommittedBlocks` rollups, so there's no transactions to remove yet.
-			return map[gethcommon.Hash]gethcommon.Hash{}, nil
-		}
-
-		currentBatch, err = resolver.FetchBatch(currentBatch.Header.ParentHash)
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				return nil, fmt.Errorf("found a gap in the rollup chain")
-			}
-			return nil, fmt.Errorf("could not retrieve parent rollup. Cause: %w", err)
-		}
-
-		blocksDeep++
-	}
-}
-
 // CurrentTxs - Calculate transactions to be included in the current batch
-func (db *mempoolManager) CurrentTxs(head *core.Batch, resolver db.BatchResolver) ([]*common.L2Tx, error) {
-	txs, err := findTxsNotIncluded(head, db.FetchMempoolTxs(), resolver)
-	if err != nil {
-		return nil, err
-	}
-	sort.Sort(sortByNonce(txs))
-	return txs, nil
-}
+func (db *mempoolManager) CurrentTxs(stateDB *state.StateDB, limiter limiters.BatchSizeLimiter) ([]*common.L2Tx, error) {
+	txes := db.FetchMempoolTxs()
+	sort.Sort(sortByNonce(txes))
 
-// findTxsNotIncluded - given a list of transactions, it keeps only the ones that were not included in the block
-// todo (#1491) - inefficient
-func findTxsNotIncluded(head *core.Batch, txs []*common.L2Tx, s db.BatchResolver) ([]*common.L2Tx, error) {
-	// go back only HeightCommittedBlocks blocks to accumulate transactions to be diffed against the mempool
-	startAt := uint64(0)
-	if head.NumberU64() > common.HeightCommittedBlocks {
-		startAt = head.NumberU64() - common.HeightCommittedBlocks
-	}
-	included, err := allIncludedTransactions(head, s, startAt)
-	if err != nil {
-		return nil, err
-	}
-	return filterOutTransactions(txs, included), nil
-}
+	applicableTransactions := make(common.L2Transactions, 0)
+	nonceTracker := NewNonceTracker(stateDB)
 
-// Recursively finds all transactions included in the past stopAtHeight batches.
-func allIncludedTransactions(batch *core.Batch, s db.BatchResolver, stopAtHeight uint64) (map[gethcommon.Hash]*common.L2Tx, error) {
-	if batch.Header.Number.Uint64() == stopAtHeight {
-		return core.MakeMap(batch.Transactions), nil
-	}
+	for _, tx := range txes {
+		sender, _ := core.GetAuthenticatedSender(db.obscuroChainID, tx)
+		if sender == nil {
+			continue
+		}
 
-	// We add this batch's transactions to the included transactions.
-	newMap := make(map[gethcommon.Hash]*common.L2Tx)
-	for _, tx := range batch.Transactions {
-		newMap[tx.Hash()] = tx
-	}
+		if tx.Nonce() != nonceTracker.GetNonce(*sender) {
+			continue
+		}
 
-	// If the batch has a parent (i.e. it is not the genesis block), we recurse.
-	parentBatch, err := s.FetchBatch(batch.Header.ParentHash)
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return nil, err
-	}
-	if err == nil {
-		txsMap, err := allIncludedTransactions(parentBatch, s, stopAtHeight)
+		err := limiter.AcceptTransaction(tx)
 		if err != nil {
+			if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
+				break
+			}
+			// Limiter encountered unexpected error
 			return nil, err
 		}
-		for hash, tx := range txsMap {
-			newMap[hash] = tx
-		}
+
+		applicableTransactions = append(applicableTransactions, tx)
+		nonceTracker.IncrementNonce(*sender)
+		db.logger.Info("Including transaction in batch", log.TxKey, tx.Hash(), "nonce", tx.Nonce())
 	}
 
-	return newMap, nil
-}
-
-func filterOutTransactions(txs []*common.L2Tx, txsToRemove map[gethcommon.Hash]*common.L2Tx) (r []*common.L2Tx) {
-	for _, tx := range txs {
-		_, f := txsToRemove[tx.Hash()]
-		if !f {
-			r = append(r, tx)
-		}
-	}
-	return
+	return applicableTransactions, nil
 }
