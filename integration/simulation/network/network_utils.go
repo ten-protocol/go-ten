@@ -80,8 +80,8 @@ func createInMemObscuroNode(
 		MinGasPrice:               big.NewInt(1),
 		MessageBusAddress:         *l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
-		MaxBatchSize:              200 * 1024,
-		MaxRollupSize:             220 * 1024,
+		MaxBatchSize:              115 * 1024,
+		MaxRollupSize:             124 * 1024,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
