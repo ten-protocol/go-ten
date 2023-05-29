@@ -88,7 +88,7 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		SequencerID:               gethcommon.BytesToAddress([]byte("")),
 		ObscuroGenesis:            "",
 		DebugNamespaceEnabled:     false,
-		MaxBatchSize:              1024 * 170,
-		MaxRollupSize:             1024 * 180,
+		MaxBatchSize:              1024 * 115,
+		MaxRollupSize:             1024 * 124,
 	}
 }
