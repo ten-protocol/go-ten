@@ -7,10 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"io/fs"
 	"net/http"
 	"os"
-	"sync/atomic"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -55,13 +55,8 @@ type WalletExtension struct {
 	serverWSShutdown   func(ctx context.Context) error
 	storage            *storage.Storage
 	logger             gethlog.Logger
-	isShutDown         atomicBool
+	stopControl        *stopcontrol.StopControl
 }
-
-type atomicBool int32
-
-func (b *atomicBool) isSet() bool { return atomic.LoadInt32((*int32)(b)) != 0 }
-func (b *atomicBool) setTrue()    { atomic.StoreInt32((*int32)(b), 1) }
 
 func NewWalletExtension(config Config, logger gethlog.Logger) *WalletExtension {
 	unauthedClient, err := rpc.NewNetworkClient(wsProtocol + config.NodeRPCWebsocketAddress)
@@ -80,6 +75,7 @@ func NewWalletExtension(config Config, logger gethlog.Logger) *WalletExtension {
 		accountManager: accountmanager.NewAccountManager(unauthedClient, logger),
 		storage:        databaseStorage,
 		logger:         logger,
+		stopControl:    stopcontrol.New(),
 	}
 
 	// We reload the existing viewing keys from the database.
@@ -122,7 +118,7 @@ func (we *WalletExtension) Serve(host string, httpPort int, wsPort int) {
 }
 
 func (we *WalletExtension) Shutdown() {
-	we.isShutDown.setTrue()
+	we.stopControl.Stop()
 	if we.serverHTTPShutdown != nil {
 		err := we.serverHTTPShutdown(context.Background())
 		if err != nil {
@@ -206,7 +202,7 @@ func (we *WalletExtension) handleSubmitViewingKeyWS(resp http.ResponseWriter, re
 
 // Creates an HTTP connection to handle the request.
 func (we *WalletExtension) handleRequestHTTP(resp http.ResponseWriter, req *http.Request, fun func(conn userconn.UserConn)) {
-	if we.isShutDown.isSet() {
+	if we.stopControl.IsStopping() {
 		return
 	}
 	if httputil.EnableCORS(resp, req) {
@@ -218,7 +214,7 @@ func (we *WalletExtension) handleRequestHTTP(resp http.ResponseWriter, req *http
 
 // Creates a websocket connection to handle the request.
 func (we *WalletExtension) handleRequestWS(resp http.ResponseWriter, req *http.Request, fun func(conn userconn.UserConn)) {
-	if we.isShutDown.isSet() {
+	if we.stopControl.IsStopping() {
 		return
 	}
 	userConn, err := userconn.NewUserConnWS(resp, req, we.logger)
@@ -282,35 +278,6 @@ func (we *WalletExtension) handleEthJSON(userConn userconn.UserConn) {
 	err = userConn.WriteResponse(rpcRespToSend)
 	if err != nil {
 		return
-	}
-}
-
-func createErrorResponse(respMap map[string]interface{}, err error) {
-	errMap := make(map[string]interface{})
-	respMap[common.JSONKeyErr] = errMap
-
-	errMap[common.JSONKeyMessage] = err.Error()
-
-	var e gethrpc.Error
-	ok := errors.As(err, &e)
-	if ok {
-		errMap[common.JSONKeyCode] = e.ErrorCode()
-	}
-
-	var de gethrpc.DataError
-	ok = errors.As(err, &de)
-	if ok {
-		errMap[common.JSONKeyData] = de.ErrorData()
-	}
-}
-
-func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
-	if resultMap, ok := rpcResp.(map[string]interface{}); ok {
-		if val, foundRoot := resultMap[common.JSONKeyRoot]; foundRoot {
-			if val == "0x" {
-				respMap[common.JSONKeyResult].(map[string]interface{})[common.JSONKeyRoot] = nil
-			}
-		}
 	}
 }
 
@@ -436,6 +403,35 @@ func (we *WalletExtension) handleSubmitViewingKey(userConn userconn.UserConn) {
 	err = userConn.WriteResponse([]byte(successMsg))
 	if err != nil {
 		return
+	}
+}
+
+func createErrorResponse(respMap map[string]interface{}, err error) {
+	errMap := make(map[string]interface{})
+	respMap[common.JSONKeyErr] = errMap
+
+	errMap[common.JSONKeyMessage] = err.Error()
+
+	var e gethrpc.Error
+	ok := errors.As(err, &e)
+	if ok {
+		errMap[common.JSONKeyCode] = e.ErrorCode()
+	}
+
+	var de gethrpc.DataError
+	ok = errors.As(err, &de)
+	if ok {
+		errMap[common.JSONKeyData] = de.ErrorData()
+	}
+}
+
+func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
+	if resultMap, ok := rpcResp.(map[string]interface{}); ok {
+		if val, foundRoot := resultMap[common.JSONKeyRoot]; foundRoot {
+			if val == "0x" {
+				respMap[common.JSONKeyResult].(map[string]interface{})[common.JSONKeyRoot] = nil
+			}
+		}
 	}
 }
 
