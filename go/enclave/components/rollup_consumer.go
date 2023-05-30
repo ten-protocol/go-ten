@@ -176,10 +176,32 @@ func (rc *rollupConsumerImpl) checkRollupsCorrectlyChained(rollup *core.Rollup, 
 		// genesis rollup has no previous rollup to check
 		return nil
 	}
+
+	if rollup.Hash() == previousRollup.Hash() {
+		return fmt.Errorf("rollup already processed")
+	}
+
 	if rollup.NumberU64()-previousRollup.NumberU64() > 1 {
 		return fmt.Errorf("found gap in rollups between rollup %d and rollup %d",
 			previousRollup.NumberU64(), rollup.NumberU64())
 	}
+
+	// In case we have published two rollups for the same height
+	// This can happen when the first one takes too long to mine
+	if rollup.NumberU64() == previousRollup.NumberU64() {
+		if len(previousRollup.Batches) > len(rollup.Batches) {
+			return fmt.Errorf("received duplicate rollup at height %d with less batches than previous rollup", rollup.NumberU64())
+		}
+
+		for idx, batch := range previousRollup.Batches {
+			if rollup.Batches[idx].Hash() != batch.Hash() {
+				return fmt.Errorf("duplicate rollup at height %d has different batches at position %d", rollup.NumberU64(), idx)
+			}
+		}
+
+		return ErrDuplicateRollup
+	}
+
 	if rollup.NumberU64() <= previousRollup.NumberU64() {
 		return fmt.Errorf("expected new rollup but rollup %d height was less than or equal to previous rollup %d",
 			rollup.NumberU64(), previousRollup.NumberU64())

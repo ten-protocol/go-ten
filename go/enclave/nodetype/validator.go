@@ -122,7 +122,7 @@ func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool
 	}
 
 	rollup, err := val.rollupConsumer.ProcessL1Block(br)
-	if err != nil {
+	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		// todo - log err?
 		val.logger.Error("Encountered error processing l1 block", log.ErrKey, err)
 		return ingestion, nil
