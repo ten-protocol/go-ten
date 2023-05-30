@@ -67,7 +67,7 @@ func (c *VerifyBalanceAfterTest) Run(ctx context.Context, _ networktest.NetworkC
 	return ctx, nil
 }
 
-func (c *VerifyBalanceAfterTest) Verify(ctx context.Context, network networktest.NetworkConnector) error {
+func (c *VerifyBalanceAfterTest) Verify(ctx context.Context, _ networktest.NetworkConnector) error {
 	user, err := FetchTestUser(ctx, c.UserID)
 	if err != nil {
 		return err
@@ -91,11 +91,11 @@ type VerifyBalanceDiffAfterTest struct {
 	Snapshot     string
 }
 
-func (v *VerifyBalanceDiffAfterTest) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+func (v *VerifyBalanceDiffAfterTest) Run(ctx context.Context, _ networktest.NetworkConnector) (context.Context, error) {
 	return ctx, nil
 }
 
-func (v *VerifyBalanceDiffAfterTest) Verify(ctx context.Context, network networktest.NetworkConnector) error {
+func (v *VerifyBalanceDiffAfterTest) Verify(ctx context.Context, _ networktest.NetworkConnector) error {
 	snapshotBalance, err := FetchBalanceAtSnapshot(ctx, v.UserID, v.Snapshot)
 	if err != nil {
 		return fmt.Errorf("failed to fetch balance - %w", err)

@@ -258,7 +258,7 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 }
 
 func (s *RPCServer) StreamL2Updates(request *generated.StreamL2UpdatesRequest, stream generated.EnclaveProto_StreamL2UpdatesServer) error {
-	var fromHash *common.L2BatchHash = nil
+	var fromHash *common.L2BatchHash
 	if request.KnownHead != nil {
 		knownHead := gethcommon.BytesToHash(request.KnownHead)
 		fromHash = &knownHead

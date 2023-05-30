@@ -307,25 +307,21 @@ func (h *host) Stop() error {
 	h.shutdownGroup.Wait()
 
 	if err := h.p2p.StopListening(); err != nil {
-		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
-		return err
+		return fmt.Errorf("failed to close transaction P2P listener cleanly - %w", err)
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
 
 	if err := h.enclaveClient.Stop(); err != nil {
-		h.logger.Error("could not stop enclave server", log.ErrKey, err)
-		return err
+		return fmt.Errorf("failed to stop enclave server - %w", err)
 	}
 	if err := h.enclaveClient.StopClient(); err != nil {
-		h.logger.Error("failed to stop enclave RPC client", log.ErrKey, err)
-		return err
+		return fmt.Errorf("failed to stop enclave RPC client - %w", err)
 	}
 
 	if err := h.db.Stop(); err != nil {
-		h.logger.Error("could not stop DB - %w", err)
-		return err
+		return fmt.Errorf("failed to stop DB - %w", err)
 	}
 
 	h.logger.Info("Host shut down successfully.")
@@ -939,7 +935,7 @@ func (h *host) startBatchStreaming() {
 
 	// TODO: Update this to start from persisted head
 	streamChan, stop := h.enclaveClient.StreamL2Updates(nil)
-	var lastBatch *common.ExtBatch = nil
+	var lastBatch *common.ExtBatch
 	for {
 		select {
 		case <-h.interrupter.Done():

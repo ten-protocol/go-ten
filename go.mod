@@ -1,6 +1,6 @@
 module github.com/obscuronet/go-obscuro
 
-go 1.18
+go 1.20
 
 require (
 	github.com/Azure/azure-sdk-for-go v63.2.0+incompatible

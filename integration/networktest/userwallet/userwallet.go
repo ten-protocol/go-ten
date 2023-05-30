@@ -165,7 +165,7 @@ func (s *UserWallet) EnsureClientSetup(ctx context.Context) error {
 		// client already setup
 		return nil
 	}
-	authClient, err := obsclient.DialWithAuth(s.rpcEndpoint, s, s.logger)
+	authClient, err := obsclient.DialWithAuth(s.rpcEndpoint, s, s.logger) //nolint: contextcheck
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func (s *UserWallet) ResetClient(ctx context.Context) error {
 		// client already setup, close it before re-authenticating
 		s.client.Close()
 	}
-	authClient, err := obsclient.DialWithAuth(s.rpcEndpoint, s, s.logger)
+	authClient, err := obsclient.DialWithAuth(s.rpcEndpoint, s, s.logger) //nolint: contextcheck
 	if err != nil {
 		return err
 	}

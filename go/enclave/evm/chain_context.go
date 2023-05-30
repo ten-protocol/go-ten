@@ -32,8 +32,8 @@ func (occ *ObscuroChainContext) Engine() consensus.Engine {
 	return &ObscuroNoOpConsensusEngine{logger: occ.logger}
 }
 
-func (occ *ObscuroChainContext) GetHeader(hash common.Hash, height uint64) *types.Header {
-	batch, err := occ.storage.FetchBatchHeader(hash)
+func (occ *ObscuroChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header {
+	batch, err := occ.storage.FetchBatch(hash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil
@@ -41,7 +41,7 @@ func (occ *ObscuroChainContext) GetHeader(hash common.Hash, height uint64) *type
 		occ.logger.Crit("Could not retrieve rollup", log.ErrKey, err)
 	}
 
-	h, err := gethencoding.ConvertToEthHeader(batch, secret(occ.storage))
+	h, err := gethencoding.ConvertToEthHeader(batch.Header, secret(occ.storage))
 	if err != nil {
 		occ.logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil

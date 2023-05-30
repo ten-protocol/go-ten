@@ -172,19 +172,19 @@ func (e *ethClientMock) BlockNumber() (uint64, error) {
 	panic("implement me")
 }
 
-func (e *ethClientMock) SendTransaction(signedTx *types.Transaction) error {
+func (e *ethClientMock) SendTransaction(_ *types.Transaction) error {
 	panic("implement me")
 }
 
-func (e *ethClientMock) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error) {
+func (e *ethClientMock) TransactionReceipt(_ gethcommon.Hash) (*types.Receipt, error) {
 	panic("implement me")
 }
 
-func (e *ethClientMock) Nonce(address gethcommon.Address) (uint64, error) {
+func (e *ethClientMock) Nonce(_ gethcommon.Address) (uint64, error) {
 	panic("implement me")
 }
 
-func (e *ethClientMock) BalanceAt(account gethcommon.Address, blockNumber *big.Int) (*big.Int, error) {
+func (e *ethClientMock) BalanceAt(_ gethcommon.Address, _ *big.Int) (*big.Int, error) {
 	panic("implement me")
 }
 
@@ -200,15 +200,15 @@ func (e *ethClientMock) FetchHeadBlock() (*types.Block, error) {
 	return e.blksByNum[e.liveStreamingNext-1], nil
 }
 
-func (e *ethClientMock) BlocksBetween(block *types.Block, head *types.Block) []*types.Block {
+func (e *ethClientMock) BlocksBetween(_ *types.Block, _ *types.Block) []*types.Block {
 	panic("implement me")
 }
 
-func (e *ethClientMock) IsBlockAncestor(block *types.Block, proof common.L1BlockHash) bool {
+func (e *ethClientMock) IsBlockAncestor(_ *types.Block, _ common.L1BlockHash) bool {
 	panic("implement me")
 }
 
-func (e *ethClientMock) CallContract(msg ethereum.CallMsg) ([]byte, error) {
+func (e *ethClientMock) CallContract(_ ethereum.CallMsg) ([]byte, error) {
 	panic("implement me")
 }
 
@@ -228,7 +228,7 @@ func (e *ethClientMock) Alive() bool {
 	return true
 }
 
-func (e *ethClientMock) EstimateGasAndGasPrice(txData types.TxData, from gethcommon.Address) (types.TxData, error) {
+func (e *ethClientMock) EstimateGasAndGasPrice(txData types.TxData, _ gethcommon.Address) (types.TxData, error) {
 	return txData, nil
 }
 

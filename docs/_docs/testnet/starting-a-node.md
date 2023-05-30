@@ -11,12 +11,12 @@ How to start a node in the Evan's Cat testnet.
 #### - Create an SGX enabled VM
 Recommended Standard DC4s v2 (4 vcpus, 16 GiB memory) in Azure.
 
-#### - Install Docker & Go 1.17
+#### - Install Docker & Go 
 
 ```
 sudo apt-get update \
     && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
-    && sudo snap refresh && sudo snap install --channel=1.17 go --classic 
+    && sudo snap refresh && sudo snap install --channel=1.20 go --classic 
 ```
 
 #### - Download Obscuro repo
