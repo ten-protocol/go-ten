@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -63,6 +64,7 @@ type host struct {
 	stopControl *stopcontrol.StopControl
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
+	l1UpToDate      atomic.Bool                     // Whether the last submitted L1 block was the head L1 block
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
 	batchP2PCh      chan common.EncodedBatchMsg     // The channel that new batches from peers are sent to
 	batchRequestCh  chan common.EncodedBatchRequest // The channel that batch requests from peers are sent to
@@ -105,6 +107,7 @@ func NewHost(
 
 		// incoming data
 		l1BlockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
+		l1UpToDate:      atomic.Bool{},
 		txP2PCh:         make(chan common.EncryptedTx),
 		batchP2PCh:      make(chan common.EncodedBatchMsg),
 		batchRequestCh:  make(chan common.EncodedBatchRequest),
@@ -411,7 +414,11 @@ func (h *host) startProcessing() {
 			if err != nil {
 				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
 				blockStream = h.handleProcessBlockErr(b, blockStream, err)
+				// failed to update the L1 head, so assume we're behind
+				h.l1UpToDate.Store(false)
+				continue
 			}
+			h.l1UpToDate.Store(isLive)
 
 		case tx := <-h.txP2PCh:
 			resp, sysError := h.enclaveClient.SubmitTx(tx)
@@ -916,6 +923,10 @@ func (h *host) startBatchProduction() {
 	for {
 		select {
 		case <-batchProdTicker.C:
+			if !h.l1UpToDate.Load() {
+				// if we're behind the L1, we don't want to produce batches
+				continue
+			}
 			h.logger.Info("create batch")
 			err := h.enclaveClient.CreateBatch()
 			if err != nil {
