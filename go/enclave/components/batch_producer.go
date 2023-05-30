@@ -108,7 +108,6 @@ func (bp *batchProducerImpl) CreateGenesisState(blkHash common.L1BlockHash, sequ
 
 	genesisBatch := &core.Batch{
 		Header: &common.BatchHeader{
-			Agg:         sequencerAddress,
 			ParentHash:  common.L2BatchHash{},
 			L1Proof:     blkHash,
 			Root:        *preFundGenesisState,
@@ -155,7 +154,6 @@ func (bp *batchProducerImpl) populateHeader(batch *core.Batch, receipts types.Re
 		batch.Header.ReceiptHash = types.EmptyRootHash
 	} else {
 		batch.Header.ReceiptHash = types.DeriveSha(receipts, trie.NewStackTrie(nil))
-		batch.Header.Bloom = types.CreateBloom(receipts)
 	}
 
 	if len(batch.Transactions) == 0 {

@@ -1602,7 +1602,6 @@ func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProduc
 		Transactions: batch.Transactions,
 		AtTime:       batch.Header.Time,
 		Randomness:   batch.Header.MixDigest,
-		Creator:      batch.Header.Agg,
 		ChainConfig:  chainConfig,
 	})
 	if err != nil {

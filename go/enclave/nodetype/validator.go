@@ -81,7 +81,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		return nil // already know about this one
 	}
 
-	if err := val.CheckSequencerSignature(incomingBatch.Hash(), &incomingBatch.Header.Agg, incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
+	if err := val.CheckSequencerSignature(incomingBatch.Hash(), &val.sequencerID, incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
 		return err
 	}
 
@@ -96,7 +96,6 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		Transactions: incomingBatch.Transactions,
 		AtTime:       incomingBatch.Header.Time,
 		Randomness:   incomingBatch.Header.MixDigest,
-		Creator:      incomingBatch.Header.Agg,
 		ChainConfig:  val.chainConfig,
 	})
 	if err != nil {

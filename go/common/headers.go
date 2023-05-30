@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
@@ -21,26 +20,19 @@ var hasherPool = sync.Pool{
 // BatchHeader is a public / plaintext struct that holds common properties of batches.
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type BatchHeader struct {
-	// The fields present in Geth's `types/Header` struct.
 	ParentHash  L2BatchHash
-	UncleHash   common.Hash    `json:"sha3Uncles"`
-	Coinbase    common.Address `json:"miner"`
-	Root        StateRoot      `json:"stateRoot"`
-	TxHash      common.Hash    `json:"transactionsRoot"` // todo (#1545) - include the synthetic deposits
-	ReceiptHash common.Hash    `json:"receiptsRoot"`
-	Bloom       types.Bloom    `json:"logsBloom"`
-	Difficulty  *big.Int
+	Root        StateRoot   `json:"stateRoot"`
+	TxHash      common.Hash `json:"transactionsRoot"` // todo (#1545) - include the synthetic deposits
+	ReceiptHash common.Hash `json:"receiptsRoot"`
 	Number      *big.Int
 	GasLimit    uint64
 	GasUsed     uint64
 	Time        uint64      `json:"timestamp"`
 	Extra       []byte      `json:"extraData"`
 	MixDigest   common.Hash `json:"mixHash"`
-	Nonce       types.BlockNonce
 	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
-	Agg                common.Address                        // todo - can this be removed and replaced with the `Coinbase` field?
 	L1Proof            L1BlockHash                           // the L1 block used by the enclave to generate the current batch
 	R, S               *big.Int                              // signature values
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
@@ -55,25 +47,18 @@ type BatchHeader struct {
 // RollupHeader is a public / plaintext struct that holds common properties of rollups.
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type RollupHeader struct {
-	// The fields present in Geth's `types/Header` struct.
 	ParentHash  L2BatchHash
-	UncleHash   common.Hash    `json:"sha3Uncles"`
-	Coinbase    common.Address `json:"miner"`
-	Root        StateRoot      `json:"stateRoot"`
-	ReceiptHash common.Hash    `json:"receiptsRoot"`
-	Bloom       types.Bloom    `json:"logsBloom"`
-	Difficulty  *big.Int
+	Root        StateRoot   `json:"stateRoot"`
+	ReceiptHash common.Hash `json:"receiptsRoot"`
 	Number      *big.Int
 	GasLimit    uint64
 	GasUsed     uint64
 	Time        uint64      `json:"timestamp"`
 	Extra       []byte      `json:"extraData"`
 	MixDigest   common.Hash `json:"mixHash"`
-	Nonce       types.BlockNonce
 	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
-	Agg                common.Address                        // todo - can this be removed and replaced with the `Coinbase` field?
 	L1Proof            L1BlockHash                           // the L1 block used by the enclave to generate the current rollup
 	R, S               *big.Int                              // signature values
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
@@ -102,22 +87,16 @@ func (b *BatchHeader) Hash() L2BatchHash {
 func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 	return &RollupHeader{
 		ParentHash:                    b.ParentHash,
-		UncleHash:                     b.UncleHash,
-		Coinbase:                      b.Coinbase,
 		Root:                          b.Root,
 		HeadBatchHash:                 b.TxHash,
 		ReceiptHash:                   b.ReceiptHash,
-		Bloom:                         b.Bloom,
-		Difficulty:                    b.Difficulty,
 		Number:                        b.Number,
 		GasLimit:                      b.GasLimit,
 		GasUsed:                       b.GasUsed,
 		Time:                          b.Time,
 		Extra:                         b.Extra,
 		MixDigest:                     b.MixDigest,
-		Nonce:                         b.Nonce,
 		BaseFee:                       b.BaseFee,
-		Agg:                           b.Agg,
 		L1Proof:                       b.L1Proof,
 		R:                             b.R,
 		S:                             b.S,

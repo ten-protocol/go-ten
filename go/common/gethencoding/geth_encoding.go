@@ -230,7 +230,6 @@ func ConvertToEthHeader(h *common.BatchHeader, secret []byte) (*types.Header, er
 		Root:        h.Root,
 		TxHash:      h.TxHash,
 		ReceiptHash: h.ReceiptHash,
-		Bloom:       h.Bloom,
 		Difficulty:  big.NewInt(0).SetBytes(randomness),
 		Number:      h.Number,
 		GasLimit:    1_000_000_000,

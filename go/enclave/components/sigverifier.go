@@ -11,13 +11,13 @@ import (
 )
 
 type SignatureValidator struct {
-	sequencerID gethcommon.Address
+	SequencerID gethcommon.Address
 	storage     db.Storage
 }
 
 func NewSignatureValidator(seqID gethcommon.Address, storage db.Storage) *SignatureValidator {
 	return &SignatureValidator{
-		sequencerID: seqID,
+		SequencerID: seqID,
 		storage:     storage,
 	}
 }
@@ -25,8 +25,8 @@ func NewSignatureValidator(seqID gethcommon.Address, storage db.Storage) *Signat
 func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcommon.Hash, sequencer *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
 	// Batches and rollups should only be produced by the sequencer.
 	// todo (#718) - sequencer identities should be retrieved from the L1 management contract
-	if !bytes.Equal(sequencer.Bytes(), sigChecker.sequencerID.Bytes()) {
-		return fmt.Errorf("expected batch to be produced by sequencer %s, but was produced by %s", sigChecker.sequencerID.Hex(), sequencer.Hex())
+	if !bytes.Equal(sequencer.Bytes(), sigChecker.SequencerID.Bytes()) {
+		return fmt.Errorf("expected batch to be produced by sequencer %s, but was produced by %s", sigChecker.SequencerID.Hex(), sequencer.Hex())
 	}
 
 	if sigR == nil || sigS == nil {
