@@ -145,7 +145,7 @@ func (rc *rollupConsumerImpl) processRollup(br *common.BlockAndReceipts) (*core.
 	}
 
 	if err = rc.checkRollupsCorrectlyChained(signedRollup, latestRollup); err != nil {
-		return nil, fmt.Errorf("rollup was not correctly chained. height=%d hash=%d Cause: %w",
+		return nil, fmt.Errorf("rollup was not correctly chained. height=%d hash=%s Cause: %w",
 			signedRollup.NumberU64(), signedRollup.Hash(), err)
 	}
 
