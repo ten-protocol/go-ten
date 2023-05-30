@@ -130,6 +130,7 @@ func createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
 
 // getLatestRollupBeforeBlock - Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
 func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage, logger gethlog.Logger) (*core.Rollup, error) {
+	scanBackCount := 0
 	for {
 		blockParentHash := block.ParentHash()
 		latestRollup, err := storage.FetchHeadRollupForBlock(&blockParentHash)
@@ -143,7 +144,6 @@ func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage, logge
 		}
 
 		// we scan backwards now to the prev block in the chain and we will lookup to see if that has an entry
-		// todo (@stefan) - is this still required for safety, even though we're storing an entry for every L1 block?
 		block, err = storage.FetchBlock(block.ParentHash())
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
@@ -154,7 +154,11 @@ func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage, logge
 			}
 			return nil, fmt.Errorf("could not fetch parent block - %w", err)
 		}
-		// if we are scanning backwards (when we don't think we need to, and it might be expensive) we want to know about it
-		logger.Info("Scanning backwards for rollup, trying prev block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
+		scanBackCount++
+		// todo (@matt) - remove this when we are confident that we are not scanning backwards any more
+		if scanBackCount%100 == 0 {
+			// if we are scanning a long way backwards (when we don't think we need to, and it might be expensive) we want to know about it
+			logger.Warn(fmt.Sprintf("Scanning backwards for rollup, scanned %d blocks backwards so far...", scanBackCount), log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
+		}
 	}
 }
