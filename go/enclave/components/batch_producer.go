@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"sort"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -96,7 +98,15 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	return &ComputedBatch{
 		Batch:    batch,
 		Receipts: txReceipts,
-		Commit:   stateDB.Commit,
+		Commit: func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
+			h, err := stateDB.Commit(deleteEmptyObjects)
+			if err != nil {
+				return gethcommon.Hash{}, err
+			}
+			trieDB := bp.storage.TrieDB()
+			err = trieDB.Commit(h, true, nil)
+			return h, err
+		},
 	}, nil
 }
 
