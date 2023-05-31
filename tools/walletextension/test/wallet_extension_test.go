@@ -15,6 +15,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
+	"github.com/stretchr/testify/assert"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
@@ -59,11 +60,8 @@ func TestWalletExtension(t *testing.T) {
 
 			test(t, h)
 
-			shutdownWallet()
-			err := shutDownHost()
-			if err != nil {
-				t.Fatal(err)
-			}
+			assert.NoError(t, shutdownWallet())
+			assert.NoError(t, shutDownHost())
 		})
 		i++
 	}
@@ -182,7 +180,7 @@ func TestCannotInvokeSensitiveMethodsWithoutViewingKey(t *testing.T) {
 	defer shutdownHost() //nolint: errcheck
 
 	shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, walletHTTPPort, walletWSPort))
-	defer shutdownWallet()
+	defer shutdownWallet() //nolint: errcheck
 
 	conn, err := openWSConn(walletWSPort)
 	if err != nil {
@@ -216,9 +214,11 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	dummyAPI.setViewingKey(viewingKeyBytes)
 
 	// We shut down the wallet extension and restart it with the same config, forcing the viewing keys to be reloaded.
-	shutdownWallet()
+	err := shutdownWallet()
+	assert.NoError(t, err)
+
 	shutdownWallet = createWalExt(t, walExtCfg)
-	defer shutdownWallet()
+	defer shutdownWallet() //nolint: errcheck
 
 	respBody := makeHTTPEthJSONReq(walletHTTPPort, rpc.GetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 	validateJSONResponse(t, respBody)
@@ -238,7 +238,7 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	dummyAPI, shutdownHost := createDummyHost(t, hostPort)
 	defer shutdownHost() //nolint: errcheck
 	shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, walletHTTPPort, walletWSPort))
-	defer shutdownWallet()
+	defer shutdownWallet() //nolint: errcheck
 
 	viewingKeyBytes := registerPrivateKey(t, walletHTTPPort, walletWSPort, false)
 	dummyAPI.setViewingKey(viewingKeyBytes)
