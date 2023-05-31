@@ -345,14 +345,16 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 	}
 
 	l1BlockProviderStatus := h.l1BlockProvider.HealthStatus()
+	isL1Synced := h.l1UpToDate.Load()
 
 	// Overall health is achieved when all parts are healthy
-	obscuroNodeHealth := h.p2p.HealthCheck() && l1BlockProviderStatus.Healthy && enclaveHealthy
+	obscuroNodeHealth := h.p2p.HealthCheck() && l1BlockProviderStatus.Healthy && enclaveHealthy && isL1Synced
 
 	return &hostcommon.HealthCheck{
 		HealthCheckHost: &hostcommon.HealthCheckHost{
 			P2PStatus:       h.p2p.Status(),
 			L1BlockProvider: &l1BlockProviderStatus,
+			L1Synced:        isL1Synced,
 		},
 		HealthCheckEnclave: &hostcommon.HealthCheckEnclave{
 			EnclaveHealthy: enclaveHealthy,
