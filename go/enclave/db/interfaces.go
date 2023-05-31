@@ -5,6 +5,8 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/trie"
+
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -141,4 +143,7 @@ type Storage interface {
 	OpenBatch() *sql.Batch
 	// CommitBatch - finalizes a batch and pushes the changes to the database
 	CommitBatch(dbBatch *sql.Batch) error
+
+	// TrieDB - return the underlying trie database
+	TrieDB() *trie.Database
 }
