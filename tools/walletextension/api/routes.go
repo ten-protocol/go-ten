@@ -166,7 +166,7 @@ func generateViewingKeyRequestHandler(walletExt *walletextension.WalletExtension
 	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		conn.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
+		conn.HandleError(fmt.Sprintf("could not unmarshal address request - %s", err))
 		return
 	}
 
@@ -184,7 +184,7 @@ func generateViewingKeyRequestHandler(walletExt *walletextension.WalletExtension
 	}
 }
 
-// submitViewingKeyRequestHandler submits the viewing key and signed bytes to the we
+// submitViewingKeyRequestHandler submits the viewing key and signed bytes to the WE
 func submitViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
 	body, err := userConn.ReadRequest()
 	if err != nil {
@@ -194,7 +194,7 @@ func submitViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, 
 	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		userConn.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
+		userConn.HandleError(fmt.Sprintf("could not unmarshal address and signature from client to JSON: %s", err))
 		return
 	}
 	accAddress := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])

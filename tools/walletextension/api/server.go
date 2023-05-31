@@ -66,7 +66,7 @@ func createHTTPServer(address string, routes []Route) *http.Server {
 	serveMux.Handle(common.PathViewingKeys, http.StripPrefix(common.PathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
 
 	// Creates the actual http server
-	server := &http.Server{Addr: address, Handler: serveMux, ReadHeaderTimeout: 10 * time.Second}
+	server := &http.Server{Addr: address, Handler: serveMux}
 	return server
 }
 
