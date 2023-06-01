@@ -409,6 +409,10 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	}
 
 	// Arguments are [Transaction]
+	if len(paramList) != 1 {
+		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
+	}
+
 	decryptedTx, err := rpc.ExtractTx(paramList[0].(string))
 	if err != nil {
 		e.logger.Info("could not decrypt transaction. ", log.ErrKey, err)
@@ -531,8 +535,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 
 	// params are [TransactionArgs, BlockNumber]
 	if len(paramList) != 2 {
-		err = fmt.Errorf("required exactly two params, but received %d", len(paramList))
-		return responses.AsPlaintextError(err), nil
+		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
 
 	apiArgs, err := gethencoding.ExtractEthCall(paramList[0])
@@ -594,7 +597,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 
 	// params are [Address]
 	if len(paramList) < 1 {
-		return responses.AsPlaintextError(fmt.Errorf("wrong eth_transactionCount params")), nil
+		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
 
 	address := gethcommon.HexToAddress(paramList[0].(string))
@@ -629,9 +632,8 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	}
 
 	// params are [Hash]
-	if len(paramList) == 0 {
-		err = fmt.Errorf("required at least one param, but received zero")
-		return responses.AsPlaintextError(err), nil
+	if len(paramList) != 1 {
+		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
 	txHash := gethcommon.HexToHash(paramList[0].(string))
 
@@ -674,7 +676,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 
 	// params are [Hash]
 	if len(paramList) != 1 {
-		return responses.AsPlaintextError(fmt.Errorf("expected a single param but received %d params", len(paramList))), nil
+		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
 	txHashStr, ok := paramList[0].(string)
 	if !ok {
@@ -840,8 +842,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 
 	// params are [Address, BlockNumber]
 	if len(paramList) != 2 {
-		err = fmt.Errorf("required exactly two params, but received %d", len(paramList))
-		return responses.AsPlaintextError(err), nil
+		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
 
 	accountAddress, err := gethencoding.ExtractAddress(paramList[0])
@@ -938,8 +939,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 
 	// params are [callMsg, block number (optional) ]
 	if len(paramList) < 1 {
-		err = fmt.Errorf("required at least 1 params, but received %d", len(paramList))
-		return responses.AsPlaintextError(err), nil
+		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
 
 	callMsg, err := gethencoding.ExtractEthCall(paramList[0])
@@ -994,6 +994,9 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_estimateGas params - %w", err)), nil
 	}
 
+	if len(paramList) != 2 {
+		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
+	}
 	// We extract the arguments from the param bytes.
 	filter, forAddress, err := extractGetLogsParams(paramList)
 	if err != nil {
@@ -1350,11 +1353,6 @@ func (e *enclaveImpl) processSecretRequest(req *ethadapter.L1RequestSecretTx) (*
 
 // Returns the params extracted from an eth_getLogs request.
 func extractGetLogsParams(paramList []interface{}) (*filters.FilterCriteria, *gethcommon.Address, error) {
-	// We verify the params.
-	if len(paramList) != 2 {
-		return nil, nil, fmt.Errorf("expected 2 params in GetLogs request, but received %d", len(paramList))
-	}
-
 	// We extract the first param, the filter for the logs.
 	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
 	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
