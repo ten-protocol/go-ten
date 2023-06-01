@@ -178,10 +178,8 @@ func (db *DB) writeBatchHeader(w ethdb.KeyValueWriter, header *common.BatchHeade
 		return err
 	}
 	key := batchHeaderKey(header.Hash())
-	if err := w.Put(key, data); err != nil {
-		return err
-	}
-	return nil
+
+	return w.Put(key, data)
 }
 
 // Stores the head batch header hash into the database.
@@ -196,10 +194,8 @@ func (db *DB) writeHeadBatchHash(w ethdb.KeyValueWriter, val gethcommon.Hash) er
 // Stores a batch's hash in the database, keyed by the batch's number.
 func (db *DB) writeBatchHash(w ethdb.KeyValueWriter, header *common.BatchHeader) error {
 	key := batchHashKey(header.Number)
-	if err := w.Put(key, header.Hash().Bytes()); err != nil {
-		return err
-	}
-	return nil
+
+	return w.Put(key, header.Hash().Bytes())
 }
 
 // Retrieves the hash for the batch with the given number..
@@ -236,10 +232,8 @@ func (db *DB) readBatchTxHashes(batchHash common.L2BatchHash) ([]gethcommon.Hash
 // Stores a batch's number in the database, keyed by the hash of a transaction in that rollup.
 func (db *DB) writeBatchNumber(w ethdb.KeyValueWriter, header *common.BatchHeader, txHash gethcommon.Hash) error {
 	key := batchNumberKey(txHash)
-	if err := w.Put(key, header.Number.Bytes()); err != nil {
-		return err
-	}
-	return nil
+
+	return w.Put(key, header.Number.Bytes())
 }
 
 // Writes the transaction hashes against the batch containing them.
@@ -249,10 +243,8 @@ func (db *DB) writeBatchTxHashes(w ethdb.KeyValueWriter, batchHash common.L2Batc
 		return err
 	}
 	key := batchTxHashesKey(batchHash)
-	if err = w.Put(key, data); err != nil {
-		return err
-	}
-	return nil
+
+	return w.Put(key, data)
 }
 
 // Retrieves the number of the batch containing the transaction with the given hash.

@@ -79,7 +79,7 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 			panic(err)
 		}
 
-		_, err = faucetClient.SendTransaction(ctx, signedTx)
+		err = faucetClient.SendTransaction(ctx, signedTx)
 		if err != nil {
 			panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
 		}

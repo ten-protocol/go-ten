@@ -1,9 +1,22 @@
 # Developer Onboarding Guide
 
 ## Prerequisites
-- [go](https://go.dev/doc/install) (version > 1.18)
+- [go](https://go.dev/doc/install) (version > 1.20.4)
 - [gofumpt](https://github.com/mvdan/gofumpt)
-- [golangci-lint](https://golangci-lint.run/) (version 1.48.0)
+- [golangci-lint](https://golangci-lint.run/) (version 1.52.2)
+
+# Update Setup quicksheet
+- Install golangci-lint :
+  `curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.52.2`
+- Install go1.20.4 : 
+  [Multiversion install](https://go.dev/doc/manage-install) example:
+```
+$ go install golang.org/dl/go1.20.4@latest
+$ go1.20.4 download
+# update your .zshrc script so that go is in the PATH
+$ export PATH="/Users/pedro/sdk/go1.20.4/bin/:/Users/pedro/go/bin:$PATH"
+
+```
 
 ## Creating New PR and Getting It Ready to Be Merged to the Main Branch
 

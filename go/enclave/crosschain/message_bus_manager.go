@@ -75,7 +75,7 @@ func (m *MessageBusManager) GetBusAddress() *common.L2Address {
 }
 
 // DeriveOwner - Generates the key pair that will be used to transact with the L2 message bus.
-func (m *MessageBusManager) DeriveOwner(seed []byte) (*common.L2Address, error) {
+func (m *MessageBusManager) DeriveOwner(_ []byte) (*common.L2Address, error) {
 	// todo (#1549) - implement with cryptography epic
 	return m.messageBusAddress, nil
 }
@@ -123,7 +123,7 @@ func (m *MessageBusManager) ExtractOutboundMessages(receipts common.L2Receipts) 
 // todo (@stefan) - fix ordering of messages, currently it is irrelevant.
 // todo (@stefan) - do not extract messages below their consistency level. Irrelevant security wise.
 // todo (@stefan) - surface errors
-func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.CrossChainMessages {
+func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, _ *state.StateDB) common.CrossChainMessages {
 	messages := make(common.CrossChainMessages, 0)
 
 	from := fromBlock.Hash()

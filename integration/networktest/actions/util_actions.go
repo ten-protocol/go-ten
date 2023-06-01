@@ -18,11 +18,11 @@ type contextValueAction struct {
 	value interface{}
 }
 
-func (c *contextValueAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+func (c *contextValueAction) Run(ctx context.Context, _ networktest.NetworkConnector) (context.Context, error) {
 	return context.WithValue(ctx, c.key, c.value), nil
 }
 
-func (c *contextValueAction) Verify(ctx context.Context, network networktest.NetworkConnector) error {
+func (c *contextValueAction) Verify(_ context.Context, _ networktest.NetworkConnector) error {
 	// nothing to verify
 	return nil
 }
@@ -39,12 +39,12 @@ type sleepAction struct {
 	sleepDuration time.Duration
 }
 
-func (s *sleepAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+func (s *sleepAction) Run(ctx context.Context, _ networktest.NetworkConnector) (context.Context, error) {
 	time.Sleep(s.sleepDuration)
 	return ctx, nil
 }
 
-func (s *sleepAction) Verify(ctx context.Context, network networktest.NetworkConnector) error {
+func (s *sleepAction) Verify(_ context.Context, _ networktest.NetworkConnector) error {
 	// nothing to verify
 	return nil
 }

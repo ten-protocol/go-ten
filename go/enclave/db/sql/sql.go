@@ -106,13 +106,13 @@ func (sqlDB *EnclaveDB) NewIterator(prefix []byte, start []byte) ethdb.Iterator 
 	}
 }
 
-func (sqlDB *EnclaveDB) Stat(property string) (string, error) {
+func (sqlDB *EnclaveDB) Stat(_ string) (string, error) {
 	// todo - implement me
 	sqlDB.logger.Crit("implement me")
 	return "", nil
 }
 
-func (sqlDB *EnclaveDB) Compact(start []byte, limit []byte) error {
+func (sqlDB *EnclaveDB) Compact(_ []byte, _ []byte) error {
 	// todo - implement me
 	sqlDB.logger.Crit("implement me")
 	return nil
@@ -124,17 +124,17 @@ func (sqlDB *EnclaveDB) Compact(start []byte, limit []byte) error {
 var errNotSupported = errors.New("this operation is not supported")
 
 // HasAncient returns an error as we don't have a backing chain freezer.
-func (sqlDB *EnclaveDB) HasAncient(kind string, number uint64) (bool, error) {
+func (sqlDB *EnclaveDB) HasAncient(_ string, _ uint64) (bool, error) {
 	return false, errNotSupported
 }
 
 // Ancient returns an error as we don't have a backing chain freezer.
-func (sqlDB *EnclaveDB) Ancient(kind string, number uint64) ([]byte, error) {
+func (sqlDB *EnclaveDB) Ancient(_ string, _ uint64) ([]byte, error) {
 	return nil, errNotSupported
 }
 
 // AncientRange returns an error as we don't have a backing chain freezer.
-func (sqlDB *EnclaveDB) AncientRange(kind string, start, max, maxByteSize uint64) ([][]byte, error) {
+func (sqlDB *EnclaveDB) AncientRange(_ string, _, _, _ uint64) ([][]byte, error) {
 	return nil, errNotSupported
 }
 
@@ -144,7 +144,7 @@ func (sqlDB *EnclaveDB) Ancients() (uint64, error) {
 }
 
 // AncientSize returns an error as we don't have a backing chain freezer.
-func (sqlDB *EnclaveDB) AncientSize(kind string) (uint64, error) {
+func (sqlDB *EnclaveDB) AncientSize(_ string) (uint64, error) {
 	return 0, errNotSupported
 }
 
@@ -154,7 +154,7 @@ func (sqlDB *EnclaveDB) ModifyAncients(func(ethdb.AncientWriteOp) error) (int64,
 }
 
 // TruncateAncients returns an error as we don't have a backing chain freezer.
-func (sqlDB *EnclaveDB) TruncateAncients(items uint64) error {
+func (sqlDB *EnclaveDB) TruncateAncients(_ uint64) error {
 	return errNotSupported
 }
 

@@ -682,7 +682,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	if receipt.Status != types.ReceiptStatusSuccessful {

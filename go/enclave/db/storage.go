@@ -8,6 +8,10 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
+
+	gethcore "github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/obscuronet/go-obscuro/go/common/syserr"
 
@@ -43,12 +47,28 @@ type storageImpl struct {
 }
 
 func NewStorage(backingDB *sql.EnclaveDB, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
+	cacheConfig := &gethcore.CacheConfig{
+		TrieCleanLimit: 256,
+		TrieDirtyLimit: 256,
+		TrieTimeLimit:  5 * time.Minute,
+		SnapshotLimit:  256,
+		SnapshotWait:   true,
+	}
+
 	return &storageImpl{
-		db:          backingDB,
-		stateDB:     state.NewDatabase(backingDB),
+		db: backingDB,
+		stateDB: state.NewDatabaseWithConfig(backingDB, &trie.Config{
+			Cache:     cacheConfig.TrieCleanLimit,
+			Journal:   cacheConfig.TrieCleanJournal,
+			Preimages: cacheConfig.Preimages,
+		}),
 		chainConfig: chainConfig,
 		logger:      logger,
 	}
+}
+
+func (s *storageImpl) TrieDB() *trie.Database {
+	return s.stateDB.TrieDB()
 }
 
 func (s *storageImpl) OpenBatch() *sql.Batch {
@@ -522,7 +542,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
-	rows, err := s.db.GetSQLDB().Query(query, queryParams...)
+	rows, err := s.db.GetSQLDB().Query(query, queryParams...) //nolint: rowserrcheck
 	if err != nil {
 		return nil, err
 	}
@@ -545,7 +565,7 @@ func (s *storageImpl) loadLogs(requestingAccount *gethcommon.Address, whereCondi
 		result = append(result, &l)
 	}
 
-	if err = rows.Close(); err != nil {
+	if err = rows.Close(); err != nil { //nolint: sqlclosecheck
 		return nil, syserr.NewInternalError(err)
 	}
 
@@ -567,7 +587,7 @@ func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, 
 
 	result := make([]*tracers.DebugLogs, 0)
 
-	rows, err := s.db.GetSQLDB().Query(query, queryParams...)
+	rows, err := s.db.GetSQLDB().Query(query, queryParams...) //nolint: rowserrcheck
 	if err != nil {
 		return nil, err
 	}
@@ -615,7 +635,7 @@ func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, 
 		result = append(result, &l)
 	}
 
-	if err = rows.Close(); err != nil {
+	if err = rows.Close(); err != nil { //nolint: sqlclosecheck
 		return nil, err
 	}
 

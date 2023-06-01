@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
 )
 
 const (
@@ -45,7 +45,7 @@ const (
 	verboseFlagUsage   = "Flag to enable verbose logging of wallet extension traffic"
 )
 
-func parseCLIArgs() walletextension.Config {
+func parseCLIArgs() config.Config {
 	walletExtensionHost := flag.String(walletExtensionHostName, walletExtensionHostDefault, walletExtensionHostUsage)
 	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
 	walletExtensionPortWS := flag.Int(walletExtensionPortWSName, walletExtensionPortWSDefault, walletExtensionPortWSUsage)
@@ -57,9 +57,9 @@ func parseCLIArgs() walletextension.Config {
 	verboseFlag := flag.Bool(verboseFlagName, verboseFlagDefault, verboseFlagUsage)
 	flag.Parse()
 
-	return walletextension.Config{
+	return config.Config{
 		WalletExtensionHost:     *walletExtensionHost,
-		WalletExtensionPort:     *walletExtensionPort,
+		WalletExtensionPortHTTP: *walletExtensionPort,
 		WalletExtensionPortWS:   *walletExtensionPortWS,
 		NodeRPCHTTPAddress:      fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),

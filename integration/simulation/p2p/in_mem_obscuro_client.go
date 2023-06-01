@@ -116,7 +116,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 
 // CallContext not currently supported by in-memory obscuro client, the context will be ignored.
 func (c *inMemObscuroClient) CallContext(_ context.Context, result interface{}, method string, args ...interface{}) error {
-	return c.Call(result, method, args...)
+	return c.Call(result, method, args...) //nolint: contextcheck
 }
 
 func (c *inMemObscuroClient) Subscribe(context.Context, interface{}, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {

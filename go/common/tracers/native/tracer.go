@@ -73,7 +73,7 @@ func register(name string, ctor func() tracers.Tracer) {
 }
 
 // lookup returns a tracer, if one can be matched to the given name.
-func lookup(name string, ctx *tracers.Context) (tracers.Tracer, error) {
+func lookup(name string, _ *tracers.Context) (tracers.Tracer, error) {
 	if ctors == nil {
 		ctors = make(map[string]func() tracers.Tracer)
 	}
