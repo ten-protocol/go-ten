@@ -954,6 +954,7 @@ func (h *host) startBatchStreaming() {
 	} else {
 		batchHash := header.Hash()
 		startingBatch = &batchHash
+		h.logger.Info("Streaming from latest known head batch", log.BatchHashKey, startingBatch)
 	}
 
 	streamChan, stop := h.enclaveClient.StreamL2Updates(startingBatch)
