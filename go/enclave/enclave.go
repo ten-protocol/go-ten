@@ -599,8 +599,12 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	if len(paramList) < 1 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
+	addressStr, ok := paramList[0].(string)
+	if !ok {
+		return responses.AsPlaintextError(fmt.Errorf("unexpected address parameter")), nil
+	}
 
-	address := gethcommon.HexToAddress(paramList[0].(string))
+	address := gethcommon.HexToAddress(addressStr)
 
 	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(address)
 
@@ -635,7 +639,11 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	if len(paramList) != 1 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
-	txHash := gethcommon.HexToHash(paramList[0].(string))
+	txHashStr, ok := paramList[0].(string)
+	if !ok {
+		return responses.AsPlaintextError(fmt.Errorf("unexpected tx hash parameter")), nil
+	}
+	txHash := gethcommon.HexToHash(txHashStr)
 
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
 	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
