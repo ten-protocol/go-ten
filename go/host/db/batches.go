@@ -45,10 +45,10 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 
 	b := db.kvStore.NewBatch()
 
-	if err := db.writeBatchHeader(batch.Header); err != nil {
+	if err := db.writeBatchHeader(b, batch.Header); err != nil {
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
-	if err := db.writeBatch(batch); err != nil {
+	if err := db.writeBatch(b, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
 	if err := db.writeBatchTxHashes(b, batch.Hash(), batch.TxHashes); err != nil {
@@ -171,14 +171,14 @@ func (db *DB) readHeadBatchHash() (*gethcommon.Hash, error) {
 }
 
 // Stores a batch header into the database.
-func (db *DB) writeBatchHeader(header *common.BatchHeader) error {
+func (db *DB) writeBatchHeader(w ethdb.KeyValueWriter, header *common.BatchHeader) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
 		return err
 	}
 	key := batchHeaderKey(header.Hash())
-	if err := db.kvStore.Put(key, data); err != nil {
+	if err := w.Put(key, data); err != nil {
 		return err
 	}
 	return nil
@@ -292,14 +292,14 @@ func (db *DB) writeTotalTransactions(w ethdb.KeyValueWriter, newTotal *big.Int) 
 }
 
 // Stores a batch into the database.
-func (db *DB) writeBatch(batch *common.ExtBatch) error {
+func (db *DB) writeBatch(w ethdb.KeyValueWriter, batch *common.ExtBatch) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(batch)
 	if err != nil {
 		return err
 	}
 	key := batchKey(batch.Hash())
-	if err := db.kvStore.Put(key, data); err != nil {
+	if err := w.Put(key, data); err != nil {
 		return err
 	}
 	db.batchWrites.Inc(1)
