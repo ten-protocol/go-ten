@@ -408,7 +408,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_call params - %w", err)), nil
 	}
 
-	// Arguments are [Transaction]
+	// Parameters are [Transaction]
 	if len(paramList) != 1 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
@@ -533,7 +533,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_call params - %w", err)), nil
 	}
 
-	// params are [TransactionArgs, BlockNumber]
+	// Parameters are [TransactionArgs, BlockNumber]
 	if len(paramList) != 2 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
@@ -595,7 +595,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_transactionCount params - %w", err)), nil
 	}
 
-	// params are [Address]
+	// Parameters are [Address]
 	if len(paramList) < 1 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
@@ -631,7 +631,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_getTransaction params - %w", err)), nil
 	}
 
-	// params are [Hash]
+	// Parameters are [Hash]
 	if len(paramList) != 1 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
@@ -674,7 +674,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_getTransaction params - %w", err)), nil
 	}
 
-	// params are [Hash]
+	// Parameters are [Hash]
 	if len(paramList) != 1 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
@@ -840,7 +840,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_getBalance params - %w", err)), nil
 	}
 
-	// params are [Address, BlockNumber]
+	// Parameters are [Address, BlockNumber]
 	if len(paramList) != 2 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
@@ -937,7 +937,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_estimateGas params - %w", err)), nil
 	}
 
-	// params are [callMsg, block number (optional) ]
+	// Parameters are [callMsg, block number (optional) ]
 	if len(paramList) < 1 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
@@ -994,6 +994,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_estimateGas params - %w", err)), nil
 	}
 
+	// Parameters are [Filter, Address]
 	if len(paramList) != 2 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
