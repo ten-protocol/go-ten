@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"regexp"
 
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/obscuronet/go-obscuro/go/common/httputil"
@@ -49,6 +51,11 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 		{
 			Name: common.PathAuthenticate,
 			Func: httpHandler(walletExt, authenticateRequestHandler),
+		},
+
+		{
+			Name: common.PathJoin,
+			Func: httpHandler(walletExt, joinRequestHandler),
 		},
 	}
 }
@@ -98,6 +105,11 @@ func NewWSRoutes(walletExt *walletextension.WalletExtension) []Route {
 		{
 			Name: common.PathAuthenticate,
 			Func: wsHandler(walletExt, authenticateRequestHandler),
+		},
+
+		{
+			Name: common.PathJoin,
+			Func: wsHandler(walletExt, joinRequestHandler),
 		},
 	}
 }
@@ -307,6 +319,42 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 	err = walletExt.Storage.SaveUserVK(userID, vk)
 	if err != nil {
 		userConn.HandleError("error saving viewing key")
+		return
+	}
+}
+
+func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+	body, err := userConn.ReadRequest()
+	if err != nil {
+		return
+	}
+	var reqJSONMap map[string]string
+	err = json.Unmarshal(body, &reqJSONMap)
+	if err != nil {
+		userConn.HandleError("could not unmarshal /join request")
+		return
+	}
+
+	viewingKeyPrivate, err := crypto.GenerateKey()
+	if err != nil {
+		userConn.HandleError(fmt.Sprintf("could not generate new keypair: %s", err))
+		return
+	}
+
+	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
+	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
+	accAddress := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
+	// todo (@ziga) remove unsigedVKs and do everything with the database
+	walletExt.UnsignedVKs[accAddress] = &rpc.ViewingKey{
+		Account:    &accAddress,
+		PrivateKey: viewingPrivateKeyEcies,
+		PublicKey:  viewingPublicKeyBytes,
+		SignedKey:  nil, // we await a signature from the user before we can set up the EncRPCClient
+	}
+
+	userID := crypto.Keccak256Hash(viewingPublicKeyBytes)
+	err = userConn.WriteResponse(userID.Bytes())
+	if err != nil {
 		return
 	}
 }
