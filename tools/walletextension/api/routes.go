@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
+
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/obscuronet/go-obscuro/go/common/httputil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -41,6 +44,11 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 		{
 			Name: common.PathSubmitViewingKey,
 			Func: httpHandler(walletExt, submitViewingKeyRequestHandler),
+		},
+
+		{
+			Name: common.PathAuthenticate,
+			Func: httpHandler(walletExt, authenticateRequestHandler),
 		},
 	}
 }
@@ -85,6 +93,11 @@ func NewWSRoutes(walletExt *walletextension.WalletExtension) []Route {
 		{
 			Name: common.PathSubmitViewingKey,
 			Func: wsHandler(walletExt, submitViewingKeyRequestHandler),
+		},
+
+		{
+			Name: common.PathAuthenticate,
+			Func: wsHandler(walletExt, authenticateRequestHandler),
 		},
 	}
 }
@@ -213,6 +226,87 @@ func submitViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, 
 
 	err = userConn.WriteResponse([]byte(common.SuccessMsg))
 	if err != nil {
+		return
+	}
+}
+
+func authenticateRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+	// check if the text is well-formed and extract userID and address
+	body, err := userConn.ReadRequest()
+	if err != nil {
+		return
+	}
+
+	var reqJSONMap map[string]string
+	err = json.Unmarshal(body, &reqJSONMap)
+	if err != nil {
+		userConn.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
+		return
+	}
+
+	accAddress := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
+
+	signature, err := hex.DecodeString(reqJSONMap[common.JSONKeySignature][2:])
+	if err != nil {
+		userConn.HandleError(fmt.Sprintf("could not decode signature from client to hex: %s", err))
+		return
+	}
+
+	message, ok := reqJSONMap[common.JSONKeyMessage]
+	if !ok || message == "" {
+		userConn.HandleError("message not found in the request")
+		return
+	}
+
+	userID, err := getUser(userConn.ReadRequestParams())
+	if err != nil {
+		userConn.HandleError("userID not found in the request")
+		return
+	}
+
+	// check the userID corresponds to the one in text
+	messageUserID := ""
+	// todo @ziga ( check if messageAddress needs to be included in the request)
+	// messageAddress := ""
+	regex := regexp.MustCompile(`^Register\s(\w+)\sfor\s(\w+)$`)
+	if regex.MatchString(message) {
+		params := regex.FindStringSubmatch(message)
+		messageUserID = params[1]
+		// messageAddress = params[2]
+	} else {
+		userConn.HandleError(fmt.Sprintf("Submitted message is not in the correct format: %s", message))
+	}
+
+	if userID != messageUserID || messageUserID == "" {
+		userConn.HandleError(fmt.Sprintf("User in submitted message (%s) does not match user provided in the request (%s)", messageUserID, userID))
+	}
+
+	// check the signature if it corresponds to the address and is valid
+	vk, found := walletExt.UnsignedVKs[accAddress]
+	if !found {
+		userConn.HandleError(fmt.Sprintf("no viewing key found to sign for acc=%s, please visit /join/ before sending signature", accAddress))
+		return
+	}
+
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	signature[64] -= 27
+
+	messageHash := crypto.Keccak256Hash([]byte(message))
+	signatureNoRecoverID := signature[:len(signature)-1]
+	verified := crypto.VerifySignature(vk.PublicKey, messageHash.Bytes(), signatureNoRecoverID)
+
+	if !verified {
+		userConn.HandleError("signature verification was not successful for your account")
+		return
+	}
+
+	// save the text+signature against the userID
+	// todo: where should I save the text? In another column in the database?
+	vk.SignedKey = signature
+	err = walletExt.Storage.SaveUserVK(userID, vk)
+	if err != nil {
+		userConn.HandleError("error saving viewing key")
 		return
 	}
 }

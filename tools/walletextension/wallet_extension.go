@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
@@ -25,8 +26,8 @@ var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connectio
 type WalletExtension struct {
 	hostAddr           string // The address on which the Obscuro host can be reached.
 	userAccountManager *useraccountmanager.UserAccountManager
-	unsignedVKs        map[gethcommon.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
-	storage            *storage.Storage
+	UnsignedVKs        map[gethcommon.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
+	Storage            *storage.Storage
 	logger             gethlog.Logger
 	stopControl        *stopcontrol.StopControl
 }
@@ -41,8 +42,8 @@ func New(
 	return &WalletExtension{
 		hostAddr:           hostAddr,
 		userAccountManager: userAccountManager,
-		unsignedVKs:        map[gethcommon.Address]*rpc.ViewingKey{},
-		storage:            storage,
+		UnsignedVKs:        map[gethcommon.Address]*rpc.ViewingKey{},
+		Storage:            storage,
 		logger:             logger,
 		stopControl:        stopControl,
 	}
@@ -100,7 +101,7 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 
-	w.unsignedVKs[addr] = &rpc.ViewingKey{
+	w.UnsignedVKs[addr] = &rpc.ViewingKey{
 		Account:    &addr,
 		PrivateKey: viewingPrivateKeyEcies,
 		PublicKey:  viewingPublicKeyBytes,
@@ -114,7 +115,7 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 
 // SubmitViewingKey checks a signed vieweing key and forwards it to the enclave
 func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature []byte) error {
-	vk, found := w.unsignedVKs[address]
+	vk, found := w.UnsignedVKs[address]
 	if !found {
 		return fmt.Errorf(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", address, common.PathGenerateViewingKey))
 	}
@@ -138,13 +139,13 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 
 	defaultAccountManager.AddClient(address, client)
 
-	err = w.storage.SaveUserVK(common.DefaultUser, vk)
+	err = w.Storage.SaveUserVK(common.DefaultUser, vk)
 	if err != nil {
 		return fmt.Errorf("error saving viewing key to the database: %w", err)
 	}
 
 	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
-	delete(w.unsignedVKs, address)
+	delete(w.UnsignedVKs, address)
 
 	return nil
 }

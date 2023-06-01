@@ -3,6 +3,8 @@ package container
 import (
 	"errors"
 	"fmt"
+	"net/http"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -12,7 +14,6 @@ import (
 	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
-	"net/http"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )

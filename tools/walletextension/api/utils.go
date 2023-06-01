@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
@@ -36,4 +37,13 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 		Method: method,
 		Params: params,
 	}, nil
+}
+
+func getUser(params map[string]string) (string, error) {
+	value, exists := params["u"]
+	if !exists {
+		return "", errors.New("error getting user from parameters")
+	}
+
+	return value, nil
 }
