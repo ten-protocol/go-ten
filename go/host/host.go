@@ -950,7 +950,7 @@ func (h *host) startBatchStreaming() {
 	var startingBatch *gethcommon.Hash
 	header, err := h.db.GetHeadBatchHeader()
 	if err != nil {
-		h.logger.Warn("Could not retrieve head batch header for batch streaming")
+		h.logger.Warn("Could not retrieve head batch header for batch streaming", log.ErrKey, err)
 	} else {
 		batchHash := header.Hash()
 		startingBatch = &batchHash
