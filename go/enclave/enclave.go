@@ -272,7 +272,7 @@ func NewEnclave(
 func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
 	batch, err := e.registry.GetBatch(hash)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting batch. Cause: %v", err)
+		return nil, fmt.Errorf("failed getting batch. Cause: %w", err)
 	}
 
 	return batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
