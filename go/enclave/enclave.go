@@ -269,6 +269,15 @@ func NewEnclave(
 	}
 }
 
+func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
+	batch, err := e.registry.GetBatch(hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting batch. Cause: %v", err)
+	}
+
+	return batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+}
+
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 	if e.stopControl.IsStopping() {

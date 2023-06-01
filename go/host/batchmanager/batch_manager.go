@@ -49,8 +49,10 @@ func (b *BatchManager) IsParentStored(batch *common.ExtBatch) (bool, *common.Bat
 	return true, nil, nil
 }
 
+type batchResolverFunc = func(gethcommon.Hash) (*common.ExtBatch, error)
+
 // GetBatches retrieves the batches from the host's database matching the batch request.
-func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.ExtBatch, error) {
+func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest, searchMissingBatch batchResolverFunc) ([]*common.ExtBatch, error) {
 	// We handle the case where the requester has no batches stored at all.
 	requesterHeadBatch := batchRequest.CurrentHeadBatch
 	if (*batchRequest.CurrentHeadBatch == gethcommon.Hash{}) {
@@ -96,9 +98,13 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 			break
 		}
 		batchesToSend = append(batchesToSend, currentBatch)
-		currentBatch, err = b.db.GetBatch(currentBatch.Header.ParentHash)
+		hashToLookFor := currentBatch.Header.ParentHash
+		currentBatch, err = b.db.GetBatch(hashToLookFor)
 		if err != nil {
-			return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+			currentBatch, err = searchMissingBatch(hashToLookFor)
+			if err != nil {
+				return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+			}
 		}
 	}
 	batchesToSend = append(batchesToSend, firstBatch)

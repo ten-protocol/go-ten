@@ -37,6 +37,14 @@ func (b *ExtBatch) Encoded() ([]byte, error) {
 	return rlp.EncodeToBytes(b)
 }
 
+func DecodeExtBatch(encoded []byte) (*ExtBatch, error) {
+	var batch ExtBatch
+	if err := rlp.DecodeBytes(encoded, &batch); err != nil {
+		return nil, err
+	}
+	return &batch, nil
+}
+
 func (b *ExtBatch) SDump() string {
 	return fmt.Sprintf("Tx_Len=%d, encrypted_blob_len=%d", len(b.TxHashes), len(b.EncryptedTxBlob))
 }

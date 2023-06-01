@@ -71,6 +71,8 @@ service EnclaveProto {
   // HealthCheck returns the health status of enclave + db
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
 
+  rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {}
+
   rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
 
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
@@ -81,6 +83,14 @@ service EnclaveProto {
   rpc StreamL2Updates(StreamL2UpdatesRequest) returns (stream EncodedUpdateResponse) {}
 
   rpc DebugEventLogRelevancy(DebugEventLogRelevancyRequest) returns (DebugEventLogRelevancyResponse) {}
+}
+
+message GetBatchRequest {
+  bytes knownHead = 1;
+}
+
+message GetBatchResponse {
+  bytes batch = 1;
 }
 
 message StreamL2UpdatesRequest {
