@@ -7,12 +7,11 @@ import (
 	"os"
 	"time"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/container"
 
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -59,12 +58,22 @@ func main() {
 	}
 	logger := log.New(log.WalletExtCmp, int(logLvl), config.LogPath)
 
-	walletExtension := walletextension.NewWalletExtension(config, logger)
-	defer walletExtension.Shutdown()
+	walletExtContainer := container.NewWalletExtensionContainerFromConfig(config, logger)
+	defer func() {
+		err := walletExtContainer.Start()
+		if err != nil {
+			fmt.Printf("error stopping WE - %s", err)
+		}
+	}()
 
-	go walletExtension.Serve(config.WalletExtensionHost, config.WalletExtensionPort, config.WalletExtensionPortWS)
+	go func() {
+		err := walletExtContainer.Start()
+		if err != nil {
+			fmt.Printf("error in WE - %s", err)
+		}
+	}()
 
-	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPort)
+	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPortHTTP)
 	fmt.Printf("💡 Wallet extension started - visit http://%s/viewingkeys/ to generate an ephemeral viewing key.\n", walletExtensionAddr)
 
 	select {}

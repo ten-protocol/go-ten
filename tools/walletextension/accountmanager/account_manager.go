@@ -45,8 +45,8 @@ type AccountManager struct {
 	logger         gethlog.Logger
 }
 
-func NewAccountManager(unauthedClient rpc.Client, logger gethlog.Logger) AccountManager {
-	return AccountManager{
+func NewAccountManager(unauthedClient rpc.Client, logger gethlog.Logger) *AccountManager {
+	return &AccountManager{
 		unauthedClient: unauthedClient,
 		accountClients: make(map[gethcommon.Address]*rpc.EncRPCClient),
 		logger:         logger,
