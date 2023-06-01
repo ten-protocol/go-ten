@@ -402,12 +402,14 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitTx with the enclave stopping"))
 	}
 
-	encodedTx, err := e.rpcEncryptionManager.DecryptBytes(tx)
+	// decode the received request into a []interface
+	paramList, err := e.decodeRequest(tx)
 	if err != nil {
-		err = fmt.Errorf("could not decrypt params in eth_sendRawTransaction request. Cause: %w", err)
-		return responses.AsPlaintextError(err), nil
+		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_call params - %w", err)), nil
 	}
-	decryptedTx, err := rpc.ExtractTx(encodedTx)
+
+	// Arguments are [Transaction]
+	decryptedTx, err := rpc.ExtractTx(paramList[0].(string))
 	if err != nil {
 		e.logger.Info("could not decrypt transaction. ", log.ErrKey, err)
 		return responses.AsPlaintextError(fmt.Errorf("could not decrypt transaction. Cause: %w", err)), nil
@@ -521,18 +523,10 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
 	}
 
-	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	// decode the received request into a []interface
+	paramList, err := e.decodeRequest(encryptedParams)
 	if err != nil {
-		err = fmt.Errorf("could not decrypt params in eth_call request. Cause: %w", err)
-		return responses.AsPlaintextError(err), nil
-	}
-
-	// extract params from byte slice to array of strings
-	var paramList []interface{}
-	err = json.Unmarshal(paramBytes, &paramList)
-	if err != nil {
-		err = fmt.Errorf("unable to decode eth_call params - %w", err)
-		return responses.AsPlaintextError(err), nil
+		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_call params - %w", err)), nil
 	}
 
 	// params are [TransactionArgs, BlockNumber]
@@ -592,19 +586,22 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionCount with the enclave stopping"))
 	}
 
-	var nonce uint64
-	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	// decode the received request into a []interface
+	paramList, err := e.decodeRequest(encryptedParams)
 	if err != nil {
-		return responses.AsPlaintextError(err), nil
+		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_transactionCount params - %w", err)), nil
 	}
 
-	address, err := rpc.ExtractAddress(paramBytes)
-	if err != nil {
-		return responses.AsPlaintextError(err), nil
+	// params are [Address]
+	if len(paramList) < 1 {
+		return responses.AsPlaintextError(fmt.Errorf("wrong eth_transactionCount params")), nil
 	}
+
+	address := gethcommon.HexToAddress(paramList[0].(string))
 
 	encryptor := e.rpcEncryptionManager.CreateEncryptorFor(address)
 
+	var nonce uint64
 	l2Head, err := e.storage.FetchHeadBatch()
 	if err == nil {
 		// todo - we should return an error when head state is not available, but for current test situations with race
@@ -625,22 +622,18 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransaction with the enclave stopping"))
 	}
 
-	hashBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	// decode the received request into a []interface
+	paramList, err := e.decodeRequest(encryptedParams)
 	if err != nil {
-		err = fmt.Errorf("could not decrypt encrypted RPC request params. Cause: %w", err)
-		return responses.AsPlaintextError(err), nil
+		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_getTransaction params - %w", err)), nil
 	}
-	var paramList []string
-	err = json.Unmarshal(hashBytes, &paramList)
-	if err != nil {
-		err = fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
-		return responses.AsPlaintextError(err), nil
-	}
+
+	// params are [Hash]
 	if len(paramList) == 0 {
 		err = fmt.Errorf("required at least one param, but received zero")
 		return responses.AsPlaintextError(err), nil
 	}
-	txHash := gethcommon.HexToHash(paramList[0])
+	txHash := gethcommon.HexToHash(paramList[0].(string))
 
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
 	tx, blockHash, blockNumber, index, err := e.storage.GetTransaction(txHash)
@@ -673,15 +666,21 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionReceipt with the enclave stopping"))
 	}
 
-	// We decrypt the transaction bytes.
-	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	// decode the received request into a []interface
+	paramList, err := e.decodeRequest(encryptedParams)
 	if err != nil {
-		return responses.AsPlaintextError(fmt.Errorf("could not decrypt params in eth_getTransactionReceipt request. Cause: %w", err)), nil
+		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_getTransaction params - %w", err)), nil
 	}
-	txHash, err := rpc.ExtractTxHash(paramBytes)
-	if err != nil {
-		return responses.AsPlaintextError(err), nil
+
+	// params are [Hash]
+	if len(paramList) != 1 {
+		return responses.AsPlaintextError(fmt.Errorf("expected a single param but received %d params", len(paramList))), nil
 	}
+	txHashStr, ok := paramList[0].(string)
+	if !ok {
+		return responses.AsPlaintextError(fmt.Errorf("unable to parse the tx hash")), nil
+	}
+	txHash := gethcommon.HexToHash(txHashStr)
 
 	// We retrieve the transaction.
 	tx, txBatchHash, txBatchHeight, _, err := e.storage.GetTransaction(txHash)
@@ -833,20 +832,13 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetBalance with the enclave stopping"))
 	}
 
-	// Decrypt the request.
-	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	// decode the received request into a []interface
+	paramList, err := e.decodeRequest(encryptedParams)
 	if err != nil {
-		err = fmt.Errorf("could not decrypt params in eth_getBalance request. Cause: %w", err)
-		return responses.AsPlaintextError(err), nil
+		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_getBalance params - %w", err)), nil
 	}
 
-	// Extract the params from the request.
-	var paramList []string
-	err = json.Unmarshal(paramBytes, &paramList)
-	if err != nil {
-		err = fmt.Errorf("failed to unmarshal RPC request params from JSON. Cause: %w", err)
-		return responses.AsPlaintextError(err), nil
-	}
+	// params are [Address, BlockNumber]
 	if len(paramList) != 2 {
 		err = fmt.Errorf("required exactly two params, but received %d", len(paramList))
 		return responses.AsPlaintextError(err), nil
@@ -938,19 +930,10 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return nil, responses.ToInternalError(fmt.Errorf("requested EstimateGas with the enclave stopping"))
 	}
 
-	// decrypt the input with the enclave PK
-	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	// decode the received request into a []interface
+	paramList, err := e.decodeRequest(encryptedParams)
 	if err != nil {
-		err = fmt.Errorf("unable to decrypt params in EstimateGas request. Cause: %w", err)
-		return responses.AsPlaintextError(err), nil
-	}
-
-	// extract params from byte slice to array of strings
-	var paramList []interface{}
-	err = json.Unmarshal(paramBytes, &paramList)
-	if err != nil {
-		err = fmt.Errorf("unable to decode EthCall params - %w", err)
-		return responses.AsPlaintextError(err), nil
+		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_estimateGas params - %w", err)), nil
 	}
 
 	// params are [callMsg, block number (optional) ]
@@ -1005,15 +988,14 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))
 	}
 
-	// We decrypt the params.
-	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(encryptedParams)
+	// decode the received request into a []interface
+	paramList, err := e.decodeRequest(encryptedParams)
 	if err != nil {
-		err = fmt.Errorf("unable to decrypt params in GetLogs request. Cause: %w", err)
-		return responses.AsPlaintextError(err), nil
+		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_estimateGas params - %w", err)), nil
 	}
 
 	// We extract the arguments from the param bytes.
-	filter, forAddress, err := extractGetLogsParams(paramBytes)
+	filter, forAddress, err := extractGetLogsParams(paramList)
 	if err != nil {
 		return responses.AsPlaintextError(err), nil
 	}
@@ -1367,22 +1349,17 @@ func (e *enclaveImpl) processSecretRequest(req *ethadapter.L1RequestSecretTx) (*
 }
 
 // Returns the params extracted from an eth_getLogs request.
-func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcommon.Address, error) {
+func extractGetLogsParams(paramList []interface{}) (*filters.FilterCriteria, *gethcommon.Address, error) {
 	// We verify the params.
-	var paramsList []interface{}
-	err := json.Unmarshal(paramBytes, &paramsList)
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to decode GetLogs params. Cause: %w", err)
-	}
-	if len(paramsList) != 2 {
-		return nil, nil, fmt.Errorf("expected 2 params in GetLogs request, but received %d", len(paramsList))
+	if len(paramList) != 2 {
+		return nil, nil, fmt.Errorf("expected 2 params in GetLogs request, but received %d", len(paramList))
 	}
 
 	// We extract the first param, the filter for the logs.
 	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
 	// because the filter criteria arrives as a map, and there is no way to convert it to a map directly into a
 	// FilterCriteria.
-	filterJSON, err := json.Marshal(paramsList[0])
+	filterJSON, err := json.Marshal(paramList[0])
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
 	}
@@ -1393,9 +1370,9 @@ func extractGetLogsParams(paramBytes []byte) (*filters.FilterCriteria, *gethcomm
 	}
 
 	// We extract the second param, the address the logs are for.
-	forAddressHex, ok := paramsList[1].(string)
+	forAddressHex, ok := paramList[1].(string)
 	if !ok {
-		return nil, nil, fmt.Errorf("expected second argument in GetLogs request to be of type string, but got %T", paramsList[0])
+		return nil, nil, fmt.Errorf("expected second argument in GetLogs request to be of type string, but got %T", paramList[0])
 	}
 	forAddress := gethcommon.HexToAddress(forAddressHex)
 	return &filter, &forAddress, nil
@@ -1491,6 +1468,20 @@ func (e *enclaveImpl) rejectBlockErr(cause error) *errutil.BlockRejectError {
 		L1Head:  hash,
 		Wrapped: cause,
 	}
+}
+
+func (e *enclaveImpl) decodeRequest(tx []byte) ([]interface{}, error) {
+	paramBytes, err := e.rpcEncryptionManager.DecryptBytes(tx)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt params - %w", err)
+	}
+
+	paramList, err := gethencoding.DecodeParamBytes(paramBytes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode params - %w", err)
+	}
+
+	return paramList, nil
 }
 
 func serializeEVMError(err error) ([]byte, error) {

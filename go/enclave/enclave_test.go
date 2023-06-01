@@ -368,7 +368,7 @@ func getBalanceRequestUnsuccessful(t *testing.T, prefund []genesis.Account, encl
 		},
 		"Nil2ndArg": {
 			request:  []interface{}{prefund[0].Address.Hex(), nil},
-			errorStr: "empty hex string",
+			errorStr: "unable to extract requested block number - not found",
 		},
 		"Rubbish2ndArg": {
 			request:  []interface{}{prefund[0].Address.Hex(), "Rubbish"},
