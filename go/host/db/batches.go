@@ -81,7 +81,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 		return fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
 	}
 	if headBatchHeader == nil || headBatchHeader.Number.Cmp(batch.Header.Number) == -1 {
-		err = db.writeHeadBatchHash(batch.Hash())
+		err = db.writeHeadBatchHash(b, batch.Hash())
 		if err != nil {
 			return fmt.Errorf("could not write new head batch hash. Cause: %w", err)
 		}
@@ -185,8 +185,8 @@ func (db *DB) writeBatchHeader(w ethdb.KeyValueWriter, header *common.BatchHeade
 }
 
 // Stores the head batch header hash into the database.
-func (db *DB) writeHeadBatchHash(val gethcommon.Hash) error {
-	err := db.kvStore.Put(headBatch, val.Bytes())
+func (db *DB) writeHeadBatchHash(w ethdb.KeyValueWriter, val gethcommon.Hash) error {
+	err := w.Put(headBatch, val.Bytes())
 	if err != nil {
 		return err
 	}
