@@ -947,7 +947,7 @@ func (h *host) startBatchStreaming() {
 	defer h.shutdownGroup.Done()
 
 	// TODO: Update this to start from persisted head
-	var startingBatch *gethcommon.Hash = nil
+	var startingBatch *gethcommon.Hash
 	header, err := h.db.GetHeadBatchHeader()
 	if err != nil {
 		h.logger.Warn("Could not retrieve head batch header for batch streaming")
