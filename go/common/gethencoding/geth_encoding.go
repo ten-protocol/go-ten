@@ -1,6 +1,7 @@
 package gethencoding
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
@@ -241,4 +242,15 @@ func ConvertToEthHeader(h *common.BatchHeader, secret []byte) (*types.Header, er
 		Nonce:       types.BlockNonce{},
 		BaseFee:     gethcommon.Big0,
 	}, nil
+}
+
+// DecodeParamBytes decodes the parameters byte array into a slice of interfaces
+// Helps each calling method to manage the positional data
+func DecodeParamBytes(paramBytes []byte) ([]interface{}, error) {
+	var paramList []interface{}
+
+	if err := json.Unmarshal(paramBytes, &paramList); err != nil {
+		return nil, fmt.Errorf("unable to unmarshal params - %w", err)
+	}
+	return paramList, nil
 }

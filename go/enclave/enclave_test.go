@@ -244,7 +244,7 @@ func gasEstimateInvalidNumParams(t *testing.T, w wallet.Wallet, enclave common.E
 
 	// Run gas Estimation
 	resp, _ := enclave.EstimateGas(encryptedParams)
-	if !assert.ErrorContains(t, resp.Error(), "required at least 1 params, but received 0") {
+	if !assert.ErrorContains(t, resp.Error(), "unexpected number of parameters") {
 		t.Fatal("unexpected error")
 	}
 }
@@ -364,11 +364,11 @@ func getBalanceRequestUnsuccessful(t *testing.T, prefund []genesis.Account, encl
 		},
 		"No2ndArg": {
 			request:  []interface{}{prefund[0].Address.Hex()},
-			errorStr: "required exactly two params, but received 1",
+			errorStr: "unexpected number of parameters",
 		},
 		"Nil2ndArg": {
 			request:  []interface{}{prefund[0].Address.Hex(), nil},
-			errorStr: "empty hex string",
+			errorStr: "unable to extract requested block number - not found",
 		},
 		"Rubbish2ndArg": {
 			request:  []interface{}{prefund[0].Address.Hex(), "Rubbish"},
