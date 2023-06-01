@@ -78,7 +78,7 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 		lastBatchNumber := big.NewInt(0).Add(firstBatch.Header.Number, big.NewInt(maxBatchesPerRequest))
 		batchHash, err := b.db.GetBatchHash(lastBatchNumber)
 		if err != nil {
-			return nil, fmt.Errorf("could not retrieve batch hash. Cause: %w", err)
+			return nil, fmt.Errorf("could not retrieve batch hash for batchHeight=%d. Cause: %w", lastBatchNumber, err)
 		}
 		lastBatch, err = b.db.GetBatchHeader(*batchHash)
 		if err != nil {

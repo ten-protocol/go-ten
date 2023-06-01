@@ -886,6 +886,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 
 		// We have encountered a missing parent batch. We abort the storage operation and request the missing batches.
 		if !isParentStored {
+			h.logger.Info("Parent batch not found. Requesting missing batches.", "fromBatch", batchRequest.CurrentHeadBatch, "isCatchUp", batchMsg.IsCatchUp)
 			// We only request the missing batches if the batches did not themselves arrive as part of catch-up, to
 			// avoid excessive P2P pressure.
 			if !batchMsg.IsCatchUp {
