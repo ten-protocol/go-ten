@@ -45,10 +45,10 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 
 	b := db.kvStore.NewBatch()
 
-	if err := db.writeBatchHeader(batch.Header); err != nil {
+	if err := db.writeBatchHeader(b, batch.Header); err != nil {
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
-	if err := db.writeBatch(batch); err != nil {
+	if err := db.writeBatch(b, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
 	if err := db.writeBatchTxHashes(b, batch.Hash(), batch.TxHashes); err != nil {
@@ -81,7 +81,7 @@ func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
 		return fmt.Errorf("could not retrieve head batch header. Cause: %w", err)
 	}
 	if headBatchHeader == nil || headBatchHeader.Number.Cmp(batch.Header.Number) == -1 {
-		err = db.writeHeadBatchHash(batch.Hash())
+		err = db.writeHeadBatchHash(b, batch.Hash())
 		if err != nil {
 			return fmt.Errorf("could not write new head batch hash. Cause: %w", err)
 		}
@@ -171,7 +171,7 @@ func (db *DB) readHeadBatchHash() (*gethcommon.Hash, error) {
 }
 
 // Stores a batch header into the database.
-func (db *DB) writeBatchHeader(header *common.BatchHeader) error {
+func (db *DB) writeBatchHeader(w ethdb.KeyValueWriter, header *common.BatchHeader) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
@@ -179,12 +179,12 @@ func (db *DB) writeBatchHeader(header *common.BatchHeader) error {
 	}
 	key := batchHeaderKey(header.Hash())
 
-	return db.kvStore.Put(key, data)
+	return w.Put(key, data)
 }
 
 // Stores the head batch header hash into the database.
-func (db *DB) writeHeadBatchHash(val gethcommon.Hash) error {
-	err := db.kvStore.Put(headBatch, val.Bytes())
+func (db *DB) writeHeadBatchHash(w ethdb.KeyValueWriter, val gethcommon.Hash) error {
+	err := w.Put(headBatch, val.Bytes())
 	if err != nil {
 		return err
 	}
@@ -284,14 +284,14 @@ func (db *DB) writeTotalTransactions(w ethdb.KeyValueWriter, newTotal *big.Int) 
 }
 
 // Stores a batch into the database.
-func (db *DB) writeBatch(batch *common.ExtBatch) error {
+func (db *DB) writeBatch(w ethdb.KeyValueWriter, batch *common.ExtBatch) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(batch)
 	if err != nil {
 		return err
 	}
 	key := batchKey(batch.Hash())
-	if err := db.kvStore.Put(key, data); err != nil {
+	if err := w.Put(key, data); err != nil {
 		return err
 	}
 	db.batchWrites.Inc(1)
