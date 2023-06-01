@@ -947,7 +947,16 @@ func (h *host) startBatchStreaming() {
 	defer h.shutdownGroup.Done()
 
 	// TODO: Update this to start from persisted head
-	streamChan, stop := h.enclaveClient.StreamL2Updates(nil)
+	var startingBatch *gethcommon.Hash = nil
+	header, err := h.db.GetHeadBatchHeader()
+	if err != nil {
+		h.logger.Warn("Could not retrieve head batch header for batch streaming")
+	} else {
+		batchHash := header.Hash()
+		startingBatch = &batchHash
+	}
+
+	streamChan, stop := h.enclaveClient.StreamL2Updates(startingBatch)
 	var lastBatch *common.ExtBatch
 	for {
 		select {
