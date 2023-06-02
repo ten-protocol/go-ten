@@ -22,58 +22,59 @@ type ObscuroNoOpConsensusEngine struct {
 	logger gethlog.Logger
 }
 
+func (e *ObscuroNoOpConsensusEngine) Finalize(_ consensus.ChainHeaderReader, _ *types.Header, _ *state.StateDB, _ []*types.Transaction, _ []*types.Header) {
+	// TODO implement me
+	panic("implement me")
+}
+
 // Author is used to determine where to send the gas collected from the fees.
-func (e *ObscuroNoOpConsensusEngine) Author(header *types.Header) (common.Address, error) {
+func (e *ObscuroNoOpConsensusEngine) Author(_ *types.Header) (common.Address, error) {
 	return PoolAddress, nil
 }
 
-func (e *ObscuroNoOpConsensusEngine) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error {
+func (e *ObscuroNoOpConsensusEngine) VerifyHeader(_ consensus.ChainHeaderReader, _ *types.Header, _ bool) error {
 	e.logger.Crit("noop")
 	return nil
 }
 
-func (e *ObscuroNoOpConsensusEngine) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
+func (e *ObscuroNoOpConsensusEngine) VerifyHeaders(_ consensus.ChainHeaderReader, _ []*types.Header, _ []bool) (chan<- struct{}, <-chan error) {
 	e.logger.Crit("noop")
 	return nil, nil
 }
 
-func (e *ObscuroNoOpConsensusEngine) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
+func (e *ObscuroNoOpConsensusEngine) VerifyUncles(_ consensus.ChainReader, _ *types.Block) error {
 	e.logger.Crit("noop")
 	return nil
 }
 
-func (e *ObscuroNoOpConsensusEngine) Prepare(chain consensus.ChainHeaderReader, header *types.Header) error {
+func (e *ObscuroNoOpConsensusEngine) Prepare(_ consensus.ChainHeaderReader, _ *types.Header) error {
 	e.logger.Crit("noop")
 	return nil
 }
 
-func (e *ObscuroNoOpConsensusEngine) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header) {
-	e.logger.Crit("noop")
-}
-
-func (e *ObscuroNoOpConsensusEngine) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state *state.StateDB, txs []*types.Transaction,
-	uncles []*types.Header, receipts []*types.Receipt,
+func (e *ObscuroNoOpConsensusEngine) FinalizeAndAssemble(_ consensus.ChainHeaderReader, _ *types.Header, _ *state.StateDB, _ []*types.Transaction,
+	_ []*types.Header, _ []*types.Receipt,
 ) (*types.Block, error) {
 	e.logger.Crit("noop")
 	return nil, nil //nolint:nilnil
 }
 
-func (e *ObscuroNoOpConsensusEngine) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+func (e *ObscuroNoOpConsensusEngine) Seal(_ consensus.ChainHeaderReader, _ *types.Block, _ chan<- *types.Block, _ <-chan struct{}) error {
 	e.logger.Crit("noop")
 	return nil
 }
 
-func (e *ObscuroNoOpConsensusEngine) SealHash(header *types.Header) common.Hash {
+func (e *ObscuroNoOpConsensusEngine) SealHash(_ *types.Header) common.Hash {
 	e.logger.Crit("noop")
 	return common.Hash{}
 }
 
-func (e *ObscuroNoOpConsensusEngine) CalcDifficulty(chain consensus.ChainHeaderReader, time uint64, parent *types.Header) *big.Int {
+func (e *ObscuroNoOpConsensusEngine) CalcDifficulty(_ consensus.ChainHeaderReader, _ uint64, _ *types.Header) *big.Int {
 	e.logger.Crit("noop")
 	return nil
 }
 
-func (e *ObscuroNoOpConsensusEngine) APIs(chain consensus.ChainHeaderReader) []rpc.API {
+func (e *ObscuroNoOpConsensusEngine) APIs(_ consensus.ChainHeaderReader) []rpc.API {
 	e.logger.Crit("noop")
 	return nil
 }

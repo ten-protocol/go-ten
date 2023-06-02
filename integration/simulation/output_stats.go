@@ -77,7 +77,7 @@ func (o *OutputStats) countBlockChain() {
 	}
 }
 
-func (o *OutputStats) incrementStats(block *types.Block, l1Node ethadapter.EthClient) { //nolint:unparam
+func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient) {
 	for _, tx := range block.Transactions() {
 		t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
 		if t == nil {

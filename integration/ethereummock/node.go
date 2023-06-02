@@ -85,7 +85,7 @@ type Node struct {
 	logger gethlog.Logger
 }
 
-func (m *Node) EstimateGasAndGasPrice(txData types.TxData, from gethcommon.Address) (types.TxData, error) {
+func (m *Node) EstimateGasAndGasPrice(txData types.TxData, _ gethcommon.Address) (types.TxData, error) {
 	return txData, nil
 }
 

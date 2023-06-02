@@ -1,6 +1,8 @@
 package components
 
 import (
+	"errors"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -14,6 +16,8 @@ import (
 const (
 	SubscriptionChannelBuffer = 10
 )
+
+var ErrDuplicateRollup = errors.New("duplicate rollup received")
 
 type BlockIngestionType struct {
 	// IsLatest is true if this block was the canonical head of the L1 chain at the time it was submitted to enclave

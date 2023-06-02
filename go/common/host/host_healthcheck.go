@@ -16,6 +16,7 @@ type HealthCheckEnclave struct {
 type HealthCheckHost struct {
 	P2PStatus       *P2PStatus
 	L1BlockProvider *L1BlockProviderStatus
+	L1Synced        bool
 }
 
 // P2PStatus is the representation of the Status of the P2P layer

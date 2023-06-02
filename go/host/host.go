@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -63,6 +64,7 @@ type host struct {
 	stopControl *stopcontrol.StopControl
 
 	l1BlockProvider hostcommon.ReconnectingBlockProvider
+	l1UpToDate      atomic.Bool                     // Whether the last submitted L1 block was the head L1 block
 	txP2PCh         chan common.EncryptedTx         // The channel that new transactions from peers are sent to
 	batchP2PCh      chan common.EncodedBatchMsg     // The channel that new batches from peers are sent to
 	batchRequestCh  chan common.EncodedBatchRequest // The channel that batch requests from peers are sent to
@@ -105,6 +107,7 @@ func NewHost(
 
 		// incoming data
 		l1BlockProvider: ethadapter.NewEthBlockProvider(ethClient, logger),
+		l1UpToDate:      atomic.Bool{},
 		txP2PCh:         make(chan common.EncryptedTx),
 		batchP2PCh:      make(chan common.EncodedBatchMsg),
 		batchRequestCh:  make(chan common.EncodedBatchRequest),
@@ -307,25 +310,21 @@ func (h *host) Stop() error {
 	h.shutdownGroup.Wait()
 
 	if err := h.p2p.StopListening(); err != nil {
-		h.logger.Error("failed to close transaction P2P listener cleanly", log.ErrKey, err)
-		return err
+		return fmt.Errorf("failed to close transaction P2P listener cleanly - %w", err)
 	}
 
 	// Leave some time for all processing to finish before exiting the main loop.
 	time.Sleep(time.Second)
 
 	if err := h.enclaveClient.Stop(); err != nil {
-		h.logger.Error("could not stop enclave server", log.ErrKey, err)
-		return err
+		return fmt.Errorf("failed to stop enclave server - %w", err)
 	}
 	if err := h.enclaveClient.StopClient(); err != nil {
-		h.logger.Error("failed to stop enclave RPC client", log.ErrKey, err)
-		return err
+		return fmt.Errorf("failed to stop enclave RPC client - %w", err)
 	}
 
 	if err := h.db.Stop(); err != nil {
-		h.logger.Error("could not stop DB - %w", err)
-		return err
+		return fmt.Errorf("failed to stop DB - %w", err)
 	}
 
 	h.logger.Info("Host shut down successfully.")
@@ -346,14 +345,16 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 	}
 
 	l1BlockProviderStatus := h.l1BlockProvider.HealthStatus()
+	isL1Synced := h.l1UpToDate.Load()
 
 	// Overall health is achieved when all parts are healthy
-	obscuroNodeHealth := h.p2p.HealthCheck() && l1BlockProviderStatus.Healthy && enclaveHealthy
+	obscuroNodeHealth := h.p2p.HealthCheck() && l1BlockProviderStatus.Healthy && enclaveHealthy && isL1Synced
 
 	return &hostcommon.HealthCheck{
 		HealthCheckHost: &hostcommon.HealthCheckHost{
 			P2PStatus:       h.p2p.Status(),
 			L1BlockProvider: &l1BlockProviderStatus,
+			L1Synced:        isL1Synced,
 		},
 		HealthCheckEnclave: &hostcommon.HealthCheckEnclave{
 			EnclaveHealthy: enclaveHealthy,
@@ -415,7 +416,11 @@ func (h *host) startProcessing() {
 			if err != nil {
 				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
 				blockStream = h.handleProcessBlockErr(b, blockStream, err)
+				// failed to update the L1 head, so assume we're behind
+				h.l1UpToDate.Store(false)
+				continue
 			}
+			h.l1UpToDate.Store(isLive)
 
 		case tx := <-h.txP2PCh:
 			resp, sysError := h.enclaveClient.SubmitTx(tx)
@@ -881,6 +886,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 
 		// We have encountered a missing parent batch. We abort the storage operation and request the missing batches.
 		if !isParentStored {
+			h.logger.Info("Parent batch not found. Requesting missing batches.", "fromBatch", batchRequest.CurrentHeadBatch, "isCatchUp", batchMsg.IsCatchUp)
 			// We only request the missing batches if the batches did not themselves arrive as part of catch-up, to
 			// avoid excessive P2P pressure.
 			if !batchMsg.IsCatchUp {
@@ -920,6 +926,10 @@ func (h *host) startBatchProduction() {
 	for {
 		select {
 		case <-batchProdTicker.C:
+			if !h.l1UpToDate.Load() {
+				// if we're behind the L1, we don't want to produce batches
+				continue
+			}
 			h.logger.Info("create batch")
 			err := h.enclaveClient.CreateBatch()
 			if err != nil {
@@ -938,8 +948,18 @@ func (h *host) startBatchStreaming() {
 	defer h.shutdownGroup.Done()
 
 	// TODO: Update this to start from persisted head
-	streamChan, stop := h.enclaveClient.StreamL2Updates(nil)
-	var lastBatch *common.ExtBatch = nil
+	var startingBatch *gethcommon.Hash
+	header, err := h.db.GetHeadBatchHeader()
+	if err != nil {
+		h.logger.Warn("Could not retrieve head batch header for batch streaming", log.ErrKey, err)
+	} else {
+		batchHash := header.Hash()
+		startingBatch = &batchHash
+		h.logger.Info("Streaming from latest known head batch", log.BatchHashKey, startingBatch)
+	}
+
+	streamChan, stop := h.enclaveClient.StreamL2Updates(startingBatch)
+	var lastBatch *common.ExtBatch
 	for {
 		select {
 		case <-h.interrupter.Done():

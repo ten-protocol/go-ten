@@ -244,7 +244,8 @@ func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*c
 		return nil, err
 	}
 
-	if _, err = s.rollupConsumer.ProcessL1Block(br); err != nil {
+	_, err = s.rollupConsumer.ProcessL1Block(br)
+	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		s.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
 	}

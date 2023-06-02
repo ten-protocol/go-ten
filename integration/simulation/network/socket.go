@@ -39,7 +39,7 @@ func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 	}
 }
 
-func (n *networkOfSocketNodes) Create(simParams *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
+func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
 	simParams.L1SetupData, n.gethClients, n.eth2Network = SetUpGethNetwork(
 		n.wallets,

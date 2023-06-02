@@ -18,8 +18,9 @@ import (
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/gorilla/websocket"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/container"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethnode "github.com/ethereum/go-ethereum/node"
@@ -30,32 +31,32 @@ import (
 
 const jsonID = "1"
 
-func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *walletextension.Config {
+func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *config.Config {
 	testDBPath, err := os.CreateTemp("", "")
 	if err != nil {
 		panic("could not create persistence file for wallet extension tests")
 	}
-	return &walletextension.Config{
+	return &config.Config{
 		NodeRPCWebsocketAddress: fmt.Sprintf("localhost:%d", connectPort),
 		DBPathOverride:          testDBPath.Name(),
-		WalletExtensionPort:     wallHTTPPort,
+		WalletExtensionPortHTTP: wallHTTPPort,
 		WalletExtensionPortWS:   wallWSPort,
 	}
 }
 
-func createWalExt(t *testing.T, walExtCfg *walletextension.Config) func() {
+func createWalExt(t *testing.T, walExtCfg *config.Config) func() error {
 	// todo (@ziga) - log somewhere else?
 	logger := log.New(log.WalletExtCmp, int(gethlog.LvlInfo), log.SysOut)
 
-	walExt := walletextension.NewWalletExtension(*walExtCfg, logger)
-	go walExt.Serve(common.Localhost, walExtCfg.WalletExtensionPort, walExtCfg.WalletExtensionPortWS)
+	wallExtContainer := container.NewWalletExtensionContainerFromConfig(*walExtCfg, logger)
+	go wallExtContainer.Start() //nolint: errcheck
 
-	err := waitForEndpoint(fmt.Sprintf("http://%s:%d%s", common.Localhost, walExtCfg.WalletExtensionPort, walletextension.PathReady))
+	err := waitForEndpoint(fmt.Sprintf("http://%s:%d%s", walExtCfg.WalletExtensionHost, walExtCfg.WalletExtensionPortHTTP, common.PathReady))
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 
-	return walExt.Shutdown
+	return wallExtContainer.Stop
 }
 
 // Creates an RPC layer that the wallet extension can connect to. Returns a handle to shut down the host.
@@ -179,10 +180,10 @@ func generateViewingKey(wallHTTPPort, wallWSPort int, accountAddress string, use
 	}
 
 	if useWS {
-		viewingKeyBytes, _ := makeRequestWS(fmt.Sprintf("ws://%s:%d%s", common.Localhost, wallWSPort, walletextension.PathGenerateViewingKey), generateViewingKeyBodyBytes)
+		viewingKeyBytes, _ := makeRequestWS(fmt.Sprintf("ws://%s:%d%s", common.Localhost, wallWSPort, common.PathGenerateViewingKey), generateViewingKeyBodyBytes)
 		return viewingKeyBytes
 	}
-	return makeRequestHTTP(fmt.Sprintf("http://%s:%d%s", common.Localhost, wallHTTPPort, walletextension.PathGenerateViewingKey), generateViewingKeyBodyBytes)
+	return makeRequestHTTP(fmt.Sprintf("http://%s:%d%s", common.Localhost, wallHTTPPort, common.PathGenerateViewingKey), generateViewingKeyBodyBytes)
 }
 
 // Signs a viewing key.
@@ -211,9 +212,9 @@ func submitViewingKey(accountAddr string, wallHTTPPort, wallWSPort int, signatur
 	}
 
 	if useWS {
-		makeRequestWS(fmt.Sprintf("ws://%s:%d%s", common.Localhost, wallWSPort, walletextension.PathSubmitViewingKey), submitViewingKeyBodyBytes)
+		makeRequestWS(fmt.Sprintf("ws://%s:%d%s", common.Localhost, wallWSPort, common.PathSubmitViewingKey), submitViewingKeyBodyBytes)
 	} else {
-		makeRequestHTTP(fmt.Sprintf("http://%s:%d%s", common.Localhost, wallHTTPPort, walletextension.PathSubmitViewingKey), submitViewingKeyBodyBytes)
+		makeRequestHTTP(fmt.Sprintf("http://%s:%d%s", common.Localhost, wallHTTPPort, common.PathSubmitViewingKey), submitViewingKeyBodyBytes)
 	}
 }
 

@@ -28,7 +28,7 @@ func NewNetworkInMemoryGeth(wallets *params.SimWallets) Network {
 }
 
 // Create inits and starts the nodes, wires them up, and populates the network objects
-func (n *networkInMemGeth) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
+func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RPCHandles, error) {
 	// kickoff the network with the prefunded wallet addresses
 	params.L1SetupData, n.gethClients, n.eth2Network = SetUpGethNetwork(
 		n.wallets,

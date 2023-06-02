@@ -30,7 +30,7 @@ func NewRollupLimiter(size uint64) RollupLimiter {
 func (rl *rollupLimiter) AcceptBatch(encodable interface{}) (bool, error) {
 	encodedData, err := rlp.EncodeToBytes(encodable)
 	if err != nil {
-		return false, fmt.Errorf("%w: %v", ErrFailedToEncode, err)
+		return false, fmt.Errorf("%w: %s", ErrFailedToEncode, err.Error())
 	}
 
 	encodedSize := uint64(len(encodedData))

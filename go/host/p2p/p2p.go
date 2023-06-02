@@ -99,6 +99,8 @@ func (p *p2pImpl) StopListening() error {
 	p.logger.Info("Shutting down P2P.")
 	if p.listener != nil {
 		atomic.StoreInt32(p.listenerInterrupt, 1)
+		// todo immediately shutting down the listener seems to impact other hosts shutdown process
+		time.Sleep(time.Second)
 		return p.listener.Close()
 	}
 	return nil

@@ -15,3 +15,9 @@ env GOOS=linux GOARCH=amd64 go build -o ../bin/wallet_extension_linux_amd64 .
 ```
 
 The binaries will be created in the `tools/walletextension/bin` folder.
+
+### Structure
+
+This package follows the same structure of `host` and `enclave`.
+
+It uses a container to wrap the services that are required to allow the wallet extension to fulfill the business logic.

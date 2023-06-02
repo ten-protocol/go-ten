@@ -22,7 +22,7 @@ func NewNetworkDebug(host host.Host) *NetworkDebug {
 
 // TraceTransaction returns the structured logs created during the execution of EVM
 // and returns them as a JSON object.
-func (api *NetworkDebug) TraceTransaction(ctx context.Context, hash gethcommon.Hash, config *tracers.TraceConfig) (interface{}, error) {
+func (api *NetworkDebug) TraceTransaction(_ context.Context, hash gethcommon.Hash, config *tracers.TraceConfig) (interface{}, error) {
 	response, err := api.host.EnclaveClient().DebugTraceTransaction(hash, config)
 	if err != nil {
 		return "", err
@@ -31,7 +31,7 @@ func (api *NetworkDebug) TraceTransaction(ctx context.Context, hash gethcommon.H
 }
 
 // EventLogRelevancy returns the events for a given transactions and the revelancy params
-func (api *NetworkDebug) EventLogRelevancy(ctx context.Context, hash gethcommon.Hash) (interface{}, error) {
+func (api *NetworkDebug) EventLogRelevancy(_ context.Context, hash gethcommon.Hash) (interface{}, error) {
 	response, err := api.host.EnclaveClient().DebugEventLogRelevancy(hash)
 	if err != nil {
 		return "", err

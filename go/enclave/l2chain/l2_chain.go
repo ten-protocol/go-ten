@@ -168,7 +168,7 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 
 // GetChainStateAtTransaction Returns the state of the chain at certain block height after executing transactions up to the selected transaction
 // TODO make this cacheable
-func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex int, reexec uint64) (gethcore.Message, vm.BlockContext, *state.StateDB, error) {
+func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex int, _ uint64) (gethcore.Message, vm.BlockContext, *state.StateDB, error) {
 	// Short circuit if it's genesis batch.
 	if batch.NumberU64() == 0 {
 		return nil, vm.BlockContext{}, nil, errors.New("no transaction in genesis")
