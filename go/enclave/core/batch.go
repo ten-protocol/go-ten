@@ -90,7 +90,6 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncrypt
 }
 
 func DeterministicEmptyBatch(
-	agg gethcommon.Address,
 	parent *common.BatchHeader,
 	block *types.Block,
 	rand gethcommon.Hash,

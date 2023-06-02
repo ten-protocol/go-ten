@@ -247,7 +247,7 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), BatchPayloads: rollup.BatchPayloads, BatchHeaders: rollup.BatchHeaders}
 }
 
-func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg { //nolint:dupl
+func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 	if header == nil {
 		return nil
 	}

@@ -62,7 +62,7 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch := core.DeterministicEmptyBatch(context.Creator, parent, block, context.Randomness, context.AtTime)
+	batch := core.DeterministicEmptyBatch(parent, block, context.Randomness, context.AtTime)
 
 	stateDB, err := bp.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
@@ -110,7 +110,7 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}, nil
 }
 
-func (bp *batchProducerImpl) CreateGenesisState(blkHash common.L1BlockHash, sequencerAddress common.L2Address, timeNow uint64) (*core.Batch, *types.Transaction, error) {
+func (bp *batchProducerImpl) CreateGenesisState(blkHash common.L1BlockHash, timeNow uint64) (*core.Batch, *types.Transaction, error) {
 	preFundGenesisState, err := bp.genesis.GetGenesisRoot(bp.storage)
 	if err != nil {
 		return nil, nil, err

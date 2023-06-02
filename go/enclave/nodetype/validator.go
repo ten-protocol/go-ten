@@ -57,7 +57,7 @@ func NewValidator(
 }
 
 func (val *obsValidator) handleGenesisBatch(incomingBatch *core.Batch) (bool, error) {
-	batch, _, err := val.batchProducer.CreateGenesisState(incomingBatch.Header.L1Proof, val.sequencerID, incomingBatch.Header.Time)
+	batch, _, err := val.batchProducer.CreateGenesisState(incomingBatch.Header.L1Proof, incomingBatch.Header.Time)
 	if err != nil {
 		return false, err
 	}
