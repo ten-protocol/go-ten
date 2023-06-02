@@ -155,7 +155,7 @@ func ToExtBatchMsg(batch *common.ExtBatch) generated.ExtBatchMsg {
 	return generated.ExtBatchMsg{Header: ToBatchHeaderMsg(batch.Header), TxHashes: txHashBytes, Txs: batch.EncryptedTxBlob}
 }
 
-func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg { //nolint:dupl
+func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 	if header == nil {
 		return nil
 	}
@@ -211,7 +211,7 @@ func FromExtBatchMsg(msg *generated.ExtBatchMsg) *common.ExtBatch {
 	}
 }
 
-func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader { //nolint:dupl
+func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 	if header == nil {
 		return nil
 	}
@@ -298,7 +298,7 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 	}
 }
 
-func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader { //nolint:dupl
+func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader {
 	if header == nil {
 		return nil
 	}
