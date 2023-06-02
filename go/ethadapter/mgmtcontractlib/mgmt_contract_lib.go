@@ -117,10 +117,11 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 	encRollupData := base64EncodeToString(zipped)
 
 	metaRollup := ManagementContract.StructsMetaRollup{
-		ParentHash: decodedRollup.Header.ParentHash,
-		Hash:       decodedRollup.Hash(),
-		L1Block:    decodedRollup.Header.L1Proof,
-		Number:     decodedRollup.Header.Number,
+		ParentHash:   decodedRollup.Header.ParentHash,
+		Hash:         decodedRollup.Hash(),
+		AggregatorID: decodedRollup.Header.Coinbase,
+		L1Block:      decodedRollup.Header.L1Proof,
+		Number:       decodedRollup.Header.Number,
 	}
 
 	crossChain := ManagementContract.StructsHeaderCrossChainData{
