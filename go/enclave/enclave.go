@@ -193,8 +193,11 @@ func NewEnclave(
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, logger)
 	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, logger)
 	registry := components.NewBatchRegistry(storage, logger)
-	rProducer := components.NewRollupProducer(dataEncryptionService, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
-	sigVerifier := components.NewSignatureValidator(config.SequencerID, storage)
+	rProducer := components.NewRollupProducer(config.SequencerID, dataEncryptionService, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
+	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
+	if err != nil {
+		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
+	}
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, dataEncryptionService, dataCompressionService, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
 
 	var service nodetype.NodeType
@@ -219,7 +222,7 @@ func NewEnclave(
 			},
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, logger)
+		service = nodetype.NewValidator(blockProcessor, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, sigVerifier, logger)
 	}
 
 	chain := l2chain.NewChain(
@@ -1600,7 +1603,6 @@ func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProduc
 		Transactions: batch.Transactions,
 		AtTime:       batch.Header.Time,
 		Randomness:   batch.Header.MixDigest,
-		Creator:      batch.Header.Agg,
 		ChainConfig:  chainConfig,
 	})
 	if err != nil {

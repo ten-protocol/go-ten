@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -156,36 +155,26 @@ func ToExtBatchMsg(batch *common.ExtBatch) generated.ExtBatchMsg {
 	return generated.ExtBatchMsg{Header: ToBatchHeaderMsg(batch.Header), TxHashes: txHashBytes, Txs: batch.EncryptedTxBlob}
 }
 
-func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg { //nolint:dupl
+func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 	if header == nil {
 		return nil
 	}
 	var headerMsg generated.BatchHeaderMsg
 
-	diff := uint64(0)
-	if header.Difficulty != nil {
-		diff = header.Difficulty.Uint64()
-	}
 	baseFee := uint64(0)
 	if header.BaseFee != nil {
 		baseFee = header.BaseFee.Uint64()
 	}
 	headerMsg = generated.BatchHeaderMsg{
 		ParentHash:                  header.ParentHash.Bytes(),
-		Node:                        header.Agg.Bytes(),
-		Nonce:                       []byte{},
 		Proof:                       header.L1Proof.Bytes(),
 		Root:                        header.Root.Bytes(),
 		TxHash:                      header.TxHash.Bytes(),
 		Number:                      header.Number.Uint64(),
-		Bloom:                       header.Bloom.Bytes(),
 		ReceiptHash:                 header.ReceiptHash.Bytes(),
 		Extra:                       header.Extra,
 		R:                           header.R.Bytes(),
 		S:                           header.S.Bytes(),
-		UncleHash:                   header.UncleHash.Bytes(),
-		Coinbase:                    header.Coinbase.Bytes(),
-		Difficulty:                  diff,
 		GasLimit:                    header.GasLimit,
 		GasUsed:                     header.GasUsed,
 		Time:                        header.Time,
@@ -222,7 +211,7 @@ func FromExtBatchMsg(msg *generated.ExtBatchMsg) *common.ExtBatch {
 	}
 }
 
-func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader { //nolint:dupl
+func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 	if header == nil {
 		return nil
 	}
@@ -231,20 +220,14 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader { 
 	s := &big.Int{}
 	return &common.BatchHeader{
 		ParentHash:                    gethcommon.BytesToHash(header.ParentHash),
-		Agg:                           gethcommon.BytesToAddress(header.Node),
-		Nonce:                         types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),
 		L1Proof:                       gethcommon.BytesToHash(header.Proof),
 		Root:                          gethcommon.BytesToHash(header.Root),
 		TxHash:                        gethcommon.BytesToHash(header.TxHash),
 		Number:                        big.NewInt(int64(header.Number)),
-		Bloom:                         types.BytesToBloom(header.Bloom),
 		ReceiptHash:                   gethcommon.BytesToHash(header.ReceiptHash),
 		Extra:                         header.Extra,
 		R:                             r.SetBytes(header.R),
 		S:                             s.SetBytes(header.S),
-		UncleHash:                     gethcommon.BytesToHash(header.UncleHash),
-		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
-		Difficulty:                    big.NewInt(int64(header.Difficulty)),
 		GasLimit:                      header.GasLimit,
 		GasUsed:                       header.GasUsed,
 		Time:                          header.Time,
@@ -264,41 +247,32 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), BatchPayloads: rollup.BatchPayloads, BatchHeaders: rollup.BatchHeaders}
 }
 
-func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg { //nolint:dupl
+func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 	if header == nil {
 		return nil
 	}
 	var headerMsg generated.RollupHeaderMsg
 
-	diff := uint64(0)
-	if header.Difficulty != nil {
-		diff = header.Difficulty.Uint64()
-	}
 	baseFee := uint64(0)
 	if header.BaseFee != nil {
 		baseFee = header.BaseFee.Uint64()
 	}
 	headerMsg = generated.RollupHeaderMsg{
 		ParentHash:                  header.ParentHash.Bytes(),
-		Node:                        header.Agg.Bytes(),
-		Nonce:                       []byte{},
 		Proof:                       header.L1Proof.Bytes(),
 		Root:                        header.Root.Bytes(),
 		HeadBatchHash:               header.HeadBatchHash.Bytes(),
 		Number:                      header.Number.Uint64(),
-		Bloom:                       header.Bloom.Bytes(),
 		ReceiptHash:                 header.ReceiptHash.Bytes(),
 		Extra:                       header.Extra,
 		R:                           header.R.Bytes(),
 		S:                           header.S.Bytes(),
-		UncleHash:                   header.UncleHash.Bytes(),
-		Coinbase:                    header.Coinbase.Bytes(),
-		Difficulty:                  diff,
 		GasLimit:                    header.GasLimit,
 		GasUsed:                     header.GasUsed,
 		Time:                        header.Time,
 		MixDigest:                   header.MixDigest.Bytes(),
 		BaseFee:                     baseFee,
+		Coinbase:                    header.Coinbase.Bytes(),
 		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
 	}
@@ -324,7 +298,7 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 	}
 }
 
-func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader { //nolint:dupl
+func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader {
 	if header == nil {
 		return nil
 	}
@@ -333,25 +307,20 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 	s := &big.Int{}
 	return &common.RollupHeader{
 		ParentHash:                    gethcommon.BytesToHash(header.ParentHash),
-		Agg:                           gethcommon.BytesToAddress(header.Node),
-		Nonce:                         types.EncodeNonce(big.NewInt(0).SetBytes(header.Nonce).Uint64()),
 		L1Proof:                       gethcommon.BytesToHash(header.Proof),
 		Root:                          gethcommon.BytesToHash(header.Root),
 		HeadBatchHash:                 gethcommon.BytesToHash(header.HeadBatchHash),
 		Number:                        big.NewInt(int64(header.Number)),
-		Bloom:                         types.BytesToBloom(header.Bloom),
 		ReceiptHash:                   gethcommon.BytesToHash(header.ReceiptHash),
 		Extra:                         header.Extra,
 		R:                             r.SetBytes(header.R),
 		S:                             s.SetBytes(header.S),
-		UncleHash:                     gethcommon.BytesToHash(header.UncleHash),
-		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
-		Difficulty:                    big.NewInt(int64(header.Difficulty)),
 		GasLimit:                      header.GasLimit,
 		GasUsed:                       header.GasUsed,
 		Time:                          header.Time,
 		MixDigest:                     gethcommon.BytesToHash(header.MixDigest),
 		BaseFee:                       big.NewInt(int64(header.BaseFee)),
+		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
 		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),

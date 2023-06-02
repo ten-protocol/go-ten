@@ -15,7 +15,6 @@ func RandomBatch(block *types.Block) common.ExtBatch {
 	extBatch := common.ExtBatch{
 		Header: &common.BatchHeader{
 			ParentHash: randomHash(),
-			Agg:        RandomAddress(),
 			L1Proof:    randomHash(),
 			Root:       randomHash(),
 			Number:     big.NewInt(int64(RandomUInt64())),
