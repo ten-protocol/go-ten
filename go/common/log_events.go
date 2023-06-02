@@ -11,10 +11,15 @@ import (
 type LogSubscription struct {
 	// The account the events relate to.
 	Account *common.Address
+
 	// A signature over the account address using a private viewing key. Prevents attackers from subscribing to
 	// (encrypted) logs for other accounts to see the pattern of logs.
 	// todo - this does not protect against replay attacks, where someone resends an intercepted subscription request.
 	Signature *[]byte
+
+	// PublicViewingKey stores the viewing key used for this subscription
+	PublicViewingKey []byte
+
 	// A subscriber-defined filter to apply to the stream of logs.
 	Filter *filters.FilterCriteria
 }

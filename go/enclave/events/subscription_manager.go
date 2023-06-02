@@ -83,21 +83,16 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
 	}
 
-	var subscription common.LogSubscription
-	if err = rlp.DecodeBytes(encodedSubscription, &subscription); err != nil {
+	var subscription *common.LogSubscription
+	if err = rlp.DecodeBytes(encodedSubscription, subscription); err != nil {
 		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
-	}
-
-	err = s.rpcEncryptionManager.AuthenticateSubscriptionRequest(subscription)
-	if err != nil {
-		return err
 	}
 
 	s.subscriptionMutex.Lock()
 	// Start from the FromBlock
 	s.lastHead[id] = subscription.Filter.FromBlock
 	defer s.subscriptionMutex.Unlock()
-	s.subscriptions[id] = &subscription
+	s.subscriptions[id] = subscription
 	return nil
 }
 

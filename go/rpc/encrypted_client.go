@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"reflect"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -44,12 +46,12 @@ var SensitiveMethods = []string{
 type EncRPCClient struct {
 	obscuroClient    Client
 	enclavePublicKey *ecies.PublicKey // Used to encrypt messages destined to the enclave.
-	viewingKey       *ViewingKey
+	viewingKey       *viewingkey.ViewingKey
 	logger           gethlog.Logger
 }
 
 // NewEncRPCClient sets up a client with a viewing key for encrypted communication (this submits the VK to the enclave)
-func NewEncRPCClient(client Client, viewingKey *ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
+func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
 	if err != nil {
@@ -62,10 +64,6 @@ func NewEncRPCClient(client Client, viewingKey *ViewingKey, logger gethlog.Logge
 		enclavePublicKey: enclavePublicKey,
 		viewingKey:       viewingKey,
 		logger:           logger,
-	}
-	err = encClient.registerViewingKey()
-	if err != nil {
-		return nil, err
 	}
 
 	return encClient, nil
@@ -184,8 +182,9 @@ func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*
 	}
 
 	logSubscription := &common.LogSubscription{
-		Account:   c.Account(),
-		Signature: &accountSignature,
+		Account:          c.Account(),
+		Signature:        &accountSignature,
+		PublicViewingKey: c.viewingKey.PublicKey,
 	}
 
 	// If there are less than two arguments, it means no filter criteria was passed.
@@ -331,7 +330,15 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 		return nil, nil
 	}
 
-	paramsJSON, err := json.Marshal(args)
+	argsWithVK := append([]interface{}{
+		[]interface{}{
+			hexutil.Encode(c.viewingKey.PublicKey),
+			hexutil.Encode(c.viewingKey.SignedKey),
+		},
+	},
+		args...)
+
+	paramsJSON, err := json.Marshal(argsWithVK)
 	if err != nil {
 		return nil, fmt.Errorf("could not json encode request params: %w", err)
 	}
@@ -374,23 +381,6 @@ func (c *EncRPCClient) setResult(data []byte, result interface{}) error {
 		// for any other type we attempt to json unmarshal it
 		return json.Unmarshal(data, result)
 	}
-}
-
-// registerViewingKey submits the viewing key with signature to the enclave, this must be called before the viewing key is usable
-func (c *EncRPCClient) registerViewingKey() error {
-	// TODO: Store signatures to be able to resubmit keys if they are evicted by the node?
-	// We encrypt the viewing key bytes
-	encryptedViewingKeyBytes, err := ecies.Encrypt(rand.Reader, c.enclavePublicKey, c.viewingKey.PublicKey, nil, nil)
-	if err != nil {
-		return fmt.Errorf("could not encrypt viewing key with enclave public key: %w", err)
-	}
-
-	var rpcErr error
-	err = c.Call(&rpcErr, AddViewingKey, encryptedViewingKeyBytes, c.viewingKey.SignedKey)
-	if err != nil {
-		return fmt.Errorf("could not add viewing key: %w", err)
-	}
-	return nil
 }
 
 // IsSensitiveMethod indicates whether the RPC method's requests and responses should be encrypted.

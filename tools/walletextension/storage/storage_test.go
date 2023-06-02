@@ -1,11 +1,11 @@
 package storage
 
 import (
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"reflect"
 	"testing"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
 
@@ -20,8 +20,8 @@ func TestStoringMultipleKeysPerUser(t *testing.T) {
 		777,
 		gethlog.New())
 
-	vk1, _ := rpc.GenerateAndSignViewingKey(wallet1)
-	vk2, _ := rpc.GenerateAndSignViewingKey(wallet2)
+	vk1, _ := viewingkey.GenerateAndSignViewingKey(wallet1)
+	vk2, _ := viewingkey.GenerateAndSignViewingKey(wallet2)
 
 	myStorage, err := New("")
 	if err != nil {
@@ -79,8 +79,8 @@ func TestMultipleUsersStoringKeys(t *testing.T) {
 		777,
 		gethlog.New())
 
-	vk1, _ := rpc.GenerateAndSignViewingKey(wallet1)
-	vk2, _ := rpc.GenerateAndSignViewingKey(wallet2)
+	vk1, _ := viewingkey.GenerateAndSignViewingKey(wallet1)
+	vk2, _ := viewingkey.GenerateAndSignViewingKey(wallet2)
 
 	myStorage, err := New("")
 	if err != nil {

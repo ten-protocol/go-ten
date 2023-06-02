@@ -264,20 +264,6 @@ func (c *Client) GetTransactionReceipt(encryptedParams common.EncryptedParamsGet
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
-func (c *Client) AddViewingKey(viewingKeyBytes []byte, signature []byte) common.SystemError {
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
-	defer cancel()
-
-	_, err := c.protoClient.AddViewingKey(timeoutCtx, &generated.AddViewingKeyRequest{
-		ViewingKey: viewingKeyBytes,
-		Signature:  signature,
-	})
-	if err != nil {
-		return syserr.NewRPCError(err)
-	}
-	return nil
-}
-
 func (c *Client) GetBalance(encryptedParams common.EncryptedParamsGetBalance) (*responses.Balance, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

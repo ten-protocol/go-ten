@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"math/big"
 	"os"
 	"strings"
@@ -152,7 +153,7 @@ func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
 
 	ctx := context.Background()
 
-	vk, err := rpc.GenerateAndSignViewingKey(l2Wallet)
+	vk, err := viewingkey.GenerateAndSignViewingKey(l2Wallet)
 	assert.Nil(t, err)
 	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s:%d", l2Host, l2Port), vk, gethlog.New())
 	assert.Nil(t, err)
@@ -328,7 +329,7 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 
 	ctx := context.Background()
 
-	vk, err := rpc.GenerateAndSignViewingKey(l2Wallet)
+	vk, err := viewingkey.GenerateAndSignViewingKey(l2Wallet)
 	assert.Nil(t, err)
 	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s:%d", l2Host, l2Port), vk, gethlog.New())
 	assert.Nil(t, err)

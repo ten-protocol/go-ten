@@ -2,15 +2,8 @@ package rpc
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/responses"
-
-	"github.com/ethereum/go-ethereum/accounts"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
 
@@ -36,7 +29,6 @@ type EncryptionManager struct {
 func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey) EncryptionManager {
 	return EncryptionManager{
 		enclavePrivateKeyECIES: enclavePrivateKeyECIES,
-		viewingKeys:            make(map[gethcommon.Address]*ecies.PublicKey),
 	}
 }
 
@@ -50,35 +42,35 @@ func (rpc *EncryptionManager) DecryptBytes(encryptedBytes []byte) ([]byte, error
 	return bytes, nil
 }
 
-// AddViewingKey - see the description of Enclave.AddViewingKey.
-func (rpc *EncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
-	// We decrypt the viewing key.
-	viewingKeyBytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedViewingKeyBytes, nil, nil)
-	if err != nil {
-		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
-	}
-
-	// We recalculate the message signed by MetaMask.
-	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(viewingKeyBytes)
-
-	// We recover the key based on the signed message and the signature.
-	recoveredAccountPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
-	if err != nil {
-		return fmt.Errorf("received viewing key but could not validate its signature. Cause: %w", err)
-	}
-	recoveredAccountAddress := crypto.PubkeyToAddress(*recoveredAccountPublicKey)
-
-	// We decompress the viewing key and create the corresponding ECIES key.
-	viewingKey, err := crypto.DecompressPubkey(viewingKeyBytes)
-	if err != nil {
-		return fmt.Errorf("received viewing key bytes but could not decompress them. Cause: %w", err)
-	}
-	viewingKeyECIES := ecies.ImportECDSAPublic(viewingKey)
-
-	rpc.viewingKeys[recoveredAccountAddress] = viewingKeyECIES
-
-	return nil
-}
+//// AddViewingKey - see the description of Enclave.AddViewingKey.
+//func (rpc *EncryptionManager) AddViewingKey(encryptedViewingKeyBytes []byte, signature []byte) error {
+//	// We decrypt the viewing key.
+//	viewingKeyBytes, err := rpc.enclavePrivateKeyECIES.Decrypt(encryptedViewingKeyBytes, nil, nil)
+//	if err != nil {
+//		return fmt.Errorf("could not decrypt viewing key when adding it to enclave. Cause: %w", err)
+//	}
+//
+//	// We recalculate the message signed by MetaMask.
+//	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(viewingKeyBytes)
+//
+//	// We recover the key based on the signed message and the signature.
+//	recoveredAccountPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
+//	if err != nil {
+//		return fmt.Errorf("received viewing key but could not validate its signature. Cause: %w", err)
+//	}
+//	recoveredAccountAddress := crypto.PubkeyToAddress(*recoveredAccountPublicKey)
+//
+//	// We decompress the viewing key and create the corresponding ECIES key.
+//	viewingKey, err := crypto.DecompressPubkey(viewingKeyBytes)
+//	if err != nil {
+//		return fmt.Errorf("received viewing key bytes but could not decompress them. Cause: %w", err)
+//	}
+//	viewingKeyECIES := ecies.ImportECDSAPublic(viewingKey)
+//
+//	//rpc.viewingKeys[recoveredAccountAddress] = viewingKeyECIES
+//
+//	return nil
+//}
 
 // EncryptWithViewingKey encrypts the bytes with a viewing key for the address.
 func (rpc *EncryptionManager) EncryptWithViewingKey(address gethcommon.Address, bytes []byte) ([]byte, error) {
@@ -99,25 +91,19 @@ func (rpc *EncryptionManager) EncryptWithViewingKey(address gethcommon.Address, 
 	return encryptedBytes, nil
 }
 
-// AuthenticateSubscriptionRequest checks that a subscription request is authenticated correctly.
-func (rpc *EncryptionManager) AuthenticateSubscriptionRequest(subscription common.LogSubscription) error {
-	accountHashBytes := subscription.Account.Hash().Bytes()
-
-	recoveredViewingPublicKey, err := crypto.SigToPub(accountHashBytes, *subscription.Signature)
-	if err != nil {
-		return fmt.Errorf("could not recover viewing public key from signature to authenticate subscription. Cause: %w", err)
-	}
-
-	viewingPublicKey := rpc.viewingKeys[*subscription.Account].ExportECDSA()
-	if !viewingPublicKey.Equal(recoveredViewingPublicKey) {
-		return fmt.Errorf("viewing key used to authenticate subscription did not match viewing key stored by enclave")
-	}
-
-	return nil
-}
-
-func (rpc *EncryptionManager) CreateEncryptorFor(address gethcommon.Address) responses.ViewingKeyEncryptor {
-	return func(data []byte) ([]byte, error) {
-		return rpc.EncryptWithViewingKey(address, data)
-	}
-}
+//// AuthenticateSubscriptionRequest checks that a subscription request is authenticated correctly.
+//func (rpc *EncryptionManager) AuthenticateSubscriptionRequest(subscription *common.LogSubscription) error {
+//	accountHashBytes := subscription.Account.Hash().Bytes()
+//
+//	recoveredViewingPublicKey, err := crypto.SigToPub(accountHashBytes, *subscription.Signature)
+//	if err != nil {
+//		return fmt.Errorf("could not recover viewing public key from signature to authenticate subscription. Cause: %w", err)
+//	}
+//
+//	viewingPublicKey := rpc.viewingKeys[*account].ExportECDSA()
+//	if !viewingPublicKey.Equal(recoveredViewingPublicKey) {
+//		return fmt.Errorf("viewing key used to authenticate subscription did not match viewing key stored by enclave")
+//	}
+//
+//	return nil
+//}

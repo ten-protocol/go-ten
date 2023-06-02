@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -36,11 +35,6 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 		{
 			Name: common.PathGenerateViewingKey,
 			Func: httpHandler(walletExt, generateViewingKeyRequestHandler),
-		},
-
-		{
-			Name: common.PathSubmitViewingKey,
-			Func: httpHandler(walletExt, submitViewingKeyRequestHandler),
 		},
 	}
 }
@@ -80,11 +74,6 @@ func NewWSRoutes(walletExt *walletextension.WalletExtension) []Route {
 		{
 			Name: common.PathGenerateViewingKey,
 			Func: wsHandler(walletExt, generateViewingKeyRequestHandler),
-		},
-
-		{
-			Name: common.PathSubmitViewingKey,
-			Func: wsHandler(walletExt, submitViewingKeyRequestHandler),
 		},
 	}
 }
@@ -179,39 +168,6 @@ func generateViewingKeyRequestHandler(walletExt *walletextension.WalletExtension
 	}
 
 	err = conn.WriteResponse([]byte(pubViewingKey))
-	if err != nil {
-		return
-	}
-}
-
-// submitViewingKeyRequestHandler submits the viewing key and signed bytes to the WE
-func submitViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
-	body, err := userConn.ReadRequest()
-	if err != nil {
-		return
-	}
-
-	var reqJSONMap map[string]string
-	err = json.Unmarshal(body, &reqJSONMap)
-	if err != nil {
-		userConn.HandleError(fmt.Sprintf("could not unmarshal address and signature from client to JSON: %s", err))
-		return
-	}
-	accAddress := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
-
-	signature, err := hex.DecodeString(reqJSONMap[common.JSONKeySignature][2:])
-	if err != nil {
-		userConn.HandleError(fmt.Sprintf("could not decode signature from client to hex: %s", err))
-		return
-	}
-
-	err = walletExt.SubmitViewingKey(accAddress, signature)
-	if err != nil {
-		userConn.HandleError(fmt.Sprintf("could not submit viewing key - %s", err))
-		return
-	}
-
-	err = userConn.WriteResponse([]byte(common.SuccessMsg))
 	if err != nil {
 		return
 	}

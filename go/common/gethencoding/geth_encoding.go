@@ -100,7 +100,7 @@ func ExtractAddress(param interface{}) (*gethcommon.Address, error) {
 
 // ExtractOptionalBlockNumber defaults nil or empty block number params to latest block number
 func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNumber, error) {
-	if len(params) <= 1 {
+	if len(params) <= idx {
 		return ExtractBlockNumber("latest")
 	}
 	if params[idx] == nil {
@@ -253,4 +253,27 @@ func DecodeParamBytes(paramBytes []byte) ([]interface{}, error) {
 		return nil, fmt.Errorf("unable to unmarshal params - %w", err)
 	}
 	return paramList, nil
+}
+
+func ExtractViewingKey(vkBytesIntf interface{}) ([]byte, []byte, error) {
+	vkBytesList, ok := vkBytesIntf.([]interface{})
+	if !ok {
+		return nil, nil, fmt.Errorf("unable to cast the vk to []interface")
+	}
+
+	if len(vkBytesList) != 2 {
+		return nil, nil, fmt.Errorf("wrong size of viewing key params")
+	}
+
+	dataVal, err := hexutil.Decode(vkBytesList[0].(string))
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not decode data in vk pub key - %w", err)
+	}
+
+	dataVal2, err := hexutil.Decode(vkBytesList[1].(string))
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not decode data in vk signature - %w", err)
+	}
+
+	return dataVal, dataVal2, nil
 }

@@ -3,6 +3,7 @@ package responses
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 
 	"github.com/obscuronet/go-obscuro/go/common/syserr"
 )
@@ -72,7 +73,7 @@ func AsPlaintextError(err error) *EnclaveResponse {
 
 // AsEncryptedResponse - wraps the data passed into the proper format, serializes it and encrypts it.
 // It is then encoded in a plaintext response.
-func AsEncryptedResponse[T any](data *T, encrypt ViewingKeyEncryptor) *EnclaveResponse {
+func AsEncryptedResponse[T any](data *T, encryptHandler *vkhandler.VKHandler) *EnclaveResponse {
 	userResp := UserResponse[T]{
 		Result: data,
 	}
@@ -82,7 +83,7 @@ func AsEncryptedResponse[T any](data *T, encrypt ViewingKeyEncryptor) *EnclaveRe
 		return AsPlaintextError(err)
 	}
 
-	encrypted, err := encrypt(encoded)
+	encrypted, err := encryptHandler.Encrypt(encoded)
 	if err != nil {
 		return AsPlaintextError(err)
 	}
@@ -91,7 +92,7 @@ func AsEncryptedResponse[T any](data *T, encrypt ViewingKeyEncryptor) *EnclaveRe
 }
 
 // AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
-func AsEncryptedError(err error, encrypt ViewingKeyEncryptor) *EnclaveResponse {
+func AsEncryptedError(err error, encrypt *vkhandler.VKHandler) *EnclaveResponse {
 	errStr := err.Error()
 	userResp := UserResponse[string]{
 		ErrStr: &errStr,
@@ -102,7 +103,7 @@ func AsEncryptedError(err error, encrypt ViewingKeyEncryptor) *EnclaveResponse {
 		return AsPlaintextError(err)
 	}
 
-	encrypted, err := encrypt(encoded)
+	encrypted, err := encrypt.Encrypt(encoded)
 	if err != nil {
 		return AsPlaintextError(err)
 	}

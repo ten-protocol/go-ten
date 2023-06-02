@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -25,7 +26,7 @@ var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connectio
 type WalletExtension struct {
 	hostAddr       string // The address on which the Obscuro host can be reached.
 	accountManager *accountmanager.AccountManager
-	unsignedVKs    map[gethcommon.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
+	unsignedVKs    map[gethcommon.Address]*viewingkey.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	storage        *storage.Storage
 	logger         gethlog.Logger
 	stopControl    *stopcontrol.StopControl
@@ -41,7 +42,7 @@ func New(
 	return &WalletExtension{
 		hostAddr:       hostAddr,
 		accountManager: accountManager,
-		unsignedVKs:    map[gethcommon.Address]*rpc.ViewingKey{},
+		unsignedVKs:    map[gethcommon.Address]*viewingkey.ViewingKey{},
 		storage:        storage,
 		logger:         logger,
 		stopControl:    stopControl,
@@ -94,7 +95,7 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 
-	w.unsignedVKs[addr] = &rpc.ViewingKey{
+	w.unsignedVKs[addr] = &viewingkey.ViewingKey{
 		Account:    &addr,
 		PrivateKey: viewingPrivateKeyEcies,
 		PublicKey:  viewingPublicKeyBytes,
@@ -106,36 +107,36 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 	return hex.EncodeToString(viewingKeyBytes), nil
 }
 
-// SubmitViewingKey checks a signed vieweing key and forwards it to the enclave
-func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature []byte) error {
-	vk, found := w.unsignedVKs[address]
-	if !found {
-		return fmt.Errorf(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", address, common.PathGenerateViewingKey))
-	}
-
-	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	signature[64] -= 27
-
-	vk.SignedKey = signature
-	// create an encrypted RPC client with the signed VK and register it with the enclave
-	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
-	client, err := rpc.NewEncNetworkClient(w.hostAddr, vk, w.logger)
-	if err != nil {
-		return fmt.Errorf("failed to create encrypted RPC client for account %s - %w", address, err)
-	}
-	w.accountManager.AddClient(address, client)
-
-	err = w.storage.SaveUserVK(common.DefaultUser, vk)
-	if err != nil {
-		return fmt.Errorf("error saving viewing key to the database: %w", err)
-	}
-
-	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
-	delete(w.unsignedVKs, address)
-
-	return nil
-}
+//// SubmitViewingKey checks a signed vieweing key and forwards it to the enclave
+//func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature []byte) error {
+//	vk, found := w.unsignedVKs[address]
+//	if !found {
+//		return fmt.Errorf(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", address, common.PathGenerateViewingKey))
+//	}
+//
+//	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+//	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+//	signature[64] -= 27
+//
+//	vk.SignedKey = signature
+//	// create an encrypted RPC client with the signed VK and register it with the enclave
+//	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
+//	client, err := rpc.NewEncNetworkClient(w.hostAddr, vk, w.logger)
+//	if err != nil {
+//		return fmt.Errorf("failed to create encrypted RPC client for account %s - %w", address, err)
+//	}
+//	w.accountManager.AddClient(address, client)
+//
+//	err = w.storage.SaveUserVK(common.DefaultUser, vk)
+//	if err != nil {
+//		return fmt.Errorf("error saving viewing key to the database: %w", err)
+//	}
+//
+//	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
+//	delete(w.unsignedVKs, address)
+//
+//	return nil
+//}
 
 func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
 	if resultMap, ok := rpcResp.(map[string]interface{}); ok {

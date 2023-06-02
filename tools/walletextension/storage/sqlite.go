@@ -3,12 +3,12 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
-	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
 type SqliteDatabase struct {
@@ -36,7 +36,7 @@ func NewSqliteDatabase(dbName string) (*SqliteDatabase, error) {
 	return &SqliteDatabase{db: db}, nil
 }
 
-func (s *SqliteDatabase) SaveUserVK(userID string, vk *rpc.ViewingKey) error {
+func (s *SqliteDatabase) SaveUserVK(userID string, vk *viewingkey.ViewingKey) error {
 	stmt, err := s.db.Prepare("INSERT INTO viewingkeys (user_id, account_address, private_key, signed_key) VALUES (?, ?, ?, ?)")
 	if err != nil {
 		fmt.Println("Error creating sql statement ", err)
@@ -54,8 +54,8 @@ func (s *SqliteDatabase) SaveUserVK(userID string, vk *rpc.ViewingKey) error {
 	return nil
 }
 
-func (s *SqliteDatabase) GetUserVKs(userID string) (map[common.Address]*rpc.ViewingKey, error) {
-	viewingKeys := make(map[common.Address]*rpc.ViewingKey)
+func (s *SqliteDatabase) GetUserVKs(userID string) (map[common.Address]*viewingkey.ViewingKey, error) {
+	viewingKeys := make(map[common.Address]*viewingkey.ViewingKey)
 
 	rows, err := s.db.Query("SELECT user_id, account_address, private_key, signed_key FROM viewingkeys WHERE user_id = ?", userID)
 	if err != nil {
@@ -89,7 +89,7 @@ func (s *SqliteDatabase) GetUserVKs(userID string) (map[common.Address]*rpc.View
 			return nil, err
 		}
 
-		viewingKeys[account] = &rpc.ViewingKey{
+		viewingKeys[account] = &viewingkey.ViewingKey{
 			Account:    &account,
 			PrivateKey: ecies.ImportECDSA(viewingKeyPrivate),
 			PublicKey:  crypto.CompressPubkey(&viewingKeyPrivate.PublicKey),

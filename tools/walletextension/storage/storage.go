@@ -2,12 +2,12 @@ package storage
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"os"
 	"path/filepath"
 
 	"github.com/ethereum/go-ethereum/common"
 	obscurocommon "github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
 type Storage struct {
@@ -42,7 +42,7 @@ func New(dbPath string) (*Storage, error) {
 	return &Storage{db: newDB}, nil
 }
 
-func (s *Storage) SaveUserVK(userID string, vk *rpc.ViewingKey) error {
+func (s *Storage) SaveUserVK(userID string, vk *viewingkey.ViewingKey) error {
 	err := s.db.SaveUserVK(userID, vk)
 	if err != nil {
 		return fmt.Errorf("failed to save viewingkey to the storage, %w", err)
@@ -50,7 +50,7 @@ func (s *Storage) SaveUserVK(userID string, vk *rpc.ViewingKey) error {
 	return nil
 }
 
-func (s *Storage) GetUserVKs(userID string) (map[common.Address]*rpc.ViewingKey, error) {
+func (s *Storage) GetUserVKs(userID string) (map[common.Address]*viewingkey.ViewingKey, error) {
 	userVKs, err := s.db.GetUserVKs(userID)
 	if err != nil {
 		return nil, err

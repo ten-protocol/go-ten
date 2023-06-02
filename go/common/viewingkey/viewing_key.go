@@ -1,4 +1,4 @@
-package rpc
+package viewingkey
 
 import (
 	"crypto/ecdsa"

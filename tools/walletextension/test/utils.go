@@ -3,9 +3,9 @@ package test
 import (
 	"bytes"
 	"crypto/ecdsa"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"io"
 	"net/http"
 	"os"
@@ -156,7 +156,7 @@ func prepareRequestBody(method string, params interface{}) []byte {
 }
 
 // Generates a new account and registers it with the node.
-func registerPrivateKey(t *testing.T, walletHTTPPort, walletWSPort int, useWS bool) []byte {
+func registerPrivateKey(t *testing.T, walletHTTPPort, walletWSPort int, useWS bool) (*gethcommon.Address, []byte, []byte) {
 	accountPrivateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -165,9 +165,8 @@ func registerPrivateKey(t *testing.T, walletHTTPPort, walletWSPort int, useWS bo
 
 	viewingKeyBytes := generateViewingKey(walletHTTPPort, walletWSPort, accountAddr.String(), useWS)
 	signature := signViewingKey(accountPrivateKey, viewingKeyBytes)
-	submitViewingKey(accountAddr.String(), walletHTTPPort, walletWSPort, signature, useWS)
 
-	return viewingKeyBytes
+	return &accountAddr, viewingKeyBytes, signature
 }
 
 // Generates a viewing key.
@@ -199,23 +198,6 @@ func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
 	signatureWithLeadBytes := append([]byte("0"), signature...)
 
 	return signatureWithLeadBytes
-}
-
-// Submits a viewing key.
-func submitViewingKey(accountAddr string, wallHTTPPort, wallWSPort int, signature []byte, useWS bool) {
-	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
-		common.JSONKeySignature: hex.EncodeToString(signature),
-		common.JSONKeyAddress:   accountAddr,
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	if useWS {
-		makeRequestWS(fmt.Sprintf("ws://%s:%d%s", common.Localhost, wallWSPort, common.PathSubmitViewingKey), submitViewingKeyBodyBytes)
-	} else {
-		makeRequestHTTP(fmt.Sprintf("http://%s:%d%s", common.Localhost, wallHTTPPort, common.PathSubmitViewingKey), submitViewingKeyBodyBytes)
-	}
 }
 
 // Sends the body to the URL over HTTP, and returns the result.

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 	"math/big"
 	"time"
 
@@ -32,6 +33,8 @@ const (
 type DummyAPI struct {
 	enclavePrivateKey *ecies.PrivateKey
 	viewingKey        *ecies.PublicKey
+	signature         []byte
+	address           *gethcommon.Address
 }
 
 func NewDummyAPI() *DummyAPI {
@@ -45,12 +48,8 @@ func NewDummyAPI() *DummyAPI {
 	}
 }
 
-func (api *DummyAPI) AddViewingKey([]byte, []byte) error {
-	return nil
-}
-
 // Determines which key the API will encrypt responses with.
-func (api *DummyAPI) setViewingKey(viewingKeyHexBytes []byte) {
+func (api *DummyAPI) setViewingKey(address *gethcommon.Address, viewingKeyHexBytes, signature []byte) {
 	viewingKeyBytes, err := hex.DecodeString(string(viewingKeyHexBytes))
 	if err != nil {
 		panic(err)
@@ -61,6 +60,8 @@ func (api *DummyAPI) setViewingKey(viewingKeyHexBytes []byte) {
 		panic(fmt.Errorf("received viewing key bytes but could not decompress them. Cause: %w", err))
 	}
 	api.viewingKey = ecies.ImportECDSAPublic(viewingKey)
+	api.address = address
+	api.signature = signature
 }
 
 func (api *DummyAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
@@ -171,8 +172,9 @@ func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.Enclave
 		return responses.AsEmptyResponse(), fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
-	encryptor := func(bytes []byte) ([]byte, error) {
-		return ecies.Encrypt(rand.Reader, api.viewingKey, bytes, nil, nil)
+	encryptor, err := vkhandler.New(*api.address, crypto.CompressPubkey(api.viewingKey.ExportECDSA()), api.signature)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}
 
 	strParams := string(params)

@@ -15,11 +15,6 @@ func NewObscuroAPI(host host.Host) *ObscuroAPI {
 	}
 }
 
-// AddViewingKey stores the viewing key on the enclave.
-func (api *ObscuroAPI) AddViewingKey(viewingKeyBytes []byte, signature []byte) error {
-	return api.host.EnclaveClient().AddViewingKey(viewingKeyBytes, signature)
-}
-
 // Health returns the health status of obscuro host + enclave + db
 func (api *ObscuroAPI) Health() (*host.HealthCheck, error) {
 	return api.host.HealthCheck()
