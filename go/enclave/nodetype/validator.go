@@ -2,10 +2,8 @@ package nodetype
 
 import (
 	"bytes"
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -26,9 +24,10 @@ type obsValidator struct {
 
 	chainConfig *params.ChainConfig
 
-	sequencerID gethcommon.Address
-	storage     db.Storage
-	logger      gethlog.Logger
+	sequencerID  gethcommon.Address
+	storage      db.Storage
+	sigValidator *components.SignatureValidator
+	logger       gethlog.Logger
 }
 
 func NewValidator(
@@ -41,6 +40,7 @@ func NewValidator(
 
 	sequencerID gethcommon.Address,
 	storage db.Storage,
+	sigValidator *components.SignatureValidator,
 	logger gethlog.Logger,
 ) ObsValidator {
 	return &obsValidator{
@@ -51,6 +51,7 @@ func NewValidator(
 		chainConfig:    chainConfig,
 		sequencerID:    sequencerID,
 		storage:        storage,
+		sigValidator:   sigValidator,
 		logger:         logger,
 	}
 }
@@ -81,7 +82,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		return nil // already know about this one
 	}
 
-	if err := val.CheckSequencerSignature(incomingBatch.Hash(), &val.sequencerID, incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
+	if err := val.sigValidator.CheckSequencerSignature(incomingBatch.Hash(), incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
 		return err
 	}
 
@@ -143,28 +144,6 @@ func (val *obsValidator) verifyRollup(rollup *core.Rollup) error {
 			val.logger.Error("Attempted to store incorrect batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
 			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
 		}
-	}
-	return nil
-}
-
-func (val *obsValidator) CheckSequencerSignature(headerHash gethcommon.Hash, aggregator *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
-	// Batches and rollups should only be produced by the sequencer.
-	// todo (#718) - sequencer identities should be retrieved from the L1 management contract
-	if !bytes.Equal(aggregator.Bytes(), val.sequencerID.Bytes()) {
-		return fmt.Errorf("expected batch to be produced by sequencer %s, but was produced by %s", val.sequencerID.Hex(), aggregator.Hex())
-	}
-
-	if sigR == nil || sigS == nil {
-		return fmt.Errorf("missing signature on batch")
-	}
-
-	pubKey, err := val.storage.FetchAttestedKey(*aggregator)
-	if err != nil {
-		return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", aggregator, err)
-	}
-
-	if !ecdsa.Verify(pubKey, headerHash.Bytes(), sigR, sigS) {
-		return fmt.Errorf("could not verify ECDSA signature")
 	}
 	return nil
 }

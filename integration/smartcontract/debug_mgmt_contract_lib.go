@@ -70,7 +70,7 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 
 	if rollupElement.Rollup.Number.Int64() != rollup.Header.Number.Int64() ||
 		!bytes.Equal(rollupElement.Rollup.ParentHash[:], rollup.Header.ParentHash.Bytes()) ||
-		//!bytes.Equal(rollupElement.Rollup.AggregatorID[:], rollup.Header.Agg.Bytes()) ||
+		!bytes.Equal(rollupElement.Rollup.AggregatorID[:], rollup.Header.Coinbase.Bytes()) ||
 		!bytes.Equal(rollupElement.Rollup.L1Block[:], rollup.Header.L1Proof.Bytes()) {
 		return fmt.Errorf("stored rollup does not match the generated rollup")
 	}

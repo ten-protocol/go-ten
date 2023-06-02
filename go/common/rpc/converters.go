@@ -272,6 +272,7 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		Time:                        header.Time,
 		MixDigest:                   header.MixDigest.Bytes(),
 		BaseFee:                     baseFee,
+		Coinbase:                    header.Coinbase.Bytes(),
 		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
 	}
@@ -319,6 +320,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		Time:                          header.Time,
 		MixDigest:                     gethcommon.BytesToHash(header.MixDigest),
 		BaseFee:                       big.NewInt(int64(header.BaseFee)),
+		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
 		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),

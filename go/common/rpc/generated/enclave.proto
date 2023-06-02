@@ -363,6 +363,7 @@ message RollupHeaderMsg {
   uint64 Time = 18;
   bytes MixDigest = 19;
   uint64 BaseFee = 20;
+  bytes Coinbase = 21;
   bytes LatestInboundCrossChainHeight = 22;
   bytes LatestInboundCrossChainHash = 23;
   repeated CrossChainMsg CrossChainMessages = 24;

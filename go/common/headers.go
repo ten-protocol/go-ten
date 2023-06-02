@@ -64,6 +64,8 @@ type RollupHeader struct {
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 	HeadBatchHash      common.Hash                           // The latest batch included in this rollup.
 
+	Coinbase common.Address
+
 	// The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHash common.Hash `json:"inboundCrossChainHash"`
 

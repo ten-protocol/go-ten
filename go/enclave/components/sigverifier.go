@@ -1,7 +1,6 @@
 package components
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
@@ -12,33 +11,34 @@ import (
 
 type SignatureValidator struct {
 	SequencerID gethcommon.Address
+	attestedKey *ecdsa.PublicKey
 	storage     db.Storage
 }
 
-func NewSignatureValidator(seqID gethcommon.Address, storage db.Storage) *SignatureValidator {
+func NewSignatureValidator(seqID gethcommon.Address, storage db.Storage) (*SignatureValidator, error) {
+	// todo (#718) - sequencer identities should be retrieved from the L1 management contract
 	return &SignatureValidator{
 		SequencerID: seqID,
 		storage:     storage,
-	}
+		attestedKey: nil,
+	}, nil
 }
 
-func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcommon.Hash, sequencer *gethcommon.Address, sigR *big.Int, sigS *big.Int) error {
-	// Batches and rollups should only be produced by the sequencer.
-	// todo (#718) - sequencer identities should be retrieved from the L1 management contract
-	if !bytes.Equal(sequencer.Bytes(), sigChecker.SequencerID.Bytes()) {
-		return fmt.Errorf("expected batch to be produced by sequencer %s, but was produced by %s", sigChecker.SequencerID.Hex(), sequencer.Hex())
-	}
-
+// CheckSequencerSignature - verifies the signature against the registered sequencer
+func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcommon.Hash, sigR *big.Int, sigS *big.Int) error {
 	if sigR == nil || sigS == nil {
 		return fmt.Errorf("missing signature on batch")
 	}
 
-	pubKey, err := sigChecker.storage.FetchAttestedKey(*sequencer)
-	if err != nil {
-		return fmt.Errorf("could not retrieve attested key for sequencer %s. Cause: %w", sequencer, err)
+	if sigChecker.attestedKey == nil {
+		attestedKey, err := sigChecker.storage.FetchAttestedKey(sigChecker.SequencerID)
+		if err != nil {
+			return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", sigChecker.SequencerID, err)
+		}
+		sigChecker.attestedKey = attestedKey
 	}
 
-	if !ecdsa.Verify(pubKey, headerHash.Bytes(), sigR, sigS) {
+	if !ecdsa.Verify(sigChecker.attestedKey, headerHash.Bytes(), sigR, sigS) {
 		return fmt.Errorf("could not verify ECDSA signature")
 	}
 	return nil

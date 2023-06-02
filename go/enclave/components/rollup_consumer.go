@@ -28,8 +28,8 @@ type rollupConsumerImpl struct {
 
 	logger gethlog.Logger
 
-	storage  db.Storage
-	verifier *SignatureValidator
+	storage      db.Storage
+	sigValidator *SignatureValidator
 }
 
 func NewRollupConsumer(
@@ -50,7 +50,7 @@ func NewRollupConsumer(
 		EthereumChainID:        ethereumChainID,
 		logger:                 logger,
 		storage:                storage,
-		verifier:               verifier,
+		sigValidator:           verifier,
 	}
 }
 
@@ -130,7 +130,7 @@ func (rc *rollupConsumerImpl) processRollup(br *common.BlockAndReceipts) (*core.
 
 	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
 	for _, rollup := range rollups {
-		if err = rc.verifier.CheckSequencerSignature(rollup.Hash(), &rc.verifier.SequencerID, rollup.Header.R, rollup.Header.S); err != nil {
+		if err = rc.sigValidator.CheckSequencerSignature(rollup.Hash(), rollup.Header.R, rollup.Header.S); err != nil {
 			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 		if signedRollup != nil {

@@ -30,6 +30,8 @@ type rollupProducerImpl struct {
 	ObscuroChainID  int64
 	EthereumChainID int64
 
+	sequencerID gethcommon.Address
+
 	logger gethlog.Logger
 
 	storage db.Storage
@@ -38,19 +40,12 @@ type rollupProducerImpl struct {
 	blockProcessor L1BlockProcessor
 }
 
-func NewRollupProducer(
-	transactionBlobCrypto crypto.DataEncryptionService,
-	obscuroChainID int64,
-	ethereumChainID int64,
-	storage db.Storage,
-	batchRegistry BatchRegistry,
-	blockProcessor L1BlockProcessor,
-	logger gethlog.Logger,
-) RollupProducer {
+func NewRollupProducer(sequencerID gethcommon.Address, transactionBlobCrypto crypto.DataEncryptionService, obscuroChainID int64, ethereumChainID int64, storage db.Storage, batchRegistry BatchRegistry, blockProcessor L1BlockProcessor, logger gethlog.Logger) RollupProducer {
 	return &rollupProducerImpl{
 		TransactionBlobCrypto: transactionBlobCrypto,
 		ObscuroChainID:        obscuroChainID,
 		EthereumChainID:       ethereumChainID,
+		sequencerID:           sequencerID,
 		logger:                logger,
 		batchRegistry:         batchRegistry,
 		blockProcessor:        blockProcessor,
@@ -91,16 +86,17 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 		return nil, fmt.Errorf("current head batch matches the rollup head bash")
 	}
 
-	newRollup := createNextRollup(rollup, batches)
+	newRollup := re.createNextRollup(rollup, batches)
 	return newRollup, nil
 }
 
 // createNextRollup - based on a previous rollup and batches will create a new rollup that encapsulate the state
 // transition from the old rollup to the new one's head batch.
-func createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
+func (re *rollupProducerImpl) createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
 	headBatch := batches[len(batches)-1]
 
 	rh := headBatch.Header.ToRollupHeader()
+	rh.Coinbase = re.sequencerID
 
 	if rollup != nil {
 		rh.ParentHash = rollup.Header.Hash()
