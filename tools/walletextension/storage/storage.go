@@ -42,8 +42,8 @@ func New(dbPath string) (*Storage, error) {
 	return &Storage{db: newDB}, nil
 }
 
-func (s *Storage) SaveUserVK(userID string, vk *rpc.ViewingKey) error {
-	err := s.db.SaveUserVK(userID, vk)
+func (s *Storage) SaveUserVK(userID string, vk *rpc.ViewingKey, message string) error {
+	err := s.db.SaveUserVK(userID, vk, message)
 	if err != nil {
 		return fmt.Errorf("failed to save viewingkey to the storage, %w", err)
 	}
@@ -56,4 +56,22 @@ func (s *Storage) GetUserVKs(userID string) (map[common.Address]*rpc.ViewingKey,
 		return nil, err
 	}
 	return userVKs, nil
+}
+
+func (s *Storage) AddSignature(userID string, address []byte, signature string) error {
+	err := s.db.AddSignature(userID, address, signature)
+	if err != nil {
+		fmt.Println("Error adding signature")
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) GetMessageAndSignature(userID string, address []byte) (string, string, error) {
+	message, signature, err := s.db.GetMessageAndSignature(userID, address)
+	if err != nil {
+		fmt.Println("Error getting message and signature")
+		return "", "", err
+	}
+	return message, signature, nil
 }

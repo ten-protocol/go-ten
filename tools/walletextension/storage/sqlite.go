@@ -22,11 +22,15 @@ func NewSqliteDatabase(dbName string) (*SqliteDatabase, error) {
 		return nil, err
 	}
 
+	// todo (@ziga) - should we use binary format also for signature and text
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS viewingkeys (
 		user_id binary(32),
 		account_address binary(20),
 		private_key binary(32),
-		signed_key binary(65)
+		signed_key binary(65),
+    	message	TEXT,
+    	message_signature TEXT,
+    	last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`)
 
 	if err != nil {
@@ -36,8 +40,8 @@ func NewSqliteDatabase(dbName string) (*SqliteDatabase, error) {
 	return &SqliteDatabase{db: db}, nil
 }
 
-func (s *SqliteDatabase) SaveUserVK(userID string, vk *rpc.ViewingKey) error {
-	stmt, err := s.db.Prepare("INSERT INTO viewingkeys (user_id, account_address, private_key, signed_key) VALUES (?, ?, ?, ?)")
+func (s *SqliteDatabase) SaveUserVK(userID string, vk *rpc.ViewingKey, message string) error {
+	stmt, err := s.db.Prepare("INSERT INTO viewingkeys (user_id, account_address, private_key, signed_key, message) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		fmt.Println("Error creating sql statement ", err)
 		return err
@@ -45,7 +49,7 @@ func (s *SqliteDatabase) SaveUserVK(userID string, vk *rpc.ViewingKey) error {
 	defer stmt.Close()
 
 	viewingPrivateKeyBytes := crypto.FromECDSA(vk.PrivateKey.ExportECDSA())
-	_, err = stmt.Exec(userID, vk.Account.Bytes(), viewingPrivateKeyBytes, vk.SignedKey)
+	_, err = stmt.Exec(userID, vk.Account.Bytes(), viewingPrivateKeyBytes, vk.SignedKey, message)
 	if err != nil {
 		fmt.Println("Error inserting failed")
 		return err
@@ -98,4 +102,45 @@ func (s *SqliteDatabase) GetUserVKs(userID string) (map[common.Address]*rpc.View
 	}
 
 	return viewingKeys, nil
+}
+
+func (s *SqliteDatabase) GetMessageAndSignature(userID string, address []byte) (string, string, error) {
+	var message string
+	var messageSignature sql.NullString
+
+	// Execute the SQL statement with the provided parameters
+	row := s.db.QueryRow("SELECT message, message_signature FROM viewingkeys WHERE user_id = ? AND account_address = ?", userID, address)
+	err := row.Scan(&message, &messageSignature)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Handle the case where no rows were found
+			fmt.Println("No rows found for the given userID and address.")
+			return "", "", nil
+		}
+		fmt.Println("Failed to retrieve message and message_signature:", err)
+		return "", "", err
+	}
+
+	if messageSignature.Valid {
+		return message, messageSignature.String, nil
+	}
+	return message, "", nil
+}
+
+func (s *SqliteDatabase) AddSignature(userID string, address []byte, signature string) error {
+	// Execute the SQL statement with the provided parameters
+	result, err := s.db.Exec("UPDATE viewingkeys SET message_signature = ? WHERE user_id = ? AND account_address = ?", signature, userID, address)
+	if err != nil {
+		fmt.Println("Failed to update message_signature:", err)
+		return err
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		fmt.Println("No rows were affected by the update.")
+		// Handle the case where zero rows were affected
+		// Return an appropriate error
+	}
+
+	return nil
 }

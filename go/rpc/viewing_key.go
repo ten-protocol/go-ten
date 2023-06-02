@@ -20,7 +20,8 @@ type ViewingKey struct {
 	Account    *common.Address   // Account address that this private key is bound to
 	PrivateKey *ecies.PrivateKey // private viewing key
 	PublicKey  []byte            // public viewing key in bytes to share with enclave
-	SignedKey  []byte            // public viewing key signed by the Account's private key
+	// todo (@ziga) - remove signed key, because we wont sign key, but following string "Register $UserId for $Acct"
+	SignedKey []byte // public viewing key signed by the Account's private key
 }
 
 // GenerateAndSignViewingKey takes an account wallet, it generate a viewing key and signs the key with the acc's private key

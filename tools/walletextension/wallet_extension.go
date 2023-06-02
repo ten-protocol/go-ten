@@ -139,7 +139,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 
 	defaultAccountManager.AddClient(address, client)
 
-	err = w.Storage.SaveUserVK(common.DefaultUser, vk)
+	err = w.Storage.SaveUserVK(common.DefaultUser, vk, "")
 	if err != nil {
 		return fmt.Errorf("error saving viewing key to the database: %w", err)
 	}

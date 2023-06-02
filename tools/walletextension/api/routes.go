@@ -316,7 +316,7 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 	// save the text+signature against the userID
 	// todo: where should I save the text? In another column in the database?
 	vk.SignedKey = signature
-	err = walletExt.Storage.SaveUserVK(userID, vk)
+	err = walletExt.Storage.SaveUserVK(userID, vk, message)
 	if err != nil {
 		userConn.HandleError("error saving viewing key")
 		return
@@ -335,6 +335,12 @@ func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn use
 		return
 	}
 
+	reqAddress, ok := reqJSONMap[common.JSONKeyAddress]
+	if !ok || reqAddress == "" {
+		userConn.HandleError("message not found in the request")
+		return
+	}
+
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	if err != nil {
 		userConn.HandleError(fmt.Sprintf("could not generate new keypair: %s", err))
@@ -343,7 +349,7 @@ func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn use
 
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
-	accAddress := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
+	accAddress := gethcommon.HexToAddress(reqAddress)
 	// todo (@ziga) remove unsigedVKs and do everything with the database
 	walletExt.UnsignedVKs[accAddress] = &rpc.ViewingKey{
 		Account:    &accAddress,
