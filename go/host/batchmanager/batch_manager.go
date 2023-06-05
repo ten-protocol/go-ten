@@ -53,8 +53,6 @@ func (b *BatchManager) IsParentStored(batch *common.ExtBatch) (bool, *common.Bat
 	return true, nil, nil
 }
 
-type batchResolverFunc = func(gethcommon.Hash) (*common.ExtBatch, error)
-
 // GetBatches retrieves the batches from the host's database matching the batch request.
 func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest, enclaveClient common.Enclave) ([]*common.ExtBatch, error) {
 	// We handle the case where the requester has no batches stored at all.
