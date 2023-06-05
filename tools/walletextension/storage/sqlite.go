@@ -49,7 +49,12 @@ func (s *SqliteDatabase) SaveUserVK(userID string, vk *rpc.ViewingKey, message s
 	defer stmt.Close()
 
 	viewingPrivateKeyBytes := crypto.FromECDSA(vk.PrivateKey.ExportECDSA())
-	_, err = stmt.Exec(userID, vk.Account.Bytes(), viewingPrivateKeyBytes, vk.SignedKey, message)
+	var account []byte
+	if vk.Account != nil {
+		account = vk.Account.Bytes()
+	}
+
+	_, err = stmt.Exec(userID, account, viewingPrivateKeyBytes, vk.SignedKey, message)
 	if err != nil {
 		fmt.Println("Error inserting failed")
 		return err

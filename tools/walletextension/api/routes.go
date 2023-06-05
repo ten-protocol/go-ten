@@ -324,41 +324,39 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 }
 
 func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
-	body, err := userConn.ReadRequest()
+	// todo (@ziga) add protection against DDOS attacks
+	_, err := userConn.ReadRequest()
 	if err != nil {
 		return
 	}
-	var reqJSONMap map[string]string
-	err = json.Unmarshal(body, &reqJSONMap)
-	if err != nil {
-		userConn.HandleError("could not unmarshal /join request")
-		return
-	}
 
-	reqAddress, ok := reqJSONMap[common.JSONKeyAddress]
-	if !ok || reqAddress == "" {
-		userConn.HandleError("message not found in the request")
-		return
-	}
-
+	// generate new key-pair
 	viewingKeyPrivate, err := crypto.GenerateKey()
+	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 	if err != nil {
 		userConn.HandleError(fmt.Sprintf("could not generate new keypair: %s", err))
 		return
 	}
 
+	// create UserID
+	// todo - is hash of public key ok to be user id? (public keys are usually shared with others and others can then get userID?)
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
-	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
-	accAddress := gethcommon.HexToAddress(reqAddress)
-	// todo (@ziga) remove unsigedVKs and do everything with the database
-	walletExt.UnsignedVKs[accAddress] = &rpc.ViewingKey{
-		Account:    &accAddress,
+	userID := crypto.Keccak256Hash(viewingPublicKeyBytes)
+
+	// save UserID and PrivateKey to the database
+	vk := &rpc.ViewingKey{
+		Account:    nil,
 		PrivateKey: viewingPrivateKeyEcies,
 		PublicKey:  viewingPublicKeyBytes,
 		SignedKey:  nil, // we await a signature from the user before we can set up the EncRPCClient
 	}
 
-	userID := crypto.Keccak256Hash(viewingPublicKeyBytes)
+	err = walletExt.Storage.SaveUserVK(userID.Hex(), vk, "")
+	if err != nil {
+		userConn.HandleError(fmt.Sprintf("failed to save user to the database: %s", err))
+		return
+	}
+
 	err = userConn.WriteResponse(userID.Bytes())
 	if err != nil {
 		return
