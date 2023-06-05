@@ -189,10 +189,10 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 		t.Errorf("Node %d: No genesis rollup", nodeIdx)
 	}
 
-	// Check that all the rollups are produced by aggregators.
 	batchNumber := uint64(0)
 	for idx, rollup := range rollups {
-		if rollup.Header.Agg.Hex() != s.Params.Wallets.NodeWallets[0].Address().Hex() {
+		// todo - use the signature
+		if rollup.Header.Coinbase.Hex() != s.Params.Wallets.NodeWallets[0].Address().Hex() {
 			t.Errorf("Node %d: Found rollup produced by non-sequencer %s", nodeIdx, s.Params.Wallets.NodeWallets[0].Address().Hex())
 			continue
 		}

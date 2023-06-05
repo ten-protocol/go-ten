@@ -94,6 +94,7 @@ func (b *Batch) Write() error {
 // Reset resets the batch for reuse.
 func (b *Batch) Reset() {
 	b.writes = b.writes[:0]
+	b.statements = b.statements[:0]
 	b.size = 0
 }
 

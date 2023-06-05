@@ -69,6 +69,7 @@ func createInMemObscuroNode(
 	}
 
 	enclaveConfig := &config.EnclaveConfig{
+		SequencerID:               gethcommon.BigToAddress(big.NewInt(0)),
 		HostID:                    hostConfig.ID,
 		NodeType:                  nodeType,
 		L1ChainID:                 integration.EthereumChainID,
