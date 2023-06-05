@@ -71,6 +71,7 @@ service EnclaveProto {
   // HealthCheck returns the health status of enclave + db
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
 
+  // GetBatch returns the encrypted batch based on a hash
   rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {}
 
   rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}

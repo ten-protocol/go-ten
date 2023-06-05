@@ -118,7 +118,7 @@ func NewHost(
 		mgmtContractLib: mgmtContractLib, // library that provides a handler for Management Contract
 		ethWallet:       ethWallet,       // the host's ethereum wallet
 		logEventManager: events.NewLogEventManager(logger),
-		batchManager:    batchmanager.NewBatchManager(database, config.P2PPublicAddress),
+		batchManager:    batchmanager.NewBatchManager(database, config.P2PPublicAddress, logger),
 
 		logger:         logger,
 		metricRegistry: regMetrics,
@@ -1030,11 +1030,7 @@ func (h *host) handleBatchRequest(encodedBatchRequest *common.EncodedBatchReques
 		return fmt.Errorf("could not decode batch request using RLP. Cause: %w", err)
 	}
 
-	resolver := func(batchHash common.L2BatchHash) (*common.ExtBatch, error) {
-		return h.enclaveClient.GetBatch(batchHash)
-	}
-
-	batches, err := h.batchManager.GetBatches(batchRequest, resolver)
+	batches, err := h.batchManager.GetBatches(batchRequest, h.enclaveClient)
 	if err != nil {
 		return fmt.Errorf("could not retrieve batches based on request. Cause: %w", err)
 	}
