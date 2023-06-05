@@ -357,7 +357,7 @@ func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn use
 		return
 	}
 
-	err = userConn.WriteResponse(userID.Bytes())
+	err = userConn.WriteResponse([]byte(userID.Hex()))
 	if err != nil {
 		return
 	}

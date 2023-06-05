@@ -12,6 +12,7 @@ import (
 )
 
 //go:embed static
+//go:embed static2
 var staticFiles embed.FS
 
 const staticDir = "static"
