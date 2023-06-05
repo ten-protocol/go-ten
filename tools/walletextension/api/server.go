@@ -65,6 +65,12 @@ func createHTTPServer(address string, routes []Route) *http.Server {
 	}
 	serveMux.Handle(common.PathViewingKeys, http.StripPrefix(common.PathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
 
+	noPrefixStaticFiles2, err := fs.Sub(staticFiles, "static2")
+	if err != nil {
+		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
+	}
+	serveMux.Handle(common.PathDemo, http.StripPrefix(common.PathDemo, http.FileServer(http.FS(noPrefixStaticFiles2))))
+
 	// Creates the actual http server with a ReadHeaderTimeout to avoid Potential Slowloris Attack
 	server := &http.Server{Addr: address, Handler: serveMux, ReadHeaderTimeout: common.ReaderHeadTimeout}
 	return server

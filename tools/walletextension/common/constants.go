@@ -30,6 +30,7 @@ const (
 	PathRoot               = "/"
 	PathReady              = "/ready/"
 	PathViewingKeys        = "/viewingkeys/"
+	PathDemo               = "/demo/"
 	PathGenerateViewingKey = "/generateviewingkey/"
 	PathSubmitViewingKey   = "/submitviewingkey/"
 	PathAuthenticate       = "/authenticate/"
