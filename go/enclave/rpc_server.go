@@ -263,9 +263,13 @@ func (s *RPCServer) GetBatch(_ context.Context, request *generated.GetBatchReque
 		return nil, err
 	}
 
-	encodedBatch, err := batch.Encoded()
+	encodedBatch, encodingErr := batch.Encoded()
 	return &generated.GetBatchResponse{
 		Batch: encodedBatch,
+		SystemError: &generated.SystemError{
+			ErrorCode:   2,
+			ErrorString: encodingErr.Error(),
+		},
 	}, err
 }
 
