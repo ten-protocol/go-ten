@@ -53,7 +53,8 @@ func (b *BatchManager) IsParentStored(batch *common.ExtBatch) (bool, *common.Bat
 	return true, nil, nil
 }
 
-// GetBatches retrieves the batches from the host's database matching the batch request.
+// GetBatches retrieves the batches from the host's database matching the batch request. This method fallbacks to asking the enclave
+// for a batch in case the database does not contain one of the parent batches.
 func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest, enclaveClient common.Enclave) ([]*common.ExtBatch, error) {
 	// We handle the case where the requester has no batches stored at all.
 	requesterHeadBatch := batchRequest.CurrentHeadBatch
