@@ -116,7 +116,7 @@ func NewEth2Network(
 	}
 
 	// Write beacon config
-	beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID)
+	beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID, secondsPerSlot, slotsPerEpoch)
 	err = os.WriteFile(prysmConfigPath, []byte(beaconConf), 0o600)
 	if err != nil {
 		panic(err)
