@@ -67,6 +67,8 @@ func runGethNetwork(t *testing.T) *netInfo {
 		1337,
 		1,
 		1,
+		2,
+		2,
 		[]string{workerWallet.Address().String()},
 	)
 
