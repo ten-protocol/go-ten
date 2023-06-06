@@ -3,27 +3,21 @@ package events
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 	"math/big"
 	"sync"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ethereum/go-ethereum/rlp"
-
-	"github.com/ethereum/go-ethereum/eth/filters"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
-
 	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
-
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 const (
@@ -89,12 +83,12 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
 	}
 
-	// check the subscription encryption handler
+	// create viewing key encryption handler for pushing future logs
 	encryptor, err := vkhandler.New(subscription.Account, subscription.PublicViewingKey, subscription.Signature)
 	if err != nil {
 		return fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}
-	subscription.Encryptor = encryptor
+	subscription.VkHandler = encryptor
 
 	s.subscriptionMutex.Lock()
 	// Start from the FromBlock
@@ -148,7 +142,7 @@ func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 			return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
 		}
 
-		encryptedLogs, err := subscription.Encryptor.Encrypt(jsonLogs)
+		encryptedLogs, err := subscription.VkHandler.Encrypt(jsonLogs)
 		if err != nil {
 			return nil, fmt.Errorf("unable to encrypt logs - %w", err)
 		}

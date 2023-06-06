@@ -25,7 +25,7 @@ type LogSubscription struct {
 	Filter *filters.FilterCriteria
 
 	// Handles the viewing key encryption
-	Encryptor *vkhandler.VKHandler
+	VkHandler *vkhandler.VKHandler
 }
 
 // IDAndEncLog pairs an encrypted log with the ID of the subscription that generated it.

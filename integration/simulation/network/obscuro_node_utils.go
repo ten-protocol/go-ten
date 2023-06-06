@@ -3,10 +3,11 @@ package network
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"net"
 	"strings"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
@@ -95,7 +96,7 @@ func createAuthClientsPerWallet(clients []rpc.Client, wallets *params.SimWallets
 func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.AuthObsClient {
 	authClients := make([]*obsclient.AuthObsClient, len(clients))
 	for i, client := range clients {
-		vk, err := viewingkey.GenerateAndSignViewingKey(wal)
+		vk, err := viewingkey.GenerateViewingKeyForWallet(wal)
 		if err != nil {
 			panic(err)
 		}

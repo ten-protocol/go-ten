@@ -3,13 +3,13 @@ package contractdeployer
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"math/big"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -164,7 +164,7 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 
 // Returns a viewing-key client with a registered viewing key.
 func getClient(hostWSPort int, wallet wallet.Wallet) *rpc.EncRPCClient {
-	viewingKey, err := viewingkey.GenerateAndSignViewingKey(wallet)
+	viewingKey, err := viewingkey.GenerateViewingKeyForWallet(wallet)
 	if err != nil {
 		panic(err)
 	}

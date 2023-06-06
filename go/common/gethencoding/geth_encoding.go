@@ -254,6 +254,7 @@ func DecodeParamBytes(paramBytes []byte) ([]interface{}, error) {
 	return paramList, nil
 }
 
+// ExtractViewingKey returns the viewingkey pubkey and the signature from the request
 func ExtractViewingKey(vkBytesIntf interface{}) ([]byte, []byte, error) {
 	vkBytesList, ok := vkBytesIntf.([]interface{})
 	if !ok {

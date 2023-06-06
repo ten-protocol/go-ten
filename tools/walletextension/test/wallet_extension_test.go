@@ -3,11 +3,12 @@ package test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 	"math/big"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/rpc"

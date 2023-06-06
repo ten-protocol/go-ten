@@ -3,12 +3,12 @@ package rpc
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"strings"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (

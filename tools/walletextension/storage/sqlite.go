@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 
 	"github.com/ethereum/go-ethereum/common"

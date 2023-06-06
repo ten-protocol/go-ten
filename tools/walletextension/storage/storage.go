@@ -2,11 +2,12 @@ package storage
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"os"
 	"path/filepath"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+
 	obscurocommon "github.com/obscuronet/go-obscuro/go/common"
 )
 

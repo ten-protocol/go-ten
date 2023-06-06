@@ -7,9 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 	"math/big"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 
 	"github.com/obscuronet/go-obscuro/go/common/compression"
 
@@ -443,7 +444,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(&viewingKeyAddress, paramList[0])
+	vkHandler, err := createVKHandler(&viewingKeyAddress, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -453,15 +454,15 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	}
 	if err = e.checkGas(decryptedTx); err != nil {
 		e.logger.Info("gas check failed", log.ErrKey, err.Error())
-		return responses.AsEncryptedError(err, vkEncryptor), nil
+		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
-		return responses.AsEncryptedError(err, vkEncryptor), nil
+		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	hash := decryptedTx.Hash().Hex()
-	return responses.AsEncryptedResponse(&hash, vkEncryptor), nil
+	return responses.AsEncryptedResponse(&hash, vkHandler), nil
 }
 
 func (e *enclaveImpl) Validator() nodetype.ObsValidator {
@@ -568,7 +569,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(apiArgs.From, paramList[0])
+	vkHandler, err := createVKHandler(apiArgs.From, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -576,7 +577,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 	blkNumber, err := gethencoding.ExtractBlockNumber(paramList[2])
 	if err != nil {
 		err = fmt.Errorf("unable to extract requested block number - %w", err)
-		return responses.AsEncryptedError(err, vkEncryptor), nil
+		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	execResult, err := e.chain.ObsCall(apiArgs, blkNumber)
@@ -593,7 +594,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		if err == nil {
 			err = fmt.Errorf(string(evmErr))
 		}
-		return responses.AsEncryptedError(err, vkEncryptor), nil
+		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	// encrypt the result payload
@@ -602,7 +603,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 		encodedResult = hexutil.Encode(execResult.ReturnData)
 	}
 
-	return responses.AsEncryptedResponse(&encodedResult, vkEncryptor), nil
+	return responses.AsEncryptedResponse(&encodedResult, vkHandler), nil
 }
 
 func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParamsGetTxCount) (*responses.TxCount, common.SystemError) {
@@ -628,7 +629,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	address := gethcommon.HexToAddress(addressStr)
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(&address, paramList[0])
+	vkHandler, err := createVKHandler(&address, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -646,7 +647,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	}
 
 	encoded := hexutil.EncodeUint64(nonce)
-	return responses.AsEncryptedResponse(&encoded, vkEncryptor), nil
+	return responses.AsEncryptedResponse(&encoded, vkHandler), nil
 }
 
 func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTxByHash) (*responses.TxByHash, common.SystemError) {
@@ -687,7 +688,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(&viewingKeyAddress, paramList[0])
+	vkHandler, err := createVKHandler(&viewingKeyAddress, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -697,7 +698,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	signer := types.NewLondonSigner(tx.ChainId())
 	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, gethcommon.Big0, signer)
 
-	return responses.AsEncryptedResponse(rpcTx, vkEncryptor), nil
+	return responses.AsEncryptedResponse(rpcTx, vkHandler), nil
 }
 
 func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.TxReceipt, common.SystemError) {
@@ -738,7 +739,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(&sender, paramList[0])
+	vkHandler, err := createVKHandler(&sender, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -751,7 +752,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 	if !bytes.Equal(r.Hash().Bytes(), txBatchHash.Bytes()) {
 		err = fmt.Errorf("transaction not included in the canonical chain")
-		return responses.AsEncryptedError(err, vkEncryptor), nil
+		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	// We retrieve the transaction receipt.
@@ -762,7 +763,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 			return responses.AsEmptyResponse(), nil
 		}
 		err = fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
-		return responses.AsEncryptedError(err, vkEncryptor), nil
+		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	// We filter out irrelevant logs.
@@ -771,7 +772,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		return nil, responses.ToInternalError(err)
 	}
 
-	return responses.AsEncryptedResponse(txReceipt, vkEncryptor), nil
+	return responses.AsEncryptedResponse(txReceipt, vkHandler), nil
 }
 
 func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemError) {
@@ -896,12 +897,12 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(encryptAddress, paramList[0])
+	vkHandler, err := createVKHandler(encryptAddress, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
 
-	return responses.AsEncryptedResponse(balance, vkEncryptor), nil
+	return responses.AsEncryptedResponse(balance, vkHandler), nil
 }
 
 func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2BatchHash) ([]byte, common.SystemError) {
@@ -989,7 +990,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(callMsg.From, paramList[0])
+	vkHandler, err := createVKHandler(callMsg.From, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -998,7 +999,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	blockNumber, err := gethencoding.ExtractOptionalBlockNumber(paramList, 2)
 	if err != nil {
 		err = fmt.Errorf("unable to extract requested block number - %w", err)
-		return responses.AsEncryptedError(err, vkEncryptor), nil
+		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.GlobalGasCap)
@@ -1015,10 +1016,10 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		if err == nil {
 			err = fmt.Errorf(string(evmErr))
 		}
-		return responses.AsEncryptedError(err, vkEncryptor), nil
+		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
-	return responses.AsEncryptedResponse(&gasEstimate, vkEncryptor), nil
+	return responses.AsEncryptedResponse(&gasEstimate, vkHandler), nil
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) { //nolint
@@ -1043,7 +1044,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(forAddress, paramList[0])
+	vkHandler, err := createVKHandler(forAddress, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -1053,7 +1054,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	// from <=to
 	// todo (@stefan) - return user error
 	if filter.BlockHash != nil && filter.FromBlock != nil {
-		return responses.AsEncryptedError(fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock"), vkEncryptor), nil
+		return responses.AsEncryptedError(fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock"), vkHandler), nil
 	}
 
 	from := filter.FromBlock
@@ -1081,7 +1082,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	}
 
 	if from != nil && to != nil && from.Cmp(to) > 0 {
-		return responses.AsEncryptedError(fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to), vkEncryptor), nil
+		return responses.AsEncryptedError(fmt.Errorf("invalid filter. from (%d) > to (%d)", from, to), vkHandler), nil
 	}
 
 	// We retrieve the relevant logs that match the filter.
@@ -1091,10 +1092,10 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 			return nil, responses.ToInternalError(err)
 		}
 		err = fmt.Errorf("could not retrieve logs matching the filter. Cause: %w", err)
-		return responses.AsEncryptedError(err, vkEncryptor), nil
+		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
-	return responses.AsEncryptedResponse(&filteredLogs, vkEncryptor), nil
+	return responses.AsEncryptedResponse(&filteredLogs, vkHandler), nil
 }
 
 // DoEstimateGas returns the estimation of minimum gas required to execute transaction
@@ -1647,7 +1648,7 @@ func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProduc
 	return nil
 }
 
-func createVKEncryptor(address *gethcommon.Address, vkIntf interface{}) (*vkhandler.VKHandler, error) {
+func createVKHandler(address *gethcommon.Address, vkIntf interface{}) (*vkhandler.VKHandler, error) {
 	vkPubKeyHexBytes, accountSignatureHexBytes, err := gethencoding.ExtractViewingKey(vkIntf)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode viewing key - %w", err)

@@ -3,11 +3,12 @@ package networkmanager
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"math/big"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -96,7 +97,7 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string, 
 	clients := make(map[string][]*obsclient.AuthObsClient)
 
 	for _, w := range wallets.SimObsWallets {
-		vk, err := viewingkey.GenerateAndSignViewingKey(w)
+		vk, err := viewingkey.GenerateViewingKeyForWallet(w)
 		if err != nil {
 			panic(err)
 		}
@@ -110,7 +111,7 @@ func createWalletRPCClients(wallets *params.SimWallets, obscuroNodeAddr string, 
 	}
 	for _, t := range wallets.Tokens {
 		w := t.L2Owner
-		vk, err := viewingkey.GenerateAndSignViewingKey(w)
+		vk, err := viewingkey.GenerateViewingKeyForWallet(w)
 		if err != nil {
 			panic(err)
 		}

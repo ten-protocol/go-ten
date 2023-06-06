@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"math/big"
 	"os"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -153,7 +153,7 @@ func TestL2IssueContractInteractWaitReceipt(t *testing.T) {
 
 	ctx := context.Background()
 
-	vk, err := viewingkey.GenerateAndSignViewingKey(l2Wallet)
+	vk, err := viewingkey.GenerateViewingKeyForWallet(l2Wallet)
 	assert.Nil(t, err)
 	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s:%d", l2Host, l2Port), vk, gethlog.New())
 	assert.Nil(t, err)
@@ -329,7 +329,7 @@ func TestL2IssueTxWaitReceipt(t *testing.T) {
 
 	ctx := context.Background()
 
-	vk, err := viewingkey.GenerateAndSignViewingKey(l2Wallet)
+	vk, err := viewingkey.GenerateViewingKeyForWallet(l2Wallet)
 	assert.Nil(t, err)
 	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s:%d", l2Host, l2Port), vk, gethlog.New())
 	assert.Nil(t, err)

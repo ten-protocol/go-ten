@@ -4,18 +4,13 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"math/big"
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-	"github.com/obscuronet/go-obscuro/go/responses"
-
-	"github.com/ethereum/go-ethereum/core/state"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -23,9 +18,12 @@ import (
 	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/obscuronet/go-obscuro/go/responses"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
@@ -78,7 +76,7 @@ func TestGasEstimation(t *testing.T) {
 		w := datagenerator.RandomWallet(integration.ObscuroChainID)
 
 		// create a VK
-		vk, err := viewingkey.GenerateAndSignViewingKey(w)
+		vk, err := viewingkey.GenerateViewingKeyForWallet(w)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -100,10 +98,11 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 	}
 
 	// create the request payload
-	req := []interface{}{[]interface{}{
-		hexutil.Encode(vk.PublicKey),
-		hexutil.Encode(vk.SignedKey),
-	},
+	req := []interface{}{
+		[]interface{}{
+			hexutil.Encode(vk.PublicKey),
+			hexutil.Encode(vk.SignedKey),
+		},
 		obsclient.ToCallArg(*callMsg),
 		nil,
 	}
@@ -289,7 +288,7 @@ func TestGetBalance(t *testing.T) {
 		}
 
 		// create a VK
-		vk, err := viewingkey.GenerateAndSignViewingKey(w)
+		vk, err := viewingkey.GenerateViewingKeyForWallet(w)
 		if err != nil {
 			t.Fatal(err)
 		}

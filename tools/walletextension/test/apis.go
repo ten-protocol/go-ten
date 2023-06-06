@@ -5,20 +5,20 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rlp"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 	"github.com/obscuronet/go-obscuro/go/responses"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (

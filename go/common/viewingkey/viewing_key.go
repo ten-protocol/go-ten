@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -28,8 +29,9 @@ type ViewingKey struct {
 	SignedKey  []byte              // User Public Key signed by the Users private key - Matches the Account address
 }
 
-// GenerateAndSignViewingKey takes an account wallet, it generates a viewing key and signs the key with the acc's private key
-func GenerateAndSignViewingKey(wal wallet.Wallet) (*ViewingKey, error) {
+// GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
+// uses the same method of signature handling as Metamask/geth
+func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
 	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
 	vk, err := crypto.GenerateKey()
 	if err != nil {
@@ -42,8 +44,8 @@ func GenerateAndSignViewingKey(wal wallet.Wallet) (*ViewingKey, error) {
 	// encode public key as bytes
 	viewingPubKeyBytes := crypto.CompressPubkey(&vk.PublicKey)
 
-	// sign hex-encoded public key string with the wallet's private key
-	signature, err := signViewingKey(viewingPubKeyBytes, wal.PrivateKey())
+	// sign public key bytes with the wallet's private key
+	signature, err := mmSignViewingKey(viewingPubKeyBytes, wal.PrivateKey())
 	if err != nil {
 		return nil, err
 	}
@@ -57,11 +59,10 @@ func GenerateAndSignViewingKey(wal wallet.Wallet) (*ViewingKey, error) {
 	}, nil
 }
 
-// signViewingKey takes a public key bytes as hex and the private key for a wallet, it simulates the back-and-forth to
+// mmSignViewingKey takes a public key bytes as hex and the private key for a wallet, it simulates the back-and-forth to
 // MetaMask and returns the signature bytes to register with the enclave
-func signViewingKey(viewingPubKeyBytes []byte, signerKey *ecdsa.PrivateKey) ([]byte, error) {
-	msgToSign := GenerateSignMessage(viewingPubKeyBytes)
-	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), signerKey)
+func mmSignViewingKey(viewingPubKeyBytes []byte, signerKey *ecdsa.PrivateKey) ([]byte, error) {
+	signature, err := Sign(signerKey, viewingPubKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign viewing key: %w", err)
 	}
