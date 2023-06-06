@@ -330,7 +330,11 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 	if len(userPrivateKey) == 0 {
 		fmt.Println("Received private key with length 0")
 	}
-	// todo (@ziga) - store all the fields in the database!
+	// store all the fields in the database
+	err = walletExt.Storage.StoreAuthenticatedDataForUser(userID, userPrivateKey, addressFromSignature.Bytes(), message, string(signature))
+	if err != nil {
+		fmt.Println("Unable to store data for user: ", userID)
+	}
 }
 
 func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
