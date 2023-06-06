@@ -83,3 +83,21 @@ func (s *Storage) GetMessageAndSignature(userID string, address []byte) (string,
 	}
 	return message, signature, nil
 }
+
+func (s *Storage) StoreAuthenticatedDataForUser(userID string, privateKey []byte, accountAddress []byte, message string, messageSignature string) error {
+	err := s.db.StoreAuthenticatedDataForUser(userID, privateKey, accountAddress, message, messageSignature)
+	if err != nil {
+		fmt.Println("Error in StoreAuthenticatedDataForUser")
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) GetDataForUserAndAddress(userID string, accountAddress []byte) ([]byte, string, string, error) {
+	privKey, message, messageSignature, err := s.db.GetDataForUserAndAddress(userID, accountAddress)
+	if err != nil {
+		fmt.Println("Error in GetDataForUserAndAddress")
+		return nil, "", "", err
+	}
+	return privKey, message, messageSignature, nil
+}

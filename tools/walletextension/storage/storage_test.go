@@ -255,3 +255,51 @@ func TestGetUnauthenticatedUserPrivateKey(t *testing.T) {
 		t.Errorf("Stored viewing key is not the same as original")
 	}
 }
+
+func TestStoreAuthenticatedDataForUserAndGetViewingKey(t *testing.T) {
+	const userID = "user"
+	wallet1 := wallet.NewInMemoryWalletFromConfig(
+		"4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8",
+		777,
+		gethlog.New())
+	vk, _ := rpc.GenerateAndSignViewingKey(wallet1)
+	accountAddress := vk.Account.Bytes()
+	vk.Account = nil
+	myStorage, err := New("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// save viewing key (private key) - simulate call to /join endpoint
+	err = myStorage.SaveUserVK(userID, vk, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// store data for that user
+	myMessage := "mymessage"
+	mySignature := "mysignature"
+	privateKeyBytes := crypto.FromECDSA(vk.PrivateKey.ExportECDSA())
+	err = myStorage.StoreAuthenticatedDataForUser(userID, privateKeyBytes, accountAddress, myMessage, mySignature)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// get the data back from the database
+	storedPrivKey, storedMessage, storedSignedMessage, err := myStorage.GetDataForUserAndAddress(userID, accountAddress)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(storedPrivKey, privateKeyBytes) {
+		t.Fatal("stored private key not the same as original")
+	}
+
+	if storedMessage != myMessage {
+		t.Fatal("stored message not the same as original")
+	}
+
+	if storedSignedMessage != mySignature {
+		t.Fatal("store signedMessage not the same as original")
+	}
+}

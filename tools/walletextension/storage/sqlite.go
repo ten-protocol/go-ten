@@ -178,3 +178,45 @@ func (s *SqliteDatabase) AddSignature(userID string, address []byte, signature s
 
 	return nil
 }
+
+func (s *SqliteDatabase) StoreAuthenticatedDataForUser(userID string, privateKey []byte, accountAddress []byte, message string, messageSignature string) error {
+	// Execute the SQL statement with the provided parameters
+	result, err := s.db.Exec(`UPDATE viewingkeys 
+							  SET account_address = ?, 
+							  	  message = ?, 
+							  	  message_signature = ?, 
+							  	  last_update = CURRENT_TIMESTAMP
+							  WHERE user_id = ? 
+							  AND private_key = ?`,
+		accountAddress, message, messageSignature, userID, privateKey)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("no rows were updated")
+	}
+
+	return nil
+}
+
+func (s *SqliteDatabase) GetDataForUserAndAddress(userID string, accountAddress []byte) ([]byte, string, string, error) {
+	row := s.db.QueryRow(`SELECT private_key, message, message_signature 
+						  FROM viewingkeys 
+						  WHERE user_id = ? AND account_address = ?`,
+		userID, accountAddress)
+	var tmpPrivKey []byte
+	var tmpMessage string
+	var tmpMessageSig string
+	err := row.Scan(&tmpPrivKey, &tmpMessage, &tmpMessageSig)
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	return tmpPrivKey, tmpMessage, tmpMessageSig, nil
+}
