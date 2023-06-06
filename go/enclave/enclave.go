@@ -431,7 +431,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(viewingKeyAddress, paramList[0])
+	vkEncryptor, err := createVKEncryptor(&viewingKeyAddress, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -556,7 +556,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(*apiArgs.From, paramList[0])
+	vkEncryptor, err := createVKEncryptor(apiArgs.From, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -616,7 +616,7 @@ func (e *enclaveImpl) GetTransactionCount(encryptedParams common.EncryptedParams
 	address := gethcommon.HexToAddress(addressStr)
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(address, paramList[0])
+	vkEncryptor, err := createVKEncryptor(&address, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -675,7 +675,7 @@ func (e *enclaveImpl) GetTransaction(encryptedParams common.EncryptedParamsGetTx
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(viewingKeyAddress, paramList[0])
+	vkEncryptor, err := createVKEncryptor(&viewingKeyAddress, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -726,7 +726,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(sender, paramList[0])
+	vkEncryptor, err := createVKEncryptor(&sender, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -884,7 +884,7 @@ func (e *enclaveImpl) GetBalance(encryptedParams common.EncryptedParamsGetBalanc
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(*encryptAddress, paramList[0])
+	vkEncryptor, err := createVKEncryptor(encryptAddress, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -977,7 +977,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(*callMsg.From, paramList[0])
+	vkEncryptor, err := createVKEncryptor(callMsg.From, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -1031,7 +1031,7 @@ func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*r
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkEncryptor, err := createVKEncryptor(*forAddress, paramList[0])
+	vkEncryptor, err := createVKEncryptor(forAddress, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
@@ -1636,13 +1636,13 @@ func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProduc
 	return nil
 }
 
-func createVKEncryptor(address gethcommon.Address, vkIntf interface{}) (*vkhandler.VKHandler, error) {
-	pubVK, signature, err := gethencoding.ExtractViewingKey(vkIntf)
+func createVKEncryptor(address *gethcommon.Address, vkIntf interface{}) (*vkhandler.VKHandler, error) {
+	vkPubKeyHexBytes, accountSignatureHexBytes, err := gethencoding.ExtractViewingKey(vkIntf)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode viewing key - %w", err)
 	}
 
-	encryptor, err := vkhandler.New(address, pubVK, signature)
+	encryptor, err := vkhandler.New(address, vkPubKeyHexBytes, accountSignatureHexBytes)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}

@@ -3,9 +3,10 @@ package test
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"io"
 	"net/http"
 	"os"
@@ -22,10 +23,10 @@ import (
 	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/container"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	enclaverpc "github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
@@ -156,17 +157,35 @@ func prepareRequestBody(method string, params interface{}) []byte {
 }
 
 // Generates a new account and registers it with the node.
-func registerPrivateKey(t *testing.T, walletHTTPPort, walletWSPort int, useWS bool) (*gethcommon.Address, []byte, []byte) {
+func simulateViewingKeyRegister(t *testing.T, walletHTTPPort, walletWSPort int, useWS bool) (*gethcommon.Address, []byte, []byte) {
 	accountPrivateKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	accountAddr := crypto.PubkeyToAddress(accountPrivateKey.PublicKey)
 
-	viewingKeyBytes := generateViewingKey(walletHTTPPort, walletWSPort, accountAddr.String(), useWS)
-	signature := signViewingKey(accountPrivateKey, viewingKeyBytes)
+	compressedHexVKBytes := generateViewingKey(walletHTTPPort, walletWSPort, accountAddr.String(), useWS)
+	mmSignature := signViewingKey(accountPrivateKey, compressedHexVKBytes)
+	submitViewingKey(accountAddr.String(), walletHTTPPort, walletWSPort, mmSignature, useWS)
 
-	return &accountAddr, viewingKeyBytes, signature
+	// transform the metamask signature to the geth compatible one
+	sigStr := hex.EncodeToString(mmSignature)
+	// and then we extract the signature bytes in the same way as the wallet extension
+	outputSig, err := hex.DecodeString(sigStr[2:])
+	if err != nil {
+		panic(fmt.Errorf("failed to decode signature string: %w", err))
+	}
+	// This same change is made in geth internals, for legacy reasons to be able to recover the address:
+	//	https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	outputSig[64] -= 27
+
+	// keys are expected to be a []byte of hex string
+	vkPubKeyBytes, err := hex.DecodeString(string(compressedHexVKBytes))
+	if err != nil {
+		panic(fmt.Errorf("unexpected hex string"))
+	}
+
+	return &accountAddr, vkPubKeyBytes, outputSig
 }
 
 // Generates a viewing key.
@@ -185,9 +204,15 @@ func generateViewingKey(wallHTTPPort, wallWSPort int, accountAddress string, use
 	return makeRequestHTTP(fmt.Sprintf("http://%s:%d%s", common.Localhost, wallHTTPPort, common.PathGenerateViewingKey), generateViewingKeyBodyBytes)
 }
 
-// Signs a viewing key.
-func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
-	msgToSign := enclaverpc.ViewingKeySignedMsgPrefix + string(viewingKey)
+// Signs a viewing key like metamask
+func signViewingKey(privateKey *ecdsa.PrivateKey, compressedHexVKBytes []byte) []byte {
+	// compressedHexVKBytes already has the key in the hex format
+	// it should be decoded back into raw bytes
+	viewingKey, err := hex.DecodeString(string(compressedHexVKBytes))
+	if err != nil {
+		panic(err)
+	}
+	msgToSign := viewingkey.GenerateSignMessage(viewingKey)
 	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), privateKey)
 	if err != nil {
 		panic(err)
@@ -198,6 +223,23 @@ func signViewingKey(privateKey *ecdsa.PrivateKey, viewingKey []byte) []byte {
 	signatureWithLeadBytes := append([]byte("0"), signature...)
 
 	return signatureWithLeadBytes
+}
+
+// Submits a viewing key.
+func submitViewingKey(accountAddr string, wallHTTPPort, wallWSPort int, signature []byte, useWS bool) {
+	submitViewingKeyBodyBytes, err := json.Marshal(map[string]interface{}{
+		common.JSONKeySignature: hex.EncodeToString(signature),
+		common.JSONKeyAddress:   accountAddr,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if useWS {
+		makeRequestWS(fmt.Sprintf("ws://%s:%d%s", common.Localhost, wallWSPort, common.PathSubmitViewingKey), submitViewingKeyBodyBytes)
+	} else {
+		makeRequestHTTP(fmt.Sprintf("http://%s:%d%s", common.Localhost, wallHTTPPort, common.PathSubmitViewingKey), submitViewingKeyBodyBytes)
+	}
 }
 
 // Sends the body to the URL over HTTP, and returns the result.

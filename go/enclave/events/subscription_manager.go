@@ -3,6 +3,7 @@ package events
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 	"math/big"
 	"sync"
 
@@ -83,10 +84,17 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
 	}
 
-	var subscription *common.LogSubscription
+	subscription := &common.LogSubscription{}
 	if err = rlp.DecodeBytes(encodedSubscription, subscription); err != nil {
 		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
 	}
+
+	// check the subscription encryption handler
+	encryptor, err := vkhandler.New(subscription.Account, subscription.PublicViewingKey, subscription.Signature)
+	if err != nil {
+		return fmt.Errorf("unable to create vk encryption for request - %w", err)
+	}
+	subscription.Encryptor = encryptor
 
 	s.subscriptionMutex.Lock()
 	// Start from the FromBlock
@@ -140,9 +148,9 @@ func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 			return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
 		}
 
-		encryptedLogs, err := s.rpcEncryptionManager.EncryptWithViewingKey(*subscription.Account, jsonLogs)
+		encryptedLogs, err := subscription.Encryptor.Encrypt(jsonLogs)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to encrypt logs - %w", err)
 		}
 
 		encryptedLogsByID[subID] = encryptedLogs

@@ -5,6 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 )
 
 // LogSubscription is an authenticated subscription to logs.
@@ -15,13 +16,16 @@ type LogSubscription struct {
 	// A signature over the account address using a private viewing key. Prevents attackers from subscribing to
 	// (encrypted) logs for other accounts to see the pattern of logs.
 	// todo - this does not protect against replay attacks, where someone resends an intercepted subscription request.
-	Signature *[]byte
+	Signature []byte
 
 	// PublicViewingKey stores the viewing key used for this subscription
 	PublicViewingKey []byte
 
 	// A subscriber-defined filter to apply to the stream of logs.
 	Filter *filters.FilterCriteria
+
+	// Handles the viewing key encryption
+	Encryptor *vkhandler.VKHandler
 }
 
 // IDAndEncLog pairs an encrypted log with the ID of the subscription that generated it.

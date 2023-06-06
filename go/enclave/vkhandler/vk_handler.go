@@ -2,14 +2,17 @@ package vkhandler
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"fmt"
-
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+)
+
+var (
+	ErrInvalidAddressSignature = fmt.Errorf("invalid viewing key signature for requested address")
 )
 
 // ViewingKeySignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
@@ -40,23 +43,24 @@ func (m *VKHandler) Encrypt(bytes []byte) ([]byte, error) {
 	return encryptedBytes, nil
 }
 
-func New(targetAddress gethcommon.Address, pubVK []byte, userSignature []byte) (*VKHandler, error) {
+// New creates a new viewing key handler
+func New(targetAddress *gethcommon.Address, vkPubKeyBytes, accountSignatureHexBytes []byte) (*VKHandler, error) {
 	// Recalculate the message signed by MetaMask.
-	msgToSign := ViewingKeySignedMsgPrefix + hex.EncodeToString(pubVK)
+	msgToSign := viewingkey.GenerateSignMessage(vkPubKeyBytes)
 
 	// We recover the key based on the signed message and the signature.
-	recoveredAccountPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), userSignature)
+	recoveredAccountPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), accountSignatureHexBytes)
 	if err != nil {
 		return nil, fmt.Errorf("viewing key but could not validate its signature - %w", err)
 	}
 	recoveredAccountAddress := crypto.PubkeyToAddress(*recoveredAccountPublicKey)
 
 	if targetAddress.Hash() != recoveredAccountAddress.Hash() {
-		return nil, fmt.Errorf("viewing key does not match the target address")
+		return nil, ErrInvalidAddressSignature
 	}
 
 	// We decompress the viewing key and create the corresponding ECIES key.
-	viewingKey, err := crypto.DecompressPubkey(pubVK)
+	viewingKey, err := crypto.DecompressPubkey(vkPubKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("could not decompress viewing key bytes - %w", err)
 	}

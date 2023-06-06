@@ -265,15 +265,15 @@ func ExtractViewingKey(vkBytesIntf interface{}) ([]byte, []byte, error) {
 		return nil, nil, fmt.Errorf("wrong size of viewing key params")
 	}
 
-	dataVal, err := hexutil.Decode(vkBytesList[0].(string))
+	vkPubkeyHexBytes, err := hexutil.Decode(vkBytesList[0].(string))
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not decode data in vk pub key - %w", err)
 	}
 
-	dataVal2, err := hexutil.Decode(vkBytesList[1].(string))
+	accountSignatureHexBytes, err := hexutil.Decode(vkBytesList[1].(string))
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not decode data in vk signature - %w", err)
 	}
 
-	return dataVal, dataVal2, nil
+	return vkPubkeyHexBytes, accountSignatureHexBytes, nil
 }

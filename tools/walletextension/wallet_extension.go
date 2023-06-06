@@ -4,12 +4,12 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
@@ -102,41 +102,41 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 		SignedKey:  nil, // we await a signature from the user before we can set up the EncRPCClient
 	}
 
-	// We return the hex of the viewing key's public key for MetaMask to sign over.
+	// compress the viewing key and convert it to hex string ( this is what Metamask signs)
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	return hex.EncodeToString(viewingKeyBytes), nil
 }
 
-//// SubmitViewingKey checks a signed vieweing key and forwards it to the enclave
-//func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature []byte) error {
-//	vk, found := w.unsignedVKs[address]
-//	if !found {
-//		return fmt.Errorf(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", address, common.PathGenerateViewingKey))
-//	}
-//
-//	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-//	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-//	signature[64] -= 27
-//
-//	vk.SignedKey = signature
-//	// create an encrypted RPC client with the signed VK and register it with the enclave
-//	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
-//	client, err := rpc.NewEncNetworkClient(w.hostAddr, vk, w.logger)
-//	if err != nil {
-//		return fmt.Errorf("failed to create encrypted RPC client for account %s - %w", address, err)
-//	}
-//	w.accountManager.AddClient(address, client)
-//
-//	err = w.storage.SaveUserVK(common.DefaultUser, vk)
-//	if err != nil {
-//		return fmt.Errorf("error saving viewing key to the database: %w", err)
-//	}
-//
-//	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
-//	delete(w.unsignedVKs, address)
-//
-//	return nil
-//}
+// SubmitViewingKey checks the signed viewing key and stores it
+func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature []byte) error {
+	vk, found := w.unsignedVKs[address]
+	if !found {
+		return fmt.Errorf(fmt.Sprintf("no viewing key found to sign for acc=%s, please call %s to generate key before sending signature", address, common.PathGenerateViewingKey))
+	}
+
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	signature[64] -= 27
+
+	vk.SignedKey = signature
+	// create an encrypted RPC client with the signed VK and register it with the enclave
+	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
+	client, err := rpc.NewEncNetworkClient(w.hostAddr, vk, w.logger)
+	if err != nil {
+		return fmt.Errorf("failed to create encrypted RPC client for account %s - %w", address, err)
+	}
+	w.accountManager.AddClient(address, client)
+
+	err = w.storage.SaveUserVK(common.DefaultUser, vk)
+	if err != nil {
+		return fmt.Errorf("error saving viewing key to the database: %w", err)
+	}
+
+	// finally we remove the VK from the pending 'unsigned VKs' map now the client has been created
+	delete(w.unsignedVKs, address)
+
+	return nil
+}
 
 func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
 	if resultMap, ok := rpcResp.(map[string]interface{}); ok {

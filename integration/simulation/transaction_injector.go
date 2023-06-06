@@ -237,7 +237,7 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 			fromWallet = fromWalletPoc
 		}
 		toWallet := ti.rndObsWallet()
-		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(toWallet)
+		obscuroClient := ti.rpcHandles.ObscuroWalletRndClient(fromWallet)
 		v := testcommon.RndBtw(500, 2000)
 		tx := ti.newObscuroTransferTx(fromWallet, toWallet.Address(), v)
 		tx = obscuroClient.EstimateGasAndGasPrice(tx)

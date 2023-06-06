@@ -50,7 +50,7 @@ type EncRPCClient struct {
 	logger           gethlog.Logger
 }
 
-// NewEncRPCClient sets up a client with a viewing key for encrypted communication (this submits the VK to the enclave)
+// NewEncRPCClient sets up a client with a viewing key for encrypted communication
 func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
 	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
 	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
@@ -176,14 +176,9 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 }
 
 func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
-	accountSignature, err := crypto.Sign(c.Account().Hash().Bytes(), c.viewingKey.PrivateKey.ExportECDSA())
-	if err != nil {
-		return nil, fmt.Errorf("could not sign account address to authenticate subscription. Cause: %w", err)
-	}
-
 	logSubscription := &common.LogSubscription{
 		Account:          c.Account(),
-		Signature:        &accountSignature,
+		Signature:        c.viewingKey.SignedKey,
 		PublicViewingKey: c.viewingKey.PublicKey,
 	}
 
