@@ -335,6 +335,11 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 	if err != nil {
 		fmt.Println("Unable to store data for user: ", userID)
 	}
+
+	err = userConn.WriteResponse([]byte("success!"))
+	if err != nil {
+		return
+	}
 }
 
 func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {

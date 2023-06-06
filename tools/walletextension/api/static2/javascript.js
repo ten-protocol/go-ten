@@ -104,9 +104,6 @@ const initialize = () => {
         }
 
         const authenticateUserURL = pathAuthenticate+"?u="+userID
-        console.log("UserID: ", userID)
-        console.log("signature: ", signature)
-        console.log("message: ", textToSign)
         const authenticateFields = {"signature": signature, "message": textToSign}
         const authenticateResp = await fetch(
             authenticateUserURL, {
@@ -115,8 +112,8 @@ const initialize = () => {
                 body: JSON.stringify(authenticateFields)
             }
         );
-
-        console.log(authenticateResp)
+        let authenticateStatus = await authenticateResp.text();
+        statusArea.innerText += "\n Authentication status: " + authenticateStatus
     });
 
 }
