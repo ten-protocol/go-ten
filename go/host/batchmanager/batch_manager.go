@@ -102,12 +102,13 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest, enclaveClie
 		batchesToSend = append(batchesToSend, currentBatch)
 		hashToLookFor := currentBatch.Header.ParentHash
 		currentBatch, err = b.db.GetBatch(hashToLookFor)
-		if err != nil {
+		if err != nil && errors.Is(err, errutil.ErrNotFound) {
 			currentBatch, err = enclaveClient.GetBatch(hashToLookFor)
-			if err != nil {
-				b.logger.Warn("Failed resolving a batch that should exist.", log.ErrKey, err)
-				return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
-			}
+		}
+
+		if err != nil {
+			b.logger.Warn("Failed resolving a batch that should exist.", log.ErrKey, err)
+			return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 		}
 	}
 	batchesToSend = append(batchesToSend, firstBatch)

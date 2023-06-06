@@ -92,6 +92,7 @@ message GetBatchRequest {
 
 message GetBatchResponse {
   bytes batch = 1;
+  SystemError systemError = 2;
 }
 
 message StreamL2UpdatesRequest {
