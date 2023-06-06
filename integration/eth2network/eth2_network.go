@@ -73,6 +73,8 @@ func NewEth2Network(
 	chainID int,
 	numNodes int,
 	blockTimeSecs int,
+	slotsPerEpoch int,
+	secondsPerSlot int,
 	preFundedAddrs []string,
 ) Eth2Network {
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide

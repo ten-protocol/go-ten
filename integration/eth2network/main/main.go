@@ -33,6 +33,8 @@ func main() {
 		config.chainID,
 		config.numNodes,
 		config.blockTimeSecs,
+		config.slotsPerEpoch,
+		config.secondsPerSlot,
 		config.prefundedAddrs,
 	)
 
