@@ -173,8 +173,8 @@ func (d *DockerNode) startEnclave() error {
 		"-logPath", "sys_out",
 		"-logLevel", fmt.Sprintf("%d", log.LvlInfo),
 		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
-		"-maxBatchSize=117760",
-		"-maxRollupSize=126976",
+		"-maxBatchSize=25600",
+		"-maxRollupSize=65536",
 	)
 
 	if d.cfg.sgxEnabled {

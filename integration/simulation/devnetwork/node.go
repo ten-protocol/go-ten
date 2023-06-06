@@ -164,8 +164,8 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		MessageBusAddress:         *n.l1Data.MessageBusAddr,
 		SqliteDBPath:              n.enclaveDBFilepath,
 		DebugNamespaceEnabled:     true,
-		MaxBatchSize:              115 * 1024,
-		MaxRollupSize:             124 * 1024,
+		MaxBatchSize:              1024 * 25,
+		MaxRollupSize:             1024 * 64,
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }
