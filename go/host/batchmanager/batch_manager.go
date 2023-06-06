@@ -6,8 +6,10 @@ import (
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/host/db"
 )
 
@@ -20,12 +22,14 @@ const (
 type BatchManager struct {
 	db               *db.DB
 	p2pPublicAddress string
+	logger           gethlog.Logger
 }
 
-func NewBatchManager(db *db.DB, p2pPublicAddress string) *BatchManager {
+func NewBatchManager(db *db.DB, p2pPublicAddress string, logger gethlog.Logger) *BatchManager {
 	return &BatchManager{
 		db:               db,
 		p2pPublicAddress: p2pPublicAddress,
+		logger:           logger,
 	}
 }
 
@@ -49,8 +53,9 @@ func (b *BatchManager) IsParentStored(batch *common.ExtBatch) (bool, *common.Bat
 	return true, nil, nil
 }
 
-// GetBatches retrieves the batches from the host's database matching the batch request.
-func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.ExtBatch, error) {
+// GetBatches retrieves the batches from the host's database matching the batch request. This method fallbacks to asking the enclave
+// for a batch in case the database does not contain one of the parent batches.
+func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest, enclaveClient common.Enclave) ([]*common.ExtBatch, error) {
 	// We handle the case where the requester has no batches stored at all.
 	requesterHeadBatch := batchRequest.CurrentHeadBatch
 	if (*batchRequest.CurrentHeadBatch == gethcommon.Hash{}) {
@@ -96,8 +101,14 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest) ([]*common.
 			break
 		}
 		batchesToSend = append(batchesToSend, currentBatch)
-		currentBatch, err = b.db.GetBatch(currentBatch.Header.ParentHash)
+		hashToLookFor := currentBatch.Header.ParentHash
+		currentBatch, err = b.db.GetBatch(hashToLookFor)
+		if err != nil && errors.Is(err, errutil.ErrNotFound) {
+			currentBatch, err = enclaveClient.GetBatch(hashToLookFor)
+		}
+
 		if err != nil {
+			b.logger.Warn("Failed resolving a batch that should exist.", log.ErrKey, err)
 			return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 		}
 	}
