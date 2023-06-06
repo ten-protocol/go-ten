@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 )
 
-// EncryptionManager manages the decryption and encryption of sensitive RPC requests.
+// EncryptionManager manages the decryption and encryption of enclave comms.
 type EncryptionManager struct {
 	enclavePrivateKeyECIES *ecies.PrivateKey
 }

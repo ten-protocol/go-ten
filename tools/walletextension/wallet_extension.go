@@ -99,7 +99,7 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 		Account:    &addr,
 		PrivateKey: viewingPrivateKeyEcies,
 		PublicKey:  viewingPublicKeyBytes,
-		SignedKey:  nil, // we await a signature from the user before we can set up the EncRPCClient
+		Signature:  nil, // we await a signature from the user before we can set up the EncRPCClient
 	}
 
 	// compress the viewing key and convert it to hex string ( this is what Metamask signs)
@@ -118,7 +118,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	signature[64] -= 27
 
-	vk.SignedKey = signature
+	vk.Signature = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
 	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
 	client, err := rpc.NewEncNetworkClient(w.hostAddr, vk, w.logger)

@@ -91,9 +91,9 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	subscription.VkHandler = encryptor
 
 	s.subscriptionMutex.Lock()
+	defer s.subscriptionMutex.Unlock()
 	// Start from the FromBlock
 	s.lastHead[id] = subscription.Filter.FromBlock
-	defer s.subscriptionMutex.Unlock()
 	s.subscriptions[id] = subscription
 	return nil
 }

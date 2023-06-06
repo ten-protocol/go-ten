@@ -52,6 +52,7 @@ func New(requestedAddr *gethcommon.Address, vkPubKeyBytes, accountSignatureHexBy
 	}, nil
 }
 
+// Encrypt returns the payload encrypted with the viewingKey
 func (m *VKHandler) Encrypt(bytes []byte) ([]byte, error) {
 	if len(bytes) == 0 {
 		bytes = placeholderResult

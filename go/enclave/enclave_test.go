@@ -101,7 +101,7 @@ func gasEstimateSuccess(t *testing.T, w wallet.Wallet, enclave common.Enclave, v
 	req := []interface{}{
 		[]interface{}{
 			hexutil.Encode(vk.PublicKey),
-			hexutil.Encode(vk.SignedKey),
+			hexutil.Encode(vk.Signature),
 		},
 		obsclient.ToCallArg(*callMsg),
 		nil,
@@ -153,7 +153,7 @@ func gasEstimateNoCallMsgFrom(t *testing.T, _ wallet.Wallet, enclave common.Encl
 	req := []interface{}{
 		[]interface{}{
 			hexutil.Encode(vk.PublicKey),
-			hexutil.Encode(vk.SignedKey),
+			hexutil.Encode(vk.Signature),
 		},
 		obsclient.ToCallArg(*callMsg),
 		nil,
@@ -208,7 +208,7 @@ func gasEstimateInvalidNumParams(t *testing.T, _ wallet.Wallet, enclave common.E
 	req := []interface{}{
 		[]interface{}{
 			hexutil.Encode(vk.PublicKey),
-			hexutil.Encode(vk.SignedKey),
+			hexutil.Encode(vk.Signature),
 		},
 	}
 	reqBytes, err := json.Marshal(req)
@@ -238,7 +238,7 @@ func gasEstimateInvalidParamParsing(t *testing.T, w wallet.Wallet, enclave commo
 	req := []interface{}{
 		[]interface{}{
 			hexutil.Encode(vk.PublicKey),
-			hexutil.Encode(vk.SignedKey),
+			hexutil.Encode(vk.Signature),
 		},
 		callMsg,
 	}
@@ -305,7 +305,7 @@ func getBalanceSuccess(t *testing.T, prefund []genesis.Account, enclave common.E
 	req := []interface{}{
 		[]interface{}{
 			hexutil.Encode(vk.PublicKey),
-			hexutil.Encode(vk.SignedKey),
+			hexutil.Encode(vk.Signature),
 		},
 		prefund[0].Address.Hex(),
 		"latest",
@@ -352,7 +352,7 @@ func getBalanceRequestUnsuccessful(t *testing.T, prefund []genesis.Account, encl
 	}
 	vkSerialized := []interface{}{
 		hexutil.Encode(vk.PublicKey),
-		hexutil.Encode(vk.SignedKey),
+		hexutil.Encode(vk.Signature),
 	}
 
 	for subtestName, test := range map[string]errorTest{

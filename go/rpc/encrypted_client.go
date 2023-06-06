@@ -178,7 +178,7 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
 	logSubscription := &common.LogSubscription{
 		Account:          c.Account(),
-		Signature:        c.viewingKey.SignedKey,
+		Signature:        c.viewingKey.Signature,
 		PublicViewingKey: c.viewingKey.PublicKey,
 	}
 
@@ -328,7 +328,7 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 	argsWithVK := append([]interface{}{
 		[]interface{}{
 			hexutil.Encode(c.viewingKey.PublicKey),
-			hexutil.Encode(c.viewingKey.SignedKey),
+			hexutil.Encode(c.viewingKey.Signature),
 		},
 	},
 		args...)

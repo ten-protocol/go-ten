@@ -26,7 +26,7 @@ type ViewingKey struct {
 	Account    *gethcommon.Address // Account address that this Viewing Key is bound to - Users Pubkey address
 	PrivateKey *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave
 	PublicKey  []byte              // ViewingKey public key in decrypt data from the enclave
-	SignedKey  []byte              // User Public Key signed by the Users private key - Matches the Account address
+	Signature  []byte              // ViewingKey public key signed by the Accounts Private key - Allows to retrieve the Account address
 }
 
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
@@ -55,7 +55,7 @@ func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
 		Account:    &accAddress,
 		PrivateKey: viewingPrivateKeyECIES,
 		PublicKey:  viewingPubKeyBytes,
-		SignedKey:  signature,
+		Signature:  signature,
 	}, nil
 }
 
