@@ -51,6 +51,8 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, bl
 		1337,
 		1,
 		blockDurationSeconds,
+		2,
+		2,
 		walletAddresses,
 	)
 

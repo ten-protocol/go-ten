@@ -73,6 +73,8 @@ func NewEth2Network(
 	chainID int,
 	numNodes int,
 	blockTimeSecs int,
+	slotsPerEpoch int,
+	secondsPerSlot int,
 	preFundedAddrs []string,
 ) Eth2Network {
 	// Build dirs are suffixed with a timestamp so multiple executions don't collide
@@ -114,7 +116,7 @@ func NewEth2Network(
 	}
 
 	// Write beacon config
-	beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID)
+	beaconConf := fmt.Sprintf(_beaconConfig, chainID, chainID, secondsPerSlot, slotsPerEpoch)
 	err = os.WriteFile(prysmConfigPath, []byte(beaconConf), 0o600)
 	if err != nil {
 		panic(err)
