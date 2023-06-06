@@ -1,8 +1,12 @@
 package storage
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -209,5 +213,45 @@ func TestAddAndGetMessage(t *testing.T) {
 
 	if signature != originalSignature {
 		t.Errorf("Signature from the database and original signature are not the same")
+	}
+}
+
+func TestGetUnauthenticatedUserPrivateKey(t *testing.T) {
+	// create new storage
+	myStorage, err := New("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// generate new keys
+	viewingKeyPrivate, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
+	vk := &rpc.ViewingKey{
+		Account:    nil,
+		PrivateKey: viewingPrivateKeyEcies,
+		PublicKey:  nil,
+		SignedKey:  nil,
+	}
+
+	// store viewing key and calculate userID
+	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
+	userID := crypto.Keccak256Hash(viewingPublicKeyBytes)
+	err = myStorage.SaveUserVK(userID.Hex(), vk, "")
+	if err != nil {
+		t.Errorf("Unable to store UserVK")
+	}
+
+	// get private key from the database
+	storedPrivateKeyBytes, err := myStorage.GetUnauthenticatedUserPrivateKey(userID.Hex())
+	if err != nil {
+		t.Errorf("Unable to get private key for unauthenticated user: %s", userID.Hex())
+	}
+
+	// check if we have the same private key
+	if !bytes.Equal(crypto.FromECDSA(viewingKeyPrivate), storedPrivateKeyBytes) {
+		t.Errorf("Stored viewing key is not the same as original")
 	}
 }

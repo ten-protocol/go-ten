@@ -50,6 +50,14 @@ func (s *Storage) SaveUserVK(userID string, vk *rpc.ViewingKey, message string) 
 	return nil
 }
 
+func (s *Storage) GetUnauthenticatedUserPrivateKey(userID string) ([]byte, error) {
+	privateKey, err := s.db.GetUnauthenticatedUserPrivateKey(userID)
+	if err != nil {
+		return nil, err
+	}
+	return privateKey, nil
+}
+
 func (s *Storage) GetUserVKs(userID string) (map[common.Address]*rpc.ViewingKey, error) {
 	userVKs, err := s.db.GetUserVKs(userID)
 	if err != nil {

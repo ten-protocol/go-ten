@@ -63,6 +63,35 @@ func (s *SqliteDatabase) SaveUserVK(userID string, vk *rpc.ViewingKey, message s
 	return nil
 }
 
+func (s *SqliteDatabase) GetUnauthenticatedUserPrivateKey(userID string) ([]byte, error) {
+	rows, err := s.db.Query("SELECT private_key FROM viewingkeys WHERE user_id = ? AND account_address IS NULL", userID)
+	if err != nil {
+		fmt.Println("Error in getting items from db", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	err = rows.Err()
+	if err != nil {
+		fmt.Println("Error in getting rows from db", err)
+		return nil, err
+	}
+	var tmpPrivateKey []byte
+	for rows.Next() {
+		err = rows.Scan(&tmpPrivateKey)
+		if err != nil {
+			fmt.Println("Error in getting private key from rows")
+			return nil, err
+		}
+		// todo - what should we do if user has multiple unauthorized private keys (more calls to /join than /authenticate)
+		if len(tmpPrivateKey) > 0 {
+			break
+		}
+	}
+
+	return tmpPrivateKey, nil
+}
+
 func (s *SqliteDatabase) GetUserVKs(userID string) (map[common.Address]*rpc.ViewingKey, error) {
 	viewingKeys := make(map[common.Address]*rpc.ViewingKey)
 
