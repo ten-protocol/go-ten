@@ -127,7 +127,7 @@ func ExecuteObsCall(
 	if err != nil {
 		return nil, err
 	}
-	blockContext := gethcore.NewEVMBlockContext(ethHeader, chain, &header.Agg)
+	blockContext := gethcore.NewEVMBlockContext(ethHeader, chain, nil)
 
 	// sets TxKey.origin
 	txContext := gethcore.NewEVMTxContext(msg)

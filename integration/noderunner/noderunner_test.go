@@ -54,6 +54,8 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 		1337,
 		1,
 		1,
+		2,
+		2,
 		[]string{hostAddr.String()},
 	)
 	defer network.Stop() //nolint: errcheck

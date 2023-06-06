@@ -70,9 +70,9 @@ type BatchProducer interface {
 	ComputeBatch(*BatchExecutionContext) (*ComputedBatch, error)
 
 	// CreateGenesisState - will create and commit the genesis state in the stateDB for the given block hash,
-	// sequencer address and uint64 timestamp representing the time now. In this genesis state is where one can
+	// and uint64 timestamp representing the time now. In this genesis state is where one can
 	// find preallocated funds for faucet. TODO - make this an option
-	CreateGenesisState(common.L1BlockHash, common.L2Address, uint64) (*core.Batch, *types.Transaction, error)
+	CreateGenesisState(common.L1BlockHash, uint64) (*core.Batch, *types.Transaction, error)
 }
 
 type BatchRegistry interface {

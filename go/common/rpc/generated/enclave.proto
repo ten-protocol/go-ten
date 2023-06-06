@@ -68,6 +68,9 @@ service EnclaveProto {
   // HealthCheck returns the health status of enclave + db
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
 
+  // GetBatch returns the encrypted batch based on a hash
+  rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {}
+
   rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
 
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
@@ -78,6 +81,15 @@ service EnclaveProto {
   rpc StreamL2Updates(StreamL2UpdatesRequest) returns (stream EncodedUpdateResponse) {}
 
   rpc DebugEventLogRelevancy(DebugEventLogRelevancyRequest) returns (DebugEventLogRelevancyResponse) {}
+}
+
+message GetBatchRequest {
+  bytes knownHead = 1;
+}
+
+message GetBatchResponse {
+  bytes batch = 1;
+  SystemError systemError = 2;
 }
 
 message StreamL2UpdatesRequest {
@@ -313,26 +325,19 @@ message ExtBatchMsg {
 
 message BatchHeaderMsg {
   bytes ParentHash = 1;
-  bytes Node = 2;
-  bytes Nonce = 3;
   bytes Proof = 4;
   bytes Root = 5;
   bytes TxHash = 6;
   uint64 Number = 7;
-  bytes Bloom = 8;
   bytes ReceiptHash = 9;
   bytes Extra = 10;
   bytes R = 11;
   bytes S = 12;
-  bytes UncleHash = 13;
-  bytes Coinbase = 14;
-  uint64 Difficulty = 15;
   uint64 GasLimit = 16;
   uint64 GasUsed = 17;
   uint64 Time = 18;
   bytes MixDigest = 19;
   uint64 BaseFee = 20;
-  uint64 RollupNonce = 21;
   bytes LatestInboundCrossChainHeight = 22;
   bytes LatestInboundCrossChainHash = 23;
   repeated CrossChainMsg CrossChainMessages = 24;
@@ -346,26 +351,20 @@ message ExtRollupMsg {
 
 message RollupHeaderMsg {
   bytes ParentHash = 1;
-  bytes Node = 2;
-  bytes Nonce = 3;
   bytes Proof = 4;
   bytes Root = 5;
   bytes HeadBatchHash = 6;
   uint64 Number = 7;
-  bytes Bloom = 8;
   bytes ReceiptHash = 9;
   bytes Extra = 10;
   bytes R = 11;
   bytes S = 12;
-  bytes UncleHash = 13;
-  bytes Coinbase = 14;
-  uint64 Difficulty = 15;
   uint64 GasLimit = 16;
   uint64 GasUsed = 17;
   uint64 Time = 18;
   bytes MixDigest = 19;
   uint64 BaseFee = 20;
-  uint64 RollupNonce = 21;
+  bytes Coinbase = 21;
   bytes LatestInboundCrossChainHeight = 22;
   bytes LatestInboundCrossChainHash = 23;
   repeated CrossChainMsg CrossChainMessages = 24;

@@ -119,7 +119,7 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 	metaRollup := ManagementContract.StructsMetaRollup{
 		ParentHash:   decodedRollup.Header.ParentHash,
 		Hash:         decodedRollup.Hash(),
-		AggregatorID: decodedRollup.Header.Agg,
+		AggregatorID: decodedRollup.Header.Coinbase,
 		L1Block:      decodedRollup.Header.L1Proof,
 		Number:       decodedRollup.Header.Number,
 	}

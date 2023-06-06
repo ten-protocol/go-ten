@@ -35,6 +35,12 @@ const (
 	blockTimeSecsName  = "blockTimeSecs"
 	blockTimeSecsUsage = "The block time in seconds"
 
+	slotsPerEpochName  = "slotsPerEpoch"
+	slotsPerEpochUsage = "The slot each POS epoch contains."
+
+	secondsPerSlotName  = "slotsPerSecond"
+	secondsPerSlotUsage = "The seconds each slot lasts."
+
 	chainIDName  = "chainId"
 	chainIDUsage = "The chain Id to use by the eth2 network"
 
@@ -57,6 +63,8 @@ type ethConfig struct {
 	prysmBeaconRPCStartPort int
 	prysmBeaconP2PStartPort int
 	blockTimeSecs           int
+	slotsPerEpoch           int
+	secondsPerSlot          int
 	logLevel                int
 	chainID                 int
 	onlyDownload            bool
@@ -77,6 +85,8 @@ func defaultConfig() *ethConfig {
 		onlyDownload:            false,
 		prefundedAddrs:          []string{},
 		blockTimeSecs:           1,
+		slotsPerEpoch:           2,
+		secondsPerSlot:          2,
 		logPath:                 log.SysOut,
 		logLevel:                int(gethlog.LvlDebug),
 	}
@@ -91,6 +101,9 @@ func parseCLIArgs() *ethConfig {
 	websocketStartPort := flag.Int(websocketStartPortName, defaultConfig.gethWSStartPort, websocketStartPortUsage)
 	prefundedAddrs := flag.String(prefundedAddrsName, "", prefundedAddrsUsage)
 	blockTimeSecs := flag.Int(blockTimeSecsName, defaultConfig.blockTimeSecs, blockTimeSecsUsage)
+	secondsPerSlot := flag.Int(secondsPerSlotName, defaultConfig.secondsPerSlot, secondsPerSlotUsage)
+	slotsPerEpoch := flag.Int(slotsPerEpochName, defaultConfig.slotsPerEpoch, slotsPerEpochUsage)
+
 	logLevel := flag.Int(logLevelName, defaultConfig.logLevel, logLevelUsage)
 	logPath := flag.String(logPathName, defaultConfig.logPath, logPathUsage)
 	chainID := flag.Int(chainIDName, defaultConfig.chainID, chainIDUsage)
@@ -120,6 +133,8 @@ func parseCLIArgs() *ethConfig {
 		gethWSStartPort:         *websocketStartPort,
 		prefundedAddrs:          parsedPrefundedAddrs,
 		blockTimeSecs:           *blockTimeSecs,
+		slotsPerEpoch:           *slotsPerEpoch,
+		secondsPerSlot:          *secondsPerSlot,
 		logLevel:                *logLevel,
 		logPath:                 *logPath,
 		gethAuthRPCStartPort:    *gethAuthRPCStartPort,

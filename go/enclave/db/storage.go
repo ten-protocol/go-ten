@@ -95,7 +95,6 @@ func (s *storageImpl) FetchHeadBatch() (*core.Batch, error) {
 }
 
 func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
-	s.assertSecretAvailable()
 	batch, err := obscurorawdb.ReadBatch(s.db, hash)
 	if err != nil {
 		return nil, err
@@ -104,7 +103,6 @@ func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
 }
 
 func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error) {
-	s.assertSecretAvailable()
 	batchHeader, err := obscurorawdb.ReadBatchHeader(s.db, hash)
 	if err != nil {
 		return nil, err
@@ -121,12 +119,10 @@ func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block) {
-	s.assertSecretAvailable()
 	rawdb.WriteBlock(s.db, b)
 }
 
 func (s *storageImpl) FetchBlock(blockHash common.L1BlockHash) (*types.Block, error) {
-	s.assertSecretAvailable()
 	height := rawdb.ReadHeaderNumber(s.db, blockHash)
 	if height == nil {
 		return nil, errutil.ErrNotFound
@@ -139,7 +135,6 @@ func (s *storageImpl) FetchBlock(blockHash common.L1BlockHash) (*types.Block, er
 }
 
 func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
-	s.assertSecretAvailable()
 	block, err := s.FetchBlock(rawdb.ReadHeadHeaderHash(s.db))
 	if err != nil {
 		return nil, err
@@ -156,7 +151,6 @@ func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 }
 
 func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
-	s.assertSecretAvailable()
 	if bytes.Equal(maybeAncestor.Hash().Bytes(), block.Hash().Bytes()) {
 		return true
 	}
@@ -188,13 +182,6 @@ func (s *storageImpl) HealthCheck() (bool, error) {
 		return false, err
 	}
 	return headBatch != nil, nil
-}
-
-func (s *storageImpl) assertSecretAvailable() {
-	// todo (#1551) - uncomment this
-	//if s.FetchSecret() == nil {
-	//	panic("Enclave not initialized")
-	//}
 }
 
 func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error) {

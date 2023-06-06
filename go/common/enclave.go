@@ -93,6 +93,9 @@ type Enclave interface {
 	// HealthCheck returns whether the enclave is in a healthy state
 	HealthCheck() (bool, SystemError)
 
+	// GetBatch - retrieve a batch if existing within the enclave db.
+	GetBatch(hash L2BatchHash) (*ExtBatch, error)
+
 	// CreateBatch - creates a new head batch extending the previous one for the latest known L1 head if the node is
 	// a sequencer. Will panic otherwise.
 	CreateBatch() SystemError

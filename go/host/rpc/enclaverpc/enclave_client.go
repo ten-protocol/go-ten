@@ -420,6 +420,18 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	return json.RawMessage(response.Msg), nil
 }
 
+func (c *Client) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	batchMsg, err := c.protoClient.GetBatch(timeoutCtx, &generated.GetBatchRequest{KnownHead: hash.Bytes()})
+	if err != nil {
+		return nil, fmt.Errorf("rpc GetBatch failed. Cause: %w", err)
+	}
+
+	return common.DecodeExtBatch(batchMsg.Batch)
+}
+
 func (c *Client) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2UpdatesResponse, func()) {
 	batchChan := make(chan common.StreamL2UpdatesResponse, 10)
 	cancelCtx, cancel := context.WithCancel(context.Background())

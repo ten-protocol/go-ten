@@ -67,6 +67,8 @@ func runGethNetwork(t *testing.T) *netInfo {
 		1337,
 		1,
 		1,
+		2,
+		2,
 		[]string{workerWallet.Address().String()},
 	)
 
@@ -202,7 +204,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 	}
 
 	rollup := datagenerator.RandomRollup(block)
-	requesterID := &rollup.Header.Agg
+	requesterID := &rollup.Header.Coinbase
 
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
@@ -589,7 +591,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 
 	// Issue a genesis rollup
 	rollup := datagenerator.RandomRollup(block)
-	rollup.Header.Agg = aggAID
+	rollup.Header.Coinbase = aggAID
 
 	err = mgmtContractLib.AwaitedIssueRollup(rollup, client, w)
 	if err != nil {
@@ -602,7 +604,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	for i := 0; i < 3; i++ {
 		// issue rollup - make sure it comes from the attested aggregator
 		r := datagenerator.RandomRollup(block)
-		r.Header.Agg = aggAID
+		r.Header.Coinbase = aggAID
 		r.Header.ParentHash = parentRollup.Header.Hash()
 
 		// each rollup is child of the previous rollup
@@ -620,7 +622,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	splitPoint := make([]common.ExtRollup, 2)
 	for i := 0; i < 2; i++ {
 		r := datagenerator.RandomRollup(block)
-		r.Header.Agg = aggAID
+		r.Header.Coinbase = aggAID
 
 		// same parent
 		r.Header.ParentHash = parentRollup.Header.Hash()
@@ -640,7 +642,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	forks := make([]common.ExtRollup, 2)
 	for i, parentRollup := range splitPoint {
 		r := datagenerator.RandomRollup(block)
-		r.Header.Agg = aggAID
+		r.Header.Coinbase = aggAID
 		r.Header.ParentHash = parentRollup.Header.Hash()
 
 		forks[i] = r
@@ -666,7 +668,7 @@ func detectSimpleFork(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *de
 	parentRollup = forks[1]
 
 	r := datagenerator.RandomRollup(block)
-	r.Header.Agg = aggAID
+	r.Header.Coinbase = aggAID
 	r.Header.ParentHash = parentRollup.Header.Hash()
 
 	t.Logf("LAST Issued Rollup: %s parent: %s", r.Hash(), r.Header.ParentHash)

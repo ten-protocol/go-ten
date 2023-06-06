@@ -65,6 +65,8 @@ type EnclaveProtoClient interface {
 	GetLogs(ctx context.Context, in *GetLogsRequest, opts ...grpc.CallOption) (*GetLogsResponse, error)
 	// HealthCheck returns the health status of enclave + db
 	HealthCheck(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*HealthCheckResponse, error)
+	// GetBatch returns the encrypted batch based on a hash
+	GetBatch(ctx context.Context, in *GetBatchRequest, opts ...grpc.CallOption) (*GetBatchResponse, error)
 	CreateBatch(ctx context.Context, in *CreateBatchRequest, opts ...grpc.CallOption) (*CreateBatchResponse, error)
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
 	DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error)
@@ -251,6 +253,15 @@ func (c *enclaveProtoClient) HealthCheck(ctx context.Context, in *EmptyArgs, opt
 	return out, nil
 }
 
+func (c *enclaveProtoClient) GetBatch(ctx context.Context, in *GetBatchRequest, opts ...grpc.CallOption) (*GetBatchResponse, error) {
+	out := new(GetBatchResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetBatch", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *enclaveProtoClient) CreateBatch(ctx context.Context, in *CreateBatchRequest, opts ...grpc.CallOption) (*CreateBatchResponse, error) {
 	out := new(CreateBatchResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/CreateBatch", in, out, opts...)
@@ -366,6 +377,8 @@ type EnclaveProtoServer interface {
 	GetLogs(context.Context, *GetLogsRequest) (*GetLogsResponse, error)
 	// HealthCheck returns the health status of enclave + db
 	HealthCheck(context.Context, *EmptyArgs) (*HealthCheckResponse, error)
+	// GetBatch returns the encrypted batch based on a hash
+	GetBatch(context.Context, *GetBatchRequest) (*GetBatchResponse, error)
 	CreateBatch(context.Context, *CreateBatchRequest) (*CreateBatchResponse, error)
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
 	DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error)
@@ -434,6 +447,9 @@ func (UnimplementedEnclaveProtoServer) GetLogs(context.Context, *GetLogsRequest)
 }
 func (UnimplementedEnclaveProtoServer) HealthCheck(context.Context, *EmptyArgs) (*HealthCheckResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetBatch(context.Context, *GetBatchRequest) (*GetBatchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBatch not implemented")
 }
 func (UnimplementedEnclaveProtoServer) CreateBatch(context.Context, *CreateBatchRequest) (*CreateBatchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateBatch not implemented")
@@ -805,6 +821,24 @@ func _EnclaveProto_HealthCheck_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_GetBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/GetBatch",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetBatch(ctx, req.(*GetBatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _EnclaveProto_CreateBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateBatchRequest)
 	if err := dec(in); err != nil {
@@ -980,6 +1014,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HealthCheck",
 			Handler:    _EnclaveProto_HealthCheck_Handler,
+		},
+		{
+			MethodName: "GetBatch",
+			Handler:    _EnclaveProto_GetBatch_Handler,
 		},
 		{
 			MethodName: "CreateBatch",

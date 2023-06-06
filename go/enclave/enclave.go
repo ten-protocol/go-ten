@@ -194,8 +194,11 @@ func NewEnclave(
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, logger)
 	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, logger)
 	registry := components.NewBatchRegistry(storage, logger)
-	rProducer := components.NewRollupProducer(dataEncryptionService, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
-	sigVerifier := components.NewSignatureValidator(config.SequencerID, storage)
+	rProducer := components.NewRollupProducer(config.SequencerID, dataEncryptionService, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
+	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
+	if err != nil {
+		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
+	}
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, dataEncryptionService, dataCompressionService, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
 
 	var service nodetype.NodeType
@@ -220,7 +223,7 @@ func NewEnclave(
 			},
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, logger)
+		service = nodetype.NewValidator(blockProcessor, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, sigVerifier, logger)
 	}
 
 	chain := l2chain.NewChain(
@@ -268,6 +271,15 @@ func NewEnclave(
 		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
 		BaseFee:      gethcommon.Big0,
 	}
+}
+
+func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
+	batch, err := e.registry.GetBatch(hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting batch. Cause: %w", err)
+	}
+
+	return batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
 }
 
 // Status is only implemented by the RPC wrapper
@@ -1623,7 +1635,6 @@ func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProduc
 		Transactions: batch.Transactions,
 		AtTime:       batch.Header.Time,
 		Randomness:   batch.Header.MixDigest,
-		Creator:      batch.Header.Agg,
 		ChainConfig:  chainConfig,
 	})
 	if err != nil {

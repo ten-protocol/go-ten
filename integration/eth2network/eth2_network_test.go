@@ -61,6 +61,8 @@ func TestStartEth2Network(t *testing.T) {
 		chainID,
 		_numTestNodes,
 		1,
+		2,
+		2,
 		randomWalletAddrs,
 	)
 	// wait until the merge has happened

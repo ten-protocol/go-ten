@@ -252,6 +252,22 @@ func (s *RPCServer) DebugTraceTransaction(_ context.Context, req *generated.Debu
 	return &generated.DebugTraceTransactionResponse{Msg: string(traceTx), SystemError: toRPCError(err)}, nil
 }
 
+func (s *RPCServer) GetBatch(_ context.Context, request *generated.GetBatchRequest) (*generated.GetBatchResponse, error) {
+	batch, err := s.enclave.GetBatch(gethcommon.BytesToHash(request.KnownHead))
+	if err != nil {
+		return nil, err
+	}
+
+	encodedBatch, encodingErr := batch.Encoded()
+	return &generated.GetBatchResponse{
+		Batch: encodedBatch,
+		SystemError: &generated.SystemError{
+			ErrorCode:   2,
+			ErrorString: encodingErr.Error(),
+		},
+	}, err
+}
+
 func (s *RPCServer) StreamL2Updates(request *generated.StreamL2UpdatesRequest, stream generated.EnclaveProto_StreamL2UpdatesServer) error {
 	var fromHash *common.L2BatchHash
 	if request.KnownHead != nil {
