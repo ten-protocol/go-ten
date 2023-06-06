@@ -243,7 +243,7 @@ func submitViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, 
 }
 
 func authenticateRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
-	// check if the text is well-formed and extract userID and address
+	// check if the text is well-formed and extract signature and message
 	body, err := userConn.ReadRequest()
 	if err != nil {
 		return
@@ -255,8 +255,6 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 		userConn.HandleError(fmt.Sprintf("could not unmarshal viewing key and signature from client to JSON: %s", err))
 		return
 	}
-
-	accAddress := gethcommon.HexToAddress(reqJSONMap[common.JSONKeyAddress])
 
 	signature, err := hex.DecodeString(reqJSONMap[common.JSONKeySignature][2:])
 	if err != nil {
@@ -270,57 +268,69 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 		return
 	}
 
+	// read userID from query params
 	userID, err := getUser(userConn.ReadRequestParams())
 	if err != nil {
 		userConn.HandleError("userID not found in the request")
 		return
 	}
 
-	// check the userID corresponds to the one in text
+	// get userID and address from message
 	messageUserID := ""
-	// todo @ziga ( check if messageAddress needs to be included in the request)
-	// messageAddress := ""
+	messageAddressHex := ""
 	regex := regexp.MustCompile(`^Register\s(\w+)\sfor\s(\w+)$`)
 	if regex.MatchString(message) {
 		params := regex.FindStringSubmatch(message)
 		messageUserID = params[1]
-		// messageAddress = params[2]
+		messageAddressHex = params[2]
 	} else {
 		userConn.HandleError(fmt.Sprintf("Submitted message is not in the correct format: %s", message))
 	}
 
+	// check if userID corresponds to the one in the message
 	if userID != messageUserID || messageUserID == "" {
 		userConn.HandleError(fmt.Sprintf("User in submitted message (%s) does not match user provided in the request (%s)", messageUserID, userID))
 	}
 
-	// check the signature if it corresponds to the address and is valid
-	vk, found := walletExt.UnsignedVKs[accAddress]
-	if !found {
-		userConn.HandleError(fmt.Sprintf("no viewing key found to sign for acc=%s, please visit /join/ before sending signature", accAddress))
-		return
+	// get the address from signature
+
+	// prefix the message like in the personal_sign method
+	prefixedMessage := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(message), message)
+	messageHash := crypto.Keccak256([]byte(prefixedMessage))
+
+	if len(signature) != 65 {
+		fmt.Println("Signature must be 65 bytes long")
 	}
 
 	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
 	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	signature[64] -= 27
 
-	messageHash := crypto.Keccak256Hash([]byte(message))
-	signatureNoRecoverID := signature[:len(signature)-1]
-	verified := crypto.VerifySignature(vk.PublicKey, messageHash.Bytes(), signatureNoRecoverID)
-
-	if !verified {
-		userConn.HandleError("signature verification was not successful for your account")
-		return
-	}
-
-	// save the text+signature against the userID
-	// todo: where should I save the text? In another column in the database?
-	vk.SignedKey = signature
-	err = walletExt.Storage.SaveUserVK(userID, vk, message)
+	pubKey, err := crypto.SigToPub(messageHash, signature)
 	if err != nil {
-		userConn.HandleError("error saving viewing key")
+		fmt.Println(err)
+	}
+
+	addressFromSignature := crypto.PubkeyToAddress(*pubKey)
+	addressFromMessage := gethcommon.HexToAddress(messageAddressHex)
+
+	// verify that message was signed by the same address as in the message
+	if addressFromSignature != addressFromMessage {
+		fmt.Println("address from signature is not the same as address from message")
 		return
 	}
+
+	// save the data for this specific userID
+
+	// get privateKey for userID
+	userPrivateKey, err := walletExt.Storage.GetUnauthenticatedUserPrivateKey(userID)
+	if err != nil {
+		fmt.Println("Error getting user private key")
+	}
+	if len(userPrivateKey) == 0 {
+		fmt.Println("Received private key with length 0")
+	}
+	// todo (@ziga) - store all the fields in the database!
 }
 
 func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
