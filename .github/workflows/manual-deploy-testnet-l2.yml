@@ -37,7 +37,7 @@ jobs:
       L1_HOST: ${{ steps.outputVars.outputs.L1_HOST }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - uses: actions/setup-go@v4
         with:
@@ -273,7 +273,7 @@ jobs:
       - deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -314,7 +314,7 @@ jobs:
       - check-obscuro-is-healthy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: 'Deploy L2 contracts'
         id: deployL2Contracts
