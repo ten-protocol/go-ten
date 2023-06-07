@@ -37,11 +37,11 @@ type Faucet struct {
 	logger    log.Logger
 }
 
-func NewFaucet(rpcUrl string, chainID *big.Int, pk *ecdsa.PrivateKey) (*Faucet, error) {
+func NewFaucet(rpcURL string, chainID *big.Int, pk *ecdsa.PrivateKey) (*Faucet, error) {
 	logger := log.New()
 	logger.SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(false)))
 	w := wallet.NewInMemoryWalletFromPK(chainID, pk, logger)
-	obsClient, err := obsclient.DialWithAuth(rpcUrl, w, logger)
+	obsClient, err := obsclient.DialWithAuth(rpcURL, w, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect with the node: %w", err)
 	}

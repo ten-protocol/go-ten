@@ -25,7 +25,7 @@ func NewWebServer(faucet *Faucet, jwtSecret []byte) *WebServer {
 	// todo move this declaration out of this scope
 	parseFunding := func(c *gin.Context) {
 		tokenReq := c.Params.ByName("token")
-		token := ""
+		var token string
 
 		// check the token request type
 		switch tokenReq {
@@ -114,5 +114,5 @@ func extractBearerToken(header string) (string, error) {
 }
 
 func (w *WebServer) Start() {
-	w.server.Run()
+	_ = w.server.Run()
 }

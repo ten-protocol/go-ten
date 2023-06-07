@@ -27,7 +27,7 @@ const (
 
 	jwtSecretName    = "jwtSecret"
 	jwtSecretDefault = ""
-	jwtSecretUsage   = "The jwt request secret string. No default, must be set."
+	jwtSecretUsage   = "The jwt request secret string. No default, must be set." //nolint: gosec
 )
 
 func parseCLIArgs() *faucet.Config {
