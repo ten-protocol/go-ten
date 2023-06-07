@@ -36,6 +36,7 @@ tools/walletextension/main/wallet_extension
 tools/networkmanager/main/main
 tools/obscuroscan/main/main
 integration/eth2network/main/main
+tools/faucet/cmd/faucet
 
 
 # Logs files
