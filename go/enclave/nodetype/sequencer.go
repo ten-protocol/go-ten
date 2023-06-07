@@ -48,6 +48,8 @@ type sequencer struct {
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
 
+	gasLimiter *limiters.GasLimiter
+
 	// This is used to coordinate creating
 	// new batches and creating fork batches.
 	batchProductionMutex sync.Mutex
@@ -86,6 +88,7 @@ func NewSequencer(
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		settings:               settings,
+		gasLimiter:             limiters.NewGasLimiter(),
 	}
 }
 
@@ -172,7 +175,14 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	}
 
 	// todo (@stefan) - limit on receipts too
-	limiter := limiters.NewBatchSizeLimiter(s.settings.MaxBatchSize)
+
+	batchLimiterSize := s.settings.MaxBatchSize
+	// ensure we use the lower bound of the bytes available
+	if batchLimiterSize > s.gasLimiter.GetCalldataLimit() {
+		batchLimiterSize = s.gasLimiter.GetCalldataLimit()
+	}
+
+	limiter := limiters.NewBatchSizeLimiter(batchLimiterSize)
 	transactions, err := s.mempool.CurrentTxs(stateDB, limiter)
 	if err != nil {
 		return err
@@ -222,7 +232,13 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 
 func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
 	// todo @stefan - move this somewhere else, it shouldn't be in the batch registry.
-	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
+	rollupLimiterSize := s.settings.MaxRollupSize
+	// ensure we use the lower bound of the bytes available
+	if rollupLimiterSize > s.gasLimiter.GetCalldataLimit() {
+		rollupLimiterSize = s.gasLimiter.GetCalldataLimit()
+	}
+
+	rollupLimiter := limiters.NewRollupLimiter(rollupLimiterSize)
 
 	rollup, err := s.rollupProducer.CreateRollup(rollupLimiter)
 	if err != nil {
@@ -247,6 +263,10 @@ func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*c
 	if _, err = s.rollupConsumer.ProcessL1Block(br); err != nil {
 		s.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
+	}
+
+	if ingestion.IsLatest {
+		s.gasLimiter.ProcessBlock(br.Block.Header())
 	}
 
 	return ingestion, nil
