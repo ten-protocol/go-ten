@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestJWTToken(t *testing.T) {
@@ -12,6 +13,7 @@ func TestJWTToken(t *testing.T) {
 
 	// Sign and get the complete encoded token as a string using the secret
 	tokenString, err := token.SignedString([]byte("This_is_the_secret"))
+	assert.NoError(t, err)
 	fmt.Println(tokenString)
 
 	// validate the token
