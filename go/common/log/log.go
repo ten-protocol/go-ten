@@ -13,6 +13,7 @@ const (
 	SubIDKey        = "subscription_id"
 	CfgKey          = "cfg"
 	TxKey           = "tx"
+	DurationKey     = "duration"
 	BatchHashKey    = "batch"
 	BatchHeightKey  = "batch_height"
 	RollupHashKey   = "rollup"

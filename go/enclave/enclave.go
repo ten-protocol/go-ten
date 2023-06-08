@@ -482,7 +482,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 
 	callStart := time.Now()
 	defer func() {
-		e.logger.Info("SubmitBatch call completed.", "start", callStart, "duration", time.Since(callStart), log.BatchHashKey, extBatch.Hash())
+		e.logger.Info("SubmitBatch call completed.", "start", callStart, log.DurationKey, time.Since(callStart), log.BatchHashKey, extBatch.Hash())
 	}()
 
 	e.logger.Info("SubmitBatch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)

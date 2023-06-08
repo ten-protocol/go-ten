@@ -18,6 +18,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
@@ -579,6 +580,8 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
 func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
+	defer h.logger.Info("Batch stored and distributed", log.BatchHashKey, producedBatch.Hash(), log.DurationKey, measure.NewStopwatch())
+
 	err := h.db.AddBatchHeader(producedBatch)
 	if err != nil {
 		h.logger.Error("could not store batch", log.BatchHashKey, producedBatch.Hash(), log.ErrKey, err)
