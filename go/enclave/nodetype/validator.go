@@ -112,7 +112,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 	}
 
 	if _, err := cb.Commit(true); err != nil {
-		return fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", incomingBatch.Hash().Hex(), err)
+		return fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", incomingBatch.Hash(), err)
 	}
 
 	return val.batchRegistry.StoreBatch(incomingBatch, cb.Receipts)
