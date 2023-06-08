@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
@@ -41,6 +42,8 @@ func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *ge
 
 func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
 	// These variables will be used to create the new batch
+
+	defer bp.logger.Info("Batch context processed", "duration", measure.NewStopwatch())
 
 	parent, err := bp.storage.FetchBatchHeader(context.ParentPtr)
 	if err != nil {
