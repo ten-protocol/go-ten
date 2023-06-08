@@ -68,7 +68,7 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (*host.Bloc
 	return &host.BlockStream{Stream: streamCh, Stop: cancel}, nil
 }
 
-// IsLatest returns true iff the block has the same hash as the L1 head block (from the eth client)
+// IsLatest returns true if the block has the same hash as the L1 head block (from the eth client)
 func (e *EthBlockProvider) IsLatest(b *types.Block) bool {
 	l1Head, err := e.ethClient.FetchHeadBlock()
 	if err != nil {
