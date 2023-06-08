@@ -41,10 +41,9 @@ func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *ge
 }
 
 func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
-	// These variables will be used to create the new batch
-
 	defer bp.logger.Info("Batch context processed", log.DurationKey, measure.NewStopwatch())
 
+	// These variables will be used to create the new batch
 	parent, err := bp.storage.FetchBatchHeader(context.ParentPtr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve parent batch %s. Cause: %w", context.ParentPtr, err)
