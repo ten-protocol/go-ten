@@ -928,6 +928,7 @@ func (h *host) startBatchProduction() {
 		case <-batchProdTicker.C:
 			if !h.l1UpToDate.Load() {
 				// if we're behind the L1, we don't want to produce batches
+				h.logger.Debug("skipping batch production because L1 is not up to date")
 				continue
 			}
 			h.logger.Info("create batch")
@@ -1010,6 +1011,11 @@ func (h *host) startRollupProduction() {
 	for {
 		select {
 		case <-rollupTicker.C:
+			if !h.l1UpToDate.Load() {
+				// if we're behind the L1, we don't want to produce rollups
+				h.logger.Debug("skipping rollup production because L1 is not up to date")
+				continue
+			}
 			producedRollup, err := h.enclaveClient.CreateRollup()
 			if err != nil {
 				h.logger.Error("unable to produce rollup", log.ErrKey, err)
