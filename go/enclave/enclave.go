@@ -431,7 +431,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 		return responses.AsPlaintextError(fmt.Errorf("could not decrypt transaction. Cause: %w", err)), nil
 	}
 
-	e.logger.Info("Submitted transaction", log.TxKey, decryptedTx.Hash())
+	e.logger.Debug("Submitted transaction", log.TxKey, decryptedTx.Hash())
 
 	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
 	if err != nil {
