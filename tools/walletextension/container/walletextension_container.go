@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/api"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
@@ -19,14 +20,14 @@ import (
 )
 
 type WalletExtensionContainer struct {
-	hostAddr       string
-	accountManager *accountmanager.AccountManager
-	storage        *storage.Storage
-	stopControl    *stopcontrol.StopControl
-	logger         gethlog.Logger
-	walletExt      *walletextension.WalletExtension
-	httpServer     *api.Server
-	wsServer       *api.Server
+	hostAddr           string
+	userAccountManager *useraccountmanager.UserAccountManager
+	storage            *storage.Storage
+	stopControl        *stopcontrol.StopControl
+	logger             gethlog.Logger
+	walletExt          *walletextension.WalletExtension
+	httpServer         *api.Server
+	wsServer           *api.Server
 }
 
 func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.Logger) *WalletExtensionContainer {
@@ -36,7 +37,12 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	if err != nil {
 		logger.Crit("unable to create temporary client for request ", log.ErrKey, err)
 	}
-	accountManager := accountmanager.NewAccountManager(unAuthedClient, logger)
+
+	userAccountManager := useraccountmanager.NewUserAccountManager(unAuthedClient, logger)
+
+	// TODO (@ziga) - change logic here and get VKs for all users and just add them to the correct accountManager in userAccountManager
+	// This line needs to be replaced in future and is here only to enable defaultUser
+	userAccountManager.AddUserAccountManager(common.DefaultUser)
 
 	// start the database
 	databaseStorage, err := storage.New(config.DBPathOverride)
@@ -49,6 +55,13 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	if err != nil {
 		logger.Crit("Error getting viewing keys for user:", common.DefaultUser)
 	}
+
+	// todo (@ziga) - remove this code below and generalize it for all users
+	defaultAccountManager, err := userAccountManager.GetUserAccountManager(common.DefaultUser)
+	if err != nil {
+		logger.Crit("Error getting account manager for user:", common.DefaultUser)
+	}
+
 	for accountAddr, viewingKey := range viewingKeys {
 		// create an encrypted RPC client with the signed VK and register it with the enclave
 		// todo(@ziga) - Create the clients lazily, to reduce connections to the host.
@@ -57,11 +70,11 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 			logger.Error(fmt.Sprintf("failed to create encrypted RPC client for persisted account %s", accountAddr), log.ErrKey, err)
 			continue
 		}
-		accountManager.AddClient(accountAddr, client)
+		defaultAccountManager.AddClient(accountAddr, client)
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := walletextension.New(hostRPCBindAddr, accountManager, databaseStorage, stopControl, logger)
+	walletExt := walletextension.New(hostRPCBindAddr, &userAccountManager, databaseStorage, stopControl, logger)
 	httpRoutes := api.NewHTTPRoutes(walletExt)
 	httpServer := api.NewHTTPServer(fmt.Sprintf("%s:%d", config.WalletExtensionHost, config.WalletExtensionPortHTTP), httpRoutes)
 
@@ -71,7 +84,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	return NewWalletExtensionContainer(
 		hostRPCBindAddr,
 		walletExt,
-		accountManager,
+		&userAccountManager,
 		databaseStorage,
 		stopControl,
 		httpServer,
@@ -83,7 +96,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 func NewWalletExtensionContainer(
 	hostAddr string,
 	walletExt *walletextension.WalletExtension,
-	accountManager *accountmanager.AccountManager,
+	userAccountManager *useraccountmanager.UserAccountManager,
 	storage *storage.Storage,
 	stopControl *stopcontrol.StopControl,
 	httpServer *api.Server,
@@ -91,14 +104,14 @@ func NewWalletExtensionContainer(
 	logger gethlog.Logger,
 ) *WalletExtensionContainer {
 	return &WalletExtensionContainer{
-		hostAddr:       hostAddr,
-		walletExt:      walletExt,
-		accountManager: accountManager,
-		storage:        storage,
-		stopControl:    stopControl,
-		httpServer:     httpServer,
-		wsServer:       wsServer,
-		logger:         logger,
+		hostAddr:           hostAddr,
+		walletExt:          walletExt,
+		userAccountManager: userAccountManager,
+		storage:            storage,
+		stopControl:        stopControl,
+		httpServer:         httpServer,
+		wsServer:           wsServer,
+		logger:             logger,
 	}
 }
 
