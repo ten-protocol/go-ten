@@ -42,6 +42,7 @@ const (
 	// Attempts to send secret initialisation, request or response transactions to the L1. Worst-case, equates to 63 seconds, plus time per request.
 	l1TxTriesSecret = 7
 
+	// todo - these values have to be configurable
 	maxWaitForL1Receipt       = 100 * time.Second
 	retryIntervalForL1Receipt = 10 * time.Second
 	blockStreamWarningTimeout = 30 * time.Second
@@ -545,7 +546,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
-	h.logger.Info(fmt.Sprintf("Publishing rollup with height=%d, size=%dKB", producedRollup.Header.Number, len(encodedRollup)/1024))
+	h.logger.Info("Publishing rollup", "height", producedRollup.Header.Number, "size", len(encodedRollup)/1024, "hash", producedRollup.Hash())
 
 	h.logger.Trace("Sending transaction to publish rollup", "rollup_header",
 		gethlog.Lazy{Fn: func() string {
@@ -571,6 +572,8 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup, true)
 	if err != nil {
 		h.logger.Error("could not issue rollup tx", log.ErrKey, err)
+	} else {
+		h.logger.Info("Rollup included in L1", "height", producedRollup.Header.Number, "hash", producedRollup.Hash())
 	}
 }
 
@@ -614,7 +617,7 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt 
 	if err != nil {
 		return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 	}
-	h.logger.Info("Successfully issued Rollup on L1", "txHash", signedTx.Hash())
+	h.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
 
 	if awaitReceipt {
 		// block until receipt is found and then return
@@ -654,7 +657,7 @@ func (h *host) waitForReceipt(txHash common.TxHash) error {
 	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
 		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
 	}
-	h.logger.Trace("Successful L1 transaction receipt found.", log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
+	h.logger.Debug("L1 transaction receipt found.", log.TxKey, txHash, log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
 	return nil
 }
 
@@ -930,7 +933,7 @@ func (h *host) startBatchProduction() {
 				// if we're behind the L1, we don't want to produce batches
 				continue
 			}
-			h.logger.Info("create batch")
+			h.logger.Debug("create batch")
 			err := h.enclaveClient.CreateBatch()
 			if err != nil {
 				h.logger.Warn("unable to produce batch", log.ErrKey, err)
@@ -984,7 +987,7 @@ func (h *host) startBatchStreaming() {
 				lastBatch = resp.Batch
 				h.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				if h.config.NodeType == common.Sequencer {
-					h.logger.Info("Storing batch from stream")
+					h.logger.Info("Batch produced", "height", resp.Batch.Header.Number)
 					h.storeAndDistributeBatch(resp.Batch)
 				}
 			}

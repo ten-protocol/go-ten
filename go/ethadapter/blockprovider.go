@@ -77,7 +77,7 @@ func (e *EthBlockProvider) IsLatest(b *types.Block) bool {
 	}
 	isLatest := b.Hash() == l1Head.Hash()
 	// this log message is helpful for visibility on how far behind the block feeding is
-	e.logger.Info("L1 block provider live-monitoring", "currBlock", b.NumberU64(), "head", l1Head.NumberU64(), "isLatest", isLatest)
+	e.logger.Debug("L1 block provider live-monitoring", "currBlock", b.NumberU64(), "head", l1Head.NumberU64(), "isLatest", isLatest)
 	return isLatest
 }
 
