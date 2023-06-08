@@ -103,7 +103,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		ChainConfig:  val.chainConfig,
 	})
 	if err != nil {
-		return fmt.Errorf("failed recomputing batch %s. Cause: %w", incomingBatch.Hash().Hex(), err)
+		return fmt.Errorf("failed recomputing batch %s. Cause: %w", incomingBatch.Hash(), err)
 	}
 
 	if !bytes.Equal(cb.Batch.Hash().Bytes(), incomingBatch.Hash().Bytes()) {
