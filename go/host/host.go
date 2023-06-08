@@ -580,7 +580,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
 func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
-	defer h.logger.Info("Batch stored and distributed", "batch", producedBatch.Hash().Hex(), "duration", measure.NewStopwatch())
+	defer h.logger.Info("Batch stored and distributed", log.BatchHashKey, producedBatch.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	err := h.db.AddBatchHeader(producedBatch)
 	if err != nil {

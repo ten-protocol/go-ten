@@ -179,7 +179,7 @@ func (c *Client) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.Syste
 }
 
 func (c *Client) SubmitBatch(batch *common.ExtBatch) common.SystemError {
-	defer c.logger.Info("SubmitBatch rpc call", "duration", measure.NewStopwatch())
+	defer c.logger.Info("SubmitBatch rpc call", log.DurationKey, measure.NewStopwatch())
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
@@ -392,7 +392,7 @@ func (c *Client) HealthCheck() (bool, common.SystemError) {
 }
 
 func (c *Client) CreateBatch() common.SystemError {
-	defer c.logger.Info("CreateBatch rpc call", "duration", measure.NewStopwatch())
+	defer c.logger.Info("CreateBatch rpc call", log.DurationKey, measure.NewStopwatch())
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
@@ -402,7 +402,7 @@ func (c *Client) CreateBatch() common.SystemError {
 }
 
 func (c *Client) CreateRollup() (*common.ExtRollup, common.SystemError) {
-	defer c.logger.Info("CreateRollup rpc call", "duration", measure.NewStopwatch())
+	defer c.logger.Info("CreateRollup rpc call", log.DurationKey, measure.NewStopwatch())
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()

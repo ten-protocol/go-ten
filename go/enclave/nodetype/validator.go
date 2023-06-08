@@ -77,7 +77,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		}
 	}
 
-	defer val.logger.Info("Validator processed batch", "batch", incomingBatch.Hash().Hex(), "duration", measure.NewStopwatch())
+	defer val.logger.Info("Validator processed batch", log.BatchHashKey, incomingBatch.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	if batch, err := val.batchRegistry.GetBatch(incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return err
@@ -143,7 +143,7 @@ func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool
 
 func (val *obsValidator) verifyRollup(rollup *core.Rollup) error {
 	stopwatch := measure.NewStopwatch()
-	defer val.logger.Info("Rollup processed", "rollup", rollup.Hash().Hex(), "duration", stopwatch)
+	defer val.logger.Info("Rollup processed", log.RollupHashKey, rollup.Hash(), log.DurationKey, stopwatch)
 
 	for _, batch := range rollup.Batches {
 		if err := val.ValidateAndStoreBatch(batch); err != nil {

@@ -132,7 +132,7 @@ func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
 }
 
 func (p *p2pImpl) RequestBatchesFromSequencer(batchRequest *common.BatchRequest) error {
-	defer p.logger.Info("Requested batches from sequencer", "batch", batchRequest.CurrentHeadBatch, "duration", measure.NewStopwatch())
+	defer p.logger.Info("Requested batches from sequencer", log.BatchHashKey, batchRequest.CurrentHeadBatch, log.DurationKey, measure.NewStopwatch())
 
 	if len(p.peerAddresses) == 0 {
 		return errors.New("no peers available to request batches")
