@@ -72,7 +72,7 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (*host.Bloc
 func (e *EthBlockProvider) IsLatest(b *types.Block) bool {
 	l1Head, err := e.ethClient.FetchHeadBlock()
 	if err != nil {
-		e.logger.Warn("unable to fetch head eth block - %w", err)
+		e.logger.Warn("unable to fetch head eth block", log.ErrKey, err)
 		return false
 	}
 	isLatest := b.Hash() == l1Head.Hash()
