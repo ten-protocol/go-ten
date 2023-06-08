@@ -572,7 +572,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 
 	execResult, err := e.chain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
-		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
+		e.logger.Debug("Failed eth_call.", log.ErrKey, err)
 
 		// make sure it's not some internal error
 		if errors.Is(err, syserr.InternalError{}) {
