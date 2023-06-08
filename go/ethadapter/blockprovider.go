@@ -68,7 +68,7 @@ func (e *EthBlockProvider) StartStreamingFromHeight(height *big.Int) (*host.Bloc
 	return &host.BlockStream{Stream: streamCh, Stop: cancel}, nil
 }
 
-// IsLatest returns true iff the block has the same hash as the L1 head block (from the eth client)
+// IsLatest returns true if the block has the same hash as the L1 head block (from the eth client)
 func (e *EthBlockProvider) IsLatest(b *types.Block) bool {
 	l1Head, err := e.ethClient.FetchHeadBlock()
 	if err != nil {
@@ -77,7 +77,7 @@ func (e *EthBlockProvider) IsLatest(b *types.Block) bool {
 	}
 	isLatest := b.Hash() == l1Head.Hash()
 	// this log message is helpful for visibility on how far behind the block feeding is
-	e.logger.Debug("L1 block provider live-monitoring", "currBlock", b.NumberU64(), "head", l1Head.NumberU64(), "isLatest", isLatest)
+	e.logger.Info("L1 block provider live-monitoring", "currBlock", b.NumberU64(), "head", l1Head.NumberU64(), "isLatest", isLatest)
 	return isLatest
 }
 

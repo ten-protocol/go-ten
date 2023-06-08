@@ -546,7 +546,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
-	h.logger.Info("Publishing rollup", "height", producedRollup.Header.Number, "size", len(encodedRollup)/1024, "hash", producedRollup.Hash())
+	h.logger.Info("Publishing rollup", log.RollupHeightKey, producedRollup.Header.Number, "size", len(encodedRollup)/1024, log.RollupHashKey, producedRollup.Hash())
 
 	h.logger.Trace("Sending transaction to publish rollup", "rollup_header",
 		gethlog.Lazy{Fn: func() string {
@@ -987,7 +987,7 @@ func (h *host) startBatchStreaming() {
 				lastBatch = resp.Batch
 				h.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				if h.config.NodeType == common.Sequencer {
-					h.logger.Info("Batch produced", "height", resp.Batch.Header.Number)
+					h.logger.Info("Batch produced", log.RollupHeightKey, resp.Batch.Header.Number, log.RollupHashKey, resp.Batch.Hash())
 					h.storeAndDistributeBatch(resp.Batch)
 				}
 			}
