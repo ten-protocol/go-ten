@@ -103,7 +103,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		ChainConfig:  val.chainConfig,
 	})
 	if err != nil {
-		return fmt.Errorf("failed computing batch. Cause: %w", err)
+		return fmt.Errorf("failed recomputing batch %s. Cause: %w", incomingBatch.Hash().Hex(), err)
 	}
 
 	if !bytes.Equal(cb.Batch.Hash().Bytes(), incomingBatch.Hash().Bytes()) {
@@ -112,7 +112,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 	}
 
 	if _, err := cb.Commit(true); err != nil {
-		return fmt.Errorf("cannot commit stateDB for incoming valid batch. Cause: %w", err)
+		return fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", incomingBatch.Hash().Hex(), err)
 	}
 
 	return val.batchRegistry.StoreBatch(incomingBatch, cb.Receipts)

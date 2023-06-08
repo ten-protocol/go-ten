@@ -47,12 +47,12 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 
 	parent, err := bp.storage.FetchBatchHeader(context.ParentPtr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve parent batch. Cause: %w", err)
+		return nil, fmt.Errorf("failed to retrieve parent batch %s. Cause: %w", context.ParentPtr.Hex(), err)
 	}
 
 	block, err := bp.storage.FetchBlock(context.BlockPtr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve block for batch. Cause: %w", err)
+		return nil, fmt.Errorf("failed to retrieve block %s for batch. Cause: %w", context.BlockPtr.Hex(), err)
 	}
 
 	parentBlock := block
