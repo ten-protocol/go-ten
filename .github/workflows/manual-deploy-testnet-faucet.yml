@@ -58,12 +58,12 @@ jobs:
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: dev-testnet-faucet
-          image: ${{ FAUCET_BUILD_TAG }}:latest
+          image: ${{ env.FAUCET_BUILD_TAG }}:latest
           name: ${{ github.event.inputs.testnet_type }}
           location: 'uksouth'
           restart-policy: 'Never'
           environment-variables: PORT=80
-          command-line: cmd/faucet --nodeHost ${{ TESTNET_ADDR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }}
+          command-line: cmd/faucet --nodeHost ${{ env.TESTNET_ADDR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }}
           ports: '80'
           cpu: 2
           memory: 2
