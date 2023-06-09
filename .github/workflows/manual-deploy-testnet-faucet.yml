@@ -64,9 +64,9 @@ jobs:
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: dev-testnet-faucet
+          dns-name-label: ${{ github.event.inputs.testnet_type }}-faucet
           image: ${{ env.FAUCET_BUILD_TAG }}
-          name: ${{ github.event.inputs.testnet_type }}
+          name: ${{ github.event.inputs.testnet_type }}-faucet
           location: 'uksouth'
           restart-policy: 'Never'
           environment-variables: PORT=80
