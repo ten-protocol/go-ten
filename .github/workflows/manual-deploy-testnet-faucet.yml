@@ -49,7 +49,7 @@ jobs:
           login-server: testnetobscuronet.azurecr.io
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
-          
+
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
@@ -65,7 +65,7 @@ jobs:
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: dev-testnet-faucet
-          image: ${{ env.FAUCET_BUILD_TAG }}:latest
+          image: ${{ env.FAUCET_BUILD_TAG }}
           name: ${{ github.event.inputs.testnet_type }}
           location: 'uksouth'
           restart-policy: 'Never'
