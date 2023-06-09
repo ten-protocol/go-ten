@@ -44,8 +44,8 @@ jobs:
           echo "ETH2NETWORK_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/eth2network:latest" >> $GITHUB_ENV
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/testnet_l1network:latest" >> $GITHUB_ENV
           echo "L1_CONTAINER_NAME=testnet-eth2network" >> $GITHUB_ENV
-          echo "STORAGE_NAME=testnetL1Storage" >> $GITHUB_ENV
-          echo "STORAGE_SHARE_NAME=testnetL1StorageShare" >> $GITHUB_ENV
+          echo "STORAGE_NAME=testnetl1store" >> $GITHUB_ENV
+          echo "STORAGE_SHARE_NAME=testnetl1storeshare" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
@@ -53,8 +53,8 @@ jobs:
           echo "ETH2NETWORK_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_eth2network:latest" >> $GITHUB_ENV
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_testnet_l1network:latest" >> $GITHUB_ENV
           echo "L1_CONTAINER_NAME=dev-testnet-eth2network" >> $GITHUB_ENV
-          echo "STORAGE_NAME=devTestnetL1Storage" >> $GITHUB_ENV
-          echo "STORAGE_SHARE_NAME=devTestnetL1StorageShare" >> $GITHUB_ENV
+          echo "STORAGE_NAME=devtestnetl1store" >> $GITHUB_ENV
+          echo "STORAGE_SHARE_NAME=devtestnetl1storeshare" >> $GITHUB_ENV
 
 # to be used when our dockerhub account is fixed
 #      - name: Login to DockerHub
