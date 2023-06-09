@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -48,6 +49,10 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 		{
 			Name: common.PathJoin,
 			Func: httpHandler(walletExt, joinRequestHandler),
+		},
+		{
+			Name: common.PathAuthenticate,
+			Func: httpHandler(walletExt, authenticateRequestHandler),
 		},
 	}
 }
@@ -246,10 +251,122 @@ func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn use
 	if err != nil {
 		userConn.HandleError("Internal error")
 		walletExt.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
+		walletExt.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
 		return
 	}
 
 	err = userConn.WriteResponse([]byte(userID.Hex()))
+	if err != nil {
+		return
+	}
+}
+
+func authenticateRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+	// read the request
+	body, err := userConn.ReadRequest()
+	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
+		return
+	}
+
+	// get the text that was signed and signature
+	var reqJSONMap map[string]string
+	err = json.Unmarshal(body, &reqJSONMap)
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("error unmarshaling request to authentcate: %w", err).Error())
+		return
+	}
+
+	// get signature from the request and remove leading two bytes (0x)
+	signature, err := hex.DecodeString(reqJSONMap[common.JSONKeySignature][2:])
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("could not find or decode signature from client to hex: %w", err).Error())
+		return
+	}
+
+	// get message from the request
+	message, ok := reqJSONMap[common.JSONKeyMessage]
+	if !ok || message == "" {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("could not find message in the request: %w", err).Error())
+		return
+	}
+
+	// read userID from query params
+	userID, err := getUser(userConn.ReadRequestParams())
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("user not found in the query params: %w", err).Error())
+		return
+	}
+
+	// parse the message to get userID and account address
+	var messageUserID string
+	var messageAddressHex string
+	regex := regexp.MustCompile(`^Register\s(\w+)\sfor\s(\w+)$`)
+	if regex.MatchString(message) {
+		params := regex.FindStringSubmatch(message)
+		messageUserID = params[1]
+		messageAddressHex = params[2]
+	} else {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("submitted message (%s) is not in the correct format", message).Error())
+		return
+	}
+
+	// check if userID corresponds to the one in the message
+	// todo: do we need userID in query param, because we get it already from the message
+	if userID != messageUserID || messageUserID == "" {
+		userConn.HandleError(fmt.Sprintf("User in submitted message (%s) does not match user provided in the request (%s)", messageUserID, userID))
+		return
+	}
+
+	// Check if the signature is valid
+
+	// prefix the message like in the personal_sign method
+	prefixedMessage := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(message), message)
+	messageHash := crypto.Keccak256([]byte(prefixedMessage))
+
+	// check the signature length
+	if len(signature) != 65 {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("signature must be 64 bytes long, but %d bytes long signature received", len(signature)).Error())
+		return
+	}
+
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	signature[64] -= 27
+
+	// check if the message contains the same address that signed the message
+	pubKey, err := crypto.SigToPub(messageHash, signature)
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("error inside SigToPub: %w", err).Error())
+		return
+	}
+
+	addressFromSignature := crypto.PubkeyToAddress(*pubKey)
+	addressFromMessage := gethcommon.HexToAddress(messageAddressHex)
+
+	// verify that message was signed by the same address as in the message
+	if addressFromSignature != addressFromMessage {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("address from signature (%s) is not the same as address from message (%s)", addressFromSignature, addressFromSignature).Error())
+		return
+	}
+
+	// register the account for that viewing key
+	err = walletExt.Storage.AddAccount([]byte(userID), addressFromMessage.Bytes(), signature)
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("error while storing user (%s): %w", userID, err).Error())
+		return
+	}
+
+	err = userConn.WriteResponse([]byte("success!"))
 	if err != nil {
 		return
 	}
