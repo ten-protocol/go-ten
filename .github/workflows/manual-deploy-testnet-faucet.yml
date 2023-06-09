@@ -70,7 +70,7 @@ jobs:
           location: 'uksouth'
           restart-policy: 'Never'
           environment-variables: PORT=80
-          command-line: cmd/faucet --nodeHost ${{ env.TESTNET_ADDR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }}
+          command-line: faucet --nodeHost ${{ env.TESTNET_ADDR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }}
           ports: '80'
           cpu: 2
           memory: 2
