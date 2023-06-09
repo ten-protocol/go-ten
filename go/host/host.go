@@ -18,6 +18,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
@@ -42,6 +43,7 @@ const (
 	// Attempts to send secret initialisation, request or response transactions to the L1. Worst-case, equates to 63 seconds, plus time per request.
 	l1TxTriesSecret = 7
 
+	// todo - these values have to be configurable
 	maxWaitForL1Receipt       = 100 * time.Second
 	retryIntervalForL1Receipt = 10 * time.Second
 	blockStreamWarningTimeout = 30 * time.Second
@@ -545,7 +547,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	tx := &ethadapter.L1RollupTx{
 		Rollup: encodedRollup,
 	}
-	h.logger.Info(fmt.Sprintf("Publishing rollup with height=%d, size=%dKB", producedRollup.Header.Number, len(encodedRollup)/1024))
+	h.logger.Info("Publishing rollup", log.RollupHeightKey, producedRollup.Header.Number, "size", len(encodedRollup)/1024, log.RollupHashKey, producedRollup.Hash())
 
 	h.logger.Trace("Sending transaction to publish rollup", "rollup_header",
 		gethlog.Lazy{Fn: func() string {
@@ -571,11 +573,15 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	err = h.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup, true)
 	if err != nil {
 		h.logger.Error("could not issue rollup tx", log.ErrKey, err)
+	} else {
+		h.logger.Info("Rollup included in L1", "height", producedRollup.Header.Number, "hash", producedRollup.Hash())
 	}
 }
 
 // Creates a batch based on the rollup and distributes it to all other nodes.
 func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
+	defer h.logger.Info("Batch stored and distributed", log.BatchHashKey, producedBatch.Hash(), log.DurationKey, measure.NewStopwatch())
+
 	err := h.db.AddBatchHeader(producedBatch)
 	if err != nil {
 		h.logger.Error("could not store batch", log.BatchHashKey, producedBatch.Hash(), log.ErrKey, err)
@@ -614,7 +620,7 @@ func (h *host) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt 
 	if err != nil {
 		return fmt.Errorf("broadcasting L1 transaction failed after %d tries. Cause: %w", tries, err)
 	}
-	h.logger.Info("Successfully issued Rollup on L1", "txHash", signedTx.Hash())
+	h.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
 
 	if awaitReceipt {
 		// block until receipt is found and then return
@@ -654,7 +660,7 @@ func (h *host) waitForReceipt(txHash common.TxHash) error {
 	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
 		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
 	}
-	h.logger.Trace("Successful L1 transaction receipt found.", log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
+	h.logger.Debug("L1 transaction receipt found.", log.TxKey, txHash, log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
 	return nil
 }
 
@@ -928,9 +934,10 @@ func (h *host) startBatchProduction() {
 		case <-batchProdTicker.C:
 			if !h.l1UpToDate.Load() {
 				// if we're behind the L1, we don't want to produce batches
+				h.logger.Debug("skipping batch production because L1 is not up to date")
 				continue
 			}
-			h.logger.Info("create batch")
+			h.logger.Debug("create batch")
 			err := h.enclaveClient.CreateBatch()
 			if err != nil {
 				h.logger.Warn("unable to produce batch", log.ErrKey, err)
@@ -984,7 +991,7 @@ func (h *host) startBatchStreaming() {
 				lastBatch = resp.Batch
 				h.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				if h.config.NodeType == common.Sequencer {
-					h.logger.Info("Storing batch from stream")
+					h.logger.Info("Batch produced", log.RollupHeightKey, resp.Batch.Header.Number, log.RollupHashKey, resp.Batch.Hash())
 					h.storeAndDistributeBatch(resp.Batch)
 				}
 			}
@@ -1010,6 +1017,11 @@ func (h *host) startRollupProduction() {
 	for {
 		select {
 		case <-rollupTicker.C:
+			if !h.l1UpToDate.Load() {
+				// if we're behind the L1, we don't want to produce rollups
+				h.logger.Debug("skipping rollup production because L1 is not up to date")
+				continue
+			}
 			producedRollup, err := h.enclaveClient.CreateRollup()
 			if err != nil {
 				h.logger.Error("unable to produce rollup", log.ErrKey, err)

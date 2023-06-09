@@ -111,7 +111,7 @@ func (db *mempoolManager) CurrentTxs(stateDB *state.StateDB, limiter limiters.Ba
 
 		applicableTransactions = append(applicableTransactions, tx)
 		nonceTracker.IncrementNonce(*sender)
-		db.logger.Info("Including transaction in batch", log.TxKey, tx.Hash(), "nonce", tx.Nonce())
+		db.logger.Debug("Including transaction in batch", log.TxKey, tx.Hash(), "nonce", tx.Nonce())
 	}
 
 	return applicableTransactions, nil

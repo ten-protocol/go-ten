@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/common/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
@@ -178,6 +179,8 @@ func (c *Client) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.Syste
 }
 
 func (c *Client) SubmitBatch(batch *common.ExtBatch) common.SystemError {
+	defer c.logger.Info("SubmitBatch rpc call", log.DurationKey, measure.NewStopwatch())
+
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -389,6 +392,8 @@ func (c *Client) HealthCheck() (bool, common.SystemError) {
 }
 
 func (c *Client) CreateBatch() common.SystemError {
+	defer c.logger.Info("CreateBatch rpc call", log.DurationKey, measure.NewStopwatch())
+
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -397,6 +402,8 @@ func (c *Client) CreateBatch() common.SystemError {
 }
 
 func (c *Client) CreateRollup() (*common.ExtRollup, common.SystemError) {
+	defer c.logger.Info("CreateRollup rpc call", log.DurationKey, measure.NewStopwatch())
+
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 

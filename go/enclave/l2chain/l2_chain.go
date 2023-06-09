@@ -113,7 +113,7 @@ func (oc *obscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *g
 
 	// the execution might have succeeded (err == nil) but the evm contract logic might have failed (result.Failed() == true)
 	if result.Failed() {
-		oc.logger.Info(fmt.Sprintf("Obs_Call: Failed to execute contract %s.", apiArgs.To), log.CtrErrKey, result.Err)
+		oc.logger.Debug(fmt.Sprintf("Obs_Call: Failed to execute contract %s.", apiArgs.To), log.CtrErrKey, result.Err)
 		return nil, result.Err
 	}
 
@@ -160,7 +160,7 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 	if result.Failed() {
 		// do not return an error
 		// the result object should be evaluated upstream
-		oc.logger.Info(fmt.Sprintf("ObsCall: Failed to execute contract %s.", callMsg.To()), log.CtrErrKey, result.Err)
+		oc.logger.Debug(fmt.Sprintf("ObsCall: Failed to execute contract %s.", callMsg.To()), log.CtrErrKey, result.Err)
 	}
 
 	return result, nil
