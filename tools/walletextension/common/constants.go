@@ -32,6 +32,7 @@ const (
 	PathViewingKeys        = "/viewingkeys/"
 	PathGenerateViewingKey = "/generateviewingkey/"
 	PathSubmitViewingKey   = "/submitviewingkey/"
+	PathJoin               = "/join/"
 	WSProtocol             = "ws://"
 	DefaultUser            = "defaultUser"
 

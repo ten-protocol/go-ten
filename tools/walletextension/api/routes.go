@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+
 	"github.com/obscuronet/go-obscuro/go/common/httputil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -41,6 +44,10 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 		{
 			Name: common.PathSubmitViewingKey,
 			Func: httpHandler(walletExt, submitViewingKeyRequestHandler),
+		},
+		{
+			Name: common.PathJoin,
+			Func: httpHandler(walletExt, joinRequestHandler),
 		},
 	}
 }
@@ -212,6 +219,37 @@ func submitViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, 
 	}
 
 	err = userConn.WriteResponse([]byte(common.SuccessMsg))
+	if err != nil {
+		return
+	}
+}
+
+func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+	// todo (@ziga) add protection against DDOS attacks
+	_, err := userConn.ReadRequest()
+	if err != nil {
+		return
+	}
+
+	// generate new key-pair
+	viewingKeyPrivate, err := crypto.GenerateKey()
+	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
+	if err != nil {
+		userConn.HandleError(fmt.Sprintf("could not generate new keypair: %s", err))
+		return
+	}
+	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
+
+	// create UserID and store it in the database with the private key
+	userID := crypto.Keccak256Hash(viewingPublicKeyBytes)
+	err = walletExt.Storage.AddUser(userID.Bytes(), crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
+		return
+	}
+
+	err = userConn.WriteResponse([]byte(userID.Hex()))
 	if err != nil {
 		return
 	}

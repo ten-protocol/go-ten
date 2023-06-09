@@ -28,7 +28,7 @@ type WalletExtension struct {
 	hostAddr           string // The address on which the Obscuro host can be reached.
 	userAccountManager *useraccountmanager.UserAccountManager
 	unsignedVKs        map[gethcommon.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
-	storage            *storage.Storage
+	Storage            *storage.Storage
 	logger             gethlog.Logger
 	stopControl        *stopcontrol.StopControl
 }
@@ -44,7 +44,7 @@ func New(
 		hostAddr:           hostAddr,
 		userAccountManager: userAccountManager,
 		unsignedVKs:        map[gethcommon.Address]*rpc.ViewingKey{},
-		storage:            storage,
+		Storage:            storage,
 		logger:             logger,
 		stopControl:        stopControl,
 	}
@@ -139,12 +139,12 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 
 	defaultAccountManager.AddClient(address, client)
 
-	err = w.storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
+	err = w.Storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
 	if err != nil {
 		return fmt.Errorf("error saving user: %s", common.DefaultUser)
 	}
 
-	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignedKey)
+	err = w.Storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignedKey)
 	if err != nil {
 		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
 	}
