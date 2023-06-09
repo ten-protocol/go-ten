@@ -102,6 +102,7 @@ jobs:
           az storage share create \
           --name ${{ env.STORAGE_SHARE_NAME }} \
           --account-name ${{ env.STORAGE_NAME }}
+           echo "FILE_VOLUME_KEY=$(az storage account keys list --resource-group ${{ secrets.RESOURCE_GROUP }} --account-name ${{ env.STORAGE_NAME }} --query "[0].value" --output tsv)" >> $GITHUB_ENV
 
       - name: 'Deploy L1 to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
@@ -116,7 +117,7 @@ jobs:
           location: 'uksouth'
           restart-policy: 'Never'
           azure-file-volume-account-name: ${{ env.STORAGE_NAME }}
-          azure-file-volume-account-key: $(az storage account keys list --resource-group ${{ secrets.RESOURCE_GROUP }} --account-name ${{ env.STORAGE_NAME }} --query "[0].value" --output tsv)
+          azure-file-volume-account-key: ${{ env.FILE_VOLUME_KEY }}
           azure-file-volume-share-name: ${{ env.STORAGE_SHARE_NAME }}
           azure-file-volume-mount-path: /aci/logs/
           secure-environment-variables: DD_API_KEY=${{ secrets.DD_API_KEY }}
