@@ -871,50 +871,6 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 		return fmt.Errorf("could not decode batches using RLP. Cause: %w", err)
 	}
 
-	for _, batch := range batchMsg.Batches {
-		h.logger.Info("Received batch from peer", log.BatchHeightKey, batch.Header.Number, log.BatchHashKey, batch.Hash())
-		// todo (@stefan) - consider moving to a model where the enclave manages the entire state, to avoid inconsistency.
-
-		// If we do not have the block the batch is tied to, we skip processing the batches for now. We'll catch them
-		// up later, once we've received the L1 block.
-		_, err = h.db.GetBlockHeader(batch.Header.L1Proof)
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				return nil
-			}
-			return fmt.Errorf("could not retrieve block header. Cause: %w", err)
-		}
-
-		isParentStored, batchRequest, err := h.batchManager.IsParentStored(batch)
-		if err != nil {
-			return fmt.Errorf("could not determine whether batch parent was missing. Cause: %w", err)
-		}
-
-		// We have encountered a missing parent batch. We abort the storage operation and request the missing batches.
-		if !isParentStored {
-			h.logger.Info("Parent batch not found. Requesting missing batches.", "fromBatch", batchRequest.CurrentHeadBatch, "isCatchUp", batchMsg.IsCatchUp)
-			// We only request the missing batches if the batches did not themselves arrive as part of catch-up, to
-			// avoid excessive P2P pressure.
-			if !batchMsg.IsCatchUp {
-				if err = h.p2p.RequestBatchesFromSequencer(batchRequest); err != nil {
-					return fmt.Errorf("could not request historical batches. Cause: %w", err)
-				}
-				return nil
-			}
-			return nil
-		}
-
-		// We only store the batch locally if it stores successfully on the enclave.
-		// todo (@stefan) - edge case when the enclave is restarted and loses some state; move to having enclave as source
-		//  of truth re: stored batches
-		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
-			return fmt.Errorf("could not submit batch. Cause: %w", err)
-		}
-		if err = h.db.AddBatchHeader(batch); err != nil {
-			return fmt.Errorf("could not store batch header. Cause: %w", err)
-		}
-	}
-
 	return nil
 }
 
