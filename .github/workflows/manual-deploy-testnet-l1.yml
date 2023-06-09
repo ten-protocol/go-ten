@@ -93,7 +93,7 @@ jobs:
       - name: 'Delete any existing persistence storage'
         run: |
           az storage account delete --name ${{ env.STORAGE_NAME }} \
-          --resource-group ${{ secrets.RESOURCE_GROUP }} --location uksouth || true
+          --resource-group ${{ secrets.RESOURCE_GROUP }} || true
           az storage share delete \
           --name ${{ env.STORAGE_SHARE_NAME }} || true      
 
@@ -105,27 +105,27 @@ jobs:
           --name ${{ env.STORAGE_SHARE_NAME }} \
           --account-name ${{ env.STORAGE_NAME }}
 
-#      - name: 'Deploy L1 to Azure Container Instances'
-#        uses: 'azure/aci-deploy@v1'
-#        with:
-#          resource-group: ${{ secrets.RESOURCE_GROUP }}
-#          dns-name-label: ${{env.L1_CONTAINER_NAME}}
-#          image: ${{env.L1_DOCKER_BUILD_TAG}}
-#          registry-login-server: testnetobscuronet.azurecr.io
-#          registry-username: ${{ secrets.REGISTRY_USERNAME }}
-#          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
-#          name: ${{env.L1_CONTAINER_NAME}}
-#          location: 'uksouth'
-#          restart-policy: 'Never'
-#          azure-file-volume-account-name: ${{ env.STORAGE_NAME }}
-#          azure-file-volume-account-key: $(az storage account keys list --resource-group ${{ secrets.RESOURCE_GROUP }} --account-name ${{ github.event.inputs.testnet_type }}-storage --query "[0].value" --output tsv)
-#          azure-file-volume-share-name: ${{ env.STORAGE_SHARE_NAME }}
-#          azure-file-volume-mount-path: /aci/logs/
-#          secure-environment-variables: DD_API_KEY=${{ secrets.DD_API_KEY }}
-#          environment-variables: DD_HOSTNAME=${{ github.event.inputs.testnet_type }}-eth2network
-#          command-line: /home/obscuro/go-obscuro/.github/workflows/runner-scripts/run-datadog.sh /home/obscuro/go-obscuro/integration/eth2network/main/main --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
-#          # Ports start at 9000 for Websockets and 8000 for Start port and 80025 for Http Port
-#          # Each node has Port + id
-#          ports: '8025 8026 9000 9001'
-#          cpu: 2
-#          memory: 8
+      - name: 'Deploy L1 to Azure Container Instances'
+        uses: 'azure/aci-deploy@v1'
+        with:
+          resource-group: ${{ secrets.RESOURCE_GROUP }}
+          dns-name-label: ${{env.L1_CONTAINER_NAME}}
+          image: ${{env.L1_DOCKER_BUILD_TAG}}
+          registry-login-server: testnetobscuronet.azurecr.io
+          registry-username: ${{ secrets.REGISTRY_USERNAME }}
+          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+          name: ${{env.L1_CONTAINER_NAME}}
+          location: 'uksouth'
+          restart-policy: 'Never'
+          azure-file-volume-account-name: ${{ env.STORAGE_NAME }}
+          azure-file-volume-account-key: $(az storage account keys list --resource-group ${{ secrets.RESOURCE_GROUP }} --account-name ${{ github.event.inputs.testnet_type }}-storage --query "[0].value" --output tsv)
+          azure-file-volume-share-name: ${{ env.STORAGE_SHARE_NAME }}
+          azure-file-volume-mount-path: /aci/logs/
+          secure-environment-variables: DD_API_KEY=${{ secrets.DD_API_KEY }}
+          environment-variables: DD_HOSTNAME=${{ github.event.inputs.testnet_type }}-eth2network
+          command-line: /home/obscuro/go-obscuro/.github/workflows/runner-scripts/run-datadog.sh /home/obscuro/go-obscuro/integration/eth2network/main/main --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
+          # Ports start at 9000 for Websockets and 8000 for Start port and 80025 for Http Port
+          # Each node has Port + id
+          ports: '8025 8026 9000 9001'
+          cpu: 2
+          memory: 8
