@@ -13,7 +13,13 @@ import (
 func main() {
 	config := parseCLIArgs()
 
-	binariesPath, err := eth2network.EnsureBinariesExist()
+	var binariesPath string
+	var err error
+	if config.buildPath == "" {
+		binariesPath, err = eth2network.EnsureBinariesExist()
+	} else {
+		binariesPath, err = eth2network.EnsureBinariesExistWithPath(config.buildPath)
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -24,6 +30,7 @@ func main() {
 
 	eth2Network := eth2network.NewEth2Network(
 		binariesPath,
+		buildPath,
 		config.gethHTTPStartPort,
 		config.gethWSStartPort,
 		config.gethAuthRPCStartPort,

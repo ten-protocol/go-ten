@@ -64,6 +64,7 @@ type Eth2Network interface {
 
 func NewEth2Network(
 	binDir string,
+	baseBuildDir string,
 	gethHTTPPortStart int,
 	gethWSPortStart int,
 	gethAuthRPCPortStart int,
@@ -82,6 +83,9 @@ func NewEth2Network(
 
 	// set the paths
 	buildDir := path.Join(basepath, "../.build/eth2", timestamp)
+	if baseBuildDir != "" {
+		buildDir = path.Join(baseBuildDir, "eth2", timestamp)
+	}
 	gethGenesisPath := path.Join(buildDir, "genesis.json")
 	prysmGenesisPath := path.Join(buildDir, "genesis.ssz")
 	prysmConfigPath := path.Join(buildDir, "prysm_chain_config.yml")

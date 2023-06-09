@@ -28,17 +28,22 @@ var (
 // EnsureBinariesExist makes sure node binaries exist, returns the base path where binaries exist
 // Downloads any missing binaries
 func EnsureBinariesExist() (string, error) {
+	return EnsureBinariesExistWithPath(_eth2BinariesRelPath)
+}
+
+// EnsureBinariesExistWithPath allows to specify the path where the binaries should exist
+func EnsureBinariesExistWithPath(binariesPath string) (string, error) {
 	creationLock.Lock()
 	defer creationLock.Unlock()
 
 	// bin folder should exist
-	err := os.MkdirAll(path.Join(basepath, _eth2BinariesRelPath), os.ModePerm)
+	err := os.MkdirAll(path.Join(basepath, binariesPath), os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
 
 	// build geth
-	if !fileExists(path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)) {
+	if !fileExists(path.Join(basepath, binariesPath, _gethFileNameVersion)) {
 		gethScript := path.Join(basepath, "./build_geth_binary.sh")
 		cmd := exec.Command("bash", gethScript, fmt.Sprintf("%s=%s", "--version", "v"+_gethVersion))
 		cmd.Stderr = os.Stderr
@@ -55,7 +60,7 @@ func EnsureBinariesExist() (string, error) {
 		_prysmCTLFileNameVersion:         fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/prysmctl-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, runtime.GOARCH),
 		_prysmValidatorFileNameVersion:   fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/validator-%s-%s-%s", _prysmVersion, _prysmVersion, runtime.GOOS, runtime.GOARCH),
 	} {
-		expectedFilePath := path.Join(basepath, _eth2BinariesRelPath, fileName)
+		expectedFilePath := path.Join(basepath, binariesPath, fileName)
 		if !fileExists(expectedFilePath) {
 			err := downloadFile(expectedFilePath, downloadURL)
 			if err != nil {
@@ -65,9 +70,8 @@ func EnsureBinariesExist() (string, error) {
 		}
 	}
 
-	return path.Join(basepath, _eth2BinariesRelPath), nil
+	return path.Join(basepath, binariesPath), nil
 }
-
 func fileExists(filename string) bool {
 	info, err := os.Stat(filename)
 	if os.IsNotExist(err) {

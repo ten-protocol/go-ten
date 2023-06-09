@@ -58,6 +58,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 	// define + run the network
 	eth2Network := eth2network.NewEth2Network(
 		path,
+		"",
 		_startPort,
 		_startPort+integration.DefaultGethWSPortOffset,
 		_startPort+integration.DefaultGethAUTHPortOffset,

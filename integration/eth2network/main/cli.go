@@ -52,6 +52,9 @@ const (
 
 	logPathName  = "logPath"
 	logPathUsage = "logPath"
+
+	buildPath      = ""
+	buildPathUsage = "Determines the base build path"
 )
 
 type ethConfig struct {
@@ -70,6 +73,7 @@ type ethConfig struct {
 	onlyDownload            bool
 	logPath                 string
 	prefundedAddrs          []string
+	buildPath               string
 }
 
 func defaultConfig() *ethConfig {
@@ -89,6 +93,7 @@ func defaultConfig() *ethConfig {
 		secondsPerSlot:          2,
 		logPath:                 log.SysOut,
 		logLevel:                int(gethlog.LvlDebug),
+		buildPath:               "",
 	}
 }
 
@@ -111,6 +116,8 @@ func parseCLIArgs() *ethConfig {
 	gethAuthRPCStartPort := flag.Int(gethAuthRPCStartPortName, defaultConfig.gethAuthRPCStartPort, gethAuthRPCStartPortUsage)
 	gethNetworkStartPort := flag.Int(gethNetworkStartPortName, defaultConfig.gethNetworkStartPort, gethNetworkStartPortUsage)
 	prysmBeaconRPCStartPort := flag.Int(prysmBeaconRPCStartPortName, defaultConfig.prysmBeaconRPCStartPort, prysmBeaconRPCStartPortUsage)
+
+	buildPath := flag.String(buildPath, defaultConfig.buildPath, buildPathUsage)
 
 	flag.Parse()
 
@@ -141,5 +148,6 @@ func parseCLIArgs() *ethConfig {
 		gethNetworkStartPort:    *gethNetworkStartPort,
 		prysmBeaconRPCStartPort: *prysmBeaconRPCStartPort,
 		onlyDownload:            *onlyDownload,
+		buildPath:               *buildPath,
 	}
 }

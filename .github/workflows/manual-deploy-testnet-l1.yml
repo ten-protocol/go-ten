@@ -119,10 +119,10 @@ jobs:
           azure-file-volume-account-name: ${{ env.STORAGE_NAME }}
           azure-file-volume-account-key: ${{ env.FILE_VOLUME_KEY }}
           azure-file-volume-share-name: ${{ env.STORAGE_SHARE_NAME }}
-          azure-file-volume-mount-path: /aci/logs/
+          azure-file-volume-mount-path: /persistent
           secure-environment-variables: DD_API_KEY=${{ secrets.DD_API_KEY }}
           environment-variables: DD_HOSTNAME=${{ github.event.inputs.testnet_type }}-eth2network
-          command-line: /home/obscuro/go-obscuro/.github/workflows/runner-scripts/run-datadog.sh /home/obscuro/go-obscuro/integration/eth2network/main/main --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
+          command-line: /home/obscuro/go-obscuro/.github/workflows/runner-scripts/run-datadog.sh /home/obscuro/go-obscuro/integration/eth2network/main/main --buildPath=/persistent --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
           # Ports start at 9000 for Websockets and 8000 for Start port and 80025 for Http Port
           # Each node has Port + id
           ports: '8025 8026 9000 9001'
