@@ -51,7 +51,7 @@ func NewSqliteDatabase(dbName string) (*SqliteDatabase, error) {
 }
 
 func (s *SqliteDatabase) AddUser(userID []byte, privateKey []byte) error {
-	stmt, err := s.db.Prepare("INSERT OR REPLACE INTO users(user_id, private_key) VALUES (?, ?)")
+	stmt, err := s.db.Prepare("INSERT INTO users(user_id, private_key) VALUES (?, ?)")
 	if err != nil {
 		return err
 	}
