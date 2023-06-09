@@ -58,7 +58,7 @@ docker run --env PORT=${port} -p 8080:${port} --name=local-testnet-faucet \
     --detach \
     --network=node_network \
     --entrypoint /faucet/cmd/faucet \
-     "obscuronet/faucet_testnet:latest" \
+     "testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest" \
     --nodeHost=${nodeHost} \
     --nodePort=${nodePort} \
     --pk=${pk}\

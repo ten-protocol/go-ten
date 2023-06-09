@@ -351,13 +351,11 @@ Once started Obscuroscan is available on `http://0.0.0.0:8098`.
 
 ### Building and running a local faucet
 Deploying and interacting with contracts on Obscuro requires OBX to be allocated to an account via the faucet. The 
-faucet [repo](https://github.com/obscuronet/faucet) should be cloned, and the container built and started to allow 
-requests to be made to it. To build and run use;
+faucet image should be pulled (or optionally built from scratch), and the container built and started to allow requests to be made to it. To build and run use;
 
 ```
-git clone git@github.com:obscuronet/faucet.git
-cd faucet
-./container_build.sh 
+cd tools/faucet
+docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest 
 ./container_run.sh 
 ```
 

@@ -43,15 +43,22 @@ jobs:
           echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_faucet_testnet:latest" >> $GITHUB_ENV
           echo "TESTNET_ADDR=dev-testnet.obscu.ro" >> $GITHUB_ENV
 
-      - name: Build and Push Docker Image
-        run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{env.FAUCET_BUILD_TAG}} -f tools/faucet/Dockerfile . 
-          docker push ${{env.FAUCET_BUILD_TAG}}
-
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+          
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and Push Docker Image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{env.FAUCET_BUILD_TAG}} -f tools/faucet/Dockerfile . 
+          docker push ${{env.FAUCET_BUILD_TAG}}
 
       - name: 'Deploy to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
