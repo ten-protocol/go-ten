@@ -60,7 +60,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 	}
-	
+
 	// We reload data from the database
 	// todo (@ziga) - change this code once we can handle multiple users
 	defaultPrivateKeyBytes, err := databaseStorage.GetUserPrivateKey([]byte(wecommon.DefaultUser))
