@@ -318,8 +318,8 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 
 	// check if userID corresponds to the one in the message
 	// todo: do we need userID in query param, because we get it already from the message
-	if userID != messageUserID || messageUserID == "" {
-		userConn.HandleError(fmt.Sprintf("User in submitted message (%s) does not match user provided in the request (%s)", messageUserID, userID))
+	if userID != messageUserID || len(messageUserID) != 66 {
+		userConn.HandleError(fmt.Sprintf("User in submitted message (%s) does not match user provided in the request (%s) of is wrong size", messageUserID, userID))
 		return
 	}
 
@@ -359,10 +359,16 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 	}
 
 	// register the account for that viewing key
-	err = walletExt.Storage.AddAccount([]byte(userID), addressFromMessage.Bytes(), signature)
+	userIDBytes, err := hex.DecodeString(userID[2:]) // remove 0x prefix from userID
 	if err != nil {
 		userConn.HandleError("Internal error")
-		walletExt.Logger().Error(fmt.Errorf("error while storing user (%s): %w", userID, err).Error())
+		walletExt.Logger().Error(fmt.Errorf("error decoding string (%s), %w", userID[2:], err).Error())
+		return
+	}
+	err = walletExt.Storage.AddAccount(userIDBytes, addressFromMessage.Bytes(), signature)
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("error while storing account (%s) for user (%s): %w", addressFromMessage.Hex(), userID, err).Error())
 		return
 	}
 
