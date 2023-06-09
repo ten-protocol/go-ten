@@ -14,6 +14,8 @@
 # The scheduled deployment runs at 03:05 on every day-of-week from Tuesday through Saturday, for dev-testnet only.
 
 name: '[M] Deploy Testnet L1'
+run-name: '[M] Deploy Testnet L1 ( ${{ github.event.inputs.testnet_type }} )'
+
 
 on:
   workflow_dispatch:
