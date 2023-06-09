@@ -4,11 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
-	"github.com/obscuronet/go-obscuro/go/rpc"
+	common "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 )
 
 type SqliteDatabase struct {
@@ -22,11 +19,28 @@ func NewSqliteDatabase(dbName string) (*SqliteDatabase, error) {
 		return nil, err
 	}
 
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS viewingkeys (
+	// enable foreign keys in sqlite
+	_, err = db.Exec("PRAGMA foreign_keys = ON;")
+	if err != nil {
+		return nil, err
+	}
+
+	// create users table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
+		user_id binary(32) PRIMARY KEY,
+		private_key binary(32)
+	);`)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// create accounts table
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS accounts (
 		user_id binary(32),
 		account_address binary(20),
-		private_key binary(32),
-		signed_key binary(65)
+		signature binary(65),
+    	FOREIGN KEY(user_id) REFERENCES users(user_id) ON DELETE CASCADE
 	);`)
 
 	if err != nil {
@@ -36,66 +50,68 @@ func NewSqliteDatabase(dbName string) (*SqliteDatabase, error) {
 	return &SqliteDatabase{db: db}, nil
 }
 
-func (s *SqliteDatabase) SaveUserVK(userID string, vk *rpc.ViewingKey) error {
-	stmt, err := s.db.Prepare("INSERT INTO viewingkeys (user_id, account_address, private_key, signed_key) VALUES (?, ?, ?, ?)")
+func (s *SqliteDatabase) AddUser(userID []byte, privateKey []byte) error {
+	stmt, err := s.db.Prepare("INSERT INTO users(user_id, private_key) VALUES (?, ?)")
 	if err != nil {
-		fmt.Println("Error creating sql statement ", err)
 		return err
 	}
 	defer stmt.Close()
 
-	viewingPrivateKeyBytes := crypto.FromECDSA(vk.PrivateKey.ExportECDSA())
-	_, err = stmt.Exec(userID, vk.Account.Bytes(), viewingPrivateKeyBytes, vk.SignedKey)
+	_, err = stmt.Exec(userID, privateKey)
 	if err != nil {
-		fmt.Println("Error inserting failed")
 		return err
 	}
 
 	return nil
 }
 
-func (s *SqliteDatabase) GetUserVKs(userID string) (map[common.Address]*rpc.ViewingKey, error) {
-	viewingKeys := make(map[common.Address]*rpc.ViewingKey)
-
-	rows, err := s.db.Query("SELECT user_id, account_address, private_key, signed_key FROM viewingkeys WHERE user_id = ?", userID)
+func (s *SqliteDatabase) GetUserPrivateKey(userID []byte) ([]byte, error) {
+	var privateKey []byte
+	err := s.db.QueryRow("SELECT private_key FROM users WHERE user_id = ?", userID).Scan(&privateKey)
 	if err != nil {
-		fmt.Println("Error in getting items from db", err)
+		if err == sql.ErrNoRows {
+			// No rows found for the given userID
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return privateKey, nil
+}
+
+func (s *SqliteDatabase) AddAccount(userID []byte, accountAddress []byte, signature []byte) error {
+	stmt, err := s.db.Prepare("INSERT INTO accounts(user_id, account_address, signature) VALUES (?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(userID, accountAddress, signature)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *SqliteDatabase) GetAccounts(userID []byte) ([]common.AccountDB, error) {
+	rows, err := s.db.Query("SELECT account_address, signature FROM accounts WHERE user_id = ?", userID)
+	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	err = rows.Err()
-	if err != nil {
-		fmt.Println("Error in getting rows from db", err)
+	var accounts []common.AccountDB
+	for rows.Next() {
+		var account common.AccountDB
+		if err := rows.Scan(&account.AccountAddress, &account.Signature); err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, account)
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	var tmpUserID []byte
-	var tmpAccountAddress []byte
-	var tmpPrivateKey []byte
-	var tmpSignedKey []byte
-	for rows.Next() {
-		err := rows.Scan(&tmpUserID, &tmpAccountAddress, &tmpPrivateKey, &tmpSignedKey)
-		if err != nil {
-			fmt.Println("Error in looping over results")
-			return nil, err
-		}
-
-		account := common.BytesToAddress(tmpAccountAddress)
-
-		viewingKeyPrivate, err := crypto.ToECDSA(tmpPrivateKey)
-		if err != nil {
-			fmt.Println("Error ToECDSA conversion", err)
-			return nil, err
-		}
-
-		viewingKeys[account] = &rpc.ViewingKey{
-			Account:    &account,
-			PrivateKey: ecies.ImportECDSA(viewingKeyPrivate),
-			PublicKey:  crypto.CompressPubkey(&viewingKeyPrivate.PublicKey),
-			SignedKey:  tmpSignedKey,
-		}
-	}
-
-	return viewingKeys, nil
+	return accounts, nil
 }

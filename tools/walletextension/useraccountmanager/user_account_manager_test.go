@@ -1,7 +1,6 @@
 package useraccountmanager
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -22,7 +21,7 @@ func TestAddingAndGettingUserAccountManagers(t *testing.T) {
 	}
 	// We should get error if we try to get Account manager for User2
 	_, err = userAccountManager.GetUserAccountManager(userID2)
-	fmt.Println(err)
+
 	if err == nil {
 		t.Fatal("expecting error when trying to get AccountManager for user that doesn't exist.")
 	}
