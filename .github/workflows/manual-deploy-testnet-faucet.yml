@@ -9,7 +9,7 @@
 #  dev-testnet-faucet or testnet-faucet.uksouth.azurecontainer.io
 
 name: '[M] Deploy Faucet Testnet'
-run-name: '[M] Deploy Faucet Testnet (${{ github.event.action }})'
+run-name: '[M] Deploy Faucet Testnet ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:
