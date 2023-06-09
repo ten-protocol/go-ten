@@ -1,0 +1,69 @@
+# Deploys Faucet on Azure for Testnet
+# Builds the Faucet network image, pushes the image to dockerhub and starts the Faucet on azure
+#
+# Faucet is a docker container.
+# It exposes the following ports:
+# HTTP:       80,
+#
+# Exposes the following addresses: (only accessible internally)
+#  dev-testnet-faucet or testnet-faucet.uksouth.azurecontainer.io
+
+name: '[M] Deploy Faucet Testnet'
+run-name: '[M] Deploy Faucet Testnet (${{ github.event.action }})'
+on:
+  workflow_dispatch:
+    inputs:
+      testnet_type:
+        description: 'Testnet Type'
+        required: true
+        default: 'dev-testnet'
+        type: choice
+        options:
+          - 'dev-testnet'
+          - 'testnet'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 'Set up Docker'
+        uses: docker/setup-buildx-action@v1
+
+      - name: 'Sets env vars for testnet'
+        if: ${{ github.event.inputs.testnet_type == 'testnet' }}
+        run: |
+          echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest" >> $GITHUB_ENV
+          echo "TESTNET_ADDR=testnet.obscu.ro" >> $GITHUB_ENV
+
+      - name: 'Sets env vars for dev-testnet'
+        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
+        run: |
+          echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_faucet_testnet:latest" >> $GITHUB_ENV
+          echo "TESTNET_ADDR=dev-testnet.obscu.ro" >> $GITHUB_ENV
+
+      - name: Build and Push Docker Image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{env.FAUCET_BUILD_TAG}} -f tools/faucet/Dockerfile . 
+          docker push ${{env.FAUCET_BUILD_TAG}}
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Deploy to Azure Container Instances'
+        uses: 'azure/aci-deploy@v1'
+        with:
+          resource-group: ${{ secrets.RESOURCE_GROUP }}
+          dns-name-label: dev-testnet-faucet
+          image: ${{ FAUCET_BUILD_TAG }}:latest
+          name: ${{ github.event.inputs.testnet_type }}
+          location: 'uksouth'
+          restart-policy: 'Never'
+          environment-variables: PORT=80
+          command-line: cmd/faucet --nodeHost ${{ TESTNET_ADDR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }}
+          ports: '80'
+          cpu: 2
+          memory: 2

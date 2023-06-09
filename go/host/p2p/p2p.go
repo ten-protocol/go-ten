@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -131,6 +132,8 @@ func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
 }
 
 func (p *p2pImpl) RequestBatchesFromSequencer(batchRequest *common.BatchRequest) error {
+	defer p.logger.Info("Requested batches from sequencer", log.BatchHashKey, batchRequest.CurrentHeadBatch, log.DurationKey, measure.NewStopwatch())
+
 	if len(p.peerAddresses) == 0 {
 		return errors.New("no peers available to request batches")
 	}

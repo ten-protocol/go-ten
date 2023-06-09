@@ -7,6 +7,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
@@ -40,6 +41,8 @@ func (m *blockMessageExtractor) Enabled() bool {
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
 func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error {
+	defer m.logger.Info("Block cross chain messages processed", log.BlockHashKey, block.Hash(), log.DurationKey, measure.NewStopwatch())
+
 	areReceiptsValid := common.VerifyReceiptHash(block, receipts)
 
 	if !areReceiptsValid && m.Enabled() {
