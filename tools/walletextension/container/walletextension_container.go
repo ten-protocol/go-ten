@@ -68,44 +68,34 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 		logger.Crit("Error getting private key for user: ", wecommon.DefaultUser)
 	}
 
-	// create default user if it doesn't exist
-	if bytes.Equal(defaultPrivateKeyBytes, []byte{}) {
-		viewingKeyPrivate, err := gethcrypto.GenerateKey()
+	// if we have account load the data and add clients
+	if !bytes.Equal(defaultPrivateKeyBytes, []byte{}) {
+		userAccounts, err := databaseStorage.GetAccounts([]byte(wecommon.DefaultUser))
 		if err != nil {
-			logger.Crit("Error generating new private key for default user")
-		}
-		defaultPrivateKeyBytes = gethcrypto.FromECDSA(viewingKeyPrivate)
-		err = databaseStorage.AddUser([]byte(wecommon.DefaultUser), defaultPrivateKeyBytes)
-		if err != nil {
-			logger.Crit("Error adding default user")
-		}
-	}
-
-	userAccounts, err := databaseStorage.GetAccounts([]byte(wecommon.DefaultUser))
-	if err != nil {
-		logger.Crit("Error getting addresses for user: ", wecommon.DefaultUser)
-	}
-
-	privKeyECDSA, err := gethcrypto.ToECDSA(defaultPrivateKeyBytes)
-	if err != nil {
-		logger.Crit("Unable to covert private key to ECDSA")
-	}
-	privKey := ecies.ImportECDSA(privKeyECDSA)
-	for _, acc := range userAccounts {
-		a := common.BytesToAddress(acc.AccountAddress)
-		viewingKey := rpc.ViewingKey{
-			Account:    &a,
-			PrivateKey: privKey,
-			PublicKey:  gethcrypto.CompressPubkey(&privKeyECDSA.PublicKey),
-			SignedKey:  acc.Signature,
+			logger.Crit("Error getting addresses for user: ", wecommon.DefaultUser)
 		}
 
-		client, err := rpc.NewEncNetworkClient(hostRPCBindAddr, &viewingKey, logger)
+		privKeyECDSA, err := gethcrypto.ToECDSA(defaultPrivateKeyBytes)
 		if err != nil {
-			logger.Error(fmt.Sprintf("failed to create encrypted RPC client for persisted account %s", viewingKey.Account.Hex()), log.ErrKey, err)
-			continue
+			logger.Crit("Unable to covert private key to ECDSA")
 		}
-		defaultAccountManager.AddClient(*viewingKey.Account, client)
+		privKey := ecies.ImportECDSA(privKeyECDSA)
+		for _, acc := range userAccounts {
+			a := common.BytesToAddress(acc.AccountAddress)
+			viewingKey := rpc.ViewingKey{
+				Account:    &a,
+				PrivateKey: privKey,
+				PublicKey:  gethcrypto.CompressPubkey(&privKeyECDSA.PublicKey),
+				SignedKey:  acc.Signature,
+			}
+
+			client, err := rpc.NewEncNetworkClient(hostRPCBindAddr, &viewingKey, logger)
+			if err != nil {
+				logger.Error(fmt.Sprintf("failed to create encrypted RPC client for persisted account %s", viewingKey.Account.Hex()), log.ErrKey, err)
+				continue
+			}
+			defaultAccountManager.AddClient(*viewingKey.Account, client)
+		}
 	}
 
 	stopControl := stopcontrol.New()
