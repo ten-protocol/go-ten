@@ -138,7 +138,7 @@ jobs:
                -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
                datadog/agent:latest \
-            && docker run ${{ env.ETH2NETWORK_BUILD_TAG }} \
+            && docker run -d ${{ env.ETH2NETWORK_BUILD_TAG }} \
             /home/obscuro/go-obscuro/integration/eth2network/main/main \
             --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
             --prefundedAddrs="${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}"'
