@@ -368,10 +368,7 @@ func (e *enclaveImpl) StreamL2Updates(from *common.L2BatchHash) (chan common.Str
 		return l2UpdatesChannel, func() {}
 	}
 
-	if e.config.NodeType == common.Sequencer {
-		go e.sendBatchesFromSubscription(from, l2UpdatesChannel)
-	}
-
+	go e.sendBatchesFromSubscription(from, l2UpdatesChannel)
 	go e.sendEventsFromSubscription(l2UpdatesChannel)
 
 	return l2UpdatesChannel, func() {

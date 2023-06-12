@@ -141,7 +141,7 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
 
-	oc.logger.Trace("Obs_Call: Successful result", gethlog.Lazy{Fn: func() string {
+	oc.logger.Trace("Obs_Call: Successful result", "info", gethlog.Lazy{Fn: func() string {
 		return fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=%s, state=%s",
 			callMsg.To(),
 			callMsg.From(),
