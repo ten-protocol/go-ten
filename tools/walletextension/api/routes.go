@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -53,6 +54,10 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 		{
 			Name: common.PathAuthenticate,
 			Func: httpHandler(walletExt, authenticateRequestHandler),
+		},
+		{
+			Name: common.PathQuery,
+			Func: httpHandler(walletExt, queryRequestHandler),
 		},
 	}
 }
@@ -295,7 +300,7 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 	}
 
 	// read userID from query params
-	userID, err := getUser(userConn.ReadRequestParams())
+	userID, err := getQueryParameter(userConn.ReadRequestParams(), "u")
 	if err != nil {
 		userConn.HandleError("Internal error")
 		walletExt.Logger().Error(fmt.Errorf("user not found in the query params: %w", err).Error())
@@ -373,6 +378,74 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 	}
 
 	err = userConn.WriteResponse([]byte("success!"))
+	if err != nil {
+		return
+	}
+}
+
+func queryRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+	// read the request
+	_, err := userConn.ReadRequest()
+	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
+		return
+	}
+
+	userID, err := getQueryParameter(userConn.ReadRequestParams(), "u")
+	if err != nil {
+		userConn.HandleError("user ('u') not found in query parameters")
+		walletExt.Logger().Error(fmt.Errorf("user not found in the query params: %w", err).Error())
+		return
+	}
+	userIDBytes, err := hex.DecodeString(userID[2:]) // remove 0x prefix from userID
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("error decoding string (%s), %w", userID[2:], err).Error())
+		return
+	}
+
+	address, err := getQueryParameter(userConn.ReadRequestParams(), "a")
+	if err != nil {
+		userConn.HandleError("address ('a') not found in query parameters")
+		walletExt.Logger().Error(fmt.Errorf("address not found in the query params: %w", err).Error())
+		return
+	}
+	addressBytes, err := hex.DecodeString(address[2:]) // remove 0x prefix from address
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("error decoding string (%s), %w", address[2:], err).Error())
+		return
+	}
+
+	// todo - this can be optimised and done in the database if we will have users with large number of accounts
+	// get all the accounts for the selected user
+	accounts, err := walletExt.Storage.GetAccounts(userIDBytes)
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", userID, err).Error())
+		return
+	}
+
+	found := false
+	for _, account := range accounts {
+		if bytes.Equal(account.AccountAddress, addressBytes) {
+			found = true
+		}
+	}
+
+	// create and write the response
+	res := struct {
+		Status bool `json:"status"`
+	}{Status: found}
+
+	msg, err := json.Marshal(res)
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("error marshalling: %w", err).Error())
+		return
+	}
+
+	err = userConn.WriteResponse(msg)
 	if err != nil {
 		return
 	}

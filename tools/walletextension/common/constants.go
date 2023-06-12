@@ -34,6 +34,7 @@ const (
 	PathSubmitViewingKey   = "/submitviewingkey/"
 	PathJoin               = "/join/"
 	PathAuthenticate       = "/authenticate/"
+	PathQuery              = "/query/"
 	WSProtocol             = "ws://"
 	DefaultUser            = "defaultUser"
 

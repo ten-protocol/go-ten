@@ -38,8 +38,8 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 	}, nil
 }
 
-func getUser(params map[string]string) (string, error) {
-	value, exists := params["u"]
+func getQueryParameter(params map[string]string, selectedParameter string) (string, error) {
+	value, exists := params[selectedParameter]
 	if !exists {
 		return "", fmt.Errorf("parameter 'u' is not in the query params")
 	}
