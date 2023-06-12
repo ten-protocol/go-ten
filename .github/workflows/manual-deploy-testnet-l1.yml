@@ -122,9 +122,9 @@ jobs:
             --scripts 'mkdir -p /home/obscuro \
             && sudo apt-get update \
             && sudo apt-get install -y gcc \
-            && sudo snap refresh
+            && sudo snap refresh \
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
-            && docker network create --driver bridge node_network || true \
+            && docker network create --driver bridge l1_network || true \
             && docker run -d --name datadog-agent \
                --network l1_network \
                -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
@@ -139,8 +139,8 @@ jobs:
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
                datadog/agent:latest \
             && docker run ${{ env.ETH2NETWORK_BUILD_TAG }} \
-            --entrypoint /home/obscuro/go-obscuro/integration/eth2network/main/main \
+            /home/obscuro/go-obscuro/integration/eth2network/main/main \
             --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
-            --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
+            --prefundedAddrs="${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}"'
             
       
