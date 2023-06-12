@@ -169,7 +169,7 @@ func (h *host) Start() error {
 		enclStatus := h.waitForEnclave()
 
 		// todo (#1474) - the host should only connect to enclaves with the same ID as the host.ID
-		if enclStatus == common.AwaitingSecret {
+		if enclStatus.StatusCode == common.AwaitingSecret {
 			err = h.requestSecret()
 			if err != nil {
 				h.logger.Crit("Could not request secret", log.ErrKey, err.Error())

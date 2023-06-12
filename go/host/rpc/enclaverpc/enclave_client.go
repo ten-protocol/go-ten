@@ -79,7 +79,7 @@ func (c *Client) StopClient() common.SystemError {
 
 func (c *Client) Status() (common.Status, common.SystemError) {
 	if c.connection.GetState() != connectivity.Ready {
-		return common.Unavailable, syserr.NewInternalError(fmt.Errorf("RPC connection is not ready"))
+		return common.Status{StatusCode: common.Unavailable}, syserr.NewInternalError(fmt.Errorf("RPC connection is not ready"))
 	}
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
@@ -87,13 +87,17 @@ func (c *Client) Status() (common.Status, common.SystemError) {
 
 	response, err := c.protoClient.Status(timeoutCtx, &generated.StatusRequest{})
 	if err != nil {
-		return common.Unavailable, syserr.NewRPCError(err)
+		return common.Status{StatusCode: common.Unavailable}, syserr.NewRPCError(err)
 	}
 	if response != nil && response.SystemError != nil {
-		return common.Unavailable, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+		return common.Status{StatusCode: common.Unavailable}, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	return common.Status(response.GetStatus()), nil
+	return common.Status{
+		StatusCode: common.StatusCode(response.StatusCode),
+		L1Head:     gethcommon.BytesToHash(response.L1Head),
+		L2Head:     gethcommon.BytesToHash(response.L2Head),
+	}, nil
 }
 
 func (c *Client) Attestation() (*common.AttestationReport, common.SystemError) {
