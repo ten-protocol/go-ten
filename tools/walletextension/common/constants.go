@@ -35,6 +35,7 @@ const (
 	PathJoin               = "/join/"
 	PathAuthenticate       = "/authenticate/"
 	PathQuery              = "/query/"
+	PathRevoke             = "/revoke/"
 	WSProtocol             = "ws://"
 	DefaultUser            = "defaultUser"
 

@@ -59,6 +59,10 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 			Name: common.PathQuery,
 			Func: httpHandler(walletExt, queryRequestHandler),
 		},
+		{
+			Name: common.PathRevoke,
+			Func: httpHandler(walletExt, revokeRequestHandler),
+		},
 	}
 }
 
@@ -447,6 +451,38 @@ func queryRequestHandler(walletExt *walletextension.WalletExtension, userConn us
 
 	err = userConn.WriteResponse(msg)
 	if err != nil {
+		return
+	}
+}
+
+func revokeRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+	// read the request
+	_, err := userConn.ReadRequest()
+	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
+		return
+	}
+
+	userID, err := getQueryParameter(userConn.ReadRequestParams(), "u")
+	if err != nil {
+		userConn.HandleError("user ('u') not found in query parameters")
+		walletExt.Logger().Error(fmt.Errorf("user not found in the query params: %w", err).Error())
+		return
+	}
+	userIDBytes, err := hex.DecodeString(userID[2:]) // remove 0x prefix from userID
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("error decoding string (%s), %w", userID, err).Error())
+		return
+	}
+
+	upk, err := walletExt.Storage.GetUserPrivateKey(userIDBytes)
+	fmt.Println("UPK is: ", upk)
+
+	err = walletExt.Storage.DeleteUser(userIDBytes)
+	if err != nil {
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Errorf("error deleting user (%s), %w", userID, err).Error())
 		return
 	}
 }

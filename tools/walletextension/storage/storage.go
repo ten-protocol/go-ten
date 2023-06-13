@@ -50,6 +50,14 @@ func (s *Storage) AddUser(userID []byte, privateKey []byte) error {
 	return nil
 }
 
+func (s *Storage) DeleteUser(userID []byte) error {
+	err := s.db.DeleteUser(userID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *Storage) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	privateKey, err := s.db.GetUserPrivateKey(userID)
 	if err != nil {
@@ -59,6 +67,7 @@ func (s *Storage) GetUserPrivateKey(userID []byte) ([]byte, error) {
 }
 
 func (s *Storage) AddAccount(userID []byte, accountAddress []byte, signature []byte) error {
+	fmt.Println("adding user: ", userID)
 	err := s.db.AddAccount(userID, accountAddress, signature)
 	if err != nil {
 		return err

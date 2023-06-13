@@ -65,6 +65,21 @@ func (s *SqliteDatabase) AddUser(userID []byte, privateKey []byte) error {
 	return nil
 }
 
+func (s *SqliteDatabase) DeleteUser(userID []byte) error {
+	stmt, err := s.db.Prepare("DELETE FROM users WHERE user_id = ?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *SqliteDatabase) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	var privateKey []byte
 	err := s.db.QueryRow("SELECT private_key FROM users WHERE user_id = ?", userID).Scan(&privateKey)
