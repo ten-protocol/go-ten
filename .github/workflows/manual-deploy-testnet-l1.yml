@@ -67,13 +67,13 @@ jobs:
           username: ${{ secrets.REGISTRY_USERNAME }}
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-#      - name: 'Build and push image'
-#        # DOCKER_BUILDKIT=1 will enable  the new docker build kit that allows us to use build only caches on RUN commands.
-#        # Tag the same image with 2 tags and push with the -a flag which pushes all images
-#        run: |
-#          DOCKER_BUILDKIT=1 docker build -t ${{env.ETH2NETWORK_BUILD_TAG}} -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/eth2network.Dockerfile .
-#          docker push ${{env.L1_DOCKER_BUILD_TAG}}
-#          docker push ${{env.ETH2NETWORK_BUILD_TAG}}
+      - name: 'Build and push image'
+        # DOCKER_BUILDKIT=1 will enable  the new docker build kit that allows us to use build only caches on RUN commands.
+        # Tag the same image with 2 tags and push with the -a flag which pushes all images
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{env.ETH2NETWORK_BUILD_TAG}} -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/eth2network.Dockerfile .
+          docker push ${{env.L1_DOCKER_BUILD_TAG}}
+          docker push ${{env.ETH2NETWORK_BUILD_TAG}}
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
       - name: 'Delete deployed VMs'
@@ -141,7 +141,7 @@ jobs:
             && docker run -d ${{ env.ETH2NETWORK_BUILD_TAG }} \
             /home/obscuro/go-obscuro/integration/eth2network/main/main \
             --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
-            --logToFile false \
+            --logToFile="false" \
             --prefundedAddrs="${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}"'
             
       
