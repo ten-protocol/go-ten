@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
@@ -23,28 +25,28 @@ var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connectio
 
 // WalletExtension handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
-	hostAddr       string // The address on which the Obscuro host can be reached.
-	accountManager *accountmanager.AccountManager
-	unsignedVKs    map[gethcommon.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
-	storage        *storage.Storage
-	logger         gethlog.Logger
-	stopControl    *stopcontrol.StopControl
+	hostAddr           string // The address on which the Obscuro host can be reached.
+	userAccountManager *useraccountmanager.UserAccountManager
+	unsignedVKs        map[gethcommon.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
+	storage            *storage.Storage
+	logger             gethlog.Logger
+	stopControl        *stopcontrol.StopControl
 }
 
 func New(
 	hostAddr string,
-	accountManager *accountmanager.AccountManager,
+	userAccountManager *useraccountmanager.UserAccountManager,
 	storage *storage.Storage,
 	stopControl *stopcontrol.StopControl,
 	logger gethlog.Logger,
 ) *WalletExtension {
 	return &WalletExtension{
-		hostAddr:       hostAddr,
-		accountManager: accountManager,
-		unsignedVKs:    map[gethcommon.Address]*rpc.ViewingKey{},
-		storage:        storage,
-		logger:         logger,
-		stopControl:    stopControl,
+		hostAddr:           hostAddr,
+		userAccountManager: userAccountManager,
+		unsignedVKs:        map[gethcommon.Address]*rpc.ViewingKey{},
+		storage:            storage,
+		logger:             logger,
+		stopControl:        stopControl,
 	}
 }
 
@@ -67,7 +69,13 @@ func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, co
 
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
-	err := w.accountManager.ProxyRequest(request, &rpcResp, conn)
+
+	// todo (@ziga) Remove this code after implementatio for all userIDs is done
+	defaultAccManager, err := w.userAccountManager.GetUserAccountManager(common.DefaultUser)
+	if err != nil {
+		return nil, err
+	}
+	err = defaultAccManager.ProxyRequest(request, &rpcResp, conn)
 
 	if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
 		response = common.CraftErrorResponse(err)
@@ -124,7 +132,12 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	if err != nil {
 		return fmt.Errorf("failed to create encrypted RPC client for account %s - %w", address, err)
 	}
-	w.accountManager.AddClient(address, client)
+	defaultAccountManager, err := w.userAccountManager.GetUserAccountManager(common.DefaultUser)
+	if err != nil {
+		return fmt.Errorf(fmt.Sprintf("error getting default user account manager: %s", err))
+	}
+
+	defaultAccountManager.AddClient(address, client)
 
 	err = w.storage.SaveUserVK(common.DefaultUser, vk)
 	if err != nil {
