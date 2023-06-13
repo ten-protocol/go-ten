@@ -139,7 +139,16 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 
 	defaultAccountManager.AddClient(address, client)
 
-	err = w.storage.SaveUserVK(common.DefaultUser, vk)
+	err = w.storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
+	if err != nil {
+		return fmt.Errorf("error saving user: %s", common.DefaultUser)
+	}
+
+	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignedKey)
+	if err != nil {
+		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
+	}
+
 	if err != nil {
 		return fmt.Errorf("error saving viewing key to the database: %w", err)
 	}
