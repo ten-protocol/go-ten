@@ -139,8 +139,10 @@ message CreateRollupResponse{
 
 message StatusRequest {}
 message StatusResponse {
-  int32 status = 1;
-  SystemError systemError = 2;
+  int32 statusCode = 1;
+  bytes l1Head = 2; // hash for the L1 head block in enclave's view of the canonical chain
+  bytes l2Head = 3; // hash for the L2 head batch in enclave's view of the canonical chain
+  SystemError systemError = 4;
 }
 
 message AttestationRequest {}
@@ -312,7 +314,7 @@ message BlockSubmissionResponseMsg {
   ExtRollupMsg producedRollup = 2;
   repeated SecretResponseMsg producedSecretResponses = 3;
   bytes subscribedLogs = 4;
-  BlockSubmissionErrorMsg error = 5; // todo (@stefan) - avoid errors in Response objects, perhaps using gRPC Status responses
+  BlockSubmissionErrorMsg error = 5; // todo (@matt) - remove this BlockSubmissionError field once we are using the Status() to update host view of enclave state
 }
 
 message BlockSubmissionErrorMsg {
