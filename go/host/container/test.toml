@@ -22,4 +22,4 @@ ObscuroChainID = 777
 ProfilerEnabled = false
 DebugNamespaceEnabled = false
 BatchInterval = "1.0s"
-RollupInterval = "10.0s"
+RollupInterval = "5.0s"
