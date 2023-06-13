@@ -37,7 +37,7 @@ func NewMockP2P(avgBlockDuration time.Duration, avgLatency time.Duration) *MockP
 	}
 }
 
-func (netw *MockP2P) StartListening(host.Host) {
+func (netw *MockP2P) StartListening(_ host.P2PSubscriber) {
 	// nothing to do here, since communication is direct through the in memory objects
 }
 
