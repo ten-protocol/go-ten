@@ -23,12 +23,6 @@ type Host interface {
 	Start() error
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
 	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
-	// ReceiveTx processes a transaction received from a peer host.
-	ReceiveTx(tx common.EncryptedTx)
-	// ReceiveBatches receives a set of batches from a peer host.
-	ReceiveBatches(batches common.EncodedBatchMsg)
-	// ReceiveBatchRequest receives a batch request from a peer host. Used during catch-up.
-	ReceiveBatchRequest(batchRequest common.EncodedBatchRequest)
 	// Subscribe feeds logs matching the encrypted log subscription to the matchedLogs channel.
 	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error
 	// Unsubscribe terminates a log subscription between the host and the enclave.
@@ -38,11 +32,22 @@ type Host interface {
 
 	// HealthCheck returns the health status of the host + enclave + db
 	HealthCheck() (*HealthCheck, error)
+
+	P2PSubscriber // todo (@matt) remove this from host interface and host tests when it's done at a per-enclave level
+}
+
+type P2PSubscriber interface {
+	// ReceiveTx processes a transaction received from a peer host.
+	ReceiveTx(tx common.EncryptedTx)
+	// ReceiveBatches receives a set of batches from a peer host.
+	ReceiveBatches(batches common.EncodedBatchMsg)
+	// ReceiveBatchRequest receives a batch request from a peer host. Used during catch-up.
+	ReceiveBatchRequest(batchRequest common.EncodedBatchRequest)
 }
 
 // P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
 type P2P interface {
-	StartListening(callback Host)
+	StartListening(callback P2PSubscriber)
 	StopListening() error
 	UpdatePeerList([]string)
 	// SendTxToSequencer sends the encrypted transaction to the sequencer.
