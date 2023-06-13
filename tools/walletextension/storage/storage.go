@@ -67,7 +67,6 @@ func (s *Storage) GetUserPrivateKey(userID []byte) ([]byte, error) {
 }
 
 func (s *Storage) AddAccount(userID []byte, accountAddress []byte, signature []byte) error {
-	fmt.Println("adding user: ", userID)
 	err := s.db.AddAccount(userID, accountAddress, signature)
 	if err != nil {
 		return err

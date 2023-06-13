@@ -476,9 +476,6 @@ func revokeRequestHandler(walletExt *walletextension.WalletExtension, userConn u
 		return
 	}
 
-	upk, err := walletExt.Storage.GetUserPrivateKey(userIDBytes)
-	fmt.Println("UPK is: ", upk)
-
 	err = walletExt.Storage.DeleteUser(userIDBytes)
 	if err != nil {
 		userConn.HandleError("Internal error")
