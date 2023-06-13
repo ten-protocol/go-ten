@@ -45,6 +45,7 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 
 	network := eth2network.NewEth2Network(
 		binariesPath,
+		true,
 		_startPort,
 		_startPort+integration.DefaultGethWSPortOffset,
 		_startPort+integration.DefaultGethAUTHPortOffset,

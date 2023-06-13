@@ -141,6 +141,7 @@ jobs:
             && docker run -d ${{ env.ETH2NETWORK_BUILD_TAG }} \
             /home/obscuro/go-obscuro/integration/eth2network/main/main \
             --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
+            --logToFile false \
             --prefundedAddrs="${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}"'
             
       

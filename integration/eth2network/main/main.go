@@ -24,6 +24,7 @@ func main() {
 
 	eth2Network := eth2network.NewEth2Network(
 		binariesPath,
+		config.logToFile,
 		config.gethHTTPStartPort,
 		config.gethWSStartPort,
 		config.gethAuthRPCStartPort,

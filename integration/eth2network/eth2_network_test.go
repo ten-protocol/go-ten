@@ -52,6 +52,7 @@ func TestStartEth2Network(t *testing.T) {
 
 	network := NewEth2Network(
 		binDir,
+		true,
 		_startPort,
 		_startPort+integration.DefaultGethWSPortOffset,
 		_startPort+integration.DefaultGethAUTHPortOffset,
