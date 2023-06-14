@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"gopkg.in/square/go-jose.v2/json"
 	"strings"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -68,6 +69,14 @@ type ethConfig struct {
 	onlyDownload            bool
 	logToFile               bool
 	prefundedAddrs          []string
+}
+
+func (e *ethConfig) String() string {
+	jsonBytes, err := json.MarshalIndent(e, "", " ")
+	if err != nil {
+		panic(err)
+	}
+	return string(jsonBytes)
 }
 
 func defaultConfig() *ethConfig {

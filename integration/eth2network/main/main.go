@@ -21,6 +21,7 @@ func main() {
 	if config.onlyDownload {
 		os.Exit(0)
 	}
+	fmt.Printf("Starting eth2network with params: %s\n", config.String())
 
 	eth2Network := eth2network.NewEth2Network(
 		binariesPath,
