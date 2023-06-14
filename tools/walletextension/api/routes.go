@@ -318,7 +318,7 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 		walletExt.Logger().Error(fmt.Errorf("error adding address to user with message: %s, %w", message, err).Error())
 		return
 	}
-	err = userConn.WriteResponse([]byte("success!"))
+	err = userConn.WriteResponse([]byte(common.SuccessMsg))
 	if err != nil {
 		walletExt.Logger().Error(fmt.Errorf("error writing success response, %w", err).Error())
 		return
@@ -401,7 +401,7 @@ func revokeRequestHandler(walletExt *walletextension.WalletExtension, userConn u
 		return
 	}
 
-	err = userConn.WriteResponse([]byte("success!"))
+	err = userConn.WriteResponse([]byte(common.SuccessMsg))
 	if err != nil {
 		walletExt.Logger().Error(fmt.Errorf("error writing success response, %w", err).Error())
 	}
