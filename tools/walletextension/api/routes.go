@@ -2,8 +2,10 @@ package api
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -139,6 +141,8 @@ func wsRequestHandler(walletExt *walletextension.WalletExtension, resp http.Resp
 func ethRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
 	body, err := conn.ReadRequest()
 	if err != nil {
+		conn.HandleError("Error: bad request")
+		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
 		return
 	}
 
@@ -181,6 +185,8 @@ func readyRequestHandler(_ *walletextension.WalletExtension, _ userconn.UserConn
 func generateViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
 	body, err := conn.ReadRequest()
 	if err != nil {
+		conn.HandleError("Error: bad request")
+		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
 		return
 	}
 
@@ -209,6 +215,8 @@ func generateViewingKeyRequestHandler(walletExt *walletextension.WalletExtension
 func submitViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
 	body, err := userConn.ReadRequest()
 	if err != nil {
+		userConn.HandleError("Error: bad request")
+		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
 		return
 	}
 
@@ -234,14 +242,19 @@ func submitViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, 
 
 	err = userConn.WriteResponse([]byte(common.SuccessMsg))
 	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error writing success response, %w", err).Error())
 		return
 	}
 }
 
+// This function handles request to /join endpoint.
+// It generates new key-pair and userID, stores it in the database and returns userID back to the user.
 func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
 	// todo (@ziga) add protection against DDOS attacks
 	_, err := userConn.ReadRequest()
 	if err != nil {
+		userConn.HandleError("Error: bad request")
+		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
 		return
 	}
 
@@ -249,31 +262,37 @@ func joinRequestHandler(walletExt *walletextension.WalletExtension, userConn use
 	viewingKeyPrivate, err := crypto.GenerateKey()
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 	if err != nil {
-		userConn.HandleError(fmt.Sprintf("could not generate new keypair: %s", err))
+		userConn.HandleError("Internal error")
+		walletExt.Logger().Error(fmt.Sprintf("could not generate new keypair: %s", err))
 		return
 	}
-	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 
 	// create UserID and store it in the database with the private key
-	userID := crypto.Keccak256Hash(viewingPublicKeyBytes)
-	err = walletExt.Storage.AddUser(userID.Bytes(), crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
+	userID := calculateUserID(viewingKeyPrivate)
+	err = walletExt.Storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {
 		userConn.HandleError("Internal error")
 		walletExt.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
-		walletExt.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
 		return
 	}
 
-	err = userConn.WriteResponse([]byte(userID.Hex()))
+	// write hex encoded userID in the response
+	err = userConn.WriteResponse([]byte(hex.EncodeToString(userID)))
+
 	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error writing success response, %w", err).Error())
 		return
 	}
 }
 
+// This function handles request to /authenticate endpoint.
+// In the request we receive message, signature and address in JSON as request body and userID and address as query parameters
+// We then check if message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
 func authenticateRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
 	// read the request
 	body, err := userConn.ReadRequest()
 	if err != nil {
+		userConn.HandleError("Error: bad request")
 		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
 		return
 	}
@@ -290,7 +309,7 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 	// get signature from the request and remove leading two bytes (0x)
 	signature, err := hex.DecodeString(reqJSONMap[common.JSONKeySignature][2:])
 	if err != nil {
-		userConn.HandleError("Internal error")
+		userConn.HandleError("Error: unable to decode signature")
 		walletExt.Logger().Error(fmt.Errorf("could not find or decode signature from client to hex: %w", err).Error())
 		return
 	}
@@ -298,49 +317,42 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 	// get message from the request
 	message, ok := reqJSONMap[common.JSONKeyMessage]
 	if !ok || message == "" {
-		userConn.HandleError("Internal error")
+		userConn.HandleError("Error: unable to read message field from the request")
 		walletExt.Logger().Error(fmt.Errorf("could not find message in the request: %w", err).Error())
 		return
 	}
 
 	// read userID from query params
-	userID, err := getQueryParameter(userConn.ReadRequestParams(), "u")
+	hexUserID, err := getQueryParameter(userConn.ReadRequestParams(), common.UserQueryParameter)
 	if err != nil {
-		userConn.HandleError("Internal error")
+		userConn.HandleError("Malformed query: 'u' required - representing userID")
 		walletExt.Logger().Error(fmt.Errorf("user not found in the query params: %w", err).Error())
 		return
 	}
 
 	// parse the message to get userID and account address
-	var messageUserID string
-	var messageAddressHex string
-	regex := regexp.MustCompile(`^Register\s(\w+)\sfor\s(\w+)$`)
-	if regex.MatchString(message) {
-		params := regex.FindStringSubmatch(message)
-		messageUserID = params[1]
-		messageAddressHex = params[2]
-	} else {
+	messageUserID, messageAddressHex, err := getUserIDAndAddressFromMessage(message)
+	if err != nil {
 		userConn.HandleError("Internal error")
 		walletExt.Logger().Error(fmt.Errorf("submitted message (%s) is not in the correct format", message).Error())
 		return
 	}
 
-	// check if userID corresponds to the one in the message
+	// check if userID corresponds to the one in the message and check if the length of hex encoded userID is correct
 	// todo: do we need userID in query param, because we get it already from the message
-	if userID != messageUserID || len(messageUserID) != 66 {
-		userConn.HandleError(fmt.Sprintf("User in submitted message (%s) does not match user provided in the request (%s) of is wrong size", messageUserID, userID))
+	if hexUserID != messageUserID || len(messageUserID) != common.MessageUserIDLen {
+		userConn.HandleError(fmt.Sprintf("User in submitted message (%s) does not match user provided in the request (%s) of is wrong size", messageUserID, hexUserID))
 		return
 	}
 
 	// Check if the signature is valid
-
 	// prefix the message like in the personal_sign method
-	prefixedMessage := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(message), message)
+	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)
 	messageHash := crypto.Keccak256([]byte(prefixedMessage))
 
-	// check the signature length
-	if len(signature) != 65 {
-		userConn.HandleError("Internal error")
+	// check if the signature length is correct
+	if len(signature) != common.SignatureLen {
+		userConn.HandleError("Error: signature must be 64 bytes long")
 		walletExt.Logger().Error(fmt.Errorf("signature must be 64 bytes long, but %d bytes long signature received", len(signature)).Error())
 		return
 	}
@@ -349,66 +361,68 @@ func authenticateRequestHandler(walletExt *walletextension.WalletExtension, user
 	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	signature[64] -= 27
 
-	// check if the message contains the same address that signed the message
-	pubKey, err := crypto.SigToPub(messageHash, signature)
+	// get addresses from signature and message and compare if they are the same
+	addressFromSignature, err := getAddressFromSignature(messageHash, signature)
 	if err != nil {
 		userConn.HandleError("Internal error")
-		walletExt.Logger().Error(fmt.Errorf("error inside SigToPub: %w", err).Error())
-		return
+		walletExt.Logger().Error(fmt.Errorf("error getting address from signature: %w", err).Error())
 	}
-
-	addressFromSignature := crypto.PubkeyToAddress(*pubKey)
 	addressFromMessage := gethcommon.HexToAddress(messageAddressHex)
 
 	// verify that message was signed by the same address as in the message
 	if addressFromSignature != addressFromMessage {
-		userConn.HandleError("Internal error")
+		userConn.HandleError("Message not signed by the same address as provided in message")
 		walletExt.Logger().Error(fmt.Errorf("address from signature (%s) is not the same as address from message (%s)", addressFromSignature, addressFromSignature).Error())
 		return
 	}
 
 	// register the account for that viewing key
-	userIDBytes, err := hex.DecodeString(userID[2:]) // remove 0x prefix from userID
+	userIDBytes, err := getUserIDbyte(hexUserID)
 	if err != nil {
-		userConn.HandleError("Internal error")
-		walletExt.Logger().Error(fmt.Errorf("error decoding string (%s), %w", userID[2:], err).Error())
+		userConn.HandleError("Error decoding userID. It should be in hex format")
+		walletExt.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
 		return
 	}
 	err = walletExt.Storage.AddAccount(userIDBytes, addressFromMessage.Bytes(), signature)
 	if err != nil {
 		userConn.HandleError("Internal error")
-		walletExt.Logger().Error(fmt.Errorf("error while storing account (%s) for user (%s): %w", addressFromMessage.Hex(), userID, err).Error())
+		walletExt.Logger().Error(fmt.Errorf("error while storing account (%s) for user (%s): %w", addressFromMessage.Hex(), hexUserID, err).Error())
 		return
 	}
 
 	err = userConn.WriteResponse([]byte("success!"))
 	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error writing success response, %w", err).Error())
 		return
 	}
 }
 
+// This function handles request to /query endpoint.
+// In the query parameters address and userID are required. We check if provided address is registered for given userID
+// and return true/false in json response
 func queryRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
 	// read the request
 	_, err := userConn.ReadRequest()
 	if err != nil {
+		userConn.HandleError("Error: bad request")
 		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
 		return
 	}
 
-	userID, err := getQueryParameter(userConn.ReadRequestParams(), "u")
+	hexUserID, err := getQueryParameter(userConn.ReadRequestParams(), common.UserQueryParameter)
 	if err != nil {
 		userConn.HandleError("user ('u') not found in query parameters")
 		walletExt.Logger().Error(fmt.Errorf("user not found in the query params: %w", err).Error())
 		return
 	}
-	userIDBytes, err := hex.DecodeString(userID[2:]) // remove 0x prefix from userID
+	userIDBytes, err := getUserIDbyte(hexUserID)
 	if err != nil {
-		userConn.HandleError("Internal error")
-		walletExt.Logger().Error(fmt.Errorf("error decoding string (%s), %w", userID[2:], err).Error())
+		userConn.HandleError("error decoding userID. It should be in hex format")
+		walletExt.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
 		return
 	}
 
-	address, err := getQueryParameter(userConn.ReadRequestParams(), "a")
+	address, err := getQueryParameter(userConn.ReadRequestParams(), common.AddressQueryParameter)
 	if err != nil {
 		userConn.HandleError("address ('a') not found in query parameters")
 		walletExt.Logger().Error(fmt.Errorf("address not found in the query params: %w", err).Error())
@@ -426,7 +440,7 @@ func queryRequestHandler(walletExt *walletextension.WalletExtension, userConn us
 	accounts, err := walletExt.Storage.GetAccounts(userIDBytes)
 	if err != nil {
 		userConn.HandleError("Internal error")
-		walletExt.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", userID, err).Error())
+		walletExt.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", hexUserID, err).Error())
 		return
 	}
 
@@ -451,10 +465,13 @@ func queryRequestHandler(walletExt *walletextension.WalletExtension, userConn us
 
 	err = userConn.WriteResponse(msg)
 	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error writing success response, %w", err).Error())
 		return
 	}
 }
 
+// This function handles request to /revoke endpoint.
+// It requires userID as query parameter and deletes given user and all associated viewing keys
 func revokeRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
 	// read the request
 	_, err := userConn.ReadRequest()
@@ -463,23 +480,59 @@ func revokeRequestHandler(walletExt *walletextension.WalletExtension, userConn u
 		return
 	}
 
-	userID, err := getQueryParameter(userConn.ReadRequestParams(), "u")
+	hexUserID, err := getQueryParameter(userConn.ReadRequestParams(), common.UserQueryParameter)
 	if err != nil {
 		userConn.HandleError("user ('u') not found in query parameters")
 		walletExt.Logger().Error(fmt.Errorf("user not found in the query params: %w", err).Error())
 		return
 	}
-	userIDBytes, err := hex.DecodeString(userID[2:]) // remove 0x prefix from userID
+	userIDBytes, err := getUserIDbyte(hexUserID)
 	if err != nil {
 		userConn.HandleError("Internal error")
-		walletExt.Logger().Error(fmt.Errorf("error decoding string (%s), %w", userID, err).Error())
+		walletExt.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID, err).Error())
 		return
 	}
 
 	err = walletExt.Storage.DeleteUser(userIDBytes)
 	if err != nil {
 		userConn.HandleError("Internal error")
-		walletExt.Logger().Error(fmt.Errorf("error deleting user (%s), %w", userID, err).Error())
+		walletExt.Logger().Error(fmt.Errorf("error deleting user (%s), %w", hexUserID, err).Error())
 		return
 	}
+
+	err = userConn.WriteResponse([]byte("success!"))
+	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error writing success response, %w", err).Error())
+	}
+}
+
+// calculate userID from public key
+func calculateUserID(pk *ecdsa.PrivateKey) []byte {
+	viewingPublicKeyBytes := crypto.CompressPubkey(&pk.PublicKey)
+	return crypto.Keccak256Hash(viewingPublicKeyBytes).Bytes()
+}
+
+// check if message is in correct format and extracts userID and address from it
+func getUserIDAndAddressFromMessage(message string) (string, string, error) {
+	regex := regexp.MustCompile(common.MessageFormatRegex)
+	if regex.MatchString(message) {
+		params := regex.FindStringSubmatch(message)
+		return params[1], params[2], nil
+	}
+	return "", "", errors.New("invalid message format")
+}
+
+// get an address that was used to sign given signature
+func getAddressFromSignature(messageHash []byte, signature []byte) (gethcommon.Address, error) {
+	pubKey, err := crypto.SigToPub(messageHash, signature)
+	if err != nil {
+		return gethcommon.Address{}, err
+	}
+
+	return crypto.PubkeyToAddress(*pubKey), nil
+}
+
+// convert userID from string to correct byte format
+func getUserIDbyte(userID string) ([]byte, error) {
+	return hex.DecodeString(userID[2:]) // remove 0x prefix from userID
 }

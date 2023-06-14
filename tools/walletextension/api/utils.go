@@ -41,7 +41,7 @@ func parseRequest(body []byte) (*accountmanager.RPCRequest, error) {
 func getQueryParameter(params map[string]string, selectedParameter string) (string, error) {
 	value, exists := params[selectedParameter]
 	if !exists {
-		return "", fmt.Errorf("parameter 'u' is not in the query params")
+		return "", fmt.Errorf("parameter '%s' is not in the query params", selectedParameter)
 	}
 
 	return value, nil
