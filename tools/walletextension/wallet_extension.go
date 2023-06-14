@@ -1,9 +1,12 @@
 package walletextension
 
 import (
+	"bytes"
+	"crypto/ecdsa"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"regexp"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
 
@@ -28,7 +31,7 @@ type WalletExtension struct {
 	hostAddr           string // The address on which the Obscuro host can be reached.
 	userAccountManager *useraccountmanager.UserAccountManager
 	unsignedVKs        map[gethcommon.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
-	Storage            *storage.Storage
+	storage            *storage.Storage
 	logger             gethlog.Logger
 	stopControl        *stopcontrol.StopControl
 }
@@ -44,7 +47,7 @@ func New(
 		hostAddr:           hostAddr,
 		userAccountManager: userAccountManager,
 		unsignedVKs:        map[gethcommon.Address]*rpc.ViewingKey{},
-		Storage:            storage,
+		storage:            storage,
 		logger:             logger,
 		stopControl:        stopControl,
 	}
@@ -139,12 +142,12 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 
 	defaultAccountManager.AddClient(address, client)
 
-	err = w.Storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
+	err = w.storage.AddUser([]byte(common.DefaultUser), crypto.FromECDSA(vk.PrivateKey.ExportECDSA()))
 	if err != nil {
 		return fmt.Errorf("error saving user: %s", common.DefaultUser)
 	}
 
-	err = w.Storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignedKey)
+	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignedKey)
 	if err != nil {
 		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
 	}
@@ -157,6 +160,165 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	delete(w.unsignedVKs, address)
 
 	return nil
+}
+
+// GenerateAndStoreNewUser generates new key-pair and userID, stores it in the database and returns hex encoded userID and error
+func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
+	// generate new key-pair
+	viewingKeyPrivate, err := crypto.GenerateKey()
+	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
+	if err != nil {
+		w.Logger().Error(fmt.Sprintf("could not generate new keypair: %s", err))
+		return "", err
+	}
+
+	// create UserID and store it in the database with the private key
+	userID := calculateUserID(viewingKeyPrivate)
+	err = w.storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
+	if err != nil {
+		w.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
+		return "", err
+	}
+
+	return hex.EncodeToString(userID), nil
+}
+
+// AddAddressToUser checks if message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
+func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, signature []byte) error {
+	// parse the message to get userID and account address
+	messageUserID, messageAddressHex, err := getUserIDAndAddressFromMessage(message)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("submitted message (%s) is not in the correct format", message).Error())
+		return err
+	}
+
+	// check if userID corresponds to the one in the message and check if the length of hex encoded userID is correct
+	if hexUserID != messageUserID || len(messageUserID) != common.MessageUserIDLen {
+		w.Logger().Error(fmt.Errorf("submitted message (%s) is not in the correct format", message).Error())
+		return errors.New("userID from message does not match userID from request")
+	}
+
+	// Check if the signature is valid
+	// prefix the message like in the personal_sign method
+	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)
+	messageHash := crypto.Keccak256([]byte(prefixedMessage))
+
+	// check if the signature length is correct
+	if len(signature) != common.SignatureLen {
+		w.Logger().Error(fmt.Errorf("signature must be 64 bytes long, but %d bytes long signature received", len(signature)).Error())
+		return errors.New("incorrect signature length")
+	}
+
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	signature[64] -= 27
+
+	// get addresses from signature and message and compare if they are the same
+	addressFromSignature, err := getAddressFromSignature(messageHash, signature)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error getting address from signature: %w", err).Error())
+		return err
+	}
+	addressFromMessage := gethcommon.HexToAddress(messageAddressHex)
+
+	// verify that message was signed by the same address as in the message
+	if addressFromSignature != addressFromMessage {
+		w.Logger().Error(fmt.Errorf("address from signature (%s) is not the same as address from message (%s)", addressFromSignature, addressFromSignature).Error())
+		return errors.New("message was not signed by the address from the message")
+	}
+
+	// register the account for that viewing key
+	userIDBytes, err := getUserIDbyte(hexUserID)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
+		return errors.New("error decoding userID. It should be in hex format")
+	}
+	err = w.storage.AddAccount(userIDBytes, addressFromMessage.Bytes(), signature)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error while storing account (%s) for user (%s): %w", addressFromMessage.Hex(), hexUserID, err).Error())
+		return err
+	}
+	return nil
+}
+
+// UserHasAccount checks if provided account exist in the database for given userID
+func (w *WalletExtension) UserHasAccount(hexUserID string, address string) (bool, error) {
+	userIDBytes, err := getUserIDbyte(hexUserID)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
+		return false, err
+	}
+
+	addressBytes, err := hex.DecodeString(address[2:]) // remove 0x prefix from address
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", address[2:], err).Error())
+		return false, err
+	}
+
+	// todo - this can be optimised and done in the database if we will have users with large number of accounts
+	// get all the accounts for the selected user
+	accounts, err := w.storage.GetAccounts(userIDBytes)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", hexUserID, err).Error())
+		return false, err
+	}
+
+	// check if any of the accounts matches given account
+	found := false
+	for _, account := range accounts {
+		if bytes.Equal(account.AccountAddress, addressBytes) {
+			found = true
+		}
+	}
+	return found, nil
+}
+
+// DeleteUser deletes user and accounts associated with user from database for given userID
+func (w *WalletExtension) DeleteUser(hexUserID string) error {
+	userIDBytes, err := getUserIDbyte(hexUserID)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID, err).Error())
+		return err
+	}
+
+	err = w.storage.DeleteUser(userIDBytes)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error deleting user (%s), %w", hexUserID, err).Error())
+		return err
+	}
+
+	return nil
+}
+
+// calculate userID from public key
+func calculateUserID(pk *ecdsa.PrivateKey) []byte {
+	viewingPublicKeyBytes := crypto.CompressPubkey(&pk.PublicKey)
+	return crypto.Keccak256Hash(viewingPublicKeyBytes).Bytes()
+}
+
+// check if message is in correct format and extracts userID and address from it
+func getUserIDAndAddressFromMessage(message string) (string, string, error) {
+	regex := regexp.MustCompile(common.MessageFormatRegex)
+	if regex.MatchString(message) {
+		params := regex.FindStringSubmatch(message)
+		return params[1], params[2], nil
+	}
+	return "", "", errors.New("invalid message format")
+}
+
+// get an address that was used to sign given signature
+func getAddressFromSignature(messageHash []byte, signature []byte) (gethcommon.Address, error) {
+	pubKey, err := crypto.SigToPub(messageHash, signature)
+	if err != nil {
+		return gethcommon.Address{}, err
+	}
+
+	return crypto.PubkeyToAddress(*pubKey), nil
+}
+
+// convert userID from string to correct byte format
+func getUserIDbyte(userID string) ([]byte, error) {
+	return hex.DecodeString(userID[2:]) // remove 0x prefix from userID
 }
 
 func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
