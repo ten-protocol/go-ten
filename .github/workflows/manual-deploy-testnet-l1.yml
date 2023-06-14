@@ -96,7 +96,7 @@ jobs:
           inlineScript: |
             az vm create -g Testnet -n "${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "${{ env.RESOURCE_NAME }}-${{ GITHUB.RUN_NUMBER }}" \
+            --public-ip-address-dns-name "${{ env.RESOURCE_NAME }}" \
             --tags ${{env.RESOURCE_TAG_NAME}}=true \
             --vnet-name ${{env.RESOURCE_NAME}}-01VNET --subnet ${{env.RESOURCE_NAME}}-01Subnet \
             --size Standard_DC2s_v3 --image Canonical:0001-com-ubuntu-server-jammy:22_04-lts-gen2:latest \
