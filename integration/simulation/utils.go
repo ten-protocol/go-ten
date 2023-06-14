@@ -54,7 +54,7 @@ func getHeadRollupHeader(client *obsclient.ObsClient, nodeIdx int) *common.Batch
 
 	headRollupHeader, err := client.RollupHeaderByNumber(big.NewInt(int64(headRollupHeight)))
 	if err != nil {
-		//panic(fmt.Errorf("node %d: simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %w", nodeIdx, headRollupHeight, err))
+		// panic(fmt.Errorf("node %d: simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %w", nodeIdx, headRollupHeight, err))
 		return nil
 	}
 	return headRollupHeader
