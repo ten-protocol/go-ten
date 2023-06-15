@@ -139,6 +139,7 @@ jobs:
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
                datadog/agent:latest \
             && docker run -d \
+            -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 \
             --entrypoint /home/obscuro/go-obscuro/integration/eth2network/main/main ${{ env.ETH2NETWORK_BUILD_TAG }} \
             --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
             --logToFile=false \
