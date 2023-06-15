@@ -5,8 +5,8 @@ import (
 	"os"
 )
 
-// This is the location where the metadata will be stored (currently only used on testnet VMs, may need to be made configurable eventually)
-const _defaultNetworkCfgFilePath = "/home/obscuro/network.json"
+// This is the location where the metadata will be stored
+const _defaultNetworkCfgFilePath = "./network.json"
 
 // NetworkConfig is key network information required to start a node connecting to that network.
 // We persist it as a json file on our testnet hosts so that they can read it off when restart/upgrading
