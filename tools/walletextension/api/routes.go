@@ -134,8 +134,9 @@ func wsRequestHandler(walletExt *walletextension.WalletExtension, resp http.Resp
 func ethRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
 	body, err := conn.ReadRequest()
 	if err != nil {
-		conn.HandleError("Error: bad request")
-		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
+		err = fmt.Errorf("error reading request: %w", err)
+		conn.HandleError(err.Error())
+		walletExt.Logger().Error(err.Error())
 		return
 	}
 
@@ -178,8 +179,9 @@ func readyRequestHandler(_ *walletextension.WalletExtension, _ userconn.UserConn
 func generateViewingKeyRequestHandler(walletExt *walletextension.WalletExtension, conn userconn.UserConn) {
 	body, err := conn.ReadRequest()
 	if err != nil {
-		conn.HandleError("Error: bad request")
-		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
+		err = fmt.Errorf("error reading request: %w", err)
+		conn.HandleError(err.Error())
+		walletExt.Logger().Error(err.Error())
 		return
 	}
 

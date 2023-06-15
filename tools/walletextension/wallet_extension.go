@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"math/big"
 	"regexp"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
@@ -24,7 +25,10 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
+var (
+	ErrSubscribeFailHTTP     = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
+	authenticateMessageRegex = regexp.MustCompile(common.MessageFormatRegex)
+)
 
 // WalletExtension handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
@@ -198,7 +202,6 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, sig
 		return errors.New("userID from message does not match userID from request")
 	}
 
-	// Check if the signature is valid
 	// prefix the message like in the personal_sign method
 	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)
 	messageHash := crypto.Keccak256([]byte(prefixedMessage))
@@ -214,7 +217,7 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, sig
 	signature[64] -= 27
 
 	// get addresses from signature and message and compare if they are the same
-	addressFromSignature, err := getAddressFromSignature(messageHash, signature)
+	addressFromSignature, pubKeyFromSignature, err := getAddressAndPubKeyFromSignature(messageHash, signature)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error getting address from signature: %w", err).Error())
 		return err
@@ -225,6 +228,15 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, sig
 	if addressFromSignature != addressFromMessage {
 		w.Logger().Error(fmt.Errorf("address from signature (%s) is not the same as address from message (%s)", addressFromSignature, addressFromSignature).Error())
 		return errors.New("message was not signed by the address from the message")
+	}
+
+	// verify the signature
+	r := new(big.Int).SetBytes(signature[:len(signature)/2])
+	s := new(big.Int).SetBytes(signature[len(signature)/2:])
+	valid := ecdsa.Verify(pubKeyFromSignature, messageHash, r, s)
+	if !valid {
+		w.Logger().Error(fmt.Errorf("signature %s is not valid", string(signature)).Error())
+		return errors.New("invalid signature")
 	}
 
 	// register the account for that viewing key
@@ -298,22 +310,21 @@ func calculateUserID(pk *ecdsa.PrivateKey) []byte {
 
 // check if message is in correct format and extracts userID and address from it
 func getUserIDAndAddressFromMessage(message string) (string, string, error) {
-	regex := regexp.MustCompile(common.MessageFormatRegex)
-	if regex.MatchString(message) {
-		params := regex.FindStringSubmatch(message)
+	if authenticateMessageRegex.MatchString(message) {
+		params := authenticateMessageRegex.FindStringSubmatch(message)
 		return params[1], params[2], nil
 	}
 	return "", "", errors.New("invalid message format")
 }
 
 // get an address that was used to sign given signature
-func getAddressFromSignature(messageHash []byte, signature []byte) (gethcommon.Address, error) {
+func getAddressAndPubKeyFromSignature(messageHash []byte, signature []byte) (gethcommon.Address, *ecdsa.PublicKey, error) {
 	pubKey, err := crypto.SigToPub(messageHash, signature)
 	if err != nil {
-		return gethcommon.Address{}, err
+		return gethcommon.Address{}, nil, err
 	}
 
-	return crypto.PubkeyToAddress(*pubKey), nil
+	return crypto.PubkeyToAddress(*pubKey), pubKey, nil
 }
 
 // convert userID from string to correct byte format
