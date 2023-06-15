@@ -578,20 +578,26 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 	}
 }
 
-// Creates a batch based on the rollup and distributes it to all other nodes.
-func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
-	defer h.logger.Info("Batch stored and distributed", log.BatchHashKey, producedBatch.Hash(), log.DurationKey, measure.NewStopwatch())
+func (h *host) storeBatch(producedBatch *common.ExtBatch) {
+	defer h.logger.Info("Batch stored", log.BatchHashKey, producedBatch.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	err := h.db.AddBatchHeader(producedBatch)
 	if err != nil {
 		h.logger.Error("could not store batch", log.BatchHashKey, producedBatch.Hash(), log.ErrKey, err)
 	}
+}
+
+// Creates a batch based on the rollup and distributes it to all other nodes.
+func (h *host) storeAndDistributeBatch(producedBatch *common.ExtBatch) {
+	defer h.logger.Info("Batch stored and distributed", log.BatchHashKey, producedBatch.Hash(), log.DurationKey, measure.NewStopwatch())
+
+	h.storeBatch(producedBatch)
 
 	batchMsg := hostcommon.BatchMsg{
 		Batches:   []*common.ExtBatch{producedBatch},
 		IsCatchUp: false,
 	}
-	err = h.p2p.BroadcastBatch(&batchMsg)
+	err := h.p2p.BroadcastBatch(&batchMsg)
 	if err != nil {
 		h.logger.Error("could not broadcast batch", log.BatchHashKey, producedBatch.Hash(), log.ErrKey, err)
 	}
@@ -954,7 +960,6 @@ func (h *host) startBatchStreaming() {
 	h.shutdownGroup.Add(1)
 	defer h.shutdownGroup.Done()
 
-	// TODO: Update this to start from persisted head
 	var startingBatch *gethcommon.Hash
 	header, err := h.db.GetHeadBatchHeader()
 	if err != nil {
@@ -993,6 +998,8 @@ func (h *host) startBatchStreaming() {
 				if h.config.NodeType == common.Sequencer {
 					h.logger.Info("Batch produced", log.RollupHeightKey, resp.Batch.Header.Number, log.RollupHashKey, resp.Batch.Hash())
 					h.storeAndDistributeBatch(resp.Batch)
+				} else {
+					h.storeBatch(resp.Batch)
 				}
 			}
 

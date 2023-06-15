@@ -48,7 +48,12 @@ func (o *OutputStats) populateHeights() {
 	o.l1Height = int(l1Height)
 
 	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
-	o.l2Height = int(getHeadRollupHeader(obscuroClient, 0).Number.Uint64())
+	hRollup, err := getHeadRollupHeader(obscuroClient)
+	if err != nil {
+		panic(err)
+	}
+
+	o.l2Height = int(hRollup.Number.Uint64())
 }
 
 func (o *OutputStats) countBlockChain() {
@@ -56,8 +61,11 @@ func (o *OutputStats) countBlockChain() {
 	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
 
 	// iterate the Node Headers and get the rollups
-	header := getHeadRollupHeader(obscuroClient, 0)
-	var err error
+	header, err := getHeadRollupHeader(obscuroClient)
+	if err != nil {
+		panic(err)
+	}
+
 	for {
 		if header != nil && !bytes.Equal(header.Hash().Bytes(), (common.L1BlockHash{}).Bytes()) {
 			break
