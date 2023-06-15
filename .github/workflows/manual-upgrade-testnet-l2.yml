@@ -38,7 +38,7 @@ jobs:
       VM_BUILD_NUMBER: ${{ steps.outputVars.outputs.VM_BUILD_NUMBER }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - uses: actions/setup-go@v4
         with:

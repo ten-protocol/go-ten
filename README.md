@@ -224,11 +224,12 @@ root
 │   ├── <a href="./integration/simulation">simulation</a>: A series of tests that simulate running networks with different setups.
 ├── <a href="./testnet">testnet</a>: Utilities for deploying a testnet.
 └── <a href="./tools">tools</a>: Peripheral tooling. 
-│   ├── <a href="./tools/azuredeployer">azuredeployer</a>: Automates deployment of Obscuro nodes to SGX-enabled Azure VMs.
-│   ├── <a href="./tools/contractdeployer">contractdeployer</a>: Automates deployment of ERC20 and management contracts to the L1.
-│   ├── <a href="./tools/networkmanager">networkmanager</a>: Network management tooling. Automates deployment of ERC20 and management contracts to the L1, and allows the injection of transactions into the network to simulate activity.
-│   ├── <a href="./tools/obscuroscan">obscuroscan</a>: Tooling to monitor network transactions.
-│   └── <a href="./tools/walletextension">walletextension</a>: Ensures sensitive messages to and from the Obscuro node are encrypted.
+    ├── <a href="./tools/azuredeployer">azuredeployer</a>: Automates deployment of Obscuro nodes to SGX-enabled Azure VMs.
+    ├── <a href="./tools/contractdeployer">contractdeployer</a>: Automates deployment of ERC20 and management contracts to the L1.
+    ├── <a href="./tools/networkmanager">networkmanager</a>: Network management tooling. Automates deployment of ERC20 and management contracts to the L1, and allows the injection of transactions into the network to simulate activity.
+    ├── <a href="./tools/faucet">faucet</a>: Faucet for testnet.
+    ├── <a href="./tools/obscuroscan">obscuroscan</a>: Tooling to monitor network transactions.
+    └── <a h ref="./tools/walletextension">walletextension</a>: Ensures sensitive messages to and from the Obscuro node are encrypted.
 
 </pre>
 
@@ -350,13 +351,11 @@ Once started Obscuroscan is available on `http://0.0.0.0:8098`.
 
 ### Building and running a local faucet
 Deploying and interacting with contracts on Obscuro requires OBX to be allocated to an account via the faucet. The 
-faucet [repo](https://github.com/obscuronet/faucet) should be cloned, and the container built and started to allow 
-requests to be made to it. To build and run use;
+faucet image should be pulled (or optionally built from scratch), and the container built and started to allow requests to be made to it. To build and run use;
 
 ```
-git clone git@github.com:obscuronet/faucet.git
-cd faucet
-./container_build.sh 
+cd tools/faucet
+docker pull testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest 
 ./container_run.sh 
 ```
 
