@@ -13,6 +13,8 @@ import (
 func main() {
 	config := parseCLIArgs()
 
+	fmt.Printf("Starting eth2network with params: %+v\n", config)
+
 	binariesPath, err := eth2network.EnsureBinariesExist()
 	if err != nil {
 		panic(err)
@@ -24,6 +26,7 @@ func main() {
 
 	eth2Network := eth2network.NewEth2Network(
 		binariesPath,
+		config.logToFile,
 		config.gethHTTPStartPort,
 		config.gethWSStartPort,
 		config.gethAuthRPCStartPort,

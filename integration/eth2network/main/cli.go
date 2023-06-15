@@ -4,8 +4,6 @@ import (
 	"flag"
 	"strings"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
@@ -50,8 +48,8 @@ const (
 	logLevelName  = "logLevel"
 	logLevelUsage = "logLevel"
 
-	logPathName  = "logPath"
-	logPathUsage = "logPath"
+	logToFileName  = "logToFile"
+	logToFileUsage = "Whether files are logged to files or stdout"
 )
 
 type ethConfig struct {
@@ -68,7 +66,7 @@ type ethConfig struct {
 	logLevel                int
 	chainID                 int
 	onlyDownload            bool
-	logPath                 string
+	logToFile               bool
 	prefundedAddrs          []string
 }
 
@@ -87,7 +85,7 @@ func defaultConfig() *ethConfig {
 		blockTimeSecs:           1,
 		slotsPerEpoch:           2,
 		secondsPerSlot:          2,
-		logPath:                 log.SysOut,
+		logToFile:               true,
 		logLevel:                int(gethlog.LvlDebug),
 	}
 }
@@ -105,7 +103,7 @@ func parseCLIArgs() *ethConfig {
 	slotsPerEpoch := flag.Int(slotsPerEpochName, defaultConfig.slotsPerEpoch, slotsPerEpochUsage)
 
 	logLevel := flag.Int(logLevelName, defaultConfig.logLevel, logLevelUsage)
-	logPath := flag.String(logPathName, defaultConfig.logPath, logPathUsage)
+	logToFile := flag.Bool(logToFileName, defaultConfig.logToFile, logToFileUsage)
 	chainID := flag.Int(chainIDName, defaultConfig.chainID, chainIDUsage)
 
 	gethAuthRPCStartPort := flag.Int(gethAuthRPCStartPortName, defaultConfig.gethAuthRPCStartPort, gethAuthRPCStartPortUsage)
@@ -136,7 +134,7 @@ func parseCLIArgs() *ethConfig {
 		slotsPerEpoch:           *slotsPerEpoch,
 		secondsPerSlot:          *secondsPerSlot,
 		logLevel:                *logLevel,
-		logPath:                 *logPath,
+		logToFile:               *logToFile,
 		gethAuthRPCStartPort:    *gethAuthRPCStartPort,
 		gethNetworkStartPort:    *gethNetworkStartPort,
 		prysmBeaconRPCStartPort: *prysmBeaconRPCStartPort,

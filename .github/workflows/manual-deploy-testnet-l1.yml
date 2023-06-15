@@ -1,5 +1,5 @@
 # Deploys a L1 network on Azure for Testnet / Dev-Testnet
-# Builds the l1 network image, kills any running container, pushes the image to dockerhub and starts the l1 network on azure
+# Builds the l1 network image, kills any running VM, pushes the image to dockerhub and starts the l1 network on azure
 #
 # The L1 network is a docker container that runs 1 x (eth node + prysm beacon + prysm validator)
 # It exposes the following ports:
@@ -42,6 +42,8 @@ jobs:
           echo "ETH2NETWORK_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/eth2network:latest" >> $GITHUB_ENV
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/testnet_l1network:latest" >> $GITHUB_ENV
           echo "L1_CONTAINER_NAME=testnet-eth2network" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=l1testnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_NAME=testnet-eth2network-" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
@@ -49,20 +51,9 @@ jobs:
           echo "ETH2NETWORK_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_eth2network:latest" >> $GITHUB_ENV
           echo "L1_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_testnet_l1network:latest" >> $GITHUB_ENV
           echo "L1_CONTAINER_NAME=dev-testnet-eth2network" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=devl1testnetlatest" >> $GITHUB_ENV
+          echo "RESOURCE_NAME=dev-testnet-eth2network" >> $GITHUB_ENV
 
-# to be used when our dockerhub account is fixed
-#      - name: Login to DockerHub
-#        uses: docker/login-action@v2
-#        with:
-#          username: ${{ secrets.DOCKERHUB_USERNAME }}
-#          password: ${{ secrets.DOCKERHUB_TOKEN }}
-#
-#      - name: Build and push
-#        uses: docker/build-push-action@v3
-#        with:
-#          push: true
-#          tags: obscuronet/testnet_l1network:latest
-#          file: ./testnet/eth2network.Dockerfile
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -83,23 +74,76 @@ jobs:
           DOCKER_BUILDKIT=1 docker build -t ${{env.ETH2NETWORK_BUILD_TAG}} -t ${{env.L1_DOCKER_BUILD_TAG}} -f testnet/eth2network.Dockerfile .
           docker push ${{env.L1_DOCKER_BUILD_TAG}}
           docker push ${{env.ETH2NETWORK_BUILD_TAG}}
-      - name: 'Deploy L1 to Azure Container Instances'
-        uses: 'azure/aci-deploy@v1'
+
+      # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
+      - name: 'Delete deployed VMs'
+        uses: azure/CLI@v1
         with:
-          resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: ${{env.L1_CONTAINER_NAME}}
-          image: ${{env.L1_DOCKER_BUILD_TAG}}
-          registry-login-server: testnetobscuronet.azurecr.io
-          registry-username: ${{ secrets.REGISTRY_USERNAME }}
-          registry-password: ${{ secrets.REGISTRY_PASSWORD }}
-          name: ${{env.L1_CONTAINER_NAME}}
-          location: 'uksouth'
-          restart-policy: 'Never'
-          secure-environment-variables: DD_API_KEY=${{ secrets.DD_API_KEY }}
-          environment-variables: DD_HOSTNAME=${{ github.event.inputs.testnet_type }}-eth2network
-          command-line: /home/obscuro/go-obscuro/.github/workflows/runner-scripts/run-datadog.sh /home/obscuro/go-obscuro/integration/eth2network/main/main --blockTimeSecs=15 --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 --prefundedAddrs='${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}'
-          # Ports start at 9000 for Websockets and 8000 for Start port and 80025 for Http Port
-          # Each node has Port + id
-          ports: '8025 8026 9000 9001'
-          cpu: 2
-          memory: 8
+          inlineScript: |
+            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+
+      # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
+      - name: 'Delete VMs dependencies'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+      
+
+      - name: 'Create VM for "${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }}" on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm create -g Testnet -n "${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
+            --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
+            --public-ip-address-dns-name "${{ env.RESOURCE_NAME }}" \
+            --tags ${{env.RESOURCE_TAG_NAME}}=true \
+            --vnet-name ${{env.RESOURCE_NAME}}-01VNET --subnet ${{env.RESOURCE_NAME}}-01Subnet \
+            --size Standard_D3_v2 --image Canonical:0001-com-ubuntu-server-jammy:22_04-lts:latest \
+            --public-ip-sku Basic --authentication-type password
+
+      - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm open-port -g Testnet -n "${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }}" --port 8025,8026,9000,9001
+
+        # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
+      - name: 'Allow time for VM initialization'
+        shell: bash
+        run: sleep 60
+
+      - name: 'Start l1 ${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }} on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm run-command invoke -g Testnet -n "${{env.RESOURCE_NAME}}-${{ GITHUB.RUN_NUMBER }}"  \
+            --command-id RunShellScript \
+            --scripts 'mkdir -p /home/obscuro \
+            && sudo apt-get update \
+            && sudo apt-get install -y gcc \
+            && sudo snap refresh \
+            && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
+            && docker network create --driver bridge l1_network || true \
+            && docker run -d --name datadog-agent \
+               --network l1_network \
+               -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
+               -e DD_LOGS_ENABLED=true \
+               -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
+               -e DD_LOGS_CONFIG_AUTO_MULTI_LINE_DETECTION=true \
+               -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
+               -e DD_SITE="datadoghq.eu"  \
+               -v /var/run/docker.sock:/var/run/docker.sock:ro \
+               -v /proc/:/host/proc/:ro \
+               -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
+               -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+               datadog/agent:latest \
+            && docker run -d \
+            -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 \
+            --entrypoint /home/obscuro/go-obscuro/integration/eth2network/main/main ${{ env.ETH2NETWORK_BUILD_TAG }} \
+            --blockTimeSecs=15 --slotsPerEpoch=2 --slotsPerSecond=15 \
+            --numNodes=1 --gethHTTPStartPort=8025 --gethWSStartPort=9000 \
+            --logToFile=false \
+            --prefundedAddrs="${{ secrets.GETHNETWORK_PREFUNDED_ADDR_WORKER }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }},${{ secrets.GETHNETWORK_PREFUNDED_ADDR_1 }}"'
+            
+      

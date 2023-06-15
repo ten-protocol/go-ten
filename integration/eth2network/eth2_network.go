@@ -64,6 +64,7 @@ type Eth2Network interface {
 
 func NewEth2Network(
 	binDir string,
+	logToFile bool,
 	gethHTTPPortStart int,
 	gethWSPortStart int,
 	gethAuthRPCPortStart int,
@@ -146,17 +147,23 @@ func NewEth2Network(
 	}
 
 	// create the log files
-	gethLogFile, err := NewRotatingLogWriter(buildDir, "geth_logs", 10*1024*1024, 5)
-	if err != nil {
-		panic(err)
-	}
-	prysmBeaconLogFile, err := NewRotatingLogWriter(buildDir, "prysm_beacon_logs", 10*1024*1024, 5)
-	if err != nil {
-		panic(err)
-	}
-	prysmValidatorLogFile, err := NewRotatingLogWriter(buildDir, "prysm_validator_logs", 10*1024*1024, 5)
-	if err != nil {
-		panic(err)
+	gethLogFile := io.Writer(os.Stdout)
+	prysmBeaconLogFile := io.Writer(os.Stdout)
+	prysmValidatorLogFile := io.Writer(os.Stdout)
+
+	if logToFile {
+		gethLogFile, err = NewRotatingLogWriter(buildDir, "geth_logs", 10*1024*1024, 5)
+		if err != nil {
+			panic(err)
+		}
+		prysmBeaconLogFile, err = NewRotatingLogWriter(buildDir, "prysm_beacon_logs", 10*1024*1024, 5)
+		if err != nil {
+			panic(err)
+		}
+		prysmValidatorLogFile, err = NewRotatingLogWriter(buildDir, "prysm_validator_logs", 10*1024*1024, 5)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return &Impl{
