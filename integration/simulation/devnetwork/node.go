@@ -123,7 +123,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		LevelDBPath:               n.hostDBFilepath,
 		DebugNamespaceEnabled:     true,
 		BatchInterval:             1 * time.Second,
-		RollupInterval:            5 * time.Second,
+		RollupInterval:            3 * time.Second,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.operatorIdx, log.CmpKey, log.HostCmp)

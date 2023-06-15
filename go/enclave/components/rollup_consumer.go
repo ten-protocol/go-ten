@@ -178,7 +178,7 @@ func (rc *rollupConsumerImpl) checkRollupsCorrectlyChained(rollup *core.Rollup, 
 	}
 
 	if rollup.Hash() == previousRollup.Hash() {
-		return fmt.Errorf("rollup already processed")
+		return ErrDuplicateRollup
 	}
 
 	if rollup.NumberU64()-previousRollup.NumberU64() > 1 {
