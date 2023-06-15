@@ -27,13 +27,23 @@ const (
 )
 
 const (
-	PathRoot               = "/"
-	PathReady              = "/ready/"
-	PathViewingKeys        = "/viewingkeys/"
-	PathGenerateViewingKey = "/generateviewingkey/"
-	PathSubmitViewingKey   = "/submitviewingkey/"
-	WSProtocol             = "ws://"
-	DefaultUser            = "defaultUser"
+	PathRoot                  = "/"
+	PathReady                 = "/ready/"
+	PathViewingKeys           = "/viewingkeys/"
+	PathGenerateViewingKey    = "/generateviewingkey/"
+	PathSubmitViewingKey      = "/submitviewingkey/"
+	PathJoin                  = "/join/"
+	PathAuthenticate          = "/authenticate/"
+	PathQuery                 = "/query/"
+	PathRevoke                = "/revoke/"
+	WSProtocol                = "ws://"
+	DefaultUser               = "defaultUser"
+	UserQueryParameter        = "u"
+	AddressQueryParameter     = "a"
+	MessageFormatRegex        = `^Register\s(\w+)\sfor\s(\w+)$`
+	MessageUserIDLen          = 64
+	SignatureLen              = 65
+	PersonalSignMessagePrefix = "\x19Ethereum Signed Message:\n%d%s"
 
 	SuccessMsg = "success"
 )
