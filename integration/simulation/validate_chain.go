@@ -345,7 +345,11 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	headRollupHeader := getHeadRollupHeader(obscuroClient)
+	headRollupHeader, err := getHeadRollupHeader(obscuroClient)
+	if err != nil {
+		t.Error(fmt.Errorf("Node %d: %w", nodeIdx, err))
+	}
+
 	if headRollupHeader == nil {
 		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeIdx)
 		return
@@ -548,7 +552,10 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 
 func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int) {
 	totalSuccessfullyWithdrawn = big.NewInt(0)
-	header := getHeadRollupHeader(obscuroClient)
+	header, err := getHeadRollupHeader(obscuroClient)
+	if err != nil {
+		t.Error(fmt.Errorf("Node %d: %w", nodeIdx, err))
+	}
 	if header == nil {
 		panic(fmt.Sprintf("Node %d: The current head should not be nil", nodeIdx))
 	}
