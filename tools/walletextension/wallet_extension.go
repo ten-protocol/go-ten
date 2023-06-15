@@ -202,41 +202,13 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, sig
 		return errors.New("userID from message does not match userID from request")
 	}
 
-	// prefix the message like in the personal_sign method
-	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)
-	messageHash := crypto.Keccak256([]byte(prefixedMessage))
-
-	// check if the signature length is correct
-	if len(signature) != common.SignatureLen {
-		w.Logger().Error(fmt.Errorf("signature must be 64 bytes long, but %d bytes long signature received", len(signature)).Error())
-		return errors.New("incorrect signature length")
-	}
-
-	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
-	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
-	signature[64] -= 27
-
-	// get addresses from signature and message and compare if they are the same
-	addressFromSignature, pubKeyFromSignature, err := getAddressAndPubKeyFromSignature(messageHash, signature)
-	if err != nil {
-		w.Logger().Error(fmt.Errorf("error getting address from signature: %w", err).Error())
-		return err
-	}
 	addressFromMessage := gethcommon.HexToAddress(messageAddressHex)
 
-	// verify that message was signed by the same address as in the message
-	if addressFromSignature != addressFromMessage {
-		w.Logger().Error(fmt.Errorf("address from signature (%s) is not the same as address from message (%s)", addressFromSignature, addressFromSignature).Error())
-		return errors.New("message was not signed by the address from the message")
-	}
-
-	// verify the signature
-	r := new(big.Int).SetBytes(signature[:len(signature)/2])
-	s := new(big.Int).SetBytes(signature[len(signature)/2:])
-	valid := ecdsa.Verify(pubKeyFromSignature, messageHash, r, s)
-	if !valid {
-		w.Logger().Error(fmt.Errorf("signature %s is not valid", string(signature)).Error())
-		return errors.New("invalid signature")
+	// check if message was signed by the correct address and if signature is valid
+	valid, err := verifySignature(message, signature, addressFromMessage)
+	if !valid && err != nil {
+		w.Logger().Error(fmt.Errorf("error: signature is not valid: %s", string(signature)).Error())
+		return err
 	}
 
 	// register the account for that viewing key
@@ -329,7 +301,45 @@ func getAddressAndPubKeyFromSignature(messageHash []byte, signature []byte) (get
 
 // convert userID from string to correct byte format
 func getUserIDbyte(userID string) ([]byte, error) {
-	return hex.DecodeString(userID[2:]) // remove 0x prefix from userID
+	return hex.DecodeString(userID)
+}
+
+// verifySignature checks if message was signed by the correct address and if signature is valid
+func verifySignature(message string, signature []byte, address gethcommon.Address) (bool, error) {
+	// prefix the message like in the personal_sign method
+	prefixedMessage := fmt.Sprintf(common.PersonalSignMessagePrefix, len(message), message)
+	messageHash := crypto.Keccak256([]byte(prefixedMessage))
+
+	// check if the signature length is correct
+	if len(signature) != common.SignatureLen {
+		return false, errors.New("incorrect signature length")
+	}
+
+	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
+	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
+	signature[64] -= 27
+
+	addressFromSignature, pubKeyFromSignature, err := getAddressAndPubKeyFromSignature(messageHash, signature)
+	if err != nil {
+		return false, err
+	}
+
+	if !bytes.Equal(addressFromSignature.Bytes(), address.Bytes()) {
+		return false, errors.New("address from signature not the same as expected")
+	}
+
+	// Split signature into r, s
+	r := new(big.Int).SetBytes(signature[:32])
+	s := new(big.Int).SetBytes(signature[32:64])
+
+	// Verify the signature
+	isValid := ecdsa.Verify(pubKeyFromSignature, messageHash, r, s)
+
+	if !isValid {
+		return false, errors.New("signature is not valid")
+	}
+
+	return true, nil
 }
 
 func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
