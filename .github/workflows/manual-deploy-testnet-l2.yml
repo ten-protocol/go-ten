@@ -122,7 +122,9 @@ jobs:
 
       - name: 'Save container logs on failure'
         if: failure()
+        # Wait to make sure the logs are available in the container
         run: |
+          sleep 60
           docker logs `docker ps -aqf "name=hh-l1-deployer"` > deploy-l1-contracts.out 2>&1
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
