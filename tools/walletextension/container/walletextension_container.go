@@ -1,42 +1,59 @@
 package container
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/ethereum/go-ethereum/common"
+
+	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
+
+	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/api"
-	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
+	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
 
+	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 type WalletExtensionContainer struct {
-	hostAddr       string
-	accountManager *accountmanager.AccountManager
-	storage        *storage.Storage
-	stopControl    *stopcontrol.StopControl
-	logger         gethlog.Logger
-	walletExt      *walletextension.WalletExtension
-	httpServer     *api.Server
-	wsServer       *api.Server
+	hostAddr           string
+	userAccountManager *useraccountmanager.UserAccountManager
+	storage            *storage.Storage
+	stopControl        *stopcontrol.StopControl
+	logger             gethlog.Logger
+	walletExt          *walletextension.WalletExtension
+	httpServer         *api.Server
+	wsServer           *api.Server
 }
 
 func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.Logger) *WalletExtensionContainer {
 	// create the account manager with a single unauthed connection
-	hostRPCBindAddr := common.WSProtocol + config.NodeRPCWebsocketAddress
+	hostRPCBindAddr := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	unAuthedClient, err := rpc.NewNetworkClient(hostRPCBindAddr)
 	if err != nil {
 		logger.Crit("unable to create temporary client for request ", log.ErrKey, err)
 	}
-	accountManager := accountmanager.NewAccountManager(unAuthedClient, logger)
+
+	userAccountManager := useraccountmanager.NewUserAccountManager(unAuthedClient, logger)
+
+	// TODO (@ziga) - change logic here and get VKs for all users and just add them to the correct accountManager in userAccountManager
+	// This line needs to be replaced in future and is here only to enable defaultUser
+	userAccountManager.AddUserAccountManager(wecommon.DefaultUser)
+
+	// todo (@ziga) - remove this code below and generalize it for all users
+	defaultAccountManager, err := userAccountManager.GetUserAccountManager(wecommon.DefaultUser)
+	if err != nil {
+		logger.Crit("Error getting account manager for user:", wecommon.DefaultUser)
+	}
 
 	// start the database
 	databaseStorage, err := storage.New(config.DBPathOverride)
@@ -44,34 +61,54 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 	}
 
-	// We reload the existing viewing keys from the database.
-	viewingKeys, err := databaseStorage.GetUserVKs(common.DefaultUser)
+	// We reload data from the database
+	// todo (@ziga) - change this code once we can handle multiple users
+	defaultPrivateKeyBytes, err := databaseStorage.GetUserPrivateKey([]byte(wecommon.DefaultUser))
 	if err != nil {
-		logger.Crit("Error getting viewing keys for user:", common.DefaultUser)
+		logger.Crit("Error getting private key for user: ", wecommon.DefaultUser)
 	}
-	for accountAddr, viewingKey := range viewingKeys {
-		// create an encrypted RPC client with the signed VK and register it with the enclave
-		// todo(@ziga) - Create the clients lazily, to reduce connections to the host.
-		client, err := rpc.NewEncNetworkClient(hostRPCBindAddr, viewingKey, logger)
+
+	// if we have account load the data and add clients
+	if !bytes.Equal(defaultPrivateKeyBytes, []byte{}) {
+		userAccounts, err := databaseStorage.GetAccounts([]byte(wecommon.DefaultUser))
 		if err != nil {
-			logger.Error(fmt.Sprintf("failed to create encrypted RPC client for persisted account %s", accountAddr), log.ErrKey, err)
-			continue
+			logger.Crit("Error getting addresses for user: ", wecommon.DefaultUser)
 		}
-		accountManager.AddClient(accountAddr, client)
+
+		privKeyECDSA, err := gethcrypto.ToECDSA(defaultPrivateKeyBytes)
+		if err != nil {
+			logger.Crit("Unable to covert private key to ECDSA")
+		}
+		privKey := ecies.ImportECDSA(privKeyECDSA)
+		for _, acc := range userAccounts {
+			a := common.BytesToAddress(acc.AccountAddress)
+			viewingKey := rpc.ViewingKey{
+				Account:    &a,
+				PrivateKey: privKey,
+				PublicKey:  gethcrypto.CompressPubkey(&privKeyECDSA.PublicKey),
+				SignedKey:  acc.Signature,
+			}
+
+			client, err := rpc.NewEncNetworkClient(hostRPCBindAddr, &viewingKey, logger)
+			if err != nil {
+				logger.Error(fmt.Sprintf("failed to create encrypted RPC client for persisted account %s", viewingKey.Account.Hex()), log.ErrKey, err)
+				continue
+			}
+			defaultAccountManager.AddClient(*viewingKey.Account, client)
+		}
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := walletextension.New(hostRPCBindAddr, accountManager, databaseStorage, stopControl, logger)
+	walletExt := walletextension.New(hostRPCBindAddr, &userAccountManager, databaseStorage, stopControl, logger)
 	httpRoutes := api.NewHTTPRoutes(walletExt)
 	httpServer := api.NewHTTPServer(fmt.Sprintf("%s:%d", config.WalletExtensionHost, config.WalletExtensionPortHTTP), httpRoutes)
 
 	wsRoutes := api.NewWSRoutes(walletExt)
 	wsServer := api.NewWSServer(fmt.Sprintf("%s:%d", config.WalletExtensionHost, config.WalletExtensionPortWS), wsRoutes)
-
 	return NewWalletExtensionContainer(
 		hostRPCBindAddr,
 		walletExt,
-		accountManager,
+		&userAccountManager,
 		databaseStorage,
 		stopControl,
 		httpServer,
@@ -83,7 +120,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 func NewWalletExtensionContainer(
 	hostAddr string,
 	walletExt *walletextension.WalletExtension,
-	accountManager *accountmanager.AccountManager,
+	userAccountManager *useraccountmanager.UserAccountManager,
 	storage *storage.Storage,
 	stopControl *stopcontrol.StopControl,
 	httpServer *api.Server,
@@ -91,14 +128,14 @@ func NewWalletExtensionContainer(
 	logger gethlog.Logger,
 ) *WalletExtensionContainer {
 	return &WalletExtensionContainer{
-		hostAddr:       hostAddr,
-		walletExt:      walletExt,
-		accountManager: accountManager,
-		storage:        storage,
-		stopControl:    stopControl,
-		httpServer:     httpServer,
-		wsServer:       wsServer,
-		logger:         logger,
+		hostAddr:           hostAddr,
+		walletExt:          walletExt,
+		userAccountManager: userAccountManager,
+		storage:            storage,
+		stopControl:        stopControl,
+		httpServer:         httpServer,
+		wsServer:           wsServer,
+		logger:             logger,
 	}
 }
 

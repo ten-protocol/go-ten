@@ -11,6 +11,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
@@ -76,6 +77,8 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		}
 	}
 
+	defer val.logger.Info("Validator processed batch", log.BatchHashKey, incomingBatch.Hash(), log.DurationKey, measure.NewStopwatch())
+
 	if batch, err := val.batchRegistry.GetBatch(incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return err
 	} else if batch != nil {
@@ -100,7 +103,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		ChainConfig:  val.chainConfig,
 	})
 	if err != nil {
-		return fmt.Errorf("failed computing batch. Cause: %w", err)
+		return fmt.Errorf("failed recomputing batch %s. Cause: %w", incomingBatch.Hash(), err)
 	}
 
 	if !bytes.Equal(cb.Batch.Hash().Bytes(), incomingBatch.Hash().Bytes()) {
@@ -109,7 +112,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 	}
 
 	if _, err := cb.Commit(true); err != nil {
-		return fmt.Errorf("cannot commit stateDB for incoming valid batch. Cause: %w", err)
+		return fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", incomingBatch.Hash(), err)
 	}
 
 	return val.batchRegistry.StoreBatch(incomingBatch, cb.Receipts)
@@ -139,6 +142,9 @@ func (val *obsValidator) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool
 }
 
 func (val *obsValidator) verifyRollup(rollup *core.Rollup) error {
+	stopwatch := measure.NewStopwatch()
+	defer val.logger.Info("Rollup processed", log.RollupHashKey, rollup.Hash(), log.DurationKey, stopwatch)
+
 	for _, batch := range rollup.Batches {
 		if err := val.ValidateAndStoreBatch(batch); err != nil {
 			val.logger.Error("Attempted to store incorrect batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)

@@ -47,7 +47,7 @@ func (m *Service) Start() {
 
 	// starts the metric server
 	address := fmt.Sprintf("%s:%d", "0.0.0.0", m.port)
-	m.logger.Info("HTTP Metric server started at %s", address)
+	m.logger.Info("HTTP Metric server started", "address", address)
 	// todo - re-write this http server so to have a stop method
 	exp.Setup(address)
 }

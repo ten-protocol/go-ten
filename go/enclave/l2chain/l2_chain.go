@@ -113,7 +113,7 @@ func (oc *obscuroChain) ObsCall(apiArgs *gethapi.TransactionArgs, blockNumber *g
 
 	// the execution might have succeeded (err == nil) but the evm contract logic might have failed (result.Failed() == true)
 	if result.Failed() {
-		oc.logger.Info(fmt.Sprintf("Obs_Call: Failed to execute contract %s.", apiArgs.To), log.CtrErrKey, result.Err)
+		oc.logger.Debug(fmt.Sprintf("Obs_Call: Failed to execute contract %s.", apiArgs.To), log.CtrErrKey, result.Err)
 		return nil, result.Err
 	}
 
@@ -141,7 +141,7 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
 
-	oc.logger.Trace("Obs_Call: Successful result", gethlog.Lazy{Fn: func() string {
+	oc.logger.Trace("Obs_Call: Successful result", "info", gethlog.Lazy{Fn: func() string {
 		return fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=%s, state=%s",
 			callMsg.To(),
 			callMsg.From(),
@@ -160,7 +160,7 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 	if result.Failed() {
 		// do not return an error
 		// the result object should be evaluated upstream
-		oc.logger.Info(fmt.Sprintf("ObsCall: Failed to execute contract %s.", callMsg.To()), log.CtrErrKey, result.Err)
+		oc.logger.Debug(fmt.Sprintf("ObsCall: Failed to execute contract %s.", callMsg.To()), log.CtrErrKey, result.Err)
 	}
 
 	return result, nil
