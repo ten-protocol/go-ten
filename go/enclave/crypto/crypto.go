@@ -91,22 +91,9 @@ func decryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, e
 	return plaintext, nil
 }
 
-// GeneratePublicRandomness - generate 32 bytes of randomness, which will be exposed in the rollup header.
-func GeneratePublicRandomness() ([]byte, error) {
-	return randomBytes(gethcommon.HashLength)
-}
-
-// PrivateRollupRnd - combine public randomness with private randomness in a way that protects the secret.
-func PrivateRollupRnd(publicRnd []byte, secret []byte) []byte {
-	return crypto.Keccak256Hash(publicRnd, secret).Bytes()
-}
-
-func randomBytes(length int) ([]byte, error) {
-	byteArr := make([]byte, length)
-	if _, err := rand.Read(byteArr); err != nil {
-		return nil, err
-	}
-	return byteArr, nil
+// PrivateBatchRnd - combine public randomness with private randomness in a way that protects the secret.
+func PrivateBatchRnd(public []byte, secret []byte) []byte {
+	return crypto.Keccak256Hash(public, secret).Bytes()
 }
 
 // PerTransactionRnd - calculates a per tx random value

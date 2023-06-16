@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
@@ -214,32 +213,25 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 	return callMsg, nil
 }
 
-// ConvertToEthHeader Perform the conversion between an Obscuro header and an Ethereum header that the EVM understands
-// in the first stage we just encode the obscuro header in the Extra field
-// todo - find a better way
-func ConvertToEthHeader(h *common.BatchHeader, secret []byte) (*types.Header, error) {
-	obscuroHeader, err := rlp.EncodeToBytes(h)
-	if err != nil {
-		return nil, err
-	}
-
+// CreateEthHeaderForBatch - the EVM requires an Ethereum "block" header.
+// In this function we are creating one from the Batch Header
+func CreateEthHeaderForBatch(h *common.BatchHeader, secret []byte) (*types.Header, error) {
 	// deterministically calculate private randomness that will be exposed to the evm
-	randomness := crypto.PrivateRollupRnd(h.MixDigest.Bytes(), secret)
+	randomness := crypto.PrivateBatchRnd(h.Number.Bytes(), secret)
 
 	return &types.Header{
 		ParentHash:  h.ParentHash,
 		Root:        h.Root,
 		TxHash:      h.TxHash,
 		ReceiptHash: h.ReceiptHash,
-		Difficulty:  big.NewInt(0).SetBytes(randomness),
+		Difficulty:  big.NewInt(0),
 		Number:      h.Number,
-		GasLimit:    1_000_000_000,
-		GasUsed:     0,
+		GasLimit:    1_000_000_000,   // todo (@stefan) - gas
+		GasUsed:     0,               // todo (@stefan) - gas
+		BaseFee:     gethcommon.Big0, // todo (@stefan) - gas
 		Time:        h.Time,
-		Extra:       obscuroHeader,
 		MixDigest:   gethcommon.BytesToHash(randomness),
 		Nonce:       types.BlockNonce{},
-		BaseFee:     gethcommon.Big0,
 	}, nil
 }
 

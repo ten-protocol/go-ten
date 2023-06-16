@@ -27,9 +27,8 @@ type BatchHeader struct {
 	Number      *big.Int
 	GasLimit    uint64
 	GasUsed     uint64
-	Time        uint64      `json:"timestamp"`
-	Extra       []byte      `json:"extraData"`
-	MixDigest   common.Hash `json:"mixHash"`
+	Time        uint64 `json:"timestamp"`
+	Extra       []byte `json:"extraData"`
 	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
@@ -53,9 +52,8 @@ type RollupHeader struct {
 	Number      *big.Int
 	GasLimit    uint64
 	GasUsed     uint64
-	Time        uint64      `json:"timestamp"`
-	Extra       []byte      `json:"extraData"`
-	MixDigest   common.Hash `json:"mixHash"`
+	Time        uint64 `json:"timestamp"`
+	Extra       []byte `json:"extraData"`
 	BaseFee     *big.Int
 
 	// The custom Obscuro fields.
@@ -97,7 +95,6 @@ func (b *BatchHeader) ToRollupHeader() *RollupHeader {
 		GasUsed:                       b.GasUsed,
 		Time:                          b.Time,
 		Extra:                         b.Extra,
-		MixDigest:                     b.MixDigest,
 		BaseFee:                       b.BaseFee,
 		L1Proof:                       b.L1Proof,
 		R:                             b.R,

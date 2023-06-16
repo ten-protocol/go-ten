@@ -41,7 +41,7 @@ func ExecuteTransactions(
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 
-	ethHeader, err := gethencoding.ConvertToEthHeader(header, secret(storage))
+	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
 	if err != nil {
 		logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil
@@ -123,7 +123,7 @@ func ExecuteObsCall(
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
 	chain, vmCfg, gp := initParams(storage, true, nil)
-	ethHeader, err := gethencoding.ConvertToEthHeader(header, secret(storage))
+	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
 	if err != nil {
 		return nil, err
 	}

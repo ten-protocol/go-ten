@@ -178,19 +178,11 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return err
 	}
 
-	// As we are incrementing the chain to a new max height, across all forks,
-	// we generate the randomness for this batch.
-	rand, err := crypto.GeneratePublicRandomness()
-	if err != nil {
-		return err
-	}
-
 	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     l1HeadBlock.Hash(),
 		ParentPtr:    headBatch.Hash(),
 		Transactions: transactions,
 		AtTime:       uint64(time.Now().Unix()), // todo - time is set only here; take from l1 block?
-		Randomness:   gethcommon.BytesToHash(rand),
 		Creator:      s.hostID,
 		ChainConfig:  s.chainConfig,
 	})
@@ -291,7 +283,6 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 			ParentPtr:    currHeadPtr.Hash(),
 			Transactions: orphan.Transactions,
 			AtTime:       orphan.Header.Time,
-			Randomness:   orphan.Header.MixDigest,
 			Creator:      s.hostID,
 			ChainConfig:  s.chainConfig,
 		})
