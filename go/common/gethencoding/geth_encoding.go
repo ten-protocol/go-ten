@@ -217,7 +217,7 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 // In this function we are creating one from the Batch Header
 func CreateEthHeaderForBatch(h *common.BatchHeader, secret []byte) (*types.Header, error) {
 	// deterministically calculate private randomness that will be exposed to the evm
-	randomness := crypto.PrivateBatchRnd(h.Number.Bytes(), secret)
+	randomness := crypto.CalculateRootBatchEntropy(secret, h.Number)
 
 	return &types.Header{
 		ParentHash:  h.ParentHash,
@@ -230,7 +230,7 @@ func CreateEthHeaderForBatch(h *common.BatchHeader, secret []byte) (*types.Heade
 		GasUsed:     0,               // todo (@stefan) - gas
 		BaseFee:     gethcommon.Big0, // todo (@stefan) - gas
 		Time:        h.Time,
-		MixDigest:   gethcommon.BytesToHash(randomness),
+		MixDigest:   randomness,
 		Nonce:       types.BlockNonce{},
 	}, nil
 }
