@@ -112,7 +112,7 @@ func CalculateTxRnd(rootBatchEntropy []byte, tCount int) gethcommon.Hash {
 
 func intToBytes(val int) []byte {
 	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, val)
+	err := binary.Write(buf, binary.LittleEndian, int64(val))
 	if err != nil {
 		panic(fmt.Sprintf("Could not convert int to bytes. Cause: %s", err))
 	}
