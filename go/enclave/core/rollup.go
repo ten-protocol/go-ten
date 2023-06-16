@@ -20,6 +20,10 @@ type Rollup struct {
 	hash    atomic.Value
 }
 
+func (r *Rollup) HeadBatchHash() common.L2BatchHash {
+	return r.Batches[len(r.Batches)-1].Hash()
+}
+
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
 func (r *Rollup) Hash() common.L2BatchHash {
