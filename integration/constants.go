@@ -10,6 +10,7 @@ const (
 	StartPortSmartContractTests      = 38000
 	StartPortContractDeployerTest    = 39000
 	StartPortWalletExtensionUnitTest = 40000
+	StartPortFaucetUnitTest          = 41000
 
 	DefaultGethWSPortOffset      = 100
 	DefaultGethAUTHPortOffset    = 200

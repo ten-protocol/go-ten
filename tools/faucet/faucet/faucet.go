@@ -2,7 +2,6 @@ package faucet
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,10 +36,10 @@ type Faucet struct {
 	logger    log.Logger
 }
 
-func NewFaucet(rpcURL string, chainID *big.Int, pk *ecdsa.PrivateKey) (*Faucet, error) {
+func NewFaucet(rpcURL string, chainID int64, pkString string) (*Faucet, error) {
 	logger := log.New()
 	logger.SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(false)))
-	w := wallet.NewInMemoryWalletFromPK(chainID, pk, logger)
+	w := wallet.NewInMemoryWalletFromConfig(pkString, chainID, logger)
 	obsClient, err := obsclient.DialWithAuth(rpcURL, w, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect with the node: %w", err)

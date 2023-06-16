@@ -1,9 +1,11 @@
 package faucet
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -11,16 +13,18 @@ import (
 )
 
 type WebServer struct {
-	server *gin.Engine
-	faucet *Faucet
+	engine      *gin.Engine
+	faucet      *Faucet
+	bindAddress string
+	server      *http.Server
 }
 
 type requestAddr struct {
 	Address string `json:"address" binding:"required"`
 }
 
-func NewWebServer(faucet *Faucet, jwtSecret []byte) *WebServer {
-	r := gin.Default()
+func NewWebServer(faucet *Faucet, bindAddress string, jwtSecret []byte) *WebServer {
+	r := gin.New()
 
 	// todo move this declaration out of this scope
 	parseFunding := func(c *gin.Context) {
@@ -88,8 +92,9 @@ func NewWebServer(faucet *Faucet, jwtSecret []byte) *WebServer {
 	r.POST("/fund/:token", parseFunding)
 
 	return &WebServer{
-		server: r,
-		faucet: faucet,
+		engine:      r,
+		faucet:      faucet,
+		bindAddress: bindAddress,
 	}
 }
 
@@ -113,6 +118,27 @@ func extractBearerToken(header string) (string, error) {
 	return jwtToken[1], nil
 }
 
-func (w *WebServer) Start() {
-	_ = w.server.Run()
+func (w *WebServer) Start() error {
+	w.server = &http.Server{
+		Addr:    w.bindAddress,
+		Handler: w.engine,
+	}
+	// Initializing the server in a goroutine so that
+	// it won't block the graceful shutdown handling below
+	go func() {
+		if err := w.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			panic(err)
+		}
+	}()
+
+	return nil
+}
+
+func (w *WebServer) Stop() error {
+	// The context is used to inform the server it has 5 seconds to finish
+	// the request it is currently handling
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return w.server.Shutdown(ctx)
 }
