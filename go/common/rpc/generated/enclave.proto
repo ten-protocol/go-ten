@@ -349,7 +349,6 @@ message BatchHeaderMsg {
   uint64 GasLimit = 16;
   uint64 GasUsed = 17;
   uint64 Time = 18;
-  bytes MixDigest = 19;
   uint64 BaseFee = 20;
   bytes LatestInboundCrossChainHeight = 22;
   bytes LatestInboundCrossChainHash = 23;
@@ -375,7 +374,6 @@ message RollupHeaderMsg {
   uint64 GasLimit = 16;
   uint64 GasUsed = 17;
   uint64 Time = 18;
-  bytes MixDigest = 19;
   uint64 BaseFee = 20;
   bytes Coinbase = 21;
   bytes LatestInboundCrossChainHeight = 22;

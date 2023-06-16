@@ -92,7 +92,6 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncrypt
 func DeterministicEmptyBatch(
 	parent *common.BatchHeader,
 	block *types.Block,
-	rand gethcommon.Hash,
 	time uint64,
 ) *Batch {
 	h := common.BatchHeader{
@@ -101,10 +100,6 @@ func DeterministicEmptyBatch(
 		Number:     big.NewInt(0).Add(parent.Number, big.NewInt(1)),
 		// todo (#1548) - Consider how this time should align with the time of the L1 block used as proof.
 		Time: time,
-		// generate true randomness inside the enclave.
-		// note that this randomness will be published in the header of the batch.
-		// the randomness exposed to smart contract is combining this with the shared secret.
-		MixDigest: rand,
 	}
 	b := Batch{
 		Header: &h,

@@ -18,7 +18,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -41,7 +40,7 @@ func ExecuteTransactions(
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
 
-	ethHeader, err := gethencoding.ConvertToEthHeader(header, secret(storage))
+	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
 	if err != nil {
 		logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil
@@ -79,7 +78,7 @@ func executeTransaction(
 
 	before := header.MixDigest
 	// calculate a random value per transaction
-	header.MixDigest = gethcommon.BytesToHash(crypto.PerTransactionRnd(before.Bytes(), tCount))
+	header.MixDigest = crypto.CalculateTxRnd(before.Bytes(), tCount)
 	receipt, err := gethcore.ApplyTransaction(cc, chain, nil, gp, s, header, t, usedGas, vmCfg)
 
 	// adjust the receipt to point to the right batch hash
@@ -123,7 +122,7 @@ func ExecuteObsCall(
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
 	chain, vmCfg, gp := initParams(storage, true, nil)
-	ethHeader, err := gethencoding.ConvertToEthHeader(header, secret(storage))
+	ethHeader, err := gethencoding.CreateEthHeaderForBatch(header, secret(storage))
 	if err != nil {
 		return nil, err
 	}
