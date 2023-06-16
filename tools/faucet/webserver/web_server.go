@@ -1,4 +1,4 @@
-package faucet
+package webserver
 
 import (
 	"context"
@@ -10,11 +10,12 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-gonic/gin"
+	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
 )
 
 type WebServer struct {
 	engine      *gin.Engine
-	faucet      *Faucet
+	faucet      *faucet.Faucet
 	bindAddress string
 	server      *http.Server
 }
@@ -23,7 +24,7 @@ type requestAddr struct {
 	Address string `json:"address" binding:"required"`
 }
 
-func NewWebServer(faucet *Faucet, bindAddress string, jwtSecret []byte) *WebServer {
+func NewWebServer(faucetServer *faucet.Faucet, bindAddress string, jwtSecret []byte) *WebServer {
 	r := gin.New()
 
 	// todo move this declaration out of this scope
@@ -33,29 +34,29 @@ func NewWebServer(faucet *Faucet, bindAddress string, jwtSecret []byte) *WebServ
 
 		// check the token request type
 		switch tokenReq {
-		case OBXNativeToken:
-			token = OBXNativeToken
-		case WrappedOBX:
-			token = WrappedOBX
-		case WrappedEth:
-			token = WrappedEth
-		case WrappedUSDC:
-			token = WrappedUSDC
+		case faucet.OBXNativeToken:
+			token = faucet.OBXNativeToken
+		case faucet.WrappedOBX:
+			token = faucet.WrappedOBX
+		case faucet.WrappedEth:
+			token = faucet.WrappedEth
+		case faucet.WrappedUSDC:
+			token = faucet.WrappedUSDC
 		default:
-			errorHandler(c, fmt.Errorf("token not recognized: %s", tokenReq), faucet.logger)
+			errorHandler(c, fmt.Errorf("token not recognized: %s", tokenReq), faucetServer.Logger)
 			return
 		}
 
 		// make sure there's an address
 		var req requestAddr
 		if err := c.Bind(&req); err != nil {
-			errorHandler(c, fmt.Errorf("unable to parse request: %w", err), faucet.logger)
+			errorHandler(c, fmt.Errorf("unable to parse request: %w", err), faucetServer.Logger)
 			return
 		}
 
 		// make sure the address is valid
 		if !common.IsHexAddress(req.Address) {
-			errorHandler(c, fmt.Errorf("unexpected address %s", req.Address), faucet.logger)
+			errorHandler(c, fmt.Errorf("unexpected address %s", req.Address), faucetServer.Logger)
 			return
 		}
 
@@ -63,8 +64,8 @@ func NewWebServer(faucet *Faucet, bindAddress string, jwtSecret []byte) *WebServ
 
 		// fund the address
 		addr := common.HexToAddress(req.Address)
-		if err := faucet.Fund(&addr, token, amount); err != nil {
-			errorHandler(c, fmt.Errorf("unable to fund request %w", err), faucet.logger)
+		if err := faucetServer.Fund(&addr, token, amount); err != nil {
+			errorHandler(c, fmt.Errorf("unable to fund request %w", err), faucetServer.Logger)
 			return
 		}
 
@@ -74,13 +75,13 @@ func NewWebServer(faucet *Faucet, bindAddress string, jwtSecret []byte) *WebServ
 	jwtTokenCheck := func(c *gin.Context) {
 		jwtToken, err := extractBearerToken(c.GetHeader("Authorization"))
 		if err != nil {
-			errorHandler(c, err, faucet.logger)
+			errorHandler(c, err, faucetServer.Logger)
 			return
 		}
 
-		_, err = ValidateToken(jwtToken, jwtSecret)
+		_, err = faucet.ValidateToken(jwtToken, jwtSecret)
 		if err != nil {
-			errorHandler(c, err, faucet.logger)
+			errorHandler(c, err, faucetServer.Logger)
 			return
 		}
 
@@ -93,7 +94,7 @@ func NewWebServer(faucet *Faucet, bindAddress string, jwtSecret []byte) *WebServ
 
 	return &WebServer{
 		engine:      r,
-		faucet:      faucet,
+		faucet:      faucetServer,
 		bindAddress: bindAddress,
 	}
 }
@@ -120,9 +121,11 @@ func extractBearerToken(header string) (string, error) {
 
 func (w *WebServer) Start() error {
 	w.server = &http.Server{
-		Addr:    w.bindAddress,
-		Handler: w.engine,
+		Addr:              w.bindAddress,
+		Handler:           w.engine,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
+
 	// Initializing the server in a goroutine so that
 	// it won't block the graceful shutdown handling below
 	go func() {

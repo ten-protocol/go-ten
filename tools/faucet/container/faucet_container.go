@@ -2,12 +2,14 @@ package container
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/tools/faucet/webserver"
+
 	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
 )
 
 type FaucetContainer struct {
 	faucetServer *faucet.Faucet
-	webServer    *faucet.WebServer
+	webServer    *webserver.WebServer
 }
 
 func NewFaucetContainerFromConfig(cfg *faucet.Config) (*FaucetContainer, error) {
@@ -19,13 +21,12 @@ func NewFaucetContainerFromConfig(cfg *faucet.Config) (*FaucetContainer, error) 
 		return nil, err
 	}
 	bindAddress := fmt.Sprintf(":%d", cfg.ServerPort)
-	server := faucet.NewWebServer(f, bindAddress, []byte(cfg.JWTSecret))
+	server := webserver.NewWebServer(f, bindAddress, []byte(cfg.JWTSecret))
 
 	return NewFaucetContainer(f, server)
-
 }
 
-func NewFaucetContainer(faucetServer *faucet.Faucet, webServer *faucet.WebServer) (*FaucetContainer, error) {
+func NewFaucetContainer(faucetServer *faucet.Faucet, webServer *webserver.WebServer) (*FaucetContainer, error) {
 	return &FaucetContainer{
 		faucetServer: faucetServer,
 		webServer:    webServer,

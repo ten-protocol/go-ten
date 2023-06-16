@@ -1,22 +1,27 @@
 package faucet
 
 import (
+	"context"
 	"fmt"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-	"github.com/obscuronet/go-obscuro/tools/faucet/container"
-	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/tools/faucet/container"
+	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
+	"github.com/stretchr/testify/assert"
 )
 
 func init() { //nolint:gochecknoinits
@@ -30,14 +35,7 @@ func init() { //nolint:gochecknoinits
 
 const (
 	contractDeployerPrivateKeyHex = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
-	latestBlock                   = "latest"
-	emptyCode                     = "0x"
-	erc20ParamOne                 = "Hocus"
-	erc20ParamTwo                 = "Hoc"
-	erc20ParamThree               = "1000000000000000000"
-	testLogs                      = "../.build/noderunner/"
-	receiptTimeout                = 30 * time.Second // The time to wait for a receipt for a transaction.
-	_portOffset                   = 1000
+	testLogs                      = "../.build/faucet/"
 )
 
 func TestFaucet(t *testing.T) {
@@ -46,23 +44,34 @@ func TestFaucet(t *testing.T) {
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
 	time.Sleep(2 * time.Second)
 
-	faucetContainer, err := container.NewFaucetContainerFromConfig(&faucet.Config{
+	faucetConfig := &faucet.Config{
 		Port:       startPort,
 		Host:       "localhost",
-		HTTPPort:   13000,
+		HTTPPort:   startPort + integration.DefaultHostRPCHTTPOffset,
 		PK:         "0x" + contractDeployerPrivateKeyHex,
 		JWTSecret:  "This_is_secret",
 		ChainID:    big.NewInt(integration.ObscuroChainID),
-		ServerPort: 80,
-	})
+		ServerPort: integration.StartPortFaucetHTTPUnitTest,
+	}
+	faucetContainer, err := container.NewFaucetContainerFromConfig(faucetConfig)
 	assert.NoError(t, err)
 
 	err = faucetContainer.Start()
 	assert.NoError(t, err)
 
-	err = issueRequest()
+	rndWallet := datagenerator.RandomWallet(integration.ObscuroChainID)
+	err = fundWallet(faucetConfig.ServerPort, rndWallet)
 	assert.NoError(t, err)
 
+	obsClient, err := obsclient.DialWithAuth(fmt.Sprintf("http://%s:%d", network.Localhost, startPort+integration.DefaultHostRPCHTTPOffset), rndWallet, testlog.Logger())
+	assert.NoError(t, err)
+
+	currentBalance, err := obsClient.BalanceAt(context.Background(), nil)
+	assert.NoError(t, err)
+
+	if currentBalance.Cmp(big.NewInt(0)) <= 0 {
+		t.Fatalf("Unexpected balance, got: %d, expected > 0", currentBalance.Int64())
+	}
 }
 
 // Creates a single-node Obscuro network for testing.
@@ -87,17 +96,14 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 	}
 }
 
-func issueRequest() error {
-
-	url := "http://localhost/fund/obx"
+func fundWallet(port int, w wallet.Wallet) error {
+	url := fmt.Sprintf("http://localhost:%d/fund/obx", port)
 	method := "POST"
 
-	payload := strings.NewReader(`{
-    "address":"0x731ed18A8B84e83C79Da742052763272C4D802ee"
-}`)
+	payload := strings.NewReader(fmt.Sprintf(`{"address":"%s"}`, w.Address()))
 
 	client := &http.Client{}
-	req, err := http.NewRequest(method, url, payload)
+	req, err := http.NewRequestWithContext(context.Background(), method, url, payload)
 	if err != nil {
 		return err
 	}

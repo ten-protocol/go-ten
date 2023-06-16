@@ -33,7 +33,7 @@ type Faucet struct {
 	client    *obsclient.AuthObsClient
 	fundMutex sync.Mutex
 	wallet    wallet.Wallet
-	logger    log.Logger
+	Logger    log.Logger
 }
 
 func NewFaucet(rpcURL string, chainID int64, pkString string) (*Faucet, error) {
@@ -48,7 +48,7 @@ func NewFaucet(rpcURL string, chainID int64, pkString string) (*Faucet, error) {
 	return &Faucet{
 		client: obsClient,
 		wallet: w,
-		logger: logger,
+		Logger: logger,
 	}, nil
 }
 
@@ -72,7 +72,7 @@ func (f *Faucet) Fund(address *common.Address, token string, amount int64) error
 	if err != nil {
 		return err
 	}
-	f.logger.Info(fmt.Sprintf("Funded address: %s - tx: %+v\n", address.Hex(), string(txMarshal)))
+	f.Logger.Info(fmt.Sprintf("Funded address: %s - tx: %+v\n", address.Hex(), string(txMarshal)))
 	// todo handle tx receipt
 
 	if err := f.validateTx(signedTx); err != nil {
