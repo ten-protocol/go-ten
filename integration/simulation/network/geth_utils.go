@@ -42,6 +42,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, bl
 	// kickoff the network with the prefunded wallet addresses
 	eth2Network := eth2network.NewEth2Network(
 		path,
+		true,
 		startPort,
 		startPort+integration.DefaultGethWSPortOffset,
 		startPort+integration.DefaultGethAUTHPortOffset,

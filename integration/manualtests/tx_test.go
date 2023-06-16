@@ -31,7 +31,7 @@ const (
 )
 
 // Testnet values used for quick debugging:
-// l1 host: testnet-eth2network.uksouth.azurecontainer.io
+// l1 host: testnet-eth2network.uksouth.cloudapp.azure.com
 // l1 port: 9000
 // l2 host: testnet.obscu.ro
 // l2 port: 13001
@@ -42,7 +42,7 @@ var (
 		"5d1cffab85ddad285de2485ff09339e66e1e0acbfb9960c0df8231a1deb4994a",
 		1337,
 		gethlog.New())
-	l1Host = "testnet-eth2network.uksouth.azurecontainer.io"
+	l1Host = "testnet-eth2network.uksouth.cloudapp.azure.com"
 	l1Port = 9000
 
 	l2Wallet = wallet.NewInMemoryWalletFromConfig(

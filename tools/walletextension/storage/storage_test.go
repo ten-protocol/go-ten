@@ -1,160 +1,89 @@
 package storage
 
 import (
-	"reflect"
+	"bytes"
 	"testing"
-
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-func TestStoringMultipleKeysPerUser(t *testing.T) {
-	userID := "abc"
-	wallet1 := wallet.NewInMemoryWalletFromConfig(
-		"4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8",
-		777,
-		gethlog.New())
-	wallet2 := wallet.NewInMemoryWalletFromConfig(
-		"111114725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b21111",
-		777,
-		gethlog.New())
-
-	vk1, _ := viewingkey.GenerateViewingKeyForWallet(wallet1)
-	vk2, _ := viewingkey.GenerateViewingKeyForWallet(wallet2)
-
-	myStorage, err := New("")
+func TestAddAndGetUser(t *testing.T) {
+	storage, err := New("")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = myStorage.SaveUserVK(userID, vk1)
+	userID := []byte("userID")
+	privateKey := []byte("privateKey")
+
+	err = storage.AddUser(userID, privateKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = myStorage.SaveUserVK(userID, vk2)
+
+	returnedPrivateKey, err := storage.GetUserPrivateKey(userID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := myStorage.GetUserVKs(userID)
-	if err != nil {
-		t.Errorf("error getting user VKs")
-	}
 
-	// Check if vk1 is in the result
-	foundVK1 := false
-	for _, vk := range result {
-		if reflect.DeepEqual(vk, vk1) {
-			foundVK1 = true
-			break
-		}
-	}
-	if !foundVK1 {
-		t.Errorf("vk1 is not found in the result")
-	}
-
-	// Check if vk2 is in the result
-	foundVK2 := false
-	for _, vk := range result {
-		if reflect.DeepEqual(vk, vk2) {
-			foundVK2 = true
-			break
-		}
-	}
-	if !foundVK2 {
-		t.Errorf("vk2 is not found in the result")
+	if !bytes.Equal(returnedPrivateKey, privateKey) {
+		t.Errorf("privateKey mismatch: got %v, want %v", returnedPrivateKey, privateKey)
 	}
 }
 
-func TestMultipleUsersStoringKeys(t *testing.T) {
-	userID1 := "user1"
-	wallet1 := wallet.NewInMemoryWalletFromConfig(
-		"4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8",
-		777,
-		gethlog.New())
-
-	userID2 := "user2"
-	wallet2 := wallet.NewInMemoryWalletFromConfig(
-		"111114725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b21111",
-		777,
-		gethlog.New())
-
-	vk1, _ := viewingkey.GenerateViewingKeyForWallet(wallet1)
-	vk2, _ := viewingkey.GenerateViewingKeyForWallet(wallet2)
-
-	myStorage, err := New("")
+func TestAddAndGetAccounts(t *testing.T) {
+	storage, err := New("")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = myStorage.SaveUserVK(userID1, vk1)
+	userID := []byte("userID")
+	privateKey := []byte("privateKey")
+	accountAddress1 := []byte("accountAddress1")
+	signature1 := []byte("signature1")
+
+	err = storage.AddUser(userID, privateKey)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = myStorage.SaveUserVK(userID2, vk2)
+	err = storage.AddAccount(userID, accountAddress1, signature1)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// userId1 should get only the item that belongs to him and not an item that belongs to userId2
-	result, err := myStorage.GetUserVKs(userID1)
+	accountAddress2 := []byte("accountAddress2")
+	signature2 := []byte("signature2")
+
+	err = storage.AddAccount(userID, accountAddress2, signature2)
 	if err != nil {
-		t.Errorf("error getting user VKs")
+		t.Fatal(err)
 	}
 
-	// Check if vk1 is in the result
-	foundVK1 := false
-	for _, vk := range result {
-		if reflect.DeepEqual(vk, vk1) {
-			foundVK1 = true
-			break
-		}
-	}
-	if !foundVK1 {
-		t.Errorf("vk1 is not found in the result and it should be in")
-	}
-
-	// Check if vk2 is not in the result
-	foundVK2 := false
-	for _, vk := range result {
-		if reflect.DeepEqual(vk, vk2) {
-			foundVK2 = true
-			break
-		}
-	}
-	if foundVK2 {
-		t.Errorf("vk2 is not found in the result for the wrong user")
-	}
-
-	// userId2 should get only the item that belongs to him and not an item that belongs to userId1
-	result, err = myStorage.GetUserVKs(userID2)
+	accounts, err := storage.GetAccounts(userID)
 	if err != nil {
-		t.Errorf("error getting user VKs")
+		t.Fatal(err)
 	}
 
-	// Check if vk1 is not in the result
-	foundVK1 = false
-	for _, vk := range result {
-		if reflect.DeepEqual(vk, vk1) {
-			foundVK1 = true
-			break
-		}
-	}
-	if foundVK1 {
-		t.Errorf("vk1 is not found in the result for the wrong user")
+	if len(accounts) != 2 {
+		t.Errorf("Expected 2 accounts, got %d", len(accounts))
 	}
 
-	// Check if vk2 is not in the result
-	foundVK2 = false
-	for _, vk := range result {
-		if reflect.DeepEqual(vk, vk2) {
-			foundVK2 = true
-			break
+	foundAccount1 := false
+	foundAccount2 := false
+
+	for _, account := range accounts {
+		if bytes.Equal(account.AccountAddress, accountAddress1) && bytes.Equal(account.Signature, signature1) {
+			foundAccount1 = true
+		}
+		if bytes.Equal(account.AccountAddress, accountAddress2) && bytes.Equal(account.Signature, signature2) {
+			foundAccount2 = true
 		}
 	}
-	if !foundVK2 {
-		t.Errorf("vk2 is not found in the result for the wrong user")
+
+	if !foundAccount1 {
+		t.Errorf("Account 1 was not found in the result")
+	}
+
+	if !foundAccount2 {
+		t.Errorf("Account 2 was not found in the result")
 	}
 }

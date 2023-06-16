@@ -5,8 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 
 	obscurocommon "github.com/obscuronet/go-obscuro/go/common"
 )
@@ -43,18 +42,42 @@ func New(dbPath string) (*Storage, error) {
 	return &Storage{db: newDB}, nil
 }
 
-func (s *Storage) SaveUserVK(userID string, vk *viewingkey.ViewingKey) error {
-	err := s.db.SaveUserVK(userID, vk)
+func (s *Storage) AddUser(userID []byte, privateKey []byte) error {
+	err := s.db.AddUser(userID, privateKey)
 	if err != nil {
-		return fmt.Errorf("failed to save viewingkey to the storage, %w", err)
+		return err
 	}
 	return nil
 }
 
-func (s *Storage) GetUserVKs(userID string) (map[common.Address]*viewingkey.ViewingKey, error) {
-	userVKs, err := s.db.GetUserVKs(userID)
+func (s *Storage) DeleteUser(userID []byte) error {
+	err := s.db.DeleteUser(userID)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) GetUserPrivateKey(userID []byte) ([]byte, error) {
+	privateKey, err := s.db.GetUserPrivateKey(userID)
 	if err != nil {
 		return nil, err
 	}
-	return userVKs, nil
+	return privateKey, nil
+}
+
+func (s *Storage) AddAccount(userID []byte, accountAddress []byte, signature []byte) error {
+	err := s.db.AddAccount(userID, accountAddress, signature)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) GetAccounts(userID []byte) ([]common.AccountDB, error) {
+	accounts, err := s.db.GetAccounts(userID)
+	if err != nil {
+		return nil, err
+	}
+	return accounts, nil
 }

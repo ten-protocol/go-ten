@@ -46,17 +46,17 @@ func minMax(arr []uint64) (min uint64, max uint64) {
 }
 
 // Uses the client to retrieve the current rollup head.
-func getHeadRollupHeader(client *obsclient.ObsClient, nodeIdx int) *common.BatchHeader {
+func getHeadRollupHeader(client *obsclient.ObsClient) (*common.BatchHeader, error) {
 	headRollupHeight, err := client.RollupNumber()
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed attempt to retrieve head rollup height. Cause: %w", err))
+		return nil, fmt.Errorf("simulation failed due to failed attempt to retrieve head rollup height. Cause: %w", err)
 	}
 
 	headRollupHeader, err := client.RollupHeaderByNumber(big.NewInt(int64(headRollupHeight)))
 	if err != nil {
-		panic(fmt.Errorf("node %d: simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %w", nodeIdx, headRollupHeight, err))
+		return nil, fmt.Errorf("simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %w", headRollupHeight, err)
 	}
-	return headRollupHeader
+	return headRollupHeader, nil
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.

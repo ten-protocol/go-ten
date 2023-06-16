@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
@@ -68,7 +67,7 @@ func TestCanDeployLayer2ERC20Contract(t *testing.T) {
 		panic(err)
 	}
 
-	contractDeployerWallet := getWallet(contractDeployerPrivateKeyHex)
+	contractDeployerWallet := wallet.NewInMemoryWalletFromConfig(contractDeployerPrivateKeyHex, integration.ObscuroChainID, testlog.Logger())
 	contractDeployerClient := getClient(hostWSPort, contractDeployerWallet)
 
 	var deployedCode string
@@ -87,10 +86,10 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
 	createObscuroNetwork(t, startPort)
 
-	faucetWallet := getWallet(genesis.TestnetPrefundedPK)
+	faucetWallet := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.ObscuroChainID, testlog.Logger())
 	faucetClient := getClient(hostWSPort, faucetWallet)
 
-	contractDeployerWallet := getWallet(contractDeployerPrivateKeyHex)
+	contractDeployerWallet := wallet.NewInMemoryWalletFromConfig(contractDeployerPrivateKeyHex, integration.ObscuroChainID, testlog.Logger())
 	// We send more than enough to the contract deployer, to make sure prefunding won't be needed.
 	excessivePrealloc := big.NewInt(contractdeployer.Prealloc * 3)
 	testcommon.PrefundWallets(context.Background(), faucetWallet, obsclient.NewAuthObsClient(faucetClient), 0, []wallet.Wallet{contractDeployerWallet}, excessivePrealloc, receiptTimeout)
@@ -129,15 +128,6 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	if faucetInitialBalance != faucetBalanceAfterDeploy {
 		t.Fatal("contract deployment allocated extra funds to contract deployer, despite sufficient funds")
 	}
-}
-
-func getWallet(privateKeyHex string) wallet.Wallet {
-	faucetPrivKey, err := crypto.HexToECDSA(privateKeyHex)
-	if err != nil {
-		panic("could not initialise faucet private key")
-	}
-	faucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.ObscuroChainID), faucetPrivKey, testlog.Logger())
-	return faucetWallet
 }
 
 // Creates a single-node Obscuro network for testing.

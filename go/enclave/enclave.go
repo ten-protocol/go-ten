@@ -286,17 +286,33 @@ func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 	if e.stopControl.IsStopping() {
-		return common.Unavailable, responses.ToInternalError(fmt.Errorf("requested Status with the enclave stopping"))
+		return common.Status{StatusCode: common.Unavailable}, responses.ToInternalError(fmt.Errorf("requested Status with the enclave stopping"))
 	}
 
 	_, err := e.storage.FetchSecret()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			return common.AwaitingSecret, nil
+			return common.Status{StatusCode: common.AwaitingSecret}, nil
 		}
-		return common.Unavailable, responses.ToInternalError(err)
+		return common.Status{StatusCode: common.Unavailable}, responses.ToInternalError(err)
 	}
-	return common.Running, nil // The enclave is local so it is always ready
+	l1Head, err := e.storage.FetchHeadBlock()
+	var l1HeadHash gethcommon.Hash
+	if err != nil {
+		// this might be normal while enclave is starting up, just send empty hash
+		e.logger.Debug("failed to fetch L1 head block for status response", log.ErrKey, err)
+	} else {
+		l1HeadHash = l1Head.Hash()
+	}
+	l2Head, err := e.storage.FetchHeadBatch()
+	var l2HeadHash gethcommon.Hash
+	if err != nil {
+		// this might be normal while enclave is starting up, just send empty hash
+		e.logger.Debug("failed to fetch L2 head batch for status response", log.ErrKey, err)
+	} else {
+		l2HeadHash = l2Head.Hash()
+	}
+	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadHash}, nil
 }
 
 // StopClient is only implemented by the RPC wrapper
@@ -370,10 +386,7 @@ func (e *enclaveImpl) StreamL2Updates(from *common.L2BatchHash) (chan common.Str
 		return l2UpdatesChannel, func() {}
 	}
 
-	if e.config.NodeType == common.Sequencer {
-		go e.sendBatchesFromSubscription(from, l2UpdatesChannel)
-	}
-
+	go e.sendBatchesFromSubscription(from, l2UpdatesChannel)
 	go e.sendEventsFromSubscription(l2UpdatesChannel)
 
 	return l2UpdatesChannel, func() {
@@ -433,7 +446,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 		return responses.AsPlaintextError(fmt.Errorf("could not decrypt transaction. Cause: %w", err)), nil
 	}
 
-	e.logger.Info("Submitted transaction", log.TxKey, decryptedTx.Hash())
+	e.logger.Debug("Submitted transaction", log.TxKey, decryptedTx.Hash())
 
 	viewingKeyAddress, err := rpc.GetSender(decryptedTx)
 	if err != nil {
@@ -488,7 +501,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 
 	callStart := time.Now()
 	defer func() {
-		e.logger.Info("SubmitBatch call completed.", "start", callStart, "duration", time.Since(callStart), log.BatchHashKey, extBatch.Hash())
+		e.logger.Info("SubmitBatch call completed.", "start", callStart, log.DurationKey, time.Since(callStart), log.BatchHashKey, extBatch.Hash())
 	}()
 
 	e.logger.Info("SubmitBatch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
@@ -582,7 +595,7 @@ func (e *enclaveImpl) ObsCall(encryptedParams common.EncryptedParamsCall) (*resp
 
 	execResult, err := e.chain.ObsCall(apiArgs, blkNumber)
 	if err != nil {
-		e.logger.Info("Could not execute off chain call.", log.ErrKey, err)
+		e.logger.Debug("Failed eth_call.", log.ErrKey, err)
 
 		// make sure it's not some internal error
 		if errors.Is(err, syserr.InternalError{}) {

@@ -14,6 +14,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
@@ -59,6 +60,8 @@ func (br *batchRegistryImpl) UnsubscribeFromEvents() {
 // StoreBatch - stores a batch and if it is the new l2 head, then registry will update
 // stored head pointers
 func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receipts) error {
+	defer br.logger.Info("Registry StoreBatch() exit", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
+
 	// Check if this batch is already stored.
 	if _, err := br.storage.FetchBatchHeader(batch.Hash()); err == nil {
 		br.logger.Warn("Attempted to store batch twice! This indicates issues with the batch processing loop")
@@ -86,6 +89,8 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 }
 
 func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch, isHeadBatch bool) {
+	defer br.logger.Info("Registry notified subscribers of batch", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
+
 	br.subscriptionMutex.Lock()
 	subscriptionChan := br.batchSubscription
 	eventChan := br.eventSubscription

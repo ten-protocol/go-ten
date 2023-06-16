@@ -37,7 +37,7 @@ jobs:
       L1_HOST: ${{ steps.outputVars.outputs.L1_HOST }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - uses: actions/setup-go@v4
         with:
@@ -58,7 +58,7 @@ jobs:
           echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
-          echo "L1_HOST=testnet-eth2network.uksouth.azurecontainer.io" >> $GITHUB_ENV
+          echo "L1_HOST=testnet-eth2network.uksouth.cloudapp.azure.com" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
@@ -70,7 +70,7 @@ jobs:
           echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
-          echo "L1_HOST=dev-testnet-eth2network.uksouth.azurecontainer.io" >> $GITHUB_ENV
+          echo "L1_HOST=dev-testnet-eth2network.uksouth.cloudapp.azure.com" >> $GITHUB_ENV
 
       - name: 'Output env vars'
         id: outputVars
@@ -122,7 +122,9 @@ jobs:
 
       - name: 'Save container logs on failure'
         if: failure()
+        # Wait to make sure the logs are available in the container
         run: |
+          sleep 60
           docker logs `docker ps -aqf "name=hh-l1-deployer"` > deploy-l1-contracts.out 2>&1
 
       # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
@@ -273,7 +275,7 @@ jobs:
       - deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -314,7 +316,7 @@ jobs:
       - check-obscuro-is-healthy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: 'Deploy L2 contracts'
         id: deployL2Contracts
@@ -346,16 +348,9 @@ jobs:
           retention-days: 2
 
   deploy-faucet:
-    runs-on: ubuntu-latest
+    name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
+    uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
+    with:
+      testnet_type: ${{github.event.inputs.testnet_type}}
     needs:
       - check-obscuro-is-healthy
-    steps:
-      - name: 'Trigger Faucet deployment for testnet on a new deployment'
-        if: ${{ (github.event.inputs.testnet_type == 'testnet') }}
-        run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/faucet/dispatches --data '{ "event_type": "testnet_deployed", "client_payload": { "ref": "${{ github.ref }}" }'
-
-      - name: 'Trigger Faucet deployment for dev-testnet on a new deployment'
-        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
-        run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/faucet/dispatches --data '{ "event_type": "dev_testnet_deployed", "client_payload": { "ref": "${{ github.ref }}" }'

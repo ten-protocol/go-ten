@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -80,7 +81,7 @@ type p2pImpl struct {
 	metricsRegistry gethmetrics.Registry
 }
 
-func (p *p2pImpl) StartListening(callback host.Host) {
+func (p *p2pImpl) StartListening(callback host.P2PSubscriber) {
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.ourAddress)
 	if err != nil {
@@ -131,6 +132,8 @@ func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
 }
 
 func (p *p2pImpl) RequestBatchesFromSequencer(batchRequest *common.BatchRequest) error {
+	defer p.logger.Info("Requested batches from sequencer", log.BatchHashKey, batchRequest.CurrentHeadBatch, log.DurationKey, measure.NewStopwatch())
+
 	if len(p.peerAddresses) == 0 {
 		return errors.New("no peers available to request batches")
 	}
@@ -194,7 +197,7 @@ func (p *p2pImpl) HealthCheck() bool {
 }
 
 // Listens for connections and handles them in a separate goroutine.
-func (p *p2pImpl) handleConnections(callback host.Host) {
+func (p *p2pImpl) handleConnections(subscriber host.P2PSubscriber) {
 	for {
 		conn, err := p.listener.Accept()
 		if err != nil {
@@ -203,12 +206,12 @@ func (p *p2pImpl) handleConnections(callback host.Host) {
 			}
 			return
 		}
-		go p.handle(conn, callback)
+		go p.handle(conn, subscriber)
 	}
 }
 
 // Receives and decodes a P2P message, and pushes it to the correct channel.
-func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
+func (p *p2pImpl) handle(conn net.Conn, subscriber host.P2PSubscriber) {
 	if conn != nil {
 		defer conn.Close()
 	}
@@ -231,11 +234,11 @@ func (p *p2pImpl) handle(conn net.Conn, callback host.Host) {
 	switch msg.Type {
 	case msgTypeTx:
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
-		callback.ReceiveTx(msg.Contents)
+		subscriber.ReceiveTx(msg.Contents)
 	case msgTypeBatches:
-		callback.ReceiveBatches(msg.Contents)
+		subscriber.ReceiveBatches(msg.Contents)
 	case msgTypeBatchRequest:
-		callback.ReceiveBatchRequest(msg.Contents)
+		subscriber.ReceiveBatchRequest(msg.Contents)
 	}
 	p.incHostGaugeMetric(msg.Sender, _receivedMessage)
 	p.peerTracker.receivedPeerMsg(msg.Sender)

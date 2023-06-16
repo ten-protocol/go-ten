@@ -12,8 +12,8 @@ main:
 sidebar-list:
   - title: What is Obscuro?
     children:
-      - title: Privacy
-        url: what-is-obscuro/privacy-matters
+      - title: Encrypted Ethereum
+        url: what-is-obscuro/encrypted-ethereum
       - title: Technology
         url: what-is-obscuro/technology
       - title: User Experience
