@@ -44,31 +44,19 @@ type BatchHeader struct {
 }
 
 // RollupHeader is a public / plaintext struct that holds common properties of rollups.
-// Making changes to this struct will require GRPC + GRPC Converters regen
+// All these fields are processed by the Management contract
 type RollupHeader struct {
-	ParentHash  L2BatchHash
-	Root        StateRoot   `json:"stateRoot"`
-	ReceiptHash common.Hash `json:"receiptsRoot"`
-	Number      *big.Int
-	GasLimit    uint64
-	GasUsed     uint64
-	Time        uint64 `json:"timestamp"`
-	Extra       []byte `json:"extraData"`
-	BaseFee     *big.Int
+	ParentHash    L2BatchHash
+	Number        *big.Int
+	Time          uint64      `json:"timestamp"`
+	L1Proof       L1BlockHash // the L1 block hash used by the enclave to generate the current rollup
+	L1ProofNumber *big.Int    // the height of the proof - used by the management contract to check
+	Coinbase      common.Address
 
-	// The custom Obscuro fields.
-	L1Proof            L1BlockHash                           // the L1 block used by the enclave to generate the current rollup
-	R, S               *big.Int                              // signature values
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
-	HeadBatchHash      common.Hash                           // The latest batch included in this rollup.
 
-	Coinbase common.Address
-
-	// The block hash of the latest block that has been scanned for cross chain messages.
-	LatestInboundCrossChainHash common.Hash `json:"inboundCrossChainHash"`
-
-	// The block height of the latest block that has been scanned for cross chain messages.
-	LatestInboundCrossChainHeight *big.Int `json:"inboundCrossChainHeight"`
+	PayloadHash common.Hash // The hash of the compressed batches. TODO
+	R, S        *big.Int    // signature values
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
@@ -82,27 +70,6 @@ func (b *BatchHeader) Hash() L2BatchHash {
 		panic("err hashing batch header")
 	}
 	return hash
-}
-
-func (b *BatchHeader) ToRollupHeader() *RollupHeader {
-	return &RollupHeader{
-		ParentHash:                    b.ParentHash,
-		Root:                          b.Root,
-		HeadBatchHash:                 b.TxHash,
-		ReceiptHash:                   b.ReceiptHash,
-		Number:                        b.Number,
-		GasLimit:                      b.GasLimit,
-		GasUsed:                       b.GasUsed,
-		Time:                          b.Time,
-		Extra:                         b.Extra,
-		BaseFee:                       b.BaseFee,
-		L1Proof:                       b.L1Proof,
-		R:                             b.R,
-		S:                             b.S,
-		CrossChainMessages:            b.CrossChainMessages,
-		LatestInboundCrossChainHash:   b.LatestInboundCrossChainHash,
-		LatestInboundCrossChainHeight: b.LatestInboundCrossChainHeight,
-	}
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its

@@ -253,11 +253,11 @@ func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, ro
 		return
 	}
 
-	isValidChain = prevRollup.Header.HeadBatchHash.Hex() == firstBatch.ParentHash.Hex()
-	if !isValidChain {
-		t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
-		return
-	}
+	//isValidChain = prevRollup.Header.HeadBatchHash.Hex() == firstBatch.ParentHash.Hex()
+	//if !isValidChain {
+	//	t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
+	//	return
+	//}
 }
 
 func extractBatchHeaders(rollup *common.ExtRollup) []common.BatchHeader {
