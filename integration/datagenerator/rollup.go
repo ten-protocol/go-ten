@@ -10,7 +10,7 @@ import (
 
 // RandomRollup - block is needed in order to pass the smart contract check
 // when submitting cross chain messages.
-func RandomRollup(block *types.Block) common.ExtRollup {
+func RandomRollup(_ *types.Block) common.ExtRollup {
 	extRollup := common.ExtRollup{
 		Header: &common.RollupHeader{
 			ParentHash: randomHash(),
