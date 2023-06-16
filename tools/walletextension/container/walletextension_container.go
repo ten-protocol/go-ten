@@ -4,25 +4,23 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"net/http"
 
 	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
-
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/api"
-	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
 
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 )
 
 type WalletExtensionContainer struct {
