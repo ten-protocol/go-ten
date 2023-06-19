@@ -31,8 +31,8 @@ func (db *DB) GetBatchHeader(hash gethcommon.Hash) (*common.BatchHeader, error) 
 	return db.readBatchHeader(hash)
 }
 
-// AddBatchHeader adds a batch's header to the known headers
-func (db *DB) AddBatchHeader(batch *common.ExtBatch) error {
+// AddBatch adds a batch and its header to the DB
+func (db *DB) AddBatch(batch *common.ExtBatch) error {
 	// We check if the batch is already stored, to avoid incrementing the total transaction count twice for one batch.
 	_, err := db.GetBatchHeader(batch.Hash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
