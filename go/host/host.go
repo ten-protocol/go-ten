@@ -581,7 +581,7 @@ func (h *host) publishRollup(producedRollup *common.ExtRollup) {
 func (h *host) storeBatch(producedBatch *common.ExtBatch) {
 	defer h.logger.Info("Batch stored", log.BatchHashKey, producedBatch.Hash(), log.DurationKey, measure.NewStopwatch())
 
-	err := h.db.AddBatchHeader(producedBatch)
+	err := h.db.AddBatch(producedBatch)
 	if err != nil {
 		h.logger.Error("could not store batch", log.BatchHashKey, producedBatch.Hash(), log.ErrKey, err)
 	}
@@ -916,7 +916,7 @@ func (h *host) handleBatches(encodedBatchMsg *common.EncodedBatchMsg) error {
 		if err = h.enclaveClient.SubmitBatch(batch); err != nil {
 			return fmt.Errorf("could not submit batch. Cause: %w", err)
 		}
-		if err = h.db.AddBatchHeader(batch); err != nil {
+		if err = h.db.AddBatch(batch); err != nil {
 			return fmt.Errorf("could not store batch header. Cause: %w", err)
 		}
 	}
