@@ -352,6 +352,7 @@ jobs:
     uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
     with:
       testnet_type: ${{github.event.inputs.testnet_type}}
+    secrets: inherit
     needs:
       - check-obscuro-is-healthy
 
