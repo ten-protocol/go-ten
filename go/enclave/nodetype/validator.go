@@ -99,7 +99,6 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		ParentPtr:    incomingBatch.Header.ParentHash,
 		Transactions: incomingBatch.Transactions,
 		AtTime:       incomingBatch.Header.Time,
-		Randomness:   incomingBatch.Header.MixDigest,
 		ChainConfig:  val.chainConfig,
 	})
 	if err != nil {

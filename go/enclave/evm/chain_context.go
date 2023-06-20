@@ -41,7 +41,7 @@ func (occ *ObscuroChainContext) GetHeader(hash common.Hash, _ uint64) *types.Hea
 		occ.logger.Crit("Could not retrieve rollup", log.ErrKey, err)
 	}
 
-	h, err := gethencoding.ConvertToEthHeader(batch.Header, secret(occ.storage))
+	h, err := gethencoding.CreateEthHeaderForBatch(batch.Header, secret(occ.storage))
 	if err != nil {
 		occ.logger.Crit("Could not convert to eth header", log.ErrKey, err)
 		return nil

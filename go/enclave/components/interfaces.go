@@ -46,7 +46,6 @@ type BatchExecutionContext struct {
 	ParentPtr    common.L2BatchHash
 	Transactions common.L2Transactions
 	AtTime       uint64
-	Randomness   gethcommon.Hash
 	Creator      gethcommon.Address
 	ChainConfig  *params.ChainConfig
 }

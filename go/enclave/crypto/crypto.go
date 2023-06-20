@@ -1,8 +1,10 @@
 package crypto
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -91,25 +93,28 @@ func decryptWithPrivateKey(ciphertext []byte, priv *ecdsa.PrivateKey) ([]byte, e
 	return plaintext, nil
 }
 
-// GeneratePublicRandomness - generate 32 bytes of randomness, which will be exposed in the rollup header.
-func GeneratePublicRandomness() ([]byte, error) {
-	return randomBytes(gethcommon.HashLength)
+// CalculateRootBatchEntropy - calculates entropy per batch
+// In Obscuro, we use a root entropy per batch, which is then used to calculate randomness exposed to individual transactions
+// The RootBatchEntropy is calculated based on the shared secret and the batch height
+// This ensures that sibling batches will naturally use the same root entropy so that transactions will have the same results
+// Note that this formula is vulnerable to the unlikely event of a secret leak.
+// todo (crypto) - find a way to hash in timestamp or something else then it would make it harder for attacker, such that sibling batches naturally have the same entropy.
+func CalculateRootBatchEntropy(rootEntropy []byte, batchHeight *big.Int) gethcommon.Hash {
+	return crypto.Keccak256Hash(rootEntropy, batchHeight.Bytes())
 }
 
-// PrivateRollupRnd - combine public randomness with private randomness in a way that protects the secret.
-func PrivateRollupRnd(publicRnd []byte, secret []byte) []byte {
-	return crypto.Keccak256Hash(publicRnd, secret).Bytes()
+// CalculateTxRnd - calculates the randomness exposed to individual transactions
+// In Obscuro, each tx must have its own randomness, independent from the others, because otherwise a malicious transaction
+// could reveal information.
+func CalculateTxRnd(rootBatchEntropy []byte, tCount int) gethcommon.Hash {
+	return crypto.Keccak256Hash(rootBatchEntropy, intToBytes(tCount))
 }
 
-func randomBytes(length int) ([]byte, error) {
-	byteArr := make([]byte, length)
-	if _, err := rand.Read(byteArr); err != nil {
-		return nil, err
+func intToBytes(val int) []byte {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, int64(val))
+	if err != nil {
+		panic(fmt.Sprintf("Could not convert int to bytes. Cause: %s", err))
 	}
-	return byteArr, nil
-}
-
-// PerTransactionRnd - calculates a per tx random value
-func PerTransactionRnd(privateRnd []byte, tCount int) []byte {
-	return crypto.Keccak256Hash(privateRnd, big.NewInt(int64(tCount)).Bytes()).Bytes()
+	return buf.Bytes()
 }
