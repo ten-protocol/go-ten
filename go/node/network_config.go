@@ -3,10 +3,11 @@ package node
 import (
 	"encoding/json"
 	"os"
+	"path"
 )
 
-// This is the location where the metadata will be stored (currently only used on testnet VMs, may need to be made configurable eventually)
-const _defaultNetworkCfgFilePath = "/home/obscuro/network.json"
+// This is the location where the metadata will be stored
+const _networkCfgFile = ".obscuro-network.json"
 
 // NetworkConfig is key network information required to start a node connecting to that network.
 // We persist it as a json file on our testnet hosts so that they can read it off when restart/upgrading
@@ -26,8 +27,15 @@ func WriteNetworkConfigToDisk(cfg *Config) error {
 	if err != nil {
 		return err
 	}
+
+	// store in the user home dir
+	filePath, err := obscuroFilePath()
+	if err != nil {
+		return err
+	}
+
 	// create the file as read-only, expect it to be immutable data for the lifetime of the obscuro network for the node
-	err = os.WriteFile(_defaultNetworkCfgFilePath, jsonStr, 0o644) //nolint:gosec
+	err = os.WriteFile(filePath, jsonStr, 0o644) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -35,7 +43,13 @@ func WriteNetworkConfigToDisk(cfg *Config) error {
 }
 
 func ReadNetworkConfigFromDisk() (*NetworkConfig, error) {
-	bytes, err := os.ReadFile(_defaultNetworkCfgFilePath)
+	// store in the user home dir
+	filePath, err := obscuroFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -45,4 +59,14 @@ func ReadNetworkConfigFromDisk() (*NetworkConfig, error) {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+func obscuroFilePath() (string, error) {
+	// store in the user home dir
+	dirname, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(dirname, _networkCfgFile), nil
 }
