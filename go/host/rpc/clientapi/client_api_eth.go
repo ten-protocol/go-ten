@@ -198,7 +198,6 @@ func headerToMap(header *common.BatchHeader) map[string]interface{} {
 		"gasUsed":          header.GasUsed,
 		"timestamp":        header.Time,
 		"extraData":        header.Extra,
-		"mixHash":          header.MixDigest,
 		"nonce":            nil,
 		"baseFeePerGas":    header.BaseFee,
 

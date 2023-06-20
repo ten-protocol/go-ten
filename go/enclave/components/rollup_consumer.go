@@ -212,7 +212,7 @@ func (rc *rollupConsumerImpl) checkRollupsCorrectlyChained(rollup *core.Rollup, 
 			rollup.Header.Number, previousRollup.Header.Number)
 	}
 
-	if len(rollup.Batches) != 0 && previousRollup.Header.HeadBatchHash != rollup.Batches[0].Header.ParentHash {
+	if len(rollup.Batches) != 0 && previousRollup.HeadBatchHash() != rollup.Batches[0].Header.ParentHash {
 		return fmt.Errorf("found gap in rollup batches. Batches in rollup %d did not chain to batches in rollup %d",
 			rollup.Header.Number, previousRollup.Header.Number)
 	}

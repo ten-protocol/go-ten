@@ -12,6 +12,7 @@ set -euo pipefail
 start_path="$(cd "$(dirname "${0}")" && pwd)"
 testnet_path="${start_path}"
 root_path="${testnet_path}/.."
+tools_path="${root_path}/tools"
 
 parallel=true
 # Fetch options
@@ -49,6 +50,7 @@ command docker build -t testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave:latest -f "${root_path}/dockerfiles/enclave.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest -f "${root_path}/dockerfiles/enclave.debug.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuroscan:latest -f "${testnet_path}/obscuroscan.Dockerfile" "${root_path}" &
+command docker build -t testnetobscuronet.azurecr.io/obscuronet/faucet:latest -f "${tools_path}/faucet/Dockerfile" "${root_path}" &
 
 wait
 

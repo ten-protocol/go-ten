@@ -9,7 +9,7 @@
 #  dev-testnet-faucet or testnet-faucet.uksouth.azurecontainer.io
 
 name: '[M] Deploy Faucet Testnet'
-run-name: '[M] Deploy Faucet Testnet (${{ github.event.action }})'
+run-name: '[M] Deploy Faucet Testnet ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:
@@ -21,6 +21,12 @@ on:
         options:
           - 'dev-testnet'
           - 'testnet'
+
+  workflow_call:
+    inputs:
+      testnet_type:
+        required: true
+        type: string
 
 jobs:
   build-and-deploy:
@@ -43,27 +49,34 @@ jobs:
           echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_faucet_testnet:latest" >> $GITHUB_ENV
           echo "TESTNET_ADDR=dev-testnet.obscu.ro" >> $GITHUB_ENV
 
-      - name: Build and Push Docker Image
-        run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{env.FAUCET_BUILD_TAG}} -f tools/faucet/Dockerfile . 
-          docker push ${{env.FAUCET_BUILD_TAG}}
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Build and Push Docker Image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{env.FAUCET_BUILD_TAG}} -f tools/faucet/Dockerfile . 
+          docker push ${{env.FAUCET_BUILD_TAG}}
+
       - name: 'Deploy to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: dev-testnet-faucet
-          image: ${{ FAUCET_BUILD_TAG }}:latest
-          name: ${{ github.event.inputs.testnet_type }}
+          dns-name-label: ${{ github.event.inputs.testnet_type }}-faucet
+          image: ${{ env.FAUCET_BUILD_TAG }}
+          name: ${{ github.event.inputs.testnet_type }}-faucet
           location: 'uksouth'
           restart-policy: 'Never'
           environment-variables: PORT=80
-          command-line: cmd/faucet --nodeHost ${{ TESTNET_ADDR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }}
+          command-line: ./faucet --nodeHost ${{ env.TESTNET_ADDR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }}
           ports: '80'
           cpu: 2
           memory: 2

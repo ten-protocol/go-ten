@@ -42,3 +42,8 @@ services:
     build:
       context: $ROOT_PATH
       dockerfile: ./testnet/walletextension.Dockerfile
+  faucet:
+    image: "testnetobscuronet.azurecr.io/obscuronet/faucet:latest"
+    build:
+      context: $ROOT_PATH
+      dockerfile: ./tools/faucet/Dockerfile

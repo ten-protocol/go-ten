@@ -125,8 +125,8 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 	}
 
 	crossChain := ManagementContract.StructsHeaderCrossChainData{
-		BlockNumber: decodedRollup.Header.LatestInboundCrossChainHeight,
-		BlockHash:   decodedRollup.Header.LatestInboundCrossChainHash,
+		BlockNumber: decodedRollup.Header.L1ProofNumber,
+		BlockHash:   decodedRollup.Header.L1Proof,
 		Messages:    convertCrossChainMessages(decodedRollup.Header.CrossChainMessages),
 	}
 
