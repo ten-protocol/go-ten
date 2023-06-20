@@ -2,9 +2,9 @@ package container
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/tools/faucet/webserver"
 
 	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
+	"github.com/obscuronet/go-obscuro/tools/faucet/webserver"
 )
 
 type FaucetContainer struct {

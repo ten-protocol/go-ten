@@ -99,26 +99,6 @@ func NewWebServer(faucetServer *faucet.Faucet, bindAddress string, jwtSecret []b
 	}
 }
 
-func errorHandler(c *gin.Context, err error, logger log.Logger) {
-	c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{
-		"error": err.Error(),
-	})
-	logger.Error(err.Error())
-}
-
-func extractBearerToken(header string) (string, error) {
-	if header == "" {
-		return "", fmt.Errorf("bad header value given")
-	}
-
-	jwtToken := strings.Split(header, " ")
-	if len(jwtToken) != 2 {
-		return "", fmt.Errorf("incorrectly formatted authorization header")
-	}
-
-	return jwtToken[1], nil
-}
-
 func (w *WebServer) Start() error {
 	w.server = &http.Server{
 		Addr:              w.bindAddress,
@@ -144,4 +124,24 @@ func (w *WebServer) Stop() error {
 	defer cancel()
 
 	return w.server.Shutdown(ctx)
+}
+
+func errorHandler(c *gin.Context, err error, logger log.Logger) {
+	c.AbortWithStatusJSON(http.StatusInternalServerError, map[string]string{
+		"error": err.Error(),
+	})
+	logger.Error(err.Error())
+}
+
+func extractBearerToken(header string) (string, error) {
+	if header == "" {
+		return "", fmt.Errorf("bad header value given")
+	}
+
+	jwtToken := strings.Split(header, " ")
+	if len(jwtToken) != 2 {
+		return "", fmt.Errorf("incorrectly formatted authorization header")
+	}
+
+	return jwtToken[1], nil
 }

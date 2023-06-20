@@ -27,8 +27,6 @@ const (
 	WrappedUSDC    = "usdc"
 )
 
-type TokenType string
-
 type Faucet struct {
 	client    *obsclient.AuthObsClient
 	fundMutex sync.Mutex
