@@ -29,13 +29,13 @@ func WriteNetworkConfigToDisk(cfg *Config) error {
 	}
 
 	// store in the user home dir
-	dirname, err := os.UserHomeDir()
+	filePath, err := obscuroFilePath()
 	if err != nil {
 		return err
 	}
 
 	// create the file as read-only, expect it to be immutable data for the lifetime of the obscuro network for the node
-	err = os.WriteFile(path.Join(dirname, _networkCfgFile), jsonStr, 0o644) //nolint:gosec
+	err = os.WriteFile(filePath, jsonStr, 0o644) //nolint:gosec
 	if err != nil {
 		return err
 	}
@@ -43,7 +43,13 @@ func WriteNetworkConfigToDisk(cfg *Config) error {
 }
 
 func ReadNetworkConfigFromDisk() (*NetworkConfig, error) {
-	bytes, err := os.ReadFile(_networkCfgFile)
+	// store in the user home dir
+	filePath, err := obscuroFilePath()
+	if err != nil {
+		return nil, err
+	}
+
+	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -53,4 +59,14 @@ func ReadNetworkConfigFromDisk() (*NetworkConfig, error) {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+func obscuroFilePath() (string, error) {
+	// store in the user home dir
+	dirname, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(dirname, _networkCfgFile), nil
 }
