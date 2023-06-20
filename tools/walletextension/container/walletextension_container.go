@@ -7,21 +7,20 @@ import (
 	"net/http"
 
 	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
-
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/api"
-	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
 
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 )
 
 type WalletExtensionContainer struct {
@@ -82,14 +81,14 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 		privKey := ecies.ImportECDSA(privKeyECDSA)
 		for _, acc := range userAccounts {
 			a := common.BytesToAddress(acc.AccountAddress)
-			viewingKey := rpc.ViewingKey{
+			viewingKey := &viewingkey.ViewingKey{
 				Account:    &a,
 				PrivateKey: privKey,
 				PublicKey:  gethcrypto.CompressPubkey(&privKeyECDSA.PublicKey),
-				SignedKey:  acc.Signature,
+				Signature:  acc.Signature,
 			}
 
-			client, err := rpc.NewEncNetworkClient(hostRPCBindAddr, &viewingKey, logger)
+			client, err := rpc.NewEncNetworkClient(hostRPCBindAddr, viewingKey, logger)
 			if err != nil {
 				logger.Error(fmt.Sprintf("failed to create encrypted RPC client for persisted account %s", viewingKey.Account.Hex()), log.ErrKey, err)
 				continue

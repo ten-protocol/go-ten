@@ -25,6 +25,7 @@ on:
   workflow_call:
     inputs:
       testnet_type:
+        description: 'Testnet Type'
         required: true
         type: string
 

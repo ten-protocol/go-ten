@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/accountmanager"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
@@ -34,7 +35,7 @@ var (
 type WalletExtension struct {
 	hostAddr           string // The address on which the Obscuro host can be reached.
 	userAccountManager *useraccountmanager.UserAccountManager
-	unsignedVKs        map[gethcommon.Address]*rpc.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
+	unsignedVKs        map[gethcommon.Address]*viewingkey.ViewingKey // Map temporarily holding VKs that have been generated but not yet signed
 	storage            *storage.Storage
 	logger             gethlog.Logger
 	stopControl        *stopcontrol.StopControl
@@ -50,7 +51,7 @@ func New(
 	return &WalletExtension{
 		hostAddr:           hostAddr,
 		userAccountManager: userAccountManager,
-		unsignedVKs:        map[gethcommon.Address]*rpc.ViewingKey{},
+		unsignedVKs:        map[gethcommon.Address]*viewingkey.ViewingKey{},
 		storage:            storage,
 		logger:             logger,
 		stopControl:        stopControl,
@@ -77,7 +78,7 @@ func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, co
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
 
-	// todo (@ziga) Remove this code after implementatio for all userIDs is done
+	// todo (@ziga) Remove this code after implementation for all userIDs is done
 	defaultAccManager, err := w.userAccountManager.GetUserAccountManager(common.DefaultUser)
 	if err != nil {
 		return nil, err
@@ -109,19 +110,19 @@ func (w *WalletExtension) GenerateViewingKey(addr gethcommon.Address) (string, e
 	viewingPublicKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	viewingPrivateKeyEcies := ecies.ImportECDSA(viewingKeyPrivate)
 
-	w.unsignedVKs[addr] = &rpc.ViewingKey{
+	w.unsignedVKs[addr] = &viewingkey.ViewingKey{
 		Account:    &addr,
 		PrivateKey: viewingPrivateKeyEcies,
 		PublicKey:  viewingPublicKeyBytes,
-		SignedKey:  nil, // we await a signature from the user before we can set up the EncRPCClient
+		Signature:  nil, // we await a signature from the user before we can set up the EncRPCClient
 	}
 
-	// We return the hex of the viewing key's public key for MetaMask to sign over.
+	// compress the viewing key and convert it to hex string ( this is what Metamask signs)
 	viewingKeyBytes := crypto.CompressPubkey(&viewingKeyPrivate.PublicKey)
 	return hex.EncodeToString(viewingKeyBytes), nil
 }
 
-// SubmitViewingKey checks a signed vieweing key and forwards it to the enclave
+// SubmitViewingKey checks the signed viewing key and stores it
 func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature []byte) error {
 	vk, found := w.unsignedVKs[address]
 	if !found {
@@ -132,7 +133,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	signature[64] -= 27
 
-	vk.SignedKey = signature
+	vk.Signature = signature
 	// create an encrypted RPC client with the signed VK and register it with the enclave
 	// todo (@ziga) - Create the clients lazily, to reduce connections to the host.
 	client, err := rpc.NewEncNetworkClient(w.hostAddr, vk, w.logger)
@@ -151,7 +152,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 		return fmt.Errorf("error saving user: %s", common.DefaultUser)
 	}
 
-	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.SignedKey)
+	err = w.storage.AddAccount([]byte(common.DefaultUser), vk.Account.Bytes(), vk.Signature)
 	if err != nil {
 		return fmt.Errorf("error saving account %s for user %s", vk.Account.Hex(), common.DefaultUser)
 	}

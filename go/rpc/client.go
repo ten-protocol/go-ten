@@ -21,7 +21,6 @@ const (
 	SendRawTransaction    = "eth_sendRawTransaction"
 	EstimateGas           = "eth_estimateGas"
 	GetLogs               = "eth_getLogs"
-	AddViewingKey         = "obscuro_addViewingKey"
 	Health                = "obscuro_health"
 	GetBlockHeaderByHash  = "obscuroscan_getBlockHeaderByHash"
 	GetBatch              = "obscuroscan_getBatch"

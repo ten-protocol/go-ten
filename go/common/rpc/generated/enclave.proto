@@ -49,9 +49,6 @@ service EnclaveProto {
   // corresponding to the original transaction submitter
   rpc GetTransactionReceipt(GetTransactionReceiptRequest) returns (GetTransactionReceiptResponse) {}
 
-  // AddViewingKey adds a viewing key to the enclave
-  rpc AddViewingKey(AddViewingKeyRequest) returns (AddViewingKeyResponse) {}
-
   // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
   // the address
   rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {}
@@ -232,14 +229,6 @@ message GetTransactionReceiptRequest {
 message GetTransactionReceiptResponse {
   bytes encodedEnclaveResponse = 1;
   SystemError systemError = 2;
-}
-
-message AddViewingKeyRequest {
-  bytes viewingKey = 1;
-  bytes signature = 2;
-}
-message AddViewingKeyResponse {
-  SystemError systemError = 1;
 }
 
 message GetBalanceRequest {

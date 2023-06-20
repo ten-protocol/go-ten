@@ -1,7 +1,6 @@
 package test
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -9,7 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/integration"
@@ -39,8 +39,8 @@ type testHelper struct {
 func TestWalletExtension(t *testing.T) {
 	i := 0
 	for name, test := range map[string]func(t *testing.T, testHelper *testHelper){
-		"canInvokeNonSensitiveMethodsWithoutViewingKey":               canInvokeNonSensitiveMethodsWithoutViewingKey,
 		"canInvokeSensitiveMethodsWithViewingKey":                     canInvokeSensitiveMethodsWithViewingKey,
+		"canInvokeNonSensitiveMethodsWithoutViewingKey":               canInvokeNonSensitiveMethodsWithoutViewingKey,
 		"cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount": cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount,
 		"canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys": canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys,
 		"cannotSubscribeOverHTTP":                                     cannotSubscribeOverHTTP,
@@ -79,8 +79,8 @@ func canInvokeNonSensitiveMethodsWithoutViewingKey(t *testing.T, testHelper *tes
 }
 
 func canInvokeSensitiveMethodsWithViewingKey(t *testing.T, testHelper *testHelper) {
-	viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
-	testHelper.hostAPI.setViewingKey(viewingKeyBytes)
+	address, vkPubKeyBytes, signature := simulateViewingKeyRegister(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
+	testHelper.hostAPI.setViewingKey(address, vkPubKeyBytes, signature)
 
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
@@ -98,15 +98,12 @@ func canInvokeSensitiveMethodsWithViewingKey(t *testing.T, testHelper *testHelpe
 }
 
 func cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.T, testHelper *testHelper) {
-	registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
+	addr1, _, _ := simulateViewingKeyRegister(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
+
+	_, hexVKPubKeyBytes2, signature2 := simulateViewingKeyRegister(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
 
 	// We set the API to decrypt with a key different to the viewing key we just submitted.
-	arbitraryPrivateKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatalf(fmt.Sprintf("failed to generate private key. Cause: %s", err))
-	}
-	arbitraryPublicKeyBytesHex := hex.EncodeToString(crypto.CompressPubkey(&arbitraryPrivateKey.PublicKey))
-	testHelper.hostAPI.setViewingKey([]byte(arbitraryPublicKeyBytesHex))
+	testHelper.hostAPI.setViewingKey(addr1, hexVKPubKeyBytes2, signature2)
 
 	for _, method := range rpc.SensitiveMethods {
 		// Subscriptions have to be tested separately, as they return results differently.
@@ -115,23 +112,33 @@ func cannotInvokeSensitiveMethodsWithViewingKeyForAnotherAccount(t *testing.T, t
 		}
 
 		respBody := makeHTTPEthJSONReq(testHelper.walletHTTPPort, method, []interface{}{map[string]interface{}{}})
-		if !strings.Contains(string(respBody), errFailedDecrypt) {
+		if !strings.Contains(string(respBody), vkhandler.ErrInvalidAddressSignature.Error()) {
 			t.Fatalf("expected response containing '%s', got '%s'", errFailedDecrypt, string(respBody))
 		}
 	}
 }
 
 func canInvokeSensitiveMethodsAfterSubmittingMultipleViewingKeys(t *testing.T, testHelper *testHelper) {
+	type tempVKHolder struct {
+		address     *gethcommon.Address
+		hexVKPubKey []byte
+		signature   []byte
+	}
 	// We submit viewing keys for ten arbitrary accounts.
-	var viewingKeys [][]byte
+	var viewingKeys []tempVKHolder
+
 	for i := 0; i < 10; i++ {
-		viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
-		viewingKeys = append(viewingKeys, viewingKeyBytes)
+		address, hexVKPubKeyBytes, signature := simulateViewingKeyRegister(t, testHelper.walletHTTPPort, testHelper.walletWSPort, false)
+		viewingKeys = append(viewingKeys, tempVKHolder{
+			address:     address,
+			hexVKPubKey: hexVKPubKeyBytes,
+			signature:   signature,
+		})
 	}
 
 	// We set the API to decrypt with an arbitrary key from the list we just generated.
 	arbitraryViewingKey := viewingKeys[len(viewingKeys)/2]
-	testHelper.hostAPI.setViewingKey(arbitraryViewingKey)
+	testHelper.hostAPI.setViewingKey(arbitraryViewingKey.address, arbitraryViewingKey.hexVKPubKey, arbitraryViewingKey.signature)
 
 	respBody := makeHTTPEthJSONReq(testHelper.walletHTTPPort, rpc.GetBalance, []interface{}{map[string]interface{}{"params": dummyParams}})
 	validateJSONResponse(t, respBody)
@@ -150,8 +157,8 @@ func cannotSubscribeOverHTTP(t *testing.T, testHelper *testHelper) {
 }
 
 func canRegisterViewingKeyAndMakeRequestsOverWebsockets(t *testing.T, testHelper *testHelper) {
-	viewingKeyBytes := registerPrivateKey(t, testHelper.walletHTTPPort, testHelper.walletWSPort, true)
-	testHelper.hostAPI.setViewingKey(viewingKeyBytes)
+	address, hexVKPubKeyBytes, signature := simulateViewingKeyRegister(t, testHelper.walletHTTPPort, testHelper.walletWSPort, true)
+	testHelper.hostAPI.setViewingKey(address, hexVKPubKeyBytes, signature)
 
 	conn, err := openWSConn(testHelper.walletWSPort)
 	if err != nil {
@@ -210,8 +217,8 @@ func TestKeysAreReloadedWhenWalletExtensionRestarts(t *testing.T) {
 	walExtCfg := createWalExtCfg(hostPort, walletHTTPPort, walletWSPort)
 	shutdownWallet := createWalExt(t, walExtCfg)
 
-	viewingKeyBytes := registerPrivateKey(t, walletHTTPPort, walletWSPort, false)
-	dummyAPI.setViewingKey(viewingKeyBytes)
+	addr, viewingKeyBytes, signature := simulateViewingKeyRegister(t, walletHTTPPort, walletWSPort, false)
+	dummyAPI.setViewingKey(addr, viewingKeyBytes, signature)
 
 	// We shut down the wallet extension and restart it with the same config, forcing the viewing keys to be reloaded.
 	err := shutdownWallet()
@@ -240,8 +247,7 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 	shutdownWallet := createWalExt(t, createWalExtCfg(hostPort, walletHTTPPort, walletWSPort))
 	defer shutdownWallet() //nolint: errcheck
 
-	viewingKeyBytes := registerPrivateKey(t, walletHTTPPort, walletWSPort, false)
-	dummyAPI.setViewingKey(viewingKeyBytes)
+	dummyAPI.setViewingKey(simulateViewingKeyRegister(t, walletHTTPPort, walletWSPort, false))
 
 	filter := common.FilterCriteriaJSON{Topics: []interface{}{dummyHash}}
 	resp, conn := makeWSEthJSONReq(walletWSPort, rpc.Subscribe, []interface{}{rpc.SubscriptionTypeLogs, filter})

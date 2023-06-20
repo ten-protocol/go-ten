@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"strings"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -21,7 +22,7 @@ type networkClient struct {
 }
 
 // NewEncNetworkClient returns a network RPC client with Viewing Key encryption/decryption
-func NewEncNetworkClient(rpcAddress string, viewingKey *ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
+func NewEncNetworkClient(rpcAddress string, viewingKey *viewingkey.ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
 	rpcClient, err := NewNetworkClient(rpcAddress)
 	if err != nil {
 		return nil, err

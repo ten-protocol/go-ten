@@ -3,22 +3,22 @@ package test
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rlp"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 	"github.com/obscuronet/go-obscuro/go/responses"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -31,7 +31,9 @@ const (
 // with the viewing key set using the `setViewingKey` method, mimicking the privacy behaviour of the host.
 type DummyAPI struct {
 	enclavePrivateKey *ecies.PrivateKey
-	viewingKey        *ecies.PublicKey
+	viewingKey        []byte
+	signature         []byte
+	address           *gethcommon.Address
 }
 
 func NewDummyAPI() *DummyAPI {
@@ -45,22 +47,11 @@ func NewDummyAPI() *DummyAPI {
 	}
 }
 
-func (api *DummyAPI) AddViewingKey([]byte, []byte) error {
-	return nil
-}
-
 // Determines which key the API will encrypt responses with.
-func (api *DummyAPI) setViewingKey(viewingKeyHexBytes []byte) {
-	viewingKeyBytes, err := hex.DecodeString(string(viewingKeyHexBytes))
-	if err != nil {
-		panic(err)
-	}
-
-	viewingKey, err := crypto.DecompressPubkey(viewingKeyBytes)
-	if err != nil {
-		panic(fmt.Errorf("received viewing key bytes but could not decompress them. Cause: %w", err))
-	}
-	api.viewingKey = ecies.ImportECDSAPublic(viewingKey)
+func (api *DummyAPI) setViewingKey(address *gethcommon.Address, compressedVKKeyHexBytes, signature []byte) {
+	api.viewingKey = compressedVKKeyHexBytes
+	api.address = address
+	api.signature = signature
 }
 
 func (api *DummyAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
@@ -142,7 +133,12 @@ func (api *DummyAPI) Logs(ctx context.Context, encryptedParams common.EncryptedP
 			}
 
 			// We send the encrypted log via the subscription.
-			encryptedBytes, err := ecies.Encrypt(rand.Reader, api.viewingKey, jsonLogs, nil, nil)
+			pubkey, err := crypto.DecompressPubkey(api.viewingKey)
+			if err != nil {
+				panic("could not decompress Pub key")
+			}
+
+			encryptedBytes, err := ecies.Encrypt(rand.Reader, ecies.ImportECDSAPublic(pubkey), jsonLogs, nil, nil)
 			if err != nil {
 				panic("could not encrypt logs with viewing key")
 			}
@@ -171,8 +167,9 @@ func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.Enclave
 		return responses.AsEmptyResponse(), fmt.Errorf("could not decrypt params with enclave private key. Cause: %w", err)
 	}
 
-	encryptor := func(bytes []byte) ([]byte, error) {
-		return ecies.Encrypt(rand.Reader, api.viewingKey, bytes, nil, nil)
+	encryptor, err := vkhandler.New(api.address, api.viewingKey, api.signature)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}
 
 	strParams := string(params)

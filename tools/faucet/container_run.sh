@@ -18,6 +18,8 @@ help_and_exit() {
     echo ""
     echo "  jwtSecret          *Optional* Set the jwt secret"
     echo ""
+    echo "  image              *Optional* Set image to use, defaults to testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest"
+    echo ""
     echo ""
     echo ""
     exit 1  # Exit with error explicitly
@@ -32,6 +34,7 @@ nodePort=13010
 port=80
 pk="0x8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"
 jwtSecret="This_is_the_secret"
+image="testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest"
 
 # Parse the options
 for argument in "$@"
@@ -45,6 +48,7 @@ do
             --port)            port=${value} ;;
             --pk)              pk=${value} ;;
             --jwtSecret)       jwtSecret=${value} ;;
+            --image)           image=${value} ;;
             *)
     esac
 done
@@ -57,8 +61,8 @@ echo "Starting the faucet server..."
 docker run --env PORT=${port} -p 8080:${port} --name=local-testnet-faucet \
     --detach \
     --network=node_network \
-    --entrypoint /faucet/cmd/faucet \
-     "testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest" \
+    --entrypoint ./faucet  \
+     ${image} \
     --nodeHost=${nodeHost} \
     --nodePort=${nodePort} \
     --pk=${pk}\

@@ -173,11 +173,6 @@ func (s *RPCServer) GetTransactionReceipt(_ context.Context, request *generated.
 	return &generated.GetTransactionReceiptResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
 }
 
-func (s *RPCServer) AddViewingKey(_ context.Context, request *generated.AddViewingKeyRequest) (*generated.AddViewingKeyResponse, error) {
-	sysError := s.enclave.AddViewingKey(request.ViewingKey, request.Signature)
-	return &generated.AddViewingKeyResponse{SystemError: toRPCError(sysError)}, nil
-}
-
 func (s *RPCServer) GetBalance(_ context.Context, request *generated.GetBalanceRequest) (*generated.GetBalanceResponse, error) {
 	enclaveResp, sysError := s.enclave.GetBalance(request.EncryptedParams)
 	if sysError != nil {

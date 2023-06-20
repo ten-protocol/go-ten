@@ -6,23 +6,18 @@ import (
 	"math/big"
 	"sync"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ethereum/go-ethereum/rlp"
-
-	"github.com/ethereum/go-ethereum/eth/filters"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
-
 	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/eth/filters"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
+	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
-
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 const (
@@ -83,21 +78,23 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)
 	}
 
-	var subscription common.LogSubscription
-	if err = rlp.DecodeBytes(encodedSubscription, &subscription); err != nil {
+	subscription := &common.LogSubscription{}
+	if err = rlp.DecodeBytes(encodedSubscription, subscription); err != nil {
 		return fmt.Errorf("could not decocde log subscription from RLP. Cause: %w", err)
 	}
 
-	err = s.rpcEncryptionManager.AuthenticateSubscriptionRequest(subscription)
+	// create viewing key encryption handler for pushing future logs
+	encryptor, err := vkhandler.New(subscription.Account, subscription.PublicViewingKey, subscription.Signature)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to create vk encryption for request - %w", err)
 	}
+	subscription.VkHandler = encryptor
 
 	s.subscriptionMutex.Lock()
+	defer s.subscriptionMutex.Unlock()
 	// Start from the FromBlock
 	s.lastHead[id] = subscription.Filter.FromBlock
-	defer s.subscriptionMutex.Unlock()
-	s.subscriptions[id] = &subscription
+	s.subscriptions[id] = subscription
 	return nil
 }
 
@@ -145,9 +142,9 @@ func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 			return nil, fmt.Errorf("could not marshal logs to JSON. Cause: %w", err)
 		}
 
-		encryptedLogs, err := s.rpcEncryptionManager.EncryptWithViewingKey(*subscription.Account, jsonLogs)
+		encryptedLogs, err := subscription.VkHandler.Encrypt(jsonLogs)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to encrypt logs - %w", err)
 		}
 
 		encryptedLogsByID[subID] = encryptedLogs

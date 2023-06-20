@@ -82,9 +82,6 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.StopHost:
 		return c.testAPI.StopHost()
 
-	case rpc.AddViewingKey:
-		return c.addViewingKey(args)
-
 	case rpc.GetLogs:
 		return c.getLogs(result, args)
 
@@ -272,23 +269,6 @@ func (c *inMemObscuroClient) SetViewingKey(_ *ecies.PrivateKey, _ []byte) {
 
 func (c *inMemObscuroClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) error {
 	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
-}
-
-func (c *inMemObscuroClient) addViewingKey(args []interface{}) error {
-	if len(args) != 2 {
-		return fmt.Errorf("expected 2 args to %s, got %d", rpc.AddViewingKey, len(args))
-	}
-
-	vk, ok := args[0].([]byte)
-	if !ok {
-		return fmt.Errorf("first arg to %s is of type %T, expected type []byte", rpc.AddViewingKey, args[0])
-	}
-
-	sig, ok := args[1].([]byte)
-	if !ok {
-		return fmt.Errorf("second arg to %s is of type %T, expected type []byte", rpc.AddViewingKey, args[1])
-	}
-	return c.obscuroAPI.AddViewingKey(vk, sig)
 }
 
 func (c *inMemObscuroClient) health(result interface{}) error {
