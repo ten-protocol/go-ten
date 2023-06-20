@@ -22,6 +22,12 @@ on:
           - 'dev-testnet'
           - 'testnet'
 
+  workflow_call:
+    inputs:
+      testnet_type:
+        required: true
+        type: string
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
