@@ -21,14 +21,14 @@ func TestCanStoreAndRetrieveBatchHeader(t *testing.T) {
 		Header: &header,
 	}
 
-	err := db.AddBatchHeader(&batch)
+	err := db.AddBatch(&batch)
 	if err != nil {
-		t.Errorf("could not store batch header. Cause: %s", err)
+		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
 	batchHeader, err := db.GetBatchHeader(header.Hash())
 	if err != nil {
-		t.Errorf("stored batch header but could not retrieve it. Cause: %s", err)
+		t.Errorf("stored batch but could not retrieve header. Cause: %s", err)
 	}
 	if batchHeader.Number.Cmp(header.Number) != 0 {
 		t.Errorf("batch header was not stored correctly")
@@ -54,9 +54,9 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 		Header: &headerOne,
 	}
 
-	err := db.AddBatchHeader(&batchOne)
+	err := db.AddBatch(&batchOne)
 	if err != nil {
-		t.Errorf("could not store batch header. Cause: %s", err)
+		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
 	headerTwo := common.BatchHeader{
@@ -67,14 +67,14 @@ func TestHigherNumberBatchBecomesBatchHeader(t *testing.T) { //nolint:dupl
 		Header: &headerTwo,
 	}
 
-	err = db.AddBatchHeader(&batchTwo)
+	err = db.AddBatch(&batchTwo)
 	if err != nil {
-		t.Errorf("could not store batch header. Cause: %s", err)
+		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
 	batchHeader, err := db.GetHeadBatchHeader()
 	if err != nil {
-		t.Errorf("stored batch header but could not retrieve it. Cause: %s", err)
+		t.Errorf("stored batch but could not retrieve header. Cause: %s", err)
 	}
 	if batchHeader.Number.Cmp(headerTwo.Number) != 0 {
 		t.Errorf("head batch was not set correctly")
@@ -90,9 +90,9 @@ func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 		Header: &headerOne,
 	}
 
-	err := db.AddBatchHeader(&batchOne)
+	err := db.AddBatch(&batchOne)
 	if err != nil {
-		t.Errorf("could not store batch header. Cause: %s", err)
+		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
 	headerTwo := common.BatchHeader{
@@ -103,14 +103,14 @@ func TestLowerNumberBatchDoesNotBecomeBatchHeader(t *testing.T) { //nolint:dupl
 		Header: &headerTwo,
 	}
 
-	err = db.AddBatchHeader(&batchTwo)
+	err = db.AddBatch(&batchTwo)
 	if err != nil {
-		t.Errorf("could not store batch header. Cause: %s", err)
+		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
 	batchHeader, err := db.GetHeadBatchHeader()
 	if err != nil {
-		t.Errorf("stored batch header but could not retrieve it. Cause: %s", err)
+		t.Errorf("stored batch but could not retrieve header. Cause: %s", err)
 	}
 	if batchHeader.Number.Cmp(headerOne.Number) != 0 {
 		t.Errorf("head batch was not set correctly")
@@ -135,14 +135,14 @@ func TestCanRetrieveBatchHashByNumber(t *testing.T) {
 		Header: &header,
 	}
 
-	err := db.AddBatchHeader(&batch)
+	err := db.AddBatch(&batch)
 	if err != nil {
-		t.Errorf("could not store batch header. Cause: %s", err)
+		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
 	batchHash, err := db.GetBatchHash(header.Number)
 	if err != nil {
-		t.Errorf("stored batch header but could not retrieve its hash by number. Cause: %s", err)
+		t.Errorf("stored batch but could not retrieve headers hash by number. Cause: %s", err)
 	}
 	if *batchHash != header.Hash() {
 		t.Errorf("batch hash was not stored correctly against number")
@@ -170,14 +170,14 @@ func TestCanRetrieveBatchNumberByTxHash(t *testing.T) {
 		TxHashes: []gethcommon.Hash{txHash},
 	}
 
-	err := db.AddBatchHeader(&batch)
+	err := db.AddBatch(&batch)
 	if err != nil {
-		t.Errorf("could not store batch header. Cause: %s", err)
+		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
 	batchNumber, err := db.GetBatchNumber(txHash)
 	if err != nil {
-		t.Errorf("stored batch header but could not retrieve its number by transaction hash. Cause: %s", err)
+		t.Errorf("stored batch but could not retrieve headers number by transaction hash. Cause: %s", err)
 	}
 	if batchNumber.Cmp(header.Number) != 0 {
 		t.Errorf("batch number was not stored correctly against transaction hash")
@@ -204,14 +204,14 @@ func TestCanRetrieveBatchTransactions(t *testing.T) {
 		TxHashes: txHashes,
 	}
 
-	err := db.AddBatchHeader(&batch)
+	err := db.AddBatch(&batch)
 	if err != nil {
-		t.Errorf("could not store batch header. Cause: %s", err)
+		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
 	batchTxs, err := db.GetBatchTxs(header.Hash())
 	if err != nil {
-		t.Errorf("stored batch header but could not retrieve its transactions. Cause: %s", err)
+		t.Errorf("stored batch but could not retrieve headers transactions. Cause: %s", err)
 	}
 	if len(batchTxs) != len(txHashes) {
 		t.Errorf("batch transactions were not stored correctly")
@@ -243,9 +243,9 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 		TxHashes: txHashesOne,
 	}
 
-	err := db.AddBatchHeader(&batchOne)
+	err := db.AddBatch(&batchOne)
 	if err != nil {
-		t.Errorf("could not store batch header. Cause: %s", err)
+		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
 	headerTwo := common.BatchHeader{
@@ -257,9 +257,9 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 		TxHashes: txHashesTwo,
 	}
 
-	err = db.AddBatchHeader(&batchTwo)
+	err = db.AddBatch(&batchTwo)
 	if err != nil {
-		t.Errorf("could not store batch header. Cause: %s", err)
+		t.Errorf("could not store batch. Cause: %s", err)
 	}
 
 	totalTxs, err := db.GetTotalTransactions()

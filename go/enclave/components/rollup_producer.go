@@ -70,7 +70,7 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 
 	hash := gethcommon.Hash{}
 	if rollup != nil {
-		hash = rollup.Header.HeadBatchHash
+		hash = rollup.HeadBatchHash()
 	}
 
 	batches, err := re.batchRegistry.BatchesAfter(hash, limiter)
@@ -92,16 +92,25 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 
 // createNextRollup - based on a previous rollup and batches will create a new rollup that encapsulate the state
 // transition from the old rollup to the new one's head batch.
-func (re *rollupProducerImpl) createNextRollup(rollup *core.Rollup, batches []*core.Batch) *core.Rollup {
-	headBatch := batches[len(batches)-1]
+func (re *rollupProducerImpl) createNextRollup(parentRollup *core.Rollup, batches []*core.Batch) *core.Rollup {
+	lastBatch := batches[len(batches)-1]
 
-	rh := headBatch.Header.ToRollupHeader()
+	rh := common.RollupHeader{}
+	rh.L1Proof = lastBatch.Header.L1Proof
+	b, err := re.storage.FetchBlock(rh.L1Proof)
+	if err != nil {
+		re.logger.Crit("Could not fetch block. Should not happen", log.ErrKey, err)
+	}
+	rh.L1ProofNumber = b.Number()
+	rh.Time = lastBatch.Header.Time
 	rh.Coinbase = re.sequencerID
 
-	if rollup != nil {
-		rh.ParentHash = rollup.Header.Hash()
+	if parentRollup != nil {
+		rh.ParentHash = parentRollup.Header.Hash()
+		rh.Number = big.NewInt(parentRollup.Number().Int64() + 1)
 	} else { // genesis
 		rh.ParentHash = gethcommon.Hash{}
+		rh.Number = big.NewInt(0)
 	}
 
 	rh.CrossChainMessages = make([]MessageBus.StructsCrossChainMessage, 0)
@@ -110,16 +119,14 @@ func (re *rollupProducerImpl) createNextRollup(rollup *core.Rollup, batches []*c
 	}
 
 	rollupHeight := big.NewInt(0)
-	if rollup != nil {
-		rollupHeight = rollup.Header.Number
+	if parentRollup != nil {
+		rollupHeight = parentRollup.Header.Number
 		rollupHeight.Add(rollupHeight, gethcommon.Big1)
 	}
-
 	rh.Number = rollupHeight
-	rh.HeadBatchHash = headBatch.Hash()
 
 	return &core.Rollup{
-		Header:  rh,
+		Header:  &rh,
 		Batches: batches,
 	}
 }

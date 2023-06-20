@@ -64,7 +64,7 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch := core.DeterministicEmptyBatch(parent, block, context.Randomness, context.AtTime)
+	batch := core.DeterministicEmptyBatch(parent, block, context.AtTime)
 
 	stateDB, err := bp.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
