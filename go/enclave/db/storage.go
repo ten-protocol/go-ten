@@ -94,6 +94,10 @@ func (s *storageImpl) FetchHeadBatch() (*core.Batch, error) {
 	return s.FetchBatch(*headHash)
 }
 
+func (s *storageImpl) FetchCurrentSequencerNo() (*big.Int, error) {
+	return obscurorawdb.ReadBatchSequenceNumber(s.db)
+}
+
 func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
 	batch, err := obscurorawdb.ReadBatch(s.db, hash)
 	if err != nil {
@@ -470,6 +474,9 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 	}
 	if err := obscurorawdb.WriteContractCreationTxs(dbBatch, receipts); err != nil {
 		return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
+	}
+	if err := obscurorawdb.WriteCurrentBatchSequenceNumber(dbBatch, batch.Header.SequencerOrderNo); err != nil {
+		return fmt.Errorf("could not save the current seqencer number. Cause: %w", err)
 	}
 	return nil
 }

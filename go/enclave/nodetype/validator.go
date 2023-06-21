@@ -88,6 +88,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 	if err := val.sigValidator.CheckSequencerSignature(incomingBatch.Hash(), incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
 		return err
 	}
+	fmt.Printf("%+v\n", incomingBatch.Header)
 
 	// Validators recompute the entire batch using the same batch context
 	// if they have all necessary prerequisites like having the l1 block processed
@@ -100,6 +101,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		Transactions: incomingBatch.Transactions,
 		AtTime:       incomingBatch.Header.Time,
 		ChainConfig:  val.chainConfig,
+		SequencerNo:  incomingBatch.Header.SequencerOrderNo,
 	})
 	if err != nil {
 		return fmt.Errorf("failed recomputing batch %s. Cause: %w", incomingBatch.Hash(), err)

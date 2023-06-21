@@ -3,6 +3,7 @@ package rawdb
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 
 	common2 "github.com/obscuronet/go-obscuro/go/common"
 
@@ -96,6 +97,18 @@ func WriteContractCreationTxs(db ethdb.KeyValueWriter, receipts types.Receipts) 
 		}
 	}
 	return nil
+}
+
+func WriteCurrentBatchSequenceNumber(db ethdb.KeyValueWriter, sequenceNo *big.Int) error {
+	return db.Put(sequenceNumber, sequenceNo.Bytes())
+}
+
+func ReadBatchSequenceNumber(db ethdb.KeyValueReader) (*big.Int, error) {
+	value, err := db.Get(sequenceNumber)
+	if err != nil {
+		return nil, err
+	}
+	return big.NewInt(0).SetBytes(value), nil
 }
 
 // ReadContractTransaction - returns the tx that created a contract

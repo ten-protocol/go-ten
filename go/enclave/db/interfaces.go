@@ -43,6 +43,8 @@ type BatchResolver interface {
 	FetchBatchByHeight(height uint64) (*core.Batch, error)
 	// FetchHeadBatch returns the current head batch of the canonical chain.
 	FetchHeadBatch() (*core.Batch, error)
+	// FetchCurrentSequencerNo returns the sequencer number
+	FetchCurrentSequencerNo() (*big.Int, error)
 }
 
 type RollupResolver interface {

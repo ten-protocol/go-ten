@@ -14,10 +14,11 @@ import (
 func RandomBatch(block *types.Block) common.ExtBatch {
 	extBatch := common.ExtBatch{
 		Header: &common.BatchHeader{
-			ParentHash: randomHash(),
-			L1Proof:    randomHash(),
-			Root:       randomHash(),
-			Number:     big.NewInt(int64(RandomUInt64())),
+			ParentHash:       randomHash(),
+			L1Proof:          randomHash(),
+			Root:             randomHash(),
+			Number:           big.NewInt(int64(RandomUInt64())),
+			SequencerOrderNo: big.NewInt(int64(RandomUInt64())),
 		},
 		TxHashes:        []gethcommon.Hash{randomHash()},
 		EncryptedTxBlob: RandomBytes(10),

@@ -47,27 +47,27 @@ func (oc *ObsClient) ChainID() (*big.Int, error) {
 	return (*big.Int)(&result), err
 }
 
-// RollupNumber returns the height of the head rollup
-func (oc *ObsClient) RollupNumber() (uint64, error) {
+// BatchNumber returns the height of the head rollup
+func (oc *ObsClient) BatchNumber() (uint64, error) {
 	var result hexutil.Uint64
-	err := oc.rpcClient.Call(&result, rpc.RollupNumber)
+	err := oc.rpcClient.Call(&result, rpc.BatchNumber)
 	return uint64(result), err
 }
 
-// RollupHeaderByNumber returns the header of the rollup with the given number
-func (oc *ObsClient) RollupHeaderByNumber(number *big.Int) (*common.BatchHeader, error) {
+// BatchHeaderByNumber returns the header of the rollup with the given number
+func (oc *ObsClient) BatchHeaderByNumber(number *big.Int) (*common.BatchHeader, error) {
 	var batchHeader *common.BatchHeader
-	err := oc.rpcClient.Call(&batchHeader, rpc.GetRollupByNumber, toBlockNumArg(number), false)
+	err := oc.rpcClient.Call(&batchHeader, rpc.GetBatchByNumber, toBlockNumArg(number), false)
 	if err == nil && batchHeader == nil {
 		err = ethereum.NotFound
 	}
 	return batchHeader, err
 }
 
-// RollupHeaderByHash returns the block header with the given hash.
-func (oc *ObsClient) RollupHeaderByHash(hash gethcommon.Hash) (*common.BatchHeader, error) {
+// BatchHeaderByHash returns the block header with the given hash.
+func (oc *ObsClient) BatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHeader, error) {
 	var batchHeader *common.BatchHeader
-	err := oc.rpcClient.Call(&batchHeader, rpc.GetRollupByHash, hash, false)
+	err := oc.rpcClient.Call(&batchHeader, rpc.GetBatchByHash, hash, false)
 	if err == nil && batchHeader == nil {
 		err = ethereum.NotFound
 	}

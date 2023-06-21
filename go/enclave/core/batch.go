@@ -15,7 +15,6 @@ import (
 )
 
 // Batch Data structure only for the internal use of the enclave since transactions are in clear
-// Making changes to this struct will require GRPC + GRPC Converters regen
 type Batch struct {
 	Header       *common.BatchHeader
 	hash         atomic.Value
@@ -93,11 +92,13 @@ func DeterministicEmptyBatch(
 	parent *common.BatchHeader,
 	block *types.Block,
 	time uint64,
+	sequencerNo *big.Int,
 ) *Batch {
 	h := common.BatchHeader{
-		ParentHash: parent.Hash(),
-		L1Proof:    block.Hash(),
-		Number:     big.NewInt(0).Add(parent.Number, big.NewInt(1)),
+		ParentHash:       parent.Hash(),
+		L1Proof:          block.Hash(),
+		Number:           big.NewInt(0).Add(parent.Number, big.NewInt(1)),
+		SequencerOrderNo: sequencerNo,
 		// todo (#1548) - Consider how this time should align with the time of the L1 block used as proof.
 		Time: time,
 	}

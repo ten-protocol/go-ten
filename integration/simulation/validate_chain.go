@@ -217,7 +217,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 
 			for _, clients := range s.RPCHandles.AuthObsClients {
 				client := clients[0]
-				batchOnNode, _ := client.RollupHeaderByHash(batchHeader.Hash())
+				batchOnNode, _ := client.BatchHeaderByHash(batchHeader.Hash())
 				if batchOnNode.Hash() != batchHeader.Hash() {
 					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
 				}
@@ -345,7 +345,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height of the Rollup chain is higher than a minimum expected value.
-	headRollupHeader, err := getHeadRollupHeader(obscuroClient)
+	headRollupHeader, err := getHeadBatchHeader(obscuroClient)
 	if err != nil {
 		t.Error(fmt.Errorf("node %d: %w", nodeIdx, err))
 	}
@@ -360,12 +360,12 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	// check that the height from the rollup header is consistent with the height returned by eth_blockNumber.
-	l2HeightFromRollupNumber, err := obscuroClient.RollupNumber()
+	l2HeightFromRollupNumber, err := obscuroClient.BatchNumber()
 	if err != nil {
 		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeIdx, err)
 	}
 	if l2HeightFromRollupNumber != l2Height.Uint64() {
-		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.RollupNumber, l2HeightFromRollupNumber)
+		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.BatchNumber, l2HeightFromRollupNumber)
 	}
 
 	totalL2Blocks := s.Stats.NoL2Blocks[nodeIdx]
@@ -438,19 +438,19 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	heights[nodeIdx] = l2Height.Uint64()
 
 	// check that the headers are serialised and deserialised correctly, by recomputing a header's hash
-	parentHeader, err := obscuroClient.RollupHeaderByHash(headRollupHeader.ParentHash)
+	parentHeader, err := obscuroClient.BatchHeaderByHash(headRollupHeader.ParentHash)
 	if err != nil {
 		t.Errorf("could not retrieve parent of head rollup")
 	}
 	if parentHeader.Hash() != headRollupHeader.ParentHash {
-		t.Errorf("mismatch in hash of retrieved header")
+		t.Errorf("mismatch in hash of retrieved header. Parent: %+v\nCurrent: %+v", parentHeader, headRollupHeader)
 	}
 }
 
 func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsClient, currentHeader *common.BatchHeader) *big.Int {
 	totalAmountLogged := big.NewInt(0)
 	for i := minObscuroHeight; i < currentHeader.Number.Uint64(); i++ {
-		header, err := obscuroClient.RollupHeaderByNumber(big.NewInt(int64(i)))
+		header, err := obscuroClient.BatchHeaderByNumber(big.NewInt(int64(i)))
 		if err != nil {
 			panic(err)
 		}
@@ -552,7 +552,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 
 func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int) {
 	totalSuccessfullyWithdrawn = big.NewInt(0)
-	header, err := getHeadRollupHeader(obscuroClient)
+	header, err := getHeadBatchHeader(obscuroClient)
 	if err != nil {
 		t.Error(fmt.Errorf("node %d: %w", nodeIdx, err))
 	}
@@ -571,7 +571,7 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 		}
 
 		// note this retrieves batches currently.
-		newHeader, err := obscuroClient.RollupHeaderByHash(header.ParentHash)
+		newHeader, err := obscuroClient.BatchHeaderByHash(header.ParentHash)
 		if err != nil {
 			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header %s. Cause: %s", nodeIdx, header.ParentHash, err))
 			return
