@@ -45,7 +45,7 @@ func (t *Testnet) Start() error {
 		node.WithNodeName("sequencer"),
 		node.WithNodeType("sequencer"),
 		node.WithGenesis(true),
-		node.WithSGXEnabled(false),
+		node.WithSGXEnabled(t.cfg.isSGXEnabled),
 		node.WithEnclaveImage(t.cfg.sequencerEnclaveDockerImage),
 		node.WithEnclaveDebug(t.cfg.sequencerEnclaveDebug),
 		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),

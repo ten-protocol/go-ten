@@ -17,6 +17,7 @@ func main() {
 			launcher.WithValidatorEnclaveDebug(cliConfig.validatorEnclaveDebug),
 			launcher.WithSequencerEnclaveDockerImage(cliConfig.sequencerEnclaveDockerImage),
 			launcher.WithSequencerEnclaveDebug(cliConfig.sequencerEnclaveDebug),
+			launcher.IsSGXEnabled(cliConfig.isSGXEnabled),
 		),
 	)
 	err := testnet.Start()
