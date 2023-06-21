@@ -2,7 +2,6 @@ package faucet
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,19 +27,17 @@ const (
 	WrappedUSDC    = "usdc"
 )
 
-type TokenType string
-
 type Faucet struct {
 	client    *obsclient.AuthObsClient
 	fundMutex sync.Mutex
 	wallet    wallet.Wallet
-	logger    log.Logger
+	Logger    log.Logger
 }
 
-func NewFaucet(rpcURL string, chainID *big.Int, pk *ecdsa.PrivateKey) (*Faucet, error) {
+func NewFaucet(rpcURL string, chainID int64, pkString string) (*Faucet, error) {
 	logger := log.New()
 	logger.SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(false)))
-	w := wallet.NewInMemoryWalletFromPK(chainID, pk, logger)
+	w := wallet.NewInMemoryWalletFromConfig(pkString, chainID, logger)
 	obsClient, err := obsclient.DialWithAuth(rpcURL, w, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect with the node: %w", err)
@@ -49,7 +46,7 @@ func NewFaucet(rpcURL string, chainID *big.Int, pk *ecdsa.PrivateKey) (*Faucet, 
 	return &Faucet{
 		client: obsClient,
 		wallet: w,
-		logger: logger,
+		Logger: logger,
 	}, nil
 }
 
@@ -73,7 +70,7 @@ func (f *Faucet) Fund(address *common.Address, token string, amount int64) error
 	if err != nil {
 		return err
 	}
-	f.logger.Info(fmt.Sprintf("Funded address: %s - tx: %+v\n", address.Hex(), string(txMarshal)))
+	f.Logger.Info(fmt.Sprintf("Funded address: %s - tx: %+v\n", address.Hex(), string(txMarshal)))
 	// todo handle tx receipt
 
 	if err := f.validateTx(signedTx); err != nil {

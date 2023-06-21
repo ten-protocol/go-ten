@@ -28,6 +28,10 @@ const (
 	jwtSecretName    = "jwtSecret"
 	jwtSecretDefault = ""
 	jwtSecretUsage   = "The jwt request secret string. No default, must be set." //nolint: gosec
+
+	serverPortName    = "serverPort"
+	serverPortDefault = 80
+	serverPortUsage   = "Port where the web server binds to"
 )
 
 func parseCLIArgs() *faucet.Config {
@@ -36,14 +40,16 @@ func parseCLIArgs() *faucet.Config {
 	nodeHTTPPort := flag.Int(nodeHTTPPortName, nodeHTTPPortDefault, nodeHTTPPortUsage)
 	faucetPK := flag.String(faucetPKName, faucetPKDefault, faucetPKUsage)
 	jwtSecret := flag.String(jwtSecretName, jwtSecretDefault, jwtSecretUsage)
+	serverPort := flag.Int(serverPortName, serverPortDefault, serverPortUsage)
 	flag.Parse()
 
 	return &faucet.Config{
-		Port:      *faucetPort,
-		Host:      *nodeHost,
-		HTTPPort:  *nodeHTTPPort,
-		PK:        *faucetPK,
-		JWTSecret: *jwtSecret,
-		ChainID:   big.NewInt(777), // TODO make this configurable
+		Port:       *faucetPort,
+		Host:       *nodeHost,
+		HTTPPort:   *nodeHTTPPort,
+		PK:         *faucetPK,
+		JWTSecret:  *jwtSecret,
+		ServerPort: *serverPort,
+		ChainID:    big.NewInt(777), // TODO make this configurable
 	}
 }
