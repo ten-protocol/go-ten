@@ -194,6 +194,7 @@ func headerToMap(header *common.BatchHeader) map[string]interface{} {
 		"logsBloom":        nil,
 		"difficulty":       nil,
 		"number":           header.Number,
+		"sequencerOrderNo": header.SequencerOrderNo,
 		"gasLimit":         header.GasLimit,
 		"gasUsed":          header.GasUsed,
 		"timestamp":        header.Time,

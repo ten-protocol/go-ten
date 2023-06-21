@@ -88,7 +88,6 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 	if err := val.sigValidator.CheckSequencerSignature(incomingBatch.Hash(), incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
 		return err
 	}
-	fmt.Printf("%+v\n", incomingBatch.Header)
 
 	// Validators recompute the entire batch using the same batch context
 	// if they have all necessary prerequisites like having the l1 block processed
