@@ -1,0 +1,53 @@
+# Deploys Obscuro Gateway on Azure for Testnet
+# Builds the Faucet network image, pushes the image to dockerhub and starts the Obscuro Gateway on Azure
+
+name: '[M] Deploy Obscuro Gateway Testnet'
+run-name: '[M] Deploy Obscuro Gateway Testnet ( ${{ github.event.inputs.testnet_type }} )'
+on:
+  workflow_dispatch:
+# todo: Add options to add configuration options
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: 'Set up Docker'
+        uses: docker/setup-buildx-action@v1
+
+      - name: 'Set Obscuro gateway build tag'
+        run: |
+          echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_testnet:latest" >> $GITHUB_ENV
+
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and Push Docker Image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{ env.OBSCURO_GATEWAY_BUILD_TAG }} -f ./tools/walletextension/Dockerfile . 
+          docker push ${{ env.OBSCURO_GATEWAY_BUILD_TAG }}
+
+      - name: 'Deploy to Azure Container Instances'
+        uses: 'azure/aci-deploy@v1'
+        with:
+          resource-group: ${{ secrets.RESOURCE_GROUP }}
+          dns-name-label: obscuro-gateway-testnet
+          image: ${{ env.OBSCURO_GATEWAY_BUILD_TAG }}
+          name: obscuro_gateway_testnet
+          location: 'uksouth'
+          restart-policy: 'Never'
+          environment-variables: PORT=80
+          command-line: ./tools/walletextension/main/obscuro-gateway -host=0.0.0.0
+          ports: '80'
+          cpu: 2
+          memory: 2
