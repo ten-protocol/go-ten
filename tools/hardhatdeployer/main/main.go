@@ -2,12 +2,11 @@ package main
 
 import (
 	"fmt"
+	contractdeployer "github.com/obscuronet/go-obscuro/tools/hardhatdeployer"
 	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/obscuronet/go-obscuro/tools/contractdeployer"
 )
 
 func main() {
