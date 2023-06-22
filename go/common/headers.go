@@ -20,16 +20,17 @@ var hasherPool = sync.Pool{
 // BatchHeader is a public / plaintext struct that holds common properties of batches.
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type BatchHeader struct {
-	ParentHash  L2BatchHash
-	Root        StateRoot   `json:"stateRoot"`
-	TxHash      common.Hash `json:"transactionsRoot"` // todo (#1545) - include the synthetic deposits
-	ReceiptHash common.Hash `json:"receiptsRoot"`
-	Number      *big.Int
-	GasLimit    uint64
-	GasUsed     uint64
-	Time        uint64 `json:"timestamp"`
-	Extra       []byte `json:"extraData"`
-	BaseFee     *big.Int
+	ParentHash       L2BatchHash
+	Root             StateRoot   `json:"stateRoot"`
+	TxHash           common.Hash `json:"transactionsRoot"` // todo (#1545) - include the synthetic deposits
+	ReceiptHash      common.Hash `json:"receiptsRoot"`
+	Number           *big.Int    // height of the batch
+	SequencerOrderNo *big.Int    // multiple batches can be created with the same height in case of L1 reorgs. The sequencer is responsible for including all of them in the rollups.
+	GasLimit         uint64
+	GasUsed          uint64
+	Time             uint64 `json:"timestamp"`
+	Extra            []byte `json:"extraData"`
+	BaseFee          *big.Int
 
 	// The custom Obscuro fields.
 	L1Proof            L1BlockHash                           // the L1 block used by the enclave to generate the current batch

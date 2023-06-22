@@ -100,6 +100,7 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 		Transactions: incomingBatch.Transactions,
 		AtTime:       incomingBatch.Header.Time,
 		ChainConfig:  val.chainConfig,
+		SequencerNo:  incomingBatch.Header.SequencerOrderNo,
 	})
 	if err != nil {
 		return fmt.Errorf("failed recomputing batch %s. Cause: %w", incomingBatch.Hash(), err)

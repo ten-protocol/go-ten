@@ -147,7 +147,7 @@ func (o *Obscuroscan) Shutdown() {
 
 // Retrieves the number of published rollups.
 func (o *Obscuroscan) getNumRollups(resp http.ResponseWriter, _ *http.Request) {
-	numOfRollups, err := o.obsClient.RollupNumber()
+	numOfRollups, err := o.obsClient.BatchNumber()
 	if err != nil {
 		o.logger.Error("Could not fetch number of rollups.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch number of rollups.")
@@ -183,21 +183,21 @@ func (o *Obscuroscan) getNumTransactions(resp http.ResponseWriter, _ *http.Reque
 
 // Retrieves the average rollup time, as (time last rollup - time first rollup)/number of rollups
 func (o *Obscuroscan) getRollupTime(resp http.ResponseWriter, _ *http.Request) {
-	numLatestRollup, err := o.obsClient.RollupNumber()
+	numLatestRollup, err := o.obsClient.BatchNumber()
 	if err != nil {
 		o.logger.Error("Could not fetch latest rollup number.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch average rollup time.")
 		return
 	}
 
-	firstRollupHeader, err := o.obsClient.RollupHeaderByNumber(big.NewInt(0))
+	firstRollupHeader, err := o.obsClient.BatchHeaderByNumber(big.NewInt(0))
 	if err != nil || firstRollupHeader == nil {
 		o.logger.Error("Could not fetch first rollup.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch average rollup time.")
 		return
 	}
 
-	latestRollupHeader, err := o.obsClient.RollupHeaderByNumber(big.NewInt(int64(numLatestRollup)))
+	latestRollupHeader, err := o.obsClient.BatchHeaderByNumber(big.NewInt(int64(numLatestRollup)))
 	if err != nil || latestRollupHeader == nil {
 		o.logger.Error("Could not fetch latest rollup.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch average rollup time.")
@@ -215,7 +215,7 @@ func (o *Obscuroscan) getRollupTime(resp http.ResponseWriter, _ *http.Request) {
 
 // Retrieves the last five rollup numbers.
 func (o *Obscuroscan) getLatestRollups(resp http.ResponseWriter, _ *http.Request) {
-	latestRollupNum, err := o.obsClient.RollupNumber()
+	latestRollupNum, err := o.obsClient.BatchNumber()
 	if err != nil {
 		o.logger.Error("Could not fetch latest rollups.", log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch latest rollups.")
@@ -478,7 +478,7 @@ func (o *Obscuroscan) attestationReport(resp http.ResponseWriter, _ *http.Reques
 // Returns the rollup with the given number.
 func (o *Obscuroscan) getRollupByNumber(rollupNumber int64) (*common.ExtRollup, error) {
 	// todo (#1665) - if required, consolidate the two calls below into a single RPCGetRollupByNumber call to minimise round trips.
-	rollupHeader, err := o.obsClient.RollupHeaderByNumber(big.NewInt(rollupNumber))
+	rollupHeader, err := o.obsClient.BatchHeaderByNumber(big.NewInt(rollupNumber))
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve rollup with number %d. Cause: %w", rollupNumber, err)
 	}

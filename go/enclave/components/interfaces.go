@@ -2,6 +2,7 @@ package components
 
 import (
 	"errors"
+	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -40,7 +41,7 @@ type L1BlockProcessor interface {
 	GetCrossChainContractAddress() *gethcommon.Address
 }
 
-// Contains all of the data that each batch depends on
+// BatchExecutionContext - Contains all of the data that each batch depends on
 type BatchExecutionContext struct {
 	BlockPtr     common.L1BlockHash // Block is needed for the cross chain messages
 	ParentPtr    common.L2BatchHash
@@ -48,6 +49,7 @@ type BatchExecutionContext struct {
 	AtTime       uint64
 	Creator      gethcommon.Address
 	ChainConfig  *params.ChainConfig
+	SequencerNo  *big.Int
 }
 
 // ComputedBatch - a structure representing the result of a batch
