@@ -12,11 +12,6 @@ services:
     build:
       context: $ROOT_PATH
       dockerfile: ./dockerfiles/host.Dockerfile
-  contractdeployer:
-    image: "testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest"
-    build:
-      context: $ROOT_PATH
-      dockerfile: ./testnet/contractdeployer.Dockerfile
   enclave:
     image: "testnetobscuronet.azurecr.io/obscuronet/enclave:latest"
     build:
