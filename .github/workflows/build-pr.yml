@@ -41,3 +41,4 @@ jobs:
             integration/.build/wallet_extension/wal-ext-*.txt
             integration/.build/eth2/*
         if: always() # Ensures the artifacts are created even if the tests fail.
+        retention-days: 2
