@@ -2,8 +2,9 @@ package noderunner
 
 import (
 	"fmt"
-
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/node"
+	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -85,7 +86,7 @@ func (d *InMemNode) Upgrade(networkCfg *node.NetworkConfig) error {
 
 func (d *InMemNode) startHost() error {
 	hostConfig := d.cfg.ToHostConfig()
-	logger := testlog.Logger().New(log.CmpKey, log.HostCmp)
+	logger := testlog.Logger().New(log.CmpKey, log.HostCmp, log.NodeIDKey, calculateHostID(hostConfig.PrivateKeyString))
 	d.host = hostcontainer.NewHostContainerFromConfig(hostConfig, logger)
 	return d.host.Start()
 }
@@ -97,4 +98,13 @@ func (d *InMemNode) startEnclave() error {
 	// if not nil, the node will use the testlog.Logger - NewEnclaveContainerWithLogger will create one otherwise
 	d.enclave = enclavecontainer.NewEnclaveContainerWithLogger(enclaveCfg, logger)
 	return d.enclave.Start()
+}
+
+// calculateHostID calculates the host ID from the private key, works for now until we rejig the configs
+func calculateHostID(pk string) gethcommon.Address {
+	addr, err := wallet.RetrieveAddress(pk)
+	if err != nil {
+		panic("unable to retrieve the Node ID")
+	}
+	return *addr
 }
