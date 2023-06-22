@@ -12,7 +12,7 @@ import (
 
 // restart both the sequencer and the validators (the entire network)
 func TestRestartNetwork(t *testing.T) {
-	networktest.TestOnlyRunsInIDE(t)
+	//networktest.TestOnlyRunsInIDE(t)
 	networktest.Run(
 		"restart-network",
 		t,

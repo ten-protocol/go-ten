@@ -116,6 +116,7 @@ func (s *sequencer) CreateBatch() error {
 // this is the responsibility of the sequencer. Refactor the code so genesis state
 // won't be committed by the producer.
 func (s *sequencer) initGenesis(block *common.L1Block) error {
+	s.logger.Info("Initializing genesis state", log.BlockHashKey, block)
 	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(block.Hash(), uint64(time.Now().Unix()))
 	if err != nil {
 		return err
