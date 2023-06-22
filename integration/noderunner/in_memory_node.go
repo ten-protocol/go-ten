@@ -85,8 +85,7 @@ func (d *InMemNode) Upgrade(networkCfg *node.NetworkConfig) error {
 
 func (d *InMemNode) startHost() error {
 	hostConfig := d.cfg.ToHostConfig()
-	logger := testlog.Logger().New(log.CmpKey, log.HostCmp)
-	d.host = hostcontainer.NewHostContainerFromConfig(hostConfig, logger)
+	d.host = hostcontainer.NewHostContainerFromConfig(hostConfig, nil)
 	return d.host.Start()
 }
 
