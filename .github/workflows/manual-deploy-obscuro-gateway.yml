@@ -1,5 +1,5 @@
 # Deploys Obscuro Gateway on Azure for Testnet
-# Builds the Faucet network image, pushes the image to dockerhub and starts the Obscuro Gateway on Azure
+# Builds the Obscuro Gateway image, pushes the image to dockerhub and starts the Obscuro Gateway on Azure
 
 name: '[M] Deploy Obscuro Gateway Testnet'
 run-name: '[M] Deploy Obscuro Gateway Testnet ( ${{ github.event.inputs.testnet_type }} )'
