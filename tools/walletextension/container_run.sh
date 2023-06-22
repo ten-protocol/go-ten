@@ -16,6 +16,7 @@ nodePortHTTP=13000
 nodePortWS=13001
 logPath="wallet_extension_logs.txt"
 databasePath=".obscuro/gateway_database.db"
+image="obscuronet/obscuro_gateway_testnet:latest"
 
 # Parse the options
 for argument in "$@"
@@ -32,11 +33,12 @@ do
             --nodePortWS)      nodePortWS=${value} ;;
             --logPath)         logPath=${value} ;;
             --databasePath)    databasePath=${value} ;;
+            --image)           image=${value} ;;
             *)
     esac
 done
 
-# Stop and remove any running container, and then star
+# Stop and remove any running container, and then start
 echo "Force stopping any existing container ... "
 docker rm -f  obscuro_gateway_testnet 2>/dev/null
 
@@ -44,6 +46,6 @@ echo "Starting Obscuro Gateway..."
 docker run -p 3000:"${port}" --name=obscuro_gateway_testnet \
     --detach \
     --entrypoint ./tools/walletextension/main/obscuro-gateway \
-     "obscuronet/obscuro_gateway_testnet:latest" \
+      "${image}" \
       -host="${host}" -port="${port}" -portWS="${portWS}" -nodeHost="${nodeHost}" -nodePortHTTP="${nodePortHTTP}" \
       -nodePortWS="${nodePortWS}" -logPath="${logPath}" -databasePath="${databasePath}"
