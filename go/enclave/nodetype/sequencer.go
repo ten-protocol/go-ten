@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -179,6 +180,10 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return err
 	}
 
+	sequencerNo, err := s.storage.FetchCurrentSequencerNo()
+	if err != nil {
+		return err
+	}
 	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     l1HeadBlock.Hash(),
 		ParentPtr:    headBatch.Hash(),
@@ -186,6 +191,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		AtTime:       uint64(time.Now().Unix()), // todo - time is set only here; take from l1 block?
 		Creator:      s.hostID,
 		ChainConfig:  s.chainConfig,
+		SequencerNo:  sequencerNo.Add(sequencerNo, big.NewInt(1)),
 	})
 	if err != nil {
 		return fmt.Errorf("failed computing batch. Cause: %w", err)
@@ -278,6 +284,11 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 	for i := len(orphanedBatches) - 1; i >= 0; i-- {
 		orphan := orphanedBatches[i]
 
+		sequencerNo, err := s.storage.FetchCurrentSequencerNo()
+		if err != nil {
+			return err
+		}
+
 		// Extend the chain with identical cousin batches
 		cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 			BlockPtr:     block.Hash(),
@@ -286,6 +297,7 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 			AtTime:       orphan.Header.Time,
 			Creator:      s.hostID,
 			ChainConfig:  s.chainConfig,
+			SequencerNo:  sequencerNo.Add(sequencerNo, big.NewInt(1)),
 		})
 		if err != nil {
 			s.logger.Crit("Error recalculating l2chain for forked block", log.ErrKey, err)

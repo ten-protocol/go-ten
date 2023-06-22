@@ -1649,6 +1649,7 @@ func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProduc
 		Transactions: batch.Transactions,
 		AtTime:       batch.Header.Time,
 		ChainConfig:  chainConfig,
+		SequencerNo:  batch.Header.SequencerOrderNo,
 	})
 	if err != nil {
 		return err

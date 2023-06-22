@@ -75,7 +75,7 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.GetTransactionReceipt:
 		return c.getTransactionReceipt(result, args)
 
-	case rpc.RollupNumber:
+	case rpc.BatchNumber:
 		*result.(*hexutil.Uint64) = c.ethAPI.BlockNumber()
 		return nil
 
@@ -85,11 +85,11 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 	case rpc.GetLogs:
 		return c.getLogs(result, args)
 
-	case rpc.GetRollupByNumber:
-		return c.getRollupByNumber(result, args)
+	case rpc.GetBatchByNumber:
+		return c.getBatchByNumber(result, args)
 
-	case rpc.GetRollupByHash:
-		return c.getRollupByHash(result, args)
+	case rpc.GetBatchByHash:
+		return c.getBatchByHash(result, args)
 
 	case rpc.Health:
 		return c.health(result)
@@ -204,55 +204,55 @@ func (c *inMemObscuroClient) getLogs(result interface{}, args []interface{}) err
 	return nil
 }
 
-func (c *inMemObscuroClient) getRollupByNumber(result interface{}, args []interface{}) error {
+func (c *inMemObscuroClient) getBatchByNumber(result interface{}, args []interface{}) error {
 	blockNumberHex, ok := args[0].(string)
 	if !ok {
-		return fmt.Errorf("arg to %s is of type %T, expected int64", rpc.GetRollupByNumber, args[0])
+		return fmt.Errorf("arg to %s is of type %T, expected int64", rpc.GetBatchByNumber, args[0])
 	}
 
 	blockNumber, err := hexutil.DecodeUint64(blockNumberHex)
 	if err != nil {
-		return fmt.Errorf("arg to %s could not be decoded from hex. Cause: %w", rpc.GetRollupByNumber, err)
+		return fmt.Errorf("arg to %s could not be decoded from hex. Cause: %w", rpc.GetBatchByNumber, err)
 	}
 
 	headerMap, err := c.ethAPI.GetBlockByNumber(nil, gethrpc.BlockNumber(blockNumber), false) //nolint:staticcheck
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetRollupByNumber, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchByNumber, err)
 	}
 
 	headerJSON, err := json.Marshal(headerMap)
 	if err != nil {
-		return fmt.Errorf("could not marshal %s response to JSON. Cause: %w", rpc.GetRollupByNumber, err)
+		return fmt.Errorf("could not marshal %s response to JSON. Cause: %w", rpc.GetBatchByNumber, err)
 	}
 	var header common.BatchHeader
 	err = json.Unmarshal(headerJSON, &header)
 	if err != nil {
-		return fmt.Errorf("could not marshal %s response to rollup header. Cause: %w", rpc.GetRollupByNumber, err)
+		return fmt.Errorf("could not marshal %s response to rollup header. Cause: %w", rpc.GetBatchByNumber, err)
 	}
 
 	*result.(**common.BatchHeader) = &header
 	return nil
 }
 
-func (c *inMemObscuroClient) getRollupByHash(result interface{}, args []interface{}) error {
+func (c *inMemObscuroClient) getBatchByHash(result interface{}, args []interface{}) error {
 	blockHash, ok := args[0].(gethcommon.Hash)
 	if !ok {
-		return fmt.Errorf("arg to %s is of type %T, expected common.Hash", rpc.GetRollupByHash, args[0])
+		return fmt.Errorf("arg to %s is of type %T, expected common.Hash", rpc.GetBatchByHash, args[0])
 	}
 
 	headerMap, err := c.ethAPI.GetBlockByHash(nil, blockHash, false) //nolint:staticcheck
 	if err != nil {
-		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetRollupByHash, err)
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchByHash, err)
 	}
 
 	headerJSON, err := json.Marshal(headerMap)
 	if err != nil {
-		return fmt.Errorf("could not marshal %s response to JSON. Cause: %w", rpc.GetRollupByHash, err)
+		return fmt.Errorf("could not marshal %s response to JSON. Cause: %w", rpc.GetBatchByHash, err)
 	}
 	var header common.BatchHeader
 	err = json.Unmarshal(headerJSON, &header)
 	if err != nil {
-		return fmt.Errorf("could not marshal %s response to rollup header. Cause: %w", rpc.GetRollupByHash, err)
+		return fmt.Errorf("could not marshal %s response to rollup header. Cause: %w", rpc.GetBatchByHash, err)
 	}
 
 	*result.(**common.BatchHeader) = &header

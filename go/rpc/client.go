@@ -8,12 +8,12 @@ import (
 )
 
 const (
-	RollupNumber          = "eth_blockNumber"
+	BatchNumber           = "eth_blockNumber"
 	Call                  = "eth_call"
 	ChainID               = "eth_chainId"
 	GetBalance            = "eth_getBalance"
-	GetRollupByHash       = "eth_getBlockByHash"
-	GetRollupByNumber     = "eth_getBlockByNumber"
+	GetBatchByHash        = "eth_getBlockByHash"
+	GetBatchByNumber      = "eth_getBlockByNumber"
 	GetCode               = "eth_getCode"
 	GetTransactionByHash  = "eth_getTransactionByHash"
 	GetTransactionCount   = "eth_getTransactionCount"

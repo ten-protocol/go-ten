@@ -342,6 +342,7 @@ message BatchHeaderMsg {
   bytes LatestInboundCrossChainHeight = 14;
   bytes LatestInboundCrossChainHash = 15;
   repeated CrossChainMsg CrossChainMessages = 16;
+  uint64 SequencerOrderNo = 17;
 }
 
 message ExtRollupMsg {
