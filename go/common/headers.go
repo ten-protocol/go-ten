@@ -59,7 +59,7 @@ type RollupHeader struct {
 	PayloadHash common.Hash // The hash of the compressed batches. TODO
 	R, S        *big.Int    // signature values
 
-	HeadBatchHash L2BatchHash // todo- find a better way
+	HeadBatchHash L2BatchHash // todo - tudor - remove this after batch compression
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its
