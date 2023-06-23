@@ -20,7 +20,6 @@ var (
 	batchBodyPrefix              = []byte("ob")  // batchBodyPrefix + num (uint64 big endian) + hash -> batch body
 	batchNumberPrefix            = []byte("oH")  // batchNumberPrefix + hash -> num (uint64 big endian)
 	rollupHeaderPrefix           = []byte("rh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
-	rollupBodyPrefix             = []byte("rb")  // rollupBodyPrefix + num (uint64 big endian) + hash -> batch body
 	rollupNumberPrefix           = []byte("rn")  // rollupNumberPrefix + hash -> num (uint64 big endian)
 	headBatchAfterL1BlockPrefix  = []byte("hb")  // headBatchAfterL1BlockPrefix + hash -> num (uint64 big endian)
 	headRollupAfterL1BlockPrefix = []byte("hr")  // headRollupAfterL1BlockPrefix + hash -> num (uint64 big endian)
@@ -91,11 +90,6 @@ func crossChainMessagesKey(blockHash common.L1BlockHash) []byte {
 // For storing and fetching a rollup header by batch hash.
 func rollupHeaderKey(hash common.L2BatchHash) []byte {
 	return append(rollupHeaderPrefix, hash.Bytes()...)
-}
-
-// For storing and fetching a rollup body by batch hash.
-func rollupBodyKey(hash common.L2BatchHash) []byte {
-	return append(rollupBodyPrefix, hash.Bytes()...)
 }
 
 // For storing and fetching a rollup number by batch hash.

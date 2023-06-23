@@ -253,8 +253,8 @@ func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
 
 	for _, batch := range r.Batches {
 		_, batchFoundErr := rc.batchRegistry.GetBatch(batch.Hash())
-		if batchFoundErr == errutil.ErrNotFound {
-			// Process and store batch only if not found
+		// Process and store a batch only if it wasn't already processed via p2p.
+		if errors.Is(batchFoundErr, errutil.ErrNotFound) {
 			receipts, err := rc.batchRegistry.ValidateBatch(batch)
 			if err != nil {
 				rc.logger.Error("Attempted to store incorrect batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
