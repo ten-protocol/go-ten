@@ -349,7 +349,7 @@ func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash, rollupLimit
 	}
 
 	if headBatch.NumberU64() < batch.NumberU64() {
-		return nil, errors.New("head batch height is in the past compared to requested batch")
+		return nil, fmt.Errorf("head batch height %d is in the past compared to requested batch %d", headBatch.NumberU64(), batch.NumberU64())
 	}
 	for batch.Number().Cmp(headBatch.Number()) != 0 {
 		if didAcceptBatch, err := rollupLimiter.AcceptBatch(batch); err != nil {
