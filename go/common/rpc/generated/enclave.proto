@@ -361,6 +361,7 @@ message RollupHeaderMsg {
   repeated CrossChainMsg CrossChainMessages = 7;
   bytes R = 8;
   bytes S = 9;
+  bytes HeadBatchHash = 10;
 }
 
 message SecretResponseMsg {

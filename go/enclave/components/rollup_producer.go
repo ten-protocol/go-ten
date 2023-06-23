@@ -54,7 +54,7 @@ func NewRollupProducer(sequencerID gethcommon.Address, transactionBlobCrypto cry
 }
 
 // fetchLatestRollup - Will pull the latest rollup based on the current head block from the database or return null
-func (re *rollupProducerImpl) fetchLatestRollup() (*core.Rollup, error) {
+func (re *rollupProducerImpl) fetchLatestRollup() (*common.RollupHeader, error) {
 	b, err := re.blockProcessor.GetHead()
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 
 	hash := gethcommon.Hash{}
 	if rollup != nil {
-		hash = rollup.HeadBatchHash()
+		hash = rollup.HeadBatchHash
 	}
 
 	batches, err := re.batchRegistry.BatchesAfter(hash, limiter)
@@ -92,7 +92,7 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 
 // createNextRollup - based on a previous rollup and batches will create a new rollup that encapsulate the state
 // transition from the old rollup to the new one's head batch.
-func (re *rollupProducerImpl) createNextRollup(parentRollup *core.Rollup, batches []*core.Batch) *core.Rollup {
+func (re *rollupProducerImpl) createNextRollup(parentRollup *common.RollupHeader, batches []*core.Batch) *core.Rollup {
 	lastBatch := batches[len(batches)-1]
 
 	rh := common.RollupHeader{}
@@ -106,8 +106,8 @@ func (re *rollupProducerImpl) createNextRollup(parentRollup *core.Rollup, batche
 	rh.Coinbase = re.sequencerID
 
 	if parentRollup != nil {
-		rh.ParentHash = parentRollup.Header.Hash()
-		rh.Number = big.NewInt(parentRollup.Number().Int64() + 1)
+		rh.ParentHash = parentRollup.Hash()
+		rh.Number = big.NewInt(parentRollup.Number.Int64() + 1)
 	} else { // genesis
 		rh.ParentHash = gethcommon.Hash{}
 		rh.Number = big.NewInt(0)
@@ -120,19 +120,22 @@ func (re *rollupProducerImpl) createNextRollup(parentRollup *core.Rollup, batche
 
 	rollupHeight := big.NewInt(0)
 	if parentRollup != nil {
-		rollupHeight = parentRollup.Header.Number
+		rollupHeight = parentRollup.Number
 		rollupHeight.Add(rollupHeight, gethcommon.Big1)
 	}
 	rh.Number = rollupHeight
 
+	rh.HeadBatchHash = lastBatch.Hash()
 	return &core.Rollup{
 		Header:  &rh,
 		Batches: batches,
 	}
 }
 
+// todo - return the included batches as well. Maybe store something separate pointing to the start and end sequence numbers
+// when processing the rollup check that all sequence numbers are included
 // getLatestRollupBeforeBlock - Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
-func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage, logger gethlog.Logger) (*core.Rollup, error) {
+func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage, logger gethlog.Logger) (*common.RollupHeader, error) {
 	scanBackCount := 0
 	for {
 		blockParentHash := block.ParentHash()

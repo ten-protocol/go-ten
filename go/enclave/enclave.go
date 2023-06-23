@@ -194,13 +194,13 @@ func NewEnclave(
 
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, logger)
 	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, logger)
-	registry := components.NewBatchRegistry(storage, logger)
-	rProducer := components.NewRollupProducer(config.SequencerID, dataEncryptionService, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
+	registry := components.NewBatchRegistry(storage, producer, sigVerifier, &chainConfig, logger)
+	rProducer := components.NewRollupProducer(config.SequencerID, dataEncryptionService, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
-	rConsumer := components.NewRollupConsumer(mgmtContractLib, dataEncryptionService, dataCompressionService, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
+	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, dataEncryptionService, dataCompressionService, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
 
 	var service nodetype.NodeType
 	if config.NodeType == common.Sequencer {

@@ -77,6 +77,9 @@ type BatchProducer interface {
 }
 
 type BatchRegistry interface {
+	// ValidateBatch - validates a batch
+	ValidateBatch(incomingBatch *core.Batch) (types.Receipts, error)
+
 	// StoreBatch - will store the batch and receipts in storage.
 	// Furthermore any heads and pointers would be updated here and
 	// after all is done the batch will be pushed to the subscribers
@@ -140,5 +143,7 @@ type RollupConsumer interface {
 	// ProcessL1Block - extracts the rollup from the block's transactions
 	// and verifies its integrity, saving and processing any batches that have
 	// not been seen previously.
-	ProcessL1Block(b *common.BlockAndReceipts) (*core.Rollup, error)
+	ProcessL1Block(b *common.BlockAndReceipts) (*common.ExtRollup, error)
+
+	ProcessRollup(rollup *common.ExtRollup) error
 }

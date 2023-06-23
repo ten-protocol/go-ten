@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/params"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -22,9 +24,11 @@ import (
 )
 
 type batchRegistryImpl struct {
-	storage db.Storage
-	logger  gethlog.Logger
-
+	storage       db.Storage
+	logger        gethlog.Logger
+	chainConfig   *params.ChainConfig
+	batchProducer BatchProducer
+	sigValidator  *SignatureValidator
 	// Channel on which batches will be pushed. It is held by another caller outside the
 	// batch registry.
 	batchSubscription *chan *core.Batch
@@ -35,10 +39,13 @@ type batchRegistryImpl struct {
 	subscriptionMutex sync.Mutex
 }
 
-func NewBatchRegistry(storage db.Storage, logger gethlog.Logger) BatchRegistry {
+func NewBatchRegistry(storage db.Storage, batchProducer BatchProducer, sigValidator *SignatureValidator, chainConfig *params.ChainConfig, logger gethlog.Logger) BatchRegistry {
 	return &batchRegistryImpl{
-		storage: storage,
-		logger:  logger,
+		storage:       storage,
+		batchProducer: batchProducer,
+		sigValidator:  sigValidator,
+		chainConfig:   chainConfig,
+		logger:        logger,
 	}
 }
 
@@ -86,6 +93,67 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 	br.notifySubscriber(batch, isHeadBatch)
 
 	return nil
+}
+
+func (br *batchRegistryImpl) handleGenesisBatch(incomingBatch *core.Batch) (bool, error) {
+	batch, _, err := br.batchProducer.CreateGenesisState(incomingBatch.Header.L1Proof, incomingBatch.Header.Time)
+	if err != nil {
+		return false, err
+	}
+
+	if !bytes.Equal(incomingBatch.Hash().Bytes(), batch.Hash().Bytes()) {
+		return false, fmt.Errorf("received bad genesis batch")
+	}
+
+	return true, br.StoreBatch(incomingBatch, nil)
+}
+
+func (br *batchRegistryImpl) ValidateBatch(incomingBatch *core.Batch) (types.Receipts, error) {
+	if incomingBatch.NumberU64() == 0 {
+		if handled, err := br.handleGenesisBatch(incomingBatch); handled {
+			return nil, err
+		}
+	}
+
+	defer br.logger.Info("Validator processed batch", log.BatchHashKey, incomingBatch.Hash(), log.DurationKey, measure.NewStopwatch())
+
+	if batch, err := br.GetBatch(incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return nil, err
+	} else if batch != nil {
+		return nil, nil // already know about this one
+	}
+
+	if err := br.sigValidator.CheckSequencerSignature(incomingBatch.Hash(), incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
+		return nil, err
+	}
+
+	// Validators recompute the entire batch using the same batch context
+	// if they have all necessary prerequisites like having the l1 block processed
+	// and the parent hash. This recomputed batch is then checked against the incoming batch.
+	// If the sequencer has tampered with something the hash will not add up and validation will
+	// produce an error.
+	cb, err := br.batchProducer.ComputeBatch(&BatchExecutionContext{
+		BlockPtr:     incomingBatch.Header.L1Proof,
+		ParentPtr:    incomingBatch.Header.ParentHash,
+		Transactions: incomingBatch.Transactions,
+		AtTime:       incomingBatch.Header.Time,
+		ChainConfig:  br.chainConfig,
+		SequencerNo:  incomingBatch.Header.SequencerOrderNo,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed recomputing batch %s. Cause: %w", incomingBatch.Hash(), err)
+	}
+
+	if !bytes.Equal(cb.Batch.Hash().Bytes(), incomingBatch.Hash().Bytes()) {
+		// todo @stefan - generate a validator challenge here and return it
+		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", incomingBatch.Hash().Hex(), cb.Batch.Hash().Hex())
+	}
+
+	if _, err := cb.Commit(true); err != nil {
+		return nil, fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", incomingBatch.Hash(), err)
+	}
+
+	return cb.Receipts, nil
 }
 
 func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch, isHeadBatch bool) {

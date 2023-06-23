@@ -49,7 +49,7 @@ type BatchResolver interface {
 
 type RollupResolver interface {
 	// StoreRollup stores a rollup.
-	StoreRollup(rollup *core.Rollup) error
+	StoreRollup(rollup *common.ExtRollup) error
 }
 
 type BatchUpdater interface {
@@ -66,7 +66,7 @@ type HeadsAfterL1BlockStorage interface {
 	FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error)
 	// FetchHeadRollupForBlock returns the hash of the latest (i.e. highest-numbered) rollup in the given L1 block, or
 	// nil if the block contains no rollups.
-	FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*core.Rollup, error)
+	FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*common.RollupHeader, error)
 	// UpdateL1Head updates the L1 head.
 	UpdateL1Head(l1Head common.L1BlockHash) error
 	// UpdateHeadRollup just updates the canonical L2 head batch, leaving data untouched (used to rewind after L1 fork or data corruption)
