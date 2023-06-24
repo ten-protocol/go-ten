@@ -154,8 +154,8 @@ jobs:
             az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{needs.build.outputs.VM_BUILD_NUMBER}}"  \
             --command-id RunShellScript \
             --scripts '
-               docker pull testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}host:latest \
-            && docker pull testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}enclave:latest \
+               docker pull testnetobscuronet.azurecr.io/obscuronet/${{needs.build.outputs.DOCKER_IMAGE_PREFIX}}host:latest \
+            && docker pull testnetobscuronet.azurecr.io/obscuronet/${{needs.build.outputs.DOCKER_IMAGE_PREFIX}}enclave:latest \
             && rm -rf /home/obscuro/go-obscuro \
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
             && cd /home/obscuro/go-obscuro/ \
@@ -169,8 +169,8 @@ jobs:
               -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com:10000 \
               -host_p2p_port=10000 \
-              -enclave_docker_image=testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}enclave:latest \
-              -host_docker_image=testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}host:latest \
+              -enclave_docker_image=testnetobscuronet.azurecr.io/obscuronet/${{needs.build.outputs.DOCKER_IMAGE_PREFIX}}enclave:latest \
+              -host_docker_image=testnetobscuronet.azurecr.io/obscuronet/${{needs.build.outputs.DOCKER_IMAGE_PREFIX}}host:latest \
               upgrade'
 
   check-obscuro-is-healthy:
