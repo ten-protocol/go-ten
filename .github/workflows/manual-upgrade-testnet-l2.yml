@@ -29,8 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     # Map a step output to a job output
     outputs:
-      L2_ENCLAVE_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG }}
-      L2_HOST_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HOST_DOCKER_BUILD_TAG }}
+      DOCKER_IMAGE_PREFIX: ${{ steps.outputVars.outputs.DOCKER_IMAGE_PREFIX }}
       RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
       RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
@@ -52,8 +51,7 @@ jobs:
       - name: 'Sets env vars for testnet'
         if: ${{ github.event.inputs.testnet_type  == 'testnet' }}
         run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/enclave:latest" >> $GITHUB_ENV
-          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/host:latest" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE_PREFIX=" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
@@ -62,8 +60,7 @@ jobs:
       - name: 'Sets env vars for dev-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (github.event_name == 'schedule') }}
         run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest" >> $GITHUB_ENV
-          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE_PREFIX=dev_" >> $GITHUB_ENV
           echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
@@ -85,8 +82,7 @@ jobs:
       - name: 'Output env vars'
         id: outputVars
         run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "L2_HOST_DOCKER_BUILD_TAG=${{env.L2_HOST_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
+          echo "DOCKER_IMAGE_PREFIX=${{env.DOCKER_IMAGE_PREFIX}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TAG_NAME=${{env.RESOURCE_TAG_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
@@ -102,10 +98,10 @@ jobs:
 
       - name: 'Build and push obscuro node images'
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
-          docker push ${{env.L2_HOST_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}enclave:latest -f dockerfiles/enclave.Dockerfile  .
+          docker push testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}enclave:latest
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}host:latest -f dockerfiles/host.Dockerfile .
+          docker push testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}host:latest
 
   deploy:
     needs: build
@@ -158,8 +154,8 @@ jobs:
             az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{needs.build.outputs.VM_BUILD_NUMBER}}"  \
             --command-id RunShellScript \
             --scripts '
-               docker pull ${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
-            && docker pull ${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
+               docker pull testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}host:latest \
+            && docker pull testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}enclave:latest \
             && rm -rf /home/obscuro/go-obscuro \
             && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
             && cd /home/obscuro/go-obscuro/ \
@@ -173,8 +169,8 @@ jobs:
               -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com:10000 \
               -host_p2p_port=10000 \
-              -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
-              -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
+              -enclave_docker_image=testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}enclave:latest \
+              -host_docker_image=testnetobscuronet.azurecr.io/obscuronet/${{env.DOCKER_IMAGE_PREFIX}}host:latest \
               upgrade'
 
   check-obscuro-is-healthy:
