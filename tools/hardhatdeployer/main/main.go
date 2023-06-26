@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	contractdeployer "github.com/obscuronet/go-obscuro/tools/hardhatdeployer"
 	"time"
+
+	contractdeployer "github.com/obscuronet/go-obscuro/tools/hardhatdeployer"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
