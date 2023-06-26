@@ -45,7 +45,7 @@ docker rm -f  obscuro_gateway_testnet 2>/dev/null
 echo "Starting Obscuro Gateway..."
 docker run -p 3000:"${port}" --name=obscuro_gateway_testnet \
     --detach \
-    --entrypoint ./tools/walletextension/main/obscuro-gateway \
+    --entrypoint ./wallet_extension_linux \
       "${image}" \
       -host="${host}" -port="${port}" -portWS="${portWS}" -nodeHost="${nodeHost}" -nodePortHTTP="${nodePortHTTP}" \
       -nodePortWS="${nodePortWS}" -logPath="${logPath}" -databasePath="${databasePath}"
