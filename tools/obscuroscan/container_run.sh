@@ -1,48 +1,63 @@
 #!/usr/bin/env bash
 
 #
-# This script starts Obscuroscan for testnet
+# This script starts up the obscuroscan server
 #
 
+help_and_exit() {
+    echo ""
+    echo "Usage: $(basename "${0}") --rpcServerAddress=http://validator-host:13010 --receivingPort=80"
+    echo ""
+    echo "  rpcServerAddress        *Optional* Set the rpc server address (defaults to http://validator-host:13010)"
+    echo ""
+    echo "  receivingPort           *Optional* Set the ObscuroScan server receiving port (defaults to 80)"
+    echo ""
+    echo ""
+    echo ""
+    exit 1  # Exit with error explicitly
+}
 # Ensure any fail is loud and explicit
 set -euo pipefail
 
-# Define defaults
-nodeID=""
-rpcServerAddress="http://testnet.obscu.ro:13000"
-address="127.0.0.1:3000"
-logPath="obscuroscan_logs.txt"
-port=8080
-image="testnetobscuronet.azurecr.io/obscuronet/obscuroscan_testnet:latest"
+# Define local usage vars
+start_path="$(cd "$(dirname "${0}")" && pwd)"
+testnet_path="${start_path}"
 
-# Parse the options
+# Define defaults
+receivingPort=80
+rpcServerAddress='http://validator-host:13010'
+docker_image="testnetobscuronet.azurecr.io/obscuronet/obscuroscan:latest"
+
+# Fetch options
 for argument in "$@"
 do
     key=$(echo $argument | cut -f1 -d=)
     value=$(echo $argument | cut -f2 -d=)
 
     case "$key" in
-            --nodeID)            nodeID=${value} ;;
-            --rpcServerAddress)  rpcServerAddress=${value} ;;
-            --address)           address=${value} ;;
-            --logPath)           logPath=${value} ;;
-            --port)              port=${value} ;;
-            --image)             image=${value} ;;
+            --rpcServerAddress)         rpcServerAddress=${value} ;;
+            --receivingPort)            receivingPort=${value} ;;
+            --image)                    docker_image=${value} ;;
+            --help)                     help_and_exit ;;
             *)
     esac
 done
 
-# Stop and remove any running container, and then star
-echo "Force stopping any existing container ... "
-docker rm -f  testnet-obscuroscan 2>/dev/null
+# ensure required fields
+if [[ -z ${rpcServerAddress:-} || -z ${receivingPort:-} ]];
+then
+    help_and_exit
+fi
 
-echo "Starting the Obscuroscan..."
-docker run --env PORT=${port} -p 8080:${port} --name=testnet-obscuroscan \
+# start the container
+echo "Starting the obscuroscan server..."
+docker network create --driver bridge node_network || true
+docker run --name=obscuroscan \
     --detach \
     --network=node_network \
-    --entrypoint ./tools/obscuroscan/main/main \
-     ${image} \
-    --nodeID=${nodeID} \
-    --rpcServerAddress=${rpcServerAddress} \
-    --address=${address} \
-    --logPath=${logPath}
+    -p $receivingPort:$receivingPort \
+    --entrypoint /home/obscuro/go-obscuro/tools/obscuroscan/main/main \
+    "${docker_image}" \
+    --address='0.0.0.0:'$receivingPort \
+    --rpcServerAddress=${rpcServerAddress}
+echo ""
