@@ -37,6 +37,7 @@ type (
 
 	// Local Obscuro aliases
 	L2BatchHash    = common.Hash
+	L2RollupHash   = common.Hash
 	L2TxHash       = common.Hash
 	L2Tx           = types.Transaction
 	L2Transactions = types.Transactions

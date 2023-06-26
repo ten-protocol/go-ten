@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+	crypto2 "github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -515,8 +519,15 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 		Batches: []*core.Batch{genesisBatch},
 	}
 
+	extRollup, err2 := genesisRollup.ToExtRollup(
+		crypto2.NewDataEncryptionService(testlog.Logger()),
+		compression.NewBrotliDataCompressionService())
+	if err2 != nil {
+		return err2
+	}
+
 	// We update the database
-	if err = enclave.(*enclaveImpl).storage.StoreRollup(genesisRollup); err != nil {
+	if err = enclave.(*enclaveImpl).storage.StoreRollup(extRollup); err != nil {
 		return err
 	}
 
@@ -587,8 +598,15 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 
 	dbBatch := enclave.(*enclaveImpl).storage.OpenBatch()
 
+	extRollup, err2 := rollup.ToExtRollup(
+		crypto2.NewDataEncryptionService(testlog.Logger()),
+		compression.NewBrotliDataCompressionService())
+	if err2 != nil {
+		return err2
+	}
+
 	// We update the database.
-	if err = enclave.(*enclaveImpl).storage.StoreRollup(rollup); err != nil {
+	if err = enclave.(*enclaveImpl).storage.StoreRollup(extRollup); err != nil {
 		return err
 	}
 	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, nil, dbBatch); err != nil {

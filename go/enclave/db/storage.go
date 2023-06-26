@@ -196,7 +196,7 @@ func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*cor
 	return obscurorawdb.ReadBatch(s.db, *l2HeadBatch)
 }
 
-func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*core.Rollup, error) {
+func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*common.RollupHeader, error) {
 	l2HeadBatch, err := obscurorawdb.ReadL2HeadRollup(s.db, blockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not read L2 head rollup for block. Cause: %w", err)
@@ -204,7 +204,7 @@ func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*c
 	if *l2HeadBatch == (gethcommon.Hash{}) { // empty hash ==> no rollups yet up to this block
 		return nil, ErrNoRollups
 	}
-	return obscurorawdb.ReadRollup(s.db, *l2HeadBatch)
+	return obscurorawdb.ReadRollupHeader(s.db, *l2HeadBatch)
 }
 
 func (s *storageImpl) UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error {
@@ -497,7 +497,7 @@ func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
 	return obscurorawdb.GetEnclaveKey(s.db, s.logger)
 }
 
-func (s *storageImpl) StoreRollup(rollup *core.Rollup) error {
+func (s *storageImpl) StoreRollup(rollup *common.ExtRollup) error {
 	dbBatch := s.db.NewBatch()
 
 	if err := obscurorawdb.WriteRollup(dbBatch, rollup); err != nil {

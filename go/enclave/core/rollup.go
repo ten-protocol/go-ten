@@ -14,14 +14,11 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
+// todo - This should be a synthetic datastructure
 type Rollup struct {
 	Header  *common.RollupHeader
 	Batches []*Batch
 	hash    atomic.Value
-}
-
-func (r *Rollup) HeadBatchHash() common.L2BatchHash {
-	return r.Batches[len(r.Batches)-1].Hash()
 }
 
 // Hash returns the keccak256 hash of b's header.
@@ -37,12 +34,6 @@ func (r *Rollup) Hash() common.L2BatchHash {
 
 func (r *Rollup) NumberU64() uint64 { return r.Header.Number.Uint64() }
 func (r *Rollup) Number() *big.Int  { return new(big.Int).Set(r.Header.Number) }
-
-// IsGenesis indicates whether the rollup is the genesis rollup.
-// todo (#718) - Change this to a check against a hardcoded genesis hash.
-func (r *Rollup) IsGenesis() bool {
-	return r.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
-}
 
 func (r *Rollup) ToExtRollup(dataEncryptionService crypto.DataEncryptionService, compression compression.DataCompressionService) (*common.ExtRollup, error) {
 	headers := make([]*common.BatchHeader, len(r.Batches))
