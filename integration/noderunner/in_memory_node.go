@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/node"
+	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -85,7 +86,13 @@ func (d *InMemNode) Upgrade(networkCfg *node.NetworkConfig) error {
 
 func (d *InMemNode) startHost() error {
 	hostConfig := d.cfg.ToHostConfig()
-	d.host = hostcontainer.NewHostContainerFromConfig(hostConfig, nil)
+	// calculate the host ID from the private key here, so we have it for the logger
+	addr, err := wallet.RetrieveAddress(hostConfig.PrivateKeyString)
+	if err != nil {
+		panic("unable to calculate the Node ID")
+	}
+	logger := testlog.Logger().New(log.CmpKey, log.HostCmp, log.NodeIDKey, *addr)
+	d.host = hostcontainer.NewHostContainerFromConfig(hostConfig, logger)
 	return d.host.Start()
 }
 
