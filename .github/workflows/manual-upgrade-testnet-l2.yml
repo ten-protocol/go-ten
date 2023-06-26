@@ -97,7 +97,7 @@ jobs:
         uses: azure/docker-login@v1
         with:
           login-server: testnetobscuronet.azurecr.io
-          username: ${{ secrets.REGISTRY_USERNAME }}
+          username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: 'Build and push obscuro node images'
@@ -143,8 +143,9 @@ jobs:
     steps:
       - name: 'Extract branch name'
         shell: bash
-        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF_NAME})"
-        id: extract_branch
+        run: |
+          echo "Branch Name: ${GITHUB_REF_NAME}"
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -161,7 +162,7 @@ jobs:
                docker pull ${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
             && docker pull ${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
             && rm -rf /home/obscuro/go-obscuro \
-            && git clone --depth 1 -b ${{ steps.extract_branch.outputs.branch }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
+            && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
             && cd /home/obscuro/go-obscuro/ \
             && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
               -is_genesis=${{ matrix.is_genesis }} \
