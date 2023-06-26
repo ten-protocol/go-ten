@@ -2,18 +2,12 @@ package nodetype
 
 import (
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
 // NodeType - the interface for any service type running in Obscuro nodes.
 // Should only contain the shared functionality that every service type needs to have.
 type NodeType interface {
-	//	ReceiveBlock - function that accepts L1 blocks and their receipts along with a flag
-	// that signals if the block is the latest one or not. Processing of those blocks and
-	// resulting actions differ between the service types.
-	ReceiveBlock(*common.BlockAndReceipts, bool) (*components.BlockIngestionType, error)
-
 	// SubmitTransaction - L2 obscuro transactions need to be passed here. Sequencers
 	// will put them in the mempool while validators might put them in a queue and monitor
 	// for censorship.

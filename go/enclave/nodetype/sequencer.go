@@ -237,21 +237,6 @@ func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
 	return rollup.ToExtRollup(s.dataEncryptionService, s.dataCompressionService)
 }
 
-func (s *sequencer) ReceiveBlock(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	ingestion, err := s.blockProcessor.Process(br, isLatest)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = s.rollupConsumer.ProcessL1Block(br)
-	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
-		s.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
-		// Unsure what to do here; block has been stored
-	}
-
-	return ingestion, nil
-}
-
 func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch) error {
 	headBatch, err := s.batchRegistry.GetHeadBatch()
 	if err != nil {
