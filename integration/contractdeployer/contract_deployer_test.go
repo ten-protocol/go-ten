@@ -19,7 +19,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
-	"github.com/obscuronet/go-obscuro/tools/contractdeployer"
+	contractdeployer "github.com/obscuronet/go-obscuro/tools/hardhatdeployer"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 )
