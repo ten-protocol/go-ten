@@ -34,10 +34,10 @@ done
 
 # Stop and remove any running container, and then star
 echo "Force stopping any existing container ... "
-docker rm -f  local-testnet-obscuroscan 2>/dev/null
+docker rm -f  testnet-obscuroscan 2>/dev/null
 
 echo "Starting the Obscuroscan..."
-docker run --env PORT=${port} -p 8080:${port} --name=local-testnet-obscuroscan \
+docker run --env PORT=${port} -p 8080:${port} --name=testnet-obscuroscan \
     --detach \
     --network=node_network \
     --entrypoint ./tools/obscuroscan/main/main \
