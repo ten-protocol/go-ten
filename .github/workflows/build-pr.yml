@@ -40,6 +40,7 @@ jobs:
             integration/.build/simulations/sim-log-*.txt
             integration/.build/noderunner/noderunner-*.txt
             integration/.build/wallet_extension/wal-ext-*.txt
+            integration/.build/faucet/*
             integration/.build/eth2/*
           retention-days: 2
 
