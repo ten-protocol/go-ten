@@ -28,7 +28,7 @@ func ParseConfigCLI() *TestnetConfigCLI {
 
 	edgelessDBDockerImage := flag.String(edgelessDBDockerImageFlag, "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2", flagUsageMap[edgelessDBDockerImageFlag])
 
-	isSGXEnabled := flag.Bool(sequencerEnclaveDebugFlag, false, flagUsageMap[sequencerEnclaveDebugFlag])
+	isSGXEnabled := flag.Bool(isSGXEnabledFlag, false, flagUsageMap[isSGXEnabledFlag])
 	flag.Parse()
 
 	cfg.validatorEnclaveDockerImage = *validatorEnclaveDockerImage
