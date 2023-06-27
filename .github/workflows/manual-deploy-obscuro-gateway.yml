@@ -61,7 +61,7 @@ jobs:
           location: 'uksouth'
           restart-policy: 'Never'
           environment-variables: PORT=80
-          command-line: ./tools/walletextension/main/obscuro-gateway -host=0.0.0.0
+          command-line: ./wallet_extension_linux -host=0.0.0.0
           ports: '80'
           cpu: 2
           memory: 2
