@@ -21,3 +21,9 @@ The binaries will be created in the `tools/walletextension/bin` folder.
 This package follows the same structure of `host` and `enclave`.
 
 It uses a container to wrap the services that are required to allow the wallet extension to fulfill the business logic.
+
+### Running Wallet Extension with Docker
+
+To build a docker image use docker build command. Please note that you need to run it from the root of the repository.
+Ro run the container you can use `./docker_run.sh`. You can add parameters to the script, and they are passed to wallet extension 
+(example: `-host=0.0.0.0` to be able to access wallet extension endpoints via localhost).
