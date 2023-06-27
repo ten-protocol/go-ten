@@ -10,6 +10,10 @@ type TestnetConfigCLI struct {
 	validatorEnclaveDebug       bool
 	sequencerEnclaveDockerImage string
 	sequencerEnclaveDebug       bool
+
+	isSGXEnabled bool
+
+	edgelessDBDockerImage string
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -21,12 +25,20 @@ func ParseConfigCLI() *TestnetConfigCLI {
 	validatorEnclaveDebug := flag.Bool(validatorEnclaveDebugFlag, false, flagUsageMap[validatorEnclaveDebugFlag])
 	sequencerEnclaveDockerImage := flag.String(sequencerEnclaveDockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", flagUsageMap[sequencerEnclaveDockerImageFlag])
 	sequencerEnclaveDebug := flag.Bool(sequencerEnclaveDebugFlag, false, flagUsageMap[sequencerEnclaveDebugFlag])
+
+	edgelessDBDockerImage := flag.String(edgelessDBDockerImageFlag, "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2", flagUsageMap[edgelessDBDockerImageFlag])
+
+	isSGXEnabled := flag.Bool(sequencerEnclaveDebugFlag, false, flagUsageMap[sequencerEnclaveDebugFlag])
 	flag.Parse()
 
 	cfg.validatorEnclaveDockerImage = *validatorEnclaveDockerImage
 	cfg.sequencerEnclaveDockerImage = *sequencerEnclaveDockerImage
 	cfg.validatorEnclaveDebug = *validatorEnclaveDebug
 	cfg.sequencerEnclaveDebug = *sequencerEnclaveDebug
+
+	cfg.isSGXEnabled = *isSGXEnabled
+
+	cfg.edgelessDBDockerImage = *edgelessDBDockerImage
 
 	return cfg
 }
