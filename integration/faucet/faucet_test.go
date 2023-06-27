@@ -63,6 +63,7 @@ func TestFaucet(t *testing.T) {
 	err = fundWallet(faucetConfig.ServerPort, rndWallet)
 	assert.NoError(t, err)
 
+	time.Sleep(2 * time.Second) // make sure the faucet has started
 	obsClient, err := obsclient.DialWithAuth(fmt.Sprintf("http://%s:%d", network.Localhost, startPort+integration.DefaultHostRPCHTTPOffset), rndWallet, testlog.Logger())
 	assert.NoError(t, err)
 
