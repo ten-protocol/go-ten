@@ -210,22 +210,22 @@ func (rc *rollupConsumerImpl) checkRollupsCorrectlyChained(rollup *common.Rollup
 	}
 
 	// todo - tudor - reinstate these checks after compression
-	/*	// In case we have published two rollups for the same height
-		// This can happen when the first one takes too long to mine
-		if current == previous {
-			if len(previousRollup.Batches) > len(rollup.Batches) {
-				return fmt.Errorf("received duplicate rollup at height %d with less batches than previous rollup", rollup.NumberU64())
-			}
-
-			for idx, batch := range previousRollup.Batches {
-				if rollup.Batches[idx].Hash() != batch.Hash() {
-					return fmt.Errorf("duplicate rollup at height %d has different batches at position %d", rollup.NumberU64(), idx)
+	// In case we have published two rollups for the same height
+	// This can happen when the first one takes too long to mine
+	if current == previous {
+		/*		if len(previousRollup.Batches) > len(rollup.Batches) {
+					return fmt.Errorf("received duplicate rollup at height %d with less batches than previous rollup", rollup.NumberU64())
 				}
-			}
 
-			return ErrDuplicateRollup
-		}
-	*/
+				for idx, batch := range previousRollup.Batches {
+					if rollup.Batches[idx].Hash() != batch.Hash() {
+						return fmt.Errorf("duplicate rollup at height %d has different batches at position %d", rollup.NumberU64(), idx)
+					}
+				}
+		*/
+		return ErrDuplicateRollup
+	}
+
 	if current <= previous {
 		return fmt.Errorf("expected new rollup but rollup %d height was less than or equal to previous rollup %d",
 			current, previous)
