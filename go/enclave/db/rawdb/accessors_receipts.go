@@ -2,17 +2,23 @@ package rawdb
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
-
-	common2 "github.com/obscuronet/go-obscuro/go/common"
+	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
+	common2 "github.com/obscuronet/go-obscuro/go/common"
 )
+
+// make sure that reading and incrementing is done atomically
+var incrementSync sync.Mutex
 
 // ReadReceiptsRLP retrieves all the transaction receipts belonging to a batch in RLP encoding.
 func ReadReceiptsRLP(db ethdb.Reader, hash common.Hash) (rlp.RawValue, error) {
@@ -119,4 +125,43 @@ func ReadContractTransaction(db ethdb.Reader, address common.Address) (*common.H
 	}
 	hash := common.BytesToHash(value)
 	return &hash, nil
+}
+
+func IncrementContractCreationCount(db ethdb.Reader, batch ethdb.KeyValueWriter, receipts []*types.Receipt) error {
+	incrementSync.Lock()
+	defer incrementSync.Unlock()
+
+	contractCreationCounter := 0
+	for _, receipt := range receipts {
+		// receipts only have Contract Address when a new contract is created
+		if !bytes.Equal(receipt.ContractAddress.Bytes(), (common.Address{}).Bytes()) {
+			contractCreationCounter++
+		}
+	}
+	if contractCreationCounter == 0 {
+		return nil
+	}
+
+	current, err := ReadContractCreationCount(db)
+	if err != nil {
+		return err
+	}
+	total := big.NewInt(0).Add(current, big.NewInt(int64(contractCreationCounter)))
+
+	if err = batch.Put(contractCreationCountKey(), total.Bytes()); err != nil {
+		return fmt.Errorf("failed to store contract creation count - %w", err)
+	}
+
+	return nil
+}
+
+func ReadContractCreationCount(db ethdb.Reader) (*big.Int, error) {
+	value, err := db.Get(contractCreationCountKey())
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			return common.Big0, nil
+		}
+		return nil, fmt.Errorf("unable to read stored contract creation count - %w", err)
+	}
+	return big.NewInt(0).SetBytes(value), nil
 }

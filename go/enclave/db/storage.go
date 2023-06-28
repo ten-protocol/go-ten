@@ -478,6 +478,9 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 	if err := obscurorawdb.WriteCurrentBatchSequenceNumber(dbBatch, batch.Header.SequencerOrderNo); err != nil {
 		return fmt.Errorf("could not save the current seqencer number. Cause: %w", err)
 	}
+	if err := obscurorawdb.IncrementContractCreationCount(s.db, dbBatch, receipts); err != nil {
+		return fmt.Errorf("unable to increment contract count")
+	}
 	return nil
 }
 
@@ -683,6 +686,15 @@ func (s *storageImpl) FilterLogs(
 	}
 
 	return s.loadLogs(requestingAccount, query, queryParams)
+}
+
+func (s *storageImpl) GetContractCount() (*big.Int, error) {
+	count, err := s.db.Get([]byte("contractCreationCountKey"))
+	if err != nil {
+		return nil, err
+	}
+
+	return big.NewInt(0).SetBytes(count), nil
 }
 
 func stringToHash(ns sql2.NullString) gethcommon.Hash {

@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -29,6 +30,8 @@ const (
 
 // Enclave represents the API of the service that runs inside the TEE.
 type Enclave interface {
+	EnclaveScan
+
 	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
 	Status() (Status, SystemError)
 
@@ -118,6 +121,12 @@ type Enclave interface {
 	StreamL2Updates(*L2BatchHash) (chan StreamL2UpdatesResponse, func())
 	// DebugEventLogRelevancy returns the logs of a transaction
 	DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, SystemError)
+}
+
+// EnclaveScan represents the methods that are used for data scanning in the enclave
+type EnclaveScan interface {
+	// GetTotalContractCount returns the total number of contracts that have been deployed
+	GetTotalContractCount() (*big.Int, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
