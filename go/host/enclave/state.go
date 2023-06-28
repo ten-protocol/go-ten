@@ -79,9 +79,9 @@ func (s *StateTracker) GetStatus() Status {
 
 func (s *StateTracker) OnProcessedBlock(enclL1Head gethcommon.Hash) {
 	s.m.Lock()
+	defer s.m.Unlock()
 	s.enclaveL1Head = enclL1Head
-	s.m.Unlock()
-	s.recalculateStatus()
+	s.setStatus(s.calculateStatus())
 }
 
 func (s *StateTracker) OnReceivedBlock(l1Head gethcommon.Hash) {
@@ -92,9 +92,9 @@ func (s *StateTracker) OnReceivedBlock(l1Head gethcommon.Hash) {
 
 func (s *StateTracker) OnProcessedBatch(enclL2Head gethcommon.Hash) {
 	s.m.Lock()
+	defer s.m.Unlock()
 	s.enclaveL2Head = enclL2Head
-	s.m.Unlock()
-	s.recalculateStatus()
+	s.setStatus(s.calculateStatus())
 }
 
 func (s *StateTracker) OnReceivedBatch(l2Head gethcommon.Hash) {
@@ -105,21 +105,21 @@ func (s *StateTracker) OnReceivedBatch(l2Head gethcommon.Hash) {
 
 func (s *StateTracker) OnSecretProvided() {
 	s.m.Lock()
+	defer s.m.Unlock()
 	if s.enclaveStatusCode == common.AwaitingSecret {
 		s.enclaveStatusCode = common.Running
 	}
-	s.m.Unlock()
-	s.recalculateStatus()
+	s.setStatus(s.calculateStatus())
 }
 
 func (s *StateTracker) OnEnclaveStatus(es common.Status) {
 	s.m.Lock()
+	defer s.m.Unlock()
 	s.enclaveStatusCode = es.StatusCode
 	s.enclaveL1Head = es.L1Head
 	s.enclaveL2Head = es.L2Head
-	s.m.Unlock()
 
-	s.recalculateStatus()
+	s.setStatus(s.calculateStatus())
 }
 
 // OnDisconnected is called if the enclave is unreachable/not returning a valid Status
@@ -129,25 +129,25 @@ func (s *StateTracker) OnDisconnected() {
 	s.setStatus(Disconnected)
 }
 
-// when enclave is operational, this method will update the status based on comparison of current chain heads with enclave heads
-func (s *StateTracker) recalculateStatus() {
-	s.m.Lock()
-	defer s.m.Unlock()
+// when enclave is operational, this method will calculate the status based on comparison of current chain heads with enclave heads
+func (s *StateTracker) calculateStatus() Status {
 	switch s.enclaveStatusCode {
 	case common.AwaitingSecret:
-		s.setStatus(AwaitingSecret)
+		return AwaitingSecret
 	case common.Unavailable:
-		s.setStatus(Unavailable)
+		return Unavailable
 	case common.Running:
 		if s.hostL1Head != s.enclaveL1Head || s.enclaveL1Head == gethutil.EmptyHash {
-			s.setStatus(L1Catchup)
-			return
+			return L1Catchup
 		}
 		if s.hostL2Head != s.enclaveL2Head || s.enclaveL2Head == gethutil.EmptyHash {
-			s.setStatus(L2Catchup)
-			return
+			return L2Catchup
 		}
-		s.setStatus(Live)
+		return Live
+	default:
+		// this shouldn't happen
+		s.logger.Error("unknown enclave status code - this should not happen", "code", s.enclaveStatusCode)
+		return Unavailable
 	}
 }
 

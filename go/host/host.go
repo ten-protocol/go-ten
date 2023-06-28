@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/host/enclave"
@@ -55,11 +56,11 @@ type host struct {
 	config  *config.HostConfig
 	shortID uint64
 
-	p2p           hostcommon.P2P        // For communication with other Obscuro nodes
-	ethClient     ethadapter.EthClient  // For communication with the L1 node
-	enclaveClient common.Enclave        // For communication with the enclave
-	enclaveState  *enclave.StateTracker // StateTracker machine that maintains the current state of enclave (stepping stone to enclave-guardian)
-	statusReqLock sync.Mutex            // Lock to ensure that only one enclave status request is sent at a time (the requests are triggered in separate threads when unexpected enclave errors occur)
+	p2p               hostcommon.P2P        // For communication with other Obscuro nodes
+	ethClient         ethadapter.EthClient  // For communication with the L1 node
+	enclaveClient     common.Enclave        // For communication with the enclave
+	enclaveState      *enclave.StateTracker // StateTracker machine that maintains the current state of enclave (stepping stone to enclave-guardian)
+	statusReqInFlight atomic.Bool           // Flag to ensure that only one enclave status request is sent at a time (the requests are triggered in separate threads when unexpected enclave errors occur)
 
 	// control the host lifecycle
 	interrupter   breaker.Interface
@@ -419,6 +420,7 @@ func (h *host) startProcessing() {
 			l1Head, err := h.ethClient.FetchHeadBlock()
 			if err != nil {
 				h.logger.Warn("unable to fetch head eth block", log.ErrKey, err)
+				continue
 			}
 			h.enclaveState.OnReceivedBlock(l1Head.Hash())
 			isLive := l1Head.Hash() == b.Hash()
@@ -426,7 +428,7 @@ func (h *host) startProcessing() {
 			if err != nil {
 				// handle the error, replace the blockStream if necessary (e.g. if stream needs resetting based on enclave's reported L1 head)
 				blockStream = h.handleProcessBlockErr(b, blockStream, err)
-				// failed to update the L1 head, check enclave state
+				// failed to update the L1 head, spawn a goroutine to check enclave state
 				go h.checkEnclaveStatus()
 				continue
 			}
@@ -1097,9 +1099,9 @@ func (h *host) validateConfig() {
 // this function should be fired off in a new goroutine whenever the status of the enclave needs to be verified
 // (e.g. if we've seen unexpected errors from the enclave client)
 func (h *host) checkEnclaveStatus() {
-	// only allow one status request at a time, if lock unavailable then abandon attempt
-	if h.statusReqLock.TryLock() {
-		defer h.statusReqLock.Unlock()
+	// only allow one status request at a time, if flag is false, atomically swap it to true and continue
+	if h.statusReqInFlight.CompareAndSwap(false, true) {
+		defer h.statusReqInFlight.Store(false) // clear flag after request completed
 		s, err := h.enclaveClient.Status()
 		if err != nil {
 			h.logger.Error("could not get enclave status", log.ErrKey, err)
