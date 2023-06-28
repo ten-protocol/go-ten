@@ -95,7 +95,7 @@ jobs:
         uses: azure/docker-login@v1
         with:
           login-server: testnetobscuronet.azurecr.io
-          username: ${{ secrets.REGISTRY_USERNAME }}
+          username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: 'Build and push obscuro node images'
