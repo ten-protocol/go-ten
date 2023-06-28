@@ -728,7 +728,7 @@ func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *c
 // TestGetContractCount tests contract creation count
 func TestGetContractCount(t *testing.T) {
 	// create the enclave
-	testEnclave, err := createTestEnclave([]genesis.Account{}, 200)
+	testEnclave, err := createTestEnclave([]genesis.Account{}, 300)
 	if err != nil {
 		t.Fatal(err)
 	}
