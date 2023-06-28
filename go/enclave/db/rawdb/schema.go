@@ -96,3 +96,8 @@ func rollupHeaderKey(hash common.L2BatchHash) []byte {
 func rollupNumberKey(hash common.L2BatchHash) []byte {
 	return append(rollupNumberPrefix, hash.Bytes()...)
 }
+
+// for storing the contract creation count
+func contractCreationCountKey() []byte {
+	return []byte("contractCreationCountKey")
+}

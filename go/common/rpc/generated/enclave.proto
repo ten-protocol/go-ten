@@ -81,6 +81,8 @@ service EnclaveProto {
   rpc StreamL2Updates(StreamL2UpdatesRequest) returns (stream EncodedUpdateResponse) {}
 
   rpc DebugEventLogRelevancy(DebugEventLogRelevancyRequest) returns (DebugEventLogRelevancyResponse) {}
+
+  rpc GetTotalContractCount(GetTotalContractCountRequest) returns (GetTotalContractCountResponse) {}
 }
 
 message GetBatchRequest {
@@ -105,9 +107,17 @@ message SystemError{
   string errorString = 2;
 }
 
+message GetTotalContractCountRequest {}
+
+message GetTotalContractCountResponse{
+  int64 count = 1;
+  SystemError systemError = 2;
+}
+
 message DebugEventLogRelevancyRequest{
   bytes txHash = 1;
 }
+
 message DebugEventLogRelevancyResponse{
   string msg = 1;
   SystemError systemError = 2;
