@@ -81,3 +81,11 @@ func (s *Storage) GetAccounts(userID []byte) ([]common.AccountDB, error) {
 	}
 	return accounts, nil
 }
+
+func (s *Storage) GetAllUsers() ([]common.UserDB, error) {
+	users, err := s.db.GetAllUsers()
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
+}
