@@ -214,7 +214,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	}
 
 	s.logger.Info("Created new head batch", log.BatchHashKey, cb.Batch.Hash(),
-		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions))
+		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions), "seqNo", cb.Batch.SeqNo())
 
 	return nil
 }
@@ -288,6 +288,8 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 			s.logger.Crit("Error recalculating l2chain for forked block", log.ErrKey, err)
 			return err
 		}
+
+		s.logger.Info(fmt.Sprintf("Produced fork batch %s with seqNo %d", cb.Batch.Hash(), cb.Batch.SeqNo().Uint64()))
 
 		if _, err := cb.Commit(true); err != nil {
 			return fmt.Errorf("failed committing stateDB for computed batch. Cause: %w", err)

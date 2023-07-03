@@ -125,14 +125,8 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts, blockR
 			return nil
 		}
 
-		// Ignore rollups created with proofs from different L1 blocks
-		// In case of L1 reorgs, rollups may end published on a fork
-		if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-			rollups = append(rollups, r)
-			rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.RollupHeightKey, r.Header.Number, log.BlockHashKey, b.Hash())
-		} else {
-			rc.logger.Warn("Ignored rollup from block, because it was produced on a fork", log.RollupHashKey, r.Hash(), log.RollupHeightKey, r.Header.Number, log.BlockHashKey, b.Hash())
-		}
+		rollups = append(rollups, r)
+		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.RollupHeightKey, r.Header.Number, log.BlockHashKey, b.Hash())
 	}
 
 	sort.Slice(rollups, func(i, j int) bool {
@@ -252,21 +246,21 @@ func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
 	}
 
 	for _, batch := range r.Batches {
+		rc.logger.Info("Processing batch from rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
 		_, batchFoundErr := rc.batchRegistry.GetBatch(batch.Hash())
 		// Process and store a batch only if it wasn't already processed via p2p.
-		if errors.Is(batchFoundErr, errutil.ErrNotFound) {
-			receipts, err := rc.batchRegistry.ValidateBatch(batch)
-			if err != nil {
-				rc.logger.Error("Attempted to store incorrect batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
-				return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
-			}
-			err = rc.batchRegistry.StoreBatch(batch, receipts)
-			if err != nil {
-				return err
-			}
-		}
-		if batchFoundErr != nil {
+		if batchFoundErr != nil && !errors.Is(batchFoundErr, errutil.ErrNotFound) {
 			return batchFoundErr
+		}
+		receipts, err := rc.batchRegistry.ValidateBatch(batch)
+		if err != nil {
+			rc.logger.Error("Attempted to store incorrect batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
+			continue
+			//return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
+		}
+		err = rc.batchRegistry.StoreBatch(batch, receipts)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

@@ -458,6 +458,14 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
 }
 
+func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
+	hash, err := obscurorawdb.ReadBatchBySequenceNum(s.db, seqNum)
+	if err != nil {
+		return nil, err
+	}
+	return s.FetchBatch(*hash)
+}
+
 func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error {
 	if dbBatch == nil {
 		panic("StoreBatch called without an instance of sql.Batch")
@@ -476,6 +484,9 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 		return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
 	}
 	if err := obscurorawdb.WriteCurrentBatchSequenceNumber(dbBatch, batch.Header.SequencerOrderNo); err != nil {
+		return fmt.Errorf("could not save the current seqencer number. Cause: %w", err)
+	}
+	if err := obscurorawdb.WriteBatchBySequenceNum(dbBatch, batch); err != nil {
 		return fmt.Errorf("could not save the current seqencer number. Cause: %w", err)
 	}
 	return nil
