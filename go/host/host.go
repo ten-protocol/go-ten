@@ -442,7 +442,8 @@ func (h *host) startProcessing() {
 	// - Process new Transactions gossiped from L2 Peers
 	for {
 		// if enclave is behind the L1 head then this will process the next block it needs. Just one block and then defer
-		// to the select to see if there's anything waiting to process. todo (@matt) this is temporary, step towards enclave-guardian PR
+		// to the select to see if there's anything waiting to process.
+		// todo (@matt) this looping with sleep method is temporary while we still have queues for p2p, step towards enclave-guardian PR
 		catchingUp := h.catchUpL1Block()
 		loopTime := 10 * time.Millisecond
 		if catchingUp {
@@ -1099,7 +1100,7 @@ func (h *host) catchUpL1Block() bool {
 		return false
 	}
 	prevHead := h.enclaveState.GetEnclaveL1Head()
-	h.logger.Info("fetching next block", log.BlockHashKey, prevHead)
+	h.logger.Trace("fetching next block", log.BlockHashKey, prevHead)
 	block, isLatest, err := h.l1Repository.FetchNextBlock(prevHead)
 	if err != nil {
 		h.logger.Warn("unable to fetch next L1 block", log.ErrKey, err)
