@@ -43,3 +43,18 @@ control over which account receives the rollup rewards, meaning that a would-be 
 any rewards for acting in this manner.
 
 To reduce coupling, the enclave process will be monitored and managed by a supervisor, and not by the host process.
+
+## Host design
+
+The host has a lot of responsibilities, including:
+- serving requests for data and transaction submissions
+- feeding data to the enclave to keep it up-to-date with the L1 and L2 networks
+- publishing secret request/responses and (for the sequencer) rollups to the L1 network
+- receiving and publishing Obscuro data (e.g. batches and mempool transactions) with peer nodes
+- managing failover and recovery for the enclave for high-availability (HA) nodes
+
+The host will be organised with a variety of services to manage these responsibilities.
+
+The following diagram shows a high-level view of the main services involved:
+
+![host services diagram](./resources/host_arch.png)
