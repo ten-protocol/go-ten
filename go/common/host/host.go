@@ -1,16 +1,12 @@
 package host
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/host/db"
 	"github.com/obscuronet/go-obscuro/go/responses"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // Host is the half of the Obscuro node that lives outside the enclave.
@@ -64,28 +60,6 @@ type P2P interface {
 
 	// HealthCheck returns whether the p2p lib is healthy.
 	HealthCheck() bool
-}
-
-// ReconnectingBlockProvider interface allows host to monitor and await L1 blocks.
-//
-// The stream channels provide the blocks the way the enclave expects to be fed (consecutive canonical blocks)
-//
-// ReconnectingBlockProvider handles:
-//
-//   - reconnecting to the source, it will recover if it can and continue streaming from where it left off
-//
-//   - forks: block provider only sends blocks that are *currently* canonical. If there was a fork then it will replay
-//     from the block after the fork. For example:
-//
-//     12a --> 13a --> 14a -->
-//     \-> 13b --> 14b --> 15b
-//     If block provider had just published 14a and then discovered the 'b' fork is canonical, it would next publish 13b, 14b, 15b.
-type ReconnectingBlockProvider interface {
-	// StartStreamingFromHeight and StartStreamingFromHash return the streaming channel and a function to cancel/clean-up the stream with
-	StartStreamingFromHeight(height *big.Int) (*BlockStream, error)
-	StartStreamingFromHash(latestHash gethcommon.Hash) (*BlockStream, error)
-	IsLatest(hash *types.Block) bool  // returns true if hash is of the latest known L1 head block
-	HealthStatus() L1RepositoryStatus // returns whether the blockprovider is healthy
 }
 
 type BlockStream struct {

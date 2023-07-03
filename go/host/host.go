@@ -212,6 +212,7 @@ func (h *host) Start() error {
 	return nil
 }
 
+// HandleBlock is called by the L1 repository. The host is subscribed to receive new blocks.
 func (h *host) HandleBlock(block *types.Block) {
 	h.logger.Debug("Received L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
 	// record the newest block we've seen
@@ -393,7 +394,7 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 	isL1Synced := h.enclaveState.InSyncWithL1()
 
 	// Overall health is achieved when all parts are healthy
-	obscuroNodeHealth := h.p2p.HealthCheck() && l1RepositoryStatus.Healthy && enclaveHealthy && isL1Synced
+	obscuroNodeHealth := h.p2p.HealthCheck() && l1RepositoryStatus.OK() && enclaveHealthy && isL1Synced
 
 	return &hostcommon.HealthCheck{
 		HealthCheckHost: &hostcommon.HealthCheckHost{

@@ -7,12 +7,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/host"
+
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -27,7 +28,7 @@ var (
 
 // Repository is a host service for subscribing to new blocks and looking up L1 data
 type Repository struct {
-	subscribers []BlockHandler
+	subscribers []host.L1BlockHandler
 	// this eth client should only be used by the repository, the repository may "reconnect" it at any time and don't want to interfere with other processes
 	ethClient ethadapter.EthClient
 	logger    gethlog.Logger
@@ -59,21 +60,19 @@ func (r *Repository) Stop() error {
 
 func (r *Repository) HealthStatus() *host.L1RepositoryStatus {
 	// todo (@matt) do proper health status based on last received block or something
-	return &host.L1RepositoryStatus{Healthy: r.running.Load()}
-}
-
-// BlockHandler is an interface for receiving new blocks from the repository as they arrive
-type BlockHandler interface {
-	// HandleBlock will be called in a new goroutine for each new block as it arrives
-	HandleBlock(block *types.Block)
+	errMsg := ""
+	if !r.running.Load() {
+		errMsg = "not running"
+	}
+	return &host.L1RepositoryStatus{ErrMsg: errMsg}
 }
 
 // Subscribe will register a new block handler to receive new blocks as they arrive
-func (r *Repository) Subscribe(handler BlockHandler) {
+func (r *Repository) Subscribe(handler host.L1BlockHandler) {
 	r.subscribers = append(r.subscribers, handler)
 }
 
-// todo (@matt) add unsubscribe, will be needed if enclaves can come and go
+// todo (@matt) add unsubscribe (+ mutex on subscribers list), will be needed if enclaves can come and go
 
 func (r *Repository) FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error) {
 	if prevBlock == r.head {

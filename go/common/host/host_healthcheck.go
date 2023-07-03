@@ -1,5 +1,11 @@
 package host
 
+// HealthStatus is an interface supported by all Services on the host
+type HealthStatus interface {
+	OK() bool
+	Message() string
+}
+
 // HealthCheck is the object returned by the API with the Health and Status of the Node
 type HealthCheck struct {
 	OverallHealth bool
@@ -28,6 +34,13 @@ type P2PStatus struct {
 
 // L1RepositoryStatus represents the status of the L1 repo
 type L1RepositoryStatus struct {
-	Error   string
-	Healthy bool
+	ErrMsg string
+}
+
+func (l *L1RepositoryStatus) OK() bool {
+	return l.ErrMsg == ""
+}
+
+func (l *L1RepositoryStatus) Message() string {
+	return l.ErrMsg
 }
