@@ -128,6 +128,7 @@ type Storage interface {
 	AttestationStorage
 	CrossChainMessagesStorage
 	EnclaveKeyStorage
+	ScanStorage
 	io.Closer
 
 	// HealthCheck returns whether the storage is deemed healthy or not
@@ -150,4 +151,8 @@ type Storage interface {
 
 	// TrieDB - return the underlying trie database
 	TrieDB() *trie.Database
+}
+
+type ScanStorage interface {
+	GetContractCount() (*big.Int, error)
 }

@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"fmt"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 // Utilities for working with geth structures
+
+// EmptyHash is useful for comparisons to check if hash has been set
+var EmptyHash = gethcommon.Hash{}
 
 // LCA - returns the latest common ancestor of the 2 blocks or an error if no common ancestor is found
 func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) (*types.Block, error) {
