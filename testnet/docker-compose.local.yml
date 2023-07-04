@@ -12,11 +12,6 @@ services:
     build:
       context: $ROOT_PATH
       dockerfile: ./dockerfiles/host.Dockerfile
-  contractdeployer:
-    image: "testnetobscuronet.azurecr.io/obscuronet/contractdeployer:latest"
-    build:
-      context: $ROOT_PATH
-      dockerfile: ./testnet/contractdeployer.Dockerfile
   enclave:
     image: "testnetobscuronet.azurecr.io/obscuronet/enclave:latest"
     build:
@@ -31,19 +26,19 @@ services:
     image: "testnetobscuronet.azurecr.io/obscuronet/obscuroscan:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./testnet/obscuroscan.Dockerfile
+      dockerfile: ./../tools/obscuroscan/Dockerfile
   hardhat-deployer:
     image: "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./testnet/hardhatdeployer.Dockerfile
+      dockerfile: ./../tools/contractdeployer/Dockerfile
   wallet-extension:
     image: "testnetobscuronet.azurecr.io/obscuronet/walletextension:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./testnet/walletextension.Dockerfile
+      dockerfile: ./../tools/walletextension/Dockerfile
   faucet:
     image: "testnetobscuronet.azurecr.io/obscuronet/faucet:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./tools/faucet/Dockerfile
+      dockerfile: ./../tools/faucet/Dockerfile
