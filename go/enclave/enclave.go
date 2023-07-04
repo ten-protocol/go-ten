@@ -429,11 +429,6 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 }
 
 func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	ingestion, err := e.l1BlockProcessor.Process(br, isLatest)
-	if err != nil {
-		return nil, err
-	}
-
 	rollup, err := e.rollupConsumer.ProcessL1Block(br)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
@@ -445,6 +440,11 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 		if err = e.rollupConsumer.ProcessRollup(rollup); err != nil {
 			return nil, err
 		}
+	}
+
+	ingestion, err := e.l1BlockProcessor.Process(br, isLatest)
+	if err != nil {
+		return nil, err
 	}
 
 	return ingestion, nil

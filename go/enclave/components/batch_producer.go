@@ -47,6 +47,9 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 
 	// These variables will be used to create the new batch
 	parent, err := bp.storage.FetchBatchHeader(context.ParentPtr)
+	if errors.Is(err, errutil.ErrNotFound) {
+		return nil, errutil.ErrAncestorBatchNotFound
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve parent batch %s. Cause: %w", context.ParentPtr, err)
 	}
