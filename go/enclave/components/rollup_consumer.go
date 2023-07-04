@@ -3,7 +3,6 @@ package components
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"sort"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -135,12 +134,6 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*com
 	})
 
 	return rollups
-}
-
-// IsGenesis indicates whether the rollup is the genesis rollup.
-// todo (#718) - Change this to a check against a hardcoded genesis hash.
-func IsGenesis(rollupHeader *common.RollupHeader) bool {
-	return rollupHeader.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
 }
 
 // Validates and stores the rollup in a given block. Returns nil, nil when no rollup was found.
