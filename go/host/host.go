@@ -163,6 +163,13 @@ func NewHost(
 	return host
 }
 
+func (h *host) RegisterService(name string, service hostcommon.Service) {
+	if _, ok := h.services[name]; ok {
+		h.logger.Crit("service already registered", "name", name)
+	}
+	h.services[name] = service
+}
+
 // Start validates the host config and starts the Host in a go routine - immediately returns after
 func (h *host) Start() error {
 	if h.stopControl.IsStopping() {
@@ -1126,14 +1133,7 @@ func (h *host) catchUpL1Block() bool {
 	return true
 }
 
-func (h *host) RegisterService(name string, service hostcommon.Service) {
-	if _, ok := h.services[name]; ok {
-		h.logger.Crit("service already registered", "name", name)
-	}
-	h.services[name] = service
-}
-
-func (h *host) GetService(name string) hostcommon.Service {
+func (h *host) getService(name string) hostcommon.Service {
 	service, ok := h.services[name]
 	if !ok {
 		h.logger.Crit("requested service not registered", "name", name)
@@ -1142,5 +1142,5 @@ func (h *host) GetService(name string) hostcommon.Service {
 }
 
 func (h *host) l1Repo() hostcommon.L1BlockRepository {
-	return h.GetService(hostcommon.L1BlockRepositoryName).(hostcommon.L1BlockRepository)
+	return h.getService(hostcommon.L1BlockRepositoryName).(hostcommon.L1BlockRepository)
 }
