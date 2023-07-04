@@ -1104,7 +1104,10 @@ func (h *host) catchUpL1Block() bool {
 	h.logger.Trace("fetching next block", log.BlockHashKey, prevHead)
 	block, isLatest, err := h.l1Repository.FetchNextBlock(prevHead)
 	if err != nil {
-		h.logger.Warn("unable to fetch next L1 block", log.ErrKey, err)
+		// ErrNoNext block occurs sometimes if we caught up with the L1 head, but other errors are unexpected
+		if !errors.Is(err, l1.ErrNoNextBlock) {
+			h.logger.Warn("unexpected error fetching next L1 block", log.ErrKey, err)
+		}
 		return false // nothing to do if we can't fetch the next block
 	}
 	h.submitBlockLock.Lock()
