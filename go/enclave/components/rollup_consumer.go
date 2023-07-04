@@ -253,8 +253,12 @@ func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
 			return batchFoundErr
 		}
 		receipts, err := rc.batchRegistry.ValidateBatch(batch)
+		if errors.Is(err, errutil.ErrBlockForBatchNotFound) {
+			rc.logger.Warn("Unable to validate batch due to it being on a different chain.", log.BatchHashKey, batch.Hash())
+			continue
+		}
 		if err != nil {
-			rc.logger.Error("Attempted to store incorrect batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
+			rc.logger.Warn("Failed validating batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
 			continue
 			//return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
 		}
