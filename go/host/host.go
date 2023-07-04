@@ -54,8 +54,9 @@ const (
 
 // Implementation of host.Host.
 type host struct {
-	config  *config.HostConfig
-	shortID uint64
+	config   *config.HostConfig
+	shortID  uint64
+	services map[string]hostcommon.Service // host services - registered by name for health checks, start and stop
 
 	p2p               hostcommon.P2P        // For communication with other Obscuro nodes
 	ethClient         ethadapter.EthClient  // For communication with the L1 node
@@ -74,7 +75,6 @@ type host struct {
 	batchP2PCh     chan common.EncodedBatchMsg     // The channel that new batches from peers are sent to
 	batchRequestCh chan common.EncodedBatchRequest // The channel that batch requests from peers are sent to
 
-	l1Repository    *l1.Repository
 	submitBlockLock sync.Mutex // host should only submit one block to enclave at a time (probably not needed in enclave-guardian but here for safety for now)
 
 	db *db.DB // Stores the host's publicly-available data
@@ -130,7 +130,6 @@ func NewHost(
 		batchP2PCh:     make(chan common.EncodedBatchMsg),
 		batchRequestCh: make(chan common.EncodedBatchRequest),
 
-		l1Repository:    l1Repo,
 		submitBlockLock: sync.Mutex{},
 
 		// Initialize the host DB
@@ -146,6 +145,8 @@ func NewHost(
 
 		stopControl: stopcontrol.New(),
 	}
+
+	host.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
 
 	var prof *profiler.Profiler
 	if config.ProfilerEnabled {
@@ -175,9 +176,12 @@ func (h *host) Start() error {
 		),
 	)
 
-	err := h.l1Repository.Start()
-	if err != nil {
-		return errors.Wrap(err, "could not start L1 repository")
+	// start all registered services
+	for name, service := range h.services {
+		err := service.Start()
+		if err != nil {
+			return errors.Wrapf(err, "could not start service=%s", name)
+		}
 	}
 
 	h.validateConfig()
@@ -350,9 +354,11 @@ func (h *host) Stop() error {
 	h.interrupter.Close()
 	h.shutdownGroup.Wait()
 
-	err := h.l1Repository.Stop()
-	if err != nil {
-		return fmt.Errorf("failed to stop L1 repository - %w", err)
+	// stop all registered services
+	for name, service := range h.services {
+		if err := service.Stop(); err != nil {
+			h.logger.Error("failed to stop service", "service", name, log.ErrKey, err)
+		}
 	}
 
 	if err := h.p2p.StopListening(); err != nil {
@@ -390,16 +396,20 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 		h.logger.Error("unable to HealthCheck enclave", log.ErrKey, err)
 	}
 
-	l1RepositoryStatus := h.l1Repository.HealthStatus()
+	// todo (@matt) make the host health check more generic, it should just collate the health of all services
+	//   (so at this point we just loop through all services and call their health check, collate the responses)
+	l1RepoService := h.l1Repo().(hostcommon.Service)
+	l1RepoHealthy := l1RepoService.HealthStatus().OK()
+
 	isL1Synced := h.enclaveState.InSyncWithL1()
 
 	// Overall health is achieved when all parts are healthy
-	obscuroNodeHealth := h.p2p.HealthCheck() && l1RepositoryStatus.OK() && enclaveHealthy && isL1Synced
+	obscuroNodeHealth := h.p2p.HealthCheck() && l1RepoHealthy && enclaveHealthy && isL1Synced
 
 	return &hostcommon.HealthCheck{
 		HealthCheckHost: &hostcommon.HealthCheckHost{
 			P2PStatus: h.p2p.Status(),
-			L1Repo:    l1RepositoryStatus,
+			L1Repo:    l1RepoHealthy,
 			L1Synced:  isL1Synced,
 		},
 		HealthCheckEnclave: &hostcommon.HealthCheckEnclave{
@@ -435,8 +445,8 @@ func (h *host) startProcessing() {
 		go h.startRollupProduction() // periodically request a new rollup from enclave
 	}
 
-	h.l1Repository.Subscribe(h) // start receiving new L1 blocks as they arrive (they'll be ignored if we're still behind)
-	go h.startBatchStreaming()  // streams batches and events from the enclave.
+	h.l1Repo().Subscribe(h)    // start receiving new L1 blocks as they arrive (they'll be ignored if we're still behind)
+	go h.startBatchStreaming() // streams batches and events from the enclave.
 
 	// Main Processing Loop -
 	// - Process new blocks from the L1 node
@@ -816,7 +826,7 @@ func (h *host) extractReceipts(block *types.Block) types.Receipts {
 func (h *host) awaitSecret(afterBlock *types.Block) error {
 	awaitFromBlock := afterBlock.Hash()
 	err := retry.Do(func() error {
-		nextBlock, _, err := h.l1Repository.FetchNextBlock(awaitFromBlock)
+		nextBlock, _, err := h.l1Repo().FetchNextBlock(awaitFromBlock)
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
@@ -1102,7 +1112,7 @@ func (h *host) catchUpL1Block() bool {
 	}
 	prevHead := h.enclaveState.GetEnclaveL1Head()
 	h.logger.Trace("fetching next block", log.BlockHashKey, prevHead)
-	block, isLatest, err := h.l1Repository.FetchNextBlock(prevHead)
+	block, isLatest, err := h.l1Repo().FetchNextBlock(prevHead)
 	if err != nil {
 		h.logger.Warn("unable to fetch next L1 block", log.ErrKey, err)
 		return false // nothing to do if we can't fetch the next block
@@ -1114,4 +1124,23 @@ func (h *host) catchUpL1Block() bool {
 		h.logger.Warn("unable to process L1 block", log.ErrKey, err)
 	}
 	return true
+}
+
+func (h *host) RegisterService(name string, service hostcommon.Service) {
+	if _, ok := h.services[name]; ok {
+		h.logger.Crit("service already registered", "name", name)
+	}
+	h.services[name] = service
+}
+
+func (h *host) GetService(name string) hostcommon.Service {
+	service, ok := h.services[name]
+	if !ok {
+		h.logger.Crit("requested service not registered", "name", name)
+	}
+	return service
+}
+
+func (h *host) l1Repo() hostcommon.L1BlockRepository {
+	return h.GetService(hostcommon.L1BlockRepositoryName).(hostcommon.L1BlockRepository)
 }

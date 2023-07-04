@@ -6,6 +6,11 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
+const (
+	// service names - these are the keys used to register known services with the host
+	L1BlockRepositoryName = "l1-block-repo"
+)
+
 // The host has a number of services that encapsulate the various responsibilities of the host.
 // This file contains service-level abstractions and utilities, as well as all the interfaces for these services, code
 // should depend on these interfaces rather than the concrete implementations.
