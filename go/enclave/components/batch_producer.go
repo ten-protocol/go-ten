@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
+	"sync"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -31,6 +32,7 @@ type batchProducerImpl struct {
 	crossChainProcessors *crosschain.Processors
 	genesis              *genesis.Genesis
 	logger               gethlog.Logger
+	stateDBMutex         sync.Mutex
 }
 
 func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *genesis.Genesis, logger gethlog.Logger) BatchProducer {
@@ -39,6 +41,7 @@ func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *ge
 		crossChainProcessors: cc,
 		genesis:              genesis,
 		logger:               logger,
+		stateDBMutex:         sync.Mutex{},
 	}
 }
 
@@ -108,6 +111,8 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 		Batch:    batch,
 		Receipts: txReceipts,
 		Commit: func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
+			bp.stateDBMutex.Lock()
+			defer bp.stateDBMutex.Unlock()
 			h, err := stateDB.Commit(deleteEmptyObjects)
 			if err != nil {
 				return gethcommon.Hash{}, err
