@@ -438,12 +438,14 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 	if rollup != nil {
 		// read batch data from rollup, verify and store it
 		if err = e.rollupConsumer.ProcessRollup(rollup); err != nil {
+			e.logger.Error("Failed processing rollup", log.ErrKey, err)
 			return nil, err
 		}
 	}
 
 	ingestion, err := e.l1BlockProcessor.Process(br, isLatest)
 	if err != nil {
+		e.logger.Error("Failed ingesting block", log.ErrKey, err)
 		return nil, err
 	}
 

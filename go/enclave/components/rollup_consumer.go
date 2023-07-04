@@ -146,26 +146,9 @@ func IsGenesis(rollupHeader *common.RollupHeader) bool {
 // Validates and stores the rollup in a given block. Returns nil, nil when no rollup was found.
 // todo (#718) - design a mechanism to detect a case where the rollup doesn't contain any batches (despite batches arriving via P2P)
 func (rc *rollupConsumerImpl) processRollup(block *types.Block, rollup *common.ExtRollup) error {
-	latestRollup, err := getLatestRollupBeforeBlock(block, rc.storage, rc.logger)
-	if err != nil && !errors.Is(err, db.ErrNoRollups) {
-		return fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
-	}
-
-	// If this is the first rollup we've ever received, we check that it's the genesis rollup.
-	if latestRollup == nil && !IsGenesis(rollup.Header) {
-		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollup.Header.Number)
-	}
-
-	if err = rc.checkRollupsCorrectlyChained(rollup.Header, latestRollup); err != nil {
-		return fmt.Errorf("rollup was not correctly chained. height=%d hash=%s Cause: %w",
-			rollup.Header.Number, rollup.Hash(), err)
-	}
-
-	// todo (@matt) - store batches from the rollup (important during catch-up)
-
 	// do we need to store the entire rollup?
 	// Should be enough to store the header and the batches
-	if err = rc.storage.StoreRollup(rollup); err != nil {
+	if err := rc.storage.StoreRollup(rollup); err != nil {
 		// todo (@matt) - this seems catastrophic, how do we recover the lost rollup in this case?
 		return fmt.Errorf("could not store rollup. Cause: %w", err)
 	}
@@ -173,67 +156,11 @@ func (rc *rollupConsumerImpl) processRollup(block *types.Block, rollup *common.E
 	// we record the latest rollup published against this L1 block hash
 	rollupHash := rollup.Header.Hash()
 	blockHash := block.Hash()
-	err = rc.storage.UpdateHeadRollup(&blockHash, &rollupHash)
+	err := rc.storage.UpdateHeadRollup(&blockHash, &rollupHash)
 	if err != nil {
 		// todo (@matt) - this also seems catastrophic, would result in bad state unable to ingest further rollups?
 		return fmt.Errorf("unable to update head rollup - %w", err)
 	}
-
-	return nil
-}
-
-// Checks that the rollup:
-//   - Has a number exactly 1 higher than the previous rollup
-//   - Links to the previous rollup by hash
-//   - Has a first batch whose parent is the head batch of the previous rollup
-func (rc *rollupConsumerImpl) checkRollupsCorrectlyChained(rollup *common.RollupHeader, previousRollup *common.RollupHeader) error {
-	if previousRollup == nil {
-		// genesis rollup has no previous rollup to check
-		return nil
-	}
-
-	if rollup.Hash() == previousRollup.Hash() {
-		return ErrDuplicateRollup
-	}
-
-	current := rollup.Number.Uint64()
-	previous := previousRollup.Number.Uint64()
-	if current-previous > 1 {
-		return fmt.Errorf("found gap in rollups between rollup %d and rollup %d",
-			previous, current)
-	}
-
-	// todo - tudor - reinstate these checks after compression
-	// In case we have published two rollups for the same height
-	// This can happen when the first one takes too long to mine
-	if current == previous {
-		/*		if len(previousRollup.Batches) > len(rollup.Batches) {
-					return fmt.Errorf("received duplicate rollup at height %d with less batches than previous rollup", rollup.NumberU64())
-				}
-
-				for idx, batch := range previousRollup.Batches {
-					if rollup.Batches[idx].Hash() != batch.Hash() {
-						return fmt.Errorf("duplicate rollup at height %d has different batches at position %d", rollup.NumberU64(), idx)
-					}
-				}
-		*/
-		return ErrDuplicateRollup
-	}
-
-	if current <= previous {
-		return fmt.Errorf("expected new rollup but rollup %d height was less than or equal to previous rollup %d",
-			current, previous)
-	}
-
-	if rollup.ParentHash != previousRollup.Hash() {
-		return fmt.Errorf("found gap in rollups. Rollup %d did not reference rollup %d by hash",
-			rollup.Number, previousRollup.Number)
-	}
-
-	/*	if len(rollup.Batches) != 0 && previousRollup.HeadBatchHash() != rollup.Batches[0].Header.ParentHash {
-		return fmt.Errorf("found gap in rollup batches. Batches in rollup %d did not chain to batches in rollup %d",
-			rollup.Header.Number, previousRollup.Header.Number)
-	}*/
 
 	return nil
 }
@@ -261,6 +188,7 @@ func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
 			rc.logger.Error("Failed validating batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
 			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
 		}
+
 		err = rc.batchRegistry.StoreBatch(batch, receipts)
 		if err != nil {
 			return err
