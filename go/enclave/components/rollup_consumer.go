@@ -180,7 +180,7 @@ func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
 			return batchFoundErr
 		}
 		receipts, err := rc.batchRegistry.ValidateBatch(batch)
-		if errors.Is(err, errutil.ErrBlockForBatchNotFound) || errors.Is(err, errutil.ErrAncestorBatchNotFound) {
+		if errors.Is(err, errutil.ErrBlockForBatchNotFound) {
 			rc.logger.Warn("Unable to validate batch due to it being on a different chain.", log.BatchHashKey, batch.Hash())
 			continue
 		}

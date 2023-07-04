@@ -48,6 +48,15 @@ func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *ge
 func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
 	defer bp.logger.Info("Batch context processed", log.DurationKey, measure.NewStopwatch())
 
+	// Block is loaded first since if its missing this batch might be based on l1 fork we dont know about
+	// and we want to filter out all fork batches based on not knowing the l1 block
+	block, err := bp.storage.FetchBlock(context.BlockPtr)
+	if errors.Is(err, errutil.ErrNotFound) {
+		return nil, errutil.ErrBlockForBatchNotFound
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to retrieve block %s for batch. Cause: %w", context.BlockPtr, err)
+	}
+
 	// These variables will be used to create the new batch
 	parent, err := bp.storage.FetchBatchHeader(context.ParentPtr)
 	if errors.Is(err, errutil.ErrNotFound) {
@@ -55,13 +64,6 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve parent batch %s. Cause: %w", context.ParentPtr, err)
-	}
-
-	block, err := bp.storage.FetchBlock(context.BlockPtr)
-	if errors.Is(err, errutil.ErrNotFound) {
-		return nil, errutil.ErrBlockForBatchNotFound
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to retrieve block %s for batch. Cause: %w", context.BlockPtr, err)
 	}
 
 	parentBlock := block
