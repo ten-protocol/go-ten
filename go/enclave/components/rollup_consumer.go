@@ -65,7 +65,7 @@ func NewRollupConsumer(
 
 func (rc *rollupConsumerImpl) ProcessL1Block(b *common.BlockAndReceipts) (*common.ExtRollup, error) {
 	stopwatch := measure.NewStopwatch()
-	defer rc.logger.Info("Block processed", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
+	defer rc.logger.Info("Rollup consumer processed block", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
 
 	rollups := rc.extractRollups(b, rc.storage)
 	if len(rollups) == 0 {
