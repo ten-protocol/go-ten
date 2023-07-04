@@ -37,6 +37,7 @@ do
     case "$key" in
             --rpcServerAddress)         rpcServerAddress=${value} ;;
             --receivingPort)            receivingPort=${value} ;;
+            --image)                    docker_image=${value} ;;
             --help)                     help_and_exit ;;
             *)
     esac

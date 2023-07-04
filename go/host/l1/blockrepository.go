@@ -88,6 +88,9 @@ func (r *Repository) FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bo
 	// (which may be a fork, or it may just be the next on the same branch if we are catching-up)
 	blk, err := r.ethClient.BlockByNumber(increment(lca.Number()))
 	if err != nil {
+		if errors.Is(err, ethereum.NotFound) {
+			return nil, false, ErrNoNextBlock
+		}
 		return nil, false, fmt.Errorf("could not find block after latest canon ancestor, height=%s - %w", increment(lca.Number()), err)
 	}
 
