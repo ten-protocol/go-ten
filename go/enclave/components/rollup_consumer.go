@@ -67,7 +67,7 @@ func (rc *rollupConsumerImpl) ProcessL1Block(b *common.BlockAndReceipts) (*commo
 	stopwatch := measure.NewStopwatch()
 	defer rc.logger.Info("Rollup consumer processed block", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
 
-	rollups := rc.extractRollups(b, rc.storage)
+	rollups := rc.extractRollups(b)
 	if len(rollups) == 0 {
 		return nil, nil //nolint:nilnil
 	}
@@ -103,7 +103,7 @@ func (rc *rollupConsumerImpl) getCanonicalRollup(rollups []*common.ExtRollup, b 
 }
 
 // extractRollups - returns a list of the rollups published in this block
-func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts, blockResolver db.BlockResolver) []*common.ExtRollup {
+func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*common.ExtRollup {
 	rollups := make([]*common.ExtRollup, 0)
 	b := br.Block
 
