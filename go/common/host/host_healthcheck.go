@@ -21,7 +21,7 @@ type HealthCheckEnclave struct {
 // HealthCheckHost is the representation of the Health and Status of the Host
 type HealthCheckHost struct {
 	P2PStatus *P2PStatus
-	L1Repo    *L1RepositoryStatus
+	L1Repo    bool
 	L1Synced  bool
 }
 
