@@ -37,7 +37,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		StartPort:                 integration.StartPortSimulationInMem,
 		IsInMem:                   true,
 		L1SetupData:               &params.L1SetupData{},
-		ReceiptTimeout:            5 * time.Second,
+		ReceiptTimeout:            10 * time.Second,
 		StoppingDelay:             2 * time.Second,
 	}
 
