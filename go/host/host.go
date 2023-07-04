@@ -116,8 +116,9 @@ func NewHost(
 	enclStateTracker.OnProcessedBlock(l1StartHash) // this makes sure we start streaming from the right block, will be less clunky in the enclave guardian
 	host := &host{
 		// config
-		config:  config,
-		shortID: common.ShortAddress(config.ID),
+		config:   config,
+		shortID:  common.ShortAddress(config.ID),
+		services: make(map[string]hostcommon.Service),
 
 		// Communication layers.
 		p2p:           p2p,
