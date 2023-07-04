@@ -220,6 +220,8 @@ func (h *host) HandleBlock(block *types.Block) {
 	if !h.enclaveState.InSyncWithL1() {
 		return // ignore blocks until we're up-to-date
 	}
+	h.submitBlockLock.Lock()
+	defer h.submitBlockLock.Unlock()
 	err := h.processL1Block(block, true)
 	if err != nil {
 		h.logger.Warn("error processing L1 block", log.ErrKey, err)
