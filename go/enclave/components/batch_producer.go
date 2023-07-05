@@ -32,7 +32,8 @@ type batchProducerImpl struct {
 	crossChainProcessors *crosschain.Processors
 	genesis              *genesis.Genesis
 	logger               gethlog.Logger
-	stateDBMutex         sync.Mutex
+	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
+	stateDBMutex sync.Mutex
 }
 
 func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *genesis.Genesis, logger gethlog.Logger) BatchProducer {
