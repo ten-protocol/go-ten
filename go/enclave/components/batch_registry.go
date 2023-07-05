@@ -360,7 +360,11 @@ func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash, rollupLimit
 			return batches, nil
 		}
 
-		batch, _ = br.storage.FetchBatchBySeqNo(batch.SeqNo().Uint64() + 1)
+		batch, err = br.storage.FetchBatchBySeqNo(batch.SeqNo().Uint64() + 1)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve batch by sequence number less than the head batch. Cause: %w", err)
+		}
+
 		batches = append(batches, batch)
 		br.logger.Info("Added batch to rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
 	}

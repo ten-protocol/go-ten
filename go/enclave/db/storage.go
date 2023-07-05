@@ -470,6 +470,9 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 	if dbBatch == nil {
 		panic("StoreBatch called without an instance of sql.Batch")
 	}
+	if _, err := s.FetchBatchBySeqNo(batch.SeqNo().Uint64()); err == nil {
+		return fmt.Errorf("batch with same sequence number already exists")
+	}
 
 	if err := obscurorawdb.WriteBatch(dbBatch, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)

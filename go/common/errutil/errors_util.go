@@ -21,7 +21,7 @@ var (
 	ErrBlockAlreadyProcessed = errors.New("block already processed")
 	ErrBlockAncestorNotFound = errors.New("block ancestor not found")
 	ErrBlockForBatchNotFound = errors.New("block for batch not found")
-	ErrAncestorBatchNotFound = errors.New("block for batch not found")
+	ErrAncestorBatchNotFound = errors.New("parent for batch not found")
 )
 
 // BlockRejectError is used as a standard format for error response from enclave for block submission errors
