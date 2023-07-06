@@ -39,6 +39,11 @@ note as N4
  when there are reorgs.
 end note
 
+note as N6
+Add constraint on
+block(is_canonical, height)
+end note
+
 }
 
 package "Config" as C   #LightGreen{
@@ -50,6 +55,12 @@ end note
 
 }
 
+package "Key Value" as KV {
+note as N7
+This is where the stateDB lives.
+Maybe some stuff needed by the embedded geth.
+end note
+}
 
 entity "Batch" as BE.batch {
   *batchHash : binary(32)
@@ -61,6 +72,7 @@ entity "Batch" as BE.batch {
   header : string
   *l1Proof : binary(32) <<FK>>
   *bodyHash : binary(32) <<FK>>
+  *parentHash : binary(32) <<FK>>
 }
 
 entity "Batch Body" as BE.batch_body {
@@ -103,13 +115,13 @@ entity "Event" as BE.event {
   relAddress2 : binary(20)
   relAddress3 : binary(20)
   relAddress4 : binary(20)
-  *batchHash : binary(32) <<FK>>
   *execTxId : number <<FK>>
 }
 
 entity "Block" as BS.block {
   *blockHash : binary(32)
   --
+  *parentHash : binary(32) <<FK>>
   is_canonical : boolean
   height : int
   header : string
@@ -135,19 +147,29 @@ entity "Config" as C.cfg{
  value : binary
 }
 
+entity "KeyValue" as KV.kv{
+ *key : binary
+ --
+ value : binary
+}
+
+
 
 batch_body ||..o{ tx : included in
 batch_body ||..|{ batch
-batch ||..o{ event
 block ||..|{ batch : L1 proof
 block ||..|{ rollup : Published in
 exec_tx ||..|{ event
 batch ||..|{ exec_tx
 tx ||..|{ exec_tx
 block ||..o{ l1_msg
+block ||..|{ block
+batch ||..|{ batch
+
 
 batch_body .. N1
 exec_tx .. N2
 tx .. N3
+block .. N6
 
 @enduml
