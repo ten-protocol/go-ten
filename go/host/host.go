@@ -1017,10 +1017,10 @@ func (h *host) startBatchStreaming() {
 				lastBatch = resp.Batch
 				h.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				if h.config.NodeType == common.Sequencer {
-					h.logger.Info("Batch produced", log.RollupHeightKey, resp.Batch.Header.Number, log.RollupHashKey, resp.Batch.Hash())
+					h.logger.Info("Batch produced", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash())
 					h.storeAndDistributeBatch(resp.Batch)
 				} else {
-					h.logger.Info("Batch streamed on validator?!", log.RollupHeightKey, resp.Batch.Header.Number, log.RollupHashKey, resp.Batch.Hash())
+					h.logger.Info("Batch streamed", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash())
 					h.storeBatch(resp.Batch)
 				}
 			}

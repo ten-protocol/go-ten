@@ -146,7 +146,7 @@ func (b *BatchManager) createBatchRequest() (*common.BatchRequest, error) {
 func (b *BatchManager) latestCanonicalAncestor(batchHash *gethcommon.Hash) (*common.ExtBatch, error) {
 	batch, err := b.db.GetBatch(*batchHash)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve batch. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve batch %s. Cause: %w", *batchHash, err)
 	}
 
 	canonicalBatchHashAtSameHeight, err := b.db.GetBatchHash(batch.Header.Number)

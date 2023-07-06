@@ -17,6 +17,7 @@ var (
 
 	batchHeaderPrefix            = []byte("oh")  // batchHeaderPrefix + num (uint64 big endian) + hash -> header
 	batchHashSuffix              = []byte("on")  // batchHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
+	batchSeqSuffix               = []byte("seq") // batchHeaderPrefix + num (uint64 big endian) + headerHashSuffix -> hash
 	batchBodyPrefix              = []byte("ob")  // batchBodyPrefix + num (uint64 big endian) + hash -> batch body
 	batchNumberPrefix            = []byte("oH")  // batchNumberPrefix + hash -> num (uint64 big endian)
 	rollupHeaderPrefix           = []byte("rh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
@@ -58,6 +59,11 @@ func headBatchAfterL1BlockKey(hash common.L1BlockHash) []byte {
 // For storing and fetching the canonical L2 head batch hash by height.
 func batchHeaderHashKey(number uint64) []byte {
 	return append(append(batchHeaderPrefix, encodeNumber(number)...), batchHashSuffix...)
+}
+
+// For storing and fetching the canonical L2 head batch hash by height.
+func batchSeqHashKey(number uint64) []byte {
+	return append(append(batchHeaderPrefix, encodeNumber(number)...), batchSeqSuffix...)
 }
 
 // For storing and fetching a batch's receipts by batch hash.

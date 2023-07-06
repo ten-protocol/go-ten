@@ -458,9 +458,20 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
 }
 
+func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
+	hash, err := obscurorawdb.ReadBatchBySequenceNum(s.db, seqNum)
+	if err != nil {
+		return nil, err
+	}
+	return s.FetchBatch(*hash)
+}
+
 func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error {
 	if dbBatch == nil {
 		panic("StoreBatch called without an instance of sql.Batch")
+	}
+	if _, err := s.FetchBatchBySeqNo(batch.SeqNo().Uint64()); err == nil {
+		return fmt.Errorf("batch with same sequence number already exists")
 	}
 
 	if err := obscurorawdb.WriteBatch(dbBatch, batch); err != nil {
@@ -478,7 +489,9 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 	if err := obscurorawdb.WriteCurrentBatchSequenceNumber(dbBatch, batch.Header.SequencerOrderNo); err != nil {
 		return fmt.Errorf("could not save the current seqencer number. Cause: %w", err)
 	}
-
+	if err := obscurorawdb.WriteBatchBySequenceNum(dbBatch, batch); err != nil {
+		return fmt.Errorf("could not save the current seqencer number. Cause: %w", err)
+	}
 	// todo fix this as batches always stored even if not canonical
 	if err := obscurorawdb.IncrementContractCreationCount(s.db, dbBatch, receipts); err != nil {
 		return fmt.Errorf("unable to increment contract count")
