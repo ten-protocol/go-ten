@@ -32,15 +32,15 @@ type P2PStatus struct {
 	ReceivedMessages       int64
 }
 
-// L1RepositoryStatus represents the status of the L1 repo
-type L1RepositoryStatus struct {
+// BasicErrHealthStatus represents the status of a service, if the ErrMsg is non-empty then it reports as "not OK"
+type BasicErrHealthStatus struct {
 	ErrMsg string
 }
 
-func (l *L1RepositoryStatus) OK() bool {
+func (l *BasicErrHealthStatus) OK() bool {
 	return l.ErrMsg == ""
 }
 
-func (l *L1RepositoryStatus) Message() string {
+func (l *BasicErrHealthStatus) Message() string {
 	return l.ErrMsg
 }
