@@ -6,6 +6,8 @@ import (
 	sql2 "database/sql"
 	"errors"
 	"fmt"
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/db/orm"
 	"math/big"
 	"strings"
 	"time"
@@ -450,12 +452,23 @@ func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Rece
 	return receipt, nil
 }
 
-func (s *storageImpl) FetchAttestedKey(aggregator gethcommon.Address) (*ecdsa.PublicKey, error) {
-	return obscurorawdb.ReadAttestationKey(s.db, aggregator)
+func (s *storageImpl) FetchAttestedKey(address gethcommon.Address) (*ecdsa.PublicKey, error) {
+	key, err := orm.FetchAttKey(s.db.GetSQLDB(), address)
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", address, err)
+	}
+
+	publicKey, err := ethcrypto.DecompressPubkey(key)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse key from db. Cause: %w", err)
+	}
+
+	return publicKey, nil
 }
 
 func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error {
-	return obscurorawdb.WriteAttestationKey(s.db, aggregator, key)
+	_, err := orm.WriteAttKey(s.db.GetSQLDB(), aggregator, ethcrypto.CompressPubkey(key))
+	return err
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
