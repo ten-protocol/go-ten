@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"database/sql"
+	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -92,37 +93,18 @@ const (
 )
 
 var (
-	edbCredentialsFilepath = filepath.Join(dataDir, "edb-credentials.json")
+	//go:embed edgelessdb/001_init.sql
+	edbInitFile string
 
-	manifestSQLStatements = []string{
-		fmt.Sprintf("CREATE USER %s REQUIRE ISSUER '/CN=%s' SUBJECT '/CN=%s'", dbUser, certIssuer, certSubject),
-		fmt.Sprintf("CREATE DATABASE %s", dbName),
-		fmt.Sprintf("CREATE TABLE %s.%s (%s varbinary(64) primary key, %s mediumblob)", dbName, tableName, keyCol, valueCol),
-		fmt.Sprintf("create table %s.events (topic0 binary(32), topic1 binary(32), topic2 binary(32), topic3 binary(32), topic4 binary(32), datablob mediumblob, blockHash binary(32), blockNumber int, txHash binary(32), txIdx int, logIdx int, address binary(20), lifecycleEvent boolean, relAddress1 binary(20), relAddress2 binary(20), relAddress3 binary(20), relAddress4 binary(20)) ", dbName),
-		fmt.Sprintf("create index IX_RAD1 on %s.events(relAddress1)", dbName),
-		fmt.Sprintf("create index IX_RAD2 on %s.events(relAddress2)", dbName),
-		fmt.Sprintf("create index IX_RAD3 on %s.events(relAddress3)", dbName),
-		fmt.Sprintf("create index IX_RAD4 on %s.events(relAddress4)", dbName),
-		fmt.Sprintf("create index IX_AD on %s.events(address)", dbName),
-		fmt.Sprintf("create index IX_BLH on %s.events(blockHash)", dbName),
-		fmt.Sprintf("create index IX_BLN on %s.events(blockNumber)", dbName),
-		fmt.Sprintf("create index IX_TXH on %s.events(txHash)", dbName),
-		fmt.Sprintf("create index IX_T0 on %s.events(topic0)", dbName),
-		fmt.Sprintf("create index IX_T1 on %s.events(topic1)", dbName),
-		fmt.Sprintf("create index IX_T2 on %s.events(topic2)", dbName),
-		fmt.Sprintf("create index IX_T3 on %s.events(topic3)", dbName),
-		fmt.Sprintf("create index IX_T4 on %s.events(topic4)", dbName),
-		fmt.Sprintf("GRANT ALL ON %s.%s TO %s", dbName, tableName, dbUser),
-		fmt.Sprintf("GRANT ALL ON %s.events TO %s", dbName, dbUser),
-	}
+	edbCredentialsFilepath = filepath.Join(dataDir, "edb-credentials.json")
 
 	edgelessDBStartTimeout = 60 * time.Second
 )
 
 type manifest struct {
-	SQL   []string `json:"sql"`
-	Cert  string   `json:"ca"`
-	Debug bool     `json:"debug"`
+	SQL   string `json:"sql"`
+	Cert  string `json:"ca"`
+	Debug bool   `json:"debug"`
 }
 
 // todo (#1474) - move more of the hardcoded config into this (attestation conf, usernames etc.)
@@ -247,7 +229,7 @@ func performHandshake(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*Edgeles
 	}
 
 	manifest := &manifest{
-		SQL:   manifestSQLStatements,
+		SQL:   edbInitFile,
 		Cert:  caCertPEM,
 		Debug: debugMode,
 	}
