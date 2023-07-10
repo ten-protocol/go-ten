@@ -26,8 +26,8 @@ type Service interface {
 
 // L1BlockRepository provides an interface for the host to request L1 block data (live-streaming and historical)
 type L1BlockRepository interface {
-	// Subscribe will register a block handler to receive new blocks as they arrive
-	Subscribe(handler L1BlockHandler)
+	// Subscribe will register a block handler to receive new blocks as they arrive, returns unsubscribe func
+	Subscribe(handler L1BlockHandler) func()
 
 	FetchBlockByHeight(height int) (*types.Block, error)
 	// FetchNextBlock returns the next canonical block after a given block hash
