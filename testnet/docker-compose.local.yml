@@ -26,19 +26,19 @@ services:
     image: "testnetobscuronet.azurecr.io/obscuronet/obscuroscan:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./../tools/obscuroscan/Dockerfile
+      dockerfile: ./tools/obscuroscan/Dockerfile
   hardhat-deployer:
     image: "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./../tools/contractdeployer/Dockerfile
+      dockerfile: ./tools/hardhatdeployer/Dockerfile
   wallet-extension:
     image: "testnetobscuronet.azurecr.io/obscuronet/walletextension:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./../tools/walletextension/Dockerfile
+      dockerfile: ./tools/walletextension/Dockerfile
   faucet:
     image: "testnetobscuronet.azurecr.io/obscuronet/faucet:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./../tools/faucet/Dockerfile
+      dockerfile: ./tools/faucet/Dockerfile
