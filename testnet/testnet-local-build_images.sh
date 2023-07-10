@@ -48,7 +48,7 @@ command docker build -t testnetobscuronet.azurecr.io/obscuronet/host:latest -f "
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest -f "${tools_path}/hardhatdeployer/Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave:latest -f "${root_path}/dockerfiles/enclave.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest -f "${root_path}/dockerfiles/enclave.debug.Dockerfile" "${root_path}" &
-command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuroscan:latest -f "${tools_path}/obscuroscan/obscuroscan.Dockerfile" "${root_path}" &
+command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuroscan:latest -f "${tools_path}/obscuroscan/Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/faucet:latest -f "${tools_path}/faucet/Dockerfile" "${root_path}" &
 
 wait
