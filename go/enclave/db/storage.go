@@ -6,11 +6,12 @@ import (
 	sql2 "database/sql"
 	"errors"
 	"fmt"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db/orm"
 	"math/big"
 	"strings"
 	"time"
+
+	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/db/orm"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/trie"

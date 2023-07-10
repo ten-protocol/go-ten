@@ -2,17 +2,23 @@ package orm
 
 import (
 	"database/sql"
+	"errors"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	obscurosql "github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 )
 
-const cfgInsert = "insert into config values (?,?)"
-const cfgUpdate = "update config set val=? where key=?"
-const cfgSelect = "select val from config where key=?"
+const (
+	cfgInsert = "insert into config values (?,?)"
+	cfgUpdate = "update config set val=? where key=?"
+	cfgSelect = "select val from config where key=?"
+)
 
-const attInsert = "insert into attestation_key values (?,?)"
-const attSelect = "select key from attestation_key where party=?"
+const (
+	attInsert = "insert into attestation_key values (?,?)"
+	attSelect = "select key from attestation_key where party=?"
+)
 
 func WriteConfigToBatch(dbtx *obscurosql.Batch, key string, value []byte) {
 	dbtx.ExecuteSQL(cfgInsert, key, value)
@@ -43,17 +49,15 @@ func FetchAttKey(db *sql.DB, party common.Address) ([]byte, error) {
 }
 
 func readSingleRow(db *sql.DB, query string, v any) ([]byte, error) {
-	rows, err := db.Query(query, v)
+	var res []byte
+
+	err := db.QueryRow(query, v).Scan(&res)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
 		return nil, err
 	}
-	if !rows.Next() {
-		return nil, errutil.ErrNotFound
-	}
-	var r sql.RawBytes
-	err = rows.Scan(&r)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
+	return res, nil
 }
