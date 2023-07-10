@@ -12,7 +12,8 @@ create table if not exists config
 
 create table if not exists attestation_key
 (
-    party  binary(20) primary key,
+--     party  binary(20) primary key, // todo -pk
+    party  binary(20),
     key binary(33)
 );
 

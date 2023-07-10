@@ -39,7 +39,7 @@ func WriteAttKey(db *sql.DB, party common.Address, key []byte) (sql.Result, erro
 }
 
 func FetchAttKey(db *sql.DB, party common.Address) ([]byte, error) {
-	return readSingleRow(db, attSelect, party)
+	return readSingleRow(db, attSelect, party.Bytes())
 }
 
 func readSingleRow(db *sql.DB, query string, v any) ([]byte, error) {
