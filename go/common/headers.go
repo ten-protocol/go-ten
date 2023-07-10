@@ -22,7 +22,7 @@ var hasherPool = sync.Pool{
 type BatchHeader struct {
 	ParentHash       L2BatchHash
 	Root             StateRoot   `json:"stateRoot"`
-	TxHash           common.Hash `json:"transactionsRoot"` // todo (#1545) - include the synthetic deposits
+	TxHash           common.Hash `json:"transactionsRoot"`
 	ReceiptHash      common.Hash `json:"receiptsRoot"`
 	Number           *big.Int    // height of the batch
 	SequencerOrderNo *big.Int    // multiple batches can be created with the same height in case of L1 reorgs. The sequencer is responsible for including all of them in the rollups.

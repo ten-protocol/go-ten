@@ -8,11 +8,9 @@ import (
 )
 
 var (
-	sharedSecret   = []byte("SharedSecret")
 	sequenceNumber = []byte("SequenceNo")
 	headBatchHash  = []byte("HeadBatch") // headBatchHashPrefix -> curr L2 head batch hash
 
-	attestationKeyPrefix           = []byte("oAK")  // attestationKeyPrefix + address -> key
 	syntheticTransactionsKeyPrefix = []byte("oSTX") // attestationKeyPrefix + address -> key
 
 	batchHeaderPrefix            = []byte("oh")  // batchHeaderPrefix + num (uint64 big endian) + hash -> header
@@ -83,10 +81,6 @@ func contractReceiptKey(contractAddress gethcommon.Address) []byte {
 // txLookupKey = txLookupPrefix + hash
 func txLookupKey(hash common.TxHash) []byte {
 	return append(txLookupPrefix, hash.Bytes()...)
-}
-
-func attestationPkKey(aggregator gethcommon.Address) []byte {
-	return append(attestationKeyPrefix, aggregator.Bytes()...)
 }
 
 func crossChainMessagesKey(blockHash common.L1BlockHash) []byte {

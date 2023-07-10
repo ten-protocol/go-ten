@@ -48,7 +48,7 @@ func (b *BatchManager) IsParentStored(batch *common.ExtBatch) (bool, *common.Bat
 			batchRequest, err := b.createBatchRequest()
 			return false, batchRequest, err
 		}
-		return false, nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+		return false, nil, fmt.Errorf("3. could not retrieve batch header. Cause: %w", err)
 	}
 	return true, nil, nil
 }
@@ -109,7 +109,7 @@ func (b *BatchManager) GetBatches(batchRequest *common.BatchRequest, enclaveClie
 
 		if err != nil {
 			b.logger.Warn("Failed resolving a batch that should exist.", log.ErrKey, err)
-			return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+			return nil, fmt.Errorf("2. could not retrieve batch header. Cause: %w", err)
 		}
 	}
 	batchesToSend = append(batchesToSend, firstBatch)

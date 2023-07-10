@@ -113,7 +113,7 @@ func ReadBatchHeader(db ethdb.KeyValueReader, hash common.L2BatchHash) (*common.
 func readBatchHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
 	data, err := db.Get(batchHeaderKey(hash))
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+		return nil, fmt.Errorf("1. could not retrieve batch header. Cause: %w", err)
 	}
 	return data, nil
 }

@@ -36,7 +36,7 @@ func (db *DB) AddBatch(batch *common.ExtBatch) error {
 	// We check if the batch is already stored, to avoid incrementing the total transaction count twice for one batch.
 	_, err := db.GetBatchHeader(batch.Hash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not retrieve batch header. Cause: %w", err)
+		return fmt.Errorf("4. could not retrieve batch header. Cause: %w", err)
 	}
 	if err == nil {
 		// The batch is already stored, so we return early.

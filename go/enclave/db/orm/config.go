@@ -20,7 +20,7 @@ const (
 	attSelect = "select key from attestation_key where party=?"
 )
 
-func WriteConfigToBatch(dbtx *obscurosql.Batch, key string, value []byte) {
+func WriteConfigToBatch(dbtx *obscurosql.Batch, key string, value any) {
 	dbtx.ExecuteSQL(cfgInsert, key, value)
 }
 

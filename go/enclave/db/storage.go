@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/rlp"
+
 	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db/orm"
 
@@ -35,6 +37,12 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	obscurorawdb "github.com/obscuronet/go-obscuro/go/enclave/db/rawdb"
 )
+
+// todo - this will require a dedicated table when updates are implemented
+const master_seed_cfg = "MASTER_SEED"
+
+// used only by sequencers
+const current_sequence = "CURRENT_SEQ"
 
 // ErrNoRollups is returned if no rollups have been published yet in the history of the network
 // Note: this is not just "not found", we cache at every L1 block what rollup we are up to so we also record that we haven't seen one yet
@@ -87,42 +95,23 @@ func (s *storageImpl) Close() error {
 }
 
 func (s *storageImpl) FetchHeadBatch() (*core.Batch, error) {
-	headHash, err := obscurorawdb.ReadL2HeadBatch(s.db)
-	if err != nil {
-		return nil, err
-	}
-	if (bytes.Equal(headHash.Bytes(), gethcommon.Hash{}.Bytes())) {
-		return nil, errutil.ErrNotFound
-	}
-	return s.FetchBatch(*headHash)
+	return orm.FetchHeadBatch(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) FetchCurrentSequencerNo() (*big.Int, error) {
-	return obscurorawdb.ReadBatchSequenceNumber(s.db)
+	return orm.FetchCurrentSequencerNo(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
-	batch, err := obscurorawdb.ReadBatch(s.db, hash)
-	if err != nil {
-		return nil, err
-	}
-	return batch, nil
+	return orm.FetchBatch(s.db.GetSQLDB(), hash)
 }
 
 func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error) {
-	batchHeader, err := obscurorawdb.ReadBatchHeader(s.db, hash)
-	if err != nil {
-		return nil, err
-	}
-	return batchHeader, nil
+	return orm.ReadBatchHeader(s.db.GetSQLDB(), hash)
 }
 
 func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
-	hash, err := obscurorawdb.ReadCanonicalBatchHash(s.db, height)
-	if err != nil {
-		return nil, err
-	}
-	return s.FetchBatch(*hash)
+	return orm.FetchCanonicalBatchByHeight(s.db.GetSQLDB(), height)
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block) {
@@ -150,11 +139,29 @@ func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
 }
 
 func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
-	return obscurorawdb.WriteSharedSecret(s.db, secret)
+	enc, err := rlp.EncodeToBytes(secret)
+	if err != nil {
+		return fmt.Errorf("could not encode shared secret. Cause: %w", err)
+	}
+	_, err = orm.WriteConfig(s.db.GetSQLDB(), master_seed_cfg, enc)
+	if err != nil {
+		return fmt.Errorf("could not shared secret in DB. Cause: %w", err)
+	}
+	return nil
 }
 
 func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
-	return obscurorawdb.ReadSharedSecret(s.db)
+	var ss crypto.SharedEnclaveSecret
+
+	cfg, err := orm.FetchConfig(s.db.GetSQLDB(), master_seed_cfg)
+	if err != nil {
+		return nil, err
+	}
+	if err := rlp.DecodeBytes(cfg, &ss); err != nil {
+		return nil, fmt.Errorf("could not decode shared secret")
+	}
+
+	return &ss, nil
 }
 
 func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
@@ -473,19 +480,21 @@ func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
-	hash, err := obscurorawdb.ReadBatchBySequenceNum(s.db, seqNum)
-	if err != nil {
-		return nil, err
-	}
-	return s.FetchBatch(*hash)
+	return orm.FindBatchBySeqNo(s.db.GetSQLDB(), seqNum)
 }
 
 func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error {
 	if dbBatch == nil {
 		panic("StoreBatch called without an instance of sql.Batch")
 	}
+
 	if _, err := s.FetchBatchBySeqNo(batch.SeqNo().Uint64()); err == nil {
-		return fmt.Errorf("batch with same sequence number already exists")
+		return nil
+		// return fmt.Errorf("batch with same sequence number already exists: %d", batch.SeqNo())
+	}
+
+	if err := orm.WriteBatch(dbBatch, batch); err != nil {
+		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
 
 	if err := obscurorawdb.WriteBatch(dbBatch, batch); err != nil {
@@ -500,9 +509,7 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 	if err := obscurorawdb.WriteContractCreationTxs(dbBatch, receipts); err != nil {
 		return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
 	}
-	if err := obscurorawdb.WriteCurrentBatchSequenceNumber(dbBatch, batch.Header.SequencerOrderNo); err != nil {
-		return fmt.Errorf("could not save the current seqencer number. Cause: %w", err)
-	}
+	// orm.UpdateConfigToBatch(dbBatch, current_sequence, batch.Header.SequencerOrderNo.Bytes())
 	if err := obscurorawdb.WriteBatchBySequenceNum(dbBatch, batch); err != nil {
 		return fmt.Errorf("could not save the current seqencer number. Cause: %w", err)
 	}

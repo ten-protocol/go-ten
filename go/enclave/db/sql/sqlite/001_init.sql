@@ -6,15 +6,18 @@ create table if not exists keyvalue
 
 create table if not exists config
 (
-    key  varchar(64) primary key,
+    key varchar(64) primary key,
     val mediumblob
 );
+
+insert into config
+values ('CURRENT_SEQ', -1);
 
 create table if not exists attestation_key
 (
 --     party  binary(20) primary key, // todo -pk
-    party  binary(20),
-    key binary(33)
+    party binary(20),
+    key   binary(33)
 );
 
 create table if not exists block

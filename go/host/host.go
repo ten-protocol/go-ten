@@ -716,7 +716,7 @@ func (h *host) startBatchProduction() {
 			h.logger.Debug("create batch")
 			err := h.enclaveClient.CreateBatch()
 			if err != nil {
-				h.logger.Warn("unable to produce batch", log.ErrKey, err)
+				h.logger.Error("unable to produce batch", log.ErrKey, err)
 			}
 		case <-h.interrupter.Done():
 			return
