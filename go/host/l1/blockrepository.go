@@ -64,7 +64,7 @@ func (r *Repository) HealthStatus() host.HealthStatus {
 	if !r.running.Load() {
 		errMsg = "not running"
 	}
-	return &host.L1RepositoryStatus{ErrMsg: errMsg}
+	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
 // Subscribe will register a new block handler to receive new blocks as they arrive
