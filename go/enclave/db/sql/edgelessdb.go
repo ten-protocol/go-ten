@@ -103,9 +103,9 @@ var (
 )
 
 type manifest struct {
-	SQL   string `json:"sql"`
-	Cert  string `json:"ca"`
-	Debug bool   `json:"debug"`
+	SQL   []string `json:"sql"`
+	Cert  string   `json:"ca"`
+	Debug bool     `json:"debug"`
 }
 
 // todo (#1474) - move more of the hardcoded config into this (attestation conf, usernames etc.)
