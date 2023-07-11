@@ -41,9 +41,6 @@ import (
 // todo - this will require a dedicated table when updates are implemented
 const master_seed_cfg = "MASTER_SEED"
 
-// used only by sequencers
-const current_sequence = "CURRENT_SEQ"
-
 // ErrNoRollups is returned if no rollups have been published yet in the history of the network
 // Note: this is not just "not found", we cache at every L1 block what rollup we are up to so we also record that we haven't seen one yet
 var ErrNoRollups = errors.New("no rollups have been published")
