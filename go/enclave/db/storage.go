@@ -196,11 +196,7 @@ func (s *storageImpl) HealthCheck() (bool, error) {
 }
 
 func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error) {
-	l2HeadBatch, err := obscurorawdb.ReadL2HeadBatchForBlock(s.db, blockHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not read L2 head batch for block. Cause: %w", err)
-	}
-	return obscurorawdb.ReadBatch(s.db, *l2HeadBatch)
+	return orm.FetchHeadBatchForBlock(s.db.GetSQLDB(), blockHash)
 }
 
 func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*common.RollupHeader, error) {
