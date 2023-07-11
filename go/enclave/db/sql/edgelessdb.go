@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -229,7 +230,7 @@ func performHandshake(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*Edgeles
 	}
 
 	manifest := &manifest{
-		SQL:   edbInitFile,
+		SQL:   createManifestFormat(edbInitFile),
 		Cert:  caCertPEM,
 		Debug: debugMode,
 	}
@@ -268,6 +269,18 @@ func performHandshake(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*Edgeles
 	}
 
 	return edbCreds, nil
+}
+
+func createManifestFormat(content string) (result []string) {
+	lines := strings.Split(content, ";")
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		trimmed = strings.ReplaceAll(trimmed, "\n", " ")
+		if len(trimmed) > 0 {
+			result = append(result, trimmed)
+		}
+	}
+	return
 }
 
 func createTLSCfg(creds *EdgelessDBCredentials) (*tls.Config, error) {

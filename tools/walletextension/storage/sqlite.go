@@ -130,3 +130,27 @@ func (s *SqliteDatabase) GetAccounts(userID []byte) ([]common.AccountDB, error) 
 
 	return accounts, nil
 }
+
+func (s *SqliteDatabase) GetAllUsers() ([]common.UserDB, error) {
+	rows, err := s.db.Query("SELECT user_id, private_key FROM users")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []common.UserDB
+	for rows.Next() {
+		var user common.UserDB
+		err = rows.Scan(&user.UserID, &user.PrivateKey)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
