@@ -152,8 +152,15 @@ func ethRequestHandler(walletExt *walletextension.WalletExtension, conn userconn
 		return
 	}
 
+	// Get userID
+	hexUserID, err := getQueryParameter(conn.ReadRequestParams(), common.UserQueryParameter)
+	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("user not found in the query params: %w. Using the default user", err).Error())
+		hexUserID = common.DefaultUser // todo (@ziga) - this can be removed once old WE endpoints are removed
+	}
+
 	// todo (@pedro) remove this conn dependency
-	response, err := walletExt.ProxyEthRequest(request, conn)
+	response, err := walletExt.ProxyEthRequest(request, conn, hexUserID)
 	if err != nil {
 		walletExt.Logger().Error("error while proxying request", log.ErrKey, err)
 		response = common.CraftErrorResponse(err)
