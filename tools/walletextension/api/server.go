@@ -12,6 +12,7 @@ import (
 )
 
 //go:embed static
+//go:embed staticOG
 var staticFiles embed.FS
 
 const staticDir = "static"
@@ -64,6 +65,12 @@ func createHTTPServer(address string, routes []Route) *http.Server {
 		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
 	}
 	serveMux.Handle(common.PathViewingKeys, http.StripPrefix(common.PathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
+
+	noPrefixStaticFilesOG, err := fs.Sub(staticFiles, "staticOG")
+	if err != nil {
+		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
+	}
+	serveMux.Handle(common.PathObscuroGateway, http.StripPrefix(common.PathObscuroGateway, http.FileServer(http.FS(noPrefixStaticFilesOG))))
 
 	// Creates the actual http server with a ReadHeaderTimeout to avoid Potential Slowloris Attack
 	server := &http.Server{Addr: address, Handler: serveMux, ReadHeaderTimeout: common.ReaderHeadTimeout}
