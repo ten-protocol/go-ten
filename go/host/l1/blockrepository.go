@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/subscription"
+
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
 	"github.com/ethereum/go-ethereum"
@@ -28,7 +30,7 @@ var (
 
 // Repository is a host service for subscribing to new blocks and looking up L1 data
 type Repository struct {
-	subscribers []host.L1BlockHandler
+	blockSubscribers *subscription.Manager[host.L1BlockHandler]
 	// this eth client should only be used by the repository, the repository may "reconnect" it at any time and don't want to interfere with other processes
 	ethClient ethadapter.EthClient
 	logger    gethlog.Logger
@@ -39,9 +41,10 @@ type Repository struct {
 
 func NewL1Repository(ethClient ethadapter.EthClient, logger gethlog.Logger) *Repository {
 	return &Repository{
-		ethClient: ethClient,
-		running:   atomic.Bool{},
-		logger:    logger,
+		blockSubscribers: subscription.NewManager[host.L1BlockHandler](),
+		ethClient:        ethClient,
+		running:          atomic.Bool{},
+		logger:           logger,
 	}
 }
 
@@ -58,21 +61,19 @@ func (r *Repository) Stop() error {
 	return nil
 }
 
-func (r *Repository) HealthStatus() *host.L1RepositoryStatus {
+func (r *Repository) HealthStatus() host.HealthStatus {
 	// todo (@matt) do proper health status based on last received block or something
 	errMsg := ""
 	if !r.running.Load() {
 		errMsg = "not running"
 	}
-	return &host.L1RepositoryStatus{ErrMsg: errMsg}
+	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
-// Subscribe will register a new block handler to receive new blocks as they arrive
-func (r *Repository) Subscribe(handler host.L1BlockHandler) {
-	r.subscribers = append(r.subscribers, handler)
+// Subscribe will register a new block handler to receive new blocks as they arrive, returns unsubscribe func
+func (r *Repository) Subscribe(handler host.L1BlockHandler) func() {
+	return r.blockSubscribers.Subscribe(handler)
 }
-
-// todo (@matt) add unsubscribe (+ mutex on subscribers list), will be needed if enclaves can come and go
 
 func (r *Repository) FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error) {
 	if prevBlock == r.head {
@@ -140,7 +141,7 @@ func (r *Repository) streamLiveBlocks() {
 		select {
 		case header := <-liveStream:
 			r.head = header.Hash()
-			for _, handler := range r.subscribers {
+			for _, handler := range r.blockSubscribers.Subscribers() {
 				block, err := r.ethClient.BlockByHash(header.Hash())
 				if err != nil {
 					r.logger.Error("error fetching new block", log.ErrKey, err)

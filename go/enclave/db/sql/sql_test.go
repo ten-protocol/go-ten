@@ -15,6 +15,8 @@ import (
 )
 
 var (
+	createKVTable = `create table if not exists keyvalue (ky varbinary(64) primary key, val mediumblob);`
+
 	key1 = hexutils.HexToBytes("0000000000000000000000000000000000000000000000000000000000000001")
 	key2 = hexutils.HexToBytes("0000000000000000000000000000000000000000000000000000000000000002")
 	// this key has a different prefix to the others, so we can filter it out of iterator

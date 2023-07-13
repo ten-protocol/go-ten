@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"regexp"
 
 	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
 
@@ -26,10 +25,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-var (
-	ErrSubscribeFailHTTP     = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
-	authenticateMessageRegex = regexp.MustCompile(common.MessageFormatRegex)
-)
+var ErrSubscribeFailHTTP = fmt.Sprintf("received an %s request but the connection does not support subscriptions", rpc.Subscribe)
 
 // WalletExtension handles the management of viewing keys and the forwarding of Ethereum JSON-RPC requests.
 type WalletExtension struct {
@@ -69,7 +65,7 @@ func (w *WalletExtension) Logger() gethlog.Logger {
 }
 
 // ProxyEthRequest proxys an incoming user request to the enclave
-func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, conn userconn.UserConn) (map[string]interface{}, error) {
+func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, conn userconn.UserConn, hexUserID string) (map[string]interface{}, error) {
 	response := map[string]interface{}{}
 	// all responses must contain the request id. Both successful and unsuccessful.
 	response[common.JSONKeyRPCVersion] = jsonrpc.Version
@@ -78,12 +74,14 @@ func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, co
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
 
-	// todo (@ziga) Remove this code after implementation for all userIDs is done
-	defaultAccManager, err := w.userAccountManager.GetUserAccountManager(common.DefaultUser)
+	// get account manager for current user (if there is no users in the query parameters - use defaultUser for WE endpoints)
+	selectedAccountManager, err := w.userAccountManager.GetUserAccountManager(hexUserID)
 	if err != nil {
+		w.Logger().Error(fmt.Errorf("error getting accountManager for user (%s), %w", hexUserID, err).Error())
 		return nil, err
 	}
-	err = defaultAccManager.ProxyRequest(request, &rpcResp, conn)
+
+	err = selectedAccountManager.ProxyRequest(request, &rpcResp, conn)
 
 	if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
 		response = common.CraftErrorResponse(err)
@@ -178,20 +176,24 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 	}
 
 	// create UserID and store it in the database with the private key
-	userID := calculateUserID(viewingKeyPrivate)
+	userID := common.CalculateUserID(viewingKeyPrivate)
 	err = w.storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {
 		w.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
 		return "", err
 	}
 
-	return hex.EncodeToString(userID), nil
+	hexUserID := hex.EncodeToString(userID)
+
+	w.userAccountManager.AddAndReturnAccountManager(hexUserID)
+
+	return hexUserID, nil
 }
 
 // AddAddressToUser checks if message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
 func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, signature []byte) error {
 	// parse the message to get userID and account address
-	messageUserID, messageAddressHex, err := getUserIDAndAddressFromMessage(message)
+	messageUserID, messageAddressHex, err := common.GetUserIDAndAddressFromMessage(message)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("submitted message (%s) is not in the correct format", message).Error())
 		return err
@@ -213,7 +215,7 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, sig
 	}
 
 	// register the account for that viewing key
-	userIDBytes, err := getUserIDbyte(hexUserID)
+	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
 		return errors.New("error decoding userID. It should be in hex format")
@@ -223,12 +225,28 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, sig
 		w.Logger().Error(fmt.Errorf("error while storing account (%s) for user (%s): %w", addressFromMessage.Hex(), hexUserID, err).Error())
 		return err
 	}
+
+	// Get account manager for current userID (and create it if it doesn't exist) accManager := w.userAccountManager.AddAndReturnAccountManager(messageUserID)
+	privateKeyBytes, err := w.storage.GetUserPrivateKey(userIDBytes)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error getting private key for user: (%s), %w", hexUserID, err).Error())
+	}
+
+	accManager := w.userAccountManager.AddAndReturnAccountManager(hexUserID)
+
+	encClient, err := common.CreateEncClient(w.hostAddr, addressFromMessage.Bytes(), privateKeyBytes, signature)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error creating encrypted client for user: (%s), %w", hexUserID, err).Error())
+	}
+
+	accManager.AddClient(addressFromMessage, encClient)
+
 	return nil
 }
 
 // UserHasAccount checks if provided account exist in the database for given userID
 func (w *WalletExtension) UserHasAccount(hexUserID string, address string) (bool, error) {
-	userIDBytes, err := getUserIDbyte(hexUserID)
+	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID[2:], err).Error())
 		return false, err
@@ -260,7 +278,7 @@ func (w *WalletExtension) UserHasAccount(hexUserID string, address string) (bool
 
 // DeleteUser deletes user and accounts associated with user from database for given userID
 func (w *WalletExtension) DeleteUser(hexUserID string) error {
-	userIDBytes, err := getUserIDbyte(hexUserID)
+	userIDBytes, err := common.GetUserIDbyte(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", hexUserID, err).Error())
 		return err
@@ -272,37 +290,13 @@ func (w *WalletExtension) DeleteUser(hexUserID string) error {
 		return err
 	}
 
-	return nil
-}
-
-// calculate userID from public key
-func calculateUserID(pk *ecdsa.PrivateKey) []byte {
-	viewingPublicKeyBytes := crypto.CompressPubkey(&pk.PublicKey)
-	return crypto.Keccak256Hash(viewingPublicKeyBytes).Bytes()
-}
-
-// check if message is in correct format and extracts userID and address from it
-func getUserIDAndAddressFromMessage(message string) (string, string, error) {
-	if authenticateMessageRegex.MatchString(message) {
-		params := authenticateMessageRegex.FindStringSubmatch(message)
-		return params[1], params[2], nil
-	}
-	return "", "", errors.New("invalid message format")
-}
-
-// get an address that was used to sign given signature
-func getAddressAndPubKeyFromSignature(messageHash []byte, signature []byte) (gethcommon.Address, *ecdsa.PublicKey, error) {
-	pubKey, err := crypto.SigToPub(messageHash, signature)
+	// Delete UserAccountManager for user that revoked userID
+	err = w.userAccountManager.DeleteUserAccountManager(hexUserID)
 	if err != nil {
-		return gethcommon.Address{}, nil, err
+		w.Logger().Error(fmt.Errorf("error deleting UserAccointManager for user (%s), %w", hexUserID, err).Error())
 	}
 
-	return crypto.PubkeyToAddress(*pubKey), pubKey, nil
-}
-
-// convert userID from string to correct byte format
-func getUserIDbyte(userID string) ([]byte, error) {
-	return hex.DecodeString(userID)
+	return nil
 }
 
 // verifySignature checks if message was signed by the correct address and if signature is valid
@@ -320,7 +314,7 @@ func verifySignature(message string, signature []byte, address gethcommon.Addres
 	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
 	signature[64] -= 27
 
-	addressFromSignature, pubKeyFromSignature, err := getAddressAndPubKeyFromSignature(messageHash, signature)
+	addressFromSignature, pubKeyFromSignature, err := common.GetAddressAndPubKeyFromSignature(messageHash, signature)
 	if err != nil {
 		return false, err
 	}

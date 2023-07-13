@@ -1,16 +1,14 @@
 package container
 
 import (
-	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/walletextension"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/api"
@@ -18,7 +16,6 @@ import (
 	"github.com/obscuronet/go-obscuro/tools/walletextension/storage"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
 
-	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	wecommon "github.com/obscuronet/go-obscuro/tools/walletextension/common"
 )
@@ -35,7 +32,7 @@ type WalletExtensionContainer struct {
 }
 
 func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.Logger) *WalletExtensionContainer {
-	// create the account manager with a single unauthed connection
+	// create the account manager with a single unauthenticated connection
 	hostRPCBindAddr := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	unAuthedClient, err := rpc.NewNetworkClient(hostRPCBindAddr)
 	if err != nil {
@@ -44,56 +41,40 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 
 	userAccountManager := useraccountmanager.NewUserAccountManager(unAuthedClient, logger)
 
-	// TODO (@ziga) - change logic here and get VKs for all users and just add them to the correct accountManager in userAccountManager
-	// This line needs to be replaced in future and is here only to enable defaultUser
-	userAccountManager.AddUserAccountManager(wecommon.DefaultUser)
-
-	// todo (@ziga) - remove this code below and generalize it for all users
-	defaultAccountManager, err := userAccountManager.GetUserAccountManager(wecommon.DefaultUser)
-	if err != nil {
-		logger.Crit("Error getting account manager for user:", wecommon.DefaultUser)
-	}
-
 	// start the database
 	databaseStorage, err := storage.New(config.DBPathOverride)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 	}
 
-	// We reload data from the database
-	// todo (@ziga) - change this code once we can handle multiple users
-	defaultPrivateKeyBytes, err := databaseStorage.GetUserPrivateKey([]byte(wecommon.DefaultUser))
+	// Get all the data from the database and add all the clients for all users
+	// todo (@ziga) - implement lazy loading for clients to reduce number of connections and speed up loading
+
+	// add default user (when no UserID is provided in the query parameter - for WE endpoints)
+	userAccountManager.AddAndReturnAccountManager(wecommon.DefaultUser)
+
+	// get all users and their private keys from the database
+	allUsers, err := databaseStorage.GetAllUsers()
 	if err != nil {
-		logger.Crit("Error getting private key for user: ", wecommon.DefaultUser)
+		logger.Error(fmt.Errorf("error getting all users from database, %w", err).Error())
 	}
 
-	// if we have account load the data and add clients
-	if !bytes.Equal(defaultPrivateKeyBytes, []byte{}) {
-		userAccounts, err := databaseStorage.GetAccounts([]byte(wecommon.DefaultUser))
-		if err != nil {
-			logger.Crit("Error getting addresses for user: ", wecommon.DefaultUser)
-		}
+	// iterate over users create accountManagers and add all accounts to them per user
+	for _, user := range allUsers {
+		currentUserAccountManager := userAccountManager.AddAndReturnAccountManager(string(user.UserID))
 
-		privKeyECDSA, err := gethcrypto.ToECDSA(defaultPrivateKeyBytes)
+		accounts, err := databaseStorage.GetAccounts(user.UserID)
 		if err != nil {
-			logger.Crit("Unable to covert private key to ECDSA")
+			logger.Error(fmt.Errorf("error getting accounts for user: %s, %w", hex.EncodeToString(user.UserID), err).Error())
 		}
-		privKey := ecies.ImportECDSA(privKeyECDSA)
-		for _, acc := range userAccounts {
-			a := common.BytesToAddress(acc.AccountAddress)
-			viewingKey := &viewingkey.ViewingKey{
-				Account:    &a,
-				PrivateKey: privKey,
-				PublicKey:  gethcrypto.CompressPubkey(&privKeyECDSA.PublicKey),
-				Signature:  acc.Signature,
-			}
-
-			client, err := rpc.NewEncNetworkClient(hostRPCBindAddr, viewingKey, logger)
+		for _, account := range accounts {
+			encClient, err := wecommon.CreateEncClient(hostRPCBindAddr, account.AccountAddress, user.PrivateKey, account.Signature)
 			if err != nil {
-				logger.Error(fmt.Sprintf("failed to create encrypted RPC client for persisted account %s", viewingKey.Account.Hex()), log.ErrKey, err)
-				continue
+				logger.Error(fmt.Errorf("error creating new client, %w", err).Error())
 			}
-			defaultAccountManager.AddClient(*viewingKey.Account, client)
+
+			// add client to current userAccountManager
+			currentUserAccountManager.AddClient(common.BytesToAddress(account.AccountAddress), encClient)
 		}
 	}
 
