@@ -199,14 +199,14 @@ jobs:
     steps:
       - name: 'Trigger Faucet deployment for dev- / testnet on a workflow dispatch'
         uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
-        if: ${{github.event_name == 'workflow_dispatch')}}
+        if: ${{github.event_name == 'workflow_dispatch'}}
         with:
           testnet_type: ${{github.event.inputs.testnet_type}}
         secrets: inherit
 
       - name: 'Trigger Faucet deployment for dev-testnet on a schedule dispatch'
         uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
-        if: ${{github.event_name == 'schedule')}}
+        if: ${{github.event_name == 'schedule'}}
         with:
           testnet_type: 'dev-testnet'
         secrets: inherit
