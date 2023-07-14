@@ -208,7 +208,7 @@ jobs:
         uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
         if: ${{github.event_name == 'schedule'}}
         with:
-          testnet_type: 'dev-testnet'
+          testnet_type: dev-testnet
         secrets: inherit
 
   obscuro-test-repository-dispatch:
