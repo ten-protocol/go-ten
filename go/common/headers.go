@@ -47,9 +47,6 @@ type BatchHeader struct {
 // RollupHeader is a public / plaintext struct that holds common properties of rollups.
 // All these fields are processed by the Management contract
 type RollupHeader struct {
-	ParentHash    L2RollupHash
-	Number        *big.Int
-	Time          uint64      `json:"timestamp"`
 	L1Proof       L1BlockHash // the L1 block hash used by the enclave to generate the current rollup
 	L1ProofNumber *big.Int    // the height of the proof - used by the management contract to check
 	Coinbase      common.Address

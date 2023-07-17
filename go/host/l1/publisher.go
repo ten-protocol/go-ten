@@ -194,7 +194,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	tx := &ethadapter.L1RollupTx{
 		Rollup: encRollup,
 	}
-	p.logger.Info("Publishing rollup", log.RollupHeightKey, producedRollup.Header.Number, "size", len(encRollup)/1024, log.RollupHashKey, producedRollup.Hash())
+	p.logger.Info("Publishing rollup", "size", len(encRollup)/1024, log.RollupHashKey, producedRollup.Hash())
 
 	p.logger.Trace("Sending transaction to publish rollup", "rollup_header",
 		gethlog.Lazy{Fn: func() string {
@@ -219,7 +219,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	if err != nil {
 		p.logger.Error("could not issue rollup tx", log.ErrKey, err)
 	} else {
-		p.logger.Info("Rollup included in L1", "height", producedRollup.Header.Number, "hash", producedRollup.Hash())
+		p.logger.Info("Rollup included in L1", "hash", producedRollup.Hash())
 	}
 }
 

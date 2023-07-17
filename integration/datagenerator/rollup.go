@@ -1,8 +1,6 @@
 package datagenerator
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -13,10 +11,8 @@ import (
 func RandomRollup(_ *types.Block) common.ExtRollup {
 	extRollup := common.ExtRollup{
 		Header: &common.RollupHeader{
-			ParentHash: randomHash(),
-			Coinbase:   RandomAddress(),
-			L1Proof:    randomHash(),
-			Number:     big.NewInt(int64(RandomUInt64())),
+			L1Proof:  randomHash(),
+			Coinbase: RandomAddress(),
 		},
 	}
 

@@ -3,7 +3,6 @@ package components
 import (
 	"errors"
 	"fmt"
-	"sort"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -125,13 +124,8 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*com
 		}
 
 		rollups = append(rollups, r)
-		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.RollupHeightKey, r.Header.Number, log.BlockHashKey, b.Hash())
+		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, b.Hash())
 	}
-
-	sort.Slice(rollups, func(i, j int) bool {
-		// Ascending order sort.
-		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
-	})
 
 	return rollups
 }

@@ -232,7 +232,7 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 		return nil, err
 	}
 
-	s.logger.Info("Created new head rollup", log.RollupHashKey, rollup.Hash(), log.RollupHeightKey, rollup.Number(), "numBatches", len(rollup.Batches))
+	s.logger.Info("Created new head rollup", log.RollupHashKey, rollup.Hash(), log.RollupHeightKey, "numBatches", len(rollup.Batches))
 
 	return rollup.ToExtRollup(s.dataEncryptionService, s.dataCompressionService)
 }

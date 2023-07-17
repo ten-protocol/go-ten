@@ -252,13 +252,10 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		return nil
 	}
 	headerMsg := generated.RollupHeaderMsg{
-		ParentHash:         header.ParentHash.Bytes(),
 		Proof:              header.L1Proof.Bytes(),
 		ProofNumber:        header.L1ProofNumber.Uint64(),
-		Number:             header.Number.Uint64(),
 		R:                  header.R.Bytes(),
 		S:                  header.S.Bytes(),
-		Time:               header.Time,
 		Coinbase:           header.Coinbase.Bytes(),
 		CrossChainMessages: ToCrossChainMsgs(header.CrossChainMessages),
 		LastBatchSeqNo:     header.LastBatchSeqNo,
@@ -289,13 +286,10 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 	r := &big.Int{}
 	s := &big.Int{}
 	return &common.RollupHeader{
-		ParentHash:         gethcommon.BytesToHash(header.ParentHash),
 		L1Proof:            gethcommon.BytesToHash(header.Proof),
 		L1ProofNumber:      big.NewInt(int64(header.ProofNumber)),
-		Number:             big.NewInt(int64(header.Number)),
 		R:                  r.SetBytes(header.R),
 		S:                  s.SetBytes(header.S),
-		Time:               header.Time,
 		Coinbase:           gethcommon.BytesToAddress(header.Coinbase),
 		CrossChainMessages: FromCrossChainMsgs(header.CrossChainMessages),
 		LastBatchSeqNo:     header.LastBatchSeqNo,
