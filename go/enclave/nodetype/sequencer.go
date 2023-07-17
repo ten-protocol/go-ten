@@ -132,7 +132,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 	}
 
 	if err := s.batchRegistry.StoreBatch(batch, nil); err != nil {
-		return fmt.Errorf("failed storing batch. Cause: %w", err)
+		return fmt.Errorf("1. failed storing batch. Cause: %w", err)
 	}
 
 	return nil
@@ -144,6 +144,10 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return err
 	}
 
+	// todo - as an optimisation we could check here that the current headBatch is on the incoming l1 chain
+	// this is the happy path after all
+	// if s.storage.IsAncestor() headBatch.Header.L1Proof
+
 	// We get the latest known batch for this block's chain of parents.
 	// This includes the block so if there are any head batches linked to it
 	// they will get picked up.
@@ -153,8 +157,8 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	}
 
 	// If the l1 head block is not a fork then headBatch should
-	// be equal to ancestralBatch. Thus they numbers should also be
-	// the same. Difference in numbers means ancestor was built on
+	// be equal to ancestralBatch. Thus, their numbers should also be
+	// the same. If there is a difference, it means the ancestor was built on
 	// a different chain.
 	if ancestralBatch.NumberU64() != headBatch.NumberU64() {
 		if err := s.handleFork(l1HeadBlock, ancestralBatch); err != nil {
@@ -206,7 +210,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	}
 
 	if err := s.batchRegistry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
-		return fmt.Errorf("failed storing batch. Cause: %w", err)
+		return fmt.Errorf("2. failed storing batch. Cause: %w", err)
 	}
 
 	if err := s.mempool.RemoveTxs(transactions); err != nil {
@@ -300,21 +304,9 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 		}
 
 		if err := s.batchRegistry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
-			return fmt.Errorf("failed storing batch. Cause: %w", err)
+			return fmt.Errorf("3. failed storing batch. Cause: %w", err)
 		}
 		currHeadPtr = cb.Batch
-
-		// i equals 0 at the highest batch number
-		if i == 0 {
-			dbBatch := s.storage.OpenBatch()
-			if err := s.storage.SetHeadBatchPointer(cb.Batch, dbBatch); err != nil {
-				return fmt.Errorf("failed setting head batch ptr. Cause: %w", err)
-			}
-			if err := s.storage.UpdateHeadBatch(block.Hash(), cb.Batch, cb.Receipts, dbBatch); err != nil {
-				return fmt.Errorf("failed to update head batch. Cause: %w", err)
-			}
-			return s.storage.CommitBatch(dbBatch)
-		}
 	}
 
 	return nil

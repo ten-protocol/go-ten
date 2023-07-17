@@ -24,8 +24,8 @@ type BlockResolver interface {
 	FetchBlock(blockHash common.L1BlockHash) (*types.Block, error)
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
-	// StoreBlock persists the L1 Block
-	StoreBlock(block *types.Block)
+	// StoreBlock persists the L1 Block and updates the canonical ancestors if there was a fork
+	StoreBlock(block *types.Block, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) error
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	IsAncestor(block *types.Block, maybeAncestor *types.Block) bool
 	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
@@ -57,10 +57,6 @@ type RollupResolver interface {
 type BatchUpdater interface {
 	// StoreBatch stores a batch.
 	StoreBatch(batch *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error
-	// UpdateHeadBatch updates the canonical L2 head batch for a given L1 block.
-	UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error
-	// SetHeadBatchPointer updates the canonical L2 head batch for a given L1 block.
-	SetHeadBatchPointer(l2Head *core.Batch, dbBatch *sql.Batch) error
 }
 
 type HeadsAfterL1BlockStorage interface {
@@ -69,8 +65,6 @@ type HeadsAfterL1BlockStorage interface {
 	// FetchHeadRollupForBlock returns the hash of the latest (i.e. highest-numbered) rollup in the given L1 block, or
 	// nil if the block contains no rollups.
 	FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*common.RollupHeader, error)
-	// UpdateL1Head updates the L1 head.
-	UpdateL1Head(l1Head common.L1BlockHash) error
 	// UpdateHeadRollup just updates the canonical L2 head batch, leaving data untouched (used to rewind after L1 fork or data corruption)
 	UpdateHeadRollup(l1Head *common.L1BlockHash, l2Head *common.L2BatchHash) error
 	// CreateStateDB creates a database that can be used to execute transactions
@@ -92,7 +86,7 @@ type TransactionStorage interface {
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(txHash common.L2TxHash) (*types.Receipt, error)
 	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
-	GetReceiptsByHash(hash common.L2BatchHash) (types.Receipts, error)
+	GetReceiptsByBatchHash(hash common.L2BatchHash) (types.Receipts, error)
 	// GetSender returns the sender of the tx by hash
 	GetSender(txHash common.L2TxHash) (gethcommon.Address, error)
 	// GetContractCreationTx returns the hash of the tx that created a contract

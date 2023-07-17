@@ -226,7 +226,7 @@ func (h *host) HandleBlock(block *types.Block) {
 	defer h.submitBlockLock.Unlock()
 	err := h.processL1Block(block, true)
 	if err != nil {
-		h.logger.Warn("error processing L1 block", log.ErrKey, err)
+		h.logger.Warn("failure processing L1 block", log.ErrKey, err)
 	}
 }
 
@@ -872,7 +872,7 @@ func (h *host) catchUpL1Block() bool {
 		return false
 	}
 	prevHead := h.enclaveState.GetEnclaveL1Head()
-	h.logger.Trace("fetching next block", log.BlockHashKey, prevHead)
+	h.logger.Trace("Fetching next block. Current enclave head:", log.BlockHashKey, prevHead)
 	block, isLatest, err := h.l1Repo().FetchNextBlock(prevHead)
 	if err != nil {
 		// ErrNoNext block occurs sometimes if we caught up with the L1 head, but other errors are unexpected

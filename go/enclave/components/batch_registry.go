@@ -19,7 +19,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/db"
-	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 )
 
@@ -77,16 +76,19 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 
 	dbBatch := br.storage.OpenBatch()
 
-	isHeadBatch, err := br.updateHeadPointers(batch, receipts, dbBatch)
-	if err != nil {
-		return fmt.Errorf("failed updating head pointers. Cause: %w", err)
-	}
-
-	if err = br.storage.StoreBatch(batch, receipts, dbBatch); err != nil {
+	if err := br.storage.StoreBatch(batch, receipts, dbBatch); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
+	isHeadBatch := true
+	if batch.Number().Uint64() > 0 {
+		b, err := br.storage.FetchHeadBatch()
+		if err != nil {
+			return err
+		}
+		isHeadBatch = bytes.Equal(b.Hash().Bytes(), batch.Hash().Bytes())
+	}
 
-	if err = br.storage.CommitBatch(dbBatch); err != nil {
+	if err := br.storage.CommitBatch(dbBatch); err != nil {
 		return fmt.Errorf("unable to commit changes to db. Cause: %w", err)
 	}
 
@@ -171,36 +173,6 @@ func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch, isHeadBatch boo
 	if br.eventSubscription != nil && isHeadBatch {
 		*eventChan <- batch.NumberU64()
 	}
-}
-
-func (br *batchRegistryImpl) updateHeadPointers(batch *core.Batch, receipts types.Receipts, dbBatch *sql.Batch) (bool, error) {
-	if err := br.updateBlockPointers(batch, receipts, dbBatch); err != nil {
-		return false, err
-	}
-
-	return br.updateBatchPointers(batch, dbBatch)
-}
-
-func (br *batchRegistryImpl) updateBatchPointers(batch *core.Batch, dbBatch *sql.Batch) (bool, error) {
-	if head, err := br.storage.FetchHeadBatch(); err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return false, err
-	} else if head != nil && batch.NumberU64() < head.NumberU64() {
-		return false, nil
-	}
-
-	return true, br.storage.SetHeadBatchPointer(batch, dbBatch)
-}
-
-func (br *batchRegistryImpl) updateBlockPointers(batch *core.Batch, receipts types.Receipts, dbBatch *sql.Batch) error {
-	head, err := br.GetHeadBatchFor(batch.Header.L1Proof)
-
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("unexpected error while getting head batch for block. Cause: %w", err)
-	} else if head != nil && batch.NumberU64() < head.NumberU64() {
-		return fmt.Errorf("inappropriate update from previous head with height %d to new head with height %d for same l1 block", head.NumberU64(), batch.NumberU64())
-	}
-
-	return br.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, receipts, dbBatch)
 }
 
 func (br *batchRegistryImpl) GetHeadBatch() (*core.Batch, error) {
@@ -305,7 +277,7 @@ func (br *batchRegistryImpl) FindAncestralBatchFor(block *common.L1Block) (*core
 		parentBlockHash := currentBlock.ParentHash()
 		currentBlock, err = br.storage.FetchBlock(parentBlockHash)
 		if err != nil {
-			return nil, fmt.Errorf("unable to find parent for block %s in ancestral chain. Cause: %w", parentBlockHash.Hex(), err)
+			return nil, fmt.Errorf("unable to find block %s in ancestral chain. height %d. Cause: %w", parentBlockHash.Hex(), block.Number(), err)
 		}
 	}
 

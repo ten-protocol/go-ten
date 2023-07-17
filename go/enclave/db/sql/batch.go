@@ -1,7 +1,9 @@
 package sql
 
 import (
+	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -26,6 +28,10 @@ type Batch struct {
 	writes     []keyvalue
 	statements []statement
 	size       int
+}
+
+func (b *Batch) GetDB() *sql.DB {
+	return b.db.GetSQLDB()
 }
 
 func (b *Batch) ExecuteSQL(query string, args ...any) {
@@ -62,25 +68,42 @@ func (b *Batch) Write() error {
 		return fmt.Errorf("failed to create batch transaction - %w", err)
 	}
 
+	var deletes []keyvalue
+	var updates []keyvalue
+
 	for _, keyvalue := range b.writes {
 		if keyvalue.delete {
-			_, err = tx.Exec(delQry, keyvalue.key)
-			if err != nil {
-				return err
-			}
+			deletes = append(deletes, keyvalue)
 		} else {
-			_, err = tx.Exec(putQry, keyvalue.key, keyvalue.value)
+			updates = append(updates, keyvalue)
 		}
+	}
+
+	for _, del := range deletes {
+		_, err = tx.Exec(delQry, del.key)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(updates) > 0 {
+		// batch the updates for increased efficiency
+		update := putQryBatch + strings.Repeat(putQryValues+",", len(updates))
+		values := make([]any, 0)
+		for _, upd := range updates {
+			values = append(values, upd.key, upd.value)
+		}
+		_, err = tx.Exec(update[0:len(update)-1], values...)
 
 		if err != nil {
-			return fmt.Errorf("failed to exec batch statement. kv=%v, err=%w", keyvalue, err)
+			return fmt.Errorf("failed to exec batch statement. kv=%v, err=%w", values, err)
 		}
 	}
 
 	for _, s := range b.statements {
 		_, err := tx.Exec(s.query, s.args...)
 		if err != nil {
-			return fmt.Errorf("failed to exec batch statement. err=%w", err)
+			return fmt.Errorf("failed to exec batch statement %s. err=%w", s.query, err)
 		}
 	}
 

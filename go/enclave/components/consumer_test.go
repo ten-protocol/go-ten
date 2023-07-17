@@ -24,7 +24,7 @@ func TestInvalidBlocksAreRejected(t *testing.T) {
 
 	for _, header := range invalidHeaders {
 		loopHeader := header
-		_, err := blockConsumer.ingestBlock(types.NewBlock(&loopHeader, nil, nil, nil, &trie.StackTrie{}), false)
+		_, _, _, err := blockConsumer.ingestBlock(types.NewBlock(&loopHeader, nil, nil, nil, &trie.StackTrie{}), false)
 		if err == nil {
 			t.Errorf("expected block with invalid header to be rejected but was accepted")
 		}

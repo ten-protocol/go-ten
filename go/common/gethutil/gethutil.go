@@ -16,36 +16,50 @@ import (
 var EmptyHash = gethcommon.Hash{}
 
 // LCA - returns the latest common ancestor of the 2 blocks or an error if no common ancestor is found
-func LCA(blockA *types.Block, blockB *types.Block, resolver db.BlockResolver) (*types.Block, error) {
-	if blockA.NumberU64() == common.L1GenesisHeight || blockB.NumberU64() == common.L1GenesisHeight {
-		return blockA, nil
+// it also returns the path
+func LCA(newCanonical *types.Block, oldCanonical *types.Block, resolver db.BlockResolver) (*types.Block, []common.L1BlockHash, []common.L1BlockHash, error) {
+	b, cp, ncp, err := internalLCA(newCanonical, oldCanonical, resolver, []common.L1BlockHash{}, []common.L1BlockHash{})
+	// remove the common ancestor
+	if len(cp) > 0 {
+		cp = cp[0 : len(cp)-1]
 	}
-	if bytes.Equal(blockA.Hash().Bytes(), blockB.Hash().Bytes()) {
-		return blockA, nil
+	if len(ncp) > 0 {
+		ncp = ncp[0 : len(ncp)-1]
 	}
-	if blockA.NumberU64() > blockB.NumberU64() {
-		p, err := resolver.FetchBlock(blockA.ParentHash())
+	return b, cp, ncp, err
+}
+
+func internalLCA(newCanonical *types.Block, oldCanonical *types.Block, resolver db.BlockResolver, canonicalPath []common.L1BlockHash, nonCanonicalPath []common.L1BlockHash) (*types.Block, []common.L1BlockHash, []common.L1BlockHash, error) {
+	if newCanonical.NumberU64() == common.L1GenesisHeight || oldCanonical.NumberU64() == common.L1GenesisHeight {
+		return newCanonical, canonicalPath, nonCanonicalPath, nil
+	}
+	if bytes.Equal(newCanonical.Hash().Bytes(), oldCanonical.Hash().Bytes()) {
+		return newCanonical, canonicalPath, nonCanonicalPath, nil
+	}
+	if newCanonical.NumberU64() > oldCanonical.NumberU64() {
+		p, err := resolver.FetchBlock(newCanonical.ParentHash())
 		if err != nil {
-			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
-		}
-		return LCA(p, blockB, resolver)
-	}
-	if blockB.NumberU64() > blockA.NumberU64() {
-		p, err := resolver.FetchBlock(blockB.ParentHash())
-		if err != nil {
-			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
+			return nil, nil, nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 		}
 
-		return LCA(blockA, p, resolver)
+		return internalLCA(p, oldCanonical, resolver, append(canonicalPath, p.Hash()), nonCanonicalPath)
 	}
-	parentBlockA, err := resolver.FetchBlock(blockA.ParentHash())
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
+	if oldCanonical.NumberU64() > newCanonical.NumberU64() {
+		p, err := resolver.FetchBlock(oldCanonical.ParentHash())
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
+		}
+
+		return internalLCA(newCanonical, p, resolver, canonicalPath, append(nonCanonicalPath, p.Hash()))
 	}
-	parentBlockB, err := resolver.FetchBlock(blockB.ParentHash())
+	parentBlockA, err := resolver.FetchBlock(newCanonical.ParentHash())
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
+		return nil, nil, nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
+	}
+	parentBlockB, err := resolver.FetchBlock(oldCanonical.ParentHash())
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 	}
 
-	return LCA(parentBlockA, parentBlockB, resolver)
+	return internalLCA(parentBlockA, parentBlockB, resolver, append(canonicalPath, parentBlockA.Hash()), append(nonCanonicalPath, parentBlockB.Hash()))
 }

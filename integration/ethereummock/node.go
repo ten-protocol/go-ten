@@ -192,7 +192,7 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	m.Resolver.StoreBlock(MockGenesisBlock)
+	m.Resolver.StoreBlock(MockGenesisBlock, nil, nil)
 	head := m.setHead(MockGenesisBlock)
 
 	for {
@@ -234,8 +234,11 @@ func (m *Node) Start() {
 }
 
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
-	m.Resolver.StoreBlock(b)
-	_, err := m.Resolver.FetchBlock(b.Header().ParentHash)
+	err := m.Resolver.StoreBlock(b, nil, nil)
+	if err != nil {
+		m.logger.Crit("Failed to store block. Cause: %w", err)
+	}
+	_, err = m.Resolver.FetchBlock(b.Header().ParentHash)
 	// only proceed if the parent is available
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -253,7 +256,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	// Check for Reorgs
 	if !m.Resolver.IsAncestor(b, head) {
 		m.stats.L1Reorg(m.l2ID)
-		fork, err := gethutil.LCA(head, b, m.Resolver)
+		fork, _, _, err := gethutil.LCA(head, b, m.Resolver)
 		if err != nil {
 			panic(err)
 		}

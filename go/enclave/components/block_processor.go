@@ -61,7 +61,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLat
 	}
 
 	// We insert the block into the L1 chain and store it.
-	ingestionType, err := bp.ingestBlock(block, isLatest)
+	ingestionType, canonical, nonCanonical, err := bp.ingestBlock(block, isLatest)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
 		return nil, err
@@ -69,41 +69,44 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLat
 	bp.logger.Trace("block inserted successfully",
 		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
 
-	bp.storage.StoreBlock(block)
-	err = bp.storage.UpdateL1Head(block.Hash())
+	err = bp.storage.StoreBlock(block, canonical, nonCanonical)
 	if err != nil {
-		return nil, fmt.Errorf("could not update L1 head. Cause: %w", err)
+		return nil, fmt.Errorf("could not store block. Cause: %w", err)
 	}
 
 	return ingestionType, nil
 }
 
-func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*BlockIngestionType, []common.L1BlockHash, []common.L1BlockHash, error) {
 	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
 	prevL1Head, err := bp.storage.FetchHeadBlock()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// todo (@matt) - we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
-			return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: true}, nil
+			return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: true}, nil, nil, nil
 		}
-		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
+		return nil, nil, nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
 	isFork := false
 	// we do a basic sanity check, comparing the received block to the head block on the chain
 	if block.ParentHash() != prevL1Head.Hash() {
-		lcaBlock, err := gethutil.LCA(block, prevL1Head, bp.storage)
+		lcaBlock, newCanonicalChain, newNonCanonicalChain, err := gethutil.LCA(block, prevL1Head, bp.storage)
 		if err != nil {
 			bp.logger.Trace("parent not found",
 				"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
 				"l1HeadHeight", prevL1Head.NumberU64(), "l1HeadHash", prevL1Head.Hash(),
 			)
-			return nil, errutil.ErrBlockAncestorNotFound
+			return nil, nil, nil, errutil.ErrBlockAncestorNotFound
 		}
 
 		// fork - least common ancestor for this block and l1 head is before the l1 head.
 		isFork = lcaBlock.NumberU64() < prevL1Head.NumberU64()
+		if isFork {
+			println("fork")
+		}
+		return &BlockIngestionType{IsLatest: isLatest, Fork: isFork, PreGenesis: false}, newCanonicalChain, newNonCanonicalChain, nil
 	}
-	return &BlockIngestionType{IsLatest: isLatest, Fork: isFork, PreGenesis: false}, nil
+	return &BlockIngestionType{IsLatest: isLatest, Fork: isFork, PreGenesis: false}, nil, nil, nil
 }
 
 func (bp *l1BlockProcessor) GetHead() (*common.L1Block, error) {

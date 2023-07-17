@@ -438,7 +438,7 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 
 	ingestion, err := e.l1BlockProcessor.Process(br, isLatest)
 	if err != nil {
-		e.logger.Error("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
+		e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
 		return nil, err
 	}
 
@@ -506,6 +506,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	}
 
 	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
+		e.logger.Warn("Could not submit transaction", log.TxKey, decryptedTx.Hash(), log.ErrKey, err)
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
@@ -770,9 +771,12 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 	txHash := gethcommon.HexToHash(txHashStr)
 
+	// todo - optimise these calls. This can be done with a single sql
+	e.logger.Trace("Get receipt for ", "txHash", txHash)
 	// We retrieve the transaction.
 	tx, txBatchHash, txBatchHeight, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
+		e.logger.Trace("error getting tx ", "txHash", txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
 			// like geth return an empty response when a not-found tx is requested
 			return responses.AsEmptyResponse(), nil
@@ -783,29 +787,34 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// We retrieve the sender's address.
 	sender, err := rpc.GetSender(tx)
 	if err != nil {
+		e.logger.Trace("error getting sender tx ", "txHash", txHash, log.ErrKey, err)
 		return responses.AsPlaintextError(fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)), nil
 	}
 
 	// extract, create and validate the VK encryption handler
 	vkHandler, err := createVKHandler(&sender, paramList[0])
 	if err != nil {
+		e.logger.Trace("error getting the vk ", "txHash", txHash, log.ErrKey, err)
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
 
 	// Only return receipts for transactions included in the canonical chain.
 	r, err := e.storage.FetchBatchByHeight(txBatchHeight)
 	if err != nil {
+		e.logger.Trace("error getting batch height ", "txHash", txHash, log.ErrKey, err)
 		err = fmt.Errorf("could not retrieve batch containing transaction. Cause: %w", err)
 		return responses.AsPlaintextError(err), nil
 	}
 	if !bytes.Equal(r.Hash().Bytes(), txBatchHash.Bytes()) {
 		err = fmt.Errorf("transaction not included in the canonical chain")
+		e.logger.Trace("error getting tx ", "txHash", txHash, log.ErrKey, err)
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	// We retrieve the transaction receipt.
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
+		e.logger.Trace("error getting tx receipt", "txHash", txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
 			// like geth return an empty response when a not-found tx is requested
 			return responses.AsEmptyResponse(), nil
@@ -817,8 +826,11 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// We filter out irrelevant logs.
 	txReceipt.Logs, err = e.subscriptionManager.FilterLogs(txReceipt.Logs, txBatchHash, &sender, &filters.FilterCriteria{})
 	if err != nil {
+		e.logger.Trace("error filter logs ", "txHash", txHash, log.ErrKey, err)
 		return nil, responses.ToInternalError(err)
 	}
+
+	e.logger.Trace("Successfully retreived receipt for ", "txHash", txHash, "rec", txReceipt)
 
 	return responses.AsEncryptedResponse(txReceipt, vkHandler), nil
 }

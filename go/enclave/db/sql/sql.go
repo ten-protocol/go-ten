@@ -13,9 +13,11 @@ import (
 const (
 	getQry = `select keyvalue.val from keyvalue where keyvalue.ky = ?;`
 	// `replace` will perform insert or replace if existing and this syntax works for both sqlite and edgeless db
-	putQry    = `replace into keyvalue values(?, ?);`
-	delQry    = `delete from keyvalue where keyvalue.ky = ?;`
-	searchQry = `select * from keyvalue where substring(keyvalue.ky, 1, ?) = ? and keyvalue.ky >= ? order by keyvalue.ky asc`
+	putQry       = `replace into keyvalue values(?, ?);`
+	putQryBatch  = `replace into keyvalue values`
+	putQryValues = `(?,?)`
+	delQry       = `delete from keyvalue where keyvalue.ky = ?;`
+	searchQry    = `select * from keyvalue where substring(keyvalue.ky, 1, ?) = ? and keyvalue.ky >= ? order by keyvalue.ky asc`
 )
 
 // EnclaveDB - Implements the key-value ethdb.Database and also exposes the underlying sql database

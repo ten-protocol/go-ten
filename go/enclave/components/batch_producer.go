@@ -101,17 +101,22 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
-	batch.Header.Root = stateDB.IntermediateRoot(false)
-	batch.Transactions = successfulTxs
+	copyBatch := *batch
+	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
+	copyBatch.Transactions = successfulTxs
 
-	if err = bp.populateOutboundCrossChainData(batch, block, txReceipts); err != nil {
+	if err = bp.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
 		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
 	}
 
-	bp.populateHeader(batch, allReceipts(txReceipts, ccReceipts))
+	bp.populateHeader(&copyBatch, allReceipts(txReceipts, ccReceipts))
+
+	for _, receipt := range txReceipts {
+		receipt.BlockHash = copyBatch.Hash()
+	}
 
 	return &ComputedBatch{
-		Batch:    batch,
+		Batch:    &copyBatch,
 		Receipts: txReceipts,
 		Commit: func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
 			bp.stateDBMutex.Lock()

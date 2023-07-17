@@ -101,6 +101,7 @@ func (rc *rollupConsumerImpl) getCanonicalRollup(rollups []*common.ExtRollup, b 
 	return signedRollup, nil
 }
 
+// todo - when processing the rollup, instead of looking up batches one by one, compare the last sequence number from the db with the ones in the rollup
 // extractRollups - returns a list of the rollups published in this block
 func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*common.ExtRollup {
 	rollups := make([]*common.ExtRollup, 0)
