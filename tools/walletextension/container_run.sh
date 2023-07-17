@@ -10,7 +10,7 @@ set -euo pipefail
 # Define defaults
 port=3000
 portWS=3001
-host="127.0.0.1"
+host="0.0.0.0"
 nodeHost="testnet.obscu.ro"
 nodePortHTTP=13000
 nodePortWS=13001
@@ -45,6 +45,7 @@ docker rm -f  obscuro_gateway_testnet 2>/dev/null
 echo "Starting Obscuro Gateway..."
 docker run -p 3000:"${port}" --name=obscuro_gateway_testnet \
     --detach \
+    --network=node_network \
     --entrypoint ./wallet_extension_linux \
       "${image}" \
       -host="${host}" -port="${port}" -portWS="${portWS}" -nodeHost="${nodeHost}" -nodePortHTTP="${nodePortHTTP}" \
