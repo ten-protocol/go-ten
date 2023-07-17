@@ -33,7 +33,7 @@ services:
       context: $ROOT_PATH
       dockerfile: ./tools/hardhatdeployer/Dockerfile
   wallet-extension:
-    image: "testnetobscuronet.azurecr.io/obscuronet/walletextension:latest"
+    image: "testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway:latest"
     build:
       context: $ROOT_PATH
       dockerfile: ./tools/walletextension/Dockerfile
