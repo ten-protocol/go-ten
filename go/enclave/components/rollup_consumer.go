@@ -7,7 +7,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 
 	"github.com/obscuronet/go-obscuro/go/common/compression"
@@ -70,19 +69,14 @@ func (rc *rollupConsumerImpl) ProcessL1Block(b *common.BlockAndReceipts) (*commo
 		return nil, nil //nolint:nilnil
 	}
 
-	rollup, err := rc.getCanonicalRollup(rollups, b)
-	if err != nil {
-		return nil, err
-	}
-
-	err = rc.processRollup(b.Block, rollup)
+	rollup, err := rc.getSignedRollup(rollups, b)
 	if err != nil {
 		return nil, err
 	}
 	return rollup, nil
 }
 
-func (rc *rollupConsumerImpl) getCanonicalRollup(rollups []*common.ExtRollup, b *common.BlockAndReceipts) (*common.ExtRollup, error) {
+func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup, b *common.BlockAndReceipts) (*common.ExtRollup, error) {
 	var signedRollup *common.ExtRollup
 
 	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
@@ -128,28 +122,6 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*com
 	}
 
 	return rollups
-}
-
-// Validates and stores the rollup in a given block. Returns nil, nil when no rollup was found.
-// todo (#718) - design a mechanism to detect a case where the rollup doesn't contain any batches (despite batches arriving via P2P)
-func (rc *rollupConsumerImpl) processRollup(block *types.Block, rollup *common.ExtRollup) error {
-	// do we need to store the entire rollup?
-	// Should be enough to store the header and the batches
-	if err := rc.storage.StoreRollup(rollup); err != nil {
-		// todo (@matt) - this seems catastrophic, how do we recover the lost rollup in this case?
-		return fmt.Errorf("could not store rollup. Cause: %w", err)
-	}
-
-	// we record the latest rollup published against this L1 block hash
-	rollupHash := rollup.Header.Hash()
-	blockHash := block.Hash()
-	err := rc.storage.UpdateHeadRollup(&blockHash, &rollupHash)
-	if err != nil {
-		// todo (@matt) - this also seems catastrophic, would result in bad state unable to ingest further rollups?
-		return fmt.Errorf("unable to update head rollup - %w", err)
-	}
-
-	return nil
 }
 
 func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
