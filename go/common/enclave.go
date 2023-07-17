@@ -111,7 +111,7 @@ type Enclave interface {
 
 	// CreateRollup - will create a new rollup by going through the sequencer if the node is a sequencer
 	// or panic otherwise.
-	CreateRollup() (*ExtRollup, SystemError)
+	CreateRollup(fromSeqNo uint64) (*ExtRollup, SystemError)
 
 	// DebugTraceTransaction returns the trace of a transaction
 	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, SystemError)

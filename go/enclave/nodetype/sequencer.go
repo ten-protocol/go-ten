@@ -219,11 +219,11 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	return nil
 }
 
-func (s *sequencer) CreateRollup() (*common.ExtRollup, error) {
+func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) {
 	// todo @stefan - move this somewhere else, it shouldn't be in the batch registry.
 	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
 
-	rollup, err := s.rollupProducer.CreateRollup(rollupLimiter)
+	rollup, err := s.rollupProducer.CreateRollup(lastBatchNo, rollupLimiter)
 	if err != nil {
 		return nil, err
 	}

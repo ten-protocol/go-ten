@@ -11,6 +11,7 @@ interface Structs {
         address AggregatorID;
         bytes32 L1Block;
         uint256 Number;
+        uint256 LastSequenceNumber;
     }
 
     // TreeElement is an element of the Tree structure

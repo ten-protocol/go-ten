@@ -62,18 +62,13 @@ func (re *rollupProducerImpl) fetchLatestRollup() (*common.RollupHeader, error) 
 	return getLatestRollupBeforeBlock(b, re.storage, re.logger)
 }
 
-func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*core.Rollup, error) {
+func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, limiter limiters.RollupLimiter) (*core.Rollup, error) {
 	rollup, err := re.fetchLatestRollup()
 	if err != nil && !errors.Is(err, db.ErrNoRollups) {
 		return nil, err
 	}
 
-	hash := gethcommon.Hash{}
-	if rollup != nil {
-		hash = rollup.HeadBatchHash
-	}
-
-	batches, err := re.batchRegistry.BatchesAfter(hash, limiter)
+	batches, err := re.batchRegistry.BatchesAfter(fromBatchNo, limiter)
 	if err != nil {
 		return nil, err
 	}
@@ -84,9 +79,9 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 		return nil, fmt.Errorf("no batches for rollup")
 	}
 
-	if batches[len(batches)-1].Hash() == hash {
-		return nil, fmt.Errorf("current head batch matches the rollup head bash")
-	}
+	/*	if batches[len(batches)-1].SeqNo().Uint64() == rollup.LastBatchSeqNo {
+		return nil, fmt.Errorf("current head batch matches the rollup head sequence number")
+	} */
 
 	newRollup := re.createNextRollup(rollup, batches)
 
@@ -112,10 +107,8 @@ func (re *rollupProducerImpl) createNextRollup(parentRollup *common.RollupHeader
 
 	if parentRollup != nil {
 		rh.ParentHash = parentRollup.Hash()
-		rh.Number = big.NewInt(parentRollup.Number.Int64() + 1)
 	} else { // genesis
 		rh.ParentHash = gethcommon.Hash{}
-		rh.Number = big.NewInt(0)
 	}
 
 	rh.CrossChainMessages = make([]MessageBus.StructsCrossChainMessage, 0)
@@ -128,9 +121,9 @@ func (re *rollupProducerImpl) createNextRollup(parentRollup *common.RollupHeader
 		rollupHeight = parentRollup.Number
 		rollupHeight.Add(rollupHeight, gethcommon.Big1)
 	}
-	rh.Number = rollupHeight
 
-	rh.HeadBatchHash = lastBatch.Hash()
+	rh.Number = rollupHeight
+	rh.LastBatchSeqNo = lastBatch.SeqNo().Uint64()
 	return &core.Rollup{
 		Header:  &rh,
 		Batches: batches,

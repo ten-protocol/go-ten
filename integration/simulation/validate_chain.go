@@ -247,9 +247,12 @@ func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, ro
 
 	lastBatch := previousHeaders[len(previousHeaders)-1]
 	firstBatch := currentHeaders[0]
-	isValidChain = firstBatch.ParentHash.Hex() == lastBatch.Hash().Hex()
+	isValidChain = firstBatch.SequencerOrderNo.Uint64() == lastBatch.SequencerOrderNo.Uint64()
 	if !isValidChain {
-		t.Errorf("Node %d: Found badly chained batches in rollups!", nodeIdx)
+		t.Errorf("Node %d: Found badly chained batches in rollups! from %d to %d",
+			nodeIdx,
+			lastBatch.SequencerOrderNo.Uint64(),
+			firstBatch.SequencerOrderNo.Uint64())
 		return
 	}
 

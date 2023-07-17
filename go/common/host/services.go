@@ -1,6 +1,8 @@
 package host
 
 import (
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -58,4 +60,6 @@ type L1Publisher interface {
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error
 
 	FetchLatestPeersList() ([]string, error)
+
+	FetchLatestSeqNo() (*big.Int, error)
 }

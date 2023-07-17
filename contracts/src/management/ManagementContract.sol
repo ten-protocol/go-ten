@@ -24,6 +24,8 @@ contract ManagementContract {
     // isWithdrawalAvailable marks if the contract allows withdrawals or not
     bool private isWithdrawalAvailable;
 
+    uint256 public lastBatchSeqNo = 0;
+
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
     constructor() {
@@ -44,6 +46,7 @@ contract ManagementContract {
 
         // withdrawals are available at the start
         isWithdrawalAvailable = true;
+        lastBatchSeqNo = r.LastSequenceNumber;
     }
 
     function GetRollupByID(uint256 rollupID) view public returns(bool, Structs.TreeElement memory) {
@@ -89,6 +92,7 @@ contract ManagementContract {
         if (parent.ElementID == tree._HEAD) {
             tree._HEAD = rollupID;
         }
+        lastBatchSeqNo = _r.LastSequenceNumber;
     }
 
     // HasSecondCousinFork returns whether there is a fork in the current view of the rollups
