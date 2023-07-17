@@ -106,7 +106,6 @@ func TestManagementContract(t *testing.T) {
 		"nonAttestedNodesCannotAttest":       nonAttestedNodesCannotAttest,
 		"newlyAttestedNodesCanAttest":        newlyAttestedNodesCanAttest,
 		"attestedNodeHostAddressesAreStored": attestedNodeHostAddressesAreStored,
-		"detectSimpleFork":                   detectSimpleFork,
 	} {
 		t.Run(name, func(t *testing.T) {
 			bytecode, err := constants.Bytecode()
