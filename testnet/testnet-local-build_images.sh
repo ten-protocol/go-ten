@@ -50,6 +50,7 @@ command docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave:latest -
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest -f "${root_path}/dockerfiles/enclave.debug.Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuroscan:latest -f "${tools_path}/obscuroscan/Dockerfile" "${root_path}" &
 command docker build -t testnetobscuronet.azurecr.io/obscuronet/faucet:latest -f "${tools_path}/faucet/Dockerfile" "${root_path}" &
+command docker build -t testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway:latest -f "${tools_path}/walletextension/Dockerfile" "${root_path}" &
 
 wait
 
