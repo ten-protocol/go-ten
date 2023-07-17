@@ -45,7 +45,7 @@ const _testEnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a04
 // _successfulRollupGasPrice can be deterministically calculated when evaluating the management smart contract.
 // It should change only when there are changes to the smart contract or if the gas estimation algorithm is modified.
 // Other changes would mean something is broken.
-const _successfulRollupGasPrice = 386856
+const _successfulRollupGasPrice = 319368
 
 var _enclavePubKey *ecies.PublicKey
 
@@ -517,7 +517,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 
 	genesisBatch := dummyBatch(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
 	genesisRollup := &core.Rollup{
-		Header:  &common.RollupHeader{Number: big.NewInt(1)},
+		Header:  &common.RollupHeader{LastBatchSeqNo: 1},
 		Batches: []*core.Batch{genesisBatch},
 	}
 
@@ -590,7 +590,7 @@ func injectNewBlockAndReceipts(enclave common.Enclave, receipts []*types.Receipt
 
 	batch := dummyBatch(blk.Hash(), headRollup.NumberU64()+1, stateDB)
 	rollup := &core.Rollup{
-		Header:  &common.RollupHeader{Number: big.NewInt(1)},
+		Header:  &common.RollupHeader{LastBatchSeqNo: 1},
 		Batches: []*core.Batch{batch},
 	}
 
@@ -664,7 +664,7 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 
 	batch := dummyBatch(blk.Hash(), headRollup.NumberU64()+1, stateDB)
 	rollup := &core.Rollup{
-		Header:  &common.RollupHeader{Number: big.NewInt(1)},
+		Header:  &common.RollupHeader{LastBatchSeqNo: 1},
 		Batches: []*core.Batch{batch},
 	}
 

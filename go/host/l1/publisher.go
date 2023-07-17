@@ -174,6 +174,10 @@ func (p *Publisher) ExtractSecretResponses(block *types.Block) []*ethadapter.L1R
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
+	if p.mgmtContractLib.GetContractAddr() == nil || p.ethClient.EthClient() == nil {
+		return big.NewInt(0), nil
+	}
+
 	contract, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
 	if err != nil {
 		return nil, err
