@@ -7,11 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -174,20 +172,7 @@ func (p *Publisher) ExtractSecretResponses(block *types.Block) []*ethadapter.L1R
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
-	if p.mgmtContractLib.GetContractAddr() == nil || p.ethClient.EthClient() == nil {
-		return big.NewInt(0), nil
-	}
-
-	contract, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
-	if err != nil {
-		return nil, err
-	}
-
-	batchNo, err := contract.LastBatchSeqNo(&bind.CallOpts{})
-	if err != nil {
-		return nil, err
-	}
-	return batchNo, nil
+	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 
 func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
