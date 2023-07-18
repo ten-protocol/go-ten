@@ -94,11 +94,7 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup, b *co
 		if err := rc.sigValidator.CheckSequencerSignature(rollup.Hash(), rollup.Header.R, rollup.Header.S); err != nil {
 			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
-		if signedRollup != nil {
-			// todo (@matt) - make sure this can't be used to DOS the network
-			// we should never receive multiple signed rollups in a single block, the host should only ever publish one
-			return nil, fmt.Errorf("received multiple signed rollups in single block %s", b.Block.Hash())
-		}
+
 		signedRollup = append(signedRollup, rollup)
 	}
 	return signedRollup, nil
