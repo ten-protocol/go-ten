@@ -101,6 +101,7 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
+	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
 	copyBatch.Transactions = successfulTxs

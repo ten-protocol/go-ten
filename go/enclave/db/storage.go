@@ -96,7 +96,7 @@ func (s *storageImpl) FetchCurrentSequencerNo() (*big.Int, error) {
 }
 
 func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
-	return orm.FetchBatch(s.db.GetSQLDB(), hash)
+	return orm.FetchBatchByHash(s.db.GetSQLDB(), hash)
 }
 
 func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error) {
@@ -305,6 +305,13 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
 
+	for _, receipt := range receipts {
+		s.logger.Trace("store receipt", "txHash", receipt.TxHash, "batch", receipt.BlockHash)
+	}
+	if err := orm.WriteReceipts(dbBatch, receipts); err != nil {
+		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
+	}
+
 	if batch.Number().Int64() > 1 {
 		stateDB, err := s.CreateStateDB(batch.Header.ParentHash)
 		if err != nil {
@@ -315,13 +322,6 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 		if err2 != nil {
 			return fmt.Errorf("could not save logs %w", err2)
 		}
-	}
-
-	for _, receipt := range receipts {
-		s.logger.Trace("store receipt", "txHash", receipt.TxHash, "batch", receipt.BlockHash)
-	}
-	if err := orm.WriteReceipts(dbBatch, receipts); err != nil {
-		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
 
 	if err := obscurorawdb.WriteContractCreationTxs(dbBatch, receipts); err != nil {

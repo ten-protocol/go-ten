@@ -21,11 +21,11 @@ import (
 )
 
 const (
-	bodyInsert = "replace into batch_body values (?,?)"
-	bInsert    = "insert into batch values (?,?,?,?,?,?,?,?,?)"
-
-	txInsert      = "insert into tx values "
+	bodyInsert    = "replace into batch_body values (?,?)"
+	txInsert      = "replace into tx values "
 	txInsertValue = "(?,?,?,?,?,?)"
+
+	bInsert = "insert into batch values (?,?,?,?,?,?,?,?,?)"
 
 	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
 	selectHeader = "select b.header from batch b"
@@ -94,7 +94,7 @@ func FindBatchBySeqNo(db *sql.DB, seqNo uint64) (*core.Batch, error) {
 	return fetchBatch(db, " where sequence=?", seqNo)
 }
 
-func FetchBatch(db *sql.DB, hash common.L2BatchHash) (*core.Batch, error) {
+func FetchBatchByHash(db *sql.DB, hash common.L2BatchHash) (*core.Batch, error) {
 	return fetchBatch(db, " where b.hash=?", hash.Bytes())
 }
 
