@@ -57,8 +57,6 @@ type BatchUpdater interface {
 type HeadsAfterL1BlockStorage interface {
 	// FetchHeadBatchForBlock returns the hash of the head batch at a given L1 block.
 	FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error)
-	// UpdateHeadRollup just updates the canonical L2 head batch, leaving data untouched (used to rewind after L1 fork or data corruption)
-	UpdateHeadRollup(l1Head *common.L1BlockHash, l2Head *common.L2BatchHash) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2BatchHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
