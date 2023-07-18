@@ -69,7 +69,7 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) 
 		return nil
 	}
 
-	rollups, err := rc.getSignedRollup(rollups, b)
+	rollups, err := rc.getSignedRollup(rollups)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) 
 	return nil
 }
 
-func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup, b *common.BlockAndReceipts) ([]*common.ExtRollup, error) {
+func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*common.ExtRollup, error) {
 	signedRollup := make([]*common.ExtRollup, 0)
 
 	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
