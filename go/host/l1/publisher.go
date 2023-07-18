@@ -3,12 +3,15 @@ package l1
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -170,6 +173,23 @@ func (p *Publisher) ExtractSecretResponses(block *types.Block) []*ethadapter.L1R
 	return secretRespTxs
 }
 
+func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
+	if p.mgmtContractLib.GetContractAddr() == nil || p.ethClient.EthClient() == nil {
+		return big.NewInt(0), nil
+	}
+
+	contract, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
+	if err != nil {
+		return nil, err
+	}
+
+	batchNo, err := contract.LastBatchSeqNo(&bind.CallOpts{})
+	if err != nil {
+		return nil, err
+	}
+	return batchNo, nil
+}
+
 func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	encRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
@@ -178,7 +198,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	tx := &ethadapter.L1RollupTx{
 		Rollup: encRollup,
 	}
-	p.logger.Info("Publishing rollup", log.RollupHeightKey, producedRollup.Header.Number, "size", len(encRollup)/1024, log.RollupHashKey, producedRollup.Hash())
+	p.logger.Info("Publishing rollup", "size", len(encRollup)/1024, log.RollupHashKey, producedRollup.Hash())
 
 	p.logger.Trace("Sending transaction to publish rollup", "rollup_header",
 		gethlog.Lazy{Fn: func() string {
@@ -199,12 +219,11 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 		return
 	}
 
-	// fire-and-forget (track the receipt asynchronously)
 	err = p.signAndBroadcastL1Tx(rollupTx, l1TxTriesRollup, true)
 	if err != nil {
 		p.logger.Error("could not issue rollup tx", log.ErrKey, err)
 	} else {
-		p.logger.Info("Rollup included in L1", "height", producedRollup.Header.Number, "hash", producedRollup.Hash())
+		p.logger.Info("Rollup included in L1", "hash", producedRollup.Hash())
 	}
 }
 

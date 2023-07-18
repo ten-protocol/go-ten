@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/params"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -299,21 +298,15 @@ func (br *batchRegistryImpl) HasGenesisBatch() (bool, error) {
 	return genesisBatchStored, nil
 }
 
-func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, error) {
+func (br *batchRegistryImpl) BatchesAfter(batchSeqNo uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, error) {
 	batches := make([]*core.Batch, 0)
 
 	var batch *core.Batch
 	var err error
-	if batchHash == gethcommon.BigToHash(gethcommon.Big0) {
-		if batch, err = br.storage.FetchBatchBySeqNo(0); err != nil {
-			return nil, err
-		}
-		batches = append(batches, batch)
-	} else {
-		if batch, err = br.storage.FetchBatch(batchHash); err != nil {
-			return nil, err
-		}
+	if batch, err = br.storage.FetchBatchBySeqNo(batchSeqNo); err != nil {
+		return nil, err
 	}
+	batches = append(batches, batch)
 
 	headBatch, err := br.storage.FetchHeadBatch()
 	if err != nil {

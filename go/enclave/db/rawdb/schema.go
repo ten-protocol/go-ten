@@ -9,7 +9,6 @@ import (
 
 var (
 	rollupHeaderPrefix           = []byte("rh")  // rollupHeaderPrefix + num (uint64 big endian) + hash -> header
-	rollupNumberPrefix           = []byte("rn")  // rollupNumberPrefix + hash -> num (uint64 big endian)
 	headRollupAfterL1BlockPrefix = []byte("hr")  // headRollupAfterL1BlockPrefix + hash -> num (uint64 big endian)
 	contractReceiptPrefix        = []byte("ocr") // contractReceiptPrefix + address -> tx hash
 )
@@ -33,11 +32,6 @@ func contractReceiptKey(contractAddress gethcommon.Address) []byte {
 // For storing and fetching a rollup header by batch hash.
 func rollupHeaderKey(hash common.L2BatchHash) []byte {
 	return append(rollupHeaderPrefix, hash.Bytes()...)
-}
-
-// For storing and fetching a rollup number by batch hash.
-func rollupNumberKey(hash common.L2BatchHash) []byte {
-	return append(rollupNumberPrefix, hash.Bytes()...)
 }
 
 // for storing the contract creation count

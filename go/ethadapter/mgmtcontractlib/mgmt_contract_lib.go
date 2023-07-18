@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"math/big"
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
@@ -117,11 +118,10 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 	encRollupData := base64EncodeToString(zipped)
 
 	metaRollup := ManagementContract.StructsMetaRollup{
-		ParentHash:   decodedRollup.Header.ParentHash,
-		Hash:         decodedRollup.Hash(),
-		AggregatorID: decodedRollup.Header.Coinbase,
-		L1Block:      decodedRollup.Header.L1Proof,
-		Number:       decodedRollup.Header.Number,
+		Hash:               decodedRollup.Hash(),
+		AggregatorID:       decodedRollup.Header.Coinbase,
+		L1Block:            decodedRollup.Header.L1Proof,
+		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
 	}
 
 	crossChain := ManagementContract.StructsHeaderCrossChainData{

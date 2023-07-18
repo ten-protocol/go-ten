@@ -193,27 +193,6 @@ func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*cor
 	return orm.FetchHeadBatchForBlock(s.db.GetSQLDB(), blockHash)
 }
 
-func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*common.RollupHeader, error) {
-	l2HeadBatch, err := obscurorawdb.ReadL2HeadRollup(s.db, blockHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not read L2 head rollup for block. Cause: %w", err)
-	}
-	if *l2HeadBatch == (gethcommon.Hash{}) { // empty hash ==> no rollups yet up to this block
-		return nil, ErrNoRollups
-	}
-	return obscurorawdb.ReadRollupHeader(s.db, *l2HeadBatch)
-}
-
-func (s *storageImpl) UpdateHeadRollup(l1Head *common.L1BlockHash, l2Head *common.L2BatchHash) error {
-	dbBatch := s.db.NewBatch()
-	if err := obscurorawdb.WriteL2HeadRollup(dbBatch, l1Head, l2Head); err != nil {
-		return fmt.Errorf("could not write block state. Cause: %w", err)
-	}
-	if err := dbBatch.Write(); err != nil {
-		return fmt.Errorf("could not save new head. Cause: %w", err)
-	}
-	return nil
-}
 
 func (s *storageImpl) CreateStateDB(hash common.L2BatchHash) (*state.StateDB, error) {
 	batch, err := s.FetchBatch(hash)

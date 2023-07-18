@@ -801,11 +801,15 @@ func (h *host) startRollupProduction() {
 				h.logger.Debug("skipping rollup production because L1 is not up to date", "enclaveState", h.enclaveState)
 				continue
 			}
-			producedRollup, err := h.enclaveClient.CreateRollup()
+			lastBatchNo, err := h.l1Publisher().FetchLatestSeqNo()
+			if err != nil {
+				h.logger.Warn("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
+				continue
+			}
+			producedRollup, err := h.enclaveClient.CreateRollup(lastBatchNo.Uint64())
 			if err != nil {
 				h.logger.Error("unable to produce rollup", log.ErrKey, err)
 			} else {
-				// fire-and-forget (track the receipt asynchronously)
 				h.l1Publisher().PublishRollup(producedRollup)
 			}
 		case <-h.interrupter.Done():

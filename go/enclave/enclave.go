@@ -570,7 +570,7 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 	return nil
 }
 
-func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, common.SystemError) {
+func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
 	}
@@ -580,7 +580,7 @@ func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, common.SystemError) {
 		e.logger.Info(fmt.Sprintf("CreateRollup call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
 	}()
 
-	rollup, err := e.Sequencer().CreateRollup()
+	rollup, err := e.Sequencer().CreateRollup(fromSeqNo)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}

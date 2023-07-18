@@ -138,7 +138,10 @@ message CreateBatchResponse{
 }
 
 
-message CreateRollupRequest{}
+message CreateRollupRequest{
+  optional uint64 fromSequenceNumber = 1;
+}
+
 message CreateRollupResponse{
   ExtRollupMsg msg = 1;
   SystemError systemError = 2;
@@ -371,7 +374,7 @@ message RollupHeaderMsg {
   repeated CrossChainMsg CrossChainMessages = 7;
   bytes R = 8;
   bytes S = 9;
-  bytes HeadBatchHash = 10;
+  uint64 LastBatchSeqNo = 10;
 }
 
 message SecretResponseMsg {
