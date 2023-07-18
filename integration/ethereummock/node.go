@@ -122,7 +122,7 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 	return nil
 }
 
-func (m *Node) FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error) {
+func (m *Node) FetchLastBatchSeqNo(gethcommon.Address) (*big.Int, error) {
 	startingBlock, err := m.FetchHeadBlock()
 	if err != nil {
 		return nil, err
