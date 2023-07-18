@@ -146,7 +146,7 @@ func (s *StateTracker) calculateStatus() Status {
 		if s.hostL1Head != s.enclaveL1Head || s.enclaveL1Head == gethutil.EmptyHash {
 			return L1Catchup
 		}
-		if s.hostL2Head == nil || s.hostL2Head.Cmp(s.enclaveL2Head) != 0 || s.enclaveL2Head == nil {
+		if s.hostL2Head == nil || s.enclaveL2Head == nil || s.hostL2Head.Cmp(s.enclaveL2Head) != 0 {
 			return L2Catchup
 		}
 		return Live
