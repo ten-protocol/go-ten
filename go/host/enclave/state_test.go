@@ -1,6 +1,7 @@
 package enclave
 
 import (
+	"math/big"
 	"testing"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -12,8 +13,8 @@ import (
 var (
 	_l1Block123        = gethcommon.BytesToHash([]byte{1, 2, 3})
 	_l1Block124        = gethcommon.BytesToHash([]byte{1, 2, 4})
-	_l2Batch456        = gethcommon.BytesToHash([]byte{4, 5, 6})
-	_l2Batch457        = gethcommon.BytesToHash([]byte{4, 5, 7})
+	_l2Batch456        = big.NewInt(456)
+	_l2Batch457        = big.NewInt(457)
 	stateTrackerLogger = log.New("stateTracker", int(gethlog.LvlWarn), log.SysOut)
 )
 
