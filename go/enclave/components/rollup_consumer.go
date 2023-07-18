@@ -60,24 +60,34 @@ func NewRollupConsumer(
 	}
 }
 
-func (rc *rollupConsumerImpl) ProcessL1Block(b *common.BlockAndReceipts) (*common.ExtRollup, error) {
+func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) error {
 	stopwatch := measure.NewStopwatch()
 	defer rc.logger.Info("Rollup consumer processed block", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
 
 	rollups := rc.extractRollups(b)
 	if len(rollups) == 0 {
-		return nil, nil //nolint:nilnil
+		return nil
 	}
 
-	rollup, err := rc.getSignedRollup(rollups, b)
+	rollups, err := rc.getSignedRollup(rollups, b)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return rollup, nil
+	if len(rollups) > 0 {
+		for _, rollup := range rollups {
+			// read batch data from rollup, verify and store it
+			if err := rc.ProcessRollup(rollup); err != nil {
+				rc.logger.Error("Failed processing rollup", log.ErrKey, err)
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
-func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup, b *common.BlockAndReceipts) (*common.ExtRollup, error) {
-	var signedRollup *common.ExtRollup
+func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup, b *common.BlockAndReceipts) ([]*common.ExtRollup, error) {
+	signedRollup := make([]*common.ExtRollup, 0)
 
 	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
 	for _, rollup := range rollups {
@@ -89,7 +99,7 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup, b *co
 			// we should never receive multiple signed rollups in a single block, the host should only ever publish one
 			return nil, fmt.Errorf("received multiple signed rollups in single block %s", b.Block.Hash())
 		}
-		signedRollup = rollup
+		signedRollup = append(signedRollup, rollup)
 	}
 	return signedRollup, nil
 }

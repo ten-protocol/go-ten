@@ -22,7 +22,6 @@ contract ManagementContract {
     bool private isWithdrawalAvailable;
 
     uint256 public lastBatchSeqNo = 0;
-    bytes32 private headRollupHash;
 
     Structs.RollupStorage private rollups;
     //The messageBus where messages can be sent to Obscuro
@@ -37,15 +36,10 @@ contract ManagementContract {
         return (rol.Hash == rollupHash , rol);
     }
 
-    function GetHeadRollup() internal view returns ( Structs.MetaRollup memory ) {
-        return rollups.byHash[headRollupHash];
-    }
-
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
         if (_r.LastSequenceNumber > lastBatchSeqNo) {
             lastBatchSeqNo = _r.LastSequenceNumber;
-            headRollupHash = _r.Hash;
         }
     }
     //
