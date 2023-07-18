@@ -2,16 +2,18 @@ package rawdb
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"math/big"
-
-	common2 "github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
+	obscurocommon "github.com/obscuronet/go-obscuro/go/common"
 )
 
 // ReadReceiptsRLP retrieves all the transaction receipts belonging to a batch in RLP encoding.
@@ -69,7 +71,7 @@ func ReadReceipts(db ethdb.Reader, hash common.Hash, number uint64, config *para
 }
 
 // WriteReceipts stores all the transaction receipts belonging to a batch.
-func WriteReceipts(db ethdb.KeyValueWriter, hash common2.L2BatchHash, receipts types.Receipts) error {
+func WriteReceipts(db ethdb.KeyValueWriter, hash obscurocommon.L2BatchHash, receipts types.Receipts) error {
 	// Convert the receipts into their storage form and serialize them
 	storageReceipts := make([]*types.ReceiptForStorage, len(receipts))
 	for i, receipt := range receipts {
@@ -119,4 +121,40 @@ func ReadContractTransaction(db ethdb.Reader, address common.Address) (*common.H
 	}
 	hash := common.BytesToHash(value)
 	return &hash, nil
+}
+
+func IncrementContractCreationCount(db ethdb.Reader, batch ethdb.KeyValueWriter, receipts []*types.Receipt) error {
+	contractCreationCounter := 0
+	for _, receipt := range receipts {
+		// receipts only have Contract Address when a new contract is created
+		if !bytes.Equal(receipt.ContractAddress.Bytes(), (common.Address{}).Bytes()) {
+			contractCreationCounter++
+		}
+	}
+	if contractCreationCounter == 0 {
+		return nil
+	}
+
+	current, err := ReadContractCreationCount(db)
+	if err != nil {
+		return err
+	}
+	total := big.NewInt(0).Add(current, big.NewInt(int64(contractCreationCounter)))
+
+	if err = batch.Put(contractCreationCountKey(), total.Bytes()); err != nil {
+		return fmt.Errorf("failed to store contract creation count - %w", err)
+	}
+
+	return nil
+}
+
+func ReadContractCreationCount(db ethdb.Reader) (*big.Int, error) {
+	value, err := db.Get(contractCreationCountKey())
+	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			return common.Big0, nil
+		}
+		return nil, fmt.Errorf("unable to read stored contract creation count - %w", err)
+	}
+	return big.NewInt(0).SetBytes(value), nil
 }

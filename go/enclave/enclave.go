@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
@@ -93,7 +94,8 @@ type enclaveImpl struct {
 	debugger               *debugger.Debugger
 	logger                 gethlog.Logger
 
-	stopControl *stopcontrol.StopControl
+	stopControl         *stopcontrol.StopControl
+	blockIngestionMutex sync.Mutex
 }
 
 // NewEnclave creates a new enclave.
@@ -275,6 +277,8 @@ func NewEnclave(
 
 		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
 		BaseFee:      gethcommon.Big0,
+
+		blockIngestionMutex: sync.Mutex{},
 	}
 }
 
@@ -429,8 +433,12 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 }
 
 func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
+	e.blockIngestionMutex.Lock()
+	defer e.blockIngestionMutex.Unlock()
+
 	ingestion, err := e.l1BlockProcessor.Process(br, isLatest)
 	if err != nil {
+		e.logger.Error("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
 		return nil, err
 	}
 
@@ -443,6 +451,7 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 	if rollup != nil {
 		// read batch data from rollup, verify and store it
 		if err = e.rollupConsumer.ProcessRollup(rollup); err != nil {
+			e.logger.Error("Failed processing rollup", log.ErrKey, err)
 			return nil, err
 		}
 	}
@@ -1313,6 +1322,15 @@ func (e *enclaveImpl) DebugEventLogRelevancy(txHash gethcommon.Hash) (json.RawMe
 	}
 
 	return jsonMsg, nil
+}
+
+func (e *enclaveImpl) GetTotalContractCount() (*big.Int, common.SystemError) {
+	// ensure the enclave is running
+	if e.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested GetTotalContractCount with the enclave stopping"))
+	}
+
+	return e.storage.GetContractCount()
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

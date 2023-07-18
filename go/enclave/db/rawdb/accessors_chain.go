@@ -113,7 +113,7 @@ func ReadBatchHeader(db ethdb.KeyValueReader, hash common.L2BatchHash) (*common.
 func readBatchHeaderRLP(db ethdb.KeyValueReader, hash gethcommon.Hash) (rlp.RawValue, error) {
 	data, err := db.Get(batchHeaderKey(hash))
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve block header. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve batch header. Cause: %w", err)
 	}
 	return data, nil
 }
@@ -205,6 +205,25 @@ func ReadL2HeadRollup(kv ethdb.KeyValueReader, l1Head *common.L1BlockHash) (*com
 	}
 	l2Head := gethcommon.BytesToHash(data)
 	return &l2Head, nil
+}
+
+// ReadCanonicalBatchHash retrieves the hash of the canonical batch at a given height.
+func ReadBatchBySequenceNum(db ethdb.Reader, number uint64) (*common.L2BatchHash, error) {
+	// Get it by hash from leveldb
+	data, err := db.Get(batchSeqHashKey(number))
+	if err != nil {
+		return nil, errutil.ErrNotFound
+	}
+	hash := gethcommon.BytesToHash(data)
+	return &hash, nil
+}
+
+// WriteCanonicalHash stores the hash assigned to a canonical batch number.
+func WriteBatchBySequenceNum(db ethdb.KeyValueWriter, l2Head *core.Batch) error {
+	if err := db.Put(batchSeqHashKey(l2Head.Header.SequencerOrderNo.Uint64()), l2Head.Hash().Bytes()); err != nil {
+		return fmt.Errorf("failed to store number to hash mapping. Cause: %w", err)
+	}
+	return nil
 }
 
 // ReadCanonicalBatchHash retrieves the hash of the canonical batch at a given height.

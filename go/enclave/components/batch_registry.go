@@ -333,7 +333,7 @@ func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash, rollupLimit
 	var batch *core.Batch
 	var err error
 	if batchHash == gethcommon.BigToHash(gethcommon.Big0) {
-		if batch, err = br.storage.FetchBatchByHeight(0); err != nil {
+		if batch, err = br.storage.FetchBatchBySeqNo(0); err != nil {
 			return nil, err
 		}
 		batches = append(batches, batch)
@@ -348,18 +348,25 @@ func (br *batchRegistryImpl) BatchesAfter(batchHash gethcommon.Hash, rollupLimit
 		return nil, err
 	}
 
-	if headBatch.NumberU64() < batch.NumberU64() {
-		return nil, fmt.Errorf("head batch height %d is in the past compared to requested batch %d", headBatch.NumberU64(), batch.NumberU64())
+	if headBatch.SeqNo().Uint64() < batch.SeqNo().Uint64() {
+		return nil, fmt.Errorf("head batch height %d is in the past compared to requested batch %d",
+			headBatch.SeqNo().Uint64(),
+			batch.SeqNo().Uint64())
 	}
-	for batch.Number().Cmp(headBatch.Number()) != 0 {
+	for batch.SeqNo().Cmp(headBatch.SeqNo()) != 0 {
 		if didAcceptBatch, err := rollupLimiter.AcceptBatch(batch); err != nil {
 			return nil, err
 		} else if !didAcceptBatch {
 			return batches, nil
 		}
 
-		batch, _ = br.storage.FetchBatchByHeight(batch.NumberU64() + 1)
+		batch, err = br.storage.FetchBatchBySeqNo(batch.SeqNo().Uint64() + 1)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve batch by sequence number less than the head batch. Cause: %w", err)
+		}
+
 		batches = append(batches, batch)
+		br.logger.Info("Added batch to rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
 	}
 
 	return batches, nil

@@ -30,7 +30,7 @@ func NewBlockProcessor(storage db.Storage, cc *crosschain.Processors, logger get
 }
 
 func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
-	defer bp.logger.Info("Block processed", log.BlockHashKey, br.Block.Hash(), log.DurationKey, measure.NewStopwatch())
+	defer bp.logger.Info("L1 block processed", log.BlockHashKey, br.Block.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	ingestion, err := bp.tryAndInsertBlock(br, isLatest)
 	if err != nil {

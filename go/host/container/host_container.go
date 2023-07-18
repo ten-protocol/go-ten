@@ -27,6 +27,7 @@ const (
 	APINamespaceObscuro     = "obscuro"
 	APINamespaceEth         = "eth"
 	APINamespaceObscuroScan = "obscuroscan"
+	APINamespaceScan        = "scan"
 	APINamespaceNetwork     = "net"
 	APINamespaceTest        = "test"
 	APINamespaceDebug       = "debug"
@@ -195,6 +196,12 @@ func NewHostContainer(
 				Namespace: APINamespaceEth,
 				Version:   APIVersion1,
 				Service:   clientapi.NewFilterAPI(h, logger),
+				Public:    true,
+			},
+			{
+				Namespace: APINamespaceScan,
+				Version:   APIVersion1,
+				Service:   clientapi.NewScanAPI(h, logger),
 				Public:    true,
 			},
 		})

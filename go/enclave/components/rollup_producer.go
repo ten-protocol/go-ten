@@ -78,7 +78,9 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 		return nil, err
 	}
 
-	if len(batches) == 0 {
+	hasBatches := len(batches) != 0
+
+	if !hasBatches {
 		return nil, fmt.Errorf("no batches for rollup")
 	}
 
@@ -87,6 +89,9 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 	}
 
 	newRollup := re.createNextRollup(rollup, batches)
+
+	re.logger.Info(fmt.Sprintf("Created new rollup %s with %d batches", newRollup.Hash(), len(newRollup.Batches)))
+
 	return newRollup, nil
 }
 

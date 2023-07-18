@@ -3,7 +3,6 @@ package components
 import (
 	"errors"
 	"fmt"
-	"math/big"
 	"sort"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -65,9 +64,9 @@ func NewRollupConsumer(
 
 func (rc *rollupConsumerImpl) ProcessL1Block(b *common.BlockAndReceipts) (*common.ExtRollup, error) {
 	stopwatch := measure.NewStopwatch()
-	defer rc.logger.Info("Block processed", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
+	defer rc.logger.Info("Rollup consumer processed block", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
 
-	rollups := rc.extractRollups(b, rc.storage)
+	rollups := rc.extractRollups(b)
 	if len(rollups) == 0 {
 		return nil, nil //nolint:nilnil
 	}
@@ -103,7 +102,7 @@ func (rc *rollupConsumerImpl) getCanonicalRollup(rollups []*common.ExtRollup, b 
 }
 
 // extractRollups - returns a list of the rollups published in this block
-func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts, blockResolver db.BlockResolver) []*common.ExtRollup {
+func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*common.ExtRollup {
 	rollups := make([]*common.ExtRollup, 0)
 	b := br.Block
 
@@ -125,14 +124,8 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts, blockR
 			return nil
 		}
 
-		// Ignore rollups created with proofs from different L1 blocks
-		// In case of L1 reorgs, rollups may end published on a fork
-		if blockResolver.IsBlockAncestor(b, r.Header.L1Proof) {
-			rollups = append(rollups, r)
-			rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.RollupHeightKey, r.Header.Number, log.BlockHashKey, b.Hash())
-		} else {
-			rc.logger.Warn("Ignored rollup from block, because it was produced on a fork", log.RollupHashKey, r.Hash(), log.RollupHeightKey, r.Header.Number, log.BlockHashKey, b.Hash())
-		}
+		rollups = append(rollups, r)
+		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.RollupHeightKey, r.Header.Number, log.BlockHashKey, b.Hash())
 	}
 
 	sort.Slice(rollups, func(i, j int) bool {
@@ -143,35 +136,12 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts, blockR
 	return rollups
 }
 
-// IsGenesis indicates whether the rollup is the genesis rollup.
-// todo (#718) - Change this to a check against a hardcoded genesis hash.
-func IsGenesis(rollupHeader *common.RollupHeader) bool {
-	return rollupHeader.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
-}
-
 // Validates and stores the rollup in a given block. Returns nil, nil when no rollup was found.
 // todo (#718) - design a mechanism to detect a case where the rollup doesn't contain any batches (despite batches arriving via P2P)
 func (rc *rollupConsumerImpl) processRollup(block *types.Block, rollup *common.ExtRollup) error {
-	latestRollup, err := getLatestRollupBeforeBlock(block, rc.storage, rc.logger)
-	if err != nil && !errors.Is(err, db.ErrNoRollups) {
-		return fmt.Errorf("unexpected error retrieving latest rollup for block %s. Cause: %w", block.Hash(), err)
-	}
-
-	// If this is the first rollup we've ever received, we check that it's the genesis rollup.
-	if latestRollup == nil && !IsGenesis(rollup.Header) {
-		return fmt.Errorf("received rollup with number %d but no genesis rollup is stored", rollup.Header.Number)
-	}
-
-	if err = rc.checkRollupsCorrectlyChained(rollup.Header, latestRollup); err != nil {
-		return fmt.Errorf("rollup was not correctly chained. height=%d hash=%s Cause: %w",
-			rollup.Header.Number, rollup.Hash(), err)
-	}
-
-	// todo (@matt) - store batches from the rollup (important during catch-up)
-
 	// do we need to store the entire rollup?
 	// Should be enough to store the header and the batches
-	if err = rc.storage.StoreRollup(rollup); err != nil {
+	if err := rc.storage.StoreRollup(rollup); err != nil {
 		// todo (@matt) - this seems catastrophic, how do we recover the lost rollup in this case?
 		return fmt.Errorf("could not store rollup. Cause: %w", err)
 	}
@@ -179,67 +149,11 @@ func (rc *rollupConsumerImpl) processRollup(block *types.Block, rollup *common.E
 	// we record the latest rollup published against this L1 block hash
 	rollupHash := rollup.Header.Hash()
 	blockHash := block.Hash()
-	err = rc.storage.UpdateHeadRollup(&blockHash, &rollupHash)
+	err := rc.storage.UpdateHeadRollup(&blockHash, &rollupHash)
 	if err != nil {
 		// todo (@matt) - this also seems catastrophic, would result in bad state unable to ingest further rollups?
 		return fmt.Errorf("unable to update head rollup - %w", err)
 	}
-
-	return nil
-}
-
-// Checks that the rollup:
-//   - Has a number exactly 1 higher than the previous rollup
-//   - Links to the previous rollup by hash
-//   - Has a first batch whose parent is the head batch of the previous rollup
-func (rc *rollupConsumerImpl) checkRollupsCorrectlyChained(rollup *common.RollupHeader, previousRollup *common.RollupHeader) error {
-	if previousRollup == nil {
-		// genesis rollup has no previous rollup to check
-		return nil
-	}
-
-	if rollup.Hash() == previousRollup.Hash() {
-		return ErrDuplicateRollup
-	}
-
-	current := rollup.Number.Uint64()
-	previous := previousRollup.Number.Uint64()
-	if current-previous > 1 {
-		return fmt.Errorf("found gap in rollups between rollup %d and rollup %d",
-			previous, current)
-	}
-
-	// todo - tudor - reinstate these checks after compression
-	// In case we have published two rollups for the same height
-	// This can happen when the first one takes too long to mine
-	if current == previous {
-		/*		if len(previousRollup.Batches) > len(rollup.Batches) {
-					return fmt.Errorf("received duplicate rollup at height %d with less batches than previous rollup", rollup.NumberU64())
-				}
-
-				for idx, batch := range previousRollup.Batches {
-					if rollup.Batches[idx].Hash() != batch.Hash() {
-						return fmt.Errorf("duplicate rollup at height %d has different batches at position %d", rollup.NumberU64(), idx)
-					}
-				}
-		*/
-		return ErrDuplicateRollup
-	}
-
-	if current <= previous {
-		return fmt.Errorf("expected new rollup but rollup %d height was less than or equal to previous rollup %d",
-			current, previous)
-	}
-
-	if rollup.ParentHash != previousRollup.Hash() {
-		return fmt.Errorf("found gap in rollups. Rollup %d did not reference rollup %d by hash",
-			rollup.Number, previousRollup.Number)
-	}
-
-	/*	if len(rollup.Batches) != 0 && previousRollup.HeadBatchHash() != rollup.Batches[0].Header.ParentHash {
-		return fmt.Errorf("found gap in rollup batches. Batches in rollup %d did not chain to batches in rollup %d",
-			rollup.Header.Number, previousRollup.Header.Number)
-	}*/
 
 	return nil
 }
@@ -252,21 +166,25 @@ func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
 	}
 
 	for _, batch := range r.Batches {
+		rc.logger.Info("Processing batch from rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
 		_, batchFoundErr := rc.batchRegistry.GetBatch(batch.Hash())
 		// Process and store a batch only if it wasn't already processed via p2p.
-		if errors.Is(batchFoundErr, errutil.ErrNotFound) {
-			receipts, err := rc.batchRegistry.ValidateBatch(batch)
-			if err != nil {
-				rc.logger.Error("Attempted to store incorrect batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
-				return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
-			}
-			err = rc.batchRegistry.StoreBatch(batch, receipts)
-			if err != nil {
-				return err
-			}
-		}
-		if batchFoundErr != nil {
+		if batchFoundErr != nil && !errors.Is(batchFoundErr, errutil.ErrNotFound) {
 			return batchFoundErr
+		}
+		receipts, err := rc.batchRegistry.ValidateBatch(batch)
+		if errors.Is(err, errutil.ErrBlockForBatchNotFound) {
+			rc.logger.Warn("Unable to validate batch due to it being on a different chain.", log.BatchHashKey, batch.Hash())
+			continue
+		}
+		if err != nil {
+			rc.logger.Error("Failed validating batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
+			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
+		}
+
+		err = rc.batchRegistry.StoreBatch(batch, receipts)
+		if err != nil {
+			return err
 		}
 	}
 	return nil

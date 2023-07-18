@@ -43,6 +43,7 @@ func (b *Batch) Encode() ([]byte, error) {
 
 func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }
 func (b *Batch) Number() *big.Int  { return new(big.Int).Set(b.Header.Number) }
+func (b *Batch) SeqNo() *big.Int   { return new(big.Int).Set(b.Header.SequencerOrderNo) }
 
 // IsGenesis indicates whether the batch is the genesis batch.
 // todo (#718) - Change this to a check against a hardcoded genesis hash.

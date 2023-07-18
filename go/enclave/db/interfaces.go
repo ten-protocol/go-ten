@@ -41,6 +41,8 @@ type BatchResolver interface {
 	FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error)
 	// FetchBatchByHeight returns the batch on the canonical chain with the given height.
 	FetchBatchByHeight(height uint64) (*core.Batch, error)
+	// FetchBatchBySeqNo returns the batch with the given seq number.
+	FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error)
 	// FetchHeadBatch returns the current head batch of the canonical chain.
 	FetchHeadBatch() (*core.Batch, error)
 	// FetchCurrentSequencerNo returns the sequencer number
@@ -126,6 +128,7 @@ type Storage interface {
 	AttestationStorage
 	CrossChainMessagesStorage
 	EnclaveKeyStorage
+	ScanStorage
 	io.Closer
 
 	// HealthCheck returns whether the storage is deemed healthy or not
@@ -148,4 +151,8 @@ type Storage interface {
 
 	// TrieDB - return the underlying trie database
 	TrieDB() *trie.Database
+}
+
+type ScanStorage interface {
+	GetContractCount() (*big.Int, error)
 }

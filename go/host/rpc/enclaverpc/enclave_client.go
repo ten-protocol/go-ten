@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -508,4 +509,18 @@ func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, 
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 	return json.RawMessage(response.Msg), nil
+}
+
+func (c *Client) GetTotalContractCount() (*big.Int, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetTotalContractCount(timeoutCtx, &generated.GetTotalContractCountRequest{})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+	return big.NewInt(response.Count), nil
 }

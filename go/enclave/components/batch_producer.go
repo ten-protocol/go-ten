@@ -1,9 +1,11 @@
 package components
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 	"sort"
+	"sync"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
@@ -29,6 +32,8 @@ type batchProducerImpl struct {
 	crossChainProcessors *crosschain.Processors
 	genesis              *genesis.Genesis
 	logger               gethlog.Logger
+	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
+	stateDBMutex sync.Mutex
 }
 
 func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *genesis.Genesis, logger gethlog.Logger) BatchProducer {
@@ -37,21 +42,29 @@ func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *ge
 		crossChainProcessors: cc,
 		genesis:              genesis,
 		logger:               logger,
+		stateDBMutex:         sync.Mutex{},
 	}
 }
 
 func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
 	defer bp.logger.Info("Batch context processed", log.DurationKey, measure.NewStopwatch())
 
-	// These variables will be used to create the new batch
-	parent, err := bp.storage.FetchBatchHeader(context.ParentPtr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve parent batch %s. Cause: %w", context.ParentPtr, err)
+	// Block is loaded first since if its missing this batch might be based on l1 fork we dont know about
+	// and we want to filter out all fork batches based on not knowing the l1 block
+	block, err := bp.storage.FetchBlock(context.BlockPtr)
+	if errors.Is(err, errutil.ErrNotFound) {
+		return nil, errutil.ErrBlockForBatchNotFound
+	} else if err != nil {
+		return nil, fmt.Errorf("failed to retrieve block %s for batch. Cause: %w", context.BlockPtr, err)
 	}
 
-	block, err := bp.storage.FetchBlock(context.BlockPtr)
+	// These variables will be used to create the new batch
+	parent, err := bp.storage.FetchBatchHeader(context.ParentPtr)
+	if errors.Is(err, errutil.ErrNotFound) {
+		return nil, errutil.ErrAncestorBatchNotFound
+	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve block %s for batch. Cause: %w", context.BlockPtr, err)
+		return nil, fmt.Errorf("failed to retrieve parent batch %s. Cause: %w", context.ParentPtr, err)
 	}
 
 	parentBlock := block
@@ -101,6 +114,8 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 		Batch:    batch,
 		Receipts: txReceipts,
 		Commit: func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
+			bp.stateDBMutex.Lock()
+			defer bp.stateDBMutex.Unlock()
 			h, err := stateDB.Commit(deleteEmptyObjects)
 			if err != nil {
 				return gethcommon.Hash{}, err
