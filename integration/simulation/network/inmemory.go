@@ -32,8 +32,9 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]*container.HostContainer, params.NumberOfNodes)
 	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
-	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
 	obscuroHosts := make([]host.Host, params.NumberOfNodes)
+
+	p2pNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyOBXAddress := datagenerator.RandomAddress()
@@ -47,7 +48,6 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgNetworkLatency)
 
 		agg := createInMemObscuroNode(
 			int64(i),
@@ -58,7 +58,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			nil,
 			params.Wallets.NodeWallets[i],
 			miner,
-			p2pLayers[i],
+			p2pNetw.NewNode(i),
 			&disabledBus,
 			common.Hash{},
 			params.AvgBlockDuration/2,
@@ -75,7 +75,6 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// populate the nodes field of each network
 	for i := 0; i < params.NumberOfNodes; i++ {
 		n.ethNodes[i].Network.(*ethereummock.MockEthNetwork).AllNodes = n.ethNodes
-		p2pLayers[i].Nodes = obscuroHosts
 	}
 
 	// The sequence of starting the nodes is important to catch various edge cases.

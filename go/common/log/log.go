@@ -16,6 +16,7 @@ const (
 	DurationKey     = "duration"
 	BatchHashKey    = "batch"
 	BatchHeightKey  = "batch_height"
+	BatchSeqNoKey   = "batch_seq_num"
 	RollupHashKey   = "rollup"
 	RollupHeightKey = "rollup_height"
 	CmpKey          = "component"

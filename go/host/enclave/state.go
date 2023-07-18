@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"fmt"
+	"math/big"
 	"sync"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -52,11 +53,11 @@ type StateTracker struct {
 	// enclave states (updated when enclave returns Status and optimistically after successful actions)
 	enclaveStatusCode common.StatusCode
 	enclaveL1Head     gethcommon.Hash
-	enclaveL2Head     gethcommon.Hash
+	enclaveL2Head     *big.Int
 
 	// latest seen heads of L1 and L2 chains from external sources
 	hostL1Head gethcommon.Hash
-	hostL2Head gethcommon.Hash
+	hostL2Head *big.Int
 
 	m      *sync.RWMutex
 	logger gethlog.Logger
@@ -90,17 +91,22 @@ func (s *StateTracker) OnReceivedBlock(l1Head gethcommon.Hash) {
 	s.hostL1Head = l1Head
 }
 
-func (s *StateTracker) OnProcessedBatch(enclL2Head gethcommon.Hash) {
+func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.enclaveL2Head = enclL2Head
+	if s.hostL2Head == nil || s.hostL2Head.Cmp(enclL2HeadSeqNo) < 0 {
+		// we've successfully processed this batch, so the host's head should be at least as high as the enclave's (this shouldn't happen, we want it to be visible if it happens)
+		s.logger.Warn("unexpected host head behind enclave head - updating to match", "hostHead", s.hostL2Head, "enclaveHead", enclL2HeadSeqNo)
+		s.hostL2Head = enclL2HeadSeqNo
+	}
+	s.enclaveL2Head = enclL2HeadSeqNo
 	s.setStatus(s.calculateStatus())
 }
 
-func (s *StateTracker) OnReceivedBatch(l2Head gethcommon.Hash) {
+func (s *StateTracker) OnReceivedBatch(l2HeadSeqNo *big.Int) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.hostL2Head = l2Head
+	s.hostL2Head = l2HeadSeqNo
 }
 
 func (s *StateTracker) OnSecretProvided() {
@@ -140,7 +146,7 @@ func (s *StateTracker) calculateStatus() Status {
 		if s.hostL1Head != s.enclaveL1Head || s.enclaveL1Head == gethutil.EmptyHash {
 			return L1Catchup
 		}
-		if s.hostL2Head != s.enclaveL2Head || s.enclaveL2Head == gethutil.EmptyHash {
+		if s.hostL2Head == nil || s.hostL2Head.Cmp(s.enclaveL2Head) != 0 || s.enclaveL2Head == nil {
 			return L2Catchup
 		}
 		return Live
@@ -168,10 +174,13 @@ func (s *StateTracker) GetEnclaveL1Head() gethcommon.Hash {
 	return s.enclaveL1Head
 }
 
-func (s *StateTracker) GetEnclaveL2Head() gethcommon.Hash {
+func (s *StateTracker) GetEnclaveL2Head() *big.Int {
 	s.m.RLock()
 	defer s.m.RUnlock()
-	return s.enclaveL2Head
+	if s.enclaveL2Head == nil {
+		return nil
+	}
+	return big.NewInt(0).SetBytes(s.enclaveL2Head.Bytes())
 }
 
 // this must be called from within write-lock
@@ -179,6 +188,6 @@ func (s *StateTracker) setStatus(newStatus Status) {
 	if s.status == newStatus {
 		return
 	}
-	s.logger.Debug(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus))
+	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus))
 	s.status = newStatus
 }

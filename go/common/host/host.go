@@ -29,37 +29,7 @@ type Host interface {
 	// HealthCheck returns the health status of the host + enclave + db
 	HealthCheck() (*HealthCheck, error)
 
-	P2PSubscriber // todo (@matt) remove this from host interface and host tests when it's done at a per-enclave level
-}
-
-type P2PSubscriber interface {
-	// ReceiveTx processes a transaction received from a peer host.
-	ReceiveTx(tx common.EncryptedTx)
-	// ReceiveBatches receives a set of batches from a peer host.
-	ReceiveBatches(batches common.EncodedBatchMsg)
-	// ReceiveBatchRequest receives a batch request from a peer host. Used during catch-up.
-	ReceiveBatchRequest(batchRequest common.EncodedBatchRequest)
-}
-
-// P2P is the layer responsible for sending and receiving messages to Obscuro network peers.
-type P2P interface {
-	StartListening(callback P2PSubscriber)
-	StopListening() error
-	UpdatePeerList([]string)
-	// SendTxToSequencer sends the encrypted transaction to the sequencer.
-	SendTxToSequencer(tx common.EncryptedTx) error
-	// BroadcastBatch sends the batch to every other node on the network.
-	BroadcastBatch(batchMsg *BatchMsg) error
-	// RequestBatchesFromSequencer requests batches from the sequencer.
-	RequestBatchesFromSequencer(batchRequest *common.BatchRequest) error
-	// SendBatches sends batches to a specific node, in response to a batch request.
-	SendBatches(batchMsg *BatchMsg, to string) error
-
-	// Status returns the status of the p2p communications.
-	Status() *P2PStatus
-
-	// HealthCheck returns whether the p2p lib is healthy.
-	HealthCheck() bool
+	P2PTxHandler
 }
 
 type BlockStream struct {
@@ -68,6 +38,6 @@ type BlockStream struct {
 }
 
 type BatchMsg struct {
-	Batches   []*common.ExtBatch // The batches being sent.
-	IsCatchUp bool               // Whether these batches are being sent as part of a catch-up request.
+	Batches []*common.ExtBatch // The batches being sent.
+	IsLive  bool               // true if these batches are being sent as new, false if in response to a p2p request
 }
