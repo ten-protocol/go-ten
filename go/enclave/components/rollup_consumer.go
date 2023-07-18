@@ -60,30 +60,30 @@ func NewRollupConsumer(
 	}
 }
 
-func (rc *rollupConsumerImpl) ProcessL1Block(b *common.BlockAndReceipts) (*common.ExtRollup, error) {
+func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) error {
 	stopwatch := measure.NewStopwatch()
 	defer rc.logger.Info("Rollup consumer processed block", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
 
 	rollups := rc.extractRollups(b)
 	if len(rollups) == 0 {
-		return nil, nil //nolint:nilnil
+		return nil
 	}
 
 	rollups, err := rc.getSignedRollup(rollups, b)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if len(rollups) > 0 {
 		for _, rollup := range rollups {
 			// read batch data from rollup, verify and store it
 			if err := rc.ProcessRollup(rollup); err != nil {
 				rc.logger.Error("Failed processing rollup", log.ErrKey, err)
-				return nil, err
+				return err
 			}
 		}
 	}
 
-	return nil, nil
+	return nil
 }
 
 func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup, b *common.BlockAndReceipts) ([]*common.ExtRollup, error) {

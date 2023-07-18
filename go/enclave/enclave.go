@@ -442,7 +442,7 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 		return nil, err
 	}
 
-	_, err = e.rollupConsumer.ProcessL1Block(br)
+	err = e.rollupConsumer.ProcessRollupsInBlock(br)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
