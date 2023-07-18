@@ -31,14 +31,6 @@ const (
 	msgTypeTx msgType = iota
 	msgTypeBatches
 	msgTypeBatchRequest
-
-	_thresholdErrorFailure = 100
-
-	_failedMessageRead        = "msg/inbound/failed_read"
-	_failedMessageDecode      = "msg/inbound/failed_decode"
-	_failedConnectSendMessage = "msg/outbound/failed_peer_connect"
-	_failedWriteSendMessage   = "msg/outbound/failed_write"
-	_receivedMessage          = "msg/inbound/success_received"
 )
 
 var (
@@ -70,7 +62,6 @@ func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger, metricR
 
 		// monitoring
 		peerTracker:     newPeerTracker(),
-		hostGauges:      map[string]map[string]gethmetrics.Gauge{},
 		metricsRegistry: metricReg,
 		logger:          logger,
 	}
@@ -89,9 +80,7 @@ type Service struct {
 	peerAddresses []string
 	p2pTimeout    time.Duration
 
-	peerTracker *peerTracker
-	// hostGauges holds a map of gauges per host per event to track p2p metrics and health status
-	hostGauges      map[string]map[string]gethmetrics.Gauge
+	peerTracker     *peerTracker
 	metricsRegistry gethmetrics.Registry
 	logger          gethlog.Logger
 }
@@ -124,9 +113,8 @@ func (p *Service) Stop() error {
 }
 
 func (p *Service) HealthStatus() host.HealthStatus {
-	err := p.verifyHealth()
 	msg := ""
-	if err != nil {
+	if err := p.verifyHealth(); err != nil {
 		msg = err.Error()
 	}
 	return &host.BasicErrHealthStatus{
@@ -226,23 +214,11 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 	return p.send(msg, requestID)
 }
 
-// Status returns the current status of the p2p layer
-func (p *Service) Status() *host.P2PStatus {
-	return p.status()
-}
-
 // HealthCheck returns whether the p2p is considered healthy
 // Currently it considers itself unhealthy
 // if there's more than 100 failures on a given fail type
 // if there's a known peer for which a message hasn't been received
 func (p *Service) verifyHealth() error {
-	currentStatus := p.status()
-
-	if currentStatus.FailedReceivedMessages >= _thresholdErrorFailure ||
-		currentStatus.FailedSendMessage >= _thresholdErrorFailure {
-		return errors.New("breached threshold for errors")
-	}
-
 	var noMsgReceivedPeers []string
 	for peer, lastMsgTimestamp := range p.peerTracker.receivedMessagesByPeer() {
 		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {
@@ -284,7 +260,6 @@ func (p *Service) handle(conn net.Conn) {
 	encodedMsg, err := io.ReadAll(conn)
 	if err != nil {
 		p.logger.Warn("failed to read message from peer", log.ErrKey, err)
-		p.incHostGaugeMetric(conn.RemoteAddr().String(), _failedMessageRead)
 		return
 	}
 
@@ -292,7 +267,6 @@ func (p *Service) handle(conn net.Conn) {
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
 		p.logger.Warn("failed to decode message received from peer: ", log.ErrKey, err)
-		p.incHostGaugeMetric(conn.RemoteAddr().String(), _failedMessageDecode)
 		return
 	}
 
@@ -329,7 +303,6 @@ func (p *Service) handle(conn net.Conn) {
 		// this is an incoming request, p2p service is responsible for finding the response and returning it
 		go p.handleBatchRequest(msg.Contents)
 	}
-	p.incHostGaugeMetric(msg.Sender, _receivedMessage)
 	p.peerTracker.receivedPeerMsg(msg.Sender)
 }
 
@@ -384,14 +357,12 @@ func (p *Service) sendBytes(address string, tx []byte) error {
 	}
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
-		p.incHostGaugeMetric(address, _failedConnectSendMessage)
 		return err
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
-		p.incHostGaugeMetric(address, _failedWriteSendMessage)
 		return err
 	}
 	return nil
@@ -404,41 +375,6 @@ func (p *Service) getSequencer() (string, error) {
 		return "", errUnknownSequencer
 	}
 	return p.peerAddresses[0], nil
-}
-
-// status returns the current status of the p2p layer
-func (p *Service) status() *host.P2PStatus {
-	status := &host.P2PStatus{
-		FailedReceivedMessages: int64(0),
-		FailedSendMessage:      int64(0),
-		ReceivedMessages:       int64(0),
-	}
-
-	for _, hostGauge := range p.hostGauges {
-		for gaugeName, gauge := range hostGauge {
-			switch gaugeName {
-			case _receivedMessage:
-				status.ReceivedMessages = gauge.Value()
-			case _failedMessageRead:
-			case _failedMessageDecode:
-				status.FailedReceivedMessages += gauge.Value()
-			case _failedWriteSendMessage:
-			case _failedConnectSendMessage:
-				status.FailedSendMessage += gauge.Value()
-			}
-		}
-	}
-	return status
-}
-
-func (p *Service) incHostGaugeMetric(host string, gaugeName string) {
-	if _, ok := p.hostGauges[host]; !ok {
-		p.hostGauges[host] = map[string]gethmetrics.Gauge{}
-	}
-	if _, ok := p.hostGauges[host][gaugeName]; !ok {
-		p.hostGauges[host][gaugeName] = gethmetrics.NewRegisteredGauge(gaugeName, p.metricsRegistry)
-	}
-	p.hostGauges[host][gaugeName].Inc(1)
 }
 
 func (p *Service) handleBatchRequest(encodedBatchRequest common.EncodedBatchRequest) {
