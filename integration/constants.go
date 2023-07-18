@@ -12,6 +12,7 @@ const (
 	StartPortWalletExtensionUnitTest = 40000
 	StartPortFaucetUnitTest          = 41000
 	StartPortFaucetHTTPUnitTest      = 42000
+	StartPortObscuroscanUnitTest     = 43000
 
 	DefaultGethWSPortOffset      = 100
 	DefaultGethAUTHPortOffset    = 200

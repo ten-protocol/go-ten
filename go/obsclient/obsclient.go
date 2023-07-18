@@ -83,7 +83,7 @@ func (oc *ObsClient) Health() (bool, error) {
 
 func (oc *ObsClient) GetTotalContractCount() (int, error) {
 	var count int
-	err := oc.rpcClient.Call(&count, rpc.GetTransactionCount)
+	err := oc.rpcClient.Call(&count, rpc.GetTotalContractCount)
 	if err != nil {
 		return 0, err
 	}

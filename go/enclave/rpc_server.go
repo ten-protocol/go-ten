@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -313,6 +314,19 @@ func (s *RPCServer) DebugEventLogRelevancy(_ context.Context, req *generated.Deb
 	logs, err := s.enclave.DebugEventLogRelevancy(txHash)
 
 	return &generated.DebugEventLogRelevancyResponse{Msg: string(logs), SystemError: toRPCError(err)}, nil
+}
+
+func (s *RPCServer) GetTotalContractCount(_ context.Context, req *generated.GetTotalContractCountRequest) (*generated.GetTotalContractCountResponse, error) {
+	count, err := s.enclave.GetTotalContractCount()
+
+	if count == nil {
+		count = big.NewInt(0)
+	}
+
+	return &generated.GetTotalContractCountResponse{
+		Count:       count.Int64(),
+		SystemError: toRPCError(err),
+	}, nil
 }
 
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
