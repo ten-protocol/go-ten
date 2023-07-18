@@ -2,13 +2,14 @@ package faucet
 
 import (
 	"fmt"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/config"
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/container"
 	"github.com/stretchr/testify/require"
 	"github.com/valyala/fasthttp"
-	"net/http"
-	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/integration"

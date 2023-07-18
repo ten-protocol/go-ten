@@ -20,12 +20,12 @@ func (b *Backend) GetLatestBatch() (*common.BatchHeader, error) {
 }
 
 func (b *Backend) GetLatestRollup() (*common.RollupHeader, error) {
-	//return b.obsClient.L1RollupHeaderByNumber(nil)
-	return nil, nil
+	// return b.obsClient.L1RollupHeaderByNumber(nil)
+	return &common.RollupHeader{}, nil
 }
 
 func (b *Backend) GetNodeCount() (int, error) {
-	//return b.obsClient.ActiveNodeCount()
+	// return b.obsClient.ActiveNodeCount()
 	return 0, nil
 }
 

@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/webserver"

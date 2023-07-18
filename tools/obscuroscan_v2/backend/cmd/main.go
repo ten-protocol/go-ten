@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/container"
 	"log"
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/container"
 )
 
 func main() {

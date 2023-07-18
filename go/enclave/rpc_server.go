@@ -321,7 +321,7 @@ func (s *RPCServer) DebugEventLogRelevancy(_ context.Context, req *generated.Deb
 	return &generated.DebugEventLogRelevancyResponse{Msg: string(logs), SystemError: toRPCError(err)}, nil
 }
 
-func (s *RPCServer) GetTotalContractCount(_ context.Context, req *generated.GetTotalContractCountRequest) (*generated.GetTotalContractCountResponse, error) {
+func (s *RPCServer) GetTotalContractCount(_ context.Context, _ *generated.GetTotalContractCountRequest) (*generated.GetTotalContractCountResponse, error) {
 	count, err := s.enclave.GetTotalContractCount()
 
 	if count == nil {

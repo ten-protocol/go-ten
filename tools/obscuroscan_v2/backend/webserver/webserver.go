@@ -3,11 +3,12 @@ package webserver
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-gonic/gin"
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend"
-	"net/http"
-	"time"
 )
 
 type WebServer struct {
