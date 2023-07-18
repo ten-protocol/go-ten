@@ -1,9 +1,7 @@
 package components
 
 import (
-	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
@@ -12,7 +10,6 @@ import (
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 
@@ -53,27 +50,8 @@ func NewRollupProducer(sequencerID gethcommon.Address, transactionBlobCrypto cry
 	}
 }
 
-// fetchLatestRollup - Will pull the latest rollup based on the current head block from the database or return null
-func (re *rollupProducerImpl) fetchLatestRollup() (*common.RollupHeader, error) {
-	b, err := re.blockProcessor.GetHead()
-	if err != nil {
-		return nil, err
-	}
-	return getLatestRollupBeforeBlock(b, re.storage, re.logger)
-}
-
-func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*core.Rollup, error) {
-	rollup, err := re.fetchLatestRollup()
-	if err != nil && !errors.Is(err, db.ErrNoRollups) {
-		return nil, err
-	}
-
-	hash := gethcommon.Hash{}
-	if rollup != nil {
-		hash = rollup.HeadBatchHash
-	}
-
-	batches, err := re.batchRegistry.BatchesAfter(hash, limiter)
+func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, limiter limiters.RollupLimiter) (*core.Rollup, error) {
+	batches, err := re.batchRegistry.BatchesAfter(fromBatchNo, limiter)
 	if err != nil {
 		return nil, err
 	}
@@ -84,11 +62,7 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 		return nil, fmt.Errorf("no batches for rollup")
 	}
 
-	if batches[len(batches)-1].Hash() == hash {
-		return nil, fmt.Errorf("current head batch matches the rollup head bash")
-	}
-
-	newRollup := re.createNextRollup(rollup, batches)
+	newRollup := re.createNextRollup(batches)
 
 	re.logger.Info(fmt.Sprintf("Created new rollup %s with %d batches", newRollup.Hash(), len(newRollup.Batches)))
 
@@ -97,7 +71,7 @@ func (re *rollupProducerImpl) CreateRollup(limiter limiters.RollupLimiter) (*cor
 
 // createNextRollup - based on a previous rollup and batches will create a new rollup that encapsulate the state
 // transition from the old rollup to the new one's head batch.
-func (re *rollupProducerImpl) createNextRollup(parentRollup *common.RollupHeader, batches []*core.Batch) *core.Rollup {
+func (re *rollupProducerImpl) createNextRollup(batches []*core.Batch) *core.Rollup {
 	lastBatch := batches[len(batches)-1]
 
 	rh := common.RollupHeader{}
@@ -107,69 +81,16 @@ func (re *rollupProducerImpl) createNextRollup(parentRollup *common.RollupHeader
 		re.logger.Crit("Could not fetch block. Should not happen", log.ErrKey, err)
 	}
 	rh.L1ProofNumber = b.Number()
-	rh.Time = lastBatch.Header.Time
 	rh.Coinbase = re.sequencerID
-
-	if parentRollup != nil {
-		rh.ParentHash = parentRollup.Hash()
-		rh.Number = big.NewInt(parentRollup.Number.Int64() + 1)
-	} else { // genesis
-		rh.ParentHash = gethcommon.Hash{}
-		rh.Number = big.NewInt(0)
-	}
 
 	rh.CrossChainMessages = make([]MessageBus.StructsCrossChainMessage, 0)
 	for _, b := range batches {
 		rh.CrossChainMessages = append(rh.CrossChainMessages, b.Header.CrossChainMessages...)
 	}
 
-	rollupHeight := big.NewInt(0)
-	if parentRollup != nil {
-		rollupHeight = parentRollup.Number
-		rollupHeight.Add(rollupHeight, gethcommon.Big1)
-	}
-	rh.Number = rollupHeight
-
-	rh.HeadBatchHash = lastBatch.Hash()
+	rh.LastBatchSeqNo = lastBatch.SeqNo().Uint64()
 	return &core.Rollup{
 		Header:  &rh,
 		Batches: batches,
-	}
-}
-
-// todo - return the included batches as well. Maybe store something separate pointing to the start and end sequence numbers
-// when processing the rollup check that all sequence numbers are included
-// getLatestRollupBeforeBlock - Given a block, returns the latest rollup in the canonical chain for that block (excluding those in the block itself).
-func getLatestRollupBeforeBlock(block *common.L1Block, storage db.Storage, logger gethlog.Logger) (*common.RollupHeader, error) {
-	scanBackCount := 0
-	for {
-		blockParentHash := block.ParentHash()
-		latestRollup, err := storage.FetchHeadRollupForBlock(&blockParentHash)
-		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("could not fetch current L2 head rollup - %w", err)
-		}
-
-		// we found a rollup so we return
-		if latestRollup != nil {
-			return latestRollup, nil
-		}
-
-		// we scan backwards now to the prev block in the chain and we will lookup to see if that has an entry
-		block, err = storage.FetchBlock(block.ParentHash())
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				// No more blocks available (enclave does not read the L1 chain from genesis if it knows
-				// when management contract was deployed, so we don't keep going to block zero, we just stop when the blocks run out)
-				// We have now checked through the entire (relevant) history of the L1 and no rollups were found.
-				return nil, db.ErrNoRollups
-			}
-			return nil, fmt.Errorf("could not fetch parent block - %w", err)
-		}
-		scanBackCount++
-		// todo (@matt) - remove this when we are confident that we are not scanning backwards any more
-		if scanBackCount%100 == 0 {
-			// if we are scanning a long way backwards (when we don't think we need to, and it might be expensive) we want to know about it
-			logger.Warn(fmt.Sprintf("Scanning backwards for rollup, scanned %d blocks backwards so far...", scanBackCount), log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
-		}
 	}
 }

@@ -442,18 +442,10 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 		return nil, err
 	}
 
-	rollup, err := e.rollupConsumer.ProcessL1Block(br)
+	err = e.rollupConsumer.ProcessRollupsInBlock(br)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
-	}
-
-	if rollup != nil {
-		// read batch data from rollup, verify and store it
-		if err = e.rollupConsumer.ProcessRollup(rollup); err != nil {
-			e.logger.Error("Failed processing rollup", log.ErrKey, err)
-			return nil, err
-		}
 	}
 
 	return ingestion, nil
@@ -569,7 +561,7 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 	return nil
 }
 
-func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, common.SystemError) {
+func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GenerateRollup with the enclave stopping"))
 	}
@@ -579,7 +571,7 @@ func (e *enclaveImpl) CreateRollup() (*common.ExtRollup, common.SystemError) {
 		e.logger.Info(fmt.Sprintf("CreateRollup call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
 	}()
 
-	rollup, err := e.Sequencer().CreateRollup()
+	rollup, err := e.Sequencer().CreateRollup(fromSeqNo)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}

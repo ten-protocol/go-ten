@@ -392,13 +392,15 @@ func (c *Client) CreateBatch() common.SystemError {
 	return err
 }
 
-func (c *Client) CreateRollup() (*common.ExtRollup, common.SystemError) {
+func (c *Client) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
 	defer c.logger.Info("CreateRollup rpc call", log.DurationKey, measure.NewStopwatch())
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{})
+	response, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{
+		FromSequenceNumber: &fromSeqNo,
+	})
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
 	}
