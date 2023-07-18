@@ -33,6 +33,9 @@ type Repository struct {
 	latestBatchSeqNo *big.Int
 	latestSeqNoMutex sync.Mutex
 
+	// the repository requests batches from peers asynchronously.
+	// We don't want to repeatedly spam out requests if we haven't received a response yet,
+	// but we don't want to wait forever if there's no response.
 	p2pReqMutex          sync.Mutex
 	p2pInFlightRequested *big.Int
 	p2pInFlightReqTime   *time.Time

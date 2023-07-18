@@ -247,7 +247,6 @@ func (h *host) HandleBatch(batch *common.ExtBatch) {
 	} else {
 		h.enclaveState.OnProcessedBatch(batch.Header.SequencerOrderNo)
 	}
-	// h.storeBatch(batch)
 }
 
 func (h *host) generateAndBroadcastSecret() error {
