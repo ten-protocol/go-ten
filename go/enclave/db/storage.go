@@ -193,7 +193,6 @@ func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*cor
 	return orm.FetchHeadBatchForBlock(s.db.GetSQLDB(), blockHash)
 }
 
-
 func (s *storageImpl) CreateStateDB(hash common.L2BatchHash) (*state.StateDB, error) {
 	batch, err := s.FetchBatch(hash)
 	if err != nil {
@@ -330,9 +329,9 @@ func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
 }
 
 func (s *storageImpl) StoreRollup(rollup *common.ExtRollup) error {
-	dbBatch := s.db.NewBatch()
+	dbBatch := s.db.NewSQLBatch()
 
-	if err := obscurorawdb.WriteRollup(dbBatch, rollup); err != nil {
+	if err := orm.WriteRollup(dbBatch, rollup.Header); err != nil {
 		return fmt.Errorf("could not write rollup. Cause: %w", err)
 	}
 
