@@ -2,7 +2,6 @@ package core
 
 import "C"
 import (
-	"math/big"
 	"sync/atomic"
 
 	"github.com/obscuronet/go-obscuro/go/common/compression"
@@ -31,9 +30,6 @@ func (r *Rollup) Hash() common.L2BatchHash {
 	r.hash.Store(v)
 	return v
 }
-
-func (r *Rollup) NumberU64() uint64 { return r.Header.Number.Uint64() }
-func (r *Rollup) Number() *big.Int  { return new(big.Int).Set(r.Header.Number) }
 
 func (r *Rollup) ToExtRollup(dataEncryptionService crypto.DataEncryptionService, compression compression.DataCompressionService) (*common.ExtRollup, error) {
 	headers := make([]*common.BatchHeader, len(r.Batches))

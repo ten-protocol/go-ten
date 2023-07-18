@@ -4,7 +4,7 @@
 # deploy = copies over only the enclave executable without the source
 #          in a lightweight base image specialized for deployment and prepares the /data/ folder.
 
-FROM ghcr.io/edgelesssys/ego-dev:latest AS build-base
+FROM ghcr.io/edgelesssys/ego-dev:v1.3.0 AS build-base
 
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
@@ -34,7 +34,7 @@ RUN ego sign main
 #   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
 #
 # Trigger a new build stage and use the smaller ego version:
-FROM ghcr.io/edgelesssys/ego-deploy:latest
+FROM ghcr.io/edgelesssys/ego-deploy:v1.3.0
 
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \

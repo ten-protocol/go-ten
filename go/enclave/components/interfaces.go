@@ -105,7 +105,7 @@ type BatchRegistry interface {
 	FindAncestralBatchFor(*common.L1Block) (*core.Batch, error)
 
 	// BatchesAfter - Given a hash, will return batches following it until the head batch
-	BatchesAfter(batchHash gethcommon.Hash, limiter limiters.RollupLimiter) ([]*core.Batch, error)
+	BatchesAfter(batchSeqNo uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, error)
 
 	// GetBatchStateAtHeight - creates a stateDB that represents the state committed when
 	// the batch with height matching the blockNumber was created and stored.
@@ -136,14 +136,14 @@ type BatchRegistry interface {
 type RollupProducer interface {
 	// CreateRollup - creates a rollup starting from the end of the last rollup
 	// that has been stored and continues it towards what we consider the current L2 head.
-	CreateRollup(limiter limiters.RollupLimiter) (*core.Rollup, error)
+	CreateRollup(fromBatchNo uint64, limiter limiters.RollupLimiter) (*core.Rollup, error)
 }
 
 type RollupConsumer interface {
-	// ProcessL1Block - extracts the rollup from the block's transactions
+	// ProcessRollupsInBlock - extracts the rollup from the block's transactions
 	// and verifies its integrity, saving and processing any batches that have
 	// not been seen previously.
-	ProcessL1Block(b *common.BlockAndReceipts) (*common.ExtRollup, error)
+	ProcessRollupsInBlock(b *common.BlockAndReceipts) error
 
 	ProcessRollup(rollup *common.ExtRollup) error
 }

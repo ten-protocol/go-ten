@@ -15,15 +15,15 @@ contract ManagementContract {
     // TODO - Revisit the decision to store the host addresses in the smart contract.
     string[] private hostAddresses; // The addresses of all the Obscuro hosts on the network.
 
-    // tree holds a tree of rollups
-    Structs.Tree private tree;
-
     // networkSecretNotInitialized marks if the network secret has been initialized
     bool private networkSecretInitialized ;
 
     // isWithdrawalAvailable marks if the contract allows withdrawals or not
     bool private isWithdrawalAvailable;
 
+    uint256 public lastBatchSeqNo = 0;
+
+    Structs.RollupStorage private rollups;
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
     constructor() {
@@ -31,109 +31,17 @@ contract ManagementContract {
         emit LogManagementContractCreated(address(messageBus));
     }
 
-    // InitializeTree starts the list and sets the initial values
-    function InitializeTree(Structs.MetaRollup memory r) public {
-        require(!tree.initialized, "cannot be initialized again");
-        tree.initialized = true;
-
-        // TreeElement starts a 1 and has no parent ( ParentID: 0 )
-        tree.rollups[1] = Structs.TreeElement(1, 0, r);
-        tree._HEAD = 1;
-        tree._nextID = 2;
-        tree.rollupsHashes[r.Hash] = 1;
-
-        // withdrawals are available at the start
-        isWithdrawalAvailable = true;
+    function GetRollupByHash(bytes32 rollupHash) view public returns(bool, Structs.MetaRollup memory) {
+        Structs.MetaRollup memory rol = rollups.byHash[rollupHash];
+        return (rol.Hash == rollupHash , rol);
     }
 
-    function GetRollupByID(uint256 rollupID) view public returns(bool, Structs.TreeElement memory) {
-        Structs.TreeElement memory rol = tree.rollups[rollupID];
-        return (rol.ElementID != 0 , rol);
-    }
-
-    function GetRollupByHash(bytes32 rollupHash) view public returns (bool, Structs.TreeElement memory) {
-        return GetRollupByID(tree.rollupsHashes[rollupHash]);
-    }
-
-    function GetHeadRollup() internal view returns ( Structs.TreeElement memory ) {
-        return tree.rollups[tree._HEAD];
-    }
-
-    function GetParentRollup(Structs.TreeElement memory element) view public returns( bool, Structs.TreeElement memory) {
-        return GetRollupByID(element.ParentID);
-    }
-
-    function AppendRollup(uint256 _parentID, Structs.MetaRollup calldata _r) internal {
-        // guarantee the storage ids are not compromised
-        uint rollupID = tree._nextID;
-        tree._nextID++;
-
-        // cannot append to non-existing parent rollups
-        (bool found, Structs.TreeElement memory parent) = GetRollupByID(_parentID);
-        require(found, "parent not found");
-
-        // store the rollup in an element
-        tree.rollups[rollupID] = Structs.TreeElement({ 
-            ElementID: rollupID, 
-            ParentID: _parentID,
-            rollup: _r
-        });
-
-        // mark the element as a child of parent
-        tree.rollupChildren[_parentID].push(rollupID);
-
-        // store the hashpointer
-        tree.rollupsHashes[_r.Hash] = rollupID;
-
-        // mark this as the head
-        if (parent.ElementID == tree._HEAD) {
-            tree._HEAD = rollupID;
+    function AppendRollup(Structs.MetaRollup calldata _r) internal {
+        rollups.byHash[_r.Hash] = _r;
+        if (_r.LastSequenceNumber > lastBatchSeqNo) {
+            lastBatchSeqNo = _r.LastSequenceNumber;
         }
     }
-
-    // HasSecondCousinFork returns whether there is a fork in the current view of the rollups
-    // It works by:
-    // - Traversing up two levels ( from the HEAD to the grand father element )
-    // - Checking if there are siblings ( at the grand father level )
-    // - Checking if the siblings have children ( meaning that a fork expanded )
-    //
-    // Will return true when a rollup 6 or 6' with parent 5 or 5' is inserted
-    // 0 -> 1 -> 2 -> 3 -> 4 -> 5
-    //                  -> 4'-> 5'
-    //
-    function HasSecondCousinFork() view public returns (bool) {
-        Structs.TreeElement memory currentElement = GetHeadRollup();
-
-        // traverse up to the grandpa ( 2 levels up )
-        (bool foundParent, Structs.TreeElement memory parentElement) = GetParentRollup(currentElement);
-        require(foundParent, "no parent");
-        (bool foundGrandpa, Structs.TreeElement memory grandpaElement) = GetParentRollup(parentElement);
-        require(foundGrandpa, "no grand parent");
-
-        // follow each of the grandpa children until it's two levels deep
-        uint256[] memory childrenIDs = tree.rollupChildren[grandpaElement.ElementID];
-        for (uint256 i = 0; i < childrenIDs.length ; i++) {
-            (bool foundChild, Structs.TreeElement memory child) = GetRollupByID(childrenIDs[i]);
-
-            // no more children
-            if (!foundChild) {
-                return false;
-            }
-
-            // ignore the current tree
-            if (child.ElementID == parentElement.ElementID ) {
-                continue;
-            }
-
-            // if child has children then it's bad ( fork of depth 2 )
-            if (tree.rollupChildren[child.ElementID].length > 0) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     //
     //  -- End of Tree element list Library
     //
@@ -156,27 +64,7 @@ contract ManagementContract {
         // revert if the AggregatorID is not attested
         require(attested[r.AggregatorID], "aggregator not attested");
 
-        // if this is the first element initialize the tree structure
-        // TODO this should be moved to the network initialization
-        if (!tree.initialized) {
-            InitializeTree(r);
-            return;
-        }
-
-        (bool found, Structs.TreeElement memory parent) = GetRollupByHash(r.ParentHash);
-        require(found, "unable to find parent hash");
-
-        // don't check for forks at the start
-        if (tree._HEAD > 2) {
-            bool forkFound = HasSecondCousinFork();
-            if (forkFound) {
-                isWithdrawalAvailable = false;
-                // We keep accepting rollups just locks the contract
-                // require(!found, "detected a fork");
-            }
-        }
-
-        AppendRollup(parent.ElementID, r);
+        AppendRollup(r);
         pushCrossChainMessages(crossChainData);
     }
 

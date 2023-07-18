@@ -37,6 +37,8 @@ type EthClient interface {
 
 	EstimateGasAndGasPrice(txData types.TxData, from gethcommon.Address) (types.TxData, error) // Estimates the gas and the gas price for a given tx payload
 
+	FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error)
+
 	Stop() // tries to cleanly stop the client and release any resources
 
 	EthClient() *ethclient.Client // returns the underlying eth client

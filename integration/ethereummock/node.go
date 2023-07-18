@@ -105,6 +105,38 @@ func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 	return 0, nil
 }
 
+func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
+	for _, tx := range block.Transactions() {
+		decodedTx := m.mgmtContractLib.DecodeTx(tx)
+		if decodedTx == nil {
+			continue
+		}
+		switch l1tx := decodedTx.(type) {
+		case *ethadapter.L1RollupTx:
+			r, err := common.DecodeRollup(l1tx.Rollup)
+			if err == nil {
+				return r
+			}
+		}
+	}
+	return nil
+}
+
+func (m *Node) FetchLastBatchSeqNo(gethcommon.Address) (*big.Int, error) {
+	startingBlock, err := m.FetchHeadBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	for currentBlock := startingBlock; currentBlock.NumberU64() != 0; currentBlock, _ = m.BlockByHash(currentBlock.Header().ParentHash) {
+		rollup := m.getRollupFromBlock(currentBlock)
+		if rollup != nil {
+			return big.NewInt(int64(rollup.Header.LastBatchSeqNo)), nil
+		}
+	}
+	return big.NewInt(0), nil
+}
+
 // BlockListener provides stream of latest mock head headers as they are created
 func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
 	id := uuid.New()

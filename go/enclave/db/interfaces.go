@@ -49,11 +49,6 @@ type BatchResolver interface {
 	FetchCurrentSequencerNo() (*big.Int, error)
 }
 
-type RollupResolver interface {
-	// StoreRollup stores a rollup.
-	StoreRollup(rollup *common.ExtRollup) error
-}
-
 type BatchUpdater interface {
 	// StoreBatch stores a batch.
 	StoreBatch(batch *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error
@@ -66,13 +61,8 @@ type BatchUpdater interface {
 type HeadsAfterL1BlockStorage interface {
 	// FetchHeadBatchForBlock returns the hash of the head batch at a given L1 block.
 	FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error)
-	// FetchHeadRollupForBlock returns the hash of the latest (i.e. highest-numbered) rollup in the given L1 block, or
-	// nil if the block contains no rollups.
-	FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*common.RollupHeader, error)
 	// UpdateL1Head updates the L1 head.
 	UpdateL1Head(l1Head common.L1BlockHash) error
-	// UpdateHeadRollup just updates the canonical L2 head batch, leaving data untouched (used to rewind after L1 fork or data corruption)
-	UpdateHeadRollup(l1Head *common.L1BlockHash, l2Head *common.L2BatchHash) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2BatchHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
@@ -121,7 +111,6 @@ type Storage interface {
 	BlockResolver
 	BatchResolver
 	BatchUpdater
-	RollupResolver
 	SharedSecretStorage
 	HeadsAfterL1BlockStorage
 	TransactionStorage
