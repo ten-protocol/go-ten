@@ -247,12 +247,6 @@ func WriteCanonicalHash(db ethdb.KeyValueWriter, l2Head *core.Batch) error {
 
 // Stores a rollup header into the database and also stores the hash-to-number mapping.
 func writeRollupHeader(db ethdb.KeyValueWriter, header *common.RollupHeader) error {
-	// Write the hash -> number mapping
-	err := writeRollupHeaderNumber(db, header.Hash(), header.Number.Uint64())
-	if err != nil {
-		return fmt.Errorf("could not write header number. Cause: %w", err)
-	}
-
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
@@ -261,16 +255,6 @@ func writeRollupHeader(db ethdb.KeyValueWriter, header *common.RollupHeader) err
 	key := rollupHeaderKey(header.Hash())
 	if err = db.Put(key, data); err != nil {
 		return fmt.Errorf("could not put header in DB. Cause: %w", err)
-	}
-	return nil
-}
-
-// Stores the hash->number mapping.
-func writeRollupHeaderNumber(db ethdb.KeyValueWriter, hash gethcommon.Hash, number uint64) error {
-	key := rollupNumberKey(hash)
-	enc := encodeNumber(number)
-	if err := db.Put(key, enc); err != nil {
-		return fmt.Errorf("could not put rollup header number in DB. Cause: %w", err)
 	}
 	return nil
 }

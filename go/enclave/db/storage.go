@@ -196,17 +196,6 @@ func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*cor
 	return obscurorawdb.ReadBatch(s.db, *l2HeadBatch)
 }
 
-func (s *storageImpl) FetchHeadRollupForBlock(blockHash *common.L1BlockHash) (*common.RollupHeader, error) {
-	l2HeadBatch, err := obscurorawdb.ReadL2HeadRollup(s.db, blockHash)
-	if err != nil {
-		return nil, fmt.Errorf("could not read L2 head rollup for block. Cause: %w", err)
-	}
-	if *l2HeadBatch == (gethcommon.Hash{}) { // empty hash ==> no rollups yet up to this block
-		return nil, ErrNoRollups
-	}
-	return obscurorawdb.ReadRollupHeader(s.db, *l2HeadBatch)
-}
-
 func (s *storageImpl) UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error {
 	if dbBatch == nil {
 		panic("UpdateHeadBatch called without an instance of sql.Batch")
@@ -351,17 +340,6 @@ func (s *storageImpl) SetHeadBatchPointer(l2Head *core.Batch, dbBatch *sql.Batch
 	// We update the canonical hash of the batch at this height.
 	if err := obscurorawdb.SetL2HeadBatch(dbBatch, l2Head.Hash()); err != nil {
 		return fmt.Errorf("could not write canonical hash. Cause: %w", err)
-	}
-	return nil
-}
-
-func (s *storageImpl) UpdateHeadRollup(l1Head *common.L1BlockHash, l2Head *common.L2BatchHash) error {
-	dbBatch := s.db.NewBatch()
-	if err := obscurorawdb.WriteL2HeadRollup(dbBatch, l1Head, l2Head); err != nil {
-		return fmt.Errorf("could not write block state. Cause: %w", err)
-	}
-	if err := dbBatch.Write(); err != nil {
-		return fmt.Errorf("could not save new head. Cause: %w", err)
 	}
 	return nil
 }
@@ -513,19 +491,6 @@ func (s *storageImpl) StoreEnclaveKey(enclaveKey *ecdsa.PrivateKey) error {
 
 func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
 	return obscurorawdb.GetEnclaveKey(s.db, s.logger)
-}
-
-func (s *storageImpl) StoreRollup(rollup *common.ExtRollup) error {
-	dbBatch := s.db.NewBatch()
-
-	if err := obscurorawdb.WriteRollup(dbBatch, rollup); err != nil {
-		return fmt.Errorf("could not write rollup. Cause: %w", err)
-	}
-
-	if err := dbBatch.Write(); err != nil {
-		return fmt.Errorf("could not write rollup to storage. Cause: %w", err)
-	}
-	return nil
 }
 
 // utility function that knows how to load relevant logs from the database

@@ -20,7 +20,7 @@ type Sequencer interface {
 
 	// CreateRollup - creates a new rollup from the latest recorded rollup in the head l1 chain
 	// and adds as many batches to it as possible.
-	CreateRollup() (*common.ExtRollup, error)
+	CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error)
 
 	NodeType
 }

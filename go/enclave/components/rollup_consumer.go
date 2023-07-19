@@ -3,12 +3,10 @@ package components
 import (
 	"errors"
 	"fmt"
-	"sort"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 
 	"github.com/obscuronet/go-obscuro/go/common/compression"
@@ -62,41 +60,42 @@ func NewRollupConsumer(
 	}
 }
 
-func (rc *rollupConsumerImpl) ProcessL1Block(b *common.BlockAndReceipts) (*common.ExtRollup, error) {
+func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) error {
 	stopwatch := measure.NewStopwatch()
 	defer rc.logger.Info("Rollup consumer processed block", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
 
 	rollups := rc.extractRollups(b)
 	if len(rollups) == 0 {
-		return nil, nil //nolint:nilnil
+		return nil
 	}
 
-	rollup, err := rc.getCanonicalRollup(rollups, b)
+	rollups, err := rc.getSignedRollup(rollups)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	if len(rollups) > 0 {
+		for _, rollup := range rollups {
+			// read batch data from rollup, verify and store it
+			if err := rc.ProcessRollup(rollup); err != nil {
+				rc.logger.Error("Failed processing rollup", log.ErrKey, err)
+				return err
+			}
+		}
 	}
 
-	err = rc.processRollup(b.Block, rollup)
-	if err != nil {
-		return nil, err
-	}
-	return rollup, nil
+	return nil
 }
 
-func (rc *rollupConsumerImpl) getCanonicalRollup(rollups []*common.ExtRollup, b *common.BlockAndReceipts) (*common.ExtRollup, error) {
-	var signedRollup *common.ExtRollup
+func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*common.ExtRollup, error) {
+	signedRollup := make([]*common.ExtRollup, 0)
 
 	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
 	for _, rollup := range rollups {
 		if err := rc.sigValidator.CheckSequencerSignature(rollup.Hash(), rollup.Header.R, rollup.Header.S); err != nil {
 			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
-		if signedRollup != nil {
-			// todo (@matt) - make sure this can't be used to DOS the network
-			// we should never receive multiple signed rollups in a single block, the host should only ever publish one
-			return nil, fmt.Errorf("received multiple signed rollups in single block %s", b.Block.Hash())
-		}
-		signedRollup = rollup
+
+		signedRollup = append(signedRollup, rollup)
 	}
 	return signedRollup, nil
 }
@@ -125,37 +124,10 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*com
 		}
 
 		rollups = append(rollups, r)
-		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.RollupHeightKey, r.Header.Number, log.BlockHashKey, b.Hash())
+		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, b.Hash())
 	}
-
-	sort.Slice(rollups, func(i, j int) bool {
-		// Ascending order sort.
-		return rollups[i].Header.Number.Cmp(rollups[j].Header.Number) < 0
-	})
 
 	return rollups
-}
-
-// Validates and stores the rollup in a given block. Returns nil, nil when no rollup was found.
-// todo (#718) - design a mechanism to detect a case where the rollup doesn't contain any batches (despite batches arriving via P2P)
-func (rc *rollupConsumerImpl) processRollup(block *types.Block, rollup *common.ExtRollup) error {
-	// do we need to store the entire rollup?
-	// Should be enough to store the header and the batches
-	if err := rc.storage.StoreRollup(rollup); err != nil {
-		// todo (@matt) - this seems catastrophic, how do we recover the lost rollup in this case?
-		return fmt.Errorf("could not store rollup. Cause: %w", err)
-	}
-
-	// we record the latest rollup published against this L1 block hash
-	rollupHash := rollup.Header.Hash()
-	blockHash := block.Hash()
-	err := rc.storage.UpdateHeadRollup(&blockHash, &rollupHash)
-	if err != nil {
-		// todo (@matt) - this also seems catastrophic, would result in bad state unable to ingest further rollups?
-		return fmt.Errorf("unable to update head rollup - %w", err)
-	}
-
-	return nil
 }
 
 func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {

@@ -103,6 +103,8 @@ type L1Publisher interface {
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error
 
 	FetchLatestPeersList() ([]string, error)
+
+	FetchLatestSeqNo() (*big.Int, error)
 }
 
 // L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)

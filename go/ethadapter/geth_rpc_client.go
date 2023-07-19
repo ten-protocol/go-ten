@@ -7,8 +7,10 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethlog "github.com/ethereum/go-ethereum/log"
 
+	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -196,6 +198,15 @@ func (e *gethRPCClient) BalanceAt(gethcommon.Address, *big.Int) (*big.Int, error
 
 func (e *gethRPCClient) Stop() {
 	e.client.Close()
+}
+
+func (e *gethRPCClient) FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error) {
+	contract, err := ManagementContract.NewManagementContract(address, e.EthClient())
+	if err != nil {
+		return nil, err
+	}
+
+	return contract.LastBatchSeqNo(&bind.CallOpts{})
 }
 
 // EstimateGasAndGasPrice takes a txData type and overrides the Gas and Gas Price field with estimated values
