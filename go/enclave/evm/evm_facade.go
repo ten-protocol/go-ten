@@ -85,6 +85,9 @@ func executeTransaction(
 	if receipt != nil {
 		receipt.Logs = s.GetLogs(t.Hash(), batchHash)
 		receipt.BlockHash = batchHash
+		for _, l := range receipt.Logs {
+			l.BlockHash = batchHash
+		}
 	}
 
 	header.MixDigest = before
