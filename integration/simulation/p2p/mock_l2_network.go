@@ -1,126 +1,186 @@
 package p2p
 
 import (
-	"fmt"
+	"math/big"
+	"strconv"
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/subscription"
+
 	"github.com/obscuronet/go-obscuro/go/common/async"
 
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 )
 
-// MockP2P - models a full network of in memory nodes including artificial random latencies
-// Implements the P2p interface
-// Will be plugged into each node
-type MockP2P struct {
-	CurrentNode host.Host
-	Nodes       []host.Host
+const _sequencerID = "0"
+
+type MockP2PNetwork struct {
+	nodes map[string]*MockP2P
 
 	avgLatency       time.Duration
 	avgBlockDuration time.Duration
+}
+
+func NewMockP2PNetwork(avgBlockDuration time.Duration, avgLatency time.Duration) *MockP2PNetwork {
+	return &MockP2PNetwork{
+		nodes:            make(map[string]*MockP2P),
+		avgBlockDuration: avgBlockDuration,
+		avgLatency:       avgLatency,
+	}
+}
+
+func (m *MockP2PNetwork) NewNode(id int) *MockP2P {
+	idStr := strconv.Itoa(id)
+	node := NewMockP2P(idStr, m)
+	m.nodes[idStr] = node
+	return node
+}
+
+func (m *MockP2PNetwork) RequestBatchesFromSequencer(id string, fromSeqNo *big.Int) {
+	seqNode := m.nodes[_sequencerID]
+	async.Schedule(m.delay()/2, func() { seqNode.ReceiveBatchRequest(id, fromSeqNo) })
+}
+
+func (m *MockP2PNetwork) SendTransactionToSequencer(tx common.EncryptedTx) {
+	seqNode := m.nodes[_sequencerID]
+	async.Schedule(m.delay()/2, func() { seqNode.ReceiveTransaction(tx) })
+}
+
+func (m *MockP2PNetwork) BroadcastBatch(fromNodeID string, batches []*common.ExtBatch) {
+	for _, node := range m.nodes {
+		if node.id != fromNodeID {
+			tempNode := node
+			async.Schedule(m.delay()/2, func() { tempNode.ReceiveBatches(batches, true) })
+		}
+	}
+}
+
+func (m *MockP2PNetwork) RespondToBatchRequest(requesterID string, batches []*common.ExtBatch) {
+	async.Schedule(m.delay()/2, func() {
+		requester, ok := m.nodes[requesterID]
+		if !ok {
+			panic("requester not found in mock p2p service")
+		}
+		requester.ReceiveBatches(batches, false)
+	})
+}
+
+// delay returns an expected delay on the l2
+func (m *MockP2PNetwork) delay() time.Duration {
+	return testcommon.RndBtwTime(m.avgLatency/10, 2*m.avgLatency)
+}
+
+// MockP2P - models the p2p service of a host, but instead of sending messages over tcp it uses the `MockP2PNetwork` to distribute messages
+type MockP2P struct {
+	id      string
+	network *MockP2PNetwork // reference to the mock network
+
+	batchSubscribers *subscription.Manager[host.P2PBatchHandler]
+	txSubscribers    *subscription.Manager[host.P2PTxHandler]
+	batchReqHandlers *subscription.Manager[host.P2PBatchRequestHandler]
 
 	listenerInterrupt *int32
 }
 
 // NewMockP2P returns an instance of a configured L2 Network (no nodes)
-func NewMockP2P(avgBlockDuration time.Duration, avgLatency time.Duration) *MockP2P {
+func NewMockP2P(id string, network *MockP2PNetwork) *MockP2P {
 	i := int32(0)
 	return &MockP2P{
-		avgLatency:        avgLatency,
-		avgBlockDuration:  avgBlockDuration,
+		id:      id,
+		network: network,
+
+		batchSubscribers:  subscription.NewManager[host.P2PBatchHandler](),
+		txSubscribers:     subscription.NewManager[host.P2PTxHandler](),
+		batchReqHandlers:  subscription.NewManager[host.P2PBatchRequestHandler](),
 		listenerInterrupt: &i,
 	}
 }
 
-func (netw *MockP2P) StartListening(_ host.P2PSubscriber) {
+func (n *MockP2P) Start() error {
 	// nothing to do here, since communication is direct through the in memory objects
-}
-
-func (netw *MockP2P) StopListening() error {
-	atomic.StoreInt32(netw.listenerInterrupt, 1)
 	return nil
 }
 
-func (netw *MockP2P) UpdatePeerList([]string) {
+func (n *MockP2P) Stop() error {
+	atomic.StoreInt32(n.listenerInterrupt, 1)
+	return nil
+}
+
+func (n *MockP2P) HealthStatus() host.HealthStatus {
+	return &host.BasicErrHealthStatus{ErrMsg: ""}
+}
+
+func (n *MockP2P) UpdatePeerList([]string) {
 	// Do nothing.
 }
 
-func (netw *MockP2P) SendTxToSequencer(tx common.EncryptedTx) error {
-	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
+func (n *MockP2P) SendTxToSequencer(tx common.EncryptedTx) error {
+	if atomic.LoadInt32(n.listenerInterrupt) == 1 {
 		return nil
 	}
-	async.Schedule(netw.delay()/2, func() { netw.Nodes[0].ReceiveTx(tx) })
+	n.network.SendTransactionToSequencer(tx)
 	return nil
 }
 
-func (netw *MockP2P) BroadcastBatch(batchMsg *host.BatchMsg) error {
-	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
+func (n *MockP2P) BroadcastBatches(batches []*common.ExtBatch) error {
+	if atomic.LoadInt32(n.listenerInterrupt) == 1 {
 		return nil
 	}
 
-	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
-	if err != nil {
-		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
-	}
-
-	for _, node := range netw.Nodes {
-		if node.Config().ID.Hex() != netw.CurrentNode.Config().ID.Hex() {
-			tempNode := node
-			async.Schedule(netw.delay()/2, func() { tempNode.ReceiveBatches(encodedBatchMsg) })
-		}
-	}
+	n.network.BroadcastBatch(n.id, batches)
 
 	return nil
 }
 
-func (netw *MockP2P) RequestBatchesFromSequencer(batchRequest *common.BatchRequest) error {
-	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
+func (n *MockP2P) SubscribeForBatches(handler host.P2PBatchHandler) func() {
+	return n.batchSubscribers.Subscribe(handler)
+}
+
+func (n *MockP2P) SubscribeForTx(handler host.P2PTxHandler) func() {
+	return n.txSubscribers.Subscribe(handler)
+}
+
+func (n *MockP2P) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler) func() {
+	return n.batchReqHandlers.Subscribe(handler)
+}
+
+func (n *MockP2P) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
+	if atomic.LoadInt32(n.listenerInterrupt) == 1 {
 		return nil
 	}
-
-	encodedBatchRequest, err := rlp.EncodeToBytes(batchRequest)
-	if err != nil {
-		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
-	}
-	async.Schedule(netw.delay()/2, func() { netw.Nodes[0].ReceiveBatchRequest(encodedBatchRequest) })
+	n.network.RequestBatchesFromSequencer(n.id, fromSeqNo)
 	return nil
 }
 
-func (netw *MockP2P) SendBatches(batchMsg *host.BatchMsg, requesterAddress string) error {
-	if atomic.LoadInt32(netw.listenerInterrupt) == 1 {
+func (n *MockP2P) RespondToBatchRequest(requesterID string, batches []*common.ExtBatch) error {
+	if atomic.LoadInt32(n.listenerInterrupt) == 1 {
 		return nil
 	}
-
-	var requester host.Host
-	for _, node := range netw.Nodes {
-		if node.Config().P2PPublicAddress == requesterAddress {
-			requester = node
-		}
-	}
-
-	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
-	if err != nil {
-		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
-	}
-
-	async.Schedule(netw.delay()/2, func() { requester.ReceiveBatches(encodedBatchMsg) })
+	n.network.RespondToBatchRequest(requesterID, batches)
 	return nil
 }
 
-func (netw *MockP2P) Status() *host.P2PStatus {
-	return &host.P2PStatus{}
+// ReceiveTransaction is a mock method that simulates receiving a batch from a peer and then forwarding to all subscribers
+func (n *MockP2P) ReceiveTransaction(tx common.EncryptedTx) {
+	for _, sub := range n.txSubscribers.Subscribers() {
+		sub.HandleTransaction(tx)
+	}
 }
 
-func (netw *MockP2P) HealthCheck() bool {
-	return true
+// ReceiveBatches is a mock method that simulates receiving a batch from a peer and then forwarding to all subscribers
+func (n *MockP2P) ReceiveBatches(batches []*common.ExtBatch, isLive bool) {
+	for _, sub := range n.batchSubscribers.Subscribers() {
+		sub.HandleBatches(batches, isLive)
+	}
 }
 
-// delay returns an expected delay on the l2
-func (netw *MockP2P) delay() time.Duration {
-	return testcommon.RndBtwTime(netw.avgLatency/10, 2*netw.avgLatency)
+// ReceiveBatchRequest is a mock method that simulates receiving a batch request from a peer and then forwarding to all subscribers
+func (n *MockP2P) ReceiveBatchRequest(requestID string, fromSeqNo *big.Int) {
+	for _, sub := range n.batchReqHandlers.Subscribers() {
+		sub.HandleBatchRequest(requestID, fromSeqNo)
+	}
 }

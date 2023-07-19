@@ -7,21 +7,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
+	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
+
 	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"golang.org/x/sync/errgroup"
-
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
 const (
@@ -33,10 +33,9 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
 	obscuroHosts := make([]host.Host, params.NumberOfNodes)
-	p2pLayers := make([]*p2p.MockP2P, params.NumberOfNodes)
+	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
-		p2pLayers[i] = p2p.NewMockP2P(params.AvgBlockDuration, params.AvgNetworkLatency)
 
 		obscuroNodes[i] = createInMemObscuroNode(
 			int64(i),
@@ -47,16 +46,12 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			genesisJSON,
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
-			p2pLayers[i],
+			mockP2PNetw.NewNode(i),
 			params.L1SetupData.MessageBusAddr,
 			params.L1SetupData.ObscuroStartBlock,
 			params.AvgBlockDuration/3,
 		)
 		obscuroHosts[i] = obscuroNodes[i].Host()
-	}
-	// make sure the aggregators can talk to each other
-	for i := 0; i < params.NumberOfNodes; i++ {
-		p2pLayers[i].Nodes = obscuroHosts
 	}
 
 	// start each obscuro node

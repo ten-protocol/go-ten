@@ -2,11 +2,11 @@ package db
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/pkg/errors"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
@@ -40,7 +40,7 @@ func (db *DB) AddBatch(batch *common.ExtBatch) error {
 	}
 	if err == nil {
 		// The batch is already stored, so we return early.
-		return nil
+		return errutil.ErrAlreadyExists
 	}
 
 	b := db.kvStore.NewBatch()
@@ -55,6 +55,9 @@ func (db *DB) AddBatch(batch *common.ExtBatch) error {
 		return fmt.Errorf("could not write batch transaction hashes. Cause: %w", err)
 	}
 	if err := db.writeBatchHash(b, batch.Header); err != nil {
+		return fmt.Errorf("could not write batch hash. Cause: %w", err)
+	}
+	if err := db.writeBatchSeqNo(b, batch.Header); err != nil {
 		return fmt.Errorf("could not write batch hash. Cause: %w", err)
 	}
 	for _, txHash := range batch.TxHashes {
@@ -119,6 +122,16 @@ func (db *DB) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
 	return db.readBatch(batchHash)
 }
 
+// GetBatchBySequenceNumber returns the batch with the given sequence number.
+func (db *DB) GetBatchBySequenceNumber(sequenceNumber *big.Int) (*common.ExtBatch, error) {
+	db.batchReads.Inc(1)
+	batchHash, err := db.readBatchHashBySequenceNumber(sequenceNumber)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not retrieve batch hash for seqNo=%d", sequenceNumber)
+	}
+	return db.GetBatch(*batchHash)
+}
+
 // headerKey = batchHeaderPrefix  + hash
 func batchHeaderKey(hash gethcommon.Hash) []byte {
 	return append(batchHeaderPrefix, hash.Bytes()...)
@@ -142,6 +155,11 @@ func batchTxHashesKey(hash gethcommon.Hash) []byte {
 // headerKey = batchNumberPrefix + hash
 func batchNumberKey(txHash gethcommon.Hash) []byte {
 	return append(batchNumberPrefix, txHash.Bytes()...)
+}
+
+// hashKey = batchHashForSeqNoPrefix + seqNo
+func batchHashBySeqNoKey(seqNo *big.Int) []byte {
+	return append(batchHashForSeqNoPrefix, []byte(seqNo.String())...)
 }
 
 // Retrieves the batch header corresponding to the hash.
@@ -194,6 +212,13 @@ func (db *DB) writeHeadBatchHash(w ethdb.KeyValueWriter, val gethcommon.Hash) er
 // Stores a batch's hash in the database, keyed by the batch's number.
 func (db *DB) writeBatchHash(w ethdb.KeyValueWriter, header *common.BatchHeader) error {
 	key := batchHashKey(header.Number)
+
+	return w.Put(key, header.Hash().Bytes())
+}
+
+// Stores a batch's hash in the database, keyed by the batch's sequencer number.
+func (db *DB) writeBatchSeqNo(w ethdb.KeyValueWriter, header *common.BatchHeader) error {
+	key := batchHashBySeqNoKey(header.SequencerOrderNo)
 
 	return w.Put(key, header.Hash().Bytes())
 }
@@ -257,6 +282,18 @@ func (db *DB) readBatchNumber(txHash gethcommon.Hash) (*big.Int, error) {
 		return nil, errutil.ErrNotFound
 	}
 	return big.NewInt(0).SetBytes(data), nil
+}
+
+func (db *DB) readBatchHashBySequenceNumber(seqNum *big.Int) (*gethcommon.Hash, error) {
+	data, err := db.kvStore.Get(batchHashBySeqNoKey(seqNum))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) == 0 {
+		return nil, errutil.ErrNotFound
+	}
+	h := gethcommon.BytesToHash(data)
+	return &h, nil
 }
 
 // Retrieves the total number of rolled-up transactions - returns 0 if no tx count is found

@@ -15,14 +15,15 @@ import (
 
 // Schema keys, in alphabetical order.
 var (
-	blockHeaderPrefix    = []byte("b")
-	batchHeaderPrefix    = []byte("ba")
-	batchHashPrefix      = []byte("bh")
-	batchNumberPrefix    = []byte("bn")
-	batchPrefix          = []byte("bp")
-	batchTxHashesPrefix  = []byte("bt")
-	headBatch            = []byte("hb")
-	totalTransactionsKey = []byte("t")
+	blockHeaderPrefix       = []byte("b")
+	batchHeaderPrefix       = []byte("ba")
+	batchHashPrefix         = []byte("bh")
+	batchNumberPrefix       = []byte("bn")
+	batchPrefix             = []byte("bp")
+	batchHashForSeqNoPrefix = []byte("bs")
+	batchTxHashesPrefix     = []byte("bt")
+	headBatch               = []byte("hb")
+	totalTransactionsKey    = []byte("t")
 )
 
 // DB allows to access the nodes public nodeDB

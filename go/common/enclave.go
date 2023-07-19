@@ -19,7 +19,7 @@ type StatusCode int
 type Status struct {
 	StatusCode StatusCode
 	L1Head     gethcommon.Hash
-	L2Head     gethcommon.Hash
+	L2Head     *big.Int
 }
 
 const (

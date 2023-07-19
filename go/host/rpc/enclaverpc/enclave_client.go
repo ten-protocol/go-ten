@@ -97,7 +97,7 @@ func (c *Client) Status() (common.Status, common.SystemError) {
 	return common.Status{
 		StatusCode: common.StatusCode(response.StatusCode),
 		L1Head:     gethcommon.BytesToHash(response.L1Head),
-		L2Head:     gethcommon.BytesToHash(response.L2Head),
+		L2Head:     big.NewInt(0).SetBytes(response.L2Head),
 	}, nil
 }
 
