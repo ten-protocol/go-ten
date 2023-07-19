@@ -32,6 +32,11 @@ const (
 	Subscribe             = "eth_subscribe"
 	SubscribeNamespace    = "eth"
 	SubscriptionTypeLogs  = "logs"
+
+	// GetL1RollupHeaderByHash  = "scan_getL1RollupHeaderByHash"
+	// GetActiveNodeCount       = "scan_getActiveNodeCount"
+	// GetTotalTransactionCount = "scan_getTotalTransactionCount"
+	GetTotalContractCount = "scan_getTotalContractCount"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")

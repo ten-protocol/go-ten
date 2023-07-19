@@ -12,16 +12,18 @@ const (
 	StartPortWalletExtensionUnitTest = 40000
 	StartPortFaucetUnitTest          = 41000
 	StartPortFaucetHTTPUnitTest      = 42000
+	StartPortObscuroscanUnitTest     = 43000
 
-	DefaultGethWSPortOffset      = 100
-	DefaultGethAUTHPortOffset    = 200
-	DefaultGethNetworkPortOffset = 300
-	DefaultPrysmHTTPPortOffset   = 400
-	DefaultPrysmP2PPortOffset    = 500
-	DefaultHostP2pOffset         = 600 // The default offset for the host P2p
-	DefaultEnclaveOffset         = 700 // The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
-	DefaultHostRPCHTTPOffset     = 800 // The default offset for the host's RPC HTTP port
-	DefaultHostRPCWSOffset       = 900 // The default offset for the host's RPC websocket port
+	DefaultGethWSPortOffset          = 100
+	DefaultGethAUTHPortOffset        = 200
+	DefaultGethNetworkPortOffset     = 300
+	DefaultPrysmHTTPPortOffset       = 400
+	DefaultPrysmP2PPortOffset        = 500
+	DefaultHostP2pOffset             = 600 // The default offset for the host P2p
+	DefaultEnclaveOffset             = 700 // The default offset between a Geth nodes port and the enclave ports. Used in Socket Simulations.
+	DefaultHostRPCHTTPOffset         = 800 // The default offset for the host's RPC HTTP port
+	DefaultHostRPCWSOffset           = 900 // The default offset for the host's RPC websocket port
+	DefaultObscuroscanHTTPPortOffset = 910
 )
 
 const (
