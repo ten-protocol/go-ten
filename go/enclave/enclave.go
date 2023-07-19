@@ -313,14 +313,14 @@ func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 		l1HeadHash = l1Head.Hash()
 	}
 	l2Head, err := e.storage.FetchHeadBatch()
-	var l2HeadHash gethcommon.Hash
+	var l2HeadSeqNo *big.Int
 	if err != nil {
 		// this might be normal while enclave is starting up, just send empty hash
 		e.logger.Debug("failed to fetch L2 head batch for status response", log.ErrKey, err)
 	} else {
-		l2HeadHash = l2Head.Hash()
+		l2HeadSeqNo = l2Head.Header.SequencerOrderNo
 	}
-	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadHash}, nil
+	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadSeqNo}, nil
 }
 
 // StopClient is only implemented by the RPC wrapper

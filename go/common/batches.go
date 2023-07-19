@@ -2,9 +2,9 @@ package common
 
 import (
 	"fmt"
+	"math/big"
 	"sync/atomic"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -51,6 +51,6 @@ func (b *ExtBatch) SDump() string {
 
 // BatchRequest is used when requesting a range of batches from a peer.
 type BatchRequest struct {
-	Requester        string
-	CurrentHeadBatch *gethcommon.Hash // The requester's view of the current head batch, or nil if they haven't stored any batches.
+	Requester string   // The address of the requester, used to direct the response
+	FromSeqNo *big.Int // The requester's view of the current head seq no, or nil if they haven't stored any batches.
 }
