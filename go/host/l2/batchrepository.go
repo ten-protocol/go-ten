@@ -157,7 +157,10 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 	return b, nil
 }
 
-// AddBatch allows the host to add a batch to the repository (used when our enclave has streamed us a batch)
+// AddBatch allows the host to add a batch to the repository, this is used:
+// - when the node is a sequencer to store newly produced batches (the only way the sequencer host receives batches)
+// - when the node is a validator to store batches read from roll-ups
+// If the repository already has the batch it returns an AlreadyExists error which is typically ignored.
 func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	err := r.db.AddBatch(batch)
 	if err != nil {
