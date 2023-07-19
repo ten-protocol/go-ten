@@ -3,14 +3,14 @@ package container
 import (
 	"fmt"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/webserver"
-
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend"
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/config"
+	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/webserver"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 type ObscuroScanContainer struct {

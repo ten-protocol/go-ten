@@ -22,6 +22,7 @@ type WebServer struct {
 func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebServer {
 	r := gin.New()
 	r.RedirectTrailingSlash = false
+	gin.SetMode(gin.ReleaseMode)
 
 	server := &WebServer{
 		engine:      r,

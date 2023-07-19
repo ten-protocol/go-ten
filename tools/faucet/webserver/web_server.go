@@ -26,6 +26,7 @@ type requestAddr struct {
 
 func NewWebServer(faucetServer *faucet.Faucet, bindAddress string, jwtSecret []byte) *WebServer {
 	r := gin.New()
+	gin.SetMode(gin.ReleaseMode)
 
 	// todo move this declaration out of this scope
 	parseFunding := func(c *gin.Context) {

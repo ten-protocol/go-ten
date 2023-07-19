@@ -81,6 +81,7 @@ func (oc *ObsClient) Health() (bool, error) {
 	return healthy.OverallHealth, err
 }
 
+// GetTotalContractCount returns the total count of created contracts
 func (oc *ObsClient) GetTotalContractCount() (int, error) {
 	var count int
 	err := oc.rpcClient.Call(&count, rpc.GetTotalContractCount)

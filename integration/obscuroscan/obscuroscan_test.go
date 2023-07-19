@@ -3,6 +3,7 @@ package faucet
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,7 +40,7 @@ func TestObscuroscan(t *testing.T) {
 
 	obsScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
-		ServerAddress:   fmt.Sprintf("127.0.0.1:%d", startPort),
+		ServerAddress:   fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultObscuroscanHTTPPortOffset),
 		LogPath:         "sys_out",
 	}
 	serverAddress := fmt.Sprintf("http://%s", obsScanConfig.ServerAddress)
@@ -55,9 +56,10 @@ func TestObscuroscan(t *testing.T) {
 	require.NoError(t, err)
 
 	// Issue tests
-	count, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
+	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
-	assert.Equal(t, count, 1)
+	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, "{\"count\":0}", string(body))
 
 	// Gracefully shutdown
 	err = obsScanContainer.Stop()
@@ -68,6 +70,10 @@ func waitServerIsReady(serverAddr string) error {
 	for now := time.Now(); time.Since(now) < 30*time.Second; time.Sleep(500 * time.Millisecond) {
 		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/health/", serverAddr))
 		if err != nil {
+			// give it time to boot up
+			if strings.Contains(err.Error(), "connection") {
+				continue
+			}
 			return err
 		}
 
