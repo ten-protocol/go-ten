@@ -17,6 +17,8 @@ Based on what is canonical, the enclave will use the right calculated results.
 There is an extreme edge case (which could be used to attack Obscuro) where an L1 block was visible only to the sequencer and not to any of the validators. 
 If the sequencer has produced batches using this block as a reference, then the result of this batch can't be calculated by any validator.
 
+Note: this attack is not performed by the sequencer. The attacker is an Ethereum staker that somehow sends a block to the Obscuro Sequencer that it doesn't broadcast to the network.
+
 
 ### Properties of the ideal solution
 
@@ -40,7 +42,7 @@ The solution has two elements:
 
 There are multiple consequences.
 
-The sequencer cannot build on top of a batch chain that is non canonical. This means it must create a "twin" of a non-canonical batch, if that batch has suddenly become canonical.
+The sequencer cannot build on top of a batch chain that is non-canonical. This means it must create a "twin" of a non-canonical batch if that batch has suddenly become canonical.
 
 ### Rule 2
 
@@ -50,7 +52,7 @@ This generalises the simpler rule that doesn't handle the DA issue.
 
 The significance is that the node will wait until it has all the data required to process that sequence of batches.
 
-Another way to put it is that, in case the Validator is out-of-sync with the sequencer ( because they validator does not have an l1 block that the sequencer considered canonical), 
+Another way to put it is that, in case the Validator is out-of-sync with the sequencer ( because the validator does not have an l1 block that the sequencer considers canonical), 
 the validator will wait until it is in sync, before moving forward.
 
 
