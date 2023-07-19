@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -486,6 +487,13 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	// submit each block to the enclave for ingestion plus validation
 	blockSubmissionResponse, err := h.enclaveClient.SubmitL1Block(*block, h.l1Repo().FetchReceipts(block), isLatestBlock)
 	if err != nil {
+		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
+			// block already processed, update the enclave state to reflect this and then return to main loop
+			// note: this is important, because if we revisit a previous fork we can get stuck in a loop where the enclave keeps reporting a non-canonical L1 head
+			h.enclaveState.OnProcessedBlock(block.Hash())
+			h.logger.Debug("block already processed", log.BlockHashKey, block.Hash())
+			return nil
+		}
 		go h.checkEnclaveStatus()
 		return fmt.Errorf("did not ingest block %s. Cause: %w", block.Hash(), err)
 	}
