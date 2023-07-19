@@ -63,6 +63,7 @@ func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger, metricR
 		txSubscribers:    subscription.NewManager[host.P2PTxHandler](),
 		batchReqHandlers: subscription.NewManager[host.P2PBatchRequestHandler](),
 
+		isSequencer:   config.NodeType == common.Sequencer,
 		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},
 		p2pTimeout:    config.P2PConnectionTimeout,
@@ -83,6 +84,7 @@ type Service struct {
 	listener          net.Listener
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
 
+	isSequencer   bool
 	ourAddress    string
 	peerAddresses []string
 	p2pTimeout    time.Duration
@@ -150,6 +152,9 @@ func (p *Service) UpdatePeerList(newPeers []string) {
 }
 
 func (p *Service) SendTxToSequencer(tx common.EncryptedTx) error {
+	if p.isSequencer {
+		return errors.New("sequencer cannot send tx to itself")
+	}
 	msg := message{Sender: p.ourAddress, Type: msgTypeTx, Contents: tx}
 	sequencer, err := p.getSequencer()
 	if err != nil {
@@ -159,6 +164,9 @@ func (p *Service) SendTxToSequencer(tx common.EncryptedTx) error {
 }
 
 func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
+	if !p.isSequencer {
+		return errors.New("only sequencer can broadcast batches")
+	}
 	batchMsg := host.BatchMsg{
 		Batches: batches,
 		IsLive:  true,
@@ -174,6 +182,9 @@ func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
 }
 
 func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
+	if p.isSequencer {
+		return errors.New("sequencer cannot request batches from itself")
+	}
 	batchRequest := &common.BatchRequest{
 		Requester: p.ourAddress,
 		FromSeqNo: fromSeqNo,
@@ -198,6 +209,9 @@ func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
 }
 
 func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtBatch) error {
+	if !p.isSequencer {
+		return errors.New("only sequencer can respond to batch requests")
+	}
 	batchMsg := &host.BatchMsg{
 		Batches: batches,
 		IsLive:  true,
@@ -284,11 +298,19 @@ func (p *Service) handle(conn net.Conn) {
 
 	switch msg.Type {
 	case msgTypeTx:
+		if !p.isSequencer {
+			p.logger.Error("received transaction from peer, but not a sequencer node")
+			return
+		}
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
 		for _, txSubs := range p.txSubscribers.Subscribers() {
 			txSubs.HandleTransaction(msg.Contents)
 		}
 	case msgTypeBatches:
+		if p.isSequencer {
+			p.logger.Error("received batch from peer, but this is a sequencer node")
+			return
+		}
 		var batchMsg *host.BatchMsg
 		err := rlp.DecodeBytes(msg.Contents, &batchMsg)
 		if err != nil {
@@ -300,6 +322,10 @@ func (p *Service) handle(conn net.Conn) {
 			go batchSubs.HandleBatches(batchMsg.Batches, batchMsg.IsLive)
 		}
 	case msgTypeBatchRequest:
+		if !p.isSequencer {
+			p.logger.Error("received batch request from peer, but not a sequencer node")
+			return
+		}
 		// this is an incoming request, p2p service is responsible for finding the response and returning it
 		go p.handleBatchRequest(msg.Contents)
 	}

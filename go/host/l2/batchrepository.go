@@ -17,12 +17,15 @@ import (
 )
 
 const (
-	// if request asks for batches from seq no. X we don't want to return potentially thousands of batches
-	// so we limit the number of batches we return with this cap (they can request the next ones afterwards, but they should be catching up from rollups first)
-	_maxBatchesInP2PResponse      = 20
+	// if request asks for batches from seq no. X we don't want to return potentially thousands of batches, so we limit
+	// the number of batches we return with this cap
+	// (recipient will request the next ones as required, and they should be catching up from roll-ups first)
+	_maxBatchesInP2PResponse      = 50
 	_timeoutWaitingForP2PResponse = 30 * time.Second
 )
 
+// Repository is responsible for storing and retrieving batches from the database
+// If it can't find a batch it will request it from peers. It also subscribes for batch requests from peers and responds to them.
 type Repository struct {
 	subscribers []host.L2BatchHandler
 
@@ -33,9 +36,9 @@ type Repository struct {
 	latestBatchSeqNo *big.Int
 	latestSeqNoMutex sync.Mutex
 
-	// the repository requests batches from peers asynchronously.
-	// We don't want to repeatedly spam out requests if we haven't received a response yet,
-	// but we don't want to wait forever if there's no response.
+	// The repository requests batches from peers asynchronously, we don't want to repeatedly spam out requests if we
+	// haven't received a response yet, but we also don't want to wait forever if there's no response.
+	// So we keep track of the last request time and what was requested, using a mutex to avoid concurrent access errors on them
 	p2pReqMutex          sync.Mutex
 	p2pInFlightRequested *big.Int
 	p2pInFlightReqTime   *time.Time
@@ -78,10 +81,13 @@ func (r *Repository) HealthStatus() host.HealthStatus {
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
+// HandleBatches receives new batches from the p2p network, it also handles batches that are requested from peers
+// If the batch is the new head of the L2 then it notifies subscribers to this service that a new batch has arrived
 func (r *Repository) HandleBatches(batches []*common.ExtBatch, isLive bool) {
-	// if these batches resolve our in-flight P2P request, clear it
+	// if these batches resolve the in-flight request we made then clear the in-flight request (see type def for details)
 	r.p2pReqMutex.Lock()
 	if !isLive && len(batches) > 0 && r.p2pInFlightRequested != nil && batches[0].Header.SequencerOrderNo.Cmp(r.p2pInFlightRequested) == 0 {
+		// the first bach in the response is the one we requested, so clear the in-flight request
 		r.p2pInFlightRequested = nil
 		r.p2pInFlightReqTime = nil
 	}
@@ -132,6 +138,7 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 	}
 }
 
+// Subscribe registers a handler to be notified of new head batches as they arrive
 func (r *Repository) Subscribe(subscriber host.L2BatchHandler) {
 	r.subscribers = append(r.subscribers, subscriber)
 }
@@ -150,6 +157,7 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 	return b, nil
 }
 
+// AddBatch allows the host to add a batch to the repository (used when our enclave has streamed us a batch)
 func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	err := r.db.AddBatch(batch)
 	if err != nil {
