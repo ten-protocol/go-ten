@@ -104,8 +104,7 @@ create table if not exists events
     rel_address2    binary(20),
     rel_address3    binary(20),
     rel_address4    binary(20),
---     exec_tx_id      binary(64) REFERENCES exec_tx
-    exec_tx_id      binary(64)
+    exec_tx_id      binary(64) REFERENCES exec_tx
 );
 create index IX_AD on events (address);
 create index IX_RAD1 on events (rel_address1);

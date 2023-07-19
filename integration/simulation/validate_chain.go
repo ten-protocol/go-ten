@@ -637,6 +637,9 @@ func checkSnapshotLogs(t *testing.T, client *obsclient.AuthObsClient) int {
 
 // Asserts that the logs meet various criteria.
 func assertLogsValid(t *testing.T, owner string, logs []*types.Log) {
+	if len(logs) == 0 {
+		t.Errorf("No logs received")
+	}
 	for _, receivedLog := range logs {
 		assertRelevantLogsOnly(t, owner, *receivedLog)
 

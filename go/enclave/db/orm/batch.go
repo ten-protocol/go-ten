@@ -199,7 +199,7 @@ func WriteReceipts(dbtx *obscurosql.Batch, receipts []*types.Receipt) error {
 		execTxId := make([]byte, 0)
 		execTxId = append(execTxId, receipt.BlockHash.Bytes()...)
 		execTxId = append(execTxId, receipt.TxHash.Bytes()...)
-		// println("rec: " + string(execTxId))
+		//println("insert receipt: " + hexutils.BytesToHex(execTxId))
 
 		args = append(args, execTxId)
 		args = append(args, receipt.ContractAddress.Bytes())

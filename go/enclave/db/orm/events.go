@@ -78,7 +78,7 @@ func FilterLogs(
 func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
 	var queryParams []any
 
-	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + " txHash = ?"
+	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + "AND txHash = ?"
 
 	queryParams = append(queryParams, txHash.Bytes())
 
@@ -144,7 +144,7 @@ func StoreEventLogs(dbtx *obscurosql.Batch, receipts []*types.Receipt, stateDB *
 	totalLogs := 0
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
-			logArgs, err := writeLog(dbtx.GetDB(), l, stateDB)
+			logArgs, err := writeLog(dbtx.GetDB(), l, receipt, stateDB)
 			if err != nil {
 				return err
 			}
@@ -164,7 +164,7 @@ func StoreEventLogs(dbtx *obscurosql.Batch, receipts []*types.Receipt, stateDB *
 // The other 4 topics are set by the programmer
 // According to the data relevancy rules, an event is relevant to accounts referenced directly in topics
 // If the event is not referring any user address, it is considered a "lifecycle event", and is relevant to everyone
-func writeLog(db *sql.DB, l *types.Log, stateDB *state.StateDB) ([]any, error) {
+func writeLog(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.StateDB) ([]any, error) {
 	// The topics are stored in an array with a maximum of 5 entries, but usually less
 	var t0, t1, t2, t3, t4 []byte
 
@@ -237,9 +237,9 @@ func writeLog(db *sql.DB, l *types.Log, stateDB *state.StateDB) ([]any, error) {
 	}
 
 	execTxId := make([]byte, 0)
-	execTxId = append(execTxId, l.BlockHash.Bytes()...)
+	execTxId = append(execTxId, receipt.BlockHash.Bytes()...)
 	execTxId = append(execTxId, l.TxHash.Bytes()...)
-	// println("ev: " + string(execTxId))
+	//println("insert event: " + hexutils.BytesToHex(execTxId))
 	return []any{
 		t0, t1, t2, t3, t4,
 		data, l.Index, l.Address.Bytes(),
@@ -292,9 +292,6 @@ func loadLogs(db *sql.DB, requestingAccount *gethcommon.Address, whereCondition 
 	}
 
 	result := make([]*types.Log, 0)
-	// todo - remove the "distinct" once the fast-finality work is completed
-	// currently the events seem to be stored twice because of some weird logic in the rollup/batch processing.
-	// Note: the where 1=1 clauses allows for an easier query building
 	query := baseEventsQuerySelect + " " + baseEventsJoin
 	var queryParams []any
 
@@ -318,15 +315,15 @@ func loadLogs(db *sql.DB, requestingAccount *gethcommon.Address, whereCondition 
 		l := types.Log{
 			Topics: []gethcommon.Hash{},
 		}
-		var t0, t1, t2, t3, t4 sql.NullString
+		var t0, t1, t2, t3, t4 []byte
 		err = rows.Scan(&t0, &t1, &t2, &t3, &t4, &l.Data, &l.BlockHash, &l.BlockNumber, &l.TxHash, &l.TxIndex, &l.Index, &l.Address)
 		if err != nil {
 			return nil, fmt.Errorf("could not load log entry from db: %w", err)
 		}
 
-		for _, topic := range []sql.NullString{t0, t1, t2, t3, t4} {
-			if topic.Valid {
-				l.Topics = append(l.Topics, stringToHash(topic))
+		for _, topic := range [][]byte{t0, t1, t2, t3, t4} {
+			if topic != nil && len(topic) > 0 {
+				l.Topics = append(l.Topics, *byteArrayToHash(topic))
 			}
 		}
 
@@ -365,6 +362,12 @@ func bytesToHash(b sql.NullByte) *gethcommon.Hash {
 	s := value.(string)
 
 	result.SetBytes([]byte(s))
+	return &result
+}
+
+func byteArrayToHash(b []byte) *gethcommon.Hash {
+	result := gethcommon.Hash{}
+	result.SetBytes(b)
 	return &result
 }
 

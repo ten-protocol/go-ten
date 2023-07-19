@@ -352,6 +352,7 @@ func (s *storageImpl) FilterLogs(
 	addresses []gethcommon.Address,
 	topics [][]gethcommon.Hash,
 ) ([]*types.Log, error) {
+	fmt.Printf("filter logs %d -> %d\n", fromBlock, toBlock)
 	return orm.FilterLogs(s.db.GetSQLDB(), requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
 }
 
