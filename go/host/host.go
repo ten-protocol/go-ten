@@ -359,17 +359,17 @@ func (h *host) Stop() error {
 	time.Sleep(time.Second)
 
 	if err := h.enclaveClient.Stop(); err != nil {
-		return fmt.Errorf("failed to stop enclave server - %w", err)
+		h.logger.Error("failed to stop enclave client", log.ErrKey, err)
 	}
 	if err := h.enclaveClient.StopClient(); err != nil {
-		return fmt.Errorf("failed to stop enclave RPC client - %w", err)
+		h.logger.Error("failed to stop enclave client", log.ErrKey, err)
 	}
 
 	if err := h.db.Stop(); err != nil {
-		return fmt.Errorf("failed to stop DB - %w", err)
+		h.logger.Error("failed to stop DB", log.ErrKey, err)
 	}
 
-	h.logger.Info("Host shut down successfully.")
+	h.logger.Info("Host shut down complete.")
 	return nil
 }
 
