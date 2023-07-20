@@ -35,6 +35,9 @@ const (
 	queryReceipts     = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 
 	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where tx.hash=?"
+
+	selectContractCreationTx    = "select tx from exec_tx where created_contract_address=?"
+	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
 )
 
 func WriteBatch(dbtx *obscurosql.Batch, batch *core.Batch) error {
@@ -199,7 +202,6 @@ func WriteReceipts(dbtx *obscurosql.Batch, receipts []*types.Receipt) error {
 		execTxId := make([]byte, 0)
 		execTxId = append(execTxId, receipt.BlockHash.Bytes()...)
 		execTxId = append(execTxId, receipt.TxHash.Bytes()...)
-		//println("insert receipt: " + hexutils.BytesToHex(execTxId))
 
 		args = append(args, execTxId)
 		args = append(args, receipt.ContractAddress.Bytes())
@@ -328,4 +330,33 @@ func ReadTransaction(db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, ge
 	batch := gethcommon.Hash{}
 	batch.SetBytes(batchHash)
 	return tx, batch, height, idx, nil
+}
+
+func GetContractCreationTx(db *sql.DB, address gethcommon.Address) (*gethcommon.Hash, error) {
+	row := db.QueryRow(selectContractCreationTx, address.Bytes())
+
+	var txHashBytes []byte
+	err := row.Scan(&txHashBytes)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	txHash := gethcommon.Hash{}
+	txHash.SetBytes(txHashBytes)
+	return &txHash, nil
+}
+
+func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
+	row := db.QueryRow(selectTotalCreatedContracts)
+
+	var count int64
+	err := row.Scan(&count)
+	if err != nil {
+		return nil, err
+	}
+
+	return big.NewInt(count), nil
 }

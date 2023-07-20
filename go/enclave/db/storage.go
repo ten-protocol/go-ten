@@ -10,7 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
+	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/db/orm"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
@@ -31,17 +31,10 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	obscurorawdb "github.com/obscuronet/go-obscuro/go/enclave/db/rawdb"
 )
 
 // todo - this will require a dedicated table when updates are implemented
 const master_seed_cfg = "MASTER_SEED"
-
-// ErrNoRollups is returned if no rollups have been published yet in the history of the network
-// Note: this is not just "not found", we cache at every L1 block what rollup we are up to so we also record that we haven't seen one yet
-var ErrNoRollups = errors.New("no rollups have been published")
-
-// todo (#1551) - consistency around whether we assert the secret is available or not
 
 type storageImpl struct {
 	db          *sql.EnclaveDB
@@ -238,7 +231,7 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 }
 
 func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (*gethcommon.Hash, error) {
-	return obscurorawdb.ReadContractTransaction(s.db, address)
+	return orm.GetContractCreationTx(s.db.GetSQLDB(), address)
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error) {
@@ -251,7 +244,7 @@ func (s *storageImpl) FetchAttestedKey(address gethcommon.Address) (*ecdsa.Publi
 		return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", address, err)
 	}
 
-	publicKey, err := ethcrypto.DecompressPubkey(key)
+	publicKey, err := gethcrypto.DecompressPubkey(key)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse key from db. Cause: %w", err)
 	}
@@ -260,7 +253,7 @@ func (s *storageImpl) FetchAttestedKey(address gethcommon.Address) (*ecdsa.Publi
 }
 
 func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error {
-	_, err := orm.WriteAttKey(s.db.GetSQLDB(), aggregator, ethcrypto.CompressPubkey(key))
+	_, err := orm.WriteAttKey(s.db.GetSQLDB(), aggregator, gethcrypto.CompressPubkey(key))
 	return err
 }
 
@@ -301,14 +294,6 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 			return fmt.Errorf("could not save logs %w", err2)
 		}
 	}
-
-	if err := obscurorawdb.WriteContractCreationTxs(dbBatch, receipts); err != nil {
-		return fmt.Errorf("could not save contract creation transaction. Cause: %w", err)
-	}
-	// todo fix this as batches always stored even if not canonical
-	if err := obscurorawdb.IncrementContractCreationCount(s.db, dbBatch, receipts); err != nil {
-		return fmt.Errorf("unable to increment contract count")
-	}
 	return nil
 }
 
@@ -320,12 +305,28 @@ func (s *storageImpl) GetL1Messages(blockHash common.L1BlockHash) (common.CrossC
 	return orm.FetchL1Messages(s.db.GetSQLDB(), blockHash)
 }
 
+const enclaveKeyKey = "ek"
+
 func (s *storageImpl) StoreEnclaveKey(enclaveKey *ecdsa.PrivateKey) error {
-	return obscurorawdb.StoreEnclaveKey(s.db, enclaveKey, s.logger)
+	if enclaveKey == nil {
+		return errors.New("enclaveKey cannot be nil")
+	}
+	keyBytes := gethcrypto.FromECDSA(enclaveKey)
+
+	_, err := orm.WriteConfig(s.db.GetSQLDB(), enclaveKeyKey, keyBytes)
+	return err
 }
 
 func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
-	return obscurorawdb.GetEnclaveKey(s.db, s.logger)
+	keyBytes, err := orm.FetchConfig(s.db.GetSQLDB(), enclaveKeyKey)
+	if err != nil {
+		return nil, err
+	}
+	enclaveKey, err := gethcrypto.ToECDSA(keyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("unable to construct ECDSA private key from enclave key bytes - %w", err)
+	}
+	return enclaveKey, nil
 }
 
 func (s *storageImpl) StoreRollup(rollup *common.ExtRollup) error {
@@ -352,10 +353,9 @@ func (s *storageImpl) FilterLogs(
 	addresses []gethcommon.Address,
 	topics [][]gethcommon.Hash,
 ) ([]*types.Log, error) {
-	fmt.Printf("filter logs %d -> %d\n", fromBlock, toBlock)
 	return orm.FilterLogs(s.db.GetSQLDB(), requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
 }
 
 func (s *storageImpl) GetContractCount() (*big.Int, error) {
-	return obscurorawdb.ReadContractCreationCount(s.db)
+	return orm.ReadContractCreationCount(s.db.GetSQLDB())
 }

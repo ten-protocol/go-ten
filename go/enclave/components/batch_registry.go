@@ -62,8 +62,7 @@ func (br *batchRegistryImpl) UnsubscribeFromEvents() {
 	br.eventSubscription = nil
 }
 
-// StoreBatch - stores a batch and if it is the new l2 head, then registry will update
-// stored head pointers
+// StoreBatch - stores a batch and if it is canonical, it sends the events to subscribers
 func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receipts) error {
 	defer br.logger.Info("Registry StoreBatch() exit", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
@@ -78,20 +77,12 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 	if err := br.storage.StoreBatch(batch, receipts, dbBatch); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
-	isHeadBatch := true
-	if batch.Number().Uint64() > 0 {
-		b, err := br.storage.FetchHeadBatch()
-		if err != nil {
-			return err
-		}
-		isHeadBatch = bytes.Equal(b.Hash().Bytes(), batch.Hash().Bytes())
-	}
 
 	if err := br.storage.CommitBatch(dbBatch); err != nil {
 		return fmt.Errorf("unable to commit changes to db. Cause: %w", err)
 	}
 
-	br.notifySubscriber(batch, isHeadBatch)
+	br.notifySubscriber(batch)
 
 	return nil
 }
@@ -157,7 +148,7 @@ func (br *batchRegistryImpl) ValidateBatch(incomingBatch *core.Batch) (types.Rec
 	return cb.Receipts, nil
 }
 
-func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch, isHeadBatch bool) {
+func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch) {
 	defer br.logger.Info("Registry notified subscribers of batch", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	br.subscriptionMutex.Lock()
@@ -169,7 +160,7 @@ func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch, isHeadBatch boo
 		*subscriptionChan <- batch
 	}
 
-	if br.eventSubscription != nil && isHeadBatch {
+	if br.eventSubscription != nil {
 		*eventChan <- batch.NumberU64()
 	}
 }

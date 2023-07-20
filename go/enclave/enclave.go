@@ -341,6 +341,7 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 }
 
 func (e *enclaveImpl) sendEvents(batchHead uint64, outChannel chan common.StreamL2UpdatesResponse) {
+	e.logger.Info("Send Events", "batchHead", batchHead)
 	logs, err := e.subscriptionLogs(big.NewInt(int64(batchHead)))
 	if err != nil {
 		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)

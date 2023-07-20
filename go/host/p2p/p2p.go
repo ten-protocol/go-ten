@@ -70,6 +70,7 @@ func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger, metricR
 
 		// monitoring
 		peerTracker:     newPeerTracker(),
+		gaugesMutex:     &sync.RWMutex{},
 		hostGauges:      map[string]map[string]gethmetrics.Gauge{},
 		metricsRegistry: metricReg,
 		logger:          logger,
@@ -91,6 +92,7 @@ type Service struct {
 
 	peerTracker *peerTracker
 	// hostGauges holds a map of gauges per host per event to track p2p metrics and health status
+	gaugesMutex     *sync.RWMutex
 	hostGauges      map[string]map[string]gethmetrics.Gauge
 	metricsRegistry gethmetrics.Registry
 	logger          gethlog.Logger
@@ -408,6 +410,8 @@ func (p *Service) getSequencer() (string, error) {
 
 // status returns the current status of the p2p layer
 func (p *Service) status() *host.P2PStatus {
+	p.gaugesMutex.RLock()
+	defer p.gaugesMutex.RUnlock()
 	status := &host.P2PStatus{
 		FailedReceivedMessages: int64(0),
 		FailedSendMessage:      int64(0),
@@ -432,6 +436,9 @@ func (p *Service) status() *host.P2PStatus {
 }
 
 func (p *Service) incHostGaugeMetric(host string, gaugeName string) {
+	p.gaugesMutex.Lock()
+	defer p.gaugesMutex.Unlock()
+
 	if _, ok := p.hostGauges[host]; !ok {
 		p.hostGauges[host] = map[string]gethmetrics.Gauge{}
 	}

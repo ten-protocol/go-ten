@@ -239,7 +239,7 @@ func writeLog(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.S
 	execTxId := make([]byte, 0)
 	execTxId = append(execTxId, receipt.BlockHash.Bytes()...)
 	execTxId = append(execTxId, l.TxHash.Bytes()...)
-	//println("insert event: " + hexutils.BytesToHex(execTxId))
+	// println("insert event: " + hexutils.BytesToHex(execTxId))
 	return []any{
 		t0, t1, t2, t3, t4,
 		data, l.Index, l.Address.Bytes(),
