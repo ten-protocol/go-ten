@@ -1,13 +1,16 @@
 package p2p
 
 import (
-	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/subscription"
+	"github.com/pkg/errors"
 
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
@@ -28,14 +31,6 @@ const (
 	msgTypeTx msgType = iota
 	msgTypeBatches
 	msgTypeBatchRequest
-
-	_thresholdErrorFailure = 100
-
-	_failedMessageRead        = "msg/inbound/failed_read"
-	_failedMessageDecode      = "msg/inbound/failed_decode"
-	_failedConnectSendMessage = "msg/outbound/failed_peer_connect"
-	_failedWriteSendMessage   = "msg/outbound/failed_write"
-	_receivedMessage          = "msg/inbound/success_received"
 )
 
 var (
@@ -54,38 +49,47 @@ type message struct {
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger, metricReg gethmetrics.Registry) host.P2P {
-	return &p2pImpl{
-		ourAddress:      config.P2PBindAddress,
-		peerAddresses:   []string{},
-		nodeID:          common.ShortAddress(config.ID),
-		p2pTimeout:      config.P2PConnectionTimeout,
-		logger:          logger,
+func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
+	return &Service{
+		batchSubscribers: subscription.NewManager[host.P2PBatchHandler](),
+		txSubscribers:    subscription.NewManager[host.P2PTxHandler](),
+		batchReqHandlers: subscription.NewManager[host.P2PBatchRequestHandler](),
+
+		isSequencer:   config.NodeType == common.Sequencer,
+		ourAddress:    config.P2PBindAddress,
+		peerAddresses: []string{},
+		p2pTimeout:    config.P2PConnectionTimeout,
+
+		// monitoring
 		peerTracker:     newPeerTracker(),
-		hostGauges:      map[string]map[string]gethmetrics.Gauge{},
 		metricsRegistry: metricReg,
+		logger:          logger,
 	}
 }
 
-type p2pImpl struct {
-	ourAddress        string
-	peerAddresses     []string
+type Service struct {
+	batchSubscribers *subscription.Manager[host.P2PBatchHandler]
+	txSubscribers    *subscription.Manager[host.P2PTxHandler]
+	batchReqHandlers *subscription.Manager[host.P2PBatchRequestHandler]
+
 	listener          net.Listener
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
-	nodeID            uint64
-	p2pTimeout        time.Duration
-	logger            gethlog.Logger
-	peerTracker       *peerTracker
-	// hostGauges holds a map of gauges per host per event to track p2p metrics and health status
-	hostGauges      map[string]map[string]gethmetrics.Gauge
+
+	isSequencer   bool
+	ourAddress    string
+	peerAddresses []string
+	p2pTimeout    time.Duration
+
+	peerTracker     *peerTracker
 	metricsRegistry gethmetrics.Registry
+	logger          gethlog.Logger
 }
 
-func (p *p2pImpl) StartListening(callback host.P2PSubscriber) {
+func (p *Service) Start() error {
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.ourAddress)
 	if err != nil {
-		p.logger.Crit(fmt.Sprintf("could not listen for P2P connections on %s.", p.ourAddress), log.ErrKey, err)
+		return errors.Wrapf(err, "could not listen for P2P connections on %s", p.ourAddress)
 	}
 
 	p.logger.Info(fmt.Sprintf("Started listening on port: %s", p.ourAddress))
@@ -93,10 +97,11 @@ func (p *p2pImpl) StartListening(callback host.P2PSubscriber) {
 	p.listenerInterrupt = &i
 	p.listener = listener
 
-	go p.handleConnections(callback)
+	go p.handleConnections()
+	return nil
 }
 
-func (p *p2pImpl) StopListening() error {
+func (p *Service) Stop() error {
 	p.logger.Info("Shutting down P2P.")
 	if p.listener != nil {
 		atomic.StoreInt32(p.listenerInterrupt, 1)
@@ -107,12 +112,37 @@ func (p *p2pImpl) StopListening() error {
 	return nil
 }
 
-func (p *p2pImpl) UpdatePeerList(newPeers []string) {
+func (p *Service) HealthStatus() host.HealthStatus {
+	msg := ""
+	if err := p.verifyHealth(); err != nil {
+		msg = err.Error()
+	}
+	return &host.BasicErrHealthStatus{
+		ErrMsg: msg,
+	}
+}
+
+func (p *Service) SubscribeForBatches(handler host.P2PBatchHandler) func() {
+	return p.batchSubscribers.Subscribe(handler)
+}
+
+func (p *Service) SubscribeForTx(handler host.P2PTxHandler) func() {
+	return p.txSubscribers.Subscribe(handler)
+}
+
+func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler) func() {
+	return p.batchReqHandlers.Subscribe(handler)
+}
+
+func (p *Service) UpdatePeerList(newPeers []string) {
 	p.logger.Info(fmt.Sprintf("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers))
 	p.peerAddresses = newPeers
 }
 
-func (p *p2pImpl) SendTxToSequencer(tx common.EncryptedTx) error {
+func (p *Service) SendTxToSequencer(tx common.EncryptedTx) error {
+	if p.isSequencer {
+		return errors.New("sequencer cannot send tx to itself")
+	}
 	msg := message{Sender: p.ourAddress, Type: msgTypeTx, Contents: tx}
 	sequencer, err := p.getSequencer()
 	if err != nil {
@@ -121,7 +151,15 @@ func (p *p2pImpl) SendTxToSequencer(tx common.EncryptedTx) error {
 	return p.send(msg, sequencer)
 }
 
-func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
+func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
+	if !p.isSequencer {
+		return errors.New("only sequencer can broadcast batches")
+	}
+	batchMsg := host.BatchMsg{
+		Batches: batches,
+		IsLive:  true,
+	}
+
 	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
 	if err != nil {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
@@ -131,8 +169,15 @@ func (p *p2pImpl) BroadcastBatch(batchMsg *host.BatchMsg) error {
 	return p.broadcast(msg)
 }
 
-func (p *p2pImpl) RequestBatchesFromSequencer(batchRequest *common.BatchRequest) error {
-	defer p.logger.Info("Requested batches from sequencer", log.BatchHashKey, batchRequest.CurrentHeadBatch, log.DurationKey, measure.NewStopwatch())
+func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
+	if p.isSequencer {
+		return errors.New("sequencer cannot request batches from itself")
+	}
+	batchRequest := &common.BatchRequest{
+		Requester: p.ourAddress,
+		FromSeqNo: fromSeqNo,
+	}
+	defer p.logger.Info("Requested batches from sequencer", "fromSeqNo", batchRequest.FromSeqNo, log.DurationKey, measure.NewStopwatch())
 
 	if len(p.peerAddresses) == 0 {
 		return errors.New("no peers available to request batches")
@@ -151,33 +196,29 @@ func (p *p2pImpl) RequestBatchesFromSequencer(batchRequest *common.BatchRequest)
 	return p.send(msg, sequencer)
 }
 
-func (p *p2pImpl) SendBatches(batchMsg *host.BatchMsg, to string) error {
+func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtBatch) error {
+	if !p.isSequencer {
+		return errors.New("only sequencer can respond to batch requests")
+	}
+	batchMsg := &host.BatchMsg{
+		Batches: batches,
+		IsLive:  true,
+	}
+
 	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
 	if err != nil {
 		return fmt.Errorf("could not encode batches using RLP. Cause: %w", err)
 	}
 
 	msg := message{Sender: p.ourAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
-	return p.send(msg, to)
-}
-
-// Status returns the current status of the p2p layer
-func (p *p2pImpl) Status() *host.P2PStatus {
-	return p.status()
+	return p.send(msg, requestID)
 }
 
 // HealthCheck returns whether the p2p is considered healthy
 // Currently it considers itself unhealthy
 // if there's more than 100 failures on a given fail type
 // if there's a known peer for which a message hasn't been received
-func (p *p2pImpl) HealthCheck() bool {
-	currentStatus := p.status()
-
-	if currentStatus.FailedReceivedMessages >= _thresholdErrorFailure ||
-		currentStatus.FailedSendMessage >= _thresholdErrorFailure {
-		return false
-	}
-
+func (p *Service) verifyHealth() error {
 	var noMsgReceivedPeers []string
 	for peer, lastMsgTimestamp := range p.peerTracker.receivedMessagesByPeer() {
 		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {
@@ -189,16 +230,16 @@ func (p *p2pImpl) HealthCheck() bool {
 			)
 		}
 	}
-	if len(noMsgReceivedPeers) > 0 { //nolint: gosimple
-		return false
+	if len(noMsgReceivedPeers) > 0 {
+		return errors.New("no message received from peers")
 	}
 
-	return true
+	return nil
 }
 
 // Listens for connections and handles them in a separate goroutine.
-func (p *p2pImpl) handleConnections(subscriber host.P2PSubscriber) {
-	for {
+func (p *Service) handleConnections() {
+	for atomic.LoadInt32(p.listenerInterrupt) != 1 {
 		conn, err := p.listener.Accept()
 		if err != nil {
 			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
@@ -206,12 +247,12 @@ func (p *p2pImpl) handleConnections(subscriber host.P2PSubscriber) {
 			}
 			return
 		}
-		go p.handle(conn, subscriber)
+		go p.handle(conn)
 	}
 }
 
 // Receives and decodes a P2P message, and pushes it to the correct channel.
-func (p *p2pImpl) handle(conn net.Conn, subscriber host.P2PSubscriber) {
+func (p *Service) handle(conn net.Conn) {
 	if conn != nil {
 		defer conn.Close()
 	}
@@ -219,7 +260,6 @@ func (p *p2pImpl) handle(conn net.Conn, subscriber host.P2PSubscriber) {
 	encodedMsg, err := io.ReadAll(conn)
 	if err != nil {
 		p.logger.Warn("failed to read message from peer", log.ErrKey, err)
-		p.incHostGaugeMetric(conn.RemoteAddr().String(), _failedMessageRead)
 		return
 	}
 
@@ -227,25 +267,47 @@ func (p *p2pImpl) handle(conn net.Conn, subscriber host.P2PSubscriber) {
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
 		p.logger.Warn("failed to decode message received from peer: ", log.ErrKey, err)
-		p.incHostGaugeMetric(conn.RemoteAddr().String(), _failedMessageDecode)
 		return
 	}
 
 	switch msg.Type {
 	case msgTypeTx:
+		if !p.isSequencer {
+			p.logger.Error("received transaction from peer, but not a sequencer node")
+			return
+		}
 		// The transaction is encrypted, so we cannot check that it's correctly formed.
-		subscriber.ReceiveTx(msg.Contents)
+		for _, txSubs := range p.txSubscribers.Subscribers() {
+			txSubs.HandleTransaction(msg.Contents)
+		}
 	case msgTypeBatches:
-		subscriber.ReceiveBatches(msg.Contents)
+		if p.isSequencer {
+			p.logger.Error("received batch from peer, but this is a sequencer node")
+			return
+		}
+		var batchMsg *host.BatchMsg
+		err := rlp.DecodeBytes(msg.Contents, &batchMsg)
+		if err != nil {
+			p.logger.Warn("unable to decode batch received from peer", log.ErrKey, err)
+			// nothing to send to subscribers
+			break
+		}
+		for _, batchSubs := range p.batchSubscribers.Subscribers() {
+			go batchSubs.HandleBatches(batchMsg.Batches, batchMsg.IsLive)
+		}
 	case msgTypeBatchRequest:
-		subscriber.ReceiveBatchRequest(msg.Contents)
+		if !p.isSequencer {
+			p.logger.Error("received batch request from peer, but not a sequencer node")
+			return
+		}
+		// this is an incoming request, p2p service is responsible for finding the response and returning it
+		go p.handleBatchRequest(msg.Contents)
 	}
-	p.incHostGaugeMetric(msg.Sender, _receivedMessage)
 	p.peerTracker.receivedPeerMsg(msg.Sender)
 }
 
 // Broadcasts a message to all peers.
-func (p *p2pImpl) broadcast(msg message) error {
+func (p *Service) broadcast(msg message) error {
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to peers. Cause: %w", err)
@@ -262,7 +324,7 @@ func (p *p2pImpl) broadcast(msg message) error {
 }
 
 // Sends a message to the provided address.
-func (p *p2pImpl) send(msg message, to string) error {
+func (p *Service) send(msg message, to string) error {
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to sequencer. Cause: %w", err)
@@ -276,7 +338,7 @@ func (p *p2pImpl) send(msg message, to string) error {
 
 // Sends the bytes to the provided address.
 // Until introducing libp2p (or equivalent), we have a simple retry
-func (p *p2pImpl) sendBytesWithRetry(wg *sync.WaitGroup, address string, msgEncoded []byte) error {
+func (p *Service) sendBytesWithRetry(wg *sync.WaitGroup, address string, msgEncoded []byte) error {
 	if wg != nil {
 		defer wg.Done()
 	}
@@ -288,21 +350,19 @@ func (p *p2pImpl) sendBytesWithRetry(wg *sync.WaitGroup, address string, msgEnco
 }
 
 // Sends the bytes to the provided address.
-func (p *p2pImpl) sendBytes(address string, tx []byte) error {
+func (p *Service) sendBytes(address string, tx []byte) error {
 	conn, err := net.DialTimeout(tcp, address, p.p2pTimeout)
 	if conn != nil {
 		defer conn.Close()
 	}
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
-		p.incHostGaugeMetric(address, _failedConnectSendMessage)
 		return err
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
 		p.logger.Warn(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
-		p.incHostGaugeMetric(address, _failedWriteSendMessage)
 		return err
 	}
 	return nil
@@ -310,44 +370,23 @@ func (p *p2pImpl) sendBytes(address string, tx []byte) error {
 
 // Retrieves the sequencer's address.
 // todo (#718) - use better method to identify the sequencer?
-func (p *p2pImpl) getSequencer() (string, error) {
+func (p *Service) getSequencer() (string, error) {
 	if len(p.peerAddresses) == 0 {
 		return "", errUnknownSequencer
 	}
 	return p.peerAddresses[0], nil
 }
 
-// status returns the current status of the p2p layer
-func (p *p2pImpl) status() *host.P2PStatus {
-	status := &host.P2PStatus{
-		FailedReceivedMessages: int64(0),
-		FailedSendMessage:      int64(0),
-		ReceivedMessages:       int64(0),
+func (p *Service) handleBatchRequest(encodedBatchRequest common.EncodedBatchRequest) {
+	var batchRequest *common.BatchRequest
+	err := rlp.DecodeBytes(encodedBatchRequest, &batchRequest)
+	if err != nil {
+		p.logger.Warn("unable to decode batch request received from peer using RLP", log.ErrKey, err)
+		return
 	}
 
-	for _, hostGauge := range p.hostGauges {
-		for gaugeName, gauge := range hostGauge {
-			switch gaugeName {
-			case _receivedMessage:
-				status.ReceivedMessages = gauge.Value()
-			case _failedMessageRead:
-			case _failedMessageDecode:
-				status.FailedReceivedMessages += gauge.Value()
-			case _failedWriteSendMessage:
-			case _failedConnectSendMessage:
-				status.FailedSendMessage += gauge.Value()
-			}
-		}
+	// todo (@matt) should this response be synchronous?
+	for _, requestHandler := range p.batchReqHandlers.Subscribers() {
+		go requestHandler.HandleBatchRequest(batchRequest.Requester, batchRequest.FromSeqNo)
 	}
-	return status
-}
-
-func (p *p2pImpl) incHostGaugeMetric(host string, gaugeName string) {
-	if _, ok := p.hostGauges[host]; !ok {
-		p.hostGauges[host] = map[string]gethmetrics.Gauge{}
-	}
-	if _, ok := p.hostGauges[host][gaugeName]; !ok {
-		p.hostGauges[host][gaugeName] = gethmetrics.NewRegisteredGauge(gaugeName, p.metricsRegistry)
-	}
-	p.hostGauges[host][gaugeName].Inc(1)
 }

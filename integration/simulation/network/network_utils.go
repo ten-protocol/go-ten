@@ -17,13 +17,14 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
+	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
+
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-	simp2p "github.com/obscuronet/go-obscuro/integration/simulation/p2p"
 )
 
 const (
@@ -50,7 +51,7 @@ func createInMemObscuroNode(
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
-	mockP2P *simp2p.MockP2P,
+	mockP2P *p2p.MockP2P,
 	l1BusAddress *gethcommon.Address,
 	l1StartBlk gethcommon.Hash,
 	batchInterval time.Duration,
@@ -93,7 +94,6 @@ func createInMemObscuroNode(
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 
 	currentContainer := container.NewHostContainer(hostConfig, mockP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
-	mockP2P.CurrentNode = currentContainer.Host()
 
 	return currentContainer
 }

@@ -19,7 +19,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	commonhost "github.com/obscuronet/go-obscuro/go/common/host"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 const (
@@ -34,7 +34,7 @@ const (
 )
 
 type HostContainer struct {
-	host           commonhost.Host
+	host           hostcommon.Host
 	logger         gethlog.Logger
 	metricsService *metrics.Service
 	rpcServer      clientrpc.Server
@@ -85,7 +85,7 @@ func (h *HostContainer) Stop() error {
 	return nil
 }
 
-func (h *HostContainer) Host() commonhost.Host {
+func (h *HostContainer) Host() hostcommon.Host {
 	return h.host
 }
 
@@ -142,7 +142,8 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
 func NewHostContainer(
 	cfg *config.HostConfig, // provides various parameters that the host needs to function
-	p2p commonhost.P2P, // provides the inbound and outbound p2p communication layer
+	// todo (@matt) sort out all this wiring, we should depend on interfaces not concrete types, we should make it obvious and consistent how services are instantiated
+	p2p host.P2PHostService, // provides the inbound and outbound p2p communication layer
 	l1Client ethadapter.EthClient, // provides inbound and outbound L1 connectivity
 	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
 	contractLib mgmtcontractlib.MgmtContractLib, // provides the management contract lib injection

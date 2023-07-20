@@ -11,8 +11,10 @@ import (
 
 // service names - these are the keys used to register known services with the host
 const (
+	P2PName               = "p2p"
 	L1BlockRepositoryName = "l1-block-repo"
 	L1PublisherName       = "l1-publisher"
+	L2BatchRepositoryName = "l2-batch-repo"
 )
 
 // The host has a number of services that encapsulate the various responsibilities of the host.
@@ -26,15 +28,56 @@ type Service interface {
 	HealthStatus() HealthStatus
 }
 
+// P2P provides an interface for the host to interact with the P2P network
+type P2P interface {
+	// BroadcastBatches sends live batch(es) to every other node on the network
+	BroadcastBatches(batches []*common.ExtBatch) error
+	// SendTxToSequencer sends the encrypted transaction to the sequencer.
+	SendTxToSequencer(tx common.EncryptedTx) error
+
+	// RequestBatchesFromSequencer asynchronously requests batches from the sequencer, from the given sequence number
+	RequestBatchesFromSequencer(fromSeqNo *big.Int) error
+	// RespondToBatchRequest sends the requested batches to the requesting peer
+	RespondToBatchRequest(requestID string, batches []*common.ExtBatch) error
+
+	// SubscribeForBatches will register a handler to receive new batches from peers, returns unsubscribe func
+	SubscribeForBatches(handler P2PBatchHandler) func()
+	// SubscribeForTx will register a handler to receive new transactions from peers, returns unsubscribe func
+	SubscribeForTx(handler P2PTxHandler) func()
+	// SubscribeForBatchRequests will register a handler to receive new batch requests from peers, returns unsubscribe func
+	// todo (@matt) feels a bit weird to have this in this interface since it relates to serving data rather than receiving
+	SubscribeForBatchRequests(handler P2PBatchRequestHandler) func()
+
+	// UpdatePeerList allows the host to notify the p2p service of a change in the peer list
+	UpdatePeerList([]string)
+}
+
+// P2PBatchHandler is an interface for receiving new batches from the P2P network as they arrive
+type P2PBatchHandler interface {
+	// HandleBatches will be called in a new goroutine for batches that arrive
+	HandleBatches(batch []*common.ExtBatch, isLive bool)
+}
+
+// P2PTxHandler is an interface for receiving new transactions from the P2P network as they arrive
+type P2PTxHandler interface {
+	// HandleTransaction will be called in a new goroutine for each new tx as it arrives
+	HandleTransaction(tx common.EncryptedTx)
+}
+
+type P2PBatchRequestHandler interface {
+	// HandleBatchRequest will be called in a new goroutine for each new batch request as it arrives
+	HandleBatchRequest(requestID string, fromSeqNo *big.Int)
+}
+
 // L1BlockRepository provides an interface for the host to request L1 block data (live-streaming and historical)
 type L1BlockRepository interface {
 	// Subscribe will register a block handler to receive new blocks as they arrive, returns unsubscribe func
 	Subscribe(handler L1BlockHandler) func()
 
-	FetchBlockByHeight(height int) (*types.Block, error)
+	FetchBlockByHeight(height *big.Int) (*types.Block, error)
 	// FetchNextBlock returns the next canonical block after a given block hash
-	// It returns the new block and a bool which is true if the block is the current L1 head
-	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error)
+	// It returns the new block, a bool which is true if the block is the current L1 head and a bool if the block is on a different fork to prevBlock
+	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, bool, error)
 	// FetchReceipts returns the receipts for a given L1 block
 	FetchReceipts(block *common.L1Block) types.Receipts
 }
@@ -62,4 +105,22 @@ type L1Publisher interface {
 	FetchLatestPeersList() ([]string, error)
 
 	FetchLatestSeqNo() (*big.Int, error)
+}
+
+// L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)
+type L2BatchRepository interface {
+	// Subscribe will register a batch handler to receive new batches as they arrive
+	Subscribe(handler L2BatchHandler)
+
+	FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
+
+	// AddBatch is used to notify the repository of a new batch, e.g. from the enclave when seq produces one or a rollup is consumed
+	// Note: it is fine to add batches that the repo already has, it will just ignore them
+	AddBatch(batch *common.ExtBatch) error
+}
+
+// L2BatchHandler is an interface for receiving new batches from the publisher as they arrive
+type L2BatchHandler interface {
+	// HandleBatch will be called in a new goroutine for each new batch as it arrives
+	HandleBatch(batch *common.ExtBatch)
 }

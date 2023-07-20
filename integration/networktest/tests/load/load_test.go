@@ -16,7 +16,7 @@ func TestNativeTransfers(t *testing.T) {
 		t,
 		env.LocalDevNetwork(),
 		actions.Series(
-			actions.CreateAndFundTestUsers(5),
+			actions.CreateAndFundTestUsers(25),
 			actions.GenerateUsersRandomisedTransferActionsInParallel(10, 60*time.Second),
 
 			actions.VerifyUserBalancesSanity(),

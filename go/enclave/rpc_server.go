@@ -65,10 +65,14 @@ func (s *RPCServer) StartServer() error {
 // Status returns the current status of the RPCServer as an enum value (see common.Status for details)
 func (s *RPCServer) Status(context.Context, *generated.StatusRequest) (*generated.StatusResponse, error) {
 	status, sysError := s.enclave.Status()
+	var l2Head []byte
+	if status.L2Head != nil {
+		l2Head = status.L2Head.Bytes()
+	}
 	return &generated.StatusResponse{
 		StatusCode:  int32(status.StatusCode),
 		L1Head:      status.L1Head.Bytes(),
-		L2Head:      status.L2Head.Bytes(),
+		L2Head:      l2Head,
 		SystemError: toRPCError(sysError),
 	}, nil
 }

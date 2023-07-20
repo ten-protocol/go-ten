@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/obscuronet/go-obscuro/integration"
-	ethereum_mock "github.com/obscuronet/go-obscuro/integration/ethereummock"
+	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 )
@@ -31,8 +31,8 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.5,
 		L2ToL1EfficiencyThreshold: 0.5,
-		MgmtContractLib:           ethereum_mock.NewMgmtContractLibMock(),
-		ERC20ContractLib:          ethereum_mock.NewERC20ContractLibMock(),
+		MgmtContractLib:           ethereummock.NewMgmtContractLibMock(),
+		ERC20ContractLib:          ethereummock.NewERC20ContractLibMock(),
 		Wallets:                   wallets,
 		StartPort:                 integration.StartPortSimulationInMem,
 		IsInMem:                   true,
