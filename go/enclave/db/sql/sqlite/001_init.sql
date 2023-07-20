@@ -25,7 +25,7 @@ create table if not exists block
     hash         binary(32) primary key,
     parent       binary(32) REFERENCES block,
     is_canonical boolean,
-    header       text,
+    header       blob,
     height       int
 );
 create index IDX_BLOCK_HEIGHT on block (height);
@@ -42,7 +42,7 @@ create table if not exists rollup
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     start_seq int,
     end_seq   int,
-    header    text,
+    header    blob,
     block     binary(32) REFERENCES block
 );
 
@@ -59,7 +59,7 @@ create table if not exists batch
     sequence     int,
     height       int,
     is_canonical boolean,
-    header       text,
+    header       blob,
     body         binary(32) REFERENCES batch_body,
     l1_proof     binary(32) REFERENCES block,
     source       text

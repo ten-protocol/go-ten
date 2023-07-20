@@ -42,7 +42,7 @@ func WriteBlock(dbtx *obscurosql.Batch, b *types.Header) error {
 		b.Hash().Bytes(),
 		parentBytes,
 		true,
-		string(header),
+		header,
 		b.Number.Uint64(),
 	)
 	return nil

@@ -65,7 +65,7 @@ func WriteBatch(dbtx *obscurosql.Batch, batch *core.Batch) error {
 		batch.Header.SequencerOrderNo.Uint64(),
 		batch.Header.Number.Uint64(),
 		true,
-		string(header),
+		header,
 		bodyHash,
 		batch.Header.L1Proof.Bytes(),
 		"", // todo

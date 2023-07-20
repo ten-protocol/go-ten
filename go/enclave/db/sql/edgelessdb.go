@@ -238,7 +238,7 @@ func performHandshake(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*Edgeles
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal manifest to json - %w", err)
 	}
-	logger.Info("Initialise edgelessdb with script", "script", manifestJSON)
+	logger.Info("Initialise edgelessdb with script", "script", string(manifestJSON))
 	err = initialiseEdgelessDB(edbCfg.Host, manifest, edbHTTPClient, logger)
 	if err != nil {
 		return nil, err
