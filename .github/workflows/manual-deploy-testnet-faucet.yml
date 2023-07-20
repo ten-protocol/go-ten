@@ -49,7 +49,7 @@ jobs:
         # when they are called manually.
         # inputs.testnet_type is set generally i.e. when L2 [deploy | upgrade] of dev-testnet is performed as a
         # result of a schedule. To ensure the faucet is deployed on a scheduled dev-testnet L2 deployment or
-        # upgrade when test for both here. 
+        # upgrade we test for both here.
         if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (inputs.testnet_type == 'dev-testnet') }}
         run: |
           echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_faucet_testnet:latest" >> $GITHUB_ENV
