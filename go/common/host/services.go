@@ -74,10 +74,10 @@ type L1BlockRepository interface {
 	// Subscribe will register a block handler to receive new blocks as they arrive, returns unsubscribe func
 	Subscribe(handler L1BlockHandler) func()
 
-	FetchBlockByHeight(height int) (*types.Block, error)
+	FetchBlockByHeight(height *big.Int) (*types.Block, error)
 	// FetchNextBlock returns the next canonical block after a given block hash
-	// It returns the new block and a bool which is true if the block is the current L1 head
-	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error)
+	// It returns the new block, a bool which is true if the block is the current L1 head and a bool if the block is on a different fork to prevBlock
+	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, bool, error)
 	// FetchReceipts returns the receipts for a given L1 block
 	FetchReceipts(block *common.L1Block) types.Receipts
 }
