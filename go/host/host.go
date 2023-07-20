@@ -359,17 +359,17 @@ func (h *host) Stop() error {
 	time.Sleep(time.Second)
 
 	if err := h.enclaveClient.Stop(); err != nil {
-		return fmt.Errorf("failed to stop enclave server - %w", err)
+		h.logger.Error("failed to stop enclave client", log.ErrKey, err)
 	}
 	if err := h.enclaveClient.StopClient(); err != nil {
-		return fmt.Errorf("failed to stop enclave RPC client - %w", err)
+		h.logger.Error("failed to stop enclave client", log.ErrKey, err)
 	}
 
 	if err := h.db.Stop(); err != nil {
-		return fmt.Errorf("failed to stop DB - %w", err)
+		h.logger.Error("failed to stop DB", log.ErrKey, err)
 	}
 
-	h.logger.Info("Host shut down successfully.")
+	h.logger.Info("Host shut down complete.")
 	return nil
 }
 
@@ -379,35 +379,39 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 		return nil, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the host stopping"))
 	}
 
+	overallHostHealth := true
+	healthErrors := make([]string, 0)
+
 	// check the enclave health, which in turn checks the DB health
 	enclaveHealthy, err := h.enclaveClient.HealthCheck()
 	if err != nil {
+		overallHostHealth = false
+		healthErrors = append(healthErrors, fmt.Sprintf("unable to HealthCheck enclave - %s", err.Error()))
+
 		// simplest iteration, log the error and just return that it's not healthy
-		h.logger.Error("unable to HealthCheck enclave", log.ErrKey, err)
+		h.logger.Warn("unable to HealthCheck enclave", log.ErrKey, err)
+	} else if !enclaveHealthy {
+		overallHostHealth = false
+		healthErrors = append(healthErrors, "enclave reported itself as not healthy")
 	}
 
-	// todo (@matt) make the host health check more generic, it should just collate the health of all services
-	//   (so at this point we can just loop through all services and call their health check, collate the responses)
-	l1RepoService := h.l1Repo().(hostcommon.Service)
-	l1RepoHealthy := l1RepoService.HealthStatus().OK()
-	p2pService := h.p2p().(hostcommon.Service)
-	p2pHealthy := p2pService.HealthStatus().OK()
+	// loop through all registered services and collect their health statuses
+	for name, service := range h.services {
+		status := service.HealthStatus()
+		if !status.OK() {
+			overallHostHealth = false
+			healthErrors = append(healthErrors, fmt.Sprintf("[%s] not healthy - %s", name, status.Message()))
+		}
+	}
 
-	isL1Synced := h.enclaveState.InSyncWithL1()
-
-	// Overall health is achieved when all parts are healthy
-	obscuroNodeHealth := p2pHealthy && l1RepoHealthy && enclaveHealthy && isL1Synced
+	if !h.enclaveState.InSyncWithL1() {
+		overallHostHealth = false
+		healthErrors = append(healthErrors, "not in sync with L1")
+	}
 
 	return &hostcommon.HealthCheck{
-		HealthCheckHost: &hostcommon.HealthCheckHost{
-			// P2PStatus: h.p2p().Status(),
-			L1Repo:   l1RepoHealthy,
-			L1Synced: isL1Synced,
-		},
-		HealthCheckEnclave: &hostcommon.HealthCheckEnclave{
-			EnclaveHealthy: enclaveHealthy,
-		},
-		OverallHealth: obscuroNodeHealth,
+		OverallHealth: overallHostHealth,
+		Errors:        healthErrors,
 	}, nil
 }
 
