@@ -34,7 +34,7 @@ create table if not exists obsdb.block
     is_canonical boolean,
     header       text,
     height       int,
-    FOREIGN KEY (parent) REFERENCES obsdb.block (hash),
+    INDEX (parent),
     primary key (hash),
     INDEX (height)
 );
@@ -45,7 +45,7 @@ create table if not exists obsdb.l1_msg
     id      INTEGER AUTO_INCREMENT,
     message varbinary(1024),
     block   binary(32),
-    FOREIGN KEY (block) REFERENCES obsdb.block (hash),
+    INDEX (block),
     primary key (id)
 );
 GRANT ALL ON obsdb.l1_msg TO obscuro;
@@ -57,7 +57,7 @@ create table if not exists obsdb.rollup
     end_seq   int,
     header    text,
     block     binary(32),
-    FOREIGN KEY (block) REFERENCES obsdb.block (hash),
+    INDEX (block),
     primary key (id)
 );
 GRANT ALL ON obsdb.rollup TO obscuro;
@@ -81,9 +81,9 @@ create table if not exists obsdb.batch
     body         binary(32),
     l1_proof     binary(32),
     source       text,
-    FOREIGN KEY (parent) REFERENCES obsdb.batch (hash),
-    FOREIGN KEY (body) REFERENCES obsdb.batch_body (hash),
-    FOREIGN KEY (l1_proof) REFERENCES obsdb.block (hash),
+    INDEX (parent),
+    INDEX (body),
+    INDEX (l1_proof),
     INDEX (height),
     INDEX (sequence),
     primary key (hash)
@@ -98,7 +98,7 @@ create table if not exists obsdb.tx
     nonce          int,
     idx            int,
     body           binary(32),
-    FOREIGN KEY (body) REFERENCES obsdb.batch_body (hash),
+    INDEX (body),
     primary key (hash)
 );
 GRANT ALL ON obsdb.tx TO obscuro;
@@ -110,7 +110,7 @@ create table if not exists obsdb.exec_tx
     receipt                  mediumblob,
     tx                       binary(32),
     batch                    binary(32),
-    FOREIGN KEY (batch) REFERENCES obsdb.batch (hash),
+    INDEX (batch),
     INDEX (tx),
     primary key (id)
 );
@@ -132,7 +132,7 @@ create table if not exists obsdb.events
     rel_address3    binary(20),
     rel_address4    binary(20),
     exec_tx_id      binary(64),
-    FOREIGN KEY (exec_tx_id) REFERENCES obsdb.exec_tx (id),
+    INDEX (exec_tx_id),
     INDEX (address),
     INDEX (rel_address1),
     INDEX (rel_address2),
