@@ -80,7 +80,7 @@ create table if not exists tx
 create table if not exists exec_tx
 (
     id                       binary(64) PRIMARY KEY, -- batch_hash||tx_idx
-    created_contract_address binary(32),
+    created_contract_address binary(20),
     receipt                  mediumblob,
 --     commenting out the fk until synthetic transactions are also stored
 --     tx                       binary(32) REFERENCES tx,
@@ -98,7 +98,7 @@ create table if not exists events
     topic4          binary(32),
     datablob        mediumblob,
     log_idx         int,
-    address         binary(32),
+    address         binary(20),
     lifecycle_event boolean,
     rel_address1    binary(20),
     rel_address2    binary(20),

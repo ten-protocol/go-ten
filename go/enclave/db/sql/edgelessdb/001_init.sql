@@ -106,7 +106,7 @@ GRANT ALL ON obsdb.tx TO obscuro;
 create table if not exists obsdb.exec_tx
 (
     id                       binary(64),
-    created_contract_address binary(32),
+    created_contract_address binary(20),
     receipt                  mediumblob,
     tx                       binary(32),
     batch                    binary(32),
@@ -125,7 +125,7 @@ create table if not exists obsdb.events
     topic4          binary(32),
     datablob        mediumblob,
     log_idx         int,
-    address         binary(32),
+    address         binary(20),
     lifecycle_event boolean,
     rel_address1    binary(20),
     rel_address2    binary(20),
