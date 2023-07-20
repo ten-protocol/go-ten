@@ -98,7 +98,7 @@ func NewHost(
 	l1Repo := l1.NewL1Repository(ethClient, logger)
 	l1StartHash := config.L1StartHash
 	if l1StartHash == (gethcommon.Hash{}) {
-		startBlock, err := l1Repo.FetchBlockByHeight(0)
+		startBlock, err := l1Repo.FetchBlockByHeight(big.NewInt(0))
 		if err != nil {
 			logger.Crit("unable to fetch start block so stream from", log.ErrKey, err)
 		}
@@ -226,7 +226,7 @@ func (h *host) HandleBlock(block *types.Block) {
 	}
 	h.submitDataToEnclaveLock.Lock()
 	defer h.submitDataToEnclaveLock.Unlock()
-	err := h.processL1Block(block, true)
+	err := h.processL1Block(block, true, false)
 	if err != nil {
 		h.logger.Warn("error processing L1 block", log.ErrKey, err)
 	}
@@ -485,7 +485,9 @@ func (h *host) startProcessing() {
 	}
 }
 
-func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
+// processL1Block processes the transactions in the given block, and submits them to the enclave for ingestion.
+// the 'isFork' flag affects the retry behaviour
+func (h *host) processL1Block(block *types.Block, isLatestBlock bool, isFork bool) error {
 	// For the genesis block the parent is nil
 	if block == nil {
 		return nil
@@ -497,12 +499,19 @@ func (h *host) processL1Block(block *types.Block, isLatestBlock bool) error {
 	// submit each block to the enclave for ingestion plus validation
 	blockSubmissionResponse, err := h.enclaveClient.SubmitL1Block(*block, h.l1Repo().FetchReceipts(block), isLatestBlock)
 	if err != nil {
-		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
-			// block already processed, update the enclave state to reflect this and then return to main loop
-			// note: this is important, because if we revisit a previous fork we can get stuck in a loop where the enclave keeps reporting a non-canonical L1 head
-			h.enclaveState.OnProcessedBlock(block.Hash())
-			h.logger.Debug("block already processed", log.BlockHashKey, block.Hash())
-			return nil
+		// if we're processing a block on a different fork and the enclave has already seen it then we try the next one
+		if isFork && strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
+			// Note: if the block is known to be a fork from the previous then we will retry the next canonical block
+			// every time there is an 'already processed' failure. This is because we have rewound to replay from the
+			// latest canonical ancestor but if we are revisiting an old fork we might need to replay more than one block
+			nextHeight := big.NewInt(0).Add(block.Number(), big.NewInt(1))
+			nextBlock, err := h.l1Repo().FetchBlockByHeight(nextHeight)
+			if err != nil {
+				return fmt.Errorf("failed to fetch next block after forking block %s. Cause: %w", block.Hash(), err)
+			}
+			h.logger.Debug("block already processed after forking, we will try next canonical block",
+				log.BlockHashKey, nextBlock.Hash(), log.BlockHeightKey, nextBlock.Number())
+			return h.processL1Block(nextBlock, isLatestBlock, true)
 		}
 		go h.checkEnclaveStatus()
 		return fmt.Errorf("did not ingest block %s. Cause: %w", block.Hash(), err)
@@ -583,7 +592,7 @@ func (h *host) requestSecret() error {
 
 	// keep checking L1 blocks until we find a secret response for our request or timeout
 	err = retry.Do(func() error {
-		nextBlock, _, err := h.l1Repo().FetchNextBlock(awaitFromBlock)
+		nextBlock, _, _, err := h.l1Repo().FetchNextBlock(awaitFromBlock)
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
@@ -808,7 +817,7 @@ func (h *host) catchUpL1Block() bool {
 	}
 	prevHead := h.enclaveState.GetEnclaveL1Head()
 	h.logger.Trace("fetching next block", log.BlockHashKey, prevHead)
-	block, isLatest, err := h.l1Repo().FetchNextBlock(prevHead)
+	block, isLatest, isFork, err := h.l1Repo().FetchNextBlock(prevHead)
 	if err != nil {
 		// ErrNoNext block occurs sometimes if we caught up with the L1 head, but other errors are unexpected
 		if !errors.Is(err, l1.ErrNoNextBlock) {
@@ -818,7 +827,7 @@ func (h *host) catchUpL1Block() bool {
 	}
 	h.submitDataToEnclaveLock.Lock()
 	defer h.submitDataToEnclaveLock.Unlock()
-	err = h.processL1Block(block, isLatest)
+	err = h.processL1Block(block, isLatest, isFork)
 	if err != nil {
 		h.logger.Warn("unable to process L1 block", log.ErrKey, err)
 	}
