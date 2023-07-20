@@ -75,27 +75,36 @@ func (r *Repository) Subscribe(handler host.L1BlockHandler) func() {
 	return r.blockSubscribers.Subscribe(handler)
 }
 
-func (r *Repository) FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error) {
-	if prevBlock == r.head {
+// FetchNextBlock calculates the next canonical block that should be sent to requester after a given hash.
+// It returns the block, whether it is the latest known head, and whether it has rewound to a fork
+func (r *Repository) FetchNextBlock(prevBlockHash gethcommon.Hash) (*types.Block, bool, bool, error) {
+	if prevBlockHash == r.head {
 		// prevBlock is the latest known head
-		return nil, false, ErrNoNextBlock
+		return nil, false, false, ErrNoNextBlock
+	}
+	prevBlock, err := r.ethClient.BlockByHash(prevBlockHash)
+	if err != nil {
+		return nil, false, false, fmt.Errorf("could not find prev block with hash=%s - %w", prevBlockHash, err)
 	}
 	// the latestCanonAncestor will usually return the prevBlock itself but this step is necessary to walk back if there was a fork
-	lca, err := r.latestCanonAncestor(prevBlock)
+	lca, err := r.latestCanonAncestor(prevBlockHash)
 	if err != nil {
-		return nil, false, err
+		return nil, false, false, err
 	}
 	// and send the canonical block at the height after that
 	// (which may be a fork, or it may just be the next on the same branch if we are catching-up)
 	blk, err := r.ethClient.BlockByNumber(increment(lca.Number()))
 	if err != nil {
 		if errors.Is(err, ethereum.NotFound) {
-			return nil, false, ErrNoNextBlock
+			return nil, false, false, ErrNoNextBlock
 		}
-		return nil, false, fmt.Errorf("could not find block after latest canon ancestor, height=%s - %w", increment(lca.Number()), err)
+		return nil, false, false, fmt.Errorf("could not find block after latest canon ancestor, height=%s - %w", increment(lca.Number()), err)
 	}
 
-	return blk, blk.Hash() == r.head, nil
+	// if the block we are about to feed is the same height or lower than the previous block, we have rewound onto a fork
+	isFork := prevBlock.Header().Number.Cmp(blk.Number()) >= 0
+
+	return blk, blk.Hash() == r.head, isFork, nil
 }
 
 func (r *Repository) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block, error) {
@@ -179,8 +188,8 @@ func (r *Repository) resetLiveStream() (chan *types.Header, ethereum.Subscriptio
 	return r.ethClient.BlockListener()
 }
 
-func (r *Repository) FetchBlockByHeight(height int) (*types.Block, error) {
-	return r.ethClient.BlockByNumber(big.NewInt(int64(height)))
+func (r *Repository) FetchBlockByHeight(height *big.Int) (*types.Block, error) {
+	return r.ethClient.BlockByNumber(height)
 }
 
 func increment(i *big.Int) *big.Int {
