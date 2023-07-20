@@ -84,7 +84,7 @@ func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error
 
 	result := make([]*tracers.DebugLogs, 0)
 
-	rows, err := db.Query(query, queryParams...) //nolint: rowserrcheck
+	rows, err := db.Query(query, queryParams...)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error
 		result = append(result, &l)
 	}
 
-	if err = rows.Close(); err != nil { //nolint: sqlclosecheck
+	if err = rows.Close(); err != nil {
 		return nil, err
 	}
 
@@ -236,15 +236,15 @@ func writeLog(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.S
 		data = nil
 	}
 
-	execTxId := make([]byte, 0)
-	execTxId = append(execTxId, receipt.BlockHash.Bytes()...)
-	execTxId = append(execTxId, l.TxHash.Bytes()...)
-	// println("insert event: " + hexutils.BytesToHex(execTxId))
+	execTxID := make([]byte, 0)
+	execTxID = append(execTxID, receipt.BlockHash.Bytes()...)
+	execTxID = append(execTxID, l.TxHash.Bytes()...)
+	// println("insert event: " + hexutils.BytesToHex(execTxID))
 	return []any{
 		t0, t1, t2, t3, t4,
 		data, l.Index, l.Address.Bytes(),
 		isLifecycle, a1, a2, a3, a4,
-		execTxId,
+		execTxID,
 	}, nil
 }
 
@@ -307,7 +307,7 @@ func loadLogs(db *sql.DB, requestingAccount *gethcommon.Address, whereCondition 
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
-	rows, err := db.Query(query, queryParams...) //nolint: rowserrcheck
+	rows, err := db.Query(query, queryParams...)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +322,7 @@ func loadLogs(db *sql.DB, requestingAccount *gethcommon.Address, whereCondition 
 		}
 
 		for _, topic := range [][]byte{t0, t1, t2, t3, t4} {
-			if topic != nil && len(topic) > 0 {
+			if len(topic) > 0 {
 				l.Topics = append(l.Topics, *byteArrayToHash(topic))
 			}
 		}
@@ -330,7 +330,7 @@ func loadLogs(db *sql.DB, requestingAccount *gethcommon.Address, whereCondition 
 		result = append(result, &l)
 	}
 
-	if err = rows.Close(); err != nil { //nolint: sqlclosecheck
+	if err = rows.Close(); err != nil {
 		return nil, syserr.NewInternalError(err)
 	}
 
@@ -369,9 +369,4 @@ func byteArrayToHash(b []byte) *gethcommon.Hash {
 	result := gethcommon.Hash{}
 	result.SetBytes(b)
 	return &result
-}
-
-func GetContractCount(db *sql.DB) (*big.Int, error) {
-	// todo
-	return nil, nil
 }

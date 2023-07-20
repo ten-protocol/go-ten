@@ -11,13 +11,13 @@ import (
 
 const (
 	cfgInsert = "insert into config values (?,?)"
-	cfgUpdate = "update config set val=? where key=?"
-	cfgSelect = "select val from config where key=?"
+	cfgUpdate = "update config set val=? where ky=?"
+	cfgSelect = "select val from config where ky=?"
 )
 
 const (
 	attInsert = "insert into attestation_key values (?,?)"
-	attSelect = "select key from attestation_key where party=?"
+	attSelect = "select ky from attestation_key where party=?"
 )
 
 func WriteConfigToBatch(dbtx *obscurosql.Batch, key string, value any) {

@@ -34,7 +34,7 @@ func WriteBlock(dbtx *obscurosql.Batch, b *types.Header) error {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
 
-	var parentBytes []byte = nil
+	var parentBytes []byte
 	if b.Number.Uint64() > 1 {
 		parentBytes = b.ParentHash.Bytes()
 	}
@@ -49,10 +49,10 @@ func WriteBlock(dbtx *obscurosql.Batch, b *types.Header) error {
 }
 
 func UpdateCanonicalBlocks(dbtx *obscurosql.Batch, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) {
-	if canonical != nil && len(canonical) > 0 {
+	if len(canonical) > 0 {
 		updateCanonicalValue(dbtx, true, canonical)
 	}
-	if nonCanonical != nil && len(nonCanonical) > 0 {
+	if len(nonCanonical) > 0 {
 		updateCanonicalValue(dbtx, false, nonCanonical)
 	}
 }

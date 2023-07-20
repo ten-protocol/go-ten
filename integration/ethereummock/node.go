@@ -224,7 +224,10 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	m.Resolver.StoreBlock(MockGenesisBlock, nil, nil)
+	err := m.Resolver.StoreBlock(MockGenesisBlock, nil, nil)
+	if err != nil {
+		m.logger.Crit("Failed to store block")
+	}
 	head := m.setHead(MockGenesisBlock)
 
 	for {

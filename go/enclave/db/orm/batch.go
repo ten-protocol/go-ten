@@ -54,7 +54,7 @@ func WriteBatch(dbtx *obscurosql.Batch, batch *core.Batch) error {
 
 	dbtx.ExecuteSQL(bodyInsert, bodyHash, body)
 
-	var parentBytes []byte = nil
+	var parentBytes []byte
 	if batch.Number().Uint64() > 0 {
 		parentBytes = batch.Header.ParentHash.Bytes()
 	}
@@ -190,7 +190,7 @@ func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.Batch
 }
 
 func WriteReceipts(dbtx *obscurosql.Batch, receipts []*types.Receipt) error {
-	var args []any
+	args := make([]any, 0)
 	for _, receipt := range receipts {
 		// Convert the receipt into their storage form and serialize them
 		storageReceipt := (*types.ReceiptForStorage)(receipt)
@@ -199,11 +199,11 @@ func WriteReceipts(dbtx *obscurosql.Batch, receipts []*types.Receipt) error {
 			return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 		}
 
-		execTxId := make([]byte, 0)
-		execTxId = append(execTxId, receipt.BlockHash.Bytes()...)
-		execTxId = append(execTxId, receipt.TxHash.Bytes()...)
+		execTxID := make([]byte, 0)
+		execTxID = append(execTxID, receipt.BlockHash.Bytes()...)
+		execTxID = append(execTxID, receipt.TxHash.Bytes()...)
 
-		args = append(args, execTxId)
+		args = append(args, execTxID)
 		args = append(args, receipt.ContractAddress.Bytes())
 		args = append(args, receiptBytes)
 		args = append(args, receipt.TxHash.Bytes())

@@ -34,7 +34,7 @@ import (
 )
 
 // todo - this will require a dedicated table when updates are implemented
-const master_seed_cfg = "MASTER_SEED"
+const masterSeedCfg = "MASTER_SEED"
 
 type storageImpl struct {
 	db          *sql.EnclaveDB
@@ -127,7 +127,7 @@ func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
 	if err != nil {
 		return fmt.Errorf("could not encode shared secret. Cause: %w", err)
 	}
-	_, err = orm.WriteConfig(s.db.GetSQLDB(), master_seed_cfg, enc)
+	_, err = orm.WriteConfig(s.db.GetSQLDB(), masterSeedCfg, enc)
 	if err != nil {
 		return fmt.Errorf("could not shared secret in DB. Cause: %w", err)
 	}
@@ -137,7 +137,7 @@ func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
 func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 	var ss crypto.SharedEnclaveSecret
 
-	cfg, err := orm.FetchConfig(s.db.GetSQLDB(), master_seed_cfg)
+	cfg, err := orm.FetchConfig(s.db.GetSQLDB(), masterSeedCfg)
 	if err != nil {
 		return nil, err
 	}

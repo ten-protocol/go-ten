@@ -6,7 +6,7 @@ create table if not exists keyvalue
 
 create table if not exists config
 (
-    key varchar(64) primary key,
+    ky varchar(64) primary key,
     val mediumblob
 );
 
@@ -17,7 +17,7 @@ create table if not exists attestation_key
 (
 --     party  binary(20) primary key, // todo -pk
     party binary(20),
-    key   binary(33)
+    ky   binary(33)
 );
 
 create table if not exists block
