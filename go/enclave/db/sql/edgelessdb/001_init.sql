@@ -24,7 +24,6 @@ create table if not exists obsdb.attestation_key
 (
     party binary(20),
     ky    binary(33)
-    -- primary key (party)
 );
 GRANT ALL ON obsdb.attestation_key TO obscuro;
 
@@ -112,8 +111,6 @@ create table if not exists obsdb.exec_tx
     tx                       binary(32),
     batch                    binary(32),
     FOREIGN KEY (batch) REFERENCES obsdb.batch (hash),
---     commenting out the fk until synthetic transactions are also stored
---    FOREIGN KEY (tx) REFERENCES obsdb.tx (hash),
     INDEX (tx),
     primary key (id)
 );
