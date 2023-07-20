@@ -45,7 +45,7 @@ jobs:
           echo "TESTNET_ADDR=testnet.obscu.ro" >> $GITHUB_ENV
 
       - name: 'Sets env vars for dev-testnet'
-        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
+        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (inputs.testnet_type == 'dev-testnet') }}
         run: |
           echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_faucet_testnet:latest" >> $GITHUB_ENV
           echo "TESTNET_ADDR=dev-testnet.obscu.ro" >> $GITHUB_ENV
