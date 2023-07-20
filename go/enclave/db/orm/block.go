@@ -18,7 +18,7 @@ const (
 	blockInsert       = "insert into block values (?,?,?,?,?)"
 	selectBlockHeader = "select header from block"
 
-	l1msgInsert = "insert into l1_msg "
+	l1msgInsert = "insert into l1_msg (message, block) values "
 	l1msgValue  = "(?,?)"
 	selectL1Msg = "select message from l1_msg "
 
@@ -96,8 +96,11 @@ func WriteL1Messages(db *sql.DB, blockHash common.L1BlockHash, messages common.C
 		args = append(args, data)
 		args = append(args, blockHash.Bytes())
 	}
-	_, err := db.Exec(insert[0:len(insert)-1], args...)
-	return err
+	if len(messages) > 0 {
+		_, err := db.Exec(insert[0:len(insert)-1], args...)
+		return err
+	}
+	return nil
 }
 
 func FetchL1Messages(db *sql.DB, blockHash common.L1BlockHash) (common.CrossChainMessages, error) {

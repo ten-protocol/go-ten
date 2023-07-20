@@ -67,7 +67,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(block *common.L1Block, r
 		m.logger.Trace(fmt.Sprintf("Storing %d messages for block", len(messages)), log.BlockHashKey, block.Hash())
 		err = m.storage.StoreL1Messages(block.Hash(), messages)
 		if err != nil {
-			m.logger.Crit("Unable to store the messages")
+			m.logger.Crit("Unable to store the messages", log.ErrKey, err)
 			return err
 		}
 	}
