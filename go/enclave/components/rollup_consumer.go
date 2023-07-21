@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 
@@ -15,7 +17,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 )
@@ -32,7 +33,7 @@ type rollupConsumerImpl struct {
 
 	logger gethlog.Logger
 
-	storage      db.Storage
+	storage      storage.Storage
 	sigValidator *SignatureValidator
 }
 
@@ -43,7 +44,7 @@ func NewRollupConsumer(
 	dataCompressionService compression.DataCompressionService,
 	obscuroChainID int64,
 	ethereumChainID int64,
-	storage db.Storage,
+	storage storage.Storage,
 	logger gethlog.Logger,
 	verifier *SignatureValidator,
 ) RollupConsumer {

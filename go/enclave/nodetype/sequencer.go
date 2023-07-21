@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/obscuronet/go-obscuro/go/common/compression"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -21,7 +23,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
@@ -44,7 +45,7 @@ type sequencer struct {
 	chainConfig            *params.ChainConfig
 	enclavePrivateKey      *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	mempool                mempool.Manager
-	storage                db.Storage
+	storage                storage.Storage
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
@@ -67,7 +68,7 @@ func NewSequencer(
 	chainConfig *params.ChainConfig,
 	enclavePrivateKey *ecdsa.PrivateKey, // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	mempool mempool.Manager,
-	storage db.Storage,
+	storage storage.Storage,
 	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,

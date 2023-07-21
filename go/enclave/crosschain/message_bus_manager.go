@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -13,7 +15,6 @@ import (
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 )
@@ -25,13 +26,13 @@ const ( // DO NOT USE OR CHANGE THIS KEY IN THE REST OF THE CODEBASE
 
 type MessageBusManager struct {
 	messageBusAddress *gethcommon.Address
-	storage           db.Storage
+	storage           storage.Storage
 	logger            gethlog.Logger
 	wallet            wallet.Wallet
 }
 
 func NewObscuroMessageBusManager(
-	storage db.Storage, /*key *ecdsa.PrivateKey,*/
+	storage storage.Storage, /*key *ecdsa.PrivateKey,*/
 	chainID *big.Int,
 	logger gethlog.Logger,
 ) Manager {

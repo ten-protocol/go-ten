@@ -3,25 +3,26 @@ package crosschain
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/measure"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 type blockMessageExtractor struct {
 	busAddress   *common.L1Address
 	l2MessageBus *common.L2Address // todo (@stefan) - remove this
-	storage      db.Storage
+	storage      storage.Storage
 	logger       gethlog.Logger
 }
 
 func NewBlockMessageExtractor(
 	busAddress *common.L1Address,
 	l2BusAddress *common.L2Address,
-	storage db.Storage,
+	storage storage.Storage,
 	logger gethlog.Logger,
 ) BlockMessageExtractor {
 	return &blockMessageExtractor{

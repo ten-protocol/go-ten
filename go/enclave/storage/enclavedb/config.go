@@ -1,4 +1,4 @@
-package orm
+package enclavedb
 
 import (
 	"database/sql"
@@ -6,7 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	obscurosql "github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 )
 
 const (
@@ -20,7 +19,7 @@ const (
 	attSelect = "select ky from attestation_key where party=?"
 )
 
-func WriteConfigToBatch(dbtx *obscurosql.Batch, key string, value any) {
+func WriteConfigToBatch(dbtx DBTransaction, key string, value any) {
 	dbtx.ExecuteSQL(cfgInsert, key, value)
 }
 
@@ -28,7 +27,7 @@ func WriteConfig(db *sql.DB, key string, value []byte) (sql.Result, error) {
 	return db.Exec(cfgInsert, key, value)
 }
 
-func UpdateConfigToBatch(dbtx *obscurosql.Batch, key string, value []byte) {
+func UpdateConfigToBatch(dbtx DBTransaction, key string, value []byte) {
 	dbtx.ExecuteSQL(cfgUpdate, key, value)
 }
 

@@ -1,4 +1,4 @@
-package db
+package storage
 
 import (
 	"crypto/ecdsa"
@@ -7,15 +7,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/trie"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // BlockResolver stores new blocks and returns information on existing blocks
@@ -51,7 +49,7 @@ type BatchResolver interface {
 
 type BatchUpdater interface {
 	// StoreBatch stores a batch.
-	StoreBatch(batch *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error
+	StoreBatch(batch *core.Batch, receipts []*types.Receipt) error
 }
 
 type HeadsAfterL1BlockStorage interface {
@@ -124,13 +122,6 @@ type Storage interface {
 
 	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
 	DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error)
-
-	// todo (@stefan) - OpenBatch should return a custom type that hides any methods and properties to outside callers
-	// in order to prevent accidental messing up the internal state
-	// OpenBatch - returns a batch struct that allows for grouping write calls to the database together.
-	OpenBatch() *sql.Batch
-	// CommitBatch - finalizes a batch and pushes the changes to the database
-	CommitBatch(dbBatch *sql.Batch) error
 
 	// TrieDB - return the underlying trie database
 	TrieDB() *trie.Database

@@ -1,4 +1,4 @@
-package orm
+package enclavedb
 
 import (
 	"bytes"
@@ -17,7 +17,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	obscurosql "github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 )
 
 const (
@@ -40,7 +39,8 @@ const (
 	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
 )
 
-func WriteBatch(dbtx *obscurosql.Batch, batch *core.Batch) error {
+// WriteBatchAndTransactions - persists the batch and the transactions
+func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 	bodyHash := batch.Header.TxHash.Bytes()
 
 	body, err := rlp.EncodeToBytes(batch.Transactions)
@@ -93,15 +93,46 @@ func WriteBatch(dbtx *obscurosql.Batch, batch *core.Batch) error {
 	return nil
 }
 
-func FindBatchBySeqNo(db *sql.DB, seqNo uint64) (*core.Batch, error) {
+// WriteReceipts - insert all receipts to the db
+func WriteReceipts(dbtx DBTransaction, receipts []*types.Receipt) error {
+	args := make([]any, 0)
+	for _, receipt := range receipts {
+		// Convert the receipt into their storage form and serialize them
+		storageReceipt := (*types.ReceiptForStorage)(receipt)
+		receiptBytes, err := rlp.EncodeToBytes(storageReceipt)
+		if err != nil {
+			return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
+		}
+
+		args = append(args, executedTransactionID(&receipt.BlockHash, &receipt.TxHash))
+		args = append(args, receipt.ContractAddress.Bytes())
+		args = append(args, receiptBytes)
+		args = append(args, receipt.TxHash.Bytes())
+		args = append(args, receipt.BlockHash.Bytes())
+	}
+	if len(args) > 0 {
+		insert := txExecInsert + strings.Repeat(txExecInsertValue+",", len(receipts))
+		dbtx.ExecuteSQL(insert[0:len(insert)-1], args...)
+	}
+	return nil
+}
+
+func executedTransactionID(batchHash *common.L2BatchHash, txHash *common.L2TxHash) []byte {
+	execTxID := make([]byte, 0)
+	execTxID = append(execTxID, batchHash.Bytes()...)
+	execTxID = append(execTxID, txHash.Bytes()...)
+	return execTxID
+}
+
+func ReadBatchBySeqNo(db *sql.DB, seqNo uint64) (*core.Batch, error) {
 	return fetchBatch(db, " where sequence=?", seqNo)
 }
 
-func FetchBatchByHash(db *sql.DB, hash common.L2BatchHash) (*core.Batch, error) {
+func ReadBatchByHash(db *sql.DB, hash common.L2BatchHash) (*core.Batch, error) {
 	return fetchBatch(db, " where b.hash=?", hash.Bytes())
 }
 
-func FetchCanonicalBatchByHeight(db *sql.DB, height uint64) (*core.Batch, error) {
+func ReadCanonicalBatchByHeight(db *sql.DB, height uint64) (*core.Batch, error) {
 	return fetchBatch(db, " where b.height=? and is_canonical", height)
 }
 
@@ -109,11 +140,11 @@ func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, err
 	return fetchBatchHeader(db, " where hash=?", hash.Bytes())
 }
 
-func FetchHeadBatch(db *sql.DB) (*core.Batch, error) {
+func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
 	return fetchBatch(db, " where b.height=(select max(b1.height) from batch b1) and is_canonical")
 }
 
-func FetchCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
+func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
 	var seq int64
 	query := "select max(sequence) from batch"
 	err := db.QueryRow(query).Scan(&seq)
@@ -127,9 +158,8 @@ func FetchCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
 	return big.NewInt(seq), nil
 }
 
-func FetchHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
+func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
 	query := " where is_canonical and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.l1_proof=?)"
-
 	return fetchBatch(db, query, l1Hash.Bytes())
 }
 
@@ -189,33 +219,6 @@ func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.Batch
 	return h, nil
 }
 
-func WriteReceipts(dbtx *obscurosql.Batch, receipts []*types.Receipt) error {
-	args := make([]any, 0)
-	for _, receipt := range receipts {
-		// Convert the receipt into their storage form and serialize them
-		storageReceipt := (*types.ReceiptForStorage)(receipt)
-		receiptBytes, err := rlp.EncodeToBytes(storageReceipt)
-		if err != nil {
-			return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
-		}
-
-		execTxID := make([]byte, 0)
-		execTxID = append(execTxID, receipt.BlockHash.Bytes()...)
-		execTxID = append(execTxID, receipt.TxHash.Bytes()...)
-
-		args = append(args, execTxID)
-		args = append(args, receipt.ContractAddress.Bytes())
-		args = append(args, receiptBytes)
-		args = append(args, receipt.TxHash.Bytes())
-		args = append(args, receipt.BlockHash.Bytes())
-	}
-	if len(args) > 0 {
-		insert := txExecInsert + strings.Repeat(txExecInsertValue+",", len(receipts))
-		dbtx.ExecuteSQL(insert[0:len(insert)-1], args...)
-	}
-	return nil
-}
-
 func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args ...any) (types.Receipts, error) {
 	var allReceipts types.Receipts
 
@@ -256,6 +259,9 @@ func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args .
 			return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; err = %w", hash, height, err)
 		}
 		allReceipts = append(allReceipts, receipts[0])
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return allReceipts, nil

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -12,16 +14,15 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 type l1BlockProcessor struct {
-	storage              db.Storage
+	storage              storage.Storage
 	logger               gethlog.Logger
 	crossChainProcessors *crosschain.Processors
 }
 
-func NewBlockProcessor(storage db.Storage, cc *crosschain.Processors, logger gethlog.Logger) L1BlockProcessor {
+func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, logger gethlog.Logger) L1BlockProcessor {
 	return &l1BlockProcessor{
 		storage:              storage,
 		logger:               logger,
@@ -102,7 +103,7 @@ func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*
 		// fork - least common ancestor for this block and l1 head is before the l1 head.
 		isFork = lcaBlock.NumberU64() < prevL1Head.NumberU64()
 		if isFork {
-			println("fork")
+			bp.logger.Info("Fork detected in the l1 chain", "can", lcaBlock.Hash().Hex(), "noncan", prevL1Head.Hash().Hex())
 		}
 		return &BlockIngestionType{IsLatest: isLatest, Fork: isFork, PreGenesis: false}, newCanonicalChain, newNonCanonicalChain, nil
 	}

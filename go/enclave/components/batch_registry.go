@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -17,12 +19,11 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 )
 
 type batchRegistryImpl struct {
-	storage       db.Storage
+	storage       storage.Storage
 	logger        gethlog.Logger
 	chainConfig   *params.ChainConfig
 	batchProducer BatchProducer
@@ -37,7 +38,7 @@ type batchRegistryImpl struct {
 	subscriptionMutex sync.Mutex
 }
 
-func NewBatchRegistry(storage db.Storage, batchProducer BatchProducer, sigValidator *SignatureValidator, chainConfig *params.ChainConfig, logger gethlog.Logger) BatchRegistry {
+func NewBatchRegistry(storage storage.Storage, batchProducer BatchProducer, sigValidator *SignatureValidator, chainConfig *params.ChainConfig, logger gethlog.Logger) BatchRegistry {
 	return &batchRegistryImpl{
 		storage:       storage,
 		batchProducer: batchProducer,
@@ -72,14 +73,8 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 		return nil
 	}
 
-	dbBatch := br.storage.OpenBatch()
-
-	if err := br.storage.StoreBatch(batch, receipts, dbBatch); err != nil {
+	if err := br.storage.StoreBatch(batch, receipts); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
-	}
-
-	if err := br.storage.CommitBatch(dbBatch); err != nil {
-		return fmt.Errorf("unable to commit changes to db. Cause: %w", err)
 	}
 
 	br.notifySubscriber(batch)

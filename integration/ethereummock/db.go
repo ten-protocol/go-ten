@@ -4,16 +4,16 @@ import (
 	"bytes"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
-
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
 // Received blocks ar stored here
@@ -26,14 +26,14 @@ func (n *blockResolverInMem) Proof(_ *core.Rollup) (*types.Block, error) {
 	panic("implement me")
 }
 
-func NewResolver() db.BlockResolver {
+func NewResolver() storage.BlockResolver {
 	return &blockResolverInMem{
 		blockCache: map[common.L1BlockHash]*types.Block{},
 		m:          sync.RWMutex{},
 	}
 }
 
-func (n *blockResolverInMem) StoreBlock(block *types.Block, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) error {
+func (n *blockResolverInMem) StoreBlock(block *types.Block, _ []common.L1BlockHash, _ []common.L1BlockHash) error {
 	n.m.Lock()
 	defer n.m.Unlock()
 	n.blockCache[block.Hash()] = block
@@ -149,7 +149,7 @@ func (n *txDBInMem) AddTxs(b *types.Block, newMap map[common.TxHash]*types.Trans
 func (m *Node) removeCommittedTransactions(
 	cb *types.Block,
 	mempool []*types.Transaction,
-	resolver db.BlockResolver,
+	resolver storage.BlockResolver,
 	db TxDB,
 ) []*types.Transaction {
 	if cb.NumberU64() <= common.HeightCommittedBlocks {

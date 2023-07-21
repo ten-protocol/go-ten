@@ -7,6 +7,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -20,7 +22,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 )
@@ -28,7 +29,7 @@ import (
 // batchProducerImpl - the component responsible for computing follow up batches
 // based on
 type batchProducerImpl struct {
-	storage              db.Storage
+	storage              storage.Storage
 	crossChainProcessors *crosschain.Processors
 	genesis              *genesis.Genesis
 	logger               gethlog.Logger
@@ -36,7 +37,7 @@ type batchProducerImpl struct {
 	stateDBMutex sync.Mutex
 }
 
-func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *genesis.Genesis, logger gethlog.Logger) BatchProducer {
+func NewBatchProducer(storage storage.Storage, cc *crosschain.Processors, genesis *genesis.Genesis, logger gethlog.Logger) BatchProducer {
 	return &batchProducerImpl{
 		storage:              storage,
 		crossChainProcessors: cc,

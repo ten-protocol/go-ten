@@ -1,4 +1,4 @@
-package orm
+package enclavedb
 
 import (
 	"bytes"
@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	obscurosql "github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 )
 
 const (
@@ -28,7 +27,7 @@ const (
 	updateCanonicalBatches = "update batch set is_canonical=? where l1_proof in "
 )
 
-func WriteBlock(dbtx *obscurosql.Batch, b *types.Header) error {
+func WriteBlock(dbtx DBTransaction, b *types.Header) error {
 	header, err := rlp.EncodeToBytes(b)
 	if err != nil {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
@@ -48,7 +47,7 @@ func WriteBlock(dbtx *obscurosql.Batch, b *types.Header) error {
 	return nil
 }
 
-func UpdateCanonicalBlocks(dbtx *obscurosql.Batch, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) {
+func UpdateCanonicalBlocks(dbtx DBTransaction, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) {
 	if len(canonical) > 0 {
 		updateCanonicalValue(dbtx, true, canonical)
 	}
@@ -57,7 +56,7 @@ func UpdateCanonicalBlocks(dbtx *obscurosql.Batch, canonical []common.L1BlockHas
 	}
 }
 
-func updateCanonicalValue(dbtx *obscurosql.Batch, isCanonical bool, values []common.L1BlockHash) {
+func updateCanonicalValue(dbtx DBTransaction, isCanonical bool, values []common.L1BlockHash) {
 	vals := strings.Repeat("?,", len(values))
 	updateBlocks := updateCanonicalBlock + "(" + vals[0:len(vals)-1] + ")"
 	updateBatches := updateCanonicalBatches + "(" + vals[0:len(vals)-1] + ")"
@@ -126,10 +125,14 @@ func FetchL1Messages(db *sql.DB, blockHash common.L1BlockHash) (common.CrossChai
 		}
 		result = append(result, *ccm)
 	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
 	return result, nil
 }
 
-func WriteRollup(dbtx *obscurosql.Batch, rollup *common.RollupHeader) error {
+func WriteRollup(dbtx DBTransaction, rollup *common.RollupHeader) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(rollup)
 	if err != nil {

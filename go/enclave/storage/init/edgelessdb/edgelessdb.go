@@ -1,4 +1,4 @@
-package sql
+package edgelessdb
 
 import (
 	"bytes"
@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -94,7 +96,7 @@ const (
 )
 
 var (
-	//go:embed edgelessdb/001_init.sql
+	//go:embed 001_init.sql
 	edbInitFile string
 
 	edbCredentialsFilepath = filepath.Join(dataDir, "edb-credentials.json")
@@ -121,7 +123,7 @@ type EdgelessDBCredentials struct {
 	UserKeyPEM   string // db user private key, generated in our enclave
 }
 
-func EdgelessDBConnector(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*EnclaveDB, error) {
+func EdgelessDBConnector(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	// rather than fail immediately if EdgelessDB is not available yet we wait up for `edgelessDBStartTimeout` for it to be available
 	err := waitForEdgelessDBToStart(edbCfg.Host, logger)
 	if err != nil {
@@ -145,7 +147,7 @@ func EdgelessDBConnector(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*Encl
 	}
 
 	// wrap it in our eth-compatible key-value store layer
-	return CreateSQLEthDatabase(sqlDB, logger)
+	return enclavedb.NewEnclaveDB(sqlDB, logger)
 }
 
 func waitForEdgelessDBToStart(edbHost string, logger gethlog.Logger) error {

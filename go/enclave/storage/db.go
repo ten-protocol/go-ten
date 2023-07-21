@@ -1,32 +1,35 @@
-package db
+package storage
 
 import (
 	"fmt"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
+	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/edgelessdb"
+	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/obscuronet/go-obscuro/go/config"
 )
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
-func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (*sql.EnclaveDB, error) {
+func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		// this creates a temporary sqlite db
-		return sql.CreateTemporarySQLiteDB("file:"+cfg.HostID.String()+"?mode=memory&cache=shared", logger)
+		// this creates a temporary sqlite sqldb
+		return sqlite.CreateTemporarySQLiteDB("file:"+cfg.HostID.String()+"?mode=memory&cache=shared", logger)
 	}
 
 	if !cfg.WillAttest {
 		// persistent but not secure in an enclave, we'll connect to a throwaway sqlite DB and test out persistence/sql implementations
 		logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
 		// when we want to test persistence after node restart the SqliteDBPath should be set
-		// (if empty string then a temp db file will be created for the lifetime of the enclave)
-		return sql.CreateTemporarySQLiteDB(cfg.SqliteDBPath, logger)
+		// (if empty string then a temp sqldb file will be created for the lifetime of the enclave)
+		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, logger)
 	}
 
 	// persistent and with attestation means connecting to edgeless DB in a trusted enclave from a secure enclave
@@ -54,10 +57,10 @@ func validateDBConf(cfg *config.EnclaveConfig) error {
 	return nil
 }
 
-func getEdgelessDB(cfg *config.EnclaveConfig, logger gethlog.Logger) (*sql.EnclaveDB, error) {
+func getEdgelessDB(cfg *config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	if cfg.EdgelessDBHost == "" {
 		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
 	}
-	dbConfig := sql.EdgelessDBConfig{Host: cfg.EdgelessDBHost}
-	return sql.EdgelessDBConnector(&dbConfig, logger)
+	dbConfig := edgelessdb.EdgelessDBConfig{Host: cfg.EdgelessDBHost}
+	return edgelessdb.EdgelessDBConnector(&dbConfig, logger)
 }

@@ -5,10 +5,11 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
+
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -33,11 +34,11 @@ func TestDefaultGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB, err := sql.CreateTemporarySQLiteDB("", testlog.Logger())
+	backingDB, err := sqlite.CreateTemporarySQLiteDB("", testlog.Logger())
 	if err != nil {
 		t.Fatalf("unable to create temp db: %s", err)
 	}
-	storageDB := db.NewStorage(backingDB, nil, gethlog.New())
+	storageDB := storage.NewStorage(backingDB, nil, gethlog.New())
 	stateDB, err := gen.applyAllocations(storageDB)
 	if err != nil {
 		t.Fatalf("unable to apply genesis allocations")
@@ -76,11 +77,11 @@ func TestCustomGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB, err := sql.CreateTemporarySQLiteDB("", testlog.Logger())
+	backingDB, err := sqlite.CreateTemporarySQLiteDB("", testlog.Logger())
 	if err != nil {
 		t.Fatalf("unable to create temp db: %s", err)
 	}
-	storageDB := db.NewStorage(backingDB, nil, gethlog.New())
+	storageDB := storage.NewStorage(backingDB, nil, gethlog.New())
 	stateDB, err := gen.applyAllocations(storageDB)
 	if err != nil {
 		t.Fatalf("unable to apply genesis allocations")

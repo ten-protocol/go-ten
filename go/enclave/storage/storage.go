@@ -1,4 +1,4 @@
-package db
+package storage
 
 import (
 	"bytes"
@@ -8,17 +8,15 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
-	gethcrypto "github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db/orm"
-
 	gethcore "github.com/ethereum/go-ethereum/core"
+	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/obscuronet/go-obscuro/go/common/syserr"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -37,13 +35,13 @@ import (
 const masterSeedCfg = "MASTER_SEED"
 
 type storageImpl struct {
-	db          *sql.EnclaveDB
+	db          enclavedb.EnclaveDB
 	stateDB     state.Database
 	chainConfig *params.ChainConfig
 	logger      gethlog.Logger
 }
 
-func NewStorage(backingDB *sql.EnclaveDB, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
+func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	cacheConfig := &gethcore.CacheConfig{
 		TrieCleanLimit: 256,
 		TrieDirtyLimit: 256,
@@ -68,45 +66,36 @@ func (s *storageImpl) TrieDB() *trie.Database {
 	return s.stateDB.TrieDB()
 }
 
-func (s *storageImpl) OpenBatch() *sql.Batch {
-	return s.db.NewSQLBatch()
-}
-
-func (s *storageImpl) CommitBatch(dbBatch *sql.Batch) error {
-	return dbBatch.Write()
-}
-
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }
 
 func (s *storageImpl) FetchHeadBatch() (*core.Batch, error) {
-	return orm.FetchHeadBatch(s.db.GetSQLDB())
+	return enclavedb.ReadCurrentHeadBatch(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) FetchCurrentSequencerNo() (*big.Int, error) {
-	return orm.FetchCurrentSequencerNo(s.db.GetSQLDB())
+	return enclavedb.ReadCurrentSequencerNo(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
-	return orm.FetchBatchByHash(s.db.GetSQLDB(), hash)
+	return enclavedb.ReadBatchByHash(s.db.GetSQLDB(), hash)
 }
 
 func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error) {
-	return orm.ReadBatchHeader(s.db.GetSQLDB(), hash)
+	return enclavedb.ReadBatchHeader(s.db.GetSQLDB(), hash)
 }
 
 func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
-	return orm.FetchCanonicalBatchByHeight(s.db.GetSQLDB(), height)
+	return enclavedb.ReadCanonicalBatchByHeight(s.db.GetSQLDB(), height)
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) error {
-	// todo - update canonical
-	dbBatch := s.db.NewSQLBatch()
-	if err := orm.WriteBlock(dbBatch, b.Header()); err != nil {
+	dbBatch := s.db.NewDBTransaction()
+	if err := enclavedb.WriteBlock(dbBatch, b.Header()); err != nil {
 		return fmt.Errorf("could not store block %s. Cause: %w", b.Hash(), err)
 	}
-	orm.UpdateCanonicalBlocks(dbBatch, canonical, nonCanonical)
+	enclavedb.UpdateCanonicalBlocks(dbBatch, canonical, nonCanonical)
 
 	if err := dbBatch.Write(); err != nil {
 		return fmt.Errorf("could not store block %s. Cause: %w", b.Hash(), err)
@@ -115,11 +104,11 @@ func (s *storageImpl) StoreBlock(b *types.Block, canonical []common.L1BlockHash,
 }
 
 func (s *storageImpl) FetchBlock(blockHash common.L1BlockHash) (*types.Block, error) {
-	return orm.FetchBlock(s.db.GetSQLDB(), blockHash)
+	return enclavedb.FetchBlock(s.db.GetSQLDB(), blockHash)
 }
 
 func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
-	return orm.FetchHeadBlock(s.db.GetSQLDB())
+	return enclavedb.FetchHeadBlock(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
@@ -127,7 +116,7 @@ func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
 	if err != nil {
 		return fmt.Errorf("could not encode shared secret. Cause: %w", err)
 	}
-	_, err = orm.WriteConfig(s.db.GetSQLDB(), masterSeedCfg, enc)
+	_, err = enclavedb.WriteConfig(s.db.GetSQLDB(), masterSeedCfg, enc)
 	if err != nil {
 		return fmt.Errorf("could not shared secret in DB. Cause: %w", err)
 	}
@@ -137,7 +126,7 @@ func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
 func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 	var ss crypto.SharedEnclaveSecret
 
-	cfg, err := orm.FetchConfig(s.db.GetSQLDB(), masterSeedCfg)
+	cfg, err := enclavedb.FetchConfig(s.db.GetSQLDB(), masterSeedCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +172,7 @@ func (s *storageImpl) HealthCheck() (bool, error) {
 }
 
 func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error) {
-	return orm.FetchHeadBatchForBlock(s.db.GetSQLDB(), blockHash)
+	return enclavedb.ReadHeadBatchForBlock(s.db.GetSQLDB(), blockHash)
 }
 
 func (s *storageImpl) CreateStateDB(hash common.L2BatchHash) (*state.StateDB, error) {
@@ -208,13 +197,13 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	return statedb, nil
 }
 
-// GetReceiptsByHash retrieves the receipts for all transactions in a given batch.
+// GetReceiptsByBatchHash retrieves the receipts for all transactions in a given batch.
 func (s *storageImpl) GetReceiptsByBatchHash(hash gethcommon.Hash) (types.Receipts, error) {
-	return orm.ReadReceipts(s.db.GetSQLDB(), hash, s.chainConfig)
+	return enclavedb.ReadReceipts(s.db.GetSQLDB(), hash, s.chainConfig)
 }
 
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
-	return orm.ReadTransaction(s.db.GetSQLDB(), txHash)
+	return enclavedb.ReadTransaction(s.db.GetSQLDB(), txHash)
 }
 
 func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, error) {
@@ -231,15 +220,15 @@ func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, err
 }
 
 func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (*gethcommon.Hash, error) {
-	return orm.GetContractCreationTx(s.db.GetSQLDB(), address)
+	return enclavedb.GetContractCreationTx(s.db.GetSQLDB(), address)
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error) {
-	return orm.ReadReceipt(s.db.GetSQLDB(), txHash, s.chainConfig)
+	return enclavedb.ReadReceipt(s.db.GetSQLDB(), txHash, s.chainConfig)
 }
 
 func (s *storageImpl) FetchAttestedKey(address gethcommon.Address) (*ecdsa.PublicKey, error) {
-	key, err := orm.FetchAttKey(s.db.GetSQLDB(), address)
+	key, err := enclavedb.FetchAttKey(s.db.GetSQLDB(), address)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", address, err)
 	}
@@ -253,33 +242,30 @@ func (s *storageImpl) FetchAttestedKey(address gethcommon.Address) (*ecdsa.Publi
 }
 
 func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error {
-	_, err := orm.WriteAttKey(s.db.GetSQLDB(), aggregator, gethcrypto.CompressPubkey(key))
+	_, err := enclavedb.WriteAttKey(s.db.GetSQLDB(), aggregator, gethcrypto.CompressPubkey(key))
 	return err
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
-	return orm.FindBatchBySeqNo(s.db.GetSQLDB(), seqNum)
+	return enclavedb.ReadBatchBySeqNo(s.db.GetSQLDB(), seqNum)
 }
 
-func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error {
-	if dbBatch == nil {
-		panic("StoreBatch called without an instance of sql.Batch")
-	}
-
+func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) error {
+	dbTx := s.db.NewDBTransaction()
 	if _, err := s.FetchBatchBySeqNo(batch.SeqNo().Uint64()); err == nil {
 		return nil
 		// return fmt.Errorf("batch with same sequence number already exists: %d", batch.SeqNo())
 	}
 
 	s.logger.Trace("write batch", "hash", batch.Hash(), "l1_proof", batch.Header.L1Proof)
-	if err := orm.WriteBatch(dbBatch, batch); err != nil {
+	if err := enclavedb.WriteBatchAndTransactions(dbTx, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
 
 	for _, receipt := range receipts {
 		s.logger.Trace("store receipt", "txHash", receipt.TxHash, "batch", receipt.BlockHash)
 	}
-	if err := orm.WriteReceipts(dbBatch, receipts); err != nil {
+	if err := enclavedb.WriteReceipts(dbTx, receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
 
@@ -289,20 +275,24 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt, d
 			return fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 		}
 
-		err2 := orm.StoreEventLogs(dbBatch, receipts, stateDB)
+		err2 := enclavedb.StoreEventLogs(dbTx, receipts, stateDB)
 		if err2 != nil {
 			return fmt.Errorf("could not save logs %w", err2)
 		}
+	}
+	err := dbTx.Write()
+	if err != nil {
+		return fmt.Errorf("could not commit batch %w", err)
 	}
 	return nil
 }
 
 func (s *storageImpl) StoreL1Messages(blockHash common.L1BlockHash, messages common.CrossChainMessages) error {
-	return orm.WriteL1Messages(s.db.GetSQLDB(), blockHash, messages)
+	return enclavedb.WriteL1Messages(s.db.GetSQLDB(), blockHash, messages)
 }
 
 func (s *storageImpl) GetL1Messages(blockHash common.L1BlockHash) (common.CrossChainMessages, error) {
-	return orm.FetchL1Messages(s.db.GetSQLDB(), blockHash)
+	return enclavedb.FetchL1Messages(s.db.GetSQLDB(), blockHash)
 }
 
 const enclaveKeyKey = "ek"
@@ -313,12 +303,12 @@ func (s *storageImpl) StoreEnclaveKey(enclaveKey *ecdsa.PrivateKey) error {
 	}
 	keyBytes := gethcrypto.FromECDSA(enclaveKey)
 
-	_, err := orm.WriteConfig(s.db.GetSQLDB(), enclaveKeyKey, keyBytes)
+	_, err := enclavedb.WriteConfig(s.db.GetSQLDB(), enclaveKeyKey, keyBytes)
 	return err
 }
 
 func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
-	keyBytes, err := orm.FetchConfig(s.db.GetSQLDB(), enclaveKeyKey)
+	keyBytes, err := enclavedb.FetchConfig(s.db.GetSQLDB(), enclaveKeyKey)
 	if err != nil {
 		return nil, err
 	}
@@ -330,9 +320,9 @@ func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
 }
 
 func (s *storageImpl) StoreRollup(rollup *common.ExtRollup) error {
-	dbBatch := s.db.NewSQLBatch()
+	dbBatch := s.db.NewDBTransaction()
 
-	if err := orm.WriteRollup(dbBatch, rollup.Header); err != nil {
+	if err := enclavedb.WriteRollup(dbBatch, rollup.Header); err != nil {
 		return fmt.Errorf("could not write rollup. Cause: %w", err)
 	}
 
@@ -343,7 +333,7 @@ func (s *storageImpl) StoreRollup(rollup *common.ExtRollup) error {
 }
 
 func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error) {
-	return orm.DebugGetLogs(s.db.GetSQLDB(), txHash)
+	return enclavedb.DebugGetLogs(s.db.GetSQLDB(), txHash)
 }
 
 func (s *storageImpl) FilterLogs(
@@ -353,9 +343,9 @@ func (s *storageImpl) FilterLogs(
 	addresses []gethcommon.Address,
 	topics [][]gethcommon.Hash,
 ) ([]*types.Log, error) {
-	return orm.FilterLogs(s.db.GetSQLDB(), requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
+	return enclavedb.FilterLogs(s.db.GetSQLDB(), requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
 }
 
 func (s *storageImpl) GetContractCount() (*big.Int, error) {
-	return orm.ReadContractCreationCount(s.db.GetSQLDB())
+	return enclavedb.ReadContractCreationCount(s.db.GetSQLDB())
 }

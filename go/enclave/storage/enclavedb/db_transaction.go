@@ -1,9 +1,8 @@
-package sql
+package enclavedb
 
 import (
 	"database/sql"
 	"fmt"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -23,18 +22,18 @@ type statement struct {
 	args  []any
 }
 
-type Batch struct {
-	db         *EnclaveDB
+type dbTransaction struct {
+	Db         EnclaveDB
 	writes     []keyvalue
 	statements []statement
 	size       int
 }
 
-func (b *Batch) GetDB() *sql.DB {
-	return b.db.GetSQLDB()
+func (b *dbTransaction) GetDB() *sql.DB {
+	return b.Db.GetSQLDB()
 }
 
-func (b *Batch) ExecuteSQL(query string, args ...any) {
+func (b *dbTransaction) ExecuteSQL(query string, args ...any) {
 	s := statement{
 		query: query,
 		args:  args,
@@ -43,61 +42,52 @@ func (b *Batch) ExecuteSQL(query string, args ...any) {
 }
 
 // Put inserts the given value into the batch for later committing.
-func (b *Batch) Put(key, value []byte) error {
+func (b *dbTransaction) Put(key, value []byte) error {
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), common.CopyBytes(value), false})
 	b.size += len(key) + len(value)
 	return nil
 }
 
 // Delete inserts the a key removal into the batch for later committing.
-func (b *Batch) Delete(key []byte) error {
+func (b *dbTransaction) Delete(key []byte) error {
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), nil, true})
 	b.size += len(key)
 	return nil
 }
 
 // ValueSize retrieves the amount of data queued up for writing.
-func (b *Batch) ValueSize() int {
+func (b *dbTransaction) ValueSize() int {
 	return b.size
 }
 
 // Write executes a batch statement with all the updates
-func (b *Batch) Write() error {
-	tx, err := b.db.db.Begin()
+func (b *dbTransaction) Write() error {
+	tx, err := b.Db.BeginTx()
 	if err != nil {
 		return fmt.Errorf("failed to create batch transaction - %w", err)
 	}
 
-	var deletes []keyvalue
-	var updates []keyvalue
+	var deletes [][]byte
+	var updateKeys [][]byte
+	var updateValues [][]byte
 
 	for _, keyvalue := range b.writes {
 		if keyvalue.delete {
-			deletes = append(deletes, keyvalue)
+			deletes = append(deletes, keyvalue.key)
 		} else {
-			updates = append(updates, keyvalue)
+			updateKeys = append(updateKeys, keyvalue.key)
+			updateValues = append(updateValues, keyvalue.value)
 		}
 	}
 
-	for _, del := range deletes {
-		_, err = tx.Exec(delQry, del.key)
-		if err != nil {
-			return err
-		}
+	err = DeleteKeys(tx, deletes)
+	if err != nil {
+		return fmt.Errorf("failed to delete keys. Cause %w", err)
 	}
 
-	if len(updates) > 0 {
-		// batch the updates for increased efficiency
-		update := putQryBatch + strings.Repeat(putQryValues+",", len(updates))
-		values := make([]any, 0)
-		for _, upd := range updates {
-			values = append(values, upd.key, upd.value)
-		}
-		_, err = tx.Exec(update[0:len(update)-1], values...)
-
-		if err != nil {
-			return fmt.Errorf("failed to exec batch statement. kv=%v, err=%w", values, err)
-		}
+	err = PutKeyValues(tx, updateKeys, updateValues)
+	if err != nil {
+		return fmt.Errorf("failed to put key/value. Cause %w", err)
 	}
 
 	for _, s := range b.statements {
@@ -115,14 +105,14 @@ func (b *Batch) Write() error {
 }
 
 // Reset resets the batch for reuse.
-func (b *Batch) Reset() {
+func (b *dbTransaction) Reset() {
 	b.writes = b.writes[:0]
 	b.statements = b.statements[:0]
 	b.size = 0
 }
 
 // Replay replays the batch contents.
-func (b *Batch) Replay(w ethdb.KeyValueWriter) error {
+func (b *dbTransaction) Replay(w ethdb.KeyValueWriter) error {
 	for _, keyvalue := range b.writes {
 		if keyvalue.delete {
 			if err := w.Delete(keyvalue.key); err != nil {

@@ -3,13 +3,14 @@ package nodetype
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 type obsValidator struct {
@@ -21,7 +22,7 @@ type obsValidator struct {
 	chainConfig *params.ChainConfig
 
 	sequencerID  gethcommon.Address
-	storage      db.Storage
+	storage      storage.Storage
 	sigValidator *components.SignatureValidator
 	logger       gethlog.Logger
 }
@@ -35,7 +36,7 @@ func NewValidator(
 	chainConfig *params.ChainConfig,
 
 	sequencerID gethcommon.Address,
-	storage db.Storage,
+	storage storage.Storage,
 	sigValidator *components.SignatureValidator,
 	logger gethlog.Logger,
 ) ObsValidator {

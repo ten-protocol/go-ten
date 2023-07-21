@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 // Account specifies the address that's prefunded and the amount it's funded with
@@ -39,7 +39,7 @@ func New(genesisJSON string) (*Genesis, error) {
 	return genesis, nil
 }
 
-func (g Genesis) CommitGenesisState(storage db.Storage) error {
+func (g Genesis) CommitGenesisState(storage storage.Storage) error {
 	stateDB, err := g.applyAllocations(storage)
 	if err != nil {
 		return err
@@ -51,7 +51,7 @@ func (g Genesis) CommitGenesisState(storage db.Storage) error {
 	return nil
 }
 
-func (g Genesis) GetGenesisRoot(storage db.Storage) (*common.StateRoot, error) {
+func (g Genesis) GetGenesisRoot(storage storage.Storage) (*common.StateRoot, error) {
 	stateDB, err := g.applyAllocations(storage)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (g Genesis) GetGenesisRoot(storage db.Storage) (*common.StateRoot, error) {
 }
 
 // Applies the faucet preallocation on top of an empty state DB.
-func (g Genesis) applyAllocations(storage db.Storage) (*state.StateDB, error) {
+func (g Genesis) applyAllocations(storage storage.Storage) (*state.StateDB, error) {
 	s, err := storage.EmptyStateDB()
 	if err != nil {
 		return nil, fmt.Errorf("could not initialise empty state DB. Cause: %w", err)

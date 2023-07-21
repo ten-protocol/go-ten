@@ -514,14 +514,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 	genesisBatch := dummyBatch(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
 
 	// We update the database
-
-	dbBatch := enclave.(*enclaveImpl).storage.OpenBatch()
-
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch, nil, dbBatch); err != nil {
-		return err
-	}
-
-	return enclave.(*enclaveImpl).storage.CommitBatch(dbBatch)
+	return enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch, nil)
 }
 
 func injectNewBlockAndReceipts(enclave common.Enclave, receipts []*types.Receipt) error {
@@ -562,14 +555,8 @@ func injectNewBlockAndReceipts(enclave common.Enclave, receipts []*types.Receipt
 
 	batch := dummyBatch(blk.Hash(), headRollup.NumberU64()+1, stateDB)
 
-	dbBatch := enclave.(*enclaveImpl).storage.OpenBatch()
-
 	// We update the database.
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, receipts, dbBatch); err != nil {
-		return err
-	}
-
-	return enclave.(*enclaveImpl).storage.CommitBatch(dbBatch)
+	return enclave.(*enclaveImpl).storage.StoreBatch(batch, receipts)
 }
 
 func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Account) error {
@@ -614,14 +601,8 @@ func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Acco
 
 	batch := dummyBatch(blk.Hash(), headRollup.NumberU64()+1, stateDB)
 
-	dbBatch := enclave.(*enclaveImpl).storage.OpenBatch()
-
 	// We update the database.
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, nil, dbBatch); err != nil {
-		return err
-	}
-
-	return enclave.(*enclaveImpl).storage.CommitBatch(dbBatch)
+	return enclave.(*enclaveImpl).storage.StoreBatch(batch, nil)
 }
 
 func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber, w wallet.Wallet, expectedAmount *big.Int) error {

@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/obscuronet/go-obscuro/go/common/async"
 
 	"github.com/google/uuid"
@@ -28,7 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	ethclient_ethereum "github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
@@ -61,7 +62,7 @@ type Node struct {
 	Network  L1Network
 	mining   bool
 	stats    StatsCollector
-	Resolver db.BlockResolver
+	Resolver storage.BlockResolver
 	db       TxDB
 	subs     map[uuid.UUID]*mockSubscription // active subscription for mock blocks
 	subMu    sync.Mutex

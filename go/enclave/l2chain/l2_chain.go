@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethcore "github.com/ethereum/go-ethereum/core"
@@ -19,7 +21,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/status-im/keycard-go/hexutils"
@@ -28,7 +29,7 @@ import (
 type obscuroChain struct {
 	chainConfig *params.ChainConfig
 
-	storage db.Storage
+	storage storage.Storage
 	genesis *genesis.Genesis
 
 	logger gethlog.Logger
@@ -41,7 +42,7 @@ type obscuroChain struct {
 }
 
 func NewChain(
-	storage db.Storage,
+	storage storage.Storage,
 	chainConfig *params.ChainConfig,
 	genesis *genesis.Genesis,
 	logger gethlog.Logger,

@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 
 	"github.com/obscuronet/go-obscuro/go/common/compression"
@@ -45,7 +47,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 
@@ -65,8 +66,8 @@ import (
 
 type enclaveImpl struct {
 	config               *config.EnclaveConfig
-	storage              db.Storage
-	blockResolver        db.BlockResolver
+	storage              storage.Storage
+	blockResolver        storage.BlockResolver
 	l1BlockProcessor     components.L1BlockProcessor
 	rollupConsumer       components.RollupConsumer
 	l1Blockchain         *gethcore.BlockChain
@@ -94,8 +95,8 @@ type enclaveImpl struct {
 	debugger               *debugger.Debugger
 	logger                 gethlog.Logger
 
-	stopControl         *stopcontrol.StopControl
-	blockIngestionMutex sync.Mutex
+	stopControl *stopcontrol.StopControl
+	mainMutex   sync.Mutex
 }
 
 // NewEnclave creates a new enclave.
@@ -120,7 +121,7 @@ func NewEnclave(
 	}
 
 	// Initialise the database
-	backingDB, err := db.CreateDBFromConfig(config, logger)
+	backingDB, err := storage.CreateDBFromConfig(config, logger)
 	if err != nil {
 		logger.Crit("Failed to connect to backing database", log.ErrKey, err)
 	}
@@ -139,7 +140,7 @@ func NewEnclave(
 		BerlinBlock:         gethcommon.Big0,
 		LondonBlock:         gethcommon.Big0,
 	}
-	storage := db.NewStorage(backingDB, &chainConfig, logger)
+	storage := storage.NewStorage(backingDB, &chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// todo (#1056) - valid block
@@ -278,7 +279,7 @@ func NewEnclave(
 		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
 		BaseFee:      gethcommon.Big0,
 
-		blockIngestionMutex: sync.Mutex{},
+		mainMutex: sync.Mutex{},
 	}
 }
 
@@ -434,8 +435,8 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 }
 
 func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	e.blockIngestionMutex.Lock()
-	defer e.blockIngestionMutex.Unlock()
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
 
 	ingestion, err := e.l1BlockProcessor.Process(br, isLatest)
 	if err != nil {
@@ -538,6 +539,11 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
 	}
+
+	// todo - remove once the db operations are more atomic
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
+
 	if err := e.Validator().ValidateAndStoreBatch(batch); err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err))
 	}
@@ -554,6 +560,10 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 	defer func() {
 		e.logger.Info(fmt.Sprintf("CreateBatch call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
 	}()
+
+	// todo - remove once the db operations are more atomic
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
 
 	err := e.Sequencer().CreateBatch()
 	if err != nil {
@@ -572,6 +582,10 @@ func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.
 	defer func() {
 		e.logger.Info(fmt.Sprintf("CreateRollup call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
 	}()
+
+	// todo - remove once the db operations are more atomic
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
 
 	rollup, err := e.Sequencer().CreateRollup(fromSeqNo)
 	if err != nil {
@@ -1611,7 +1625,7 @@ func serializeEVMError(err error) ([]byte, error) {
 
 // this function looks at the batch chain and makes sure the resulting stateDB snapshots are available, replaying them if needed
 // (if there had been a clean shutdown and all stateDB data was persisted this should do nothing)
-func restoreStateDBCache(storage db.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
+func restoreStateDBCache(storage storage.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
 	batch, err := storage.FetchHeadBatch()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -1635,7 +1649,7 @@ func restoreStateDBCache(storage db.Storage, producer components.BatchProducer, 
 // batch in the chain and is used to query state at a certain height.
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
-func stateDBAvailableForBatch(storage db.Storage, hash common.L2BatchHash) bool {
+func stateDBAvailableForBatch(storage storage.Storage, hash common.L2BatchHash) bool {
 	_, err := storage.CreateStateDB(hash)
 	return err == nil
 }
@@ -1644,7 +1658,7 @@ func stateDBAvailableForBatch(storage db.Storage, hash common.L2BatchHash) bool 
 // 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
 // 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
 // todo (#1416) - get unit test coverage around this (and L2 Chain code more widely, see ticket #1416 )
-func replayBatchesToValidState(storage db.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
+func replayBatchesToValidState(storage storage.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
 	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
 	// todo - consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
 	var batchesToReplay []*core.Batch

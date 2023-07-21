@@ -1,4 +1,4 @@
-package sql
+package enclavedb
 
 import (
 	"database/sql"
@@ -118,7 +118,7 @@ func createDB(t *testing.T) ethdb.Database {
 	lite := setupSQLite(t)
 	_, err := lite.Exec(createKVTable)
 	failIfError(t, err, "Failed to create key-value table in test db")
-	s, err := CreateSQLEthDatabase(lite, testlog.Logger())
+	s, err := NewEnclaveDB(lite, testlog.Logger())
 	failIfError(t, err, "Failed to create SQLEthDatabase for test")
 	return s
 }

@@ -1,4 +1,4 @@
-package orm
+package enclavedb
 
 import (
 	"database/sql"
@@ -10,9 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/syserr"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	obscurosql "github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 )
 
 const (
@@ -23,123 +21,7 @@ const (
 	insertEventValues          = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 )
 
-// const contractCountQuery = 	"select count(*) " + baseEventsJoin + " and "
-
-func FilterLogs(
-	db *sql.DB,
-	requestingAccount *gethcommon.Address,
-	fromBlock, toBlock *big.Int,
-	blockHash *common.L2BatchHash,
-	addresses []gethcommon.Address,
-	topics [][]gethcommon.Hash,
-) ([]*types.Log, error) {
-	queryParams := []any{}
-	query := ""
-	if blockHash != nil {
-		query += " AND b.hash = ?"
-		queryParams = append(queryParams, blockHash.Bytes())
-	}
-
-	// ignore negative numbers
-	if fromBlock != nil && fromBlock.Sign() > 0 {
-		query += " AND b.height >= ?"
-		queryParams = append(queryParams, fromBlock.Int64())
-	}
-	if toBlock != nil && toBlock.Sign() > 0 {
-		query += " AND b.height <= ?"
-		queryParams = append(queryParams, toBlock.Int64())
-	}
-
-	if len(addresses) > 0 {
-		query += " AND address in (?" + strings.Repeat(",?", len(addresses)-1) + ")"
-		for _, address := range addresses {
-			queryParams = append(queryParams, address.Bytes())
-		}
-	}
-	if len(topics) > 5 {
-		return nil, fmt.Errorf("invalid filter. Too many topics")
-	}
-	if len(topics) > 0 {
-		for i, sub := range topics {
-			// empty rule set == wildcard
-			if len(sub) > 0 {
-				column := fmt.Sprintf("topic%d", i)
-				query += " AND " + column + " in (?" + strings.Repeat(",?", len(sub)-1) + ")"
-				for _, topic := range sub {
-					queryParams = append(queryParams, topic.Bytes())
-				}
-			}
-		}
-	}
-
-	return loadLogs(db, requestingAccount, query, queryParams)
-}
-
-func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
-	var queryParams []any
-
-	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + "AND txHash = ?"
-
-	queryParams = append(queryParams, txHash.Bytes())
-
-	result := make([]*tracers.DebugLogs, 0)
-
-	rows, err := db.Query(query, queryParams...)
-	if err != nil {
-		return nil, err
-	}
-
-	for rows.Next() {
-		l := tracers.DebugLogs{
-			Log: types.Log{
-				Topics: []gethcommon.Hash{},
-			},
-			LifecycleEvent: false,
-		}
-
-		var t0, t1, t2, t3, t4 sql.NullString
-		var relAddress1, relAddress2, relAddress3, relAddress4 sql.NullByte
-		err = rows.Scan(
-			&relAddress1,
-			&relAddress2,
-			&relAddress3,
-			&relAddress4,
-			&l.LifecycleEvent,
-			&t0, &t1, &t2, &t3, &t4,
-			&l.Data,
-			&l.BlockHash,
-			&l.BlockNumber,
-			&l.TxHash,
-			&l.TxIndex,
-			&l.Index,
-			&l.Address,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("could not load log entry from db: %w", err)
-		}
-
-		for _, topic := range []sql.NullString{t0, t1, t2, t3, t4} {
-			if topic.Valid {
-				l.Topics = append(l.Topics, stringToHash(topic))
-			}
-		}
-
-		l.RelAddress1 = bytesToHash(relAddress1)
-		l.RelAddress2 = bytesToHash(relAddress2)
-		l.RelAddress3 = bytesToHash(relAddress3)
-		l.RelAddress4 = bytesToHash(relAddress4)
-
-		result = append(result, &l)
-	}
-
-	if err = rows.Close(); err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-func StoreEventLogs(dbtx *obscurosql.Batch, receipts []*types.Receipt, stateDB *state.StateDB) error {
+func StoreEventLogs(dbtx DBTransaction, receipts []*types.Receipt, stateDB *state.StateDB) error {
 	var args []any
 	totalLogs := 0
 	for _, receipt := range receipts {
@@ -236,16 +118,127 @@ func writeLog(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.S
 		data = nil
 	}
 
-	execTxID := make([]byte, 0)
-	execTxID = append(execTxID, receipt.BlockHash.Bytes()...)
-	execTxID = append(execTxID, l.TxHash.Bytes()...)
-	// println("insert event: " + hexutils.BytesToHex(execTxID))
 	return []any{
 		t0, t1, t2, t3, t4,
 		data, l.Index, l.Address.Bytes(),
 		isLifecycle, a1, a2, a3, a4,
-		execTxID,
+		executedTransactionID(&receipt.BlockHash, &l.TxHash),
 	}, nil
+}
+
+func FilterLogs(
+	db *sql.DB,
+	requestingAccount *gethcommon.Address,
+	fromBlock, toBlock *big.Int,
+	blockHash *common.L2BatchHash,
+	addresses []gethcommon.Address,
+	topics [][]gethcommon.Hash,
+) ([]*types.Log, error) {
+	queryParams := []any{}
+	query := ""
+	if blockHash != nil {
+		query += " AND b.hash = ?"
+		queryParams = append(queryParams, blockHash.Bytes())
+	}
+
+	// ignore negative numbers
+	if fromBlock != nil && fromBlock.Sign() > 0 {
+		query += " AND b.height >= ?"
+		queryParams = append(queryParams, fromBlock.Int64())
+	}
+	if toBlock != nil && toBlock.Sign() > 0 {
+		query += " AND b.height <= ?"
+		queryParams = append(queryParams, toBlock.Int64())
+	}
+
+	if len(addresses) > 0 {
+		query += " AND address in (?" + strings.Repeat(",?", len(addresses)-1) + ")"
+		for _, address := range addresses {
+			queryParams = append(queryParams, address.Bytes())
+		}
+	}
+	if len(topics) > 5 {
+		return nil, fmt.Errorf("invalid filter. Too many topics")
+	}
+	if len(topics) > 0 {
+		for i, sub := range topics {
+			// empty rule set == wildcard
+			if len(sub) > 0 {
+				column := fmt.Sprintf("topic%d", i)
+				query += " AND " + column + " in (?" + strings.Repeat(",?", len(sub)-1) + ")"
+				for _, topic := range sub {
+					queryParams = append(queryParams, topic.Bytes())
+				}
+			}
+		}
+	}
+
+	return loadLogs(db, requestingAccount, query, queryParams)
+}
+
+func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
+	var queryParams []any
+
+	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + "AND txHash = ?"
+
+	queryParams = append(queryParams, txHash.Bytes())
+
+	result := make([]*tracers.DebugLogs, 0)
+
+	rows, err := db.Query(query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		l := tracers.DebugLogs{
+			Log: types.Log{
+				Topics: []gethcommon.Hash{},
+			},
+			LifecycleEvent: false,
+		}
+
+		var t0, t1, t2, t3, t4 sql.NullString
+		var relAddress1, relAddress2, relAddress3, relAddress4 sql.NullByte
+		err = rows.Scan(
+			&relAddress1,
+			&relAddress2,
+			&relAddress3,
+			&relAddress4,
+			&l.LifecycleEvent,
+			&t0, &t1, &t2, &t3, &t4,
+			&l.Data,
+			&l.BlockHash,
+			&l.BlockNumber,
+			&l.TxHash,
+			&l.TxIndex,
+			&l.Index,
+			&l.Address,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("could not load log entry from db: %w", err)
+		}
+
+		for _, topic := range []sql.NullString{t0, t1, t2, t3, t4} {
+			if topic.Valid {
+				l.Topics = append(l.Topics, stringToHash(topic))
+			}
+		}
+
+		l.RelAddress1 = bytesToHash(relAddress1)
+		l.RelAddress2 = bytesToHash(relAddress2)
+		l.RelAddress3 = bytesToHash(relAddress3)
+		l.RelAddress4 = bytesToHash(relAddress4)
+
+		result = append(result, &l)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return result, nil
 }
 
 // Of the log's topics, returns those that are (potentially) user addresses. A topic is considered a user address if:
@@ -253,6 +246,8 @@ func writeLog(db *sql.DB, l *types.Log, receipt *types.Receipt, stateDB *state.S
 //   - It does not have associated code (meaning it's a smart-contract address)
 //   - It has a non-zero nonce (to prevent accidental or malicious creation of the address matching a given topic,
 //     forcing its events to become permanently private (this is not implemented for now)
+//
+// todo - find a more efficient way
 func isEndUserAccount(db *sql.DB, topic gethcommon.Hash, stateDB *state.StateDB) (bool, *gethcommon.Address, error) {
 	potentialAddr := common.ExtractPotentialAddress(topic)
 	if potentialAddr == nil {
@@ -311,6 +306,8 @@ func loadLogs(db *sql.DB, requestingAccount *gethcommon.Address, whereCondition 
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+
 	for rows.Next() {
 		l := types.Log{
 			Topics: []gethcommon.Hash{},
@@ -323,15 +320,15 @@ func loadLogs(db *sql.DB, requestingAccount *gethcommon.Address, whereCondition 
 
 		for _, topic := range [][]byte{t0, t1, t2, t3, t4} {
 			if len(topic) > 0 {
-				l.Topics = append(l.Topics, *byteArrayToHash(topic))
+				l.Topics = append(l.Topics, byteArrayToHash(topic))
 			}
 		}
 
 		result = append(result, &l)
 	}
 
-	if err = rows.Close(); err != nil {
-		return nil, syserr.NewInternalError(err)
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return result, nil
@@ -365,8 +362,8 @@ func bytesToHash(b sql.NullByte) *gethcommon.Hash {
 	return &result
 }
 
-func byteArrayToHash(b []byte) *gethcommon.Hash {
+func byteArrayToHash(b []byte) gethcommon.Hash {
 	result := gethcommon.Hash{}
 	result.SetBytes(b)
-	return &result
+	return result
 }
