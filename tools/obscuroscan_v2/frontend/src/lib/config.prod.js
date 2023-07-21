@@ -1,5 +1,5 @@
 class Config {
-    static backendServerAddress = "http://127.0.0.1:8080"
+    static backendServerAddress = import.meta.env.VITE_APIHOSTADDRESS
 }
 
 export default Config

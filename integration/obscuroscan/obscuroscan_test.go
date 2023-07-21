@@ -53,6 +53,7 @@ func TestObscuroscan(t *testing.T) {
 	require.NoError(t, err)
 
 	// make sure the server is ready to receive requests
+	time.Sleep(time.Hour)
 	err = waitServerIsReady(serverAddress)
 	require.NoError(t, err)
 
@@ -63,7 +64,6 @@ func TestObscuroscan(t *testing.T) {
 	assert.Equal(t, "{\"count\":0}", string(body))
 
 	// Gracefully shutdown
-	time.Sleep(time.Hour)
 	err = obsScanContainer.Stop()
 	assert.NoError(t, err)
 }
