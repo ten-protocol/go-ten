@@ -35,7 +35,7 @@ const (
 )
 
 func TestObscuroscan(t *testing.T) {
-	t.Skip("skipping until Tudor's DB changes simplify the enclave logic")
+	//t.Skip("skipping until Tudor's DB changes simplify the enclave logic")
 	startPort := integration.StartPortObscuroscanUnitTest
 	createObscuroNetwork(t, startPort)
 
@@ -63,6 +63,7 @@ func TestObscuroscan(t *testing.T) {
 	assert.Equal(t, "{\"count\":0}", string(body))
 
 	// Gracefully shutdown
+	time.Sleep(time.Hour)
 	err = obsScanContainer.Stop()
 	assert.NoError(t, err)
 }

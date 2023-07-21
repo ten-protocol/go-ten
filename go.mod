@@ -8,6 +8,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/edgelesssys/ego v1.1.0
 	github.com/ethereum/go-ethereum v1.10.16
+	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-kit/kit v0.10.0
 	github.com/go-sql-driver/mysql v1.4.1

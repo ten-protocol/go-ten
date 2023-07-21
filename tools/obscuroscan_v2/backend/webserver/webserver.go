@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend"
 )
@@ -23,6 +24,12 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	r := gin.New()
 	r.RedirectTrailingSlash = false
 	gin.SetMode(gin.ReleaseMode)
+
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"*"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE"}
+	config.AllowHeaders = []string{"Origin", "Authorization", "Content-Type"}
+	r.Use(cors.New(config))
 
 	server := &WebServer{
 		engine:      r,

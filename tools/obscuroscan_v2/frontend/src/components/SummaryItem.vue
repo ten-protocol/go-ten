@@ -33,7 +33,10 @@
 
       <el-card class="box" shadow="always">
         <p>Contracts</p>
-        <p>bazilion</p>
+        <div>
+          <div>{{ count }}</div>
+          <button @click="fetchCount">Reload Count</button>
+        </div>
       </el-card>
     </el-col>
     <el-col :span="4" :offset="2">
@@ -45,8 +48,34 @@
 </template>
 
 <script>
+import { useCounterStore } from "@/stores/counterStore";
+import { onMounted, onUnmounted } from 'vue';
+import { computed } from 'vue'
+
+
 export default {
-  name: "SummaryItem"
+  name: 'SummaryItem',
+  setup() {
+    const counter = useCounterStore()
+
+    // Start polling when the component is mounted
+    onMounted(() => {
+      counter.startPolling();
+    });
+
+    // Ensure to stop polling when component is destroyed or deactivated
+    onUnmounted(() => {
+      counter.stopPolling();
+    });
+
+
+    console.log(counter)
+    return {
+      count: computed(() => counter.count),
+      loading: counter.loading,
+      fetchCount: counter.fetchCount
+    }
+  }
 }
 </script>
 
