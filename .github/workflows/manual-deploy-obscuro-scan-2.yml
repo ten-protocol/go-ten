@@ -51,7 +51,7 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           DOCKER_BUILDKIT=1 docker build -t ${{ env.OBSCURO_SCAN_BUILD_TAG }} -f ./tools/obscuroscan_v2/Dockerfile . 
-          docker push ${{ env.OBSCURO_GATEWAY_SCAN_TAG }}
+          docker push ${{ env.OBSCURO_SCAN_BUILD_TAG }}
 
       - name: 'Deploy to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
