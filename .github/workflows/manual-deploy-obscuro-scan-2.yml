@@ -51,7 +51,7 @@ jobs:
       - name: Build and Push Docker Image
         run: |
           DOCKER_BUILDKIT=1 docker build -t ${{ env.OBSCURO_SCAN_BUILD_TAG }} -f ./tools/obscuroscan_v2/Dockerfile . 
-          docker push ${{ env.OBSCURO_GATEWAY_SCAN_TAG }}
+          docker push ${{ env.OBSCURO_SCAN_BUILD_TAG }}
 
       - name: 'Deploy to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
@@ -62,7 +62,7 @@ jobs:
           name: ${{ github.event.inputs.testnet_type }}-obscuro-scan
           location: 'uksouth'
           restart-policy: 'Never'
-          environment-variables: NODEHOSTADDRESS=http://$OBSCURO_SCAN_NODE_HOST:13001
+          environment-variables: NODEHOSTADDRESS=http://${{ env.OBSCURO_SCAN_NODE_HOST }}:13000
           command-line: ./entrypoint.sh
           ports: '80'
           cpu: 2
