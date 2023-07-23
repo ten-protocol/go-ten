@@ -29,8 +29,10 @@ const (
 type Repository struct {
 	subscribers []host.L2BatchHandler
 
-	p2p host.P2P
-	db  *db.DB
+	p2p         host.P2P
+	enclave     host.EnclaveService
+	db          *db.DB
+	isSequencer bool
 
 	// high watermark for batch sequence numbers seen so far. If we can't find batch for seq no < this, then we should ask peers for missing batches
 	latestBatchSeqNo *big.Int
@@ -47,10 +49,12 @@ type Repository struct {
 	logger  gethlog.Logger
 }
 
-func NewBatchRepository(_ *config.HostConfig, p2p host.P2P, database *db.DB, logger gethlog.Logger) *Repository {
+func NewBatchRepository(cfg *config.HostConfig, p2p host.P2P, enclave host.EnclaveService, database *db.DB, logger gethlog.Logger) *Repository {
 	return &Repository{
 		p2p:              p2p,
+		enclave:          enclave,
 		db:               database,
+		isSequencer:      cfg.NodeType == common.Sequencer,
 		latestBatchSeqNo: big.NewInt(0),
 		running:          atomic.Bool{},
 		logger:           logger,
@@ -147,10 +151,14 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 	b, err := r.db.GetBatchBySequenceNumber(seqNo)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) && seqNo.Cmp(r.latestBatchSeqNo) < 0 {
+			if r.isSequencer {
+				// sequencer does not request batches from peers, it checks if its enclave has the batch
+				return r.fetchBatchFallbackToEnclave(seqNo)
+			}
 			// we haven't seen this batch before, but it is older than the latest batch we have seen so far
 			// Request missing batches from peers (the batches from any response will be added asynchronously, so
 			// we will return the not found error and hopefully future attempts will succeed)
-			go r.requestMissingBatches(seqNo)
+			go r.requestMissingBatchesFromPeers(seqNo)
 		}
 		return nil, err
 	}
@@ -175,9 +183,26 @@ func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	return nil
 }
 
+func (r *Repository) fetchBatchFallbackToEnclave(seqNo *big.Int) (*common.ExtBatch, error) {
+	b, err := r.enclave.LookupBatchBySeqNo(seqNo)
+	if err != nil {
+		return nil, err
+	}
+
+	// asynchronously add that batch to the repo, so we have it for the next request
+	go func() {
+		err := r.AddBatch(b)
+		if err != nil {
+			r.logger.Info("unable to add batch that was returned from the enclave", log.ErrKey, err)
+		}
+	}()
+
+	return b, nil
+}
+
 // RequestMissingBatches requests batches from peers from the specified sequence number.
 // It is an asynchronous request and the repository does not expect to be notified of the result.
-func (r *Repository) requestMissingBatches(fromSeqNo *big.Int) {
+func (r *Repository) requestMissingBatchesFromPeers(fromSeqNo *big.Int) {
 	r.p2pReqMutex.Lock()
 	defer r.p2pReqMutex.Unlock()
 	if r.p2pInFlightReqTime != nil && time.Since(*r.p2pInFlightReqTime) < _timeoutWaitingForP2PResponse {

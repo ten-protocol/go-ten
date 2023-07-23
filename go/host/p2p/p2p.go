@@ -210,7 +210,7 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 		return fmt.Errorf("could not encode batches using RLP. Cause: %w", err)
 	}
 
-	msg := message{Sender: p.ourAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
+	msg := message{Sender: p.ourAddress, Type: msgTypeBatchRequest, Contents: encodedBatchMsg}
 	return p.send(msg, requestID)
 }
 

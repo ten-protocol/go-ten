@@ -283,14 +283,24 @@ func (s *RPCServer) GetBatch(_ context.Context, request *generated.GetBatchReque
 	}, err
 }
 
-func (s *RPCServer) StreamL2Updates(request *generated.StreamL2UpdatesRequest, stream generated.EnclaveProto_StreamL2UpdatesServer) error {
-	var fromHash *common.L2BatchHash
-	if request.KnownHead != nil {
-		knownHead := gethcommon.BytesToHash(request.KnownHead)
-		fromHash = &knownHead
+func (s *RPCServer) GetBatchBySeqNo(_ context.Context, request *generated.GetBatchBySeqNoRequest) (*generated.GetBatchResponse, error) {
+	batch, err := s.enclave.GetBatchBySeqNo(request.SeqNo)
+	if err != nil {
+		return nil, err
 	}
 
-	batchChan, stop := s.enclave.StreamL2Updates(fromHash)
+	encodedBatch, encodingErr := batch.Encoded()
+	return &generated.GetBatchResponse{
+		Batch: encodedBatch,
+		SystemError: &generated.SystemError{
+			ErrorCode:   2,
+			ErrorString: encodingErr.Error(),
+		},
+	}, err
+}
+
+func (s *RPCServer) StreamL2Updates(_ *generated.StreamL2UpdatesRequest, stream generated.EnclaveProto_StreamL2UpdatesServer) error {
+	batchChan, stop := s.enclave.StreamL2Updates()
 	defer stop()
 
 	for {

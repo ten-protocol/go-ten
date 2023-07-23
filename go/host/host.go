@@ -81,6 +81,13 @@ type host struct {
 	metricRegistry gethmetrics.Registry
 }
 
+func (h *host) LookupBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
+	if h.enclaveState.GetEnclaveL2Head().Cmp(seqNo) < 0 {
+		return nil, errors.Wrap(errutil.ErrNotFound, "enclave has not received requested batch yet")
+	}
+	return h.enclaveClient.GetBatchBySeqNo(seqNo.Uint64())
+}
+
 func NewHost(
 	config *config.HostConfig,
 	p2p P2PHostService,
@@ -134,7 +141,8 @@ func NewHost(
 
 		stopControl: stopcontrol.New(),
 	}
-	l2Repo := l2.NewBatchRepository(config, p2p, database, host.logger)
+	enclService := host // temporarily using the host as the enclService until we have the enclave-guardian wired in
+	l2Repo := l2.NewBatchRepository(config, p2p, enclService, database, host.logger)
 
 	host.RegisterService(hostcommon.P2PName, p2p)
 	host.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
@@ -690,17 +698,22 @@ func (h *host) startBatchStreaming() {
 	defer h.shutdownGroup.Done()
 
 	var startingBatch *gethcommon.Hash
-	header, err := h.db.GetHeadBatchHeader()
-	if err != nil {
-		h.logger.Warn("Could not retrieve head batch header for batch streaming", log.ErrKey, err)
-	} else {
-		batchHash := header.Hash()
+	latestSeqNoAtEncl := h.enclaveState.GetEnclaveL2Head()
+	if latestSeqNoAtEncl != nil {
+		batch, err := h.l2Repo().FetchBatchBySeqNo(latestSeqNoAtEncl)
+		if err != nil {
+			// can't find the batch, we'll just have to live stream
+			h.logger.Warn("Could not retrieve batch by sequence number for latest encl batch", log.ErrKey, err)
+			return
+		}
+		batchHash := batch.Hash()
 		startingBatch = &batchHash
-		h.enclaveState.OnReceivedBatch(header.SequencerOrderNo)
 		h.logger.Info("Streaming from latest known head batch", log.BatchHashKey, startingBatch)
+	} else {
+		h.logger.Warn("Could not retrieve head batch header for batch streaming")
 	}
 
-	streamChan, stop := h.enclaveClient.StreamL2Updates(startingBatch)
+	streamChan, stop := h.enclaveClient.StreamL2Updates()
 	var lastBatch *common.ExtBatch
 	for {
 		select {
@@ -712,13 +725,8 @@ func (h *host) startBatchStreaming() {
 				stop()
 				h.logger.Warn("Batch streaming failed. Reconnecting from latest received batch after 3 seconds")
 				time.Sleep(3 * time.Second)
+				streamChan, stop = h.enclaveClient.StreamL2Updates()
 
-				if lastBatch != nil {
-					bHash := lastBatch.Hash()
-					streamChan, stop = h.enclaveClient.StreamL2Updates(&bHash)
-				} else {
-					streamChan, stop = h.enclaveClient.StreamL2Updates(nil)
-				}
 				continue
 			}
 
