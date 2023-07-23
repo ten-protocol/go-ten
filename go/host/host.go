@@ -81,13 +81,6 @@ type host struct {
 	metricRegistry gethmetrics.Registry
 }
 
-func (h *host) LookupBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
-	if h.enclaveState.GetEnclaveL2Head().Cmp(seqNo) < 0 {
-		return nil, errors.Wrap(errutil.ErrNotFound, "enclave has not received requested batch yet")
-	}
-	return h.enclaveClient.GetBatchBySeqNo(seqNo.Uint64())
-}
-
 func NewHost(
 	config *config.HostConfig,
 	p2p P2PHostService,
@@ -697,22 +690,7 @@ func (h *host) startBatchStreaming() {
 	h.shutdownGroup.Add(1)
 	defer h.shutdownGroup.Done()
 
-	var startingBatch *gethcommon.Hash
-	latestSeqNoAtEncl := h.enclaveState.GetEnclaveL2Head()
-	if latestSeqNoAtEncl != nil {
-		batch, err := h.l2Repo().FetchBatchBySeqNo(latestSeqNoAtEncl)
-		if err != nil {
-			// can't find the batch, we'll just have to live stream
-			h.logger.Warn("Could not retrieve batch by sequence number for latest encl batch", log.ErrKey, err)
-			return
-		}
-		batchHash := batch.Hash()
-		startingBatch = &batchHash
-		h.logger.Info("Streaming from latest known head batch", log.BatchHashKey, startingBatch)
-	} else {
-		h.logger.Warn("Could not retrieve head batch header for batch streaming")
-	}
-
+	h.logger.Info("Starting L2 update stream from enclave")
 	streamChan, stop := h.enclaveClient.StreamL2Updates()
 	var lastBatch *common.ExtBatch
 	for {
@@ -869,6 +847,13 @@ func (h *host) catchUpL2Batch() bool {
 		h.enclaveState.OnProcessedBatch(batch.Header.SequencerOrderNo)
 	}
 	return true
+}
+
+func (h *host) LookupBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
+	if h.enclaveState.GetEnclaveL2Head().Cmp(seqNo) < 0 {
+		return nil, errors.Wrap(errutil.ErrNotFound, "enclave has not received requested batch yet")
+	}
+	return h.enclaveClient.GetBatchBySeqNo(seqNo.Uint64())
 }
 
 func (h *host) getService(name string) hostcommon.Service {
