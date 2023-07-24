@@ -14,18 +14,10 @@ FROM get-dependencies as build
 
 COPY . /home/obscuro/go-obscuro
 
-# build the eth2network exec
+# build exec
 WORKDIR /home/obscuro/go-obscuro/tools/obscuroscan_v2/backend/cmd
 RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -o backend
 
-
-FROM node:18-buster as runner
-RUN mkdir -p /home/obscuro/go-obscuro/tools/obscuroscan_v2/backend/cmd
-COPY --from=build /home/obscuro/go-obscuro/tools/obscuroscan_v2/ /home/obscuro/go-obscuro/tools/obscuroscan_v2/
-
-WORKDIR /home/obscuro/go-obscuro/tools/obscuroscan_v2/frontend
-RUN npm install && npm run build && npm install http-server -g
-
-WORKDIR /home/obscuro/go-obscuro/tools/obscuroscan_v2
+WORKDIR /home/obscuro/go-obscuro/tools/obscuroscan_v2/backend
 EXPOSE 80
