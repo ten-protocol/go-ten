@@ -446,21 +446,29 @@ func (c *Client) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
 	return common.DecodeExtBatch(batchMsg.Batch)
 }
 
-func (c *Client) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2UpdatesResponse, func()) {
+func (c *Client) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, error) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	batchMsg, err := c.protoClient.GetBatchBySeqNo(timeoutCtx, &generated.GetBatchBySeqNoRequest{SeqNo: seqNo})
+	if err != nil {
+		return nil, fmt.Errorf("rpc GetBatchBySeqNo failed. Cause: %w", err)
+	}
+
+	return common.DecodeExtBatch(batchMsg.Batch)
+}
+
+func (c *Client) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func()) {
+	// channel size is 10 to allow for some buffering but caller is expected to read immediately to avoid blocking
 	batchChan := make(chan common.StreamL2UpdatesResponse, 10)
 	cancelCtx, cancel := context.WithCancel(context.Background())
 
-	request := &generated.StreamL2UpdatesRequest{}
-	if from != nil {
-		request.KnownHead = from.Bytes()
-	}
-
-	stream, err := c.protoClient.StreamL2Updates(cancelCtx, request)
+	stream, err := c.protoClient.StreamL2Updates(cancelCtx, &generated.StreamL2UpdatesRequest{})
 	if err != nil {
 		c.logger.Error("Error opening batch stream.", log.ErrKey, err)
-		close(batchChan)
 		cancel()
-		return batchChan, func() {}
+		close(batchChan)
+		return nil, nil
 	}
 
 	stopIt := func() {
@@ -484,7 +492,7 @@ func (c *Client) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2
 
 			var decoded common.StreamL2UpdatesResponse
 			if err := json.Unmarshal(batchMsg.Batch, &decoded); err != nil {
-				c.logger.Error("Error unmarshling batch from stream.", log.ErrKey, err)
+				c.logger.Error("Error unmarshalling batch from stream.", log.ErrKey, err)
 				break
 			}
 
@@ -492,9 +500,7 @@ func (c *Client) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2
 		}
 	}()
 
-	return batchChan, func() {
-		cancel()
-	}
+	return batchChan, cancel
 }
 
 func (c *Client) DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, common.SystemError) {

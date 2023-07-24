@@ -291,6 +291,15 @@ func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error
 	return batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
 }
 
+func (e *enclaveImpl) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, error) {
+	batch, err := e.storage.FetchBatchBySeqNo(seqNo)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting batch. Cause: %w", err)
+	}
+
+	return batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+}
+
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 	if e.stopControl.IsStopping() {
@@ -351,21 +360,12 @@ func (e *enclaveImpl) sendEvents(batchHead uint64, outChannel chan common.Stream
 	}
 }
 
-func (e *enclaveImpl) sendBatchesFromSubscription(from *common.L2BatchHash, l2UpdatesChannel chan common.StreamL2UpdatesResponse) {
-	// TODO - There is a risk that batchChan will
-	// contain duplicates with the search from <-> head.
-	// This is because we subscribe now but if "from"
-	// is provided we get the head later.
-	batchChan, err := e.registry.Subscribe(from)
-	if err != nil {
-		e.logger.Error("Unable to send missing batches", log.ErrKey, err)
-		return
-	}
-
+func (e *enclaveImpl) sendBatchesFromSubscription(l2UpdatesChannel chan common.StreamL2UpdatesResponse) {
+	batchChan := e.registry.Subscribe()
 	for {
 		batch, ok := <-batchChan
 		if !ok {
-			e.logger.Warn("Registry closed batch channel.")
+			e.logger.Warn("batch channel closed - stopping stream")
 			break
 		}
 
@@ -378,7 +378,7 @@ func (e *enclaveImpl) sendEventsFromSubscription(l2UpdatesChannel chan common.St
 	for {
 		eventsHead, ok := <-eventChan
 		if !ok {
-			e.logger.Warn("Registry closed events channel")
+			e.logger.Warn("events channel closed - stopping stream")
 			break
 		}
 
@@ -386,7 +386,7 @@ func (e *enclaveImpl) sendEventsFromSubscription(l2UpdatesChannel chan common.St
 	}
 }
 
-func (e *enclaveImpl) StreamL2Updates(from *common.L2BatchHash) (chan common.StreamL2UpdatesResponse, func()) {
+func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func()) {
 	l2UpdatesChannel := make(chan common.StreamL2UpdatesResponse, 100)
 
 	if e.stopControl.IsStopping() {
@@ -394,7 +394,7 @@ func (e *enclaveImpl) StreamL2Updates(from *common.L2BatchHash) (chan common.Str
 		return l2UpdatesChannel, func() {}
 	}
 
-	go e.sendBatchesFromSubscription(from, l2UpdatesChannel)
+	go e.sendBatchesFromSubscription(l2UpdatesChannel)
 	go e.sendEventsFromSubscription(l2UpdatesChannel)
 
 	return l2UpdatesChannel, func() {

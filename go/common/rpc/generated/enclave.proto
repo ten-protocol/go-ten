@@ -71,6 +71,9 @@ service EnclaveProto {
   // GetBatch returns the encrypted batch based on a hash
   rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {}
 
+  // GetBatch returns the encrypted batch based on a hash
+  rpc GetBatchBySeqNo(GetBatchBySeqNoRequest) returns (GetBatchResponse) {}
+
   rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
 
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
@@ -89,14 +92,16 @@ message GetBatchRequest {
   bytes knownHead = 1;
 }
 
+message GetBatchBySeqNoRequest {
+  uint64 seqNo = 1;
+}
+
 message GetBatchResponse {
   bytes batch = 1;
   SystemError systemError = 2;
 }
 
-message StreamL2UpdatesRequest {
-  optional bytes knownHead = 1;
-}
+message StreamL2UpdatesRequest {}
 
 message EncodedUpdateResponse {
   bytes batch = 1;

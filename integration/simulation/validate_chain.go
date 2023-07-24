@@ -564,7 +564,7 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 		// note this retrieves batches currently.
 		newHeader, err := obscuroClient.BatchHeaderByHash(header.ParentHash)
 		if err != nil {
-			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header %s. Cause: %s", nodeIdx, header.ParentHash, err))
+			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve batch header %s. Cause: %s", nodeIdx, header.ParentHash, err))
 			return
 		}
 
