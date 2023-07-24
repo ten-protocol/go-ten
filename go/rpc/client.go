@@ -35,6 +35,7 @@ const (
 
 	// GetL1RollupHeaderByHash  = "scan_getL1RollupHeaderByHash"
 	// GetActiveNodeCount       = "scan_getActiveNodeCount"
+
 	GetTotalTransactionCount = "scan_getTotalTransactionCount"
 	GetTotalContractCount    = "scan_getTotalContractCount"
 )

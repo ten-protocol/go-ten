@@ -1,11 +1,10 @@
 import { defineStore } from 'pinia';
 import Config from "@/lib/config";
 
-export const useCounterStore = defineStore({
-    id: 'counterStore',
+export const usePriceStore = defineStore({
+    id: 'priceStore',
     state: () => ({
-        totalContractCount: 0,
-        totalTransactionCount:0,
+        ethPriceUSD: null,
         loading: false,
         pollingInterval: 5000,  // 5 seconds
         timer: null,
@@ -14,16 +13,11 @@ export const useCounterStore = defineStore({
         async fetchCount() {
             this.loading = true;
             try {
-                let response = await fetch( Config.backendServerAddress+'/count/contracts/');
+                let response = await fetch( 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
                 let data = await response.json();
-                this.totalContractCount = data.count;
-                console.log("Fetched "+this.totalContractCount);
+                this.ethPriceUSD = data.ethereum.usd;
 
-                response = await fetch( Config.backendServerAddress+'/count/transactions/');
-                data = await response.json();
-                this.totalTransactionCount = data.count;
-                console.log("Fetched "+this.totalTransactionCount);
-
+                console.log("Fetched "+this.ethPriceUSD);
             } catch (error) {
                 console.error("Failed to fetch count:", error);
             } finally {

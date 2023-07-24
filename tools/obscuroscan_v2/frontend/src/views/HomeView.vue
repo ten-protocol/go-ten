@@ -18,7 +18,7 @@ export default defineComponent({
       <summary-rollups-list-item />
       <p>&nbsp;</p>
       <el-card>
-        <el-table :data="tableData" height="250" style="width: 100%">
+        <el-table height="250" style="width: 100%">
           <el-table-column prop="date" label="Tx Hash" width="180" />
           <el-table-column prop="name" label="Result" width="180" />
           <el-table-column prop="name" label="Fee" width="180" />
