@@ -25,6 +25,7 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	r.RedirectTrailingSlash = false
 	gin.SetMode(gin.ReleaseMode)
 
+	// todo this should be reviewed as anyone can access the api right now
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE"}
