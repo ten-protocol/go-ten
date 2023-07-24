@@ -200,7 +200,7 @@ jobs:
     name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
     uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
     with:
-      testnet_type: ${{needs.build.outputs.RESOURCE_TESTNET_TYPE}}
+      type: ${{needs.build.outputs.RESOURCE_TESTNET_TYPE}}
     secrets: inherit
     needs:
       - check-obscuro-is-healthy

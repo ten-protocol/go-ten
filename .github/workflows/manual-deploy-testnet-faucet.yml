@@ -24,7 +24,7 @@ on:
 
   workflow_call:
     inputs:
-      testnet_type:
+      type:
         description: 'Testnet Type'
         required: true
         type: string
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Workflow_dispatch inputs ${{ github.event.inputs.testnet_type }}"
-      - run: echo "Workflow_call inputs     ${{ inputs.testnet_type }}"
+      - run: echo "Workflow_call inputs     ${{ inputs.type }}"
 
       - uses: actions/checkout@v3
 
@@ -53,7 +53,7 @@ jobs:
         # inputs.testnet_type is set generally i.e. when L2 [deploy | upgrade] of dev-testnet is performed as a
         # result of a schedule. To ensure the faucet is deployed on a scheduled dev-testnet L2 deployment or
         # upgrade we test for both here.
-        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (inputs.testnet_type == 'dev-testnet') }}
+        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (inputs.type == 'dev-testnet') }}
         run: |
           echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_faucet_testnet:latest" >> $GITHUB_ENV
           echo "TESTNET_ADDR=dev-testnet.obscu.ro" >> $GITHUB_ENV
