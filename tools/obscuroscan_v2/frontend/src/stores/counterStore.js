@@ -14,7 +14,7 @@ export const useCounterStore = defineStore({
             this.loading = true;
             try {
                 console.log(Config.backendServerAddress)
-                const response = await fetch( '/count/contracts/');
+                const response = await fetch( Config.backendServerAddress+'/count/contracts/');
                 const data = await response.json();
                 this.count = data.count;
                 console.log("Fetched "+this.count);
