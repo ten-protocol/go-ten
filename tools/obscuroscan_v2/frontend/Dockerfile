@@ -6,5 +6,4 @@ COPY ./tools/obscuroscan_v2/frontend /home/obscuro/go-obscuro/tools/obscuroscan_
 WORKDIR /home/obscuro/go-obscuro/tools/obscuroscan_v2/frontend
 RUN npm install && npm install http-server -g
 
-WORKDIR /home/obscuro/go-obscuro/tools/obscuroscan_v2/frontend
 EXPOSE 80

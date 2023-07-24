@@ -6,6 +6,7 @@
     "dev": "cp src/lib/config.dev.js src/lib/config.js && vite",
     "build": "vite build",
     "build-prod": "cp src/lib/config.prod.js src/lib/config.js && npm run build",
+    "serve-prod": "npm run build-prod && http-server dist/ -a 0.0.0.0 -p 80",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
     "format": "prettier --write src/"
