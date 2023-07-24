@@ -35,7 +35,7 @@ const (
 )
 
 func TestObscuroscan(t *testing.T) {
-	//t.Skip("skipping until Tudor's DB changes simplify the enclave logic")
+	t.Skip("skipping until Tudor's DB changes simplify the enclave logic")
 	startPort := integration.StartPortObscuroscanUnitTest
 	createObscuroNetwork(t, startPort)
 
@@ -53,7 +53,6 @@ func TestObscuroscan(t *testing.T) {
 	require.NoError(t, err)
 
 	// make sure the server is ready to receive requests
-	time.Sleep(time.Hour)
 	err = waitServerIsReady(serverAddress)
 	require.NoError(t, err)
 

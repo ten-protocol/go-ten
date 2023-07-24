@@ -4,7 +4,7 @@ import Config from "@/lib/config";
 export const useCounterStore = defineStore({
     id: 'counterStore',
     state: () => ({
-        count: 100,
+        count: 0,
         loading: false,
         pollingInterval: 5000,  // 5 seconds
         timer: null,
