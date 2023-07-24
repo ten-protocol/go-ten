@@ -39,13 +39,9 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	}
 
 	// routes
+	r.GET("/health/", server.health)
+	r.GET("/count/contracts/", server.getTotalContractCount)
 
-	api := r.Group("/api")
-	api.GET("/health/", server.health)
-	api.GET("/count/contracts/", server.getTotalContractCount)
-
-	r.StaticFile("/", "../frontend/dist/index.html")
-	r.StaticFS("/static", http.Dir("/static"))
 	return server
 }
 
