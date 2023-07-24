@@ -33,6 +33,9 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
+      - run: echo "Workflow_dispatch inputs ${{ github.event.inputs.testnet_type }}"
+      - run: echo "Workflow_call inputs     ${{ inputs.testnet_type }}"
+
       - uses: actions/checkout@v3
 
       - name: 'Set up Docker'

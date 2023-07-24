@@ -12,7 +12,7 @@ name: '[M] Upgrade Testnet L2'
 
 on:
   schedule:
-    - cron: '05 3 * * *'
+    - cron: '05 */2 * * *'
   workflow_dispatch:
     inputs:
       testnet_type:
