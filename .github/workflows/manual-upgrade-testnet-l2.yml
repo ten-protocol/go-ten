@@ -196,22 +196,11 @@ jobs:
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com
 
-  deploy-faucet-on-dispatch:
-    name: 'Trigger Faucet deployment for dev- / testnet on a new deployment via dispatch'
+  deploy-faucet:
     uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
-    if: ${{ (github.event.inputs.testnet_type == 'testnet') }}
+    if: ${{github.event_name == 'workflow_dispatch'}}
     with:
-      type:  'testnet'
-    secrets: inherit
-    needs:
-      - check-obscuro-is-healthy
-
-  deploy-faucet-on-schedule:
-    name: 'Trigger Faucet deployment for dev- / testnet on a new deployment via schedule'
-    uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
-    if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (github.event_name == 'schedule') }}
-    with:
-      type:  'dev-testnet'
+      type:  ${{github.event.inputs.testnet_type}}
     secrets: inherit
     needs:
       - check-obscuro-is-healthy
