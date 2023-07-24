@@ -4,7 +4,8 @@ import Config from "@/lib/config";
 export const useCounterStore = defineStore({
     id: 'counterStore',
     state: () => ({
-        count: 0,
+        totalContractCount: 0,
+        totalTransactionCount:0,
         loading: false,
         pollingInterval: 5000,  // 5 seconds
         timer: null,
@@ -13,10 +14,13 @@ export const useCounterStore = defineStore({
         async fetchCount() {
             this.loading = true;
             try {
-                console.log(Config.backendServerAddress)
-                const response = await fetch( Config.backendServerAddress+'/count/contracts/');
-                const data = await response.json();
-                this.count = data.count;
+                let response = await fetch( Config.backendServerAddress+'/count/contracts/');
+                let data = await response.json();
+                this.totalContractCount = data.count;
+
+                response = await fetch( Config.backendServerAddress+'/count/transactions/');
+                data = await response.json();
+                this.totalTransactionCount = data.count;
                 console.log("Fetched "+this.count);
             } catch (error) {
                 console.error("Failed to fetch count:", error);
@@ -39,8 +43,5 @@ export const useCounterStore = defineStore({
             }
         }
 
-    },
-    getters: {
-        getCount: (state) => state.count,
     },
 });

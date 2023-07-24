@@ -34,6 +34,5 @@ func (b *Backend) GetTotalContractCount() (int, error) {
 }
 
 func (b *Backend) GetTotalTransactionCount() (int, error) {
-	// return b.obsClient.GetTotalTransactionCount()
-	return 0, nil
+	return b.obsClient.GetTotalTransactionCount()
 }

@@ -1,4 +1,5 @@
 <template>
+    <button @click="fetchCount">Reload Count</button>
   <el-row>
     <el-col :span="4">
       <el-card class="box" shadow="always">
@@ -27,15 +28,16 @@
     <el-col :span="4" :offset="2">
       <el-card class="box" shadow="always">
         <p>Transactions</p>
-        <p>bazilion</p>
+        <div>
+          <div>{{ totalTransactionCount }}</div>
+        </div>
       </el-card>
       <p>&nbsp;</p>
 
       <el-card class="box" shadow="always">
         <p>Contracts</p>
         <div>
-          <div>{{ count }}</div>
-          <button @click="fetchCount">Reload Count</button>
+          <div>{{ totalContractCount }}</div>
         </div>
       </el-card>
     </el-col>
@@ -71,7 +73,8 @@ export default {
 
     console.log(counter)
     return {
-      count: computed(() => counter.count),
+      totalContractCount: computed(() => counter.totalContractCount),
+      totalTransactionCount: computed(() => counter.totalTransactionCount),
       loading: counter.loading,
       fetchCount: counter.fetchCount
     }
