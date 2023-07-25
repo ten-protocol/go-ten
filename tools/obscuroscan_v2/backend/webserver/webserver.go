@@ -42,6 +42,8 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	// routes
 	r.GET("/health/", server.health)
 	r.GET("/count/contracts/", server.getTotalContractCount)
+	r.GET("/count/transactions/", server.getTotalTransactionCount)
+	r.GET("/items/batch/latest/", server.getLatestBatch)
 
 	return server
 }
@@ -86,6 +88,26 @@ func (w *WebServer) getTotalContractCount(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"count": count})
+}
+
+func (w *WebServer) getTotalTransactionCount(c *gin.Context) {
+	count, err := w.backend.GetTotalTransactionCount()
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"count": count})
+}
+
+func (w *WebServer) getLatestBatch(c *gin.Context) {
+	batch, err := w.backend.GetLatestBatch()
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": batch})
 }
 
 func errorHandler(c *gin.Context, err error, logger log.Logger) {

@@ -90,3 +90,13 @@ func (oc *ObsClient) GetTotalContractCount() (int, error) {
 	}
 	return count, nil
 }
+
+// GetTotalTransactionCount returns the total count of executed transactions
+func (oc *ObsClient) GetTotalTransactionCount() (int, error) {
+	var count int
+	err := oc.rpcClient.Call(&count, rpc.GetTotalTransactionCount)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}

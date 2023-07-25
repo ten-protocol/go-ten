@@ -20,6 +20,12 @@ func NewScanAPI(host host.Host, logger log.Logger) *ScanAPI {
 	}
 }
 
+// GetTotalContractCount returns the number of recorded contracts on the network.
 func (s *ScanAPI) GetTotalContractCount() (*big.Int, error) {
 	return s.host.EnclaveClient().GetTotalContractCount()
+}
+
+// GetTotalTransactionCount returns the number of recorded transactions on the network.
+func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
+	return s.host.DB().GetTotalTransactions()
 }

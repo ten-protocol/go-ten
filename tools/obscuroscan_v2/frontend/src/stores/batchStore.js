@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia';
 import Config from "@/lib/config";
 
-export const useCounterStore = defineStore({
-    id: 'counterStore',
+export const useBatchStore = defineStore({
+    id: 'batchStore',
     state: () => ({
-        totalContractCount: 0,
-        totalTransactionCount:0,
+        latestBatch: null,
+        latestL1Proof: null,
         loading: false,
         pollingInterval: 5000,  // 5 seconds
         timer: null,
@@ -14,16 +14,12 @@ export const useCounterStore = defineStore({
         async fetchCount() {
             this.loading = true;
             try {
-                const totContractResp = await fetch( Config.backendServerAddress+'/count/contracts/');
-                const totContractData = await totContractResp.json();
-                this.totalContractCount = totContractData.count;
-                console.log("Fetched "+this.totalContractCount);
+                let response = await fetch( Config.backendServerAddress+'/items/batch/latest/');
+                let data = await response.json();
+                this.latestBatch = data.item.Number;
+                this.latestL1Proof = data.item.L1Proof;
 
-                const totTxResp = await fetch( Config.backendServerAddress+'/count/transactions/');
-                const totTxData = await totTxResp.json();
-                this.totalTransactionCount = totTxData.count;
-                console.log("Fetched "+this.totalTransactionCount);
-
+                console.log("Fetched "+this.latestBatch);
             } catch (error) {
                 console.error("Failed to fetch count:", error);
             } finally {
