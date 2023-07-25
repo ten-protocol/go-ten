@@ -13,8 +13,8 @@ export const usePriceStore = defineStore({
         async fetchCount() {
             this.loading = true;
             try {
-                let response = await fetch( 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
-                let data = await response.json();
+                const response = await fetch( 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+                const data = await response.json();
                 this.ethPriceUSD = data.ethereum.usd;
 
                 console.log("Fetched "+this.ethPriceUSD);

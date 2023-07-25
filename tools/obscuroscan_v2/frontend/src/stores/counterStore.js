@@ -14,14 +14,14 @@ export const useCounterStore = defineStore({
         async fetchCount() {
             this.loading = true;
             try {
-                let response = await fetch( Config.backendServerAddress+'/count/contracts/');
-                let data = await response.json();
-                this.totalContractCount = data.count;
+                const totContractResp = await fetch( Config.backendServerAddress+'/count/contracts/');
+                const totContractData = await totContractResp.json();
+                this.totalContractCount = totContractData.count;
                 console.log("Fetched "+this.totalContractCount);
 
-                response = await fetch( Config.backendServerAddress+'/count/transactions/');
-                data = await response.json();
-                this.totalTransactionCount = data.count;
+                const totTxResp = await fetch( Config.backendServerAddress+'/count/transactions/');
+                const totTxData = await totTxResp.json();
+                this.totalTransactionCount = totTxData.count;
                 console.log("Fetched "+this.totalTransactionCount);
 
             } catch (error) {
