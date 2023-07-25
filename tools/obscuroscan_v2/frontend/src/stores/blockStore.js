@@ -1,13 +1,11 @@
 import { defineStore } from 'pinia';
 import Config from "@/lib/config";
-import BatchList from "@/lib/batchList";
+import BlockList from "@/lib/blockList";
 
-export const useBatchStore = defineStore({
-    id: 'batchStore',
+export const useBlockStore = defineStore({
+    id: 'blockStore',
     state: () => ({
-        latestBatch: null,
-        latestL1Proof: null,
-        batches: new BatchList(),
+        blocks: new BlockList(),
         loading: false,
         pollingInterval: 1000,  // 5 seconds
         timer: null,
@@ -16,14 +14,11 @@ export const useBatchStore = defineStore({
         async fetchCount() {
             this.loading = true;
             try {
-                let response = await fetch( Config.backendServerAddress+'/items/batch/latest/');
+                let response = await fetch( Config.backendServerAddress+'/items/block/latest/');
                 let data = await response.json();
-                this.latestBatch = data.item.Number;
-                this.latestL1Proof = data.item.L1Proof;
+                this.blocks.add(data.item);
 
-                this.batches.add(data.item);
-
-                console.log("Fetched "+this.latestBatch);
+                console.log("Fetched "+data.item.Number);
             } catch (error) {
                 console.error("Failed to fetch count:", error);
             } finally {

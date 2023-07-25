@@ -1,11 +1,11 @@
 <script>
 import { defineComponent } from 'vue'
 import SummaryItem from '@/components/SummaryItem.vue'
-import SummaryBatchesListItem from '@/components/SummaryBatchesListItem.vue'
-import SummaryRollupsListItem from '@/components/SummaryRollupsListItem.vue'
+import RotatingBatchesItem from "@/components/RotatingBatchesItem.vue";
+import RotatingBlocksItem from "@/components/RotatingBlocksItem.vue";
 
 export default defineComponent({
-  components: { SummaryRollupsListItem, SummaryBatchesListItem, SummaryItem }
+  components: {RotatingBlocksItem, RotatingBatchesItem, SummaryItem }
 })
 </script>
 <template>
@@ -13,9 +13,9 @@ export default defineComponent({
     <el-main>
       <summary-item />
       <p>&nbsp;</p>
-      <summary-batches-list-item />
+      <rotating-batches-item/>
       <p>&nbsp;</p>
-      <summary-rollups-list-item />
+     <rotating-blocks-item/>
       <p>&nbsp;</p>
       <el-card>
         <el-table height="250" style="width: 100%">

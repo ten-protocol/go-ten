@@ -71,6 +71,10 @@ func TestObscuroscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
+	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/block/latest/", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
 	// Gracefully shutdown
 	err = obsScanContainer.Stop()
 	assert.NoError(t, err)

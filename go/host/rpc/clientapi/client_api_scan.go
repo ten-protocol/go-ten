@@ -3,6 +3,7 @@ package clientapi
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 )
@@ -28,4 +29,8 @@ func (s *ScanAPI) GetTotalContractCount() (*big.Int, error) {
 // GetTotalTransactionCount returns the number of recorded transactions on the network.
 func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
 	return s.host.DB().GetTotalTransactions()
+}
+
+func (s *ScanAPI) GetLatestBlockHeader() (*types.Header, error) {
+	return s.host.DB().GetTipBlockHeader()
 }
