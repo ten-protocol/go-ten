@@ -425,12 +425,10 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	}
 
 	if result.Fork {
-		e.logger.Info(fmt.Sprintf("Detected forked at block %s with height %d", block.Hash(), block.Number()))
+		e.logger.Info(fmt.Sprintf("Detected fork at block %s with height %d", block.Hash(), block.Number()))
 	}
 
-	bsr := e.produceBlockSubmissionResponse(nil, nil)
-
-	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
+	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.processNetworkSecretMsgs(br)}
 	return bsr, nil
 }
 
@@ -438,7 +436,7 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	ingestion, err := e.l1BlockProcessor.Process(br, isLatest)
+	ingestion, nonCanonicalPath, err := e.l1BlockProcessor.Process(br, isLatest)
 	if err != nil {
 		e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
 		return nil, err
@@ -450,6 +448,14 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 		// Unsure what to do here; block has been stored
 	}
 
+	sequencer, ok := e.service.(nodetype.Sequencer)
+	if ok && len(nonCanonicalPath) > 0 {
+		err := sequencer.DuplicateBatches(br.Block, nonCanonicalPath)
+		if err != nil {
+			e.logger.Error("Could not duplicate batches", log.ErrKey, err)
+			return nil, err
+		}
+	}
 	return ingestion, nil
 }
 
@@ -1495,38 +1501,6 @@ func extractGetLogsParams(paramList []interface{}) (*filters.FilterCriteria, *ge
 	}
 	forAddress := gethcommon.HexToAddress(forAddressHex)
 	return &filter, &forAddress, nil
-}
-
-func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
-	if l2Head == nil {
-		// not an error state, we ingested a block but no rollup head found
-		return &common.BlockSubmissionResponse{}
-	}
-
-	var producedExtBatch *common.ExtBatch
-	var err error
-	if producedBatch != nil {
-		producedExtBatch, err = producedBatch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
-	}
-	if err != nil {
-		e.logger.Crit("Failed to convert batch. Should not happen", log.ErrKey, err)
-		return nil
-	}
-
-	batch, err := e.storage.FetchBatchHeader(*l2Head)
-	if err != nil {
-		e.logger.Crit("Failed to retrieve batch. Should not happen", log.ErrKey, err)
-		return nil
-	}
-	logs, err := e.subscriptionLogs(batch.Number)
-	if err != nil {
-		e.logger.Error("Could not fetch logs", log.ErrKey, err)
-		return nil
-	}
-	return &common.BlockSubmissionResponse{
-		ProducedBatch:  producedExtBatch,
-		SubscribedLogs: logs,
-	}
 }
 
 // Retrieves and encrypts the logs for the block.

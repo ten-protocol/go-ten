@@ -312,10 +312,7 @@ message AttestationReportMsg {
 }
 
 message BlockSubmissionResponseMsg {
-  ExtBatchMsg producedBatch = 1;
-  ExtRollupMsg producedRollup = 2;
   repeated SecretResponseMsg producedSecretResponses = 3;
-  bytes subscribedLogs = 4;
   BlockSubmissionErrorMsg error = 5; // todo (@matt) - remove this BlockSubmissionError field once we are using the Status() to update host view of enclave state
 }
 

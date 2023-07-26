@@ -141,10 +141,14 @@ func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
 
 	for _, batch := range r.Batches {
 		rc.logger.Info("Processing batch from rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
-		_, batchFoundErr := rc.batchRegistry.GetBatch(batch.Hash())
+		b, batchFoundErr := rc.batchRegistry.GetBatch(batch.Hash())
 		// Process and store a batch only if it wasn't already processed via p2p.
 		if batchFoundErr != nil && !errors.Is(batchFoundErr, errutil.ErrNotFound) {
 			return batchFoundErr
+		}
+		// if the batch is already stored, skip
+		if b != nil {
+			continue
 		}
 		receipts, err := rc.batchRegistry.ValidateBatch(batch)
 		if errors.Is(err, errutil.ErrBlockForBatchNotFound) {

@@ -6,7 +6,7 @@ create table if not exists keyvalue
 
 create table if not exists config
 (
-    ky varchar(64) primary key,
+    ky  varchar(64) primary key,
     val mediumblob
 );
 
@@ -17,7 +17,7 @@ create table if not exists attestation_key
 (
 --     party  binary(20) primary key, // todo -pk
     party binary(20),
-    ky   binary(33)
+    ky    binary(33)
 );
 
 create table if not exists block
@@ -26,7 +26,8 @@ create table if not exists block
     parent       binary(32) REFERENCES block,
     is_canonical boolean,
     header       blob,
-    height       int
+    height       int,
+    unique (height, is_canonical)
 );
 create index IDX_BLOCK_HEIGHT on block (height);
 
@@ -56,16 +57,19 @@ create table if not exists batch
 (
     hash         binary(32) primary key,
     parent       binary(32) REFERENCES batch,
-    sequence     int,
+    sequence     int NOT NULL unique,
     height       int,
     is_canonical boolean,
     header       blob,
     body         binary(32) REFERENCES batch_body,
-    l1_proof     binary(32) REFERENCES block,
-    source       text
+--     l1_proof     binary(32) REFERENCES block,
+    l1_proof     binary(32),
+    source       text,
+    unique (height, is_canonical)
 );
 create index IDX_BATCH_HEIGHT on batch (height);
 create index IDX_BATCH_SEQ on batch (sequence);
+create index IDX_BATCH_Block on batch (l1_proof);
 
 create table if not exists tx
 (
@@ -84,7 +88,7 @@ create table if not exists exec_tx
     receipt                  mediumblob,
 --     commenting out the fk until synthetic transactions are also stored
 --     tx                       binary(32) REFERENCES tx,
-    tx                       binary(32) ,
+    tx                       binary(32),
     batch                    binary(32) REFERENCES batch
 );
 create index IX_EX_TX1 on exec_tx (tx);

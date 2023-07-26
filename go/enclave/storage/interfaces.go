@@ -45,6 +45,8 @@ type BatchResolver interface {
 	FetchHeadBatch() (*core.Batch, error)
 	// FetchCurrentSequencerNo returns the sequencer number
 	FetchCurrentSequencerNo() (*big.Int, error)
+	// FetchBatchesByBlock returns all batches with the block hash as the L1 proof
+	FetchBatchesByBlock(common.L1BlockHash) ([]*core.Batch, error)
 }
 
 type BatchUpdater interface {

@@ -1,6 +1,7 @@
 package nodetype
 
 import (
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
@@ -21,6 +22,9 @@ type Sequencer interface {
 	// CreateRollup - creates a new rollup from the latest recorded rollup in the head l1 chain
 	// and adds as many batches to it as possible.
 	CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error)
+
+	// DuplicateBatches - when there is a fork, the sequencer must create sibling batches for all batches that were part of the reorg
+	DuplicateBatches(l1Head *types.Block, path []common.L1BlockHash) error
 
 	NodeType
 }

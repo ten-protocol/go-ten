@@ -14,10 +14,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 )
 
-const (
-	SubscriptionChannelBuffer = 10
-)
-
 var ErrDuplicateRollup = errors.New("duplicate rollup received")
 
 type BlockIngestionType struct {
@@ -36,7 +32,7 @@ type BlockIngestionType struct {
 }
 
 type L1BlockProcessor interface {
-	Process(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error)
+	Process(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, []common.L1BlockHash, error)
 	GetHead() (*common.L1Block, error)
 	GetCrossChainContractAddress() *gethcommon.Address
 }

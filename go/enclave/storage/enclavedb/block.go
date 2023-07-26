@@ -48,11 +48,11 @@ func WriteBlock(dbtx DBTransaction, b *types.Header) error {
 }
 
 func UpdateCanonicalBlocks(dbtx DBTransaction, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) {
-	if len(canonical) > 0 {
-		updateCanonicalValue(dbtx, true, canonical)
-	}
 	if len(nonCanonical) > 0 {
 		updateCanonicalValue(dbtx, false, nonCanonical)
+	}
+	if len(canonical) > 0 {
+		updateCanonicalValue(dbtx, true, canonical)
 	}
 }
 

@@ -1,6 +1,7 @@
 package components
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
@@ -69,7 +70,7 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}
 
 	parentBlock := block
-	if parent.L1Proof != block.Hash() {
+	if !bytes.Equal(parent.L1Proof.Bytes(), block.Hash().Bytes()) {
 		var err error
 		parentBlock, err = bp.storage.FetchBlock(parent.L1Proof)
 		if err != nil {
@@ -85,7 +86,10 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
-	messages := bp.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
+	var messages common.CrossChainMessages
+	if context.SequencerNo.Int64() > 1 {
+		messages = bp.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
+	}
 	crossChainTransactions := bp.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 
 	successfulTxs, txReceipts, err := bp.processTransactions(batch, 0, context.Transactions, stateDB, context.ChainConfig)

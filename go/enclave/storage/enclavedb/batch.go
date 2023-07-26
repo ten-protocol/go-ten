@@ -37,6 +37,8 @@ const (
 
 	selectContractCreationTx    = "select tx from exec_tx where created_contract_address=?"
 	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
+
+	isCanonQuery = "select is_canonical from block where hash=?"
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
@@ -59,12 +61,18 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 		parentBytes = batch.Header.ParentHash.Bytes()
 	}
 
+	var isCanon bool
+	err = dbtx.GetDB().QueryRow(isCanonQuery, batch.Header.L1Proof.Bytes()).Scan(&isCanon)
+	if err != nil {
+		isCanon = false
+	}
+
 	dbtx.ExecuteSQL(bInsert,
 		batch.Hash().Bytes(),
 		parentBytes,
 		batch.Header.SequencerOrderNo.Uint64(),
 		batch.Header.Number.Uint64(),
-		true,
+		isCanon,
 		header,
 		bodyHash,
 		batch.Header.L1Proof.Bytes(),
@@ -144,8 +152,12 @@ func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
 	return fetchBatch(db, " where b.height=(select max(b1.height) from batch b1) and is_canonical")
 }
 
+func ReadBatchesByBlock(db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
+	return fetchBatches(db, " where b.l1_proof=?", hash.Bytes())
+}
+
 func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
-	var seq int64
+	var seq sql.NullInt64
 	query := "select max(sequence) from batch"
 	err := db.QueryRow(query).Scan(&seq)
 	if err != nil {
@@ -155,7 +167,10 @@ func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
 		}
 		return nil, err
 	}
-	return big.NewInt(seq), nil
+	if !seq.Valid {
+		return nil, errutil.ErrNotFound
+	}
+	return big.NewInt(seq.Int64), nil
 }
 
 func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
@@ -193,6 +208,42 @@ func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error)
 		Header:       h,
 		Transactions: *txs,
 	}, nil
+}
+
+func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, error) {
+	result := make([]*core.Batch, 0)
+
+	rows, err := db.Query(selectBatch+" "+whereQuery, args...)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	for rows.Next() {
+		var header string
+		var body []byte
+		err := rows.Scan(&header, &body)
+		if err != nil {
+			return nil, err
+		}
+		h := new(common.BatchHeader)
+		if err := rlp.DecodeBytes([]byte(header), h); err != nil {
+			return nil, fmt.Errorf("could not decode batch header. Cause: %w", err)
+		}
+		txs := new([]*common.L2Tx)
+		if err := rlp.DecodeBytes(body, txs); err != nil {
+			return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
+		}
+
+		result = append(result,
+			&core.Batch{
+				Header:       h,
+				Transactions: *txs,
+			})
+	}
+	return result, nil
 }
 
 func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {

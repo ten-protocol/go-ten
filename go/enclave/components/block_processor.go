@@ -30,52 +30,52 @@ func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, logge
 	}
 }
 
-func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, []common.L1BlockHash, error) {
 	defer bp.logger.Info("L1 block processed", log.BlockHashKey, br.Block.Hash(), log.DurationKey, measure.NewStopwatch())
 
-	ingestion, err := bp.tryAndInsertBlock(br, isLatest)
+	ingestion, nonCanonicalPath, err := bp.tryAndInsertBlock(br, isLatest)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !ingestion.PreGenesis {
 		// This requires block to be stored first ... but can permanently fail a block
 		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(br.Block, *br.Receipts)
 		if err != nil {
-			return nil, errors.New("failed to process cross chain messages")
+			return nil, nil, errors.New("failed to process cross chain messages")
 		}
 	}
 
-	return ingestion, nil
+	return ingestion, nonCanonicalPath, nil
 }
 
-func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, []common.L1BlockHash, error) {
 	block := br.Block
 
 	_, err := bp.storage.FetchBlock(block.Hash())
 	if err == nil {
-		return nil, errutil.ErrBlockAlreadyProcessed
+		return nil, nil, errutil.ErrBlockAlreadyProcessed
 	}
 
 	if !errors.Is(err, errutil.ErrNotFound) {
-		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 	}
 
 	// We insert the block into the L1 chain and store it.
 	ingestionType, canonical, nonCanonical, err := bp.ingestBlock(block, isLatest)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
-		return nil, err
+		return nil, nil, err
 	}
 	bp.logger.Trace("block inserted successfully",
 		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
 
 	err = bp.storage.StoreBlock(block, canonical, nonCanonical)
 	if err != nil {
-		return nil, fmt.Errorf("could not store block. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not store block. Cause: %w", err)
 	}
 
-	return ingestionType, nil
+	return ingestionType, nonCanonical, nil
 }
 
 func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*BlockIngestionType, []common.L1BlockHash, []common.L1BlockHash, error) {

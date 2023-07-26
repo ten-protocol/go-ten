@@ -92,10 +92,12 @@ func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
 
 func (s *storageImpl) StoreBlock(b *types.Block, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) error {
 	dbBatch := s.db.NewDBTransaction()
+	s.logger.Info(fmt.Sprintf("Fork. Canonical %v. NonCanonical %v.", canonical, nonCanonical))
+	enclavedb.UpdateCanonicalBlocks(dbBatch, canonical, nonCanonical)
+
 	if err := enclavedb.WriteBlock(dbBatch, b.Header()); err != nil {
 		return fmt.Errorf("could not store block %s. Cause: %w", b.Hash(), err)
 	}
-	enclavedb.UpdateCanonicalBlocks(dbBatch, canonical, nonCanonical)
 
 	if err := dbBatch.Write(); err != nil {
 		return fmt.Errorf("could not store block %s. Cause: %w", b.Hash(), err)
@@ -148,6 +150,7 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 
 	p, err := s.FetchBlock(block.ParentHash())
 	if err != nil {
+		s.logger.Warn("Could not find block with hash", log.BlockHashKey, block.ParentHash(), log.ErrKey, err)
 		return false
 	}
 
@@ -250,6 +253,10 @@ func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
 	return enclavedb.ReadBatchBySeqNo(s.db.GetSQLDB(), seqNum)
 }
 
+func (s *storageImpl) FetchBatchesByBlock(block common.L1BlockHash) ([]*core.Batch, error) {
+	return enclavedb.ReadBatchesByBlock(s.db.GetSQLDB(), block)
+}
+
 func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) error {
 	dbTx := s.db.NewDBTransaction()
 	if _, err := s.FetchBatchBySeqNo(batch.SeqNo().Uint64()); err == nil {
@@ -262,24 +269,27 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) e
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
 
-	for _, receipt := range receipts {
-		s.logger.Trace("store receipt", "txHash", receipt.TxHash, "batch", receipt.BlockHash)
-	}
-	if err := enclavedb.WriteReceipts(dbTx, receipts); err != nil {
-		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
-	}
-
-	if batch.Number().Int64() > 1 {
-		stateDB, err := s.CreateStateDB(batch.Header.ParentHash)
-		if err != nil {
-			return fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
+	if len(receipts) > 0 {
+		for _, receipt := range receipts {
+			s.logger.Trace("store receipt", "txHash", receipt.TxHash, "batch", receipt.BlockHash)
+		}
+		if err := enclavedb.WriteReceipts(dbTx, receipts); err != nil {
+			return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 		}
 
-		err2 := enclavedb.StoreEventLogs(dbTx, receipts, stateDB)
-		if err2 != nil {
-			return fmt.Errorf("could not save logs %w", err2)
+		if batch.Number().Int64() > 1 {
+			stateDB, err := s.CreateStateDB(batch.Header.ParentHash)
+			if err != nil {
+				return fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
+			}
+
+			err2 := enclavedb.StoreEventLogs(dbTx, receipts, stateDB)
+			if err2 != nil {
+				return fmt.Errorf("could not save logs %w", err2)
+			}
 		}
 	}
+
 	err := dbTx.Write()
 	if err != nil {
 		return fmt.Errorf("could not commit batch %w", err)

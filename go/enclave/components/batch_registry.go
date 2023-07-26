@@ -133,7 +133,8 @@ func (br *batchRegistryImpl) ValidateBatch(incomingBatch *core.Batch) (types.Rec
 
 	if !bytes.Equal(cb.Batch.Hash().Bytes(), incomingBatch.Hash().Bytes()) {
 		// todo @stefan - generate a validator challenge here and return it
-		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", incomingBatch.Hash().Hex(), cb.Batch.Hash().Hex())
+		br.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v\n Incoming: %+v\n", cb.Batch.Header, incomingBatch.Header))
+		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", incomingBatch.Hash(), cb.Batch.Hash())
 	}
 
 	if _, err := cb.Commit(true); err != nil {
