@@ -221,6 +221,10 @@ func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, er
 		}
 		return nil, err
 	}
+	defer rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 	for rows.Next() {
 		var header string
 		var body []byte
@@ -282,6 +286,7 @@ func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args .
 		}
 		return nil, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		// receipt, tx, batch, height
 		var receiptData []byte
