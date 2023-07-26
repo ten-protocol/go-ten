@@ -49,7 +49,7 @@ jobs:
           name: dev-testnet-obscuroscan
           location: 'uksouth'
           restart-policy: 'Never'
-          command-line: ./tools/obscuroscan/main/main --rpcServerAddress http://dev-testnet.obscu.ro:13000 --address 0.0.0.0:80
+          command-line: ./tools/obscuroscan/main/main --rpcServerAddress http://dev-testnet.obscu.ro:80 --address 0.0.0.0:80
           ports: '80'
           cpu: 2
           memory: 2

@@ -32,7 +32,7 @@ do
 done
 
 
-net_status=$(curl -s --request POST 'http://127.0.0.1:13000' \
+net_status=$(curl -s --request POST 'http://127.0.0.1:80' \
              --header 'Content-Type: application/json' \
              --data-raw '{ "method":"obscuro_health", "params":null, "id":1, "jsonrpc":"2.0" }')
 

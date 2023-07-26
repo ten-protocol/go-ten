@@ -22,7 +22,7 @@ func main() {
 		node.WithHostPublicP2PAddr(cliConfig.hostP2PPublicAddr),              // node public facing ip and port
 		node.WithHostHTTPPort(cliConfig.hostHTTPPort),                        // 12000
 		node.WithHostWSPort(cliConfig.hostWSPort),                            // 12001
-		node.WithEnclaveWSPort(cliConfig.enclaveWSPort),                      // 13001
+		node.WithEnclaveWSPort(cliConfig.enclaveWSPort),                      // 81
 		node.WithPrivateKey(cliConfig.privateKey),                            // "8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"
 		node.WithHostID(cliConfig.hostID),                                    // "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
 		node.WithSequencerID(cliConfig.sequencerID),                          // "0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),

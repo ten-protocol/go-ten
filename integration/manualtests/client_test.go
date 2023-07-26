@@ -16,7 +16,7 @@ func TestClientGetRollup(t *testing.T) {
 	if os.Getenv(_IDEFlag) == "" {
 		t.Skipf("set flag %s to run this test in the IDE", _IDEFlag)
 	}
-	hostRPCAddress := "http://testnet.obscu.ro:13000"
+	hostRPCAddress := "http://testnet.obscu.ro:80"
 	client, err := rpc.NewNetworkClient(hostRPCAddress)
 	assert.Nil(t, err)
 

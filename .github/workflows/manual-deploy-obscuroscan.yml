@@ -45,4 +45,4 @@ jobs:
       with: 
         app-name: ${{ env.AZURE_WEBAPP_NAME }} 
         images: testnetobscuronet.azurecr.io/obscuronet/obscuro_testnet_obscuroscan:latest
-        startup-command: './tools/obscuroscan/main/main --rpcServerAddress http://testnet.obscu.ro:13000 --address 0.0.0.0:80'
+        startup-command: './tools/obscuroscan/main/main --rpcServerAddress http://testnet.obscu.ro:80 --address 0.0.0.0:80'

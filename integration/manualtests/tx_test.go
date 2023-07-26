@@ -34,7 +34,7 @@ const (
 // l1 host: testnet-eth2network.uksouth.cloudapp.azure.com
 // l1 port: 9000
 // l2 host: testnet.obscu.ro
-// l2 port: 13001
+// l2 port: 81
 // l2wallet: 8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b
 
 var (
