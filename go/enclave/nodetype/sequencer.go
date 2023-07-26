@@ -247,7 +247,7 @@ func (s *sequencer) DuplicateBatches(l1Head *types.Block, path []common.L1BlockH
 
 	canonicalBlock := firstNonCanonicalBlock.ParentHash()
 	var currentHead *core.Batch
-	for true {
+	for currentHead == nil {
 		currentHead, err = s.storage.FetchHeadBatchForBlock(canonicalBlock)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {

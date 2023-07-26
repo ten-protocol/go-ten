@@ -53,13 +53,13 @@ func (sqlDB *enclaveDB) Close() error {
 
 func (sqlDB *enclaveDB) NewDBTransaction() *dbTransaction {
 	return &dbTransaction{
-		Db: sqlDB,
+		db: sqlDB,
 	}
 }
 
 func (sqlDB *enclaveDB) NewBatch() ethdb.Batch {
 	return &dbTransaction{
-		Db: sqlDB,
+		db: sqlDB,
 	}
 }
 

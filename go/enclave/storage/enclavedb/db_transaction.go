@@ -23,14 +23,14 @@ type statement struct {
 }
 
 type dbTransaction struct {
-	Db         EnclaveDB
+	db         EnclaveDB
 	writes     []keyvalue
 	statements []statement
 	size       int
 }
 
 func (b *dbTransaction) GetDB() *sql.DB {
-	return b.Db.GetSQLDB()
+	return b.db.GetSQLDB()
 }
 
 func (b *dbTransaction) ExecuteSQL(query string, args ...any) {
@@ -62,7 +62,7 @@ func (b *dbTransaction) ValueSize() int {
 
 // Write executes a batch statement with all the updates
 func (b *dbTransaction) Write() error {
-	tx, err := b.Db.BeginTx()
+	tx, err := b.db.BeginTx()
 	if err != nil {
 		return fmt.Errorf("failed to create batch transaction - %w", err)
 	}
