@@ -6,7 +6,7 @@ export const usePriceStore = defineStore({
     state: () => ({
         ethPriceUSD: null,
         loading: false,
-        pollingInterval: 5000,  // 5 seconds
+        pollingInterval: Config.pollingInterval,
         timer: null,
     }),
     actions: {

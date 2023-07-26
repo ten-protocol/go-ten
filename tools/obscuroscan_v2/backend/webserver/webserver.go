@@ -44,6 +44,7 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	r.GET("/count/contracts/", server.getTotalContractCount)
 	r.GET("/count/transactions/", server.getTotalTransactionCount)
 	r.GET("/items/batch/latest/", server.getLatestBatch)
+	r.GET("/items/block/latest/", server.getLatestBlockHeader)
 
 	return server
 }
@@ -108,6 +109,16 @@ func (w *WebServer) getLatestBatch(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"item": batch})
+}
+
+func (w *WebServer) getLatestBlockHeader(c *gin.Context) {
+	block, err := w.backend.GetLatestBlockHeader()
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": block})
 }
 
 func errorHandler(c *gin.Context, err error, logger log.Logger) {

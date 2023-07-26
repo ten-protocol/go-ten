@@ -1,13 +1,15 @@
 import { defineStore } from 'pinia';
 import Config from "@/lib/config";
+import BatchList from "@/lib/batchList";
 
 export const useBatchStore = defineStore({
     id: 'batchStore',
     state: () => ({
         latestBatch: null,
         latestL1Proof: null,
+        batches: new BatchList(),
         loading: false,
-        pollingInterval: 5000,  // 5 seconds
+        pollingInterval: Config.pollingInterval,
         timer: null,
     }),
     actions: {
@@ -18,6 +20,8 @@ export const useBatchStore = defineStore({
                 let data = await response.json();
                 this.latestBatch = data.item.Number;
                 this.latestL1Proof = data.item.L1Proof;
+
+                this.batches.add(data.item);
 
                 console.log("Fetched "+this.latestBatch);
             } catch (error) {

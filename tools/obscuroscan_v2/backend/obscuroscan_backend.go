@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 )
@@ -35,4 +36,8 @@ func (b *Backend) GetTotalContractCount() (int, error) {
 
 func (b *Backend) GetTotalTransactionCount() (int, error) {
 	return b.obsClient.GetTotalTransactionCount()
+}
+
+func (b *Backend) GetLatestBlockHeader() (*types.Header, error) {
+	return b.obsClient.GetLatestBlockHeader()
 }
