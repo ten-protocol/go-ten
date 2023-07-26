@@ -31,7 +31,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 const _testEnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -515,7 +514,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 	return enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch, nil)
 }
 
-func injectNewBlockAndReceipts(enclave common.Enclave, receipts []*types.Receipt) error {
+/*func injectNewBlockAndReceipts(enclave common.Enclave, receipts []*types.Receipt) error {
 	headBlock, err := enclave.(*enclaveImpl).storage.FetchHeadBlock()
 	if err != nil {
 		return err
@@ -556,8 +555,8 @@ func injectNewBlockAndReceipts(enclave common.Enclave, receipts []*types.Receipt
 	// We update the database.
 	return enclave.(*enclaveImpl).storage.StoreBatch(batch, receipts)
 }
-
-func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Account) error {
+*/
+/*func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Account) error {
 	headBlock, err := enclave.(*enclaveImpl).storage.FetchHeadBlock()
 	if err != nil {
 		return err
@@ -614,7 +613,7 @@ func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber,
 	}
 
 	return nil
-}
+}*/
 
 func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Batch {
 	h := common.BatchHeader{
