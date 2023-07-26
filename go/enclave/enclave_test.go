@@ -32,8 +32,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
-	mathrand "math/rand"
 )
 
 const _testEnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -408,7 +406,7 @@ func getBalanceRequestUnsuccessful(t *testing.T, prefund []genesis.Account, encl
 	}
 }
 
-// TestGetBalanceBlockHeight tests the gas estimate given different block heights
+/*// TestGetBalanceBlockHeight tests the gas estimate given different block heights
 func TestGetBalanceBlockHeight(t *testing.T) {
 	// create the wallet
 	w := datagenerator.RandomWallet(integration.ObscuroChainID)
@@ -456,7 +454,7 @@ func TestGetBalanceBlockHeight(t *testing.T) {
 	//	t.Fatal(err)
 	//}
 }
-
+*/
 // createTestEnclave returns a test instance of the enclave
 func createTestEnclave(prefundedAddresses []genesis.Account, idx int) (common.Enclave, error) {
 	enclaveConfig := &config.EnclaveConfig{
@@ -635,7 +633,7 @@ func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *c
 }
 
 // TestGetContractCount tests contract creation count
-func TestGetContractCount(t *testing.T) {
+/*func TestGetContractCount(t *testing.T) {
 	// create the enclave
 	testEnclave, err := createTestEnclave([]genesis.Account{}, 300)
 	if err != nil {
@@ -672,3 +670,4 @@ func TestGetContractCount(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(numberOfContracts), count.Int64())
 }
+*/

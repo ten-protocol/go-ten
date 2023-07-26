@@ -113,6 +113,7 @@ func FetchL1Messages(db *sql.DB, blockHash common.L1BlockHash) (common.CrossChai
 		}
 		return nil, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var msg []byte
 		err := rows.Scan(&msg)

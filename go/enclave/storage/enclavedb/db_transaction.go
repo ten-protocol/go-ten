@@ -80,14 +80,14 @@ func (b *dbTransaction) Write() error {
 		}
 	}
 
-	err = DeleteKeys(tx, deletes)
-	if err != nil {
-		return fmt.Errorf("failed to delete keys. Cause %w", err)
-	}
-
 	err = PutKeyValues(tx, updateKeys, updateValues)
 	if err != nil {
 		return fmt.Errorf("failed to put key/value. Cause %w", err)
+	}
+
+	err = DeleteKeys(tx, deletes)
+	if err != nil {
+		return fmt.Errorf("failed to delete keys. Cause %w", err)
 	}
 
 	for _, s := range b.statements {
