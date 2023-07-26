@@ -34,7 +34,6 @@ jobs:
       RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
       RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
-      RESOURCE_TESTNET_TYPE: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_TYPE }}
       L1_HOST: ${{ steps.outputVars.outputs.L1_HOST }}
       VM_BUILD_NUMBER: ${{ steps.outputVars.outputs.VM_BUILD_NUMBER }}
 
@@ -58,7 +57,6 @@ jobs:
           echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_TYPE=testnet" >> $GITHUB_ENV
           echo "L1_HOST=testnet-eth2network.uksouth.cloudapp.azure.com" >> $GITHUB_ENV
           
       - name: 'Sets env vars for dev-testnet'
@@ -69,7 +67,6 @@ jobs:
           echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_TYPE=dev-testnet" >> $GITHUB_ENV
           echo "L1_HOST=dev-testnet-eth2network.uksouth.cloudapp.azure.com" >> $GITHUB_ENV
 
       - name: 'Fetch latest VM hostnames by env tag and extract build number'
@@ -93,7 +90,6 @@ jobs:
           echo "RESOURCE_TAG_NAME=${{env.RESOURCE_TAG_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_TESTNET_TYPE=${{env.RESOURCE_TESTNET_TYPE}}" >> $GITHUB_OUTPUT
           echo "L1_HOST=${{env.L1_HOST}}" >> $GITHUB_OUTPUT
           echo "VM_BUILD_NUMBER=${{env.VM_BUILD_NUMBER}}" >> $GITHUB_OUTPUT
 
@@ -196,26 +192,44 @@ jobs:
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com
 
-  deploy-faucet:
-    name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
+  deploy-faucet-on-dispatch:
     uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     with:
-      testnet_type: ${{needs.build.outputs.RESOURCE_TESTNET_TYPE}}
+      testnet_type:  ${{ github.event.inputs.testnet_type }}
     secrets: inherit
     needs:
       - check-obscuro-is-healthy
 
-  obscuro-test-repository-dispatch:
+  deploy-faucet-on-schedule:
+    uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
+    if: ${{ github.event_name == 'schedule' }}
+    with:
+      testnet_type:  'dev-testnet'
+    secrets: inherit
+    needs:
+      - check-obscuro-is-healthy
+
+  obscuro-test-signal-on-dispatch:
     runs-on: ubuntu-latest
     needs:
-      - deploy-faucet
+      - deploy-faucet-on-dispatch
     steps:
       - name: 'Send a repository dispatch to obscuro-test on upgrade of dev-testnet'
-        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (github.event_name == 'schedule') }}
+        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
           curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
 
       - name: 'Send a repository dispatch to obscuro-test on upgrade of testnet'
-        if: ${{ (github.event.inputs.testnet_type == 'testnet') }}
+        if: ${{ github.event.inputs.testnet_type == 'testnet' }}
         run: |
           curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
+
+  obscuro-test-signal-on-schedule:
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-faucet-on-schedule
+    steps:
+      - name: 'Send a repository dispatch to obscuro-test on upgrade of dev-testnet'
+        run: |
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
