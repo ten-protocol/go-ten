@@ -9,7 +9,7 @@ export const useBatchStore = defineStore({
         latestL1Proof: null,
         batches: new BatchList(),
         loading: false,
-        pollingInterval: 1000,  // 5 seconds
+        pollingInterval: Config.pollingInterval,
         timer: null,
     }),
     actions: {

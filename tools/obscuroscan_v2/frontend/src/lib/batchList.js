@@ -10,8 +10,7 @@ class BatchList {
     }
 
     get() {
-        const startIdx = this.items.length - 5 > 0 ? this.items.length - 5 : 0;
-        return this.items.slice(startIdx);
+        return this.items.slice(-5);
     }
 }
 

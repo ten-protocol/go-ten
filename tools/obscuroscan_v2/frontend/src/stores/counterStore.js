@@ -7,7 +7,7 @@ export const useCounterStore = defineStore({
         totalContractCount: 0,
         totalTransactionCount:0,
         loading: false,
-        pollingInterval: 5000,  // 5 seconds
+        pollingInterval: Config.pollingInterval,
         timer: null,
     }),
     actions: {

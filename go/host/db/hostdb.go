@@ -23,7 +23,6 @@ var (
 	batchHashForSeqNoPrefix = []byte("bs")
 	batchTxHashesPrefix     = []byte("bt")
 	headBatch               = []byte("hb")
-	tipBlockHash            = []byte("tbh")
 	totalTransactionsKey    = []byte("t")
 )
 
