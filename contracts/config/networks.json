@@ -14,7 +14,7 @@
     "localObscuro": {
       "chainId": 777,
       "url": "http://127.0.0.1:3000",
-      "obscuroEncRpcUrl": "ws://127.0.0.1:13001",
+      "obscuroEncRpcUrl": "ws://127.0.0.1:81",
       "gasPrice": 2000000000,
       "companionNetworks" : {
         "layer1" : "localGeth"

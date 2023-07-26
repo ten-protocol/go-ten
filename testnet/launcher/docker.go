@@ -52,8 +52,8 @@ func (t *Testnet) Start() error {
 		node.WithL1Host("eth2network"),
 		node.WithL1WSPort(9000),
 		node.WithEnclaveWSPort(11000),
-		node.WithHostHTTPPort(13000),
-		node.WithHostWSPort(13001),
+		node.WithHostHTTPPort(80),
+		node.WithHostWSPort(81),
 		node.WithHostP2PPort(15000),
 		node.WithHostPublicP2PAddr("sequencer-host:15000"),
 		node.WithPrivateKey("8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"),
@@ -75,7 +75,7 @@ func (t *Testnet) Start() error {
 	fmt.Println("Obscuro node was successfully started...")
 
 	// wait until the node is healthy
-	err = waitForHealthyNode(13000)
+	err = waitForHealthyNode(80)
 	if err != nil {
 		return fmt.Errorf("sequencer obscuro node not healthy - %w", err)
 	}
@@ -123,7 +123,7 @@ func (t *Testnet) Start() error {
 			l2cd.WithL1Host("eth2network"),
 			l2cd.WithL1Port(8025),
 			l2cd.WithL2Host("sequencer-host"),
-			l2cd.WithL2WSPort(13001),
+			l2cd.WithL2WSPort(81),
 			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l2cd.WithMessageBusContractAddress("0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"),
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),

@@ -325,7 +325,7 @@ docker images repository use;
 ```
 ./testnet/testnet-local-build_images.sh \
 && go run ./testnet/launcher/cmd \
-&& ./testnet/start-obscuroscan.sh --rpcServerAddress=http://localhost:13000 --receivingPort=8098
+&& ./testnet/start-obscuroscan.sh --rpcServerAddress=http://localhost:80 --receivingPort=8098
 ```
 
 The above will perform all the relevant builds and ensure the images are ready for running each component. 
@@ -380,7 +380,7 @@ To start the wallet extension to run against a local testnet, in the go-obscuro 
 ```
 cd ./tools/walletextension/main/
 go build -o wallet_extension 
-./wallet_extension -nodeHost 127.0.0.1 -nodePortHTTP 13000 -nodePortWS 13001
+./wallet_extension -nodeHost 127.0.0.1 -nodePortHTTP 80 -nodePortWS 81
 ```
 
 Once the wallet extension is running, a contract can be deployed and interacted with either manually using Metamask and 

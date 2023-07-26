@@ -84,7 +84,7 @@ jobs:
           name: ${{ github.event.inputs.testnet_type }}-api-obscuro-scan
           location: 'uksouth'
           restart-policy: 'Never'
-          command-line: ./cmd/backend --nodeHostAddress http://${{ env.OBSCURO_SCAN_NODE_HOST }}:13000 --serverAddress 0.0.0.0:80
+          command-line: ./cmd/backend --nodeHostAddress http://${{ env.OBSCURO_SCAN_NODE_HOST }}:80 --serverAddress 0.0.0.0:80
           ports: '80'
           cpu: 2
           memory: 2

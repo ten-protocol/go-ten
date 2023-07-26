@@ -25,12 +25,12 @@ const (
 	nodeHostUsage   = "The host on which to connect to the Obscuro node. Default: `testnet.obscu.ro`."
 
 	nodeHTTPPortName    = "nodePortHTTP"
-	nodeHTTPPortDefault = 13000
-	nodeHTTPPortUsage   = "The port on which to connect to the Obscuro node via RPC over HTTP. Default: 13000."
+	nodeHTTPPortDefault = 80
+	nodeHTTPPortUsage   = "The port on which to connect to the Obscuro node via RPC over HTTP. Default: 80."
 
 	nodeWebsocketPortName    = "nodePortWS"
-	nodeWebsocketPortDefault = 13001
-	nodeWebsocketPortUsage   = "The port on which to connect to the Obscuro node via RPC over websockets. Default: 13001."
+	nodeWebsocketPortDefault = 81
+	nodeWebsocketPortUsage   = "The port on which to connect to the Obscuro node via RPC over websockets. Default: 81."
 
 	logPathName    = "logPath"
 	logPathDefault = "wallet_extension_logs.txt"
