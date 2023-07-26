@@ -124,3 +124,11 @@ type L2BatchHandler interface {
 	// HandleBatch will be called in a new goroutine for each new batch as it arrives
 	HandleBatch(batch *common.ExtBatch)
 }
+
+// EnclaveService provides access to the host enclave(s), it monitors and manages the states of the enclaves, so it can
+// help with failover, gate-keeping (throttling/load-balancing) and circuit-breaking when the enclave is not available
+type EnclaveService interface {
+	// LookupBatchBySeqNo is used to fetch batch data from the enclave - it is only used as a fallback for the sequencer
+	// host if it's missing a batch (other host services should use L2Repo to fetch batch data)
+	LookupBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
+}

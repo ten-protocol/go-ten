@@ -30,6 +30,7 @@ func NewObscuroScanContainer(config *config.Config) (*ObscuroScanContainer, erro
 	logger := log.New(log.ObscuroscanCmp, int(gethlog.LvlInfo), config.LogPath)
 	webServer := webserver.New(scanBackend, config.ServerAddress, logger)
 
+	logger.Info("Created Obscuro Scan with the following: ", "args", config)
 	return &ObscuroScanContainer{
 		backend:   backend.NewBackend(obsClient),
 		webServer: webServer,

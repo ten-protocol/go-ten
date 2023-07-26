@@ -113,7 +113,7 @@ type BatchRegistry interface {
 
 	// Subscribe - creates and returns a channel that will be used to push any newly created batches
 	// to the subscriber.
-	Subscribe(lastKnownHead *common.L2BatchHash) (chan *core.Batch, error)
+	Subscribe() chan *core.Batch
 	// Unsubscribe - informs the registry that the subscriber is no longer listening, allowing it to
 	// gracefully terminate any streaming and stop queueing new batches.
 	Unsubscribe()

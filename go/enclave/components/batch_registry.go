@@ -173,22 +173,13 @@ func (br *batchRegistryImpl) GetBatch(batchHash common.L2BatchHash) (*core.Batch
 	return br.storage.FetchBatch(batchHash)
 }
 
-func (br *batchRegistryImpl) Subscribe(lastKnownHead *common.L2BatchHash) (chan *core.Batch, error) {
+func (br *batchRegistryImpl) Subscribe() chan *core.Batch {
 	br.subscriptionMutex.Lock()
 	defer br.subscriptionMutex.Unlock()
-	missingBatches, err := br.getMissingBatches(lastKnownHead)
-	if err != nil {
-		return nil, err
-	}
-
-	subChannel := make(chan *core.Batch, len(missingBatches))
-	for i := len(missingBatches) - 1; i >= 0; i-- {
-		batch := missingBatches[i]
-		subChannel <- batch
-	}
+	subChannel := make(chan *core.Batch)
 
 	br.batchSubscription = &subChannel
-	return *br.batchSubscription, nil
+	return *br.batchSubscription
 }
 
 func (br *batchRegistryImpl) Unsubscribe() {
@@ -198,49 +189,6 @@ func (br *batchRegistryImpl) Unsubscribe() {
 		close(*br.batchSubscription)
 		br.batchSubscription = nil
 	}
-}
-
-func (br *batchRegistryImpl) getMissingBatches(fromHash *common.L2BatchHash) ([]*core.Batch, error) {
-	if fromHash == nil {
-		return nil, nil
-	}
-
-	from, err := br.GetBatch(*fromHash)
-	if err != nil {
-		br.logger.Error("Error while attempting to stream from batch", log.ErrKey, err)
-		return nil, err
-	}
-
-	to, err := br.GetHeadBatch()
-	if err != nil {
-		br.logger.Error("Unable to get head batch while attempting to stream", log.ErrKey, err)
-		return nil, err
-	}
-
-	missingBatches := make([]*core.Batch, 0)
-	for !bytes.Equal(to.Hash().Bytes(), from.Hash().Bytes()) {
-		if to.NumberU64() == 0 {
-			br.logger.Error("Reached genesis when seeking missing batches to stream", log.ErrKey, err)
-			return nil, err
-		}
-
-		if from.NumberU64() == to.NumberU64() {
-			from, err = br.GetBatch(from.Header.ParentHash)
-			if err != nil {
-				br.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
-				return nil, err
-			}
-		}
-
-		missingBatches = append(missingBatches, to)
-		to, err = br.GetBatch(to.Header.ParentHash)
-		if err != nil {
-			br.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
-			return nil, err
-		}
-	}
-
-	return missingBatches, nil
 }
 
 func (br *batchRegistryImpl) FindAncestralBatchFor(block *common.L1Block) (*core.Batch, error) {

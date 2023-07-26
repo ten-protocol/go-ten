@@ -106,6 +106,9 @@ type Enclave interface {
 	// GetBatch - retrieve a batch if existing within the enclave db.
 	GetBatch(hash L2BatchHash) (*ExtBatch, error)
 
+	// GetBatchBySeqNo - retrieve batch by sequencer number if it's in the db
+	GetBatchBySeqNo(seqNo uint64) (*ExtBatch, error)
+
 	// CreateBatch - creates a new head batch extending the previous one for the latest known L1 head if the node is
 	// a sequencer. Will panic otherwise.
 	CreateBatch() SystemError
@@ -117,9 +120,9 @@ type Enclave interface {
 	// DebugTraceTransaction returns the trace of a transaction
 	DebugTraceTransaction(hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, SystemError)
 
-	// StreamL2Updates - will stream the batches following the L2 batch hash given along with any newly created batches
-	// in the right order. All will be queued in the channel that has been returned
-	StreamL2Updates(*L2BatchHash) (chan StreamL2UpdatesResponse, func())
+	// StreamL2Updates - will stream any new batches as they are created/detected
+	// All will be queued in the channel that has been returned.
+	StreamL2Updates() (chan StreamL2UpdatesResponse, func())
 	// DebugEventLogRelevancy returns the logs of a transaction
 	DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, SystemError)
 }

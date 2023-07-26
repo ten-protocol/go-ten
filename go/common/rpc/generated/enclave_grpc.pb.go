@@ -67,6 +67,8 @@ type EnclaveProtoClient interface {
 	HealthCheck(ctx context.Context, in *EmptyArgs, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 	// GetBatch returns the encrypted batch based on a hash
 	GetBatch(ctx context.Context, in *GetBatchRequest, opts ...grpc.CallOption) (*GetBatchResponse, error)
+	// GetBatch returns the encrypted batch based on a hash
+	GetBatchBySeqNo(ctx context.Context, in *GetBatchBySeqNoRequest, opts ...grpc.CallOption) (*GetBatchResponse, error)
 	CreateBatch(ctx context.Context, in *CreateBatchRequest, opts ...grpc.CallOption) (*CreateBatchResponse, error)
 	CreateRollup(ctx context.Context, in *CreateRollupRequest, opts ...grpc.CallOption) (*CreateRollupResponse, error)
 	DebugTraceTransaction(ctx context.Context, in *DebugTraceTransactionRequest, opts ...grpc.CallOption) (*DebugTraceTransactionResponse, error)
@@ -263,6 +265,15 @@ func (c *enclaveProtoClient) GetBatch(ctx context.Context, in *GetBatchRequest, 
 	return out, nil
 }
 
+func (c *enclaveProtoClient) GetBatchBySeqNo(ctx context.Context, in *GetBatchBySeqNoRequest, opts ...grpc.CallOption) (*GetBatchResponse, error) {
+	out := new(GetBatchResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetBatchBySeqNo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *enclaveProtoClient) CreateBatch(ctx context.Context, in *CreateBatchRequest, opts ...grpc.CallOption) (*CreateBatchResponse, error) {
 	out := new(CreateBatchResponse)
 	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/CreateBatch", in, out, opts...)
@@ -389,6 +400,8 @@ type EnclaveProtoServer interface {
 	HealthCheck(context.Context, *EmptyArgs) (*HealthCheckResponse, error)
 	// GetBatch returns the encrypted batch based on a hash
 	GetBatch(context.Context, *GetBatchRequest) (*GetBatchResponse, error)
+	// GetBatch returns the encrypted batch based on a hash
+	GetBatchBySeqNo(context.Context, *GetBatchBySeqNoRequest) (*GetBatchResponse, error)
 	CreateBatch(context.Context, *CreateBatchRequest) (*CreateBatchResponse, error)
 	CreateRollup(context.Context, *CreateRollupRequest) (*CreateRollupResponse, error)
 	DebugTraceTransaction(context.Context, *DebugTraceTransactionRequest) (*DebugTraceTransactionResponse, error)
@@ -461,6 +474,9 @@ func (UnimplementedEnclaveProtoServer) HealthCheck(context.Context, *EmptyArgs) 
 }
 func (UnimplementedEnclaveProtoServer) GetBatch(context.Context, *GetBatchRequest) (*GetBatchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetBatch not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetBatchBySeqNo(context.Context, *GetBatchBySeqNoRequest) (*GetBatchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBatchBySeqNo not implemented")
 }
 func (UnimplementedEnclaveProtoServer) CreateBatch(context.Context, *CreateBatchRequest) (*CreateBatchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateBatch not implemented")
@@ -853,6 +869,24 @@ func _EnclaveProto_GetBatch_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_GetBatchBySeqNo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBatchBySeqNoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetBatchBySeqNo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/GetBatchBySeqNo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetBatchBySeqNo(ctx, req.(*GetBatchBySeqNoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _EnclaveProto_CreateBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateBatchRequest)
 	if err := dec(in); err != nil {
@@ -1050,6 +1084,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetBatch",
 			Handler:    _EnclaveProto_GetBatch_Handler,
+		},
+		{
+			MethodName: "GetBatchBySeqNo",
+			Handler:    _EnclaveProto_GetBatchBySeqNo_Handler,
 		},
 		{
 			MethodName: "CreateBatch",
