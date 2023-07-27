@@ -3,10 +3,10 @@
   <div class="slider-container">
     <div class="slider-content" :class="{ 'slide-out': isAnimating }">
       <el-card v-for="card in displayedCards"  class="card-content">
-        <h2>Height: {{ card.number }}</h2>
+        <h2>Block: {{ card.L1ProofNumber }}</h2>
         <div>Hash: {{ card.hash }}</div>
-        <div>Time: {{ card.timestamp }}</div>
-        <div>No of Txs: {{ card.hash }}</div>
+        <div>Block Hash: {{ card.L1Proof }}</div>
+        <div>No of Txs: N/A</div>
       </el-card>
     </div>
   </div>
@@ -15,26 +15,26 @@
 
 <script>
 import {computed, onMounted, onUnmounted} from "vue";
-import {useBlockStore} from "@/stores/blockStore";
+import {useRollupStore} from "@/stores/rollupStore";
 
 export default {
-  name: "RotatingBlocksItem",
+  name: "RotatingRollupsItem",
 
   setup() {
-    const blocks = useBlockStore()
+    const rollupsStore = useRollupStore()
 
     // Start polling when the component is mounted
     onMounted(() => {
-      blocks.startPolling()
+      rollupsStore.startPolling()
     })
 
     // Ensure to stop polling when component is destroyed or deactivated
     onUnmounted(() => {
-      blocks.stopPolling()
+      rollupsStore.stopPolling()
     })
 
     return {
-      displayedCards:  computed(() => blocks.blocks.get()),
+      displayedCards:  computed(() => rollupsStore.rollups.get()),
     }
   },
 }

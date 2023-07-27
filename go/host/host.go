@@ -545,6 +545,18 @@ func (h *host) processL1BlockTransactions(b *types.Block) {
 			h.logger.Error("Failed to update p2p peer list", log.ErrKey, err)
 		}
 	}
+
+	rollupTxs := h.l1Publisher().ExtractRollupTxs(b)
+	for _, rollup := range rollupTxs {
+		r, err := common.DecodeRollup(rollup.Rollup)
+		if err != nil {
+			h.logger.Error("could not decode rollup.", log.ErrKey, err)
+		}
+		err = h.DB().AddRollupHeader(r)
+		if err != nil {
+			h.logger.Error("could not store rollup.", log.ErrKey, err)
+		}
+	}
 }
 
 func (h *host) storeBatch(producedBatch *common.ExtBatch) {

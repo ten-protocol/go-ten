@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia';
 import Config from "@/lib/config";
-import BatchList from "@/lib/batchList";
+import CachedList from "@/lib/cachedList";
 
 export const useBatchStore = defineStore({
     id: 'batchStore',
     state: () => ({
         latestBatch: null,
         latestL1Proof: null,
-        batches: new BatchList(),
+        batches: new CachedList(),
         loading: false,
         pollingInterval: Config.pollingInterval,
         timer: null,

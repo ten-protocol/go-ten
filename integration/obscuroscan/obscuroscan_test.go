@@ -52,6 +52,9 @@ func TestObscuroscan(t *testing.T) {
 	err = obsScanContainer.Start()
 	require.NoError(t, err)
 
+	// wait for the msg bus contract to be deployed
+	time.Sleep(5 * time.Second)
+
 	// make sure the server is ready to receive requests
 	err = waitServerIsReady(serverAddress)
 	require.NoError(t, err)
@@ -71,7 +74,7 @@ func TestObscuroscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/block/latest/", serverAddress))
+	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/latest/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 

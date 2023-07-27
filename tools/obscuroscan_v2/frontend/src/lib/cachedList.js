@@ -1,10 +1,10 @@
-class BatchList {
+class CachedList {
     constructor() {
         this.items = [];
     }
 
     add(item) {
-        if (!this.items.includes(item)) {
+        if (!this.items.some(i => i.hash == item.hash)) {
             this.items.push(item);
         }
     }
@@ -14,4 +14,4 @@ class BatchList {
     }
 }
 
-export default BatchList
+export default CachedList
