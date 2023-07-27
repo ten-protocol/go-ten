@@ -117,6 +117,7 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 
 	bp.populateHeader(&copyBatch, allReceipts(txReceipts, ccReceipts))
 
+	// the receipts produced by the EVM have the wrong hash which must be adjusted
 	for _, receipt := range txReceipts {
 		receipt.BlockHash = copyBatch.Hash()
 	}

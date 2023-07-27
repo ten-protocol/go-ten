@@ -121,10 +121,6 @@ func NewEnclave(
 	}
 
 	// Initialise the database
-	backingDB, err := storage.CreateDBFromConfig(config, logger)
-	if err != nil {
-		logger.Crit("Failed to connect to backing database", log.ErrKey, err)
-	}
 	chainConfig := params.ChainConfig{
 		ChainID:             big.NewInt(config.ObscuroChainID),
 		HomesteadBlock:      gethcommon.Big0,
@@ -140,7 +136,7 @@ func NewEnclave(
 		BerlinBlock:         gethcommon.Big0,
 		LondonBlock:         gethcommon.Big0,
 	}
-	storage := storage.NewStorage(backingDB, &chainConfig, logger)
+	storage := storage.NewStorageFromConfig(config, &chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// todo (#1056) - valid block

@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/config"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -39,6 +41,14 @@ type storageImpl struct {
 	stateDB     state.Database
 	chainConfig *params.ChainConfig
 	logger      gethlog.Logger
+}
+
+func NewStorageFromConfig(config *config.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
+	backingDB, err := CreateDBFromConfig(config, logger)
+	if err != nil {
+		logger.Crit("Failed to connect to backing database", log.ErrKey, err)
+	}
+	return NewStorage(backingDB, chainConfig, logger)
 }
 
 func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
