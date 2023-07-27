@@ -1,17 +1,19 @@
 package nodetype
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/obscuronet/go-obscuro/go/common/compression"
@@ -173,7 +175,10 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	}
 
 	// todo - time is set only here; take from l1 block?
-	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.ParentHash(), headBatch, transactions, uint64(time.Now().Unix())); err != nil {
+	// when creating a new head batch, it is pointing to the parent of the current l1 head
+	// the reason for this is to minimize the chance of creating batches on top of blocks that will not be seen by the network
+	// todo - to fix in a follow up PR
+	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.ParentHash(), headBatch.Hash(), transactions, uint64(time.Now().Unix())); err != nil {
 		return fmt.Errorf(" failed producing batch. Cause: %w", err)
 	}
 
@@ -184,10 +189,10 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	return nil
 }
 
-func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash, headBatch *core.Batch, transactions common.L2Transactions, batchTime uint64) (*core.Batch, error) {
+func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash, headBatch common.L2BatchHash, transactions common.L2Transactions, batchTime uint64) (*core.Batch, error) {
 	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
 		BlockPtr:     l1Hash,
-		ParentPtr:    headBatch.Hash(),
+		ParentPtr:    headBatch,
 		Transactions: transactions,
 		AtTime:       batchTime,
 		Creator:      s.hostID,
@@ -234,54 +239,51 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 	return rollup.ToExtRollup(s.dataEncryptionService, s.dataCompressionService)
 }
 
-func (s *sequencer) DuplicateBatches(l1Head *types.Block, path []common.L1BlockHash) error {
+func (s *sequencer) DuplicateBatches(l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
+	batchesToDuplicate := make([]*core.Batch, 0)
+
+	// read the batches attached to these blocks
+	for _, l1BlockHash := range nonCanonicalL1Path {
+		batches, err := s.storage.FetchBatchesByBlock(l1BlockHash)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				continue
+			}
+			return fmt.Errorf("could not FetchBatchesByBlock %s. Cause %w", l1BlockHash, err)
+		}
+		batchesToDuplicate = append(batchesToDuplicate, batches...)
+	}
+
+	if len(batchesToDuplicate) == 0 {
+		return nil
+	}
+
+	// sort by height
+	sort.Slice(batchesToDuplicate, func(i, j int) bool {
+		return batchesToDuplicate[i].Number().Cmp(batchesToDuplicate[j].Number()) == -1
+	})
+
 	sequencerNo, err := s.storage.FetchCurrentSequencerNo()
 	if err != nil {
 		return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
 	}
 
-	firstNonCanonicalBlock, err := s.storage.FetchBlock(path[len(path)-1])
-	if err != nil {
-		return fmt.Errorf("could not fetch block %s. Cause %w", path[len(path)-1], err)
-	}
-
-	canonicalBlock := firstNonCanonicalBlock.ParentHash()
-	var currentHead *core.Batch
-	for currentHead == nil {
-		currentHead, err = s.storage.FetchHeadBatchForBlock(canonicalBlock)
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				b, err := s.storage.FetchBlock(canonicalBlock)
-				if err != nil {
-					return fmt.Errorf("could not find block %s. Cause %w", canonicalBlock, err)
-				}
-				canonicalBlock = b.ParentHash()
-				s.logger.Warn("going back")
-				continue
-			}
-			return fmt.Errorf("could not FetchHeadBatchForBlock for %s. Cause %w", firstNonCanonicalBlock.ParentHash(), err)
-		}
-	}
+	currentHead := batchesToDuplicate[0].Header.ParentHash
 
 	// find all batches for that path
-	for i := len(path) - 1; i >= 0; i-- {
-		blockHash := path[i]
-		batches, err := s.storage.FetchBatchesByBlock(blockHash)
+	for i, orphanBatch := range batchesToDuplicate {
+		// sanity check that all these batches are consecutive
+		if i > 0 && !bytes.Equal(batchesToDuplicate[i].Header.ParentHash.Bytes(), batchesToDuplicate[i-1].Hash().Bytes()) {
+			s.logger.Crit("the batches that must be duplicated are invalid")
+		}
+		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
+		// create the duplicate and store/broadcast it
+		b, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time)
+		currentHead = b.Hash()
 		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				continue
-			}
-			return fmt.Errorf("could not FetchBatchesByBlock %s. Cause %w", blockHash, err)
+			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}
-		for _, orphan := range batches {
-			sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
-			// for each of them create a duplicate and store/broadcast it
-			currentHead, err = s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphan.Transactions, orphan.Header.Time)
-			if err != nil {
-				return fmt.Errorf("could not produce batch. Cause %w", err)
-			}
-			s.logger.Info("Duplicated batch", "seqNo", currentHead.SeqNo(), "height", currentHead.Number())
-		}
+		s.logger.Info("Duplicated batch", log.BatchHashKey, currentHead)
 	}
 
 	return nil

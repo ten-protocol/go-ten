@@ -62,9 +62,7 @@ create table if not exists batch
     is_canonical boolean,
     header       blob,
     body         binary(32) REFERENCES batch_body,
---     l1_proof     binary(32) REFERENCES block,
-    l1_proof     binary(32),
-    source       text,
+    l1_proof     binary(32), -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
     unique (height, is_canonical)
 );
 create index IDX_BATCH_HEIGHT on batch (height);
@@ -83,7 +81,7 @@ create table if not exists tx
 
 create table if not exists exec_tx
 (
-    id                       binary(64) PRIMARY KEY, -- batch_hash||tx_idx
+    id                       binary(64) PRIMARY KEY, -- batch_hash||tx_hash
     created_contract_address binary(20),
     receipt                  mediumblob,
 --     commenting out the fk until synthetic transactions are also stored

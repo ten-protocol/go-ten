@@ -24,7 +24,7 @@ const (
 	txInsert      = "replace into tx values "
 	txInsertValue = "(?,?,?,?,?,?)"
 
-	bInsert = "insert into batch values (?,?,?,?,?,?,?,?,?)"
+	bInsert = "insert into batch values (?,?,?,?,?,?,?,?)"
 
 	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
 	selectHeader = "select b.header from batch b"
@@ -61,6 +61,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 		parentBytes = batch.Header.ParentHash.Bytes()
 	}
 
+	// todo - this can be removed if the batches have no is_canonical
 	var isCanon bool
 	err = dbtx.GetDB().QueryRow(isCanonQuery, batch.Header.L1Proof.Bytes()).Scan(&isCanon)
 	if err != nil {
@@ -68,17 +69,17 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 	}
 
 	dbtx.ExecuteSQL(bInsert,
-		batch.Hash().Bytes(),
-		parentBytes,
-		batch.Header.SequencerOrderNo.Uint64(),
-		batch.Header.Number.Uint64(),
-		isCanon,
-		header,
-		bodyHash,
-		batch.Header.L1Proof.Bytes(),
-		"", // todo
+		batch.Hash().Bytes(),                   // hash
+		parentBytes,                            // parent
+		batch.Header.SequencerOrderNo.Uint64(), // sequence
+		batch.Header.Number.Uint64(),           // height
+		isCanon,                                // is_canonical
+		header,                                 // header blob
+		bodyHash,                               // reference to the batch body
+		batch.Header.L1Proof.Bytes(),           // l1_proof
 	)
 
+	// creates a big insert statement for all transactions
 	if len(batch.Transactions) > 0 {
 		insert := txInsert + strings.Repeat(txInsertValue+",", len(batch.Transactions))
 		args := make([]any, 0)
@@ -88,12 +89,12 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
-			args = append(args, transaction.Hash().Bytes())
-			args = append(args, txBytes)
-			args = append(args, nil)
-			args = append(args, transaction.Nonce())
-			args = append(args, i)
-			args = append(args, bodyHash)
+			args = append(args, transaction.Hash().Bytes()) // tx_hash
+			args = append(args, txBytes)                    // content
+			args = append(args, nil)                        // sender_address - todo - implement
+			args = append(args, transaction.Nonce())        // nonce
+			args = append(args, i)                          // idx
+			args = append(args, bodyHash)                   // the batch body which contained it
 		}
 		dbtx.ExecuteSQL(insert[0:len(insert)-1], args...)
 	}
@@ -112,11 +113,11 @@ func WriteReceipts(dbtx DBTransaction, receipts []*types.Receipt) error {
 			return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 		}
 
-		args = append(args, executedTransactionID(&receipt.BlockHash, &receipt.TxHash))
-		args = append(args, receipt.ContractAddress.Bytes())
-		args = append(args, receiptBytes)
-		args = append(args, receipt.TxHash.Bytes())
-		args = append(args, receipt.BlockHash.Bytes())
+		args = append(args, executedTransactionID(&receipt.BlockHash, &receipt.TxHash)) // PK
+		args = append(args, receipt.ContractAddress.Bytes())                            // created_contract_address
+		args = append(args, receiptBytes)                                               // the serialised receipt
+		args = append(args, receipt.TxHash.Bytes())                                     // tx_hash
+		args = append(args, receipt.BlockHash.Bytes())                                  // batch_hash
 	}
 	if len(args) > 0 {
 		insert := txExecInsert + strings.Repeat(txExecInsertValue+",", len(receipts))
@@ -125,6 +126,7 @@ func WriteReceipts(dbtx DBTransaction, receipts []*types.Receipt) error {
 	return nil
 }
 
+// concatenates the batch_hash with the tx_hash to create a PK for the executed transaction
 func executedTransactionID(batchHash *common.L2BatchHash, txHash *common.L2TxHash) []byte {
 	execTxID := make([]byte, 0)
 	execTxID = append(execTxID, batchHash.Bytes()...)
@@ -148,8 +150,9 @@ func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, err
 	return fetchBatchHeader(db, " where hash=?", hash.Bytes())
 }
 
+// todo - is there a better way to write this query?
 func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
-	return fetchBatch(db, " where b.height=(select max(b1.height) from batch b1) and is_canonical")
+	return fetchBatch(db, " where b.height=(select max(b1.height) from batch b1 where b1.is_canonical) and is_canonical")
 }
 
 func ReadBatchesByBlock(db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {

@@ -96,7 +96,7 @@ type enclaveImpl struct {
 	logger                 gethlog.Logger
 
 	stopControl *stopcontrol.StopControl
-	mainMutex   sync.Mutex
+	mainMutex   sync.Mutex // serialises all data ingestion or creation to avoid weird races
 }
 
 // NewEnclave creates a new enclave.
@@ -444,6 +444,7 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 		// Unsure what to do here; block has been stored
 	}
 
+	// the sequencer has the task of duplicating the batches that have become non-canonical
 	sequencer, ok := e.service.(nodetype.Sequencer)
 	if ok && len(nonCanonicalPath) > 0 {
 		err := sequencer.DuplicateBatches(br.Block, nonCanonicalPath)

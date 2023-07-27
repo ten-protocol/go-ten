@@ -268,12 +268,13 @@ func (s *storageImpl) FetchBatchesByBlock(block common.L1BlockHash) ([]*core.Bat
 }
 
 func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) error {
-	dbTx := s.db.NewDBTransaction()
-	if _, err := s.FetchBatchBySeqNo(batch.SeqNo().Uint64()); err == nil {
-		return nil
-		// return fmt.Errorf("batch with same sequence number already exists: %d", batch.SeqNo())
+	// sanity check that this is not overlapping
+	prev, err := s.FetchBatchBySeqNo(batch.SeqNo().Uint64())
+	if err == nil && !bytes.Equal(prev.Hash().Bytes(), batch.Hash().Bytes()) {
+		return fmt.Errorf("a different batch with same sequence number already exists: %d", batch.SeqNo())
 	}
 
+	dbTx := s.db.NewDBTransaction()
 	s.logger.Trace("write batch", "hash", batch.Hash(), "l1_proof", batch.Header.L1Proof)
 	if err := enclavedb.WriteBatchAndTransactions(dbTx, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
@@ -286,7 +287,7 @@ func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) e
 		}
 	}
 
-	err := dbTx.Write()
+	err = dbTx.Write()
 	if err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}

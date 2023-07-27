@@ -23,7 +23,9 @@ const (
 
 	rollupInsert = "insert into rollup values (?,?,?,?)"
 
-	updateCanonicalBlock   = "update block set is_canonical=? where hash in "
+	updateCanonicalBlock = "update block set is_canonical=? where hash in "
+
+	// todo - do we need the is_canonical field?
 	updateCanonicalBatches = "update batch set is_canonical=? where l1_proof in "
 )
 
