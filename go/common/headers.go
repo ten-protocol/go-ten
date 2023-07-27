@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"sync"
@@ -44,6 +45,18 @@ type BatchHeader struct {
 	LatestInboundCrossChainHeight *big.Int `json:"inboundCrossChainHeight"`
 }
 
+// MarshalJSON custom marshals the BatchHeader into a json
+func (b *BatchHeader) MarshalJSON() ([]byte, error) {
+	type Alias BatchHeader
+	return json.Marshal(struct {
+		*Alias
+		Hash common.Hash `json:"hash"`
+	}{
+		(*Alias)(b),
+		b.Hash(),
+	})
+}
+
 // RollupHeader is a public / plaintext struct that holds common properties of rollups.
 // All these fields are processed by the Management contract
 type RollupHeader struct {
@@ -57,6 +70,18 @@ type RollupHeader struct {
 	R, S        *big.Int    // signature values
 
 	LastBatchSeqNo uint64
+}
+
+// MarshalJSON custom marshals the RollupHeader into a json
+func (r *RollupHeader) MarshalJSON() ([]byte, error) {
+	type Alias RollupHeader
+	return json.Marshal(struct {
+		*Alias
+		Hash common.Hash `json:"hash"`
+	}{
+		(*Alias)(r),
+		r.Hash(),
+	})
 }
 
 // Hash returns the block hash of the header, which is simply the keccak256 hash of its

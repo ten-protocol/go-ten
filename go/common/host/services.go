@@ -96,6 +96,8 @@ type L1Publisher interface {
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
 	// ExtractSecretResponses will return all secret response tx from an L1 block
 	ExtractSecretResponses(block *types.Block) []*ethadapter.L1RespondSecretTx
+	// ExtractRollupTxs will return all rollup txs from an L1 block
+	ExtractRollupTxs(block *types.Block) []*ethadapter.L1RollupTx
 	// PublishRollup will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
 	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
 	PublishRollup(producedRollup *common.ExtRollup)

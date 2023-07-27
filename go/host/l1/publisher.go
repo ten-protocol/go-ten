@@ -171,6 +171,20 @@ func (p *Publisher) ExtractSecretResponses(block *types.Block) []*ethadapter.L1R
 	return secretRespTxs
 }
 
+func (p *Publisher) ExtractRollupTxs(block *types.Block) []*ethadapter.L1RollupTx {
+	var rollupTxs []*ethadapter.L1RollupTx
+	for _, tx := range block.Transactions() {
+		t := p.mgmtContractLib.DecodeTx(tx)
+		if t == nil {
+			continue
+		}
+		if rollupTx, ok := t.(*ethadapter.L1RollupTx); ok {
+			rollupTxs = append(rollupTxs, rollupTx)
+		}
+	}
+	return rollupTxs
+}
+
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }

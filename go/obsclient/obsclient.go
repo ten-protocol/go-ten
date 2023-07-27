@@ -5,7 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 
@@ -102,10 +101,10 @@ func (oc *ObsClient) GetTotalTransactionCount() (int, error) {
 	return count, nil
 }
 
-// GetLatestBlockHeader returns the header of the block at tip
-func (oc *ObsClient) GetLatestBlockHeader() (*types.Header, error) {
-	var header *types.Header
-	err := oc.rpcClient.Call(&header, rpc.GetLatestBlockHeader)
+// GetLatestRollupHeader returns the header of the rollup at tip
+func (oc *ObsClient) GetLatestRollupHeader() (*common.RollupHeader, error) {
+	var header *common.RollupHeader
+	err := oc.rpcClient.Call(&header, rpc.GetLatestRollupHeader)
 	if err != nil {
 		return nil, err
 	}

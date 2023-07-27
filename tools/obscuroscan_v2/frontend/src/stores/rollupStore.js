@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia';
 import Config from "@/lib/config";
-import BlockList from "@/lib/blockList";
+import CachedList from "@/lib/cachedList";
 
-export const useBlockStore = defineStore({
-    id: 'blockStore',
+
+export const useRollupStore = defineStore({
+    id: 'rollupStore',
     state: () => ({
-        blocks: new BlockList(),
+        rollups: new CachedList(),
         loading: false,
         pollingInterval: Config.pollingInterval,
         timer: null,
@@ -14,11 +15,11 @@ export const useBlockStore = defineStore({
         async fetchCount() {
             this.loading = true;
             try {
-                let response = await fetch( Config.backendServerAddress+'/items/block/latest/');
+                let response = await fetch( Config.backendServerAddress+'/items/rollup/latest/');
                 let data = await response.json();
-                this.blocks.add(data.item);
+                this.rollups.add(data.item);
 
-                console.log("Fetched "+data.item.Number);
+                console.log("Fetched "+data.item.L1ProofNumber);
             } catch (error) {
                 console.error("Failed to fetch count:", error);
             } finally {

@@ -24,6 +24,8 @@ var (
 	batchTxHashesPrefix     = []byte("bt")
 	headBatch               = []byte("hb")
 	totalTransactionsKey    = []byte("t")
+	rollupHeaderPrefix      = []byte("rh")
+	tipRollupHash           = []byte("tr")
 )
 
 // DB allows to access the nodes public nodeDB

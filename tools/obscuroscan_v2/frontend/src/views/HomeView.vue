@@ -2,7 +2,7 @@
 import { defineComponent } from 'vue'
 import SummaryItem from '@/components/SummaryItem.vue'
 import RotatingBatchesItem from "@/components/RotatingBatchesItem.vue";
-import RotatingBlocksItem from "@/components/RotatingBlocksItem.vue";
+import RotatingBlocksItem from "@/components/RotatingRollupsItem.vue";
 
 export default defineComponent({
   components: {RotatingBlocksItem, RotatingBatchesItem, SummaryItem }
