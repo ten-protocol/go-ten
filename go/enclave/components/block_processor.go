@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -12,16 +14,15 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 type l1BlockProcessor struct {
-	storage              db.Storage
+	storage              storage.Storage
 	logger               gethlog.Logger
 	crossChainProcessors *crosschain.Processors
 }
 
-func NewBlockProcessor(storage db.Storage, cc *crosschain.Processors, logger gethlog.Logger) L1BlockProcessor {
+func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, logger gethlog.Logger) L1BlockProcessor {
 	return &l1BlockProcessor{
 		storage:              storage,
 		logger:               logger,
@@ -29,10 +30,10 @@ func NewBlockProcessor(storage db.Storage, cc *crosschain.Processors, logger get
 	}
 }
 
-func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts) (*BlockIngestionType, error) {
 	defer bp.logger.Info("L1 block processed", log.BlockHashKey, br.Block.Hash(), log.DurationKey, measure.NewStopwatch())
 
-	ingestion, err := bp.tryAndInsertBlock(br, isLatest)
+	ingestion, err := bp.tryAndInsertBlock(br)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +49,7 @@ func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts, isLatest bool) 
 	return ingestion, nil
 }
 
-func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts) (*BlockIngestionType, error) {
 	block := br.Block
 
 	_, err := bp.storage.FetchBlock(block.Hash())
@@ -61,7 +62,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLat
 	}
 
 	// We insert the block into the L1 chain and store it.
-	ingestionType, err := bp.ingestBlock(block, isLatest)
+	ingestionType, err := bp.ingestBlock(block)
 	if err != nil {
 		// Do not store the block if the L1 chain insertion failed
 		return nil, err
@@ -69,29 +70,27 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts, isLat
 	bp.logger.Trace("block inserted successfully",
 		log.BlockHeightKey, block.NumberU64(), log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
 
-	bp.storage.StoreBlock(block)
-	err = bp.storage.UpdateL1Head(block.Hash())
+	err = bp.storage.StoreBlock(block, ingestionType.ChainFork)
 	if err != nil {
-		return nil, fmt.Errorf("could not update L1 head. Cause: %w", err)
+		return nil, fmt.Errorf("could not store block. Cause: %w", err)
 	}
 
 	return ingestionType, nil
 }
 
-func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block) (*BlockIngestionType, error) {
 	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
 	prevL1Head, err := bp.storage.FetchHeadBlock()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			// todo (@matt) - we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
-			return &BlockIngestionType{IsLatest: isLatest, Fork: false, PreGenesis: true}, nil
+			return &BlockIngestionType{PreGenesis: true}, nil
 		}
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
-	isFork := false
 	// we do a basic sanity check, comparing the received block to the head block on the chain
 	if block.ParentHash() != prevL1Head.Hash() {
-		lcaBlock, err := gethutil.LCA(block, prevL1Head, bp.storage)
+		chainFork, err := gethutil.LCA(block, prevL1Head, bp.storage)
 		if err != nil {
 			bp.logger.Trace("parent not found",
 				"blkHeight", block.NumberU64(), log.BlockHashKey, block.Hash(),
@@ -100,10 +99,13 @@ func (bp *l1BlockProcessor) ingestBlock(block *common.L1Block, isLatest bool) (*
 			return nil, errutil.ErrBlockAncestorNotFound
 		}
 
-		// fork - least common ancestor for this block and l1 head is before the l1 head.
-		isFork = lcaBlock.NumberU64() < prevL1Head.NumberU64()
+		if chainFork.IsFork() {
+			bp.logger.Info("Fork detected in the l1 chain", "can", chainFork.CommonAncestor.Hash().Hex(), "noncan", prevL1Head.Hash().Hex())
+		}
+		return &BlockIngestionType{ChainFork: chainFork, PreGenesis: false}, nil
 	}
-	return &BlockIngestionType{IsLatest: isLatest, Fork: isFork, PreGenesis: false}, nil
+
+	return &BlockIngestionType{ChainFork: nil, PreGenesis: false}, nil
 }
 
 func (bp *l1BlockProcessor) GetHead() (*common.L1Block, error) {

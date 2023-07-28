@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 type SignatureValidator struct {
 	SequencerID gethcommon.Address
 	attestedKey *ecdsa.PublicKey
-	storage     db.Storage
+	storage     storage.Storage
 }
 
-func NewSignatureValidator(seqID gethcommon.Address, storage db.Storage) (*SignatureValidator, error) {
+func NewSignatureValidator(seqID gethcommon.Address, storage storage.Storage) (*SignatureValidator, error) {
 	// todo (#718) - sequencer identities should be retrieved from the L1 management contract
 	return &SignatureValidator{
 		SequencerID: seqID,

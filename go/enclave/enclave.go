@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 
 	"github.com/obscuronet/go-obscuro/go/common/compression"
@@ -45,7 +47,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/debugger"
 	"github.com/obscuronet/go-obscuro/go/enclave/events"
 
@@ -65,8 +66,8 @@ import (
 
 type enclaveImpl struct {
 	config               *config.EnclaveConfig
-	storage              db.Storage
-	blockResolver        db.BlockResolver
+	storage              storage.Storage
+	blockResolver        storage.BlockResolver
 	l1BlockProcessor     components.L1BlockProcessor
 	rollupConsumer       components.RollupConsumer
 	l1Blockchain         *gethcore.BlockChain
@@ -94,8 +95,8 @@ type enclaveImpl struct {
 	debugger               *debugger.Debugger
 	logger                 gethlog.Logger
 
-	stopControl         *stopcontrol.StopControl
-	blockIngestionMutex sync.Mutex
+	stopControl *stopcontrol.StopControl
+	mainMutex   sync.Mutex // serialises all data ingestion or creation to avoid weird races
 }
 
 // NewEnclave creates a new enclave.
@@ -120,10 +121,6 @@ func NewEnclave(
 	}
 
 	// Initialise the database
-	backingDB, err := db.CreateDBFromConfig(config, logger)
-	if err != nil {
-		logger.Crit("Failed to connect to backing database", log.ErrKey, err)
-	}
 	chainConfig := params.ChainConfig{
 		ChainID:             big.NewInt(config.ObscuroChainID),
 		HomesteadBlock:      gethcommon.Big0,
@@ -139,7 +136,7 @@ func NewEnclave(
 		BerlinBlock:         gethcommon.Big0,
 		LondonBlock:         gethcommon.Big0,
 	}
-	storage := db.NewStorage(backingDB, &chainConfig, logger)
+	storage := storage.NewStorageFromConfig(config, &chainConfig, logger)
 
 	// Initialise the Ethereum "Blockchain" structure that will allow us to validate incoming blocks
 	// todo (#1056) - valid block
@@ -278,7 +275,7 @@ func NewEnclave(
 		GlobalGasCap: 5_000_000_000, // todo (#627) - make config
 		BaseFee:      gethcommon.Big0,
 
-		blockIngestionMutex: sync.Mutex{},
+		mainMutex: sync.Mutex{},
 	}
 }
 
@@ -350,6 +347,7 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 }
 
 func (e *enclaveImpl) sendEvents(batchHead uint64, outChannel chan common.StreamL2UpdatesResponse) {
+	e.logger.Info("Send Events", "batchHead", batchHead)
 	logs, err := e.subscriptionLogs(big.NewInt(int64(batchHead)))
 	if err != nil {
 		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
@@ -404,7 +402,7 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, _ bool) (*common.BlockSubmissionResponse, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
 	}
@@ -417,28 +415,26 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	result, err := e.ingestL1Block(br, isLatest)
+	result, err := e.ingestL1Block(br)
 	if err != nil {
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	if result.Fork {
-		e.logger.Info(fmt.Sprintf("Detected forked at block %s with height %d", block.Hash(), block.Number()))
+	if result.IsFork() {
+		e.logger.Info(fmt.Sprintf("Detected fork at block %s with height %d", block.Hash(), block.Number()))
 	}
 
-	bsr := e.produceBlockSubmissionResponse(nil, nil)
-
-	bsr.ProducedSecretResponses = e.processNetworkSecretMsgs(br)
+	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.processNetworkSecretMsgs(br)}
 	return bsr, nil
 }
 
-func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
-	e.blockIngestionMutex.Lock()
-	defer e.blockIngestionMutex.Unlock()
+func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
 
-	ingestion, err := e.l1BlockProcessor.Process(br, isLatest)
+	ingestion, err := e.l1BlockProcessor.Process(br)
 	if err != nil {
-		e.logger.Error("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
+		e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
 		return nil, err
 	}
 
@@ -448,6 +444,12 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 		// Unsure what to do here; block has been stored
 	}
 
+	if ingestion.IsFork() {
+		err := e.service.OnL1Fork(ingestion.ChainFork)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return ingestion, nil
 }
 
@@ -498,6 +500,7 @@ func (e *enclaveImpl) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.
 	}
 
 	if err = e.service.SubmitTransaction(decryptedTx); err != nil {
+		e.logger.Warn("Could not submit transaction", log.TxKey, decryptedTx.Hash(), log.ErrKey, err)
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
@@ -536,6 +539,11 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
 	}
+
+	// todo - remove once the db operations are more atomic
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
+
 	if err := e.Validator().ValidateAndStoreBatch(batch); err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err))
 	}
@@ -552,6 +560,10 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 	defer func() {
 		e.logger.Info(fmt.Sprintf("CreateBatch call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
 	}()
+
+	// todo - remove once the db operations are more atomic
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
 
 	err := e.Sequencer().CreateBatch()
 	if err != nil {
@@ -570,6 +582,10 @@ func (e *enclaveImpl) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.
 	defer func() {
 		e.logger.Info(fmt.Sprintf("CreateRollup call ended - start = %s duration %s", callStart.String(), time.Since(callStart).String()))
 	}()
+
+	// todo - remove once the db operations are more atomic
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
 
 	rollup, err := e.Sequencer().CreateRollup(fromSeqNo)
 	if err != nil {
@@ -762,9 +778,12 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 	txHash := gethcommon.HexToHash(txHashStr)
 
+	// todo - optimise these calls. This can be done with a single sql
+	e.logger.Trace("Get receipt for ", "txHash", txHash)
 	// We retrieve the transaction.
 	tx, txBatchHash, txBatchHeight, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
+		e.logger.Trace("error getting tx ", "txHash", txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
 			// like geth return an empty response when a not-found tx is requested
 			return responses.AsEmptyResponse(), nil
@@ -775,29 +794,34 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// We retrieve the sender's address.
 	sender, err := rpc.GetSender(tx)
 	if err != nil {
+		e.logger.Trace("error getting sender tx ", "txHash", txHash, log.ErrKey, err)
 		return responses.AsPlaintextError(fmt.Errorf("could not recover viewing key address to encrypt eth_getTransactionReceipt response. Cause: %w", err)), nil
 	}
 
 	// extract, create and validate the VK encryption handler
 	vkHandler, err := createVKHandler(&sender, paramList[0])
 	if err != nil {
+		e.logger.Trace("error getting the vk ", "txHash", txHash, log.ErrKey, err)
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
 
 	// Only return receipts for transactions included in the canonical chain.
 	r, err := e.storage.FetchBatchByHeight(txBatchHeight)
 	if err != nil {
+		e.logger.Trace("error getting batch height ", "txHash", txHash, log.ErrKey, err)
 		err = fmt.Errorf("could not retrieve batch containing transaction. Cause: %w", err)
 		return responses.AsPlaintextError(err), nil
 	}
 	if !bytes.Equal(r.Hash().Bytes(), txBatchHash.Bytes()) {
 		err = fmt.Errorf("transaction not included in the canonical chain")
+		e.logger.Trace("error getting tx ", "txHash", txHash, log.ErrKey, err)
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	// We retrieve the transaction receipt.
 	txReceipt, err := e.storage.GetTransactionReceipt(txHash)
 	if err != nil {
+		e.logger.Trace("error getting tx receipt", "txHash", txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
 			// like geth return an empty response when a not-found tx is requested
 			return responses.AsEmptyResponse(), nil
@@ -809,8 +833,11 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// We filter out irrelevant logs.
 	txReceipt.Logs, err = e.subscriptionManager.FilterLogs(txReceipt.Logs, txBatchHash, &sender, &filters.FilterCriteria{})
 	if err != nil {
+		e.logger.Trace("error filter logs ", "txHash", txHash, log.ErrKey, err)
 		return nil, responses.ToInternalError(err)
 	}
+
+	e.logger.Trace("Successfully retreived receipt for ", "txHash", txHash, "rec", txReceipt)
 
 	return responses.AsEncryptedResponse(txReceipt, vkHandler), nil
 }
@@ -1470,38 +1497,6 @@ func extractGetLogsParams(paramList []interface{}) (*filters.FilterCriteria, *ge
 	return &filter, &forAddress, nil
 }
 
-func (e *enclaveImpl) produceBlockSubmissionResponse(l2Head *common.L2BatchHash, producedBatch *core.Batch) *common.BlockSubmissionResponse {
-	if l2Head == nil {
-		// not an error state, we ingested a block but no rollup head found
-		return &common.BlockSubmissionResponse{}
-	}
-
-	var producedExtBatch *common.ExtBatch
-	var err error
-	if producedBatch != nil {
-		producedExtBatch, err = producedBatch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
-	}
-	if err != nil {
-		e.logger.Crit("Failed to convert batch. Should not happen", log.ErrKey, err)
-		return nil
-	}
-
-	batch, err := e.storage.FetchBatchHeader(*l2Head)
-	if err != nil {
-		e.logger.Crit("Failed to retrieve batch. Should not happen", log.ErrKey, err)
-		return nil
-	}
-	logs, err := e.subscriptionLogs(batch.Number)
-	if err != nil {
-		e.logger.Error("Could not fetch logs", log.ErrKey, err)
-		return nil
-	}
-	return &common.BlockSubmissionResponse{
-		ProducedBatch:  producedExtBatch,
-		SubscribedLogs: logs,
-	}
-}
-
 // Retrieves and encrypts the logs for the block.
 func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (common.EncryptedSubscriptionLogs, error) {
 	result := map[gethrpc.ID][]*types.Log{}
@@ -1598,7 +1593,7 @@ func serializeEVMError(err error) ([]byte, error) {
 
 // this function looks at the batch chain and makes sure the resulting stateDB snapshots are available, replaying them if needed
 // (if there had been a clean shutdown and all stateDB data was persisted this should do nothing)
-func restoreStateDBCache(storage db.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
+func restoreStateDBCache(storage storage.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
 	batch, err := storage.FetchHeadBatch()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -1622,7 +1617,7 @@ func restoreStateDBCache(storage db.Storage, producer components.BatchProducer, 
 // batch in the chain and is used to query state at a certain height.
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
-func stateDBAvailableForBatch(storage db.Storage, hash common.L2BatchHash) bool {
+func stateDBAvailableForBatch(storage storage.Storage, hash common.L2BatchHash) bool {
 	_, err := storage.CreateStateDB(hash)
 	return err == nil
 }
@@ -1631,7 +1626,7 @@ func stateDBAvailableForBatch(storage db.Storage, hash common.L2BatchHash) bool 
 // 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
 // 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
 // todo (#1416) - get unit test coverage around this (and L2 Chain code more widely, see ticket #1416 )
-func replayBatchesToValidState(storage db.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
+func replayBatchesToValidState(storage storage.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
 	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
 	// todo - consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
 	var batchesToReplay []*core.Batch

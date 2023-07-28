@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/obscuronet/go-obscuro/go/common/async"
 
 	"github.com/google/uuid"
@@ -28,7 +30,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	ethclient_ethereum "github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
@@ -61,7 +62,7 @@ type Node struct {
 	Network  L1Network
 	mining   bool
 	stats    StatsCollector
-	Resolver db.BlockResolver
+	Resolver storage.BlockResolver
 	db       TxDB
 	subs     map[uuid.UUID]*mockSubscription // active subscription for mock blocks
 	subMu    sync.Mutex
@@ -224,7 +225,10 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	m.Resolver.StoreBlock(MockGenesisBlock)
+	err := m.Resolver.StoreBlock(MockGenesisBlock, nil)
+	if err != nil {
+		m.logger.Crit("Failed to store block")
+	}
 	head := m.setHead(MockGenesisBlock)
 
 	for {
@@ -266,8 +270,11 @@ func (m *Node) Start() {
 }
 
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
-	m.Resolver.StoreBlock(b)
-	_, err := m.Resolver.FetchBlock(b.Header().ParentHash)
+	err := m.Resolver.StoreBlock(b, nil)
+	if err != nil {
+		m.logger.Crit("Failed to store block. Cause: %w", err)
+	}
+	_, err = m.Resolver.FetchBlock(b.Header().ParentHash)
 	// only proceed if the parent is available
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -290,8 +297,8 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 			panic(err)
 		}
 		m.logger.Info(
-			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.Hash()), fork.NumberU64()))
-		return m.setFork(m.BlocksBetween(fork, b))
+			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.CommonAncestor.Hash()), fork.CommonAncestor.NumberU64()))
+		return m.setFork(m.BlocksBetween(fork.CommonAncestor, b))
 	}
 
 	if b.NumberU64() > (head.NumberU64() + 1) {

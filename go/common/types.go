@@ -159,3 +159,17 @@ func VerifyReceiptHash(block *L1Block, receipts L1Receipts) bool {
 
 	return bytes.Equal(calculatedHash.Bytes(), expectedHash.Bytes())
 }
+
+// ChainFork - represents the result of walking the chain when processing a fork
+type ChainFork struct {
+	NewCanonical *types.Block
+	OldCanonical *types.Block
+
+	CommonAncestor   *types.Block
+	CanonicalPath    []L1BlockHash
+	NonCanonicalPath []L1BlockHash
+}
+
+func (cf *ChainFork) IsFork() bool {
+	return len(cf.NonCanonicalPath) > 0
+}

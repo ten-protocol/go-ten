@@ -1,11 +1,14 @@
 package components
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
 	"sort"
 	"sync"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -20,7 +23,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crosschain"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/evm"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 )
@@ -28,7 +30,7 @@ import (
 // batchProducerImpl - the component responsible for computing follow up batches
 // based on
 type batchProducerImpl struct {
-	storage              db.Storage
+	storage              storage.Storage
 	crossChainProcessors *crosschain.Processors
 	genesis              *genesis.Genesis
 	logger               gethlog.Logger
@@ -36,7 +38,7 @@ type batchProducerImpl struct {
 	stateDBMutex sync.Mutex
 }
 
-func NewBatchProducer(storage db.Storage, cc *crosschain.Processors, genesis *genesis.Genesis, logger gethlog.Logger) BatchProducer {
+func NewBatchProducer(storage storage.Storage, cc *crosschain.Processors, genesis *genesis.Genesis, logger gethlog.Logger) BatchProducer {
 	return &batchProducerImpl{
 		storage:              storage,
 		crossChainProcessors: cc,
@@ -68,7 +70,7 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}
 
 	parentBlock := block
-	if parent.L1Proof != block.Hash() {
+	if !bytes.Equal(parent.L1Proof.Bytes(), block.Hash().Bytes()) {
 		var err error
 		parentBlock, err = bp.storage.FetchBlock(parent.L1Proof)
 		if err != nil {
@@ -84,7 +86,10 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
-	messages := bp.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
+	var messages common.CrossChainMessages
+	if context.SequencerNo.Int64() > 1 {
+		messages = bp.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
+	}
 	crossChainTransactions := bp.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 
 	successfulTxs, txReceipts, err := bp.processTransactions(batch, 0, context.Transactions, stateDB, context.ChainConfig)
@@ -101,17 +106,24 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
 	}
 
-	batch.Header.Root = stateDB.IntermediateRoot(false)
-	batch.Transactions = successfulTxs
+	// we need to copy the batch to reset the internal hash cache
+	copyBatch := *batch
+	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
+	copyBatch.Transactions = successfulTxs
 
-	if err = bp.populateOutboundCrossChainData(batch, block, txReceipts); err != nil {
+	if err = bp.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
 		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
 	}
 
-	bp.populateHeader(batch, allReceipts(txReceipts, ccReceipts))
+	bp.populateHeader(&copyBatch, allReceipts(txReceipts, ccReceipts))
+
+	// the receipts produced by the EVM have the wrong hash which must be adjusted
+	for _, receipt := range txReceipts {
+		receipt.BlockHash = copyBatch.Hash()
+	}
 
 	return &ComputedBatch{
-		Batch:    batch,
+		Batch:    &copyBatch,
 		Receipts: txReceipts,
 		Commit: func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
 			bp.stateDBMutex.Lock()

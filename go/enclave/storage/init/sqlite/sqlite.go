@@ -1,4 +1,4 @@
-package sql
+package sqlite
 
 import (
 	"database/sql"
@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 
@@ -16,12 +18,12 @@ import (
 
 const tempDirName = "obscuro-persistence"
 
-//go:embed sqlite/001_init.sql
+//go:embed 001_init.sql
 var sqlInitFile string
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
-// otherwise dbPath is a filepath for the db file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (*EnclaveDB, error) {
+// otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
+func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	initialsed := false
 
 	if dbPath == "" {
@@ -44,7 +46,7 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (*EnclaveDB, 
 		}
 	}
 
-	db, err := sql.Open("sqlite3", dbPath)
+	db, err := sql.Open("sqlite3", dbPath+"&_foreign_keys=on")
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
@@ -63,7 +65,7 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (*EnclaveDB, 
 
 	logger.Info(fmt.Sprintf("Opened %s sqlite db file at %s", description, dbPath))
 
-	return CreateSQLEthDatabase(db, logger)
+	return enclavedb.NewEnclaveDB(db, logger)
 }
 
 func initialiseDB(db *sql.DB) error {

@@ -229,7 +229,7 @@ func (h *host) HandleBlock(block *types.Block) {
 	defer h.submitDataToEnclaveLock.Unlock()
 	err := h.processL1Block(block, true, false)
 	if err != nil {
-		h.logger.Warn("error processing L1 block", log.ErrKey, err)
+		h.logger.Warn("failure processing L1 block", log.ErrKey, err)
 	}
 }
 
@@ -688,7 +688,7 @@ func (h *host) startBatchProduction() {
 			h.logger.Debug("create batch")
 			err := h.enclaveClient.CreateBatch()
 			if err != nil {
-				h.logger.Warn("unable to produce batch", log.ErrKey, err)
+				h.logger.Error("unable to produce batch", log.ErrKey, err)
 			}
 		case <-h.interrupter.Done():
 			return

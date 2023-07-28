@@ -1,4 +1,4 @@
-package sql
+package edgelessdb
 
 import (
 	"bytes"
@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -94,7 +96,7 @@ const (
 )
 
 var (
-	//go:embed edgelessdb/001_init.sql
+	//go:embed 001_init.sql
 	edbInitFile string
 
 	edbCredentialsFilepath = filepath.Join(dataDir, "edb-credentials.json")
@@ -109,11 +111,11 @@ type manifest struct {
 }
 
 // todo (#1474) - move more of the hardcoded config into this (attestation conf, usernames etc.)
-type EdgelessDBConfig struct {
+type Config struct {
 	Host string
 }
 
-type EdgelessDBCredentials struct {
+type Credentials struct {
 	ManifestJSON string // contains CA cert and sql statements to initialize edb and then to verify edb is setup as expected
 	EDBCACertPEM string // root cert securely provided by edb enclave to encrypt all our communication with it
 	CACertPEM    string // root cert we generate in our enclave and securely provide to the edb in the manifest
@@ -121,7 +123,7 @@ type EdgelessDBCredentials struct {
 	UserKeyPEM   string // db user private key, generated in our enclave
 }
 
-func EdgelessDBConnector(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*EnclaveDB, error) {
+func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	// rather than fail immediately if EdgelessDB is not available yet we wait up for `edgelessDBStartTimeout` for it to be available
 	err := waitForEdgelessDBToStart(edbCfg.Host, logger)
 	if err != nil {
@@ -145,7 +147,7 @@ func EdgelessDBConnector(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*Encl
 	}
 
 	// wrap it in our eth-compatible key-value store layer
-	return CreateSQLEthDatabase(sqlDB, logger)
+	return enclavedb.NewEnclaveDB(sqlDB, logger)
 }
 
 func waitForEdgelessDBToStart(edbHost string, logger gethlog.Logger) error {
@@ -166,7 +168,7 @@ func waitForEdgelessDBToStart(edbHost string, logger gethlog.Logger) error {
 		edgelessDBStartTimeout, edgelessHTTPAddr, err)
 }
 
-func getHandshakeCredentials(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*EdgelessDBCredentials, error) {
+func getHandshakeCredentials(edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
 	// if we have previously performed the handshake we can retrieve the creds from disk and proceed
 	edbCreds, found, err := loadCredentialsFromFile()
 	if err != nil {
@@ -184,7 +186,7 @@ func getHandshakeCredentials(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*
 }
 
 // loadCredentialsFromFile returns (credentials object, found flag, error), if file not found it will return nil error but found=false
-func loadCredentialsFromFile() (*EdgelessDBCredentials, bool, error) {
+func loadCredentialsFromFile() (*Credentials, bool, error) {
 	b, err := egoutils.ReadAndUnseal(edbCredentialsFilepath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -192,7 +194,7 @@ func loadCredentialsFromFile() (*EdgelessDBCredentials, bool, error) {
 		}
 		return nil, false, fmt.Errorf("failed to read and unseal credentials file - %w", err)
 	}
-	var edbCreds *EdgelessDBCredentials
+	var edbCreds *Credentials
 	err = json.Unmarshal(b, &edbCreds)
 	if err != nil {
 		return nil, false, err
@@ -201,7 +203,7 @@ func loadCredentialsFromFile() (*EdgelessDBCredentials, bool, error) {
 	return edbCreds, true, nil
 }
 
-func performHandshake(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*EdgelessDBCredentials, error) {
+func performHandshake(edbCfg *Config, logger gethlog.Logger) (*Credentials, error) {
 	// we need to make sure this dir exists before we start read/writing files in there
 	err := os.MkdirAll(dataDir, 0o644)
 	if err != nil {
@@ -238,12 +240,13 @@ func performHandshake(edbCfg *EdgelessDBConfig, logger gethlog.Logger) (*Edgeles
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal manifest to json - %w", err)
 	}
+	logger.Info("Initialise edgelessdb with script", "script", string(manifestJSON))
 	err = initialiseEdgelessDB(edbCfg.Host, manifest, edbHTTPClient, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	edbCreds := &EdgelessDBCredentials{
+	edbCreds := &Credentials{
 		EDBCACertPEM: edbPEM,
 		CACertPEM:    caCertPEM,
 		UserCertPEM:  userCertPEM,
@@ -283,7 +286,7 @@ func createManifestFormat(content string) (result []string) {
 	return
 }
 
-func createTLSCfg(creds *EdgelessDBCredentials) (*tls.Config, error) {
+func createTLSCfg(creds *Credentials) (*tls.Config, error) {
 	caCertPool := x509.NewCertPool()
 
 	if ok := caCertPool.AppendCertsFromPEM([]byte(creds.EDBCACertPEM)); !ok {

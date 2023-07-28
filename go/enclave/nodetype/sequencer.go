@@ -7,8 +7,14 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/obscuronet/go-obscuro/go/common/compression"
 
@@ -16,12 +22,10 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
@@ -44,7 +48,7 @@ type sequencer struct {
 	chainConfig            *params.ChainConfig
 	enclavePrivateKey      *ecdsa.PrivateKey // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	mempool                mempool.Manager
-	storage                db.Storage
+	storage                storage.Storage
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
@@ -67,7 +71,7 @@ func NewSequencer(
 	chainConfig *params.ChainConfig,
 	enclavePrivateKey *ecdsa.PrivateKey, // this is a key known only to the current enclave, and the public key was shared with everyone during attestation
 	mempool mempool.Manager,
-	storage db.Storage,
+	storage storage.Storage,
 	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
@@ -132,7 +136,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 	}
 
 	if err := s.batchRegistry.StoreBatch(batch, nil); err != nil {
-		return fmt.Errorf("failed storing batch. Cause: %w", err)
+		return fmt.Errorf("1. failed storing batch. Cause: %w", err)
 	}
 
 	return nil
@@ -144,29 +148,14 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 		return err
 	}
 
-	// We get the latest known batch for this block's chain of parents.
-	// This includes the block so if there are any head batches linked to it
-	// they will get picked up.
-	ancestralBatch, err := s.batchRegistry.FindAncestralBatchFor(l1HeadBlock)
+	// todo - sanity check that the headBatch.Header.L1Proof is an ancestor of the l1HeadBlock
+	b, err := s.storage.FetchBlock(headBatch.Header.L1Proof)
 	if err != nil {
 		return err
 	}
-
-	// If the l1 head block is not a fork then headBatch should
-	// be equal to ancestralBatch. Thus they numbers should also be
-	// the same. Difference in numbers means ancestor was built on
-	// a different chain.
-	if ancestralBatch.NumberU64() != headBatch.NumberU64() {
-		if err := s.handleFork(l1HeadBlock, ancestralBatch); err != nil {
-			return fmt.Errorf("failed handling fork: Cause: %w", err)
-		}
-		return s.createNewHeadBatch(l1HeadBlock)
+	if !s.storage.IsAncestor(l1HeadBlock, b) {
+		return fmt.Errorf("attempted to create batch on top of batch=%s. With l1 head=%s", headBatch.Hash(), l1HeadBlock.Hash())
 	}
-
-	// After we have determined that the ancestral batch we have is identical to head
-	// batch (which can be on another fork) we set the head batch to it as it is guaranteed
-	// to be in our chain.
-	headBatch = ancestralBatch
 
 	stateDB, err := s.storage.CreateStateDB(headBatch.Hash())
 	if err != nil {
@@ -184,39 +173,52 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	if err != nil {
 		return err
 	}
-	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
-		BlockPtr:     l1HeadBlock.Hash(),
-		ParentPtr:    headBatch.Hash(),
-		Transactions: transactions,
-		AtTime:       uint64(time.Now().Unix()), // todo - time is set only here; take from l1 block?
-		Creator:      s.hostID,
-		ChainConfig:  s.chainConfig,
-		SequencerNo:  sequencerNo.Add(sequencerNo, big.NewInt(1)),
-	})
-	if err != nil {
-		return fmt.Errorf("failed computing batch. Cause: %w", err)
-	}
 
-	if _, err := cb.Commit(true); err != nil {
-		return fmt.Errorf("failed committing batch state. Cause: %w", err)
-	}
-
-	if err := s.signBatch(cb.Batch); err != nil {
-		return fmt.Errorf("failed signing created batch. Cause: %w", err)
-	}
-
-	if err := s.batchRegistry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
-		return fmt.Errorf("failed storing batch. Cause: %w", err)
+	// todo - time is set only here; take from l1 block?
+	// when creating a new head batch, it is pointing to the parent of the current l1 head
+	// the reason for this is to minimize the chance of creating batches on top of blocks that will not be seen by the network
+	// todo - to fix in a follow up PR
+	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.ParentHash(), headBatch.Hash(), transactions, uint64(time.Now().Unix())); err != nil {
+		return fmt.Errorf(" failed producing batch. Cause: %w", err)
 	}
 
 	if err := s.mempool.RemoveTxs(transactions); err != nil {
 		return fmt.Errorf("could not remove transactions from mempool. Cause: %w", err)
 	}
 
-	s.logger.Info("Created new head batch", log.BatchHashKey, cb.Batch.Hash(),
+	return nil
+}
+
+func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash, headBatch common.L2BatchHash, transactions common.L2Transactions, batchTime uint64) (*core.Batch, error) {
+	cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
+		BlockPtr:     l1Hash,
+		ParentPtr:    headBatch,
+		Transactions: transactions,
+		AtTime:       batchTime,
+		Creator:      s.hostID,
+		ChainConfig:  s.chainConfig,
+		SequencerNo:  sequencerNo,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed computing batch. Cause: %w", err)
+	}
+
+	if _, err := cb.Commit(true); err != nil {
+		return nil, fmt.Errorf("failed committing batch state. Cause: %w", err)
+	}
+
+	if err := s.signBatch(cb.Batch); err != nil {
+		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
+	}
+
+	if err := s.batchRegistry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
+		return nil, fmt.Errorf("2. failed storing batch. Cause: %w", err)
+	}
+
+	s.logger.Info("Produced new batch", log.BatchHashKey, cb.Batch.Hash(),
 		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions), "seqNo", cb.Batch.SeqNo())
 
-	return nil
+	return cb.Batch, nil
 }
 
 func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) {
@@ -237,84 +239,51 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 	return rollup.ToExtRollup(s.dataEncryptionService, s.dataCompressionService)
 }
 
-func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch) error {
-	headBatch, err := s.batchRegistry.GetHeadBatch()
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			return nil
+func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
+	batchesToDuplicate := make([]*core.Batch, 0)
+
+	// read the batches attached to these blocks
+	for _, l1BlockHash := range nonCanonicalL1Path {
+		batches, err := s.storage.FetchBatchesByBlock(l1BlockHash)
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				continue
+			}
+			return fmt.Errorf("could not FetchBatchesByBlock %s. Cause %w", l1BlockHash, err)
 		}
-		return fmt.Errorf("failed retrieving head batch. Cause: %w", err)
+		batchesToDuplicate = append(batchesToDuplicate, batches...)
 	}
 
-	if bytes.Equal(headBatch.Hash().Bytes(), ancestralBatch.Hash().Bytes()) {
+	if len(batchesToDuplicate) == 0 {
 		return nil
 	}
 
-	if headBatch.NumberU64() < ancestralBatch.NumberU64() {
-		panic("fork should never resolve to a higher height batch...")
+	// sort by height
+	sort.Slice(batchesToDuplicate, func(i, j int) bool {
+		return batchesToDuplicate[i].Number().Cmp(batchesToDuplicate[j].Number()) == -1
+	})
+
+	sequencerNo, err := s.storage.FetchCurrentSequencerNo()
+	if err != nil {
+		return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
 	}
 
-	currHead := headBatch
-	orphanedBatches := make([]*core.Batch, 0)
-	for currHead.NumberU64() > ancestralBatch.NumberU64() {
-		orphanedBatches = append(orphanedBatches, currHead)
-		currHead, err = s.batchRegistry.GetBatch(currHead.Header.ParentHash)
+	currentHead := batchesToDuplicate[0].Header.ParentHash
+
+	// find all batches for that path
+	for i, orphanBatch := range batchesToDuplicate {
+		// sanity check that all these batches are consecutive
+		if i > 0 && !bytes.Equal(batchesToDuplicate[i].Header.ParentHash.Bytes(), batchesToDuplicate[i-1].Hash().Bytes()) {
+			s.logger.Crit("the batches that must be duplicated are invalid")
+		}
+		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
+		// create the duplicate and store/broadcast it
+		b, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time)
+		currentHead = b.Hash()
 		if err != nil {
-			s.logger.Crit("Failure while looking for previously stored batch!", log.ErrKey, err)
-			return err
+			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}
-	}
-
-	currHeadPtr := ancestralBatch
-	for i := len(orphanedBatches) - 1; i >= 0; i-- {
-		orphan := orphanedBatches[i]
-
-		sequencerNo, err := s.storage.FetchCurrentSequencerNo()
-		if err != nil {
-			return err
-		}
-
-		// Extend the chain with identical cousin batches
-		cb, err := s.batchProducer.ComputeBatch(&components.BatchExecutionContext{
-			BlockPtr:     block.Hash(),
-			ParentPtr:    currHeadPtr.Hash(),
-			Transactions: orphan.Transactions,
-			AtTime:       orphan.Header.Time,
-			Creator:      s.hostID,
-			ChainConfig:  s.chainConfig,
-			SequencerNo:  sequencerNo.Add(sequencerNo, big.NewInt(1)),
-		})
-		if err != nil {
-			s.logger.Crit("Error recalculating l2chain for forked block", log.ErrKey, err)
-			return err
-		}
-
-		s.logger.Info(fmt.Sprintf("Produced fork batch %s with seqNo %d", cb.Batch.Hash(), cb.Batch.SeqNo().Uint64()))
-
-		if _, err := cb.Commit(true); err != nil {
-			return fmt.Errorf("failed committing stateDB for computed batch. Cause: %w", err)
-		}
-
-		if err := s.signBatch(cb.Batch); err != nil {
-			return fmt.Errorf("failed signing batch. Cause: %w", err)
-		}
-
-		if err := s.batchRegistry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
-			return fmt.Errorf("failed storing batch. Cause: %w", err)
-		}
-		currHeadPtr = cb.Batch
-
-		// i equals 0 at the highest batch number
-		if i == 0 {
-			dbBatch := s.storage.OpenBatch()
-			if err := s.storage.SetHeadBatchPointer(cb.Batch, dbBatch); err != nil {
-				return fmt.Errorf("failed setting head batch ptr. Cause: %w", err)
-			}
-			if err := s.storage.UpdateHeadBatch(block.Hash(), cb.Batch, cb.Receipts, dbBatch); err != nil {
-				return fmt.Errorf("failed to update head batch. Cause: %w", err)
-			}
-			return s.storage.CommitBatch(dbBatch)
-		}
+		s.logger.Info("Duplicated batch", log.BatchHashKey, currentHead)
 	}
 
 	return nil
@@ -322,6 +291,16 @@ func (s *sequencer) handleFork(block *common.L1Block, ancestralBatch *core.Batch
 
 func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
 	return s.mempool.AddMempoolTx(transaction)
+}
+
+func (s *sequencer) OnL1Fork(fork *common.ChainFork) error {
+	if fork.IsFork() {
+		err := s.duplicateBatches(fork.NewCanonical, fork.NonCanonicalPath)
+		if err != nil {
+			return fmt.Errorf("could not duplicate batches. Cause %w", err)
+		}
+	}
+	return nil
 }
 
 func (s *sequencer) signBatch(batch *core.Batch) error {

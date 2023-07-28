@@ -49,6 +49,7 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
 	r.GET("/batch/:hash", server.getBatch)
 	r.GET("/block/:hash", server.getBatch)
+	r.GET("/tx/:hash", server.getTransaction)
 
 	return server
 }

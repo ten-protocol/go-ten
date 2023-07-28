@@ -3,13 +3,14 @@ package nodetype
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 type obsValidator struct {
@@ -21,7 +22,7 @@ type obsValidator struct {
 	chainConfig *params.ChainConfig
 
 	sequencerID  gethcommon.Address
-	storage      db.Storage
+	storage      storage.Storage
 	sigValidator *components.SignatureValidator
 	logger       gethlog.Logger
 }
@@ -35,7 +36,7 @@ func NewValidator(
 	chainConfig *params.ChainConfig,
 
 	sequencerID gethcommon.Address,
-	storage db.Storage,
+	storage storage.Storage,
 	sigValidator *components.SignatureValidator,
 	logger gethlog.Logger,
 ) ObsValidator {
@@ -63,5 +64,10 @@ func (val *obsValidator) ValidateAndStoreBatch(incomingBatch *core.Batch) error 
 
 func (val *obsValidator) SubmitTransaction(transaction *common.L2Tx) error {
 	val.logger.Trace(fmt.Sprintf("Transaction %s submitted to validator but there is nothing to do with it.", transaction.Hash().Hex()))
+	return nil
+}
+
+func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
+	// nothing to do
 	return nil
 }

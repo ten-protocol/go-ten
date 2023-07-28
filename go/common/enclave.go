@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
+
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/responses"
 
@@ -134,10 +135,7 @@ type EnclaveScan interface {
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
 type BlockSubmissionResponse struct {
-	ProducedBatch           *ExtBatch                 // The batch produced iff the node is a sequencer and is on the latest block.
-	ProducedRollup          *ExtRollup                // The rollup produced iff the node is a sequencer and it is time to produce a new rollup.
 	ProducedSecretResponses []*ProducedSecretResponse // The responses to any secret requests in the ingested L1 block.
-	SubscribedLogs          map[rpc.ID][]byte         // The logs produced by the L1 block and all its ancestors for each subscription ID.
 	RejectError             *errutil.BlockRejectError // If block was rejected, contains information about what block to submit next.
 }
 

@@ -2,6 +2,7 @@ package backend
 
 import (
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 
@@ -48,6 +49,6 @@ func (b *Backend) GetBatch(hash gethcommon.Hash) (*common.BatchHeader, error) {
 	return b.obsClient.BatchHeaderByHash(hash)
 }
 
-func (b *Backend) GetTransaction(hash gethcommon.Hash) (*common.L2Tx, error) {
+func (b *Backend) GetTransaction(_ gethcommon.Hash) (*common.L2Tx, error) {
 	return nil, fmt.Errorf("unable to get encrypted Tx")
 }

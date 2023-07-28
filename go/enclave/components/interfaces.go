@@ -14,29 +14,27 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 )
 
-const (
-	SubscriptionChannelBuffer = 10
-)
-
 var ErrDuplicateRollup = errors.New("duplicate rollup received")
 
 type BlockIngestionType struct {
-	// IsLatest is true if this block was the canonical head of the L1 chain at the time it was submitted to enclave
-	// (if false then we are behind and catching up, expect to be fed another block immediately afterwards)
-	IsLatest bool
-
-	// Fork is true if the ingested block is on a different branch to previously known head
-	// (resulting in rewinding of one or more blocks that we had previously considered canonical)
-	Fork bool
-
 	// PreGenesis is true if there is no stored L1 head block.
 	// (L1 head is only stored when there is an L2 state to associate it with. Soon we will start consuming from the
 	// genesis block and then, we should only see one block ingested in a 'PreGenesis' state)
 	PreGenesis bool
+
+	// ChainFork contains information about the status of the new block in the chain
+	ChainFork *common.ChainFork
+}
+
+func (bit *BlockIngestionType) IsFork() bool {
+	if bit.ChainFork == nil {
+		return false
+	}
+	return bit.ChainFork.IsFork()
 }
 
 type L1BlockProcessor interface {
-	Process(br *common.BlockAndReceipts, isLatest bool) (*BlockIngestionType, error)
+	Process(br *common.BlockAndReceipts) (*BlockIngestionType, error)
 	GetHead() (*common.L1Block, error)
 	GetCrossChainContractAddress() *gethcommon.Address
 }

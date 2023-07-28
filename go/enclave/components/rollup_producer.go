@@ -3,6 +3,8 @@ package components
 import (
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -15,7 +17,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 // rollupProducerImpl encapsulates the logic of decoding rollup transactions submitted to the L1 and resolving them
@@ -31,13 +32,13 @@ type rollupProducerImpl struct {
 
 	logger gethlog.Logger
 
-	storage db.Storage
+	storage storage.Storage
 
 	batchRegistry  BatchRegistry
 	blockProcessor L1BlockProcessor
 }
 
-func NewRollupProducer(sequencerID gethcommon.Address, transactionBlobCrypto crypto.DataEncryptionService, obscuroChainID int64, ethereumChainID int64, storage db.Storage, batchRegistry BatchRegistry, blockProcessor L1BlockProcessor, logger gethlog.Logger) RollupProducer {
+func NewRollupProducer(sequencerID gethcommon.Address, transactionBlobCrypto crypto.DataEncryptionService, obscuroChainID int64, ethereumChainID int64, storage storage.Storage, batchRegistry BatchRegistry, blockProcessor L1BlockProcessor, logger gethlog.Logger) RollupProducer {
 	return &rollupProducerImpl{
 		TransactionBlobCrypto: transactionBlobCrypto,
 		ObscuroChainID:        obscuroChainID,

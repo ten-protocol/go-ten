@@ -1,4 +1,4 @@
-package sql
+package enclavedb
 
 import (
 	"database/sql"

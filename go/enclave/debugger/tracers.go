@@ -1,6 +1,4 @@
 // Package debugger: This file was copied/adapted from geth - go-ethereum/eth/tracers
-//
-//nolint
 package debugger
 
 import (
@@ -10,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common/gethapi"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/l2chain"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -37,11 +36,11 @@ const (
 
 type Debugger struct {
 	chain       l2chain.ObscuroChain
-	storage     db.Storage
+	storage     storage.Storage
 	chainConfig *params.ChainConfig
 }
 
-func New(chain l2chain.ObscuroChain, storage db.Storage, config *params.ChainConfig) *Debugger {
+func New(chain l2chain.ObscuroChain, storage storage.Storage, config *params.ChainConfig) *Debugger {
 	return &Debugger{
 		chain:       chain,
 		chainConfig: config,

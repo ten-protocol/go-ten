@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 
@@ -15,7 +17,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 )
@@ -32,7 +33,7 @@ type rollupConsumerImpl struct {
 
 	logger gethlog.Logger
 
-	storage      db.Storage
+	storage      storage.Storage
 	sigValidator *SignatureValidator
 }
 
@@ -43,7 +44,7 @@ func NewRollupConsumer(
 	dataCompressionService compression.DataCompressionService,
 	obscuroChainID int64,
 	ethereumChainID int64,
-	storage db.Storage,
+	storage storage.Storage,
 	logger gethlog.Logger,
 	verifier *SignatureValidator,
 ) RollupConsumer {
@@ -100,6 +101,7 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 	return signedRollup, nil
 }
 
+// todo - when processing the rollup, instead of looking up batches one by one, compare the last sequence number from the db with the ones in the rollup
 // extractRollups - returns a list of the rollups published in this block
 func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*common.ExtRollup {
 	rollups := make([]*common.ExtRollup, 0)
@@ -139,10 +141,14 @@ func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
 
 	for _, batch := range r.Batches {
 		rc.logger.Info("Processing batch from rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
-		_, batchFoundErr := rc.batchRegistry.GetBatch(batch.Hash())
+		b, batchFoundErr := rc.batchRegistry.GetBatch(batch.Hash())
 		// Process and store a batch only if it wasn't already processed via p2p.
 		if batchFoundErr != nil && !errors.Is(batchFoundErr, errutil.ErrNotFound) {
 			return batchFoundErr
+		}
+		// if the batch is already stored, skip
+		if b != nil {
+			continue
 		}
 		receipts, err := rc.batchRegistry.ValidateBatch(batch)
 		if errors.Is(err, errutil.ErrBlockForBatchNotFound) {

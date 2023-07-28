@@ -1,4 +1,4 @@
-package sql
+package edgelessdb
 
 // An obscuro implementation of the ERA (Edgeless remote attestation) tool (which is basically just a small json schema
 // that Edgeless use as a standard data blob to encrypt into their attestation reports, includes signerID, security version etc.)

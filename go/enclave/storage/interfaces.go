@@ -1,4 +1,4 @@
-package db
+package storage
 
 import (
 	"crypto/ecdsa"
@@ -7,15 +7,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/trie"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // BlockResolver stores new blocks and returns information on existing blocks
@@ -24,8 +22,8 @@ type BlockResolver interface {
 	FetchBlock(blockHash common.L1BlockHash) (*types.Block, error)
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
-	// StoreBlock persists the L1 Block
-	StoreBlock(block *types.Block)
+	// StoreBlock persists the L1 Block and updates the canonical ancestors if there was a fork
+	StoreBlock(block *types.Block, fork *common.ChainFork) error
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	IsAncestor(block *types.Block, maybeAncestor *types.Block) bool
 	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
@@ -47,22 +45,18 @@ type BatchResolver interface {
 	FetchHeadBatch() (*core.Batch, error)
 	// FetchCurrentSequencerNo returns the sequencer number
 	FetchCurrentSequencerNo() (*big.Int, error)
+	// FetchBatchesByBlock returns all batches with the block hash as the L1 proof
+	FetchBatchesByBlock(common.L1BlockHash) ([]*core.Batch, error)
 }
 
 type BatchUpdater interface {
 	// StoreBatch stores a batch.
-	StoreBatch(batch *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error
-	// UpdateHeadBatch updates the canonical L2 head batch for a given L1 block.
-	UpdateHeadBatch(l1Head common.L1BlockHash, l2Head *core.Batch, receipts []*types.Receipt, dbBatch *sql.Batch) error
-	// SetHeadBatchPointer updates the canonical L2 head batch for a given L1 block.
-	SetHeadBatchPointer(l2Head *core.Batch, dbBatch *sql.Batch) error
+	StoreBatch(batch *core.Batch, receipts []*types.Receipt) error
 }
 
 type HeadsAfterL1BlockStorage interface {
 	// FetchHeadBatchForBlock returns the hash of the head batch at a given L1 block.
 	FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error)
-	// UpdateL1Head updates the L1 head.
-	UpdateL1Head(l1Head common.L1BlockHash) error
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2BatchHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
@@ -82,7 +76,7 @@ type TransactionStorage interface {
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(txHash common.L2TxHash) (*types.Receipt, error)
 	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
-	GetReceiptsByHash(hash common.L2BatchHash) (types.Receipts, error)
+	GetReceiptsByBatchHash(hash common.L2BatchHash) (types.Receipts, error)
 	// GetSender returns the sender of the tx by hash
 	GetSender(txHash common.L2TxHash) (gethcommon.Address, error)
 	// GetContractCreationTx returns the hash of the tx that created a contract
@@ -130,13 +124,6 @@ type Storage interface {
 
 	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
 	DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error)
-
-	// todo (@stefan) - OpenBatch should return a custom type that hides any methods and properties to outside callers
-	// in order to prevent accidental messing up the internal state
-	// OpenBatch - returns a batch struct that allows for grouping write calls to the database together.
-	OpenBatch() *sql.Batch
-	// CommitBatch - finalizes a batch and pushes the changes to the database
-	CommitBatch(dbBatch *sql.Batch) error
 
 	// TrieDB - return the underlying trie database
 	TrieDB() *trie.Database

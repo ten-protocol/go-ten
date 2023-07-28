@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -17,13 +19,11 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
-	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
 )
 
 type batchRegistryImpl struct {
-	storage       db.Storage
+	storage       storage.Storage
 	logger        gethlog.Logger
 	chainConfig   *params.ChainConfig
 	batchProducer BatchProducer
@@ -38,7 +38,7 @@ type batchRegistryImpl struct {
 	subscriptionMutex sync.Mutex
 }
 
-func NewBatchRegistry(storage db.Storage, batchProducer BatchProducer, sigValidator *SignatureValidator, chainConfig *params.ChainConfig, logger gethlog.Logger) BatchRegistry {
+func NewBatchRegistry(storage storage.Storage, batchProducer BatchProducer, sigValidator *SignatureValidator, chainConfig *params.ChainConfig, logger gethlog.Logger) BatchRegistry {
 	return &batchRegistryImpl{
 		storage:       storage,
 		batchProducer: batchProducer,
@@ -63,8 +63,7 @@ func (br *batchRegistryImpl) UnsubscribeFromEvents() {
 	br.eventSubscription = nil
 }
 
-// StoreBatch - stores a batch and if it is the new l2 head, then registry will update
-// stored head pointers
+// StoreBatch - stores a batch and if it is canonical, it sends the events to subscribers
 func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receipts) error {
 	defer br.logger.Info("Registry StoreBatch() exit", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
@@ -74,22 +73,11 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 		return nil
 	}
 
-	dbBatch := br.storage.OpenBatch()
-
-	isHeadBatch, err := br.updateHeadPointers(batch, receipts, dbBatch)
-	if err != nil {
-		return fmt.Errorf("failed updating head pointers. Cause: %w", err)
-	}
-
-	if err = br.storage.StoreBatch(batch, receipts, dbBatch); err != nil {
+	if err := br.storage.StoreBatch(batch, receipts); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	if err = br.storage.CommitBatch(dbBatch); err != nil {
-		return fmt.Errorf("unable to commit changes to db. Cause: %w", err)
-	}
-
-	br.notifySubscriber(batch, isHeadBatch)
+	br.notifySubscriber(batch)
 
 	return nil
 }
@@ -145,7 +133,8 @@ func (br *batchRegistryImpl) ValidateBatch(incomingBatch *core.Batch) (types.Rec
 
 	if !bytes.Equal(cb.Batch.Hash().Bytes(), incomingBatch.Hash().Bytes()) {
 		// todo @stefan - generate a validator challenge here and return it
-		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", incomingBatch.Hash().Hex(), cb.Batch.Hash().Hex())
+		br.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v\n Incoming: %+v\n", cb.Batch.Header, incomingBatch.Header))
+		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", incomingBatch.Hash(), cb.Batch.Hash())
 	}
 
 	if _, err := cb.Commit(true); err != nil {
@@ -155,7 +144,7 @@ func (br *batchRegistryImpl) ValidateBatch(incomingBatch *core.Batch) (types.Rec
 	return cb.Receipts, nil
 }
 
-func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch, isHeadBatch bool) {
+func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch) {
 	defer br.logger.Info("Registry notified subscribers of batch", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	br.subscriptionMutex.Lock()
@@ -167,39 +156,9 @@ func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch, isHeadBatch boo
 		*subscriptionChan <- batch
 	}
 
-	if br.eventSubscription != nil && isHeadBatch {
+	if br.eventSubscription != nil {
 		*eventChan <- batch.NumberU64()
 	}
-}
-
-func (br *batchRegistryImpl) updateHeadPointers(batch *core.Batch, receipts types.Receipts, dbBatch *sql.Batch) (bool, error) {
-	if err := br.updateBlockPointers(batch, receipts, dbBatch); err != nil {
-		return false, err
-	}
-
-	return br.updateBatchPointers(batch, dbBatch)
-}
-
-func (br *batchRegistryImpl) updateBatchPointers(batch *core.Batch, dbBatch *sql.Batch) (bool, error) {
-	if head, err := br.storage.FetchHeadBatch(); err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return false, err
-	} else if head != nil && batch.NumberU64() < head.NumberU64() {
-		return false, nil
-	}
-
-	return true, br.storage.SetHeadBatchPointer(batch, dbBatch)
-}
-
-func (br *batchRegistryImpl) updateBlockPointers(batch *core.Batch, receipts types.Receipts, dbBatch *sql.Batch) error {
-	head, err := br.GetHeadBatchFor(batch.Header.L1Proof)
-
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("unexpected error while getting head batch for block. Cause: %w", err)
-	} else if head != nil && batch.NumberU64() < head.NumberU64() {
-		return fmt.Errorf("inappropriate update from previous head with height %d to new head with height %d for same l1 block", head.NumberU64(), batch.NumberU64())
-	}
-
-	return br.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, receipts, dbBatch)
 }
 
 func (br *batchRegistryImpl) GetHeadBatch() (*core.Batch, error) {
@@ -252,7 +211,7 @@ func (br *batchRegistryImpl) FindAncestralBatchFor(block *common.L1Block) (*core
 		parentBlockHash := currentBlock.ParentHash()
 		currentBlock, err = br.storage.FetchBlock(parentBlockHash)
 		if err != nil {
-			return nil, fmt.Errorf("unable to find parent for block %s in ancestral chain. Cause: %w", parentBlockHash.Hex(), err)
+			return nil, fmt.Errorf("unable to find block %s in ancestral chain. height %d. Cause: %w", parentBlockHash.Hex(), block.Number(), err)
 		}
 	}
 
