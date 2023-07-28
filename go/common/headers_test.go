@@ -3,7 +3,6 @@ package common
 import (
 	"crypto/rand"
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -33,9 +32,6 @@ func TestBatchHeader_MarshalJSON(t *testing.T) {
 
 	jsonMarshalled, err := json.Marshal(batchHeader)
 	require.NoError(t, err)
-
-	fmt.Println(string(jsonMarshalled))
-	fmt.Println("derp")
 
 	batchUnmarshalled := BatchHeader{}
 	err = json.Unmarshal(jsonMarshalled, &batchUnmarshalled)
