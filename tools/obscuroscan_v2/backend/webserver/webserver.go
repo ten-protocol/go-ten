@@ -48,6 +48,7 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	r.GET("/items/batch/latest/", server.getLatestBatch)
 	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
 	r.GET("/batch/:hash", server.getBatch)
+	r.GET("/block/:hash", server.getBatch)
 
 	return server
 }
@@ -128,6 +129,18 @@ func (w *WebServer) getBatch(c *gin.Context) {
 	hash := c.Param("hash")
 	parsedHash := gethcommon.HexToHash(hash)
 	batch, err := w.backend.GetBatch(parsedHash)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": batch})
+}
+
+func (w *WebServer) getTransaction(c *gin.Context) {
+	hash := c.Param("hash")
+	parsedHash := gethcommon.HexToHash(hash)
+	batch, err := w.backend.GetTransaction(parsedHash)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
 		return
