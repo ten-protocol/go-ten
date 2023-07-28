@@ -12,6 +12,9 @@ type NodeType interface {
 	// will put them in the mempool while validators might put them in a queue and monitor
 	// for censorship.
 	SubmitTransaction(*common.L2Tx) error
+
+	// OnL1Fork - logic to be performed when there is an L1 Fork
+	OnL1Fork(fork *common.ChainFork) error
 }
 
 type Sequencer interface {

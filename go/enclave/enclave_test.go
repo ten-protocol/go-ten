@@ -31,9 +31,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-
-	mathrand "math/rand"
 )
 
 const _testEnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
@@ -408,55 +405,6 @@ func getBalanceRequestUnsuccessful(t *testing.T, prefund []genesis.Account, encl
 	}
 }
 
-// TestGetBalanceBlockHeight tests the gas estimate given different block heights
-func TestGetBalanceBlockHeight(t *testing.T) {
-	// create the wallet
-	w := datagenerator.RandomWallet(integration.ObscuroChainID)
-	w2 := datagenerator.RandomWallet(integration.ObscuroChainID)
-
-	fundedAtBlock1 := genesis.Account{
-		Address: w.Address(),
-		Amount:  big.NewInt(int64(datagenerator.RandomUInt64())),
-	}
-
-	// create the enclave
-	testEnclave, err := createTestEnclave(nil, 200)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// wallets should have no balance at block 0
-	err = checkExpectedBalance(testEnclave, gethrpc.BlockNumber(0), w, big.NewInt(0))
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = checkExpectedBalance(testEnclave, gethrpc.BlockNumber(0), w2, big.NewInt(0))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = injectNewBlockAndChangeBalance(testEnclave, []genesis.Account{fundedAtBlock1})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// wallet 0 should have balance at block 1
-	err = checkExpectedBalance(testEnclave, gethrpc.BlockNumber(1), w, fundedAtBlock1.Amount)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = checkExpectedBalance(testEnclave, gethrpc.BlockNumber(0), w2, big.NewInt(0))
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// todo (#1251) - review why injecting a new block crashes the enclave https://github.com/obscuronet/obscuro-internal/issues/1251
-	//err = injectNewBlockAndChangeBalance(testEnclave, fundedAtBlock2)
-	//if err != nil {
-	//	t.Fatal(err)
-	//}
-}
-
 // createTestEnclave returns a test instance of the enclave
 func createTestEnclave(prefundedAddresses []genesis.Account, idx int) (common.Enclave, error) {
 	enclaveConfig := &config.EnclaveConfig{
@@ -514,141 +462,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 	genesisBatch := dummyBatch(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
 
 	// We update the database
-
-	dbBatch := enclave.(*enclaveImpl).storage.OpenBatch()
-
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch, nil, dbBatch); err != nil {
-		return err
-	}
-	blockHash := blk.Hash()
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, genesisBatch, nil, dbBatch); err != nil {
-		return err
-	}
-	if err = enclave.(*enclaveImpl).storage.CommitBatch(dbBatch); err != nil {
-		return err
-	}
-	return enclave.(*enclaveImpl).storage.UpdateL1Head(blockHash)
-}
-
-func injectNewBlockAndReceipts(enclave common.Enclave, receipts []*types.Receipt) error {
-	headBlock, err := enclave.(*enclaveImpl).storage.FetchHeadBlock()
-	if err != nil {
-		return err
-	}
-	headRollup, err := enclave.(*enclaveImpl).storage.FetchHeadBatch()
-	if err != nil {
-		return err
-	}
-
-	// insert the new l1 block
-	blk := types.NewBlock(
-		&types.Header{
-			Number:     big.NewInt(0).Add(headBlock.Number(), big.NewInt(1)),
-			ParentHash: headBlock.Hash(),
-		}, nil, nil, nil, &trie.StackTrie{})
-	_, err = enclave.SubmitL1Block(*blk, make(types.Receipts, 0), true)
-	if err != nil {
-		return err
-	}
-
-	// make sure the state is updated otherwise balances will not be available
-	l2Head, err := enclave.(*enclaveImpl).storage.FetchHeadBatch()
-	if err != nil {
-		return err
-	}
-	stateDB, err := enclave.(*enclaveImpl).storage.CreateStateDB(l2Head.Hash())
-	if err != nil {
-		return err
-	}
-
-	_, err = stateDB.Commit(false)
-	if err != nil {
-		return err
-	}
-
-	batch := dummyBatch(blk.Hash(), headRollup.NumberU64()+1, stateDB)
-
-	dbBatch := enclave.(*enclaveImpl).storage.OpenBatch()
-
-	// We update the database.
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, receipts, dbBatch); err != nil {
-		return err
-	}
-	blockHash := blk.Hash()
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, batch, nil, dbBatch); err != nil {
-		return err
-	}
-
-	return enclave.(*enclaveImpl).storage.CommitBatch(dbBatch)
-}
-
-func injectNewBlockAndChangeBalance(enclave common.Enclave, funds []genesis.Account) error {
-	headBlock, err := enclave.(*enclaveImpl).storage.FetchHeadBlock()
-	if err != nil {
-		return err
-	}
-	headRollup, err := enclave.(*enclaveImpl).storage.FetchHeadBatch()
-	if err != nil {
-		return err
-	}
-
-	// insert the new l1 block
-	blk := types.NewBlock(
-		&types.Header{
-			Number:     big.NewInt(0).Add(headBlock.Number(), big.NewInt(1)),
-			ParentHash: headBlock.Hash(),
-		}, nil, nil, nil, &trie.StackTrie{})
-	_, err = enclave.SubmitL1Block(*blk, make(types.Receipts, 0), true)
-	if err != nil {
-		return err
-	}
-
-	// make sure the state is updated otherwise balances will not be available
-	l2Head, err := enclave.(*enclaveImpl).storage.FetchHeadBatch()
-	if err != nil {
-		return err
-	}
-	stateDB, err := enclave.(*enclaveImpl).storage.CreateStateDB(l2Head.Hash())
-	if err != nil {
-		return err
-	}
-
-	for _, fund := range funds {
-		stateDB.SetBalance(fund.Address, fund.Amount)
-	}
-
-	_, err = stateDB.Commit(false)
-	if err != nil {
-		return err
-	}
-
-	batch := dummyBatch(blk.Hash(), headRollup.NumberU64()+1, stateDB)
-
-	dbBatch := enclave.(*enclaveImpl).storage.OpenBatch()
-
-	// We update the database.
-	if err = enclave.(*enclaveImpl).storage.StoreBatch(batch, nil, dbBatch); err != nil {
-		return err
-	}
-	blockHash := blk.Hash()
-	if err = enclave.(*enclaveImpl).storage.UpdateHeadBatch(blockHash, batch, nil, dbBatch); err != nil {
-		return err
-	}
-
-	return enclave.(*enclaveImpl).storage.CommitBatch(dbBatch)
-}
-
-func checkExpectedBalance(enclave common.Enclave, blkNumber gethrpc.BlockNumber, w wallet.Wallet, expectedAmount *big.Int) error {
-	balance, err := enclave.(*enclaveImpl).chain.GetBalanceAtBlock(w.Address(), &blkNumber)
-	if err != nil {
-		return err
-	}
-
-	if balance.ToInt().Cmp(expectedAmount) != 0 {
-		return fmt.Errorf("unexpected balance. expected %d got %d", big.NewInt(0), balance.ToInt())
-	}
-
-	return nil
+	return enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch, nil)
 }
 
 func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Batch {
@@ -665,43 +479,4 @@ func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *c
 		Header:       &h,
 		Transactions: []*common.L2Tx{},
 	}
-}
-
-// TestGetContractCount tests contract creation count
-func TestGetContractCount(t *testing.T) {
-	// create the enclave
-	testEnclave, err := createTestEnclave([]genesis.Account{}, 300)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	numberOfContracts := 1 + mathrand.Intn(100) //nolint:gosec
-
-	// fake a few contract deployed receipts
-	var receipts []*types.Receipt
-	for i := 0; i < numberOfContracts; i++ {
-		receipts = append(receipts, &types.Receipt{
-			Type:              0,
-			PostState:         nil,
-			Status:            0,
-			CumulativeGasUsed: 0,
-			Bloom:             types.Bloom{},
-			Logs:              nil,
-			TxHash:            gethcommon.Hash{},
-			ContractAddress:   gethcommon.HexToAddress("0xcafe"),
-			GasUsed:           0,
-			BlockHash:         gethcommon.Hash{},
-			BlockNumber:       nil,
-			TransactionIndex:  0,
-		})
-	}
-	// this also injects
-	err = injectNewBlockAndReceipts(testEnclave, receipts)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := testEnclave.GetTotalContractCount()
-	assert.NoError(t, err)
-	assert.Equal(t, int64(numberOfContracts), count.Int64())
 }

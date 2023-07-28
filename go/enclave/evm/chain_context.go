@@ -3,25 +3,25 @@ package evm
 import (
 	"errors"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core/types"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 // ObscuroChainContext - basic implementation of the ChainContext needed for the EVM integration
 type ObscuroChainContext struct {
-	storage db.Storage
+	storage storage.Storage
 	logger  gethlog.Logger
 }
 
 // NewObscuroChainContext returns a new instance of the ObscuroChainContext given a storage ( and logger )
-func NewObscuroChainContext(storage db.Storage, logger gethlog.Logger) *ObscuroChainContext {
+func NewObscuroChainContext(storage storage.Storage, logger gethlog.Logger) *ObscuroChainContext {
 	return &ObscuroChainContext{
 		storage: storage,
 		logger:  logger,

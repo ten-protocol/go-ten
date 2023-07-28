@@ -3,10 +3,11 @@ package crosschain
 import (
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
 // Processors - contains the cross chain related structures.
@@ -17,7 +18,7 @@ type Processors struct {
 
 func New(
 	l1BusAddress *gethcommon.Address,
-	storage db.Storage,
+	storage storage.Storage,
 	chainID *big.Int,
 	logger gethlog.Logger,
 ) *Processors {

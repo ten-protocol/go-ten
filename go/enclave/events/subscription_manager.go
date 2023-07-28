@@ -6,12 +6,13 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
 	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
 
@@ -31,7 +32,7 @@ const (
 // active subscriptions.
 type SubscriptionManager struct {
 	rpcEncryptionManager *rpc.EncryptionManager
-	storage              db.Storage
+	storage              storage.Storage
 
 	subscriptions     map[gethrpc.ID]*common.LogSubscription
 	lastHead          map[gethrpc.ID]*big.Int // This is the batch height up to which events were returned to the user
@@ -39,7 +40,7 @@ type SubscriptionManager struct {
 	logger            gethlog.Logger
 }
 
-func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage db.Storage, logger gethlog.Logger) *SubscriptionManager {
+func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage storage.Storage, logger gethlog.Logger) *SubscriptionManager {
 	return &SubscriptionManager{
 		rpcEncryptionManager: rpcEncryptionManager,
 		storage:              storage,

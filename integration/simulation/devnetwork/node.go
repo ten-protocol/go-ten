@@ -6,6 +6,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
+
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -15,7 +17,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/metrics"
 	"github.com/obscuronet/go-obscuro/go/config"
 	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
-	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/host/p2p"
@@ -205,7 +206,7 @@ func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common
 	l1Client ethadapter.EthClient, l1Wallet wallet.Wallet, logger gethlog.Logger,
 ) *InMemNodeOperator {
 	// todo (@matt) - put sqlite and levelDB storage in the same temp dir
-	sqliteDBPath, err := sql.CreateTempDBFile()
+	sqliteDBPath, err := sqlite.CreateTempDBFile()
 	if err != nil {
 		panic("failed to create temp sqlite db path")
 	}

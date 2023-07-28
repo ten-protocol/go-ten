@@ -5,22 +5,22 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
-
-	gethcore "github.com/ethereum/go-ethereum/core"
-	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 // ExecuteTransactions
@@ -30,7 +30,7 @@ func ExecuteTransactions(
 	txs []*common.L2Tx,
 	s *state.StateDB,
 	header *common.BatchHeader,
-	storage db.Storage,
+	storage storage.Storage,
 	chainConfig *params.ChainConfig,
 	fromTxIndex int,
 	logger gethlog.Logger,
@@ -85,6 +85,9 @@ func executeTransaction(
 	if receipt != nil {
 		receipt.Logs = s.GetLogs(t.Hash(), batchHash)
 		receipt.BlockHash = batchHash
+		for _, l := range receipt.Logs {
+			l.BlockHash = batchHash
+		}
 	}
 
 	header.MixDigest = before
@@ -117,7 +120,7 @@ func ExecuteObsCall(
 	msg *types.Message,
 	s *state.StateDB,
 	header *common.BatchHeader,
-	storage db.Storage,
+	storage storage.Storage,
 	chainConfig *params.ChainConfig,
 	logger gethlog.Logger,
 ) (*gethcore.ExecutionResult, error) {
@@ -157,7 +160,7 @@ func ExecuteObsCall(
 	return result, nil
 }
 
-func initParams(storage db.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
+func initParams(storage storage.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 		Debug:     false,
@@ -168,7 +171,7 @@ func initParams(storage db.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroC
 
 // todo (#1053) - this is currently just returning the shared secret
 // it should not use it directly, but derive some entropy from it
-func secret(storage db.Storage) []byte {
+func secret(storage storage.Storage) []byte {
 	// todo (#1053) - handle secret not being found.
 	secret, _ := storage.FetchSecret()
 	return secret[:]
