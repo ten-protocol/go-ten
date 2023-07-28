@@ -1,6 +1,7 @@
 package faucet
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/valyala/fasthttp"
 
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
@@ -70,11 +72,24 @@ func TestObscuroscan(t *testing.T) {
 	assert.Equal(t, 200, statusCode)
 	assert.Equal(t, "{\"count\":1}", string(body))
 
-	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
+	type itemRes struct {
+		Item common.BatchHeader `json:"item"`
+	}
+
+	itemObj := itemRes{}
+	err = json.Unmarshal(body, &itemObj)
+	assert.NoError(t, err)
+	batchHead := itemObj.Item
+
 	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/latest/", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/batch/%s", serverAddress, batchHead.Hash().String()))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 

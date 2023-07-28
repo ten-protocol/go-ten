@@ -3,6 +3,8 @@ package backend
 import (
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 type Backend struct {
@@ -39,4 +41,8 @@ func (b *Backend) GetTotalTransactionCount() (int, error) {
 
 func (b *Backend) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	return b.obsClient.GetLatestRollupHeader()
+}
+
+func (b *Backend) GetBatch(hash gethcommon.Hash) (*common.BatchHeader, error) {
+	return b.obsClient.BatchHeaderByHash(hash)
 }

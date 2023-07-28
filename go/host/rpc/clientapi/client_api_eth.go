@@ -49,21 +49,21 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 }
 
 // GetBlockByNumber returns the header of the batch with the given height.
-func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
+func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (common.BatchHeader, error) {
 	batchHash, err := api.batchNumberToBatchHash(number)
 	if err != nil {
-		return nil, fmt.Errorf("could not find batch with height %d. Cause: %w", number, err)
+		return common.BatchHeader{}, fmt.Errorf("could not find batch with height %d. Cause: %w", number, err)
 	}
 	return api.GetBlockByHash(ctx, *batchHash, true)
 }
 
 // GetBlockByHash returns the header of the batch with the given hash.
-func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
+func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (common.BatchHeader, error) {
 	batchHeader, err := api.host.DB().GetBatchHeader(hash)
 	if err != nil {
-		return nil, err
+		return common.BatchHeader{}, err
 	}
-	return headerToMap(batchHeader), nil
+	return *batchHeader, nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -178,36 +178,6 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 		BaseFee:      []*hexutil.Big{},
 		GasUsedRatio: []float64{},
 	}, nil
-}
-
-// Converts a batch header to a key/value map.
-// todo (#1620) - include all the fields of the rollup header that do not exist in the Geth block headers as well
-func headerToMap(header *common.BatchHeader) map[string]interface{} {
-	return map[string]interface{}{
-		// The fields present in Geth's `types/Header` struct.
-		"parentHash":       header.ParentHash,
-		"sha3Uncles":       nil,
-		"miner":            nil,
-		"stateRoot":        header.Root,
-		"transactionsRoot": header.TxHash,
-		"receiptsRoot":     header.ReceiptHash,
-		"logsBloom":        nil,
-		"difficulty":       nil,
-		"number":           header.Number,
-		"sequencerOrderNo": header.SequencerOrderNo,
-		"gasLimit":         header.GasLimit,
-		"gasUsed":          header.GasUsed,
-		"timestamp":        header.Time,
-		"extraData":        header.Extra,
-		"nonce":            nil,
-		"baseFeePerGas":    header.BaseFee,
-
-		// The custom Obscuro fields.
-		"l1Proof":                 header.L1Proof,
-		"crossChainMessages":      header.CrossChainMessages,
-		"inboundCrossChainHash":   header.LatestInboundCrossChainHash,
-		"inboundCrossChainHeight": header.LatestInboundCrossChainHeight,
-	}
 }
 
 // FeeHistoryResult is the structure returned by Geth `eth_feeHistory` API.
