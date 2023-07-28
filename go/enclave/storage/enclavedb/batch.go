@@ -82,6 +82,8 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 	// creates a big insert statement for all transactions
 	if len(batch.Transactions) > 0 {
 		insert := txInsert + strings.Repeat(txInsertValue+",", len(batch.Transactions))
+		insert = insert[0 : len(insert)-1] // remove trailing comma
+
 		args := make([]any, 0)
 		for i, transaction := range batch.Transactions {
 			txBytes, err := rlp.EncodeToBytes(transaction)
@@ -96,7 +98,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 			args = append(args, i)                          // idx
 			args = append(args, bodyHash)                   // the batch body which contained it
 		}
-		dbtx.ExecuteSQL(insert[0:len(insert)-1], args...)
+		dbtx.ExecuteSQL(insert, args...)
 	}
 
 	return nil
@@ -121,7 +123,8 @@ func WriteReceipts(dbtx DBTransaction, receipts []*types.Receipt) error {
 	}
 	if len(args) > 0 {
 		insert := txExecInsert + strings.Repeat(txExecInsertValue+",", len(receipts))
-		dbtx.ExecuteSQL(insert[0:len(insert)-1], args...)
+		insert = insert[0 : len(insert)-1] // remove trailing comma
+		dbtx.ExecuteSQL(insert, args...)
 	}
 	return nil
 }

@@ -36,7 +36,9 @@ func StoreEventLogs(dbtx DBTransaction, receipts []*types.Receipt, stateDB *stat
 	}
 	if totalLogs > 0 {
 		query := insertEvent + " " + strings.Repeat(insertEventValues+",", totalLogs)
-		dbtx.ExecuteSQL(query[0:len(query)-1], args...)
+		query = query[0 : len(query)-1] // remove trailing comma
+
+		dbtx.ExecuteSQL(query, args...)
 	}
 	return nil
 }

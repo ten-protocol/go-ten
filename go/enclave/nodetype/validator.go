@@ -66,3 +66,8 @@ func (val *obsValidator) SubmitTransaction(transaction *common.L2Tx) error {
 	val.logger.Trace(fmt.Sprintf("Transaction %s submitted to validator but there is nothing to do with it.", transaction.Hash().Hex()))
 	return nil
 }
+
+func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
+	// nothing to do
+	return nil
+}

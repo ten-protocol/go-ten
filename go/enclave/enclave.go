@@ -402,7 +402,7 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, _ bool) (*common.BlockSubmissionResponse, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitL1Block with the enclave stopping"))
 	}
@@ -415,12 +415,12 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	result, err := e.ingestL1Block(br, isLatest)
+	result, err := e.ingestL1Block(br)
 	if err != nil {
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	if result.Fork {
+	if result.IsFork() {
 		e.logger.Info(fmt.Sprintf("Detected fork at block %s with height %d", block.Hash(), block.Number()))
 	}
 
@@ -428,11 +428,11 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	return bsr, nil
 }
 
-func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) (*components.BlockIngestionType, error) {
+func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	ingestion, nonCanonicalPath, err := e.l1BlockProcessor.Process(br, isLatest)
+	ingestion, err := e.l1BlockProcessor.Process(br)
 	if err != nil {
 		e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
 		return nil, err
@@ -444,12 +444,9 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts, isLatest bool) 
 		// Unsure what to do here; block has been stored
 	}
 
-	// the sequencer has the task of duplicating the batches that have become non-canonical
-	sequencer, ok := e.service.(nodetype.Sequencer)
-	if ok && len(nonCanonicalPath) > 0 {
-		err := sequencer.DuplicateBatches(br.Block, nonCanonicalPath)
+	if ingestion.IsFork() {
+		err := e.service.OnL1Fork(ingestion.ChainFork)
 		if err != nil {
-			e.logger.Error("Could not duplicate batches", log.ErrKey, err)
 			return nil, err
 		}
 	}

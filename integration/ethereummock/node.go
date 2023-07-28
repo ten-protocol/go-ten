@@ -225,7 +225,7 @@ func (m *Node) Start() {
 		go m.startMining()
 	}
 
-	err := m.Resolver.StoreBlock(MockGenesisBlock, nil, nil)
+	err := m.Resolver.StoreBlock(MockGenesisBlock, nil)
 	if err != nil {
 		m.logger.Crit("Failed to store block")
 	}
@@ -270,7 +270,7 @@ func (m *Node) Start() {
 }
 
 func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
-	err := m.Resolver.StoreBlock(b, nil, nil)
+	err := m.Resolver.StoreBlock(b, nil)
 	if err != nil {
 		m.logger.Crit("Failed to store block. Cause: %w", err)
 	}
@@ -292,13 +292,13 @@ func (m *Node) processBlock(b *types.Block, head *types.Block) *types.Block {
 	// Check for Reorgs
 	if !m.Resolver.IsAncestor(b, head) {
 		m.stats.L1Reorg(m.l2ID)
-		fork, _, _, err := gethutil.LCA(head, b, m.Resolver)
+		fork, err := gethutil.LCA(head, b, m.Resolver)
 		if err != nil {
 			panic(err)
 		}
 		m.logger.Info(
-			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.Hash()), fork.NumberU64()))
-		return m.setFork(m.BlocksBetween(fork, b))
+			fmt.Sprintf("L1Reorg new=b_%d(%d), old=b_%d(%d), fork=b_%d(%d)", common.ShortHash(b.Hash()), b.NumberU64(), common.ShortHash(head.Hash()), head.NumberU64(), common.ShortHash(fork.CommonAncestor.Hash()), fork.CommonAncestor.NumberU64()))
+		return m.setFork(m.BlocksBetween(fork.CommonAncestor, b))
 	}
 
 	if b.NumberU64() > (head.NumberU64() + 1) {

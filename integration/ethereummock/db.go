@@ -33,7 +33,7 @@ func NewResolver() storage.BlockResolver {
 	}
 }
 
-func (n *blockResolverInMem) StoreBlock(block *types.Block, _ []common.L1BlockHash, _ []common.L1BlockHash) error {
+func (n *blockResolverInMem) StoreBlock(block *types.Block, _ *common.ChainFork) error {
 	n.m.Lock()
 	defer n.m.Unlock()
 	n.blockCache[block.Hash()] = block

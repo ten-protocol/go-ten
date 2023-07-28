@@ -58,11 +58,13 @@ func PutKeyValues(tx *sql.Tx, keys [][]byte, vals [][]byte) error {
 	if len(keys) > 0 {
 		// write the kv updates as a single update statement for increased efficiency
 		update := putQryBatch + strings.Repeat(putQryValues+",", len(keys))
+		update = update[0 : len(update)-1] // remove trailing comma
+
 		values := make([]any, 0)
 		for i := range keys {
 			values = append(values, keys[i], vals[i])
 		}
-		_, err := tx.Exec(update[0:len(update)-1], values...)
+		_, err := tx.Exec(update, values...)
 		if err != nil {
 			return fmt.Errorf("failed to exec batch statement. kv=%v, err=%w", values, err)
 		}

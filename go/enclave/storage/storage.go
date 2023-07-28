@@ -100,10 +100,14 @@ func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
 	return enclavedb.ReadCanonicalBatchByHeight(s.db.GetSQLDB(), height)
 }
 
-func (s *storageImpl) StoreBlock(b *types.Block, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) error {
+func (s *storageImpl) StoreBlock(b *types.Block, chainFork *common.ChainFork) error {
 	dbBatch := s.db.NewDBTransaction()
-	s.logger.Info(fmt.Sprintf("Fork. Canonical %v. NonCanonical %v.", canonical, nonCanonical))
-	enclavedb.UpdateCanonicalBlocks(dbBatch, canonical, nonCanonical)
+	if chainFork != nil && chainFork.IsFork() {
+		s.logger.Info(fmt.Sprintf("Fork. %+v.", chainFork))
+		enclavedb.UpdateCanonicalBlocks(dbBatch, chainFork.CanonicalPath, chainFork.NonCanonicalPath)
+	} else {
+		enclavedb.UpdateCanonicalBlocks(dbBatch, nil, nil)
+	}
 
 	if err := enclavedb.WriteBlock(dbBatch, b.Header()); err != nil {
 		return fmt.Errorf("could not store block %s. Cause: %w", b.Hash(), err)

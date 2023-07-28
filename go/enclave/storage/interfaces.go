@@ -23,7 +23,7 @@ type BlockResolver interface {
 	// FetchHeadBlock - returns the head of the current chain.
 	FetchHeadBlock() (*types.Block, error)
 	// StoreBlock persists the L1 Block and updates the canonical ancestors if there was a fork
-	StoreBlock(block *types.Block, canonical []common.L1BlockHash, nonCanonical []common.L1BlockHash) error
+	StoreBlock(block *types.Block, fork *common.ChainFork) error
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
 	IsAncestor(block *types.Block, maybeAncestor *types.Block) bool
 	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise

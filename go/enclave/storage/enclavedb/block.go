@@ -59,9 +59,11 @@ func UpdateCanonicalBlocks(dbtx DBTransaction, canonical []common.L1BlockHash, n
 }
 
 func updateCanonicalValue(dbtx DBTransaction, isCanonical bool, values []common.L1BlockHash) {
-	vals := strings.Repeat("?,", len(values))
-	updateBlocks := updateCanonicalBlock + "(" + vals[0:len(vals)-1] + ")"
-	updateBatches := updateCanonicalBatches + "(" + vals[0:len(vals)-1] + ")"
+	argPlaceholders := strings.Repeat("?,", len(values))
+	argPlaceholders = argPlaceholders[0 : len(argPlaceholders)-1] // remove trailing comma
+
+	updateBlocks := updateCanonicalBlock + "(" + argPlaceholders + ")"
+	updateBatches := updateCanonicalBatches + "(" + argPlaceholders + ")"
 
 	args := make([]any, 0)
 	args = append(args, isCanonical)
@@ -87,6 +89,8 @@ func FetchHeadBlock(db *sql.DB) (*types.Block, error) {
 
 func WriteL1Messages(db *sql.DB, blockHash common.L1BlockHash, messages common.CrossChainMessages) error {
 	insert := l1msgInsert + strings.Repeat(l1msgValue+",", len(messages))
+	insert = insert[0 : len(insert)-1] // remove trailing comma
+
 	args := make([]any, 0)
 
 	for _, msg := range messages {
@@ -98,7 +102,7 @@ func WriteL1Messages(db *sql.DB, blockHash common.L1BlockHash, messages common.C
 		args = append(args, blockHash.Bytes())
 	}
 	if len(messages) > 0 {
-		_, err := db.Exec(insert[0:len(insert)-1], args...)
+		_, err := db.Exec(insert, args...)
 		return err
 	}
 	return nil

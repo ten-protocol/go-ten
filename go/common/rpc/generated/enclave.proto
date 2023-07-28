@@ -317,8 +317,8 @@ message AttestationReportMsg {
 }
 
 message BlockSubmissionResponseMsg {
-  repeated SecretResponseMsg producedSecretResponses = 3;
-  BlockSubmissionErrorMsg error = 5; // todo (@matt) - remove this BlockSubmissionError field once we are using the Status() to update host view of enclave state
+  repeated SecretResponseMsg producedSecretResponses = 1;
+  BlockSubmissionErrorMsg error = 2; // todo (@matt) - remove this BlockSubmissionError field once we are using the Status() to update host view of enclave state
 }
 
 message BlockSubmissionErrorMsg {

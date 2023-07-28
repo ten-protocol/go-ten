@@ -18,7 +18,7 @@ var EmptyHash = gethcommon.Hash{}
 
 // LCA - returns the latest common ancestor of the 2 blocks or an error if no common ancestor is found
 // it also returns the blocks that became canonincal, and the once that are now the fork
-func LCA(newCanonical *types.Block, oldCanonical *types.Block, resolver storage.BlockResolver) (*types.Block, []common.L1BlockHash, []common.L1BlockHash, error) {
+func LCA(newCanonical *types.Block, oldCanonical *types.Block, resolver storage.BlockResolver) (*common.ChainFork, error) {
 	b, cp, ncp, err := internalLCA(newCanonical, oldCanonical, resolver, []common.L1BlockHash{}, []common.L1BlockHash{oldCanonical.Hash()})
 	// remove the common ancestor
 	if len(cp) > 0 {
@@ -27,7 +27,13 @@ func LCA(newCanonical *types.Block, oldCanonical *types.Block, resolver storage.
 	if len(ncp) > 0 {
 		ncp = ncp[0 : len(ncp)-1]
 	}
-	return b, cp, ncp, err
+	return &common.ChainFork{
+		NewCanonical:     newCanonical,
+		OldCanonical:     oldCanonical,
+		CommonAncestor:   b,
+		CanonicalPath:    cp,
+		NonCanonicalPath: ncp,
+	}, err
 }
 
 func internalLCA(newCanonical *types.Block, oldCanonical *types.Block, resolver storage.BlockResolver, canonicalPath []common.L1BlockHash, nonCanonicalPath []common.L1BlockHash) (*types.Block, []common.L1BlockHash, []common.L1BlockHash, error) {

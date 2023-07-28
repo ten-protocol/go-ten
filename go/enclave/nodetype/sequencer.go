@@ -239,7 +239,7 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 	return rollup.ToExtRollup(s.dataEncryptionService, s.dataCompressionService)
 }
 
-func (s *sequencer) DuplicateBatches(l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
+func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {
 	batchesToDuplicate := make([]*core.Batch, 0)
 
 	// read the batches attached to these blocks
@@ -291,6 +291,16 @@ func (s *sequencer) DuplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 
 func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
 	return s.mempool.AddMempoolTx(transaction)
+}
+
+func (s *sequencer) OnL1Fork(fork *common.ChainFork) error {
+	if fork.IsFork() {
+		err := s.duplicateBatches(fork.NewCanonical, fork.NonCanonicalPath)
+		if err != nil {
+			return fmt.Errorf("could not duplicate batches. Cause %w", err)
+		}
+	}
+	return nil
 }
 
 func (s *sequencer) signBatch(batch *core.Batch) error {
