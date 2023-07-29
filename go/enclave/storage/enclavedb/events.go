@@ -19,6 +19,7 @@ const (
 	baseEventsJoin             = "from events e join exec_tx extx on e.exec_tx_id=extx.id join tx on extx.tx=tx.hash join batch b on extx.batch=b.hash where b.is_canonical "
 	insertEvent                = "insert into events values "
 	insertEventValues          = "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+	orderBy                    = " order by b.height, tx.idx"
 )
 
 func StoreEventLogs(dbtx DBTransaction, receipts []*types.Receipt, stateDB *state.StateDB) error {
@@ -289,7 +290,7 @@ func loadLogs(db *sql.DB, requestingAccount *gethcommon.Address, whereCondition 
 	}
 
 	result := make([]*types.Log, 0)
-	query := baseEventsQuerySelect + " " + baseEventsJoin
+	query := baseEventsQuerySelect + " " + baseEventsJoin + " " + orderBy
 	var queryParams []any
 
 	// Add relevancy rules
