@@ -103,11 +103,6 @@ func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int) {
 		s.hostL2Head = enclL2HeadSeqNo
 	}
 
-	if s.enclaveL2Head == nil || enclL2HeadSeqNo == nil {
-		fmt.Println("±±±±± head increased from nil", s.enclaveL2Head, "to", enclL2HeadSeqNo)
-	} else if big.NewInt(0).Add(s.enclaveL2Head, big.NewInt(1)).Cmp(enclL2HeadSeqNo) < 0 {
-		fmt.Println("±±± onProcessedBatch head increased by more than one from", s.enclaveL2Head, "to", enclL2HeadSeqNo)
-	}
 	s.enclaveL2Head = enclL2HeadSeqNo
 	s.setStatus(s.calculateStatus())
 }
@@ -132,11 +127,6 @@ func (s *StateTracker) OnEnclaveStatus(es common.Status) {
 	defer s.m.Unlock()
 	s.enclaveStatusCode = es.StatusCode
 	s.enclaveL1Head = es.L1Head
-	if s.enclaveL2Head == nil || es.L2Head == nil {
-		fmt.Println("±±±±± head increased from nil", s.enclaveL2Head, "to", es.L2Head)
-	} else if big.NewInt(0).Add(s.enclaveL2Head, big.NewInt(1)).Cmp(es.L2Head) < 0 {
-		fmt.Println("±±±±± head increased by more than one from", s.enclaveL2Head, "to", es.L2Head)
-	}
 	s.enclaveL2Head = es.L2Head
 
 	s.setStatus(s.calculateStatus())

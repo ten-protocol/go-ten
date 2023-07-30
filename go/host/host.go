@@ -3,11 +3,8 @@ package host
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
-	"os"
-	"sync"
-
 	"github.com/obscuronet/go-obscuro/go/host/l2"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/host/l1"
 	"github.com/pkg/errors"
@@ -15,7 +12,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/enclave"
 
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/kamilsk/breaker"
 	"github.com/naoina/toml"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -46,14 +42,8 @@ type host struct {
 	shortID  uint64
 	services *ServicesRegistry // registry of services that the host manages and makes available
 
-	// control the host lifecycle
-	interrupter   breaker.Interface
-	shutdownGroup sync.WaitGroup
-
 	// ignore incoming requests
 	stopControl *stopcontrol.StopControl
-
-	txP2PCh chan common.EncryptedTx // The channel that new transactions from peers are sent to
 
 	db *db.DB // Stores the host's publicly-available data
 
@@ -86,9 +76,6 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p P2PH
 
 		// services
 		services: hostServices,
-
-		// incoming data
-		txP2PCh: make(chan common.EncryptedTx),
 
 		// Initialize the host DB
 		db: database,
@@ -131,13 +118,6 @@ func (h *host) Start() error {
 		return responses.ToInternalError(fmt.Errorf("requested Start with the host stopping"))
 	}
 
-	h.interrupter = breaker.Multiplex(
-		breaker.BreakBySignal(
-			os.Kill,
-			os.Interrupt,
-		),
-	)
-
 	h.validateConfig()
 
 	// start all registered services
@@ -175,10 +155,6 @@ func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRa
 	return h.services.Enclaves().SubmitAndBroadcastTx(encryptedParams)
 }
 
-func (h *host) HandleTransaction(tx common.EncryptedTx) {
-	h.txP2PCh <- tx
-}
-
 func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
 	if h.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the host stopping"))
@@ -198,8 +174,6 @@ func (h *host) Stop() error {
 	h.stopControl.Stop()
 
 	h.logger.Info("Host received a stop command. Attempting shutdown...")
-	h.interrupter.Close()
-	h.shutdownGroup.Wait()
 
 	// stop all registered services
 	for name, service := range h.services.All() {
