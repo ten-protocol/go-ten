@@ -167,7 +167,9 @@ func (r *Repository) streamLiveBlocks() {
 		}
 	}
 
-	streamSub.Unsubscribe()
+	if streamSub != nil {
+		streamSub.Unsubscribe()
+	}
 }
 
 func (r *Repository) resetLiveStream() (chan *types.Header, ethereum.Subscription) {
