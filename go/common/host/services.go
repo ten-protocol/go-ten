@@ -3,6 +3,9 @@ package host
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/obscuronet/go-obscuro/go/responses"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -11,10 +14,12 @@ import (
 
 // service names - these are the keys used to register known services with the host
 const (
-	P2PName               = "p2p"
-	L1BlockRepositoryName = "l1-block-repo"
-	L1PublisherName       = "l1-publisher"
-	L2BatchRepositoryName = "l2-batch-repo"
+	P2PName                    = "p2p"
+	L1BlockRepositoryName      = "l1-block-repo"
+	L1PublisherName            = "l1-publisher"
+	L2BatchRepositoryName      = "l2-batch-repo"
+	EnclaveServiceName         = "enclaves"
+	LogSubscriptionServiceName = "log-subs"
 )
 
 // The host has a number of services that encapsulate the various responsibilities of the host.
@@ -22,6 +27,8 @@ const (
 // should depend on these interfaces rather than the concrete implementations.
 
 // Service interface allows the host to manage all services in a generic way
+// Note: Services may depend on other services but they shouldn't use them during construction, only when 'Start()' is called.
+// They should be resilient to services availability, because the construction ordering is not guaranteed.
 type Service interface {
 	Start() error
 	Stop() error
@@ -48,8 +55,9 @@ type P2P interface {
 	// todo (@matt) feels a bit weird to have this in this interface since it relates to serving data rather than receiving
 	SubscribeForBatchRequests(handler P2PBatchRequestHandler) func()
 
-	// UpdatePeerList allows the host to notify the p2p service of a change in the peer list
-	UpdatePeerList([]string)
+	// RefreshPeerList notifies the P2P service that its peer list might be out-of-date and it should resync
+	// Note: P2P service might debounce these requests, it's not guaranteed that the peer list will be refreshed immediately
+	RefreshPeerList()
 }
 
 // P2PBatchHandler is an interface for receiving new batches from the P2P network as they arrive
@@ -77,7 +85,7 @@ type L1BlockRepository interface {
 	FetchBlockByHeight(height *big.Int) (*types.Block, error)
 	// FetchNextBlock returns the next canonical block after a given block hash
 	// It returns the new block, a bool which is true if the block is the current L1 head and a bool if the block is on a different fork to prevBlock
-	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, bool, error)
+	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error)
 	// FetchReceipts returns the receipts for a given L1 block
 	FetchReceipts(block *common.L1Block) types.Receipts
 }
@@ -133,4 +141,20 @@ type EnclaveService interface {
 	// LookupBatchBySeqNo is used to fetch batch data from the enclave - it is only used as a fallback for the sequencer
 	// host if it's missing a batch (other host services should use L2Repo to fetch batch data)
 	LookupBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
+
+	// GetEnclaveClient returns an enclave client // todo (@matt) we probably don't want to expose this
+	GetEnclaveClient() common.Enclave
+
+	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to other hosts on the network (in particular, to the sequencer)
+	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
+
+	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription) error
+	Unsubscribe(id rpc.ID) error
+}
+
+// LogSubscriptionManager provides an interface for the host to manage log subscriptions
+type LogSubscriptionManager interface {
+	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error
+	Unsubscribe(id rpc.ID)
+	SendLogsToSubscribers(result *common.EncryptedSubscriptionLogs)
 }

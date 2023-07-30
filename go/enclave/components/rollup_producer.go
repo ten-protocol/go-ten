@@ -3,6 +3,8 @@ package components
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -54,7 +56,7 @@ func NewRollupProducer(sequencerID gethcommon.Address, transactionBlobCrypto cry
 func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, limiter limiters.RollupLimiter) (*core.Rollup, error) {
 	batches, err := re.batchRegistry.BatchesAfter(fromBatchNo, limiter)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "could not fetch 'from' batch (seqNo=%d) for rollup", fromBatchNo)
 	}
 
 	hasBatches := len(batches) != 0

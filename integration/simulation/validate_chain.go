@@ -216,7 +216,10 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 
 			for _, clients := range s.RPCHandles.AuthObsClients {
 				client := clients[0]
-				batchOnNode, _ := client.BatchHeaderByHash(batchHeader.Hash())
+				batchOnNode, err := client.BatchHeaderByHash(batchHeader.Hash())
+				if err != nil {
+					t.Fatalf("Node %d: Could not find batch header [idx=%s, hash=%s]. Cause: %s", nodeIdx, batchHeader.Number, batchHeader.Hash(), err)
+				}
 				if batchOnNode.Hash() != batchHeader.Hash() {
 					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
 				}

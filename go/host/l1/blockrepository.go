@@ -76,35 +76,38 @@ func (r *Repository) Subscribe(handler host.L1BlockHandler) func() {
 }
 
 // FetchNextBlock calculates the next canonical block that should be sent to requester after a given hash.
-// It returns the block, whether it is the latest known head, and whether it has rewound to a fork
-func (r *Repository) FetchNextBlock(prevBlockHash gethcommon.Hash) (*types.Block, bool, bool, error) {
+// It returns the block and a bool for whether it is the latest known head
+func (r *Repository) FetchNextBlock(prevBlockHash gethcommon.Hash) (*types.Block, bool, error) {
 	if prevBlockHash == r.head {
 		// prevBlock is the latest known head
-		return nil, false, false, ErrNoNextBlock
+		return nil, false, ErrNoNextBlock
 	}
-	prevBlock, err := r.ethClient.BlockByHash(prevBlockHash)
-	if err != nil {
-		return nil, false, false, fmt.Errorf("could not find prev block with hash=%s - %w", prevBlockHash, err)
+
+	if prevBlockHash == (gethcommon.Hash{}) {
+		// prevBlock is empty, so we are starting from genesis
+		blk, err := r.ethClient.BlockByNumber(big.NewInt(0))
+		if err != nil {
+			return nil, false, fmt.Errorf("could not find genesis block - %w", err)
+		}
+		return blk, false, nil
 	}
+
 	// the latestCanonAncestor will usually return the prevBlock itself but this step is necessary to walk back if there was a fork
 	lca, err := r.latestCanonAncestor(prevBlockHash)
 	if err != nil {
-		return nil, false, false, err
+		return nil, false, err
 	}
 	// and send the canonical block at the height after that
 	// (which may be a fork, or it may just be the next on the same branch if we are catching-up)
 	blk, err := r.ethClient.BlockByNumber(increment(lca.Number()))
 	if err != nil {
 		if errors.Is(err, ethereum.NotFound) {
-			return nil, false, false, ErrNoNextBlock
+			return nil, false, ErrNoNextBlock
 		}
-		return nil, false, false, fmt.Errorf("could not find block after latest canon ancestor, height=%s - %w", increment(lca.Number()), err)
+		return nil, false, fmt.Errorf("could not find block after latest canon ancestor, height=%s - %w", increment(lca.Number()), err)
 	}
 
-	// if the block we are about to feed is the same height or lower than the previous block, we have rewound onto a fork
-	isFork := prevBlock.Header().Number.Cmp(blk.Number()) >= 0
-
-	return blk, blk.Hash() == r.head, isFork, nil
+	return blk, blk.Hash() == r.head, nil
 }
 
 func (r *Repository) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block, error) {

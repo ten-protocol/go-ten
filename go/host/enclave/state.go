@@ -40,6 +40,9 @@ const (
 	L2Catchup
 )
 
+// when the L2 head is 0 then it means no batch has been seen or processed (first seq number is always 1)
+var _noBatch = big.NewInt(0)
+
 func (es Status) String() string {
 	return [...]string{"Live", "Disconnected", "Unavailable", "AwaitingSecret", "L1Catchup", "L2Catchup"}[es]
 }
@@ -96,8 +99,14 @@ func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int) {
 	defer s.m.Unlock()
 	if s.hostL2Head == nil || s.hostL2Head.Cmp(enclL2HeadSeqNo) < 0 {
 		// we've successfully processed this batch, so the host's head should be at least as high as the enclave's (this shouldn't happen, we want it to be visible if it happens)
-		s.logger.Warn("unexpected host head behind enclave head - updating to match", "hostHead", s.hostL2Head, "enclaveHead", enclL2HeadSeqNo)
+		s.logger.Trace("host head behind enclave head - updating to match", "hostHead", s.hostL2Head, "enclaveHead", enclL2HeadSeqNo)
 		s.hostL2Head = enclL2HeadSeqNo
+	}
+
+	if s.enclaveL2Head == nil || enclL2HeadSeqNo == nil {
+		fmt.Println("±±±±± head increased from nil", s.enclaveL2Head, "to", enclL2HeadSeqNo)
+	} else if big.NewInt(0).Add(s.enclaveL2Head, big.NewInt(1)).Cmp(enclL2HeadSeqNo) < 0 {
+		fmt.Println("±±± onProcessedBatch head increased by more than one from", s.enclaveL2Head, "to", enclL2HeadSeqNo)
 	}
 	s.enclaveL2Head = enclL2HeadSeqNo
 	s.setStatus(s.calculateStatus())
@@ -123,6 +132,11 @@ func (s *StateTracker) OnEnclaveStatus(es common.Status) {
 	defer s.m.Unlock()
 	s.enclaveStatusCode = es.StatusCode
 	s.enclaveL1Head = es.L1Head
+	if s.enclaveL2Head == nil || es.L2Head == nil {
+		fmt.Println("±±±±± head increased from nil", s.enclaveL2Head, "to", es.L2Head)
+	} else if big.NewInt(0).Add(s.enclaveL2Head, big.NewInt(1)).Cmp(es.L2Head) < 0 {
+		fmt.Println("±±±±± head increased by more than one from", s.enclaveL2Head, "to", es.L2Head)
+	}
 	s.enclaveL2Head = es.L2Head
 
 	s.setStatus(s.calculateStatus())
@@ -146,7 +160,7 @@ func (s *StateTracker) calculateStatus() Status {
 		if s.hostL1Head != s.enclaveL1Head || s.enclaveL1Head == gethutil.EmptyHash {
 			return L1Catchup
 		}
-		if s.hostL2Head == nil || s.enclaveL2Head == nil || s.hostL2Head.Cmp(s.enclaveL2Head) != 0 {
+		if s.hostL2Head == nil || s.enclaveL2Head == nil || s.enclaveL2Head.Cmp(_noBatch) == 0 || s.hostL2Head.Cmp(s.enclaveL2Head) > 0 {
 			return L2Catchup
 		}
 		return Live
@@ -188,6 +202,6 @@ func (s *StateTracker) setStatus(newStatus Status) {
 	if s.status == newStatus {
 		return
 	}
-	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus))
+	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus), "STATE", s)
 	s.status = newStatus
 }
