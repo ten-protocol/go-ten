@@ -3,8 +3,9 @@ package host
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/host/l2"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/host/l2"
 
 	"github.com/obscuronet/go-obscuro/go/host/l1"
 	"github.com/pkg/errors"
