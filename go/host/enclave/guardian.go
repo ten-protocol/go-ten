@@ -190,11 +190,13 @@ func (g *Guardian) mainLoop() {
 				g.logger.Warn("could not provide secret to enclave", "err", err)
 			}
 		case L1Catchup:
+			// catchUpWithL1 will feed blocks 1-by-1 to the enclave until we are up-to-date, we hit an error or the guardian is stopped
 			err := g.catchupWithL1()
 			if err != nil {
 				g.logger.Warn("could not catch up with L1", "err", err)
 			}
 		case L2Catchup:
+			// catchUpWithL2 will feed batches 1-by-1 to the enclave until we are up-to-date, we hit an error or the guardian is stopped
 			err := g.catchupWithL2()
 			if err != nil {
 				g.logger.Warn("could not catch up with L2", "err", err)
@@ -273,6 +275,7 @@ func (g *Guardian) provideSecret() error {
 	g.logger.Info("Secret received")
 	g.state.OnSecretProvided()
 
+	// we're now ready to catch up with network, sync peer list
 	go g.sl.P2P().RefreshPeerList()
 	return nil
 }
@@ -385,6 +388,7 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
 	respTxs := g.sl.L1Publisher().ExtractSecretResponses(block)
 	if len(respTxs) > 0 {
+		// new peers may have been granted access to the network, notify p2p service to refresh its peer list
 		go g.sl.P2P().RefreshPeerList()
 	}
 

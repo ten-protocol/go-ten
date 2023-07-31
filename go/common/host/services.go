@@ -56,7 +56,6 @@ type P2P interface {
 	SubscribeForBatchRequests(handler P2PBatchRequestHandler) func()
 
 	// RefreshPeerList notifies the P2P service that its peer list might be out-of-date and it should resync
-	// Note: P2P service might debounce these requests, it's not guaranteed that the peer list will be refreshed immediately
 	RefreshPeerList()
 }
 
