@@ -4,6 +4,18 @@
 
 The revenue generation mechanism for Obscuro hinges on the collection of gas fees. Notably, as Obscuro operates as a layer 2 protocol, the cost of operations surpasses that of layer 1, since it has to cover layer 1 gas costs in addition to its operational expenses. Unlike layer 1 miners, who only shoulder operational costs, there's no expenditure prerequisite for block publication on Obscuro except for the static cost of stake.
 
+The gas mechanics of a protocol normally have the following functions:
+1) Revenue for node operators.
+2) Congestion management and prevention of denial of service.
+3) Price discovery mechanism for transactions.
+
+## Arbitrum Gas Mechanics
+
+Arbitrum does not describe how their gas mechanics work and how would price change with network congestion. It is implied in [this](https://medium.com/offchainlabs/understanding-arbitrum-2-dimensional-fees-fd1d582596c9) article that there is indeed a mechanism that increases the L2 cost, but their public documentation seems to just call the gas price unit `ArbGas` without elaborating how its derived. It's possible that it is actually static and what is implied in the article is that the L1 price influenced the change in the L2 gas cost. 
+
+## Optimism Gas Mechanics
+
+Optimism is EIP-1559 compliant and has a [public dashboard](https://public-grafana.optimism.io/d/9hkhMxn7z/public-dashboard?orgId=1&refresh=5m) which showcases gas prices for both L1 and L2. During time of writing, the gas dashboard clearly showed different spikes between L1 prices and L2 prices. They do not elaborate however when is the base fee modified, presumably its at the time of a rollup as they have no concept of batches in their current live version. They mention that the parameters of EIP-1559 are different, presumably the gas fee increase/decrease params. Optimism bedrock should however introduce blocks and those parameters should change. 
 
 ### Initial Bootstrapping of Network Gas
 
@@ -17,15 +29,17 @@ Ethereum has developed to accommodate several [transaction types](https://docs.i
 2) Access list transactions - same as previous ones, but they also announce what storage access they are supposed to perform when executed.
 3) EIP-1559 - the new transactions that burn the gas fee and work with tips in order to achieve a fair system.
 
-Usually layer 2's support EIP-1559 so there is a pending question of what we would need to support. 
+Usually layer 2's support EIP-1559 so there is a pending question of what we would need to support. Normally all support EIP-1559, but not all support gas auction (or mention if they do). As most wallets have moved over to EIP-1559 it is preferable to start with support for it and add the support for the gas auction later on after everything else is finished.
+Note that Binance for example still uses Type 1 transactions and has not migrated to EIP-1559. 
 
-
-## Specification
+## Requirements
 
 1. Ethereum must be used for gas operations and bridged from the layer 1 protocol.
 2. Bridged gas should automatically deposit into the respective addresses.
 3. Gas-consuming transactions should include a layer 1 cost component for calldata publishing and a layer 2 component that covers execution costs and prevents endless transaction execution.
 4. L2 gas price should be configurable. Furthermore it should support being free whilst still not allowing non halting execution.
+5. The gas mechanics need to prevent denial of service attacks.
+6. EIP-1559 transactions should have their base fee + tip deposited to the sequencer without any ETH being burned.
 
 ## Gas Cost Display
 
@@ -38,7 +52,7 @@ Given that Ethereum as a currency operates on the layer 1 protocol, it needs to 
 
 ```EthereumDeposited(address receiver, uint256 amount)```
 
-The enclave will automatically pick up this message, along with other cross-chain messages, but it will be treated specially. Upon detection, the enclave will increase the balance of the receiver account by the amount specified in the message.
+The enclave will automatically pick up this message, along with other cross-chain messages, but it will be treated specially. Upon detection, the enclave will increase the balance of the receiver account by the amount specified in the message. This automatic relaying is needed in order to avoid the chicken and egg problem one would have initially where no relayer has any gas to relay the gas deposit messages. It would also ensure relayers who run out of gas can easily recharge without relying on other relayers if we were to use a different bootstrap mechanism. Note that those deposits will not call the fallback function of the address if it is a smart contract and any deposits to such contracts would later on need a message relayed to verify the message as they would normally.
 
 ## Gas Estimation
 
@@ -70,3 +84,6 @@ Upon the production of a batch, all transactions enclosed within it would have m
 
 This entire logic can happen in the `evm_facade.go`.
 
+## Batch gas limit
+
+In order to prevent denial of service attacks we need to have a batch gas limit. This would lend itself well to Obscuro being EIP-1559 complaint making us able to dynamically price L2 fees based on congestion. For the initial version of the gas mechanics we can use a fixed L2 gas price and later on migrate to EIP-1559 compliancy. Taking cue from Optimism's approach to modifying the parameters, we should divide the parameters for Obscuro proportionally to L1 block creation time vs Obscuro L2 batch creation time. This should yield approximately identical behaviour.
