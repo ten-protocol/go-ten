@@ -163,6 +163,10 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 	return messages
 }
 
+func (m *MessageBusManager) ShouldAutoRelayMessage(message common.CrossChainMessage) bool {
+	return message.Sender == *m.GetBusAddress()
+}
+
 // CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.
 func (m *MessageBusManager) CreateSyntheticTransactions(messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions {
 	// Get current nonce for this stateDB.

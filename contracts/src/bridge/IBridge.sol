@@ -6,6 +6,7 @@ pragma solidity >=0.7.0 <0.9.0;
 // Calling functions on it will result in assets being bridged over to the other layer automatically.
 interface IBridge {
     enum Topics {
+        VALUE,
         TRANSFER,
         MANAGEMENT
     }
@@ -35,4 +36,9 @@ interface IBridge {
         uint256 amount,
         address receiver
     ) external;
+
+    struct ValueTransfer {
+        uint256 amount;
+        address recipient;
+    }
 }

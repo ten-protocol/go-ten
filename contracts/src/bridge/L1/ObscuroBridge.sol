@@ -69,16 +69,15 @@ contract ObscuroBridge is
         remoteBridgeAddress = bridge;
     }
 
+    // This cross chain message is specialized and will result in automatic increase
+    // of balance on the other side. 
+    // NOTE: If sent to a contract, there will be no fallback function executed.
+    // Instead after the contract receives it, one can relay the cross chain message to
+    // verify ETH deposit.
     function sendNative(address receiver) external payable override {
         require(msg.value > 0, "Empty transfer.");
-
-        bytes memory data = abi.encodeWithSelector(
-            IBridge.receiveAssets.selector,
-            address(0x0),
-            msg.value,
-            receiver
-        );
-        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0);
+        bytes memory data = abi.encode(ValueTransfer(msg.value, receiver));
+        queueMessage(remoteBridgeAddress, data, uint32(Topics.VALUE), 0, 0);
     }
 
     function sendERC20(
