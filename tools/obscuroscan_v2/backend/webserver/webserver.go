@@ -10,6 +10,8 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 type WebServer struct {
@@ -45,6 +47,9 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	r.GET("/count/transactions/", server.getTotalTransactionCount)
 	r.GET("/items/batch/latest/", server.getLatestBatch)
 	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
+	r.GET("/batch/:hash", server.getBatch)
+	r.GET("/block/:hash", server.getBatch)
+	r.GET("/tx/:hash", server.getTransaction)
 
 	return server
 }
@@ -119,6 +124,30 @@ func (w *WebServer) getLatestRollupHeader(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"item": block})
+}
+
+func (w *WebServer) getBatch(c *gin.Context) {
+	hash := c.Param("hash")
+	parsedHash := gethcommon.HexToHash(hash)
+	batch, err := w.backend.GetBatch(parsedHash)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": batch})
+}
+
+func (w *WebServer) getTransaction(c *gin.Context) {
+	hash := c.Param("hash")
+	parsedHash := gethcommon.HexToHash(hash)
+	batch, err := w.backend.GetTransaction(parsedHash)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": batch})
 }
 
 func errorHandler(c *gin.Context, err error, logger log.Logger) {
