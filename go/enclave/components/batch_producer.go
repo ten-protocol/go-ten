@@ -90,6 +90,12 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	if context.SequencerNo.Int64() > 1 {
 		messages = bp.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
 	}
+	for _, message := range messages {
+		if message.Sender == gethcommon.BigToAddress(gethcommon.Big0) {
+
+		}
+	}
+
 	crossChainTransactions := bp.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 
 	successfulTxs, txReceipts, err := bp.processTransactions(batch, 0, context.Transactions, stateDB, context.ChainConfig)

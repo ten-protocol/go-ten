@@ -45,7 +45,7 @@ type (
 	L2Receipt      = types.Receipt
 	L2Receipts     = types.Receipts
 
-	CrossChainMessage     MessageBus.StructsCrossChainMessage
+	CrossChainMessage     = MessageBus.StructsCrossChainMessage
 	CrossChainMessages    = []CrossChainMessage
 	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup, with the nonce prepended.

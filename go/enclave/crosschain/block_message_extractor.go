@@ -13,10 +13,9 @@ import (
 )
 
 type blockMessageExtractor struct {
-	busAddress   *common.L1Address
-	l2MessageBus *common.L2Address // todo (@stefan) - remove this
-	storage      storage.Storage
-	logger       gethlog.Logger
+	busAddress *common.L1Address
+	storage    storage.Storage
+	logger     gethlog.Logger
 }
 
 func NewBlockMessageExtractor(
@@ -26,11 +25,14 @@ func NewBlockMessageExtractor(
 	logger gethlog.Logger,
 ) BlockMessageExtractor {
 	return &blockMessageExtractor{
-		busAddress:   busAddress,
-		l2MessageBus: l2BusAddress,
-		storage:      storage,
-		logger:       logger.New(log.CmpKey, log.CrossChainCmp),
+		busAddress: busAddress,
+		storage:    storage,
+		logger:     logger.New(log.CmpKey, log.CrossChainCmp),
 	}
+}
+
+func (m *blockMessageExtractor) IsAutoRelayedMessage(message common.CrossChainMessage) bool {
+	return false
 }
 
 func (m *blockMessageExtractor) Enabled() bool {
