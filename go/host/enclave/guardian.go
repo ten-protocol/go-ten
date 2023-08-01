@@ -362,7 +362,10 @@ func (g *Guardian) catchupWithL2() error {
 func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
 	receipts := g.sl.L1Repo().FetchReceipts(block)
-	g.submitDataLock.Lock()
+	if !g.submitDataLock.TryLock() {
+		// we are already submitting a block, and we don't want to leak goroutines, we wil catch up with the block later
+		return errors.New("unable to submit block, already submitting another block")
+	}
 	resp, err := g.enclaveClient.SubmitL1Block(*block, receipts, isLatest)
 	g.submitDataLock.Unlock()
 	if err != nil {
