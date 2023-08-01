@@ -103,12 +103,12 @@ func (g *Guardian) Stop() error {
 
 	err := g.enclaveClient.Stop()
 	if err != nil {
-		g.logger.Warn("error stopping enclave", "err", err)
+		g.logger.Warn("error stopping enclave", log.ErrKey, err)
 	}
 
 	err = g.enclaveClient.StopClient()
 	if err != nil {
-		g.logger.Warn("error stopping enclave client", "err", err)
+		g.logger.Warn("error stopping enclave client", log.ErrKey, err)
 	}
 
 	return nil
@@ -187,19 +187,19 @@ func (g *Guardian) mainLoop() {
 		case AwaitingSecret:
 			err := g.provideSecret()
 			if err != nil {
-				g.logger.Warn("could not provide secret to enclave", "err", err)
+				g.logger.Warn("could not provide secret to enclave", log.ErrKey, err)
 			}
 		case L1Catchup:
 			// catchUpWithL1 will feed blocks 1-by-1 to the enclave until we are up-to-date, we hit an error or the guardian is stopped
 			err := g.catchupWithL1()
 			if err != nil {
-				g.logger.Warn("could not catch up with L1", "err", err)
+				g.logger.Warn("could not catch up with L1", log.ErrKey, err)
 			}
 		case L2Catchup:
 			// catchUpWithL2 will feed batches 1-by-1 to the enclave until we are up-to-date, we hit an error or the guardian is stopped
 			err := g.catchupWithL2()
 			if err != nil {
-				g.logger.Warn("could not catch up with L2", "err", err)
+				g.logger.Warn("could not catch up with L2", log.ErrKey, err)
 			}
 		case Live:
 			// todo: should we allow interrupt here so we try to recover from a change in state immediately?
@@ -258,7 +258,7 @@ func (g *Guardian) provideSecret() error {
 			if scrt.RequesterID.Hex() == g.hostData.ID.Hex() {
 				err = g.enclaveClient.InitEnclave(scrt.Secret)
 				if err != nil {
-					g.logger.Warn("could not initialize enclave with received secret response", "err", err)
+					g.logger.Warn("could not initialize enclave with received secret response", log.ErrKey, err)
 					continue // try the next secret response in the block if there are more
 				}
 				return nil // successfully initialized enclave with secret, break out of retry loop function

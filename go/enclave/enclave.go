@@ -320,7 +320,7 @@ func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 	} else {
 		l1HeadHash = l1Head.Hash()
 	}
-	// we use a negative number to signal to the host that there is no head batch (using zero is ambiguous because it's the first seq number)
+	// we use zero when there's no head batch yet, the first seq number is 1
 	l2HeadSeqNo := _noHeadBatch
 	l2Head, err := e.storage.FetchHeadBatch()
 	if err != nil {

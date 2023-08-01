@@ -49,12 +49,12 @@ func (es Status) String() string {
 
 // StateTracker is the state machine for the enclave
 type StateTracker struct {
-	// status is the cached status of the enclave
+	// status is the status according to this enclave tracker
 	// It is a function of the properties below and recalculated when any of them change
 	status Status
 
 	// enclave states (updated when enclave returns Status and optimistically after successful actions)
-	enclaveStatusCode common.StatusCode
+	enclaveStatusCode common.StatusCode // this is the status code reported by the enclave (Running/AwaitingSecret/Unavailable)
 	enclaveL1Head     gethcommon.Hash
 	enclaveL2Head     *big.Int
 
@@ -192,6 +192,6 @@ func (s *StateTracker) setStatus(newStatus Status) {
 	if s.status == newStatus {
 		return
 	}
-	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus), "STATE", s)
+	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus), "state", s)
 	s.status = newStatus
 }

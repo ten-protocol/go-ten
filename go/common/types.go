@@ -69,6 +69,7 @@ type (
 const (
 	L2GenesisHeight = uint64(0)
 	L1GenesisHeight = uint64(0)
+	L2GenesisSeqNo  = uint64(1)
 	// HeightCommittedBlocks is the number of blocks deep a transaction must be to be considered safe from reorganisations.
 	HeightCommittedBlocks = 15
 )

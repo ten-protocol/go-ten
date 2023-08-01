@@ -87,7 +87,8 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}
 
 	var messages common.CrossChainMessages
-	if context.SequencerNo.Int64() > 2 {
+	// Cross chain data is not accessible until one after the genesis batch
+	if context.SequencerNo.Int64() > int64(common.L2GenesisSeqNo+1) {
 		messages = bp.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
 	}
 	crossChainTransactions := bp.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
@@ -152,7 +153,7 @@ func (bp *batchProducerImpl) CreateGenesisState(blkHash common.L1BlockHash, time
 			Root:             *preFundGenesisState,
 			TxHash:           types.EmptyRootHash,
 			Number:           big.NewInt(int64(0)),
-			SequencerOrderNo: big.NewInt(int64(1)), // genesis batch has seq number 1
+			SequencerOrderNo: big.NewInt(int64(common.L2GenesisSeqNo)), // genesis batch has seq number 1
 			ReceiptHash:      types.EmptyRootHash,
 			Time:             timeNow,
 		},
