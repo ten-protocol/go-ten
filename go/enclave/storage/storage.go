@@ -420,6 +420,7 @@ func (s *storageImpl) cacheBlock(blockHash common.L1BlockHash, b *types.Block) {
 	var buffer bytes.Buffer
 	if err := b.EncodeRLP(&buffer); err != nil {
 		s.logger.Error("Could not encode block to store block in cache", log.ErrKey, err)
+		return
 	}
 	err := s.blockCache.Set(context.Background(), blockHash, buffer.Bytes())
 	if err != nil {
@@ -463,6 +464,7 @@ func (s *storageImpl) cacheBatch(batchHash common.L2BatchHash, b *core.Batch) {
 	value, err := rlp.EncodeToBytes(b)
 	if err != nil {
 		s.logger.Error("Could not encode block to store block in cache", log.ErrKey, err)
+		return
 	}
 	err = s.batchCache.Set(context.Background(), batchHash, value)
 	if err != nil {
