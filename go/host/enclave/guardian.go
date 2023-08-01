@@ -22,9 +22,14 @@ import (
 )
 
 const (
-	_retryInterval            = 100 * time.Millisecond
-	_monitoringInterval       = 30 * time.Second
-	_maxWaitForSecretResponse = 120 * time.Second
+	// time between loops on mainLoop, will be retry time if things are failing
+	_retryInterval = 100 * time.Millisecond
+
+	// when enclave is healthy this is the time before we call its status (can be slow, is just a sanity check)
+	_monitoringInterval = 30 * time.Second
+
+	// when we have submitted request to L1 for the secret, how long do we wait for an answer before we retry
+	_maxWaitForSecretResponse = 2 * time.Minute
 )
 
 // This private interface enforces the services that the guardian depends on
@@ -133,13 +138,17 @@ func (g *Guardian) GetEnclaveClient() common.Enclave {
 	return g.enclaveClient
 }
 
-// HandleBlock is called by the L1 repository. The host is subscribed to receive new blockg.
+// HandleBlock is called by the L1 repository when new blocks arrive.
+// Note: The L1 processing behaviour has two modes based on the state, either
+// - enclave is behind: lookup blocks to feed it 1-by-1 (see `catchupWithL1()`), ignore new live blocks that arrive here
+// - enclave is up-to-date: feed it these live blocks as they arrive, no need to lookup blocks
 func (g *Guardian) HandleBlock(block *types.Block) {
 	g.logger.Debug("Received L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
 	// record the newest block we've seen
 	g.state.OnReceivedBlock(block.Hash())
 	if !g.state.InSyncWithL1() {
-		return // ignore blocks until we're up-to-date
+		// the enclave is still catching up with the L1 chain, it won't be able to process this new head block yet so return
+		return
 	}
 	err := g.submitL1Block(block, true)
 	if err != nil {
@@ -148,7 +157,12 @@ func (g *Guardian) HandleBlock(block *types.Block) {
 }
 
 // HandleBatch is called by the L2 repository when a new batch arrives
+// Note: this should only be called for validators, sequencers produce their own batches
 func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
+	if g.hostData.IsSequencer {
+		g.logger.Error("repo received batch but we are a sequencer, ignoring")
+		return
+	}
 	g.logger.Debug("Received L2 block", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
