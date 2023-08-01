@@ -138,7 +138,7 @@ func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
 func (s *storageImpl) StoreBlock(b *types.Block, chainFork *common.ChainFork) error {
 	dbBatch := s.db.NewDBTransaction()
 	if chainFork != nil && chainFork.IsFork() {
-		s.logger.Info(fmt.Sprintf("Fork. %+v.", chainFork))
+		s.logger.Info(fmt.Sprintf("Fork. %s", chainFork))
 		enclavedb.UpdateCanonicalBlocks(dbBatch, chainFork.CanonicalPath, chainFork.NonCanonicalPath)
 	} else {
 		enclavedb.UpdateCanonicalBlocks(dbBatch, nil, nil)
