@@ -7,10 +7,8 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/host/l2"
 
-	"github.com/obscuronet/go-obscuro/go/host/l1"
-	"github.com/pkg/errors"
-
 	"github.com/obscuronet/go-obscuro/go/host/enclave"
+	"github.com/obscuronet/go-obscuro/go/host/l1"
 
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/naoina/toml"
@@ -125,7 +123,7 @@ func (h *host) Start() error {
 	for name, service := range h.services.All() {
 		err := service.Start()
 		if err != nil {
-			return errors.Wrapf(err, "could not start service=%s", name)
+			return fmt.Errorf("could not start service=%s: %w", name, err)
 		}
 	}
 

@@ -359,7 +359,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
 			nextHeight := big.NewInt(0).Add(block.Number(), big.NewInt(1))
 			nextCanonicalBlock, err := g.sl.L1Repo().FetchBlockByHeight(nextHeight)
 			if err != nil {
-				return errors.Wrapf(err, "failed to fetch next block after forking block=%s", block.Hash())
+				return fmt.Errorf("failed to fetch next block after forking block=%s: %w", block.Hash(), err)
 			}
 			return g.submitL1Block(nextCanonicalBlock, isLatest)
 		}

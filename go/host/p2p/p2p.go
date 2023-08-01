@@ -101,7 +101,7 @@ func (p *Service) Start() error {
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.ourAddress)
 	if err != nil {
-		return errors.Wrapf(err, "could not listen for P2P connections on %s", p.ourAddress)
+		return fmt.Errorf("could not listen for P2P connections on %s: %w", p.ourAddress, err)
 	}
 
 	p.logger.Info(fmt.Sprintf("Started listening on port: %s", p.ourAddress))
