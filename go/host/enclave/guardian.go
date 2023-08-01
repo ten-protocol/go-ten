@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/kamilsk/breaker"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -58,18 +60,12 @@ type Guardian struct {
 	batchInterval  time.Duration
 	rollupInterval time.Duration
 
-	running atomic.Bool
-	logger  gethlog.Logger
+	running     atomic.Bool
+	interrupter breaker.Interface
+	logger      gethlog.Logger
 }
 
-func NewGuardian(
-	cfg *config.HostConfig,
-	hostData host.Identity,
-	serviceLocator guardianServiceLocator,
-	enclaveClient common.Enclave,
-	db *db.DB,
-	logger gethlog.Logger,
-) *Guardian {
+func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter breaker.Interface, logger gethlog.Logger) *Guardian {
 	return &Guardian{
 		hostData:       hostData,
 		state:          NewStateTracker(logger),
@@ -78,6 +74,7 @@ func NewGuardian(
 		batchInterval:  cfg.BatchInterval,
 		rollupInterval: cfg.RollupInterval,
 		db:             db,
+		interrupter:    interrupter,
 		logger:         logger,
 	}
 }
@@ -216,9 +213,13 @@ func (g *Guardian) mainLoop() {
 				g.logger.Warn("could not catch up with L2", log.ErrKey, err)
 			}
 		case Live:
-			// todo: should we allow interrupt here so we try to recover from a change in state immediately?
-			// (Would allow for longer monitoring interval if we also interrupt for Stop)
-			time.Sleep(_monitoringInterval)
+			// we're healthy: loop back to enclave status again after long monitoring interval
+			select {
+			case <-time.After(_monitoringInterval):
+				// loop back to check status
+			case <-g.interrupter.Done():
+				// stop sleeping, we've been interrupted
+			}
 		}
 		time.Sleep(_retryInterval)
 	}
@@ -458,22 +459,29 @@ func (g *Guardian) periodicBatchProduction() {
 		interval = 1 * time.Second
 	}
 	batchProdTicker := time.NewTicker(interval)
-	for range batchProdTicker.C {
+	// attempt to produce rollup every time the timer ticks until we are stopped/interrupted
+	for {
 		if !g.running.Load() {
-			return // we're done
+			batchProdTicker.Stop()
+			return // stop periodic rollup production
 		}
-		if !g.state.InSyncWithL1() {
-			// if we're behind the L1, we don't want to produce batches
-			g.logger.Debug("skipping batch production because L1 is not up to date")
-			continue
+		select {
+		case <-batchProdTicker.C:
+			if !g.state.InSyncWithL1() {
+				// if we're behind the L1, we don't want to produce batches
+				g.logger.Debug("skipping batch production because L1 is not up to date")
+				continue
+			}
+			g.logger.Debug("create batch")
+			err := g.enclaveClient.CreateBatch()
+			if err != nil {
+				g.logger.Error("unable to produce batch", log.ErrKey, err)
+			}
+		case <-g.interrupter.Done():
+			// interrupted - end periodic process
+			batchProdTicker.Stop()
+			return
 		}
-		g.logger.Debug("create batch")
-		err := g.enclaveClient.CreateBatch()
-		if err != nil {
-			g.logger.Warn("unable to produce batch", log.ErrKey, err)
-		}
-
-		// todo (@matt) interrupt on shutdown, don't wait for timer
 	}
 }
 
@@ -485,29 +493,35 @@ func (g *Guardian) periodicRollupProduction() {
 		interval = 3 * time.Second
 	}
 	rollupTicker := time.NewTicker(interval)
-	for range rollupTicker.C {
+	// attempt to produce rollup every time the timer ticks until we are stopped/interrupted
+	for {
 		if !g.running.Load() {
-			return // guardian has been stopped
+			rollupTicker.Stop()
+			return // stop periodic rollup production
 		}
-		if !g.state.IsUpToDate() {
-			// if we're behind the L1, we don't want to produce rollups
-			g.logger.Debug("skipping rollup production because enclave is not up to date", "enclaveState", g.state)
-			continue
+		select {
+		case <-rollupTicker.C:
+			if !g.state.IsUpToDate() {
+				// if we're behind the L1, we don't want to produce rollups
+				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
+				continue
+			}
+			lastBatchNo, err := g.sl.L1Publisher().FetchLatestSeqNo()
+			if err != nil {
+				g.logger.Warn("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
+				continue
+			}
+			producedRollup, err := g.enclaveClient.CreateRollup(lastBatchNo.Uint64())
+			if err != nil {
+				g.logger.Error("unable to produce rollup", log.ErrKey, err)
+			} else {
+				g.sl.L1Publisher().PublishRollup(producedRollup)
+			}
+		case <-g.interrupter.Done():
+			// interrupted - end periodic process
+			rollupTicker.Stop()
+			return
 		}
-		lastBatchNo, err := g.sl.L1Publisher().FetchLatestSeqNo()
-		if err != nil {
-			g.logger.Warn("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
-			continue
-		}
-		g.logger.Trace("create rollup", "lastBatchNo", lastBatchNo)
-		producedRollup, err := g.enclaveClient.CreateRollup(lastBatchNo.Uint64())
-		if err != nil {
-			g.logger.Error("unable to produce rollup", log.ErrKey, err)
-		} else {
-			g.sl.L1Publisher().PublishRollup(producedRollup)
-		}
-
-		// todo (@matt) interrupt on shutdown, don't wait for timer
 	}
 }
 
@@ -559,6 +573,10 @@ func (g *Guardian) streamEnclaveData() {
 				// guardian service is stopped
 				return
 			}
+
+		case <-g.interrupter.Done():
+			// interrupted - end periodic process
+			return
 		}
 	}
 }
