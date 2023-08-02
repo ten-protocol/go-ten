@@ -60,22 +60,23 @@ type Guardian struct {
 	batchInterval  time.Duration
 	rollupInterval time.Duration
 
-	running     atomic.Bool
-	interrupter breaker.Interface
-	logger      gethlog.Logger
+	running         atomic.Bool
+	hostInterrupter breaker.Interface // host hostInterrupter so we can stop quickly
+
+	logger gethlog.Logger
 }
 
 func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter breaker.Interface, logger gethlog.Logger) *Guardian {
 	return &Guardian{
-		hostData:       hostData,
-		state:          NewStateTracker(logger),
-		enclaveClient:  enclaveClient,
-		sl:             serviceLocator,
-		batchInterval:  cfg.BatchInterval,
-		rollupInterval: cfg.RollupInterval,
-		db:             db,
-		interrupter:    interrupter,
-		logger:         logger,
+		hostData:        hostData,
+		state:           NewStateTracker(logger),
+		enclaveClient:   enclaveClient,
+		sl:              serviceLocator,
+		batchInterval:   cfg.BatchInterval,
+		rollupInterval:  cfg.RollupInterval,
+		db:              db,
+		hostInterrupter: interrupter,
+		logger:          logger,
 	}
 }
 
@@ -217,7 +218,7 @@ func (g *Guardian) mainLoop() {
 			select {
 			case <-time.After(_monitoringInterval):
 				// loop back to check status
-			case <-g.interrupter.Done():
+			case <-g.hostInterrupter.Done():
 				// stop sleeping, we've been interrupted
 			}
 		}
@@ -480,7 +481,7 @@ func (g *Guardian) periodicBatchProduction() {
 			if err != nil {
 				g.logger.Error("unable to produce batch", log.ErrKey, err)
 			}
-		case <-g.interrupter.Done():
+		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
 			batchProdTicker.Stop()
 			return
@@ -520,7 +521,7 @@ func (g *Guardian) periodicRollupProduction() {
 			} else {
 				g.sl.L1Publisher().PublishRollup(producedRollup)
 			}
-		case <-g.interrupter.Done():
+		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
 			rollupTicker.Stop()
 			return
@@ -577,7 +578,7 @@ func (g *Guardian) streamEnclaveData() {
 				return
 			}
 
-		case <-g.interrupter.Done():
+		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
 			return
 		}
