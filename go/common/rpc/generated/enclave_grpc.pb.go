@@ -75,6 +75,7 @@ type EnclaveProtoClient interface {
 	StreamL2Updates(ctx context.Context, in *StreamL2UpdatesRequest, opts ...grpc.CallOption) (EnclaveProto_StreamL2UpdatesClient, error)
 	DebugEventLogRelevancy(ctx context.Context, in *DebugEventLogRelevancyRequest, opts ...grpc.CallOption) (*DebugEventLogRelevancyResponse, error)
 	GetTotalContractCount(ctx context.Context, in *GetTotalContractCountRequest, opts ...grpc.CallOption) (*GetTotalContractCountResponse, error)
+	GetPublicTxsBySender(ctx context.Context, in *GetPublicTxsBySenderRequest, opts ...grpc.CallOption) (*GetPublicTxsBySenderResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -351,6 +352,15 @@ func (c *enclaveProtoClient) GetTotalContractCount(ctx context.Context, in *GetT
 	return out, nil
 }
 
+func (c *enclaveProtoClient) GetPublicTxsBySender(ctx context.Context, in *GetPublicTxsBySenderRequest, opts ...grpc.CallOption) (*GetPublicTxsBySenderResponse, error) {
+	out := new(GetPublicTxsBySenderResponse)
+	err := c.cc.Invoke(ctx, "/generated.EnclaveProto/GetPublicTxsBySender", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -408,6 +418,7 @@ type EnclaveProtoServer interface {
 	StreamL2Updates(*StreamL2UpdatesRequest, EnclaveProto_StreamL2UpdatesServer) error
 	DebugEventLogRelevancy(context.Context, *DebugEventLogRelevancyRequest) (*DebugEventLogRelevancyResponse, error)
 	GetTotalContractCount(context.Context, *GetTotalContractCountRequest) (*GetTotalContractCountResponse, error)
+	GetPublicTxsBySender(context.Context, *GetPublicTxsBySenderRequest) (*GetPublicTxsBySenderResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -495,6 +506,9 @@ func (UnimplementedEnclaveProtoServer) DebugEventLogRelevancy(context.Context, *
 }
 func (UnimplementedEnclaveProtoServer) GetTotalContractCount(context.Context, *GetTotalContractCountRequest) (*GetTotalContractCountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTotalContractCount not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetPublicTxsBySender(context.Context, *GetPublicTxsBySenderRequest) (*GetPublicTxsBySenderResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPublicTxsBySender not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -998,6 +1012,24 @@ func _EnclaveProto_GetTotalContractCount_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_GetPublicTxsBySender_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPublicTxsBySenderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetPublicTxsBySender(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/generated.EnclaveProto/GetPublicTxsBySender",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetPublicTxsBySender(ctx, req.(*GetPublicTxsBySenderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1108,6 +1140,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTotalContractCount",
 			Handler:    _EnclaveProto_GetTotalContractCount_Handler,
+		},
+		{
+			MethodName: "GetPublicTxsBySender",
+			Handler:    _EnclaveProto_GetPublicTxsBySender_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

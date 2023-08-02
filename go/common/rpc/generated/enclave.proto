@@ -86,6 +86,17 @@ service EnclaveProto {
   rpc DebugEventLogRelevancy(DebugEventLogRelevancyRequest) returns (DebugEventLogRelevancyResponse) {}
 
   rpc GetTotalContractCount(GetTotalContractCountRequest) returns (GetTotalContractCountResponse) {}
+
+  rpc GetPublicTxsBySender(GetPublicTxsBySenderRequest) returns (GetPublicTxsBySenderResponse) {}
+}
+
+message GetPublicTxsBySenderRequest {
+  bytes address = 1;
+}
+
+message GetPublicTxsBySenderResponse{
+  bytes publicTxData = 1;
+  SystemError systemError = 2;
 }
 
 message GetBatchRequest {
