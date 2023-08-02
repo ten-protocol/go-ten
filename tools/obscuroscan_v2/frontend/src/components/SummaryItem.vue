@@ -1,6 +1,7 @@
 <template>
   <el-row>
     <el-col :span="4">
+      <list-my-txs-button></list-my-txs-button>
       <el-card class="box" shadow="always">
         <p>Ether Price</p>
         <div>
@@ -67,9 +68,11 @@ import { onMounted, onUnmounted } from 'vue'
 import { computed } from 'vue'
 import { useBatchStore } from '@/stores/batchStore'
 import { usePriceStore } from '@/stores/priceStore'
+import ListMyTxsButton from "@/components/ListMyTxsButton.vue";
 
 export default {
   name: 'SummaryItem',
+  components: {ListMyTxsButton},
   setup() {
     const counter = useCounterStore()
     const batch = useBatchStore()
@@ -99,6 +102,9 @@ export default {
       batchLoading: computed(() => batch.loading),
       priceLoading: computed(() => price.loading),
     }
+  },
+  methods: {
+
   }
 }
 </script>

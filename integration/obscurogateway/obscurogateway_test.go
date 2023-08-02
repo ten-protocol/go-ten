@@ -1,124 +1,182 @@
 package faucet
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"strings"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/httputil"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/stretchr/testify/require"
+	"math/big"
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/config"
-	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend/container"
-	"github.com/stretchr/testify/require"
-	"github.com/valyala/fasthttp"
-
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
+	"github.com/obscuronet/go-obscuro/tools/walletextension/container"
 	"github.com/stretchr/testify/assert"
 )
 
 func init() { //nolint:gochecknoinits
 	testlog.Setup(&testlog.Cfg{
 		LogDir:      testLogs,
-		TestType:    "obscuroscan",
+		TestType:    "obscurogateway",
 		TestSubtype: "test",
 		LogLevel:    log.LvlInfo,
 	})
 }
 
 const (
-	testLogs = "../.build/obscuroscan/"
+	testLogs = "../.build/obscurogateway/"
 )
 
-func TestObscuroscan(t *testing.T) {
+func TestObscuroGateway(t *testing.T) {
 	//t.Skip("skipping until Tudor's DB changes simplify the enclave logic")
-	startPort := integration.StartPortObscuroscanUnitTest
-	createObscuroNetwork(t, startPort)
+	startPort := integration.StartPortObscuroGatewayUnitTest
+	wallets := createObscuroNetwork(t, startPort)
 
-	obsScanConfig := &config.Config{
-		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
-		ServerAddress:   fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultObscuroscanHTTPPortOffset),
-		LogPath:         "sys_out",
+	obscuroGatewayConf := config.Config{
+		WalletExtensionHost:     "127.0.0.1",
+		WalletExtensionPortHTTP: startPort + integration.DefaultObscuroGatewayHTTPPortOffset,
+		WalletExtensionPortWS:   startPort + integration.DefaultObscuroGatewayWSPortOffset,
+		NodeRPCHTTPAddress:      fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
+		NodeRPCWebsocketAddress: fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
+		LogPath:                 "sys_out",
+		VerboseFlag:             false,
 	}
-	serverAddress := fmt.Sprintf("http://%s", obsScanConfig.ServerAddress)
 
-	obsScanContainer, err := container.NewObscuroScanContainer(obsScanConfig)
-	require.NoError(t, err)
-
-	err = obsScanContainer.Start()
-	require.NoError(t, err)
+	obscuroGwContainer := container.NewWalletExtensionContainerFromConfig(obscuroGatewayConf, testlog.Logger())
+	go func() {
+		err := obscuroGwContainer.Start()
+		if err != nil {
+			fmt.Printf("error stopping WE - %s", err)
+		}
+	}()
 
 	// wait for the msg bus contract to be deployed
 	time.Sleep(5 * time.Second)
 
 	// make sure the server is ready to receive requests
-	err = waitServerIsReady(serverAddress)
-	require.NoError(t, err)
+	// TODO Implement health endpoint
+	serverAddress := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
+
+	w := wallets.L2FaucetWallet
+
+	vk, err := viewingkey.GenerateViewingKeyForWallet(w)
+	assert.Nil(t, err)
+	client, err := rpc.NewEncNetworkClient(fmt.Sprintf("ws://%s", obscuroGatewayConf.NodeRPCWebsocketAddress), vk, testlog.Logger())
+	assert.Nil(t, err)
+	authClient := obsclient.NewAuthObsClient(client)
+
+	balance, err := authClient.BalanceAt(context.Background(), nil)
+	assert.Nil(t, err)
+	assert.NotEqual(t, big.NewInt(0), balance)
+
+	txHash := transferRandomAddr(t, authClient, w)
 
 	// Issue tests
-	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
+	jsonRPCRequest := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "eth_getStorageAt",
+		"params": []interface{}{
+			w.Address().String(),
+			nil,
+			nil,
+		},
+		"id": "1",
+	}
+	bodyReq, err := json.Marshal(jsonRPCRequest)
 	assert.NoError(t, err)
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":1}", string(body))
 
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/transactions/", serverAddress))
+	statusCode, body, err := httputil.PostDataJSON(serverAddress, bodyReq)
 	assert.NoError(t, err)
-	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":1}", string(body))
+	require.Equal(t, 200, statusCode)
 
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))
-	assert.NoError(t, err)
-	assert.Equal(t, 200, statusCode)
-
-	type itemRes struct {
-		Item common.BatchHeader `json:"item"`
+	type request struct {
+		Result []common.PublicTxData `json:"result"`
 	}
 
-	itemObj := itemRes{}
-	err = json.Unmarshal(body, &itemObj)
+	pubDataReq := request{}
+	err = json.Unmarshal(body, &pubDataReq)
 	assert.NoError(t, err)
-	batchHead := itemObj.Item
 
-	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/latest/", serverAddress))
-	assert.NoError(t, err)
-	assert.Equal(t, 200, statusCode)
+	assert.Equal(t, 1, len(pubDataReq.Result))
+	assert.Equal(t, w.Address(), pubDataReq.Result[0].SenderAddress)
+	assert.Equal(t, txHash.Hex(), pubDataReq.Result[0].TransactionHash.Hex())
 
-	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/batch/%s", serverAddress, batchHead.Hash().String()))
-	assert.NoError(t, err)
-	assert.Equal(t, 200, statusCode)
-
-	time.Sleep(time.Hour)
 	// Gracefully shutdown
-	err = obsScanContainer.Stop()
+	err = obscuroGwContainer.Stop()
 	assert.NoError(t, err)
 }
 
-func waitServerIsReady(serverAddr string) error {
-	for now := time.Now(); time.Since(now) < 30*time.Second; time.Sleep(500 * time.Millisecond) {
-		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/health/", serverAddr))
-		if err != nil {
-			// give it time to boot up
-			if strings.Contains(err.Error(), "connection") {
-				continue
-			}
-			return err
-		}
+func transferRandomAddr(t *testing.T, authClient *obsclient.AuthObsClient, w wallet.Wallet) common.TxHash {
+	ctx := context.Background()
+	toAddr := datagenerator.RandomAddress()
+	nonce, err := authClient.NonceAt(ctx, nil)
+	assert.Nil(t, err)
 
-		if statusCode == http.StatusOK {
-			return nil
+	w.SetNonce(nonce)
+	estimatedTx := authClient.EstimateGasAndGasPrice(&types.LegacyTx{
+		Nonce:    w.GetNonceAndIncrement(),
+		To:       &toAddr,
+		Value:    big.NewInt(100),
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
+	})
+	assert.Nil(t, err)
+
+	fmt.Println("Transferring from:", w.Address(), " to:", toAddr)
+
+	signedTx, err := w.SignTransaction(estimatedTx)
+	assert.Nil(t, err)
+
+	err = authClient.SendTransaction(ctx, signedTx)
+	assert.Nil(t, err)
+
+	fmt.Printf("Created Tx: %s \n", signedTx.Hash().Hex())
+	fmt.Printf("Checking for tx receipt for %s \n", signedTx.Hash())
+	var receipt *types.Receipt
+	for start := time.Now(); time.Since(start) < time.Minute; time.Sleep(time.Second) {
+		receipt, err = authClient.TransactionReceipt(ctx, signedTx.Hash())
+		if err == nil {
+			break
 		}
+		//
+		// Currently when a receipt is not available the obscuro node is returning nil instead of err ethereum.NotFound
+		// once that's fixed this commented block should be removed
+		//if !errors.Is(err, ethereum.NotFound) {
+		//	t.Fatal(err)
+		//}
+		if receipt != nil && receipt.Status == 1 {
+			break
+		}
+		fmt.Printf("no tx receipt after %s - %s\n", time.Since(start), err)
 	}
-	return fmt.Errorf("timed out before server was ready")
+
+	if receipt == nil {
+		t.Fatalf("Did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
+	}
+	if receipt.Status == 0 {
+		t.Fatalf("Tx Failed")
+	}
+	fmt.Println("Successfully minted the transaction - ", signedTx.Hash())
+	return signedTx.Hash()
 }
 
 // Creates a single-node Obscuro network for testing.
-func createObscuroNetwork(t *testing.T, startPort int) {
+func createObscuroNetwork(t *testing.T, startPort int) *params.SimWallets {
 	// Create the Obscuro network.
 	numberOfNodes := 1
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
@@ -137,4 +195,5 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 	if err != nil {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
 	}
+	return wallets
 }
