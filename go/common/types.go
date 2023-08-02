@@ -173,3 +173,8 @@ type ChainFork struct {
 func (cf *ChainFork) IsFork() bool {
 	return len(cf.NonCanonicalPath) > 0
 }
+
+func (cf *ChainFork) String() string {
+	return fmt.Sprintf("ChainFork{NewCanonical: %s, OldCanonical: %s, CommonAncestor: %s, CanonicalPath: %s, NonCanonicalPath: %s}",
+		cf.NewCanonical.Hash(), cf.OldCanonical.Hash(), cf.CommonAncestor.Hash(), cf.CanonicalPath, cf.NonCanonicalPath)
+}
