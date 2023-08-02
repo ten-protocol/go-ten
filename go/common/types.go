@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -172,4 +173,10 @@ type ChainFork struct {
 
 func (cf *ChainFork) IsFork() bool {
 	return len(cf.NonCanonicalPath) > 0
+}
+
+type PublicTxData struct {
+	SenderAddress   common.Address
+	TransactionHash TxHash
+	BatchHeight     *big.Int
 }

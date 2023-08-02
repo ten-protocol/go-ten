@@ -532,3 +532,26 @@ func (c *Client) GetTotalContractCount() (*big.Int, common.SystemError) {
 	}
 	return big.NewInt(response.Count), nil
 }
+
+func (c *Client) GetPublicTxsBySender(address *gethcommon.Address) ([]common.PublicTxData, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetPublicTxsBySender(timeoutCtx, &generated.GetPublicTxsBySenderRequest{
+		Address: address.Bytes(),
+	})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	var publicTxData []common.PublicTxData
+	err = rlp.DecodeBytes(response.PublicTxData, &publicTxData)
+	if err != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	return publicTxData, nil
+}

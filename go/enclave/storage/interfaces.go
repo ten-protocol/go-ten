@@ -131,4 +131,5 @@ type Storage interface {
 
 type ScanStorage interface {
 	GetContractCount() (*big.Int, error)
+	GetPublicTxsBySender(address *gethcommon.Address) ([]common.PublicTxData, error)
 }

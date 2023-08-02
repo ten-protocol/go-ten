@@ -131,6 +131,9 @@ type Enclave interface {
 type EnclaveScan interface {
 	// GetTotalContractCount returns the total number of contracts that have been deployed
 	GetTotalContractCount() (*big.Int, SystemError)
+
+	// GetPublicTxsBySender returns a list of public txs given the sender address
+	GetPublicTxsBySender(address *gethcommon.Address) ([]PublicTxData, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

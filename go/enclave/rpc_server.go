@@ -348,6 +348,27 @@ func (s *RPCServer) GetTotalContractCount(_ context.Context, _ *generated.GetTot
 	}, nil
 }
 
+func (s *RPCServer) GetPublicTxsBySender(_ context.Context, req *generated.GetPublicTxsBySenderRequest) (*generated.GetPublicTxsBySenderResponse, error) {
+	addr := gethcommon.BytesToAddress(req.Address)
+	receipts, err := s.enclave.GetPublicTxsBySender(&addr)
+	if err != nil {
+		return &generated.GetPublicTxsBySenderResponse{
+			SystemError: toRPCError(err),
+		}, nil
+	}
+
+	bytes, err := rlp.EncodeToBytes(receipts)
+	if err != nil {
+		return &generated.GetPublicTxsBySenderResponse{
+			SystemError: toRPCError(err),
+		}, nil
+	}
+
+	return &generated.GetPublicTxsBySenderResponse{
+		PublicTxData: bytes,
+	}, nil
+}
+
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

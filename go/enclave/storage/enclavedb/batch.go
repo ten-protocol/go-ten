@@ -32,6 +32,7 @@ const (
 	txExecInsert      = "insert into exec_tx values "
 	txExecInsertValue = "(?,?,?,?,?)"
 	queryReceipts     = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
+	queryTxList       = "select tx.sender_address, tx.hash, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 
 	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where tx.hash=?"
 
@@ -91,9 +92,14 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
+			msg, err := transaction.AsMessage(types.NewEIP155Signer(transaction.ChainId()), big.NewInt(0))
+			if err != nil {
+				return fmt.Errorf("unable to convert tx to message - %w", err)
+			}
+
 			args = append(args, transaction.Hash().Bytes()) // tx_hash
 			args = append(args, txBytes)                    // content
-			args = append(args, nil)                        // sender_address - todo - implement
+			args = append(args, msg.From().Bytes())         // sender_address
 			args = append(args, transaction.Nonce())        // nonce
 			args = append(args, i)                          // idx
 			args = append(args, bodyHash)                   // the batch body which contained it
@@ -329,14 +335,48 @@ func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args .
 	return allReceipts, nil
 }
 
-// ReadReceipts retrieves all the transaction receipts belonging to a block, including
+func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.PublicTxData, error) {
+	var publicTxs []common.PublicTxData
+
+	rows, err := db.Query(queryTxList+" "+query, args...)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var senderAddr []byte
+		var txHash []byte
+		var batchHeight uint64
+		err := rows.Scan(&senderAddr, &txHash, &batchHeight)
+		if err != nil {
+			return nil, err
+		}
+
+		publicTxs = append(publicTxs, common.PublicTxData{
+			SenderAddress:   gethcommon.BytesToAddress(senderAddr),
+			TransactionHash: gethcommon.BytesToHash(txHash),
+			BatchHeight:     big.NewInt(0).SetUint64(batchHeight),
+		})
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return publicTxs, nil
+}
+
+// ReadReceiptsByBatchHash retrieves all the transaction receipts belonging to a block, including
 // its corresponding metadata fields. If it is unable to populate these metadata
 // fields then nil is returned.
 //
 // The current implementation populates these metadata fields by reading the receipts'
 // corresponding block body, so if the block body is not found it will return nil even
 // if the receipt itself is stored.
-func ReadReceipts(db *sql.DB, hash common.L2BatchHash, config *params.ChainConfig) (types.Receipts, error) {
+func ReadReceiptsByBatchHash(db *sql.DB, hash common.L2BatchHash, config *params.ChainConfig) (types.Receipts, error) {
 	return selectReceipts(db, config, "where batch.hash = ?", hash.Bytes())
 }
 
@@ -427,4 +467,8 @@ func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
 	}
 
 	return big.NewInt(count), nil
+}
+
+func ReadPublicTxsBySender(db *sql.DB, address *gethcommon.Address) ([]common.PublicTxData, error) {
+	return selectPublicTxsBySender(db, "where tx.sender_address = ?", address.Bytes())
 }
