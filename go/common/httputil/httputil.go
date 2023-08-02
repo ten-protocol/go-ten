@@ -92,7 +92,7 @@ func PostDataJSON(url string, data []byte) (int, []byte, error) {
 	defer fasthttp.ReleaseResponse(resp)
 
 	if err := fasthttp.Do(req, resp); err != nil {
-		return 0, nil, fmt.Errorf("error while sending request: %v", err)
+		return 0, nil, fmt.Errorf("error while sending request: %w", err)
 	}
 
 	return resp.StatusCode(), resp.Body(), nil

@@ -4,29 +4,29 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
+	"testing"
+	"time"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/httputil"
 	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-	"github.com/stretchr/testify/require"
-	"math/big"
-	"testing"
-	"time"
-
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/container"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func init() { //nolint:gochecknoinits
@@ -43,7 +43,6 @@ const (
 )
 
 func TestObscuroGateway(t *testing.T) {
-	//t.Skip("skipping until Tudor's DB changes simplify the enclave logic")
 	startPort := integration.StartPortObscuroGatewayUnitTest
 	wallets := createObscuroNetwork(t, startPort)
 
