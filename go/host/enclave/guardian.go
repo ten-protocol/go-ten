@@ -196,22 +196,26 @@ func (g *Guardian) mainLoop() {
 		switch g.state.GetStatus() {
 		case Disconnected, Unavailable:
 			// nothing to do, we are waiting for the enclave to be available
+			time.Sleep(_retryInterval)
 		case AwaitingSecret:
 			err := g.provideSecret()
 			if err != nil {
 				g.logger.Warn("could not provide secret to enclave", log.ErrKey, err)
+				time.Sleep(_retryInterval)
 			}
 		case L1Catchup:
 			// catchUpWithL1 will feed blocks 1-by-1 to the enclave until we are up-to-date, we hit an error or the guardian is stopped
 			err := g.catchupWithL1()
 			if err != nil {
 				g.logger.Warn("could not catch up with L1", log.ErrKey, err)
+				time.Sleep(_retryInterval)
 			}
 		case L2Catchup:
 			// catchUpWithL2 will feed batches 1-by-1 to the enclave until we are up-to-date, we hit an error or the guardian is stopped
 			err := g.catchupWithL2()
 			if err != nil {
 				g.logger.Warn("could not catch up with L2", log.ErrKey, err)
+				time.Sleep(_retryInterval)
 			}
 		case Live:
 			// we're healthy: loop back to enclave status again after long monitoring interval
@@ -222,7 +226,6 @@ func (g *Guardian) mainLoop() {
 				// stop sleeping, we've been interrupted
 			}
 		}
-		time.Sleep(_retryInterval)
 	}
 	g.logger.Debug("stopping guardian main loop")
 }
