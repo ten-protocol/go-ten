@@ -317,7 +317,7 @@ func (s *storageImpl) StoreBatch(batch *core.Batch) error {
 	}
 
 	dbTx := s.db.NewDBTransaction()
-	s.logger.Trace("write batch", log.BatchHashKey, batch.Hash(), "l1Proof", batch.Header.L1Proof, "seqNo", batch.SeqNo())
+	s.logger.Trace("write batch", log.BatchHashKey, batch.Hash(), "l1Proof", batch.Header.L1Proof, log.BatchSeqNoKey, batch.SeqNo())
 	if err := enclavedb.WriteBatchAndTransactions(dbTx, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}

@@ -212,7 +212,7 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 	}
 
 	s.logger.Info("Produced new batch", log.BatchHashKey, cb.Batch.Hash(),
-		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions), "seqNo", cb.Batch.SeqNo())
+		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions), log.BatchSeqNoKey, cb.Batch.SeqNo(), "parent", cb.Batch.Header.ParentHash)
 
 	return cb.Batch, nil
 }
@@ -259,11 +259,6 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 		return batchesToDuplicate[i].Number().Cmp(batchesToDuplicate[j].Number()) == -1
 	})
 
-	sequencerNo, err := s.storage.FetchCurrentSequencerNo()
-	if err != nil {
-		return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
-	}
-
 	currentHead := batchesToDuplicate[0].Header.ParentHash
 
 	// find all batches for that path
@@ -272,9 +267,14 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 		if i > 0 && batchesToDuplicate[i].Header.ParentHash != batchesToDuplicate[i-1].Hash() {
 			s.logger.Crit("the batches that must be duplicated are invalid")
 		}
+		sequencerNo, err := s.storage.FetchCurrentSequencerNo()
+		if err != nil {
+			return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
+		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
+		seqNoCp := *sequencerNo
 		// create the duplicate and store/broadcast it
-		b, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time)
+		b, err := s.produceBatch(&seqNoCp, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time)
 		currentHead = b.Hash()
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)

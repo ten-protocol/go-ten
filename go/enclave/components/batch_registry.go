@@ -87,7 +87,6 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 }
 
 func (br *batchRegistryImpl) ExecuteBatch(batch *core.Batch) (types.Receipts, error) {
-
 	defer br.logger.Info("Executed batch", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	// Validators recompute the entire batch using the same batch context
@@ -242,7 +241,7 @@ func (br *batchRegistryImpl) BatchesAfter(batchSeqNo uint64, rollupLimiter limit
 		}
 
 		batches = append(batches, batch)
-		br.logger.Info("Added batch to rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
+		br.logger.Info("Added batch to rollup", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
 	}
 
 	return batches, nil

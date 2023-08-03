@@ -138,7 +138,7 @@ func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
 	}
 
 	for _, batch := range r.Batches {
-		rc.logger.Info("Processing batch from rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
+		rc.logger.Info("Processing batch from rollup", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
 		err := rc.storage.StoreBatch(batch)
 		if err != nil {
 			return err

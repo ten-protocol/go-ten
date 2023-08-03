@@ -438,7 +438,7 @@ func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
 
 func ReadUnexecutedBatches(db *sql.DB) ([]*core.Batch, error) {
 	// todo - exclude old forks
-	return fetchBatches(db, "where executed=false")
+	return fetchBatches(db, "where executed=false and is_canonical")
 }
 
 func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {

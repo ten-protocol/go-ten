@@ -3,6 +3,7 @@ package nodetype
 import (
 	"errors"
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
@@ -66,12 +67,11 @@ func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
 }
 
 func (val *obsValidator) VerifySequencerSignature(*core.Batch) error {
-	//todo
+	// todo
 	return nil
 }
 
 func (val *obsValidator) ExecuteBatches() error {
-
 	batches, err := val.storage.FetchUnexecutedBatches()
 	if err != nil {
 		return err
@@ -92,8 +92,8 @@ func (val *obsValidator) ExecuteBatches() error {
 			return val.storage.StoreExecutedBatch(genBatch, nil)
 		}
 
-		//check prerequisites
-		//l1 block exists
+		// check prerequisites
+		// l1 block exists
 		block, err := val.storage.FetchBlock(batch.Header.L1Proof)
 		if err != nil && errors.Is(err, errutil.ErrNotFound) {
 			val.logger.Info("Error fetching block", log.BlockHashKey, batch.Header.L1Proof, log.ErrKey, err)

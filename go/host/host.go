@@ -724,7 +724,7 @@ func (h *host) startBatchStreaming() {
 				lastBatch = resp.Batch
 				h.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				if h.config.NodeType == common.Sequencer {
-					h.logger.Info("Batch produced", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash())
+					h.logger.Info("Batch produced", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash(), log.BatchSeqNoKey, resp.Batch.Header.SequencerOrderNo)
 					h.enclaveState.OnReceivedBatch(resp.Batch.Header.SequencerOrderNo)
 					h.storeAndDistributeBatch(resp.Batch)
 				} else {
