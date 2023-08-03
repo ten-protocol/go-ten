@@ -158,7 +158,7 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 		b = p
 	}
 
-	m.logger.Trace(fmt.Sprintf("Extracted deposit logs %d ->%d: %d.", fromBlock.NumberU64(), toBlock.NumberU64(), len(messages)))
+	m.logger.Info(fmt.Sprintf("Extracted cross chain messages for block height %d ->%d: %d.", fromBlock.NumberU64(), toBlock.NumberU64(), len(messages)))
 
 	return messages
 }
