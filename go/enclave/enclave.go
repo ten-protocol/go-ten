@@ -1,7 +1,6 @@
 package enclave
 
 import (
-	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"encoding/json"
@@ -540,12 +539,23 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
 	}
 
-	// todo - remove once the db operations are more atomic
+	err = e.Validator().VerifySequencerSignature(batch)
+	if err != nil {
+		return responses.ToInternalError(fmt.Errorf("invalid batch received. Could not verify signature. Cause: %w", err))
+	}
+
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	if err := e.Validator().ValidateAndStoreBatch(batch); err != nil {
-		return responses.ToInternalError(fmt.Errorf("could not update L2 chain based on batch. Cause: %w", err))
+	// if the signature is valid, then store the batch
+	err = e.storage.StoreBatch(batch)
+	if err != nil {
+		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))
+	}
+
+	err = e.Validator().ExecuteBatches()
+	if err != nil {
+		return responses.ToInternalError(fmt.Errorf("could not execute batches. Cause: %w", err))
 	}
 
 	return nil
@@ -812,7 +822,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 		err = fmt.Errorf("could not retrieve batch containing transaction. Cause: %w", err)
 		return responses.AsPlaintextError(err), nil
 	}
-	if !bytes.Equal(r.Hash().Bytes(), txBatchHash.Bytes()) {
+	if r.Hash() != txBatchHash {
 		err = fmt.Errorf("transaction not included in the canonical chain")
 		e.logger.Trace("error getting tx ", "txHash", txHash, log.ErrKey, err)
 		return responses.AsEncryptedError(err, vkHandler), nil

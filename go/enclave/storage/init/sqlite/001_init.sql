@@ -56,13 +56,14 @@ create table if not exists batch_body
 create table if not exists batch
 (
     hash         binary(32) primary key,
-    parent       binary(32) REFERENCES batch,
+    parent       binary(32),-- REFERENCES batch,
     sequence     int NOT NULL unique,
     height       int,
     is_canonical boolean,
     header       blob,
     body         binary(32) REFERENCES batch_body,
     l1_proof     binary(32), -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
+    executed     boolean,
     unique (height, is_canonical)
 );
 create index IDX_BATCH_HEIGHT on batch (height);

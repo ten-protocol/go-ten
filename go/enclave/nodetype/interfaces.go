@@ -29,10 +29,11 @@ type Sequencer interface {
 }
 
 type ObsValidator interface {
-	// ValidateAndStoreBatch - if all the prerequisites are available (parent batch, l1 block) then
-	// this function recomputes the batch using the exact same context and compares the results.
-	// If the batch is valid it will be stored.
-	ValidateAndStoreBatch(*core.Batch) error
+
+	// ExecuteBatches - try to execute all stored by unexecuted batches
+	ExecuteBatches() error
+
+	VerifySequencerSignature(*core.Batch) error
 
 	NodeType
 }

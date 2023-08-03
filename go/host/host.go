@@ -235,7 +235,7 @@ func (h *host) HandleBlock(block *types.Block) {
 
 // HandleBatch is called by the L2 repository when a new batch arrives
 func (h *host) HandleBatch(batch *common.ExtBatch) {
-	h.logger.Debug("Received L2 block", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
+	h.logger.Debug("Received L2 batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 	// record the newest batch we've seen
 	h.enclaveState.OnReceivedBatch(batch.Header.SequencerOrderNo)
 	if !h.enclaveState.IsUpToDate() {

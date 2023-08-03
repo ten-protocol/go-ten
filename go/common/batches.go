@@ -11,7 +11,8 @@ import (
 // ExtBatch is an encrypted form of batch used when passing the batch around outside of an enclave.
 // todo (#718) - expand this structure to contain the required fields.
 type ExtBatch struct {
-	Header          *BatchHeader
+	Header *BatchHeader
+	// todo - remove
 	TxHashes        []TxHash // The hashes of the transactions included in the batch.
 	EncryptedTxBlob EncryptedTransactions
 	hash            atomic.Value
@@ -20,12 +21,18 @@ type ExtBatch struct {
 // Hash returns the keccak256 hash of the batch's header.
 // The hash is computed on the first call and cached thereafter.
 func (b *ExtBatch) Hash() L2BatchHash {
-	if hash := b.hash.Load(); hash != nil {
-		return hash.(L2BatchHash)
-	}
-	v := b.Header.Hash()
-	b.hash.Store(v)
-	return v
+	//todo - remove
+	v1 := b.Header.Hash()
+	return v1
+	//if hash := b.hash.Load(); hash != nil {
+	//	if v1 != hash {
+	//		panic("wtf")
+	//	}
+	//	return hash.(L2BatchHash)
+	//}
+	//v := b.Header.Hash()
+	//b.hash.Store(v)
+	//return v
 }
 
 func (b *ExtBatch) Size() (int, error) {

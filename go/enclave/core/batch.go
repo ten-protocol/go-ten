@@ -24,7 +24,12 @@ type Batch struct {
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
 func (b *Batch) Hash() common.L2BatchHash {
+	//todo - remove
+	v1 := b.Header.Hash()
 	if hash := b.hash.Load(); hash != nil {
+		if v1 != hash {
+			panic("wtf")
+		}
 		return hash.(common.L2BatchHash)
 	}
 	v := b.Header.Hash()

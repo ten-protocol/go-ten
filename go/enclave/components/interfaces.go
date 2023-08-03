@@ -75,13 +75,13 @@ type BatchProducer interface {
 }
 
 type BatchRegistry interface {
-	// ValidateBatch - validates a batch
-	ValidateBatch(incomingBatch *core.Batch) (types.Receipts, error)
+	ExecuteBatch(incomingBatch *core.Batch) (types.Receipts, error)
 
 	// StoreBatch - will store the batch and receipts in storage.
 	// Furthermore any heads and pointers would be updated here and
 	// after all is done the batch will be pushed to the subscribers
 	// in order to update them.
+	// Deprecated
 	StoreBatch(*core.Batch, types.Receipts) error
 
 	// GetHeadBatch - Returns the batch considered to be the L2 head.

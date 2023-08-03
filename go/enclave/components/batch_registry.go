@@ -1,7 +1,6 @@
 package components
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"sync"
@@ -64,6 +63,7 @@ func (br *batchRegistryImpl) UnsubscribeFromEvents() {
 }
 
 // StoreBatch - stores a batch and if it is canonical, it sends the events to subscribers
+// Deprecated
 func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receipts) error {
 	defer br.logger.Info("Registry StoreBatch() exit", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
@@ -73,7 +73,11 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 		return nil
 	}
 
-	if err := br.storage.StoreBatch(batch, receipts); err != nil {
+	if err := br.storage.StoreBatch(batch); err != nil {
+		return fmt.Errorf("failed to store batch. Cause: %w", err)
+	}
+
+	if err := br.storage.StoreExecutedBatch(batch, receipts); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
@@ -82,37 +86,9 @@ func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receip
 	return nil
 }
 
-func (br *batchRegistryImpl) handleGenesisBatch(incomingBatch *core.Batch) (bool, error) {
-	batch, _, err := br.batchProducer.CreateGenesisState(incomingBatch.Header.L1Proof, incomingBatch.Header.Time)
-	if err != nil {
-		return false, err
-	}
+func (br *batchRegistryImpl) ExecuteBatch(batch *core.Batch) (types.Receipts, error) {
 
-	if !bytes.Equal(incomingBatch.Hash().Bytes(), batch.Hash().Bytes()) {
-		return false, fmt.Errorf("received bad genesis batch")
-	}
-
-	return true, br.StoreBatch(incomingBatch, nil)
-}
-
-func (br *batchRegistryImpl) ValidateBatch(incomingBatch *core.Batch) (types.Receipts, error) {
-	if incomingBatch.NumberU64() == 0 {
-		if handled, err := br.handleGenesisBatch(incomingBatch); handled {
-			return nil, err
-		}
-	}
-
-	defer br.logger.Info("Validator processed batch", log.BatchHashKey, incomingBatch.Hash(), log.DurationKey, measure.NewStopwatch())
-
-	if batch, err := br.GetBatch(incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return nil, err
-	} else if batch != nil {
-		return nil, nil // already know about this one
-	}
-
-	if err := br.sigValidator.CheckSequencerSignature(incomingBatch.Hash(), incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
-		return nil, err
-	}
+	defer br.logger.Info("Executed batch", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	// Validators recompute the entire batch using the same batch context
 	// if they have all necessary prerequisites like having the l1 block processed
@@ -120,25 +96,25 @@ func (br *batchRegistryImpl) ValidateBatch(incomingBatch *core.Batch) (types.Rec
 	// If the sequencer has tampered with something the hash will not add up and validation will
 	// produce an error.
 	cb, err := br.batchProducer.ComputeBatch(&BatchExecutionContext{
-		BlockPtr:     incomingBatch.Header.L1Proof,
-		ParentPtr:    incomingBatch.Header.ParentHash,
-		Transactions: incomingBatch.Transactions,
-		AtTime:       incomingBatch.Header.Time,
+		BlockPtr:     batch.Header.L1Proof,
+		ParentPtr:    batch.Header.ParentHash,
+		Transactions: batch.Transactions,
+		AtTime:       batch.Header.Time,
 		ChainConfig:  br.chainConfig,
-		SequencerNo:  incomingBatch.Header.SequencerOrderNo,
+		SequencerNo:  batch.Header.SequencerOrderNo,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed recomputing batch %s. Cause: %w", incomingBatch.Hash(), err)
+		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
 	}
 
-	if !bytes.Equal(cb.Batch.Hash().Bytes(), incomingBatch.Hash().Bytes()) {
+	if cb.Batch.Hash() != batch.Hash() {
 		// todo @stefan - generate a validator challenge here and return it
-		br.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v\n Incoming: %+v\n", cb.Batch.Header, incomingBatch.Header))
-		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", incomingBatch.Hash(), cb.Batch.Hash())
+		br.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v\n Incoming: %+v\n", cb.Batch.Header, batch.Header))
+		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
 	}
 
 	if _, err := cb.Commit(true); err != nil {
-		return nil, fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", incomingBatch.Hash(), err)
+		return nil, fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", batch.Hash(), err)
 	}
 
 	return cb.Receipts, nil

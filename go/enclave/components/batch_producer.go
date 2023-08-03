@@ -1,7 +1,6 @@
 package components
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
@@ -61,7 +60,7 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}
 
 	// These variables will be used to create the new batch
-	parent, err := bp.storage.FetchBatchHeader(context.ParentPtr)
+	parent, err := bp.storage.FetchBatch(context.ParentPtr)
 	if errors.Is(err, errutil.ErrNotFound) {
 		return nil, errutil.ErrAncestorBatchNotFound
 	}
@@ -70,16 +69,16 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}
 
 	parentBlock := block
-	if !bytes.Equal(parent.L1Proof.Bytes(), block.Hash().Bytes()) {
+	if parent.Header.L1Proof != block.Hash() {
 		var err error
-		parentBlock, err = bp.storage.FetchBlock(parent.L1Proof)
+		parentBlock, err = bp.storage.FetchBlock(parent.Header.L1Proof)
 		if err != nil {
 			bp.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
 		}
 	}
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch := core.DeterministicEmptyBatch(parent, block, context.AtTime, context.SequencerNo)
+	batch := core.DeterministicEmptyBatch(parent.Header, block, context.AtTime, context.SequencerNo)
 
 	stateDB, err := bp.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {

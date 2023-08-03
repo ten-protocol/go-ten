@@ -1,7 +1,6 @@
 package nodetype
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/rand"
 	"errors"
@@ -175,10 +174,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 	}
 
 	// todo - time is set only here; take from l1 block?
-	// when creating a new head batch, it is pointing to the parent of the current l1 head
-	// the reason for this is to minimize the chance of creating batches on top of blocks that will not be seen by the network
-	// todo - to fix in a follow up PR
-	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.ParentHash(), headBatch.Hash(), transactions, uint64(time.Now().Unix())); err != nil {
+	if _, err := s.produceBatch(sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix())); err != nil {
 		return fmt.Errorf(" failed producing batch. Cause: %w", err)
 	}
 
@@ -273,7 +269,7 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 	// find all batches for that path
 	for i, orphanBatch := range batchesToDuplicate {
 		// sanity check that all these batches are consecutive
-		if i > 0 && !bytes.Equal(batchesToDuplicate[i].Header.ParentHash.Bytes(), batchesToDuplicate[i-1].Hash().Bytes()) {
+		if i > 0 && batchesToDuplicate[i].Header.ParentHash != batchesToDuplicate[i-1].Hash() {
 			s.logger.Crit("the batches that must be duplicated are invalid")
 		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))

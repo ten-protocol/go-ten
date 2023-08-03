@@ -1,12 +1,10 @@
 package components
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 
 	"github.com/obscuronet/go-obscuro/go/common/measure"
@@ -141,29 +139,11 @@ func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
 
 	for _, batch := range r.Batches {
 		rc.logger.Info("Processing batch from rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
-		b, batchFoundErr := rc.batchRegistry.GetBatch(batch.Hash())
-		// Process and store a batch only if it wasn't already processed via p2p.
-		if batchFoundErr != nil && !errors.Is(batchFoundErr, errutil.ErrNotFound) {
-			return batchFoundErr
-		}
-		// if the batch is already stored, skip
-		if b != nil {
-			continue
-		}
-		receipts, err := rc.batchRegistry.ValidateBatch(batch)
-		if errors.Is(err, errutil.ErrBlockForBatchNotFound) {
-			rc.logger.Warn("Unable to validate batch due to it being on a different chain.", log.BatchHashKey, batch.Hash())
-			continue
-		}
-		if err != nil {
-			rc.logger.Error("Failed validating batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
-			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
-		}
-
-		err = rc.batchRegistry.StoreBatch(batch, receipts)
+		err := rc.storage.StoreBatch(batch)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
