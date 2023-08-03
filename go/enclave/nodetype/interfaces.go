@@ -1,7 +1,9 @@
 package nodetype
 
 import (
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
@@ -15,6 +17,9 @@ type NodeType interface {
 
 	// OnL1Fork - logic to be performed when there is an L1 Fork
 	OnL1Fork(fork *common.ChainFork) error
+
+	// OnL1Block - performed after the block was processed
+	OnL1Block(block types.Block, result *components.BlockIngestionType) error
 }
 
 type Sequencer interface {

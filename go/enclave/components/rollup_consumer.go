@@ -75,7 +75,7 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) 
 	if len(rollups) > 0 {
 		for _, rollup := range rollups {
 			// read batch data from rollup, verify and store it
-			if err := rc.ProcessRollup(rollup); err != nil {
+			if err := rc.processRollup(rollup); err != nil {
 				rc.logger.Error("Failed processing rollup", log.ErrKey, err)
 				return err
 			}
@@ -130,15 +130,16 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*com
 	return rollups
 }
 
-func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
+func (rc *rollupConsumerImpl) processRollup(rollup *common.ExtRollup) error {
 	// todo logic to decompress the rollups on the fly
 	r, err := core.ToRollup(rollup, rc.dataEncryptionService, rc.dataCompressionService)
 	if err != nil {
 		return err
 	}
 
+	// only stores the batches. They will be executed later
 	for _, batch := range r.Batches {
-		rc.logger.Info("Processing batch from rollup", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
+		rc.logger.Trace("Processing batch from rollup", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
 		err := rc.storage.StoreBatch(batch)
 		if err != nil {
 			return err

@@ -193,9 +193,9 @@ func NewEnclave(
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, logger)
-	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, logger)
+	batchExecutor := components.NewBatchExecutor(storage, crossChainProcessors, genesis, &chainConfig, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
-	registry := components.NewBatchRegistry(storage, producer, sigVerifier, &chainConfig, logger)
+	registry := components.NewBatchRegistry(storage, logger)
 	rProducer := components.NewRollupProducer(config.SequencerID, dataEncryptionService, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
@@ -206,7 +206,7 @@ func NewEnclave(
 	if config.NodeType == common.Sequencer {
 		service = nodetype.NewSequencer(
 			blockProcessor,
-			producer,
+			batchExecutor,
 			registry,
 			rProducer,
 			rConsumer,
@@ -224,7 +224,7 @@ func NewEnclave(
 			},
 		)
 	} else {
-		service = nodetype.NewValidator(blockProcessor, producer, registry, rConsumer, &chainConfig, config.SequencerID, storage, sigVerifier, logger)
+		service = nodetype.NewValidator(blockProcessor, batchExecutor, registry, rConsumer, &chainConfig, config.SequencerID, storage, sigVerifier, logger)
 	}
 
 	chain := l2chain.NewChain(
@@ -236,7 +236,7 @@ func NewEnclave(
 	)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
-	err = restoreStateDBCache(storage, producer, genesis, &chainConfig, logger)
+	err = restoreStateDBCache(storage, batchExecutor, genesis, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
@@ -279,7 +279,7 @@ func NewEnclave(
 }
 
 func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
-	batch, err := e.registry.GetBatch(hash)
+	batch, err := e.storage.FetchBatch(hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting batch. Cause: %w", err)
 	}
@@ -421,6 +421,11 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 
 	if result.IsFork() {
 		e.logger.Info(fmt.Sprintf("Detected fork at block %s with height %d", block.Hash(), block.Number()))
+	}
+
+	err = e.service.OnL1Block(block, result)
+	if err != nil {
+		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
 	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.processNetworkSecretMsgs(br)}
@@ -1590,7 +1595,7 @@ func serializeEVMError(err error) ([]byte, error) {
 
 // this function looks at the batch chain and makes sure the resulting stateDB snapshots are available, replaying them if needed
 // (if there had been a clean shutdown and all stateDB data was persisted this should do nothing)
-func restoreStateDBCache(storage storage.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
+func restoreStateDBCache(storage storage.Storage, producer components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
 	batch, err := storage.FetchHeadBatch()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -1602,7 +1607,7 @@ func restoreStateDBCache(storage storage.Storage, producer components.BatchProdu
 	}
 	if !stateDBAvailableForBatch(storage, batch.Hash()) {
 		logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
-		err = replayBatchesToValidState(storage, producer, gen, chainCfg, logger)
+		err = replayBatchesToValidState(storage, producer, gen, logger)
 		if err != nil {
 			return fmt.Errorf("unable to replay batches to restore valid state - %w", err)
 		}
@@ -1623,7 +1628,7 @@ func stateDBAvailableForBatch(storage storage.Storage, hash common.L2BatchHash) 
 // 1. step backwards from head batch until we find a batch that is already in stateDB cache, builds list of batches to replay
 // 2. iterate that list of batches from the earliest, process the transactions to calculate and cache the stateDB
 // todo (#1416) - get unit test coverage around this (and L2 Chain code more widely, see ticket #1416 )
-func replayBatchesToValidState(storage storage.Storage, producer components.BatchProducer, gen *genesis.Genesis, chainCfg *params.ChainConfig, logger gethlog.Logger) error {
+func replayBatchesToValidState(storage storage.Storage, batchExecutor components.BatchExecutor, gen *genesis.Genesis, logger gethlog.Logger) error {
 	// this slice will be a stack of batches to replay as we walk backwards in search of latest valid state
 	// todo - consider capping the size of this batch list using FIFO to avoid memory issues, and then repeating as necessary
 	var batchesToReplay []*core.Batch
@@ -1661,31 +1666,12 @@ func replayBatchesToValidState(storage storage.Storage, producer components.Batc
 		}
 
 		// calculate the stateDB after this batch and store it in the cache
-		err = calculateAndStoreStateDB(batch, producer, chainCfg)
+		_, err := batchExecutor.ExecuteBatch(batch)
 		if err != nil {
 			return err
 		}
 	}
 
-	return nil
-}
-
-func calculateAndStoreStateDB(batch *core.Batch, producer components.BatchProducer, chainConfig *params.ChainConfig) error {
-	computedBatch, err := producer.ComputeBatch(&components.BatchExecutionContext{
-		BlockPtr:     batch.Header.L1Proof,
-		ParentPtr:    batch.Header.ParentHash,
-		Transactions: batch.Transactions,
-		AtTime:       batch.Header.Time,
-		ChainConfig:  chainConfig,
-		SequencerNo:  batch.Header.SequencerOrderNo,
-	})
-	if err != nil {
-		return err
-	}
-	_, err = computedBatch.Commit(true)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

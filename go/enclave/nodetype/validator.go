@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
@@ -18,7 +20,7 @@ import (
 
 type obsValidator struct {
 	blockProcessor components.L1BlockProcessor
-	batchProducer  components.BatchProducer
+	batchProducer  components.BatchExecutor
 	batchRegistry  components.BatchRegistry
 	rollupConsumer components.RollupConsumer
 
@@ -32,7 +34,7 @@ type obsValidator struct {
 
 func NewValidator(
 	consumer components.L1BlockProcessor,
-	producer components.BatchProducer,
+	producer components.BatchExecutor,
 	registry components.BatchRegistry,
 	rollupConsumer components.RollupConsumer,
 
@@ -88,7 +90,11 @@ func (val *obsValidator) ExecuteBatches() error {
 				return fmt.Errorf("received invalid genesis batch")
 			}
 
-			return val.storage.StoreExecutedBatch(genBatch, nil)
+			err = val.storage.StoreExecutedBatch(genBatch, nil)
+			if err != nil {
+				return err
+			}
+			val.batchRegistry.NotifySubscribers(batch)
 		}
 
 		// check prerequisites
@@ -107,7 +113,7 @@ func (val *obsValidator) ExecuteBatches() error {
 		}
 
 		if block != nil && parentExecuted {
-			receipts, err := val.batchRegistry.ExecuteBatch(batch)
+			receipts, err := val.batchProducer.ExecuteBatch(batch)
 			if err != nil {
 				// todo
 				return err
@@ -117,8 +123,13 @@ func (val *obsValidator) ExecuteBatches() error {
 				// todo
 				return err
 			}
+			val.batchRegistry.NotifySubscribers(batch)
 		}
 	}
 
 	return nil
+}
+
+func (val *obsValidator) OnL1Block(_ types.Block, _ *components.BlockIngestionType) error {
+	return val.ExecuteBatches()
 }

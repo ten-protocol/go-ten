@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/measure"
+
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -36,7 +38,7 @@ type SequencerSettings struct {
 
 type sequencer struct {
 	blockProcessor components.L1BlockProcessor
-	batchProducer  components.BatchProducer
+	batchProducer  components.BatchExecutor
 	batchRegistry  components.BatchRegistry
 	rollupProducer components.RollupProducer
 	rollupConsumer components.RollupConsumer
@@ -58,8 +60,8 @@ type sequencer struct {
 }
 
 func NewSequencer(
-	consumer components.L1BlockProcessor,
-	producer components.BatchProducer,
+	blockProcessor components.L1BlockProcessor,
+	batchExecutor components.BatchExecutor,
 	registry components.BatchRegistry,
 	rollupProducer components.RollupProducer,
 	rollupConsumer components.RollupConsumer,
@@ -76,8 +78,8 @@ func NewSequencer(
 	settings SequencerSettings,
 ) Sequencer {
 	return &sequencer{
-		blockProcessor:         consumer,
-		batchProducer:          producer,
+		blockProcessor:         blockProcessor,
+		batchProducer:          batchExecutor,
 		batchRegistry:          registry,
 		rollupProducer:         rollupProducer,
 		rollupConsumer:         rollupConsumer,
@@ -134,7 +136,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 		return fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.batchRegistry.StoreBatch(batch, nil); err != nil {
+	if err := s.StoreExecutedBatch(batch, nil); err != nil {
 		return fmt.Errorf("1. failed storing batch. Cause: %w", err)
 	}
 
@@ -142,7 +144,7 @@ func (s *sequencer) initGenesis(block *common.L1Block) error {
 }
 
 func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
-	headBatch, err := s.batchRegistry.GetHeadBatch()
+	headBatch, err := s.storage.FetchHeadBatch()
 	if err != nil {
 		return err
 	}
@@ -207,7 +209,7 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.batchRegistry.StoreBatch(cb.Batch, cb.Receipts); err != nil {
+	if err := s.StoreExecutedBatch(cb.Batch, cb.Receipts); err != nil {
 		return nil, fmt.Errorf("2. failed storing batch. Cause: %w", err)
 	}
 
@@ -215,6 +217,30 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions), log.BatchSeqNoKey, cb.Batch.SeqNo(), "parent", cb.Batch.Header.ParentHash)
 
 	return cb.Batch, nil
+}
+
+// StoreExecutedBatch - stores an executed batch in one go. This can be done for the sequencer because it is guaranteed
+// that all dependencies are in place for the execution to be successful.
+func (s *sequencer) StoreExecutedBatch(batch *core.Batch, receipts types.Receipts) error {
+	defer s.logger.Info("Registry StoreBatch() exit", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
+
+	// Check if this batch is already stored.
+	if _, err := s.storage.FetchBatchHeader(batch.Hash()); err == nil {
+		s.logger.Warn("Attempted to store batch twice! This indicates issues with the batch processing loop")
+		return nil
+	}
+
+	if err := s.storage.StoreBatch(batch); err != nil {
+		return fmt.Errorf("failed to store batch. Cause: %w", err)
+	}
+
+	if err := s.storage.StoreExecutedBatch(batch, receipts); err != nil {
+		return fmt.Errorf("failed to store batch. Cause: %w", err)
+	}
+
+	s.batchRegistry.NotifySubscribers(batch)
+
+	return nil
 }
 
 func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) {
@@ -316,5 +342,10 @@ func (s *sequencer) signRollup(rollup *core.Rollup) error {
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
+	return nil
+}
+
+func (s *sequencer) OnL1Block(_ types.Block, _ *components.BlockIngestionType) error {
+	// nothing to do
 	return nil
 }
