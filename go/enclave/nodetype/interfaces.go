@@ -35,7 +35,7 @@ type Sequencer interface {
 
 type ObsValidator interface {
 	// ExecuteBatches - try to execute all stored by unexecuted batches
-	ExecuteBatches() error
+	ExecuteStoredBatches() error
 
 	VerifySequencerSignature(*core.Batch) error
 

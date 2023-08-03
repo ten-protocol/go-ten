@@ -558,7 +558,7 @@ func (e *enclaveImpl) SubmitBatch(extBatch *common.ExtBatch) common.SystemError 
 		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))
 	}
 
-	err = e.Validator().ExecuteBatches()
+	err = e.Validator().ExecuteStoredBatches()
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not execute batches. Cause: %w", err))
 	}
