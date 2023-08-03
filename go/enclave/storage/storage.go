@@ -128,21 +128,21 @@ func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block, chainFork *common.ChainFork) error {
-	dbBatch := s.db.NewDBTransaction()
+	dbTransaction := s.db.NewDBTransaction()
 	if chainFork != nil && chainFork.IsFork() {
 		s.logger.Info(fmt.Sprintf("Fork. %s", chainFork))
-		enclavedb.UpdateCanonicalBlocks(dbBatch, chainFork.CanonicalPath, chainFork.NonCanonicalPath)
-	}
-
-	if err := enclavedb.WriteBlock(dbBatch, b.Header()); err != nil {
-		return fmt.Errorf("could not store block %s. Cause: %w", b.Hash(), err)
+		enclavedb.UpdateCanonicalBlocks(dbTransaction, chainFork.CanonicalPath, chainFork.NonCanonicalPath)
 	}
 
 	// In case there were any batches inserted before this block was received
-	enclavedb.UpdateCanonicalBlocks(dbBatch, []common.L1BlockHash{b.Hash()}, nil)
+	enclavedb.UpdateCanonicalBlocks(dbTransaction, []common.L1BlockHash{b.Hash()}, nil)
 
-	if err := dbBatch.Write(); err != nil {
-		return fmt.Errorf("could not store block %s. Cause: %w", b.Hash(), err)
+	if err := enclavedb.WriteBlock(dbTransaction, b.Header()); err != nil {
+		return fmt.Errorf("2. could not store block %s. Cause: %w", b.Hash(), err)
+	}
+
+	if err := dbTransaction.Write(); err != nil {
+		return fmt.Errorf("3. could not store block %s. Cause: %w", b.Hash(), err)
 	}
 
 	s.cacheBlock(b.Hash(), b)

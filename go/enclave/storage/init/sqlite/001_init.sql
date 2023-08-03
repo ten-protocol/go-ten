@@ -26,8 +26,8 @@ create table if not exists block
     parent       binary(32) REFERENCES block,
     is_canonical boolean,
     header       blob,
-    height       int,
-    unique (height, is_canonical)
+    height       int
+--     unique (height, is_canonical)
 );
 create index IDX_BLOCK_HEIGHT on block (height);
 
@@ -63,8 +63,8 @@ create table if not exists batch
     header       blob,
     body         binary(32) REFERENCES batch_body,
     l1_proof     binary(32), -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
-    executed     boolean,
-    unique (height, is_canonical)
+    executed     boolean
+--     unique (height, is_canonical, executed)
 );
 create index IDX_BATCH_HEIGHT on batch (height);
 create index IDX_BATCH_SEQ on batch (sequence);

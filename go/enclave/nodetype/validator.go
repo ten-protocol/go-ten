@@ -78,7 +78,6 @@ func (val *obsValidator) ExecuteBatches() error {
 	}
 
 	for _, batch := range batches {
-
 		if batch.IsGenesis() {
 			genBatch, _, err := val.batchProducer.CreateGenesisState(batch.Header.L1Proof, batch.Header.Time)
 			if err != nil {

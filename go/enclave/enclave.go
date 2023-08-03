@@ -791,7 +791,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// todo - optimise these calls. This can be done with a single sql
 	e.logger.Trace("Get receipt for ", "txHash", txHash)
 	// We retrieve the transaction.
-	tx, txBatchHash, txBatchHeight, _, err := e.storage.GetTransaction(txHash)
+	tx, txBatchHash, _, _, err := e.storage.GetTransaction(txHash)
 	if err != nil {
 		e.logger.Trace("error getting tx ", "txHash", txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -813,19 +813,6 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	if err != nil {
 		e.logger.Trace("error getting the vk ", "txHash", txHash, log.ErrKey, err)
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
-	}
-
-	// Only return receipts for transactions included in the canonical chain.
-	r, err := e.storage.FetchBatchByHeight(txBatchHeight)
-	if err != nil {
-		e.logger.Trace("error getting batch height ", "txHash", txHash, log.ErrKey, err)
-		err = fmt.Errorf("could not retrieve batch containing transaction. Cause: %w", err)
-		return responses.AsPlaintextError(err), nil
-	}
-	if r.Hash() != txBatchHash {
-		err = fmt.Errorf("transaction not included in the canonical chain")
-		e.logger.Trace("error getting tx ", "txHash", txHash, log.ErrKey, err)
-		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
 	// We retrieve the transaction receipt.

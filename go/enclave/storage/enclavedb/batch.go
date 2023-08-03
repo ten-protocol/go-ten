@@ -34,7 +34,7 @@ const (
 	txExecInsertValue = "(?,?,?,?,?)"
 	queryReceipts     = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 
-	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where tx.hash=?"
+	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where batch.is_canonical and tx.hash=?"
 
 	selectContractCreationTx    = "select tx from exec_tx where created_contract_address=?"
 	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
@@ -68,7 +68,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 	err = dbtx.GetDB().QueryRow(isCanonQuery, batch.Header.L1Proof.Bytes()).Scan(&isCanon)
 	if err != nil {
 		// if the block is not found, we assume it is non-canonical
-		fmt.Printf("IsCanon %s err: %s\n", batch.Header.L1Proof, err)
+		// fmt.Printf("IsCanon %s err: %s\n", batch.Header.L1Proof, err)
 		isCanon = false
 	}
 

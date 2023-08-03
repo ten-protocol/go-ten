@@ -21,18 +21,16 @@ type ExtBatch struct {
 // Hash returns the keccak256 hash of the batch's header.
 // The hash is computed on the first call and cached thereafter.
 func (b *ExtBatch) Hash() L2BatchHash {
-	// todo - remove
-	v1 := b.Header.Hash()
-	return v1
-	//if hash := b.hash.Load(); hash != nil {
-	//	if v1 != hash {
-	//		panic("wtf")
-	//	}
-	//	return hash.(L2BatchHash)
-	//}
-	//v := b.Header.Hash()
-	//b.hash.Store(v)
-	//return v
+	// v1 := b.Header.Hash()
+	if hash := b.hash.Load(); hash != nil {
+		//if v1 != hash {
+		//	panic("wtf")
+		//}
+		return hash.(L2BatchHash)
+	}
+	v := b.Header.Hash()
+	b.hash.Store(v)
+	return v
 }
 
 func (b *ExtBatch) Size() (int, error) {

@@ -275,10 +275,10 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 		seqNoCp := *sequencerNo
 		// create the duplicate and store/broadcast it
 		b, err := s.produceBatch(&seqNoCp, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time)
-		currentHead = b.Hash()
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}
+		currentHead = b.Hash()
 		s.logger.Info("Duplicated batch", log.BatchHashKey, currentHead)
 	}
 
