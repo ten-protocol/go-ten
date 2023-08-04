@@ -93,8 +93,17 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
-	// Start from the FromBlock
-	s.lastHead[id] = subscription.Filter.FromBlock
+	startAt := subscription.Filter.FromBlock
+	// Set the subscription to start from the current head if a specific start is not specified
+	if startAt == nil || startAt.Int64() < 0 {
+		head, err := s.storage.FetchHeadBatch()
+		if err != nil {
+			return fmt.Errorf("unable to read head batch to create subscription - %w", err)
+		}
+		// adjust to -1 because the subscription will increment
+		startAt = big.NewInt(int64(head.NumberU64() - 1))
+	}
+	s.SetLastHead(id, startAt)
 	s.subscriptions[id] = subscription
 	return nil
 }
