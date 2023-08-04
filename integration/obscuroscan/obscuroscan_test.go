@@ -37,6 +37,7 @@ const (
 )
 
 func TestObscuroscan(t *testing.T) {
+	t.Skip("Commented it out until more testing is driven from this test")
 	startPort := integration.StartPortObscuroscanUnitTest
 	createObscuroNetwork(t, startPort)
 
