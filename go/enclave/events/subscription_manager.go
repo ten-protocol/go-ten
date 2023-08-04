@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -36,8 +38,9 @@ type SubscriptionManager struct {
 
 	subscriptions     map[gethrpc.ID]*common.LogSubscription
 	lastHead          map[gethrpc.ID]*big.Int // This is the batch height up to which events were returned to the user
-	subscriptionMutex *sync.RWMutex
-	logger            gethlog.Logger
+	subscriptionMutex *sync.RWMutex           // the mutex guards the subscriptions/lastHead pair
+
+	logger gethlog.Logger
 }
 
 func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage storage.Storage, logger gethlog.Logger) *SubscriptionManager {
@@ -52,23 +55,9 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 	}
 }
 
-func (s *SubscriptionManager) ForEachSubscription(f func(gethrpc.ID, *common.LogSubscription, *big.Int) error) error {
-	// grab a write lock because the function will mutate the lastHead map
-	s.subscriptionMutex.Lock()
-	defer s.subscriptionMutex.Unlock()
-
-	for id, subscription := range s.subscriptions {
-		err := f(id, subscription, s.lastHead[id])
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // SetLastHead - only call with a write lock on the subscription mutex
 func (s *SubscriptionManager) SetLastHead(id gethrpc.ID, nr *big.Int) {
-	s.lastHead[id] = nr
+	s.lastHead[id] = big.NewInt(nr.Int64())
 }
 
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
@@ -91,8 +80,6 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	}
 	subscription.VkHandler = encryptor
 
-	s.subscriptionMutex.Lock()
-	defer s.subscriptionMutex.Unlock()
 	startAt := subscription.Filter.FromBlock
 	// Set the subscription to start from the current head if a specific start is not specified
 	if startAt == nil || startAt.Int64() < 0 {
@@ -103,6 +90,8 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 		// adjust to -1 because the subscription will increment
 		startAt = big.NewInt(int64(head.NumberU64() - 1))
 	}
+	s.subscriptionMutex.Lock()
+	defer s.subscriptionMutex.Unlock()
 	s.SetLastHead(id, startAt)
 	s.subscriptions[id] = subscription
 	return nil
@@ -114,6 +103,7 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
 	delete(s.subscriptions, id)
+	delete(s.lastHead, id)
 }
 
 // FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs
@@ -135,11 +125,48 @@ func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2
 	return filteredLogs, nil
 }
 
-// EncryptLogs Encrypts each log with the appropriate viewing key.
-func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
+// GetSubscribedLogsForBatch - Retrieves and encrypts the logs for the batch.
+func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *big.Int) (common.EncryptedSubscriptionLogs, error) {
+	result := map[gethrpc.ID][]*types.Log{}
+
+	// grab a write lock because the function will mutate the lastHead map
+	s.subscriptionMutex.Lock()
+	defer s.subscriptionMutex.Unlock()
+
+	// Go through each subscription and collect the logs
+	err := s.forEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
+		// 1. fetch the logs since the last request
+		from := big.NewInt(previousHead.Int64() + 1)
+		to := batch
+
+		if from.Cmp(to) > 0 {
+			s.logger.Warn(fmt.Sprintf("Skipping subscription step id=%s: [%d, %d]", id, from, to))
+			return nil
+		}
+
+		logs, err := s.storage.FilterLogs(subscription.Account, from, to, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
+		s.logger.Info(fmt.Sprintf("Subscription id=%s: [%d, %d]. Logs %d, Err: %s", id, from, to, len(logs), err))
+		if err != nil {
+			return err
+		}
+
+		// 2.  store the current l2Head in the Subscription
+		s.SetLastHead(id, to)
+		result[id] = logs
+		return nil
+	})
+	if err != nil {
+		s.logger.Error("Could not retrieve subscription logs", log.ErrKey, err)
+		return nil, err
+	}
+
+	// Encrypt the results
+	return s.encryptLogs(result)
+}
+
+// Encrypts each log with the appropriate viewing key.
+func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
 	encryptedLogsByID := map[gethrpc.ID][]byte{}
-	s.subscriptionMutex.RLock()
-	defer s.subscriptionMutex.RUnlock()
 
 	for subID, logs := range logsByID {
 		subscription, found := s.subscriptions[subID]
@@ -161,6 +188,16 @@ func (s *SubscriptionManager) EncryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 	}
 
 	return encryptedLogsByID, nil
+}
+
+func (s *SubscriptionManager) forEachSubscription(f func(gethrpc.ID, *common.LogSubscription, *big.Int) error) error {
+	for id, subscription := range s.subscriptions {
+		err := f(id, subscription, s.lastHead[id])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Of the log's topics, returns those that are (potentially) user addresses. A topic is considered a user address if:

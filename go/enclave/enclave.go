@@ -350,39 +350,13 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 
 func (e *enclaveImpl) sendEvents(batchHead uint64, outChannel chan common.StreamL2UpdatesResponse) {
 	e.logger.Info("Send Events", "batchHead", batchHead)
-	logs, err := e.subscriptionLogs(big.NewInt(int64(batchHead)))
+	logs, err := e.subscriptionManager.GetSubscribedLogsForBatch(big.NewInt(int64(batchHead)))
 	if err != nil {
 		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
 		return
 	}
 	outChannel <- common.StreamL2UpdatesResponse{
 		Logs: logs,
-	}
-}
-
-func (e *enclaveImpl) sendBatchesFromSubscription(l2UpdatesChannel chan common.StreamL2UpdatesResponse) {
-	batchChan := e.registry.Subscribe()
-	for {
-		batch, ok := <-batchChan
-		if !ok {
-			e.logger.Warn("batch channel closed - stopping stream")
-			break
-		}
-
-		e.sendBatch(batch, l2UpdatesChannel)
-	}
-}
-
-func (e *enclaveImpl) sendEventsFromSubscription(l2UpdatesChannel chan common.StreamL2UpdatesResponse) {
-	eventChan := e.registry.SubscribeForEvents()
-	for {
-		eventsHead, ok := <-eventChan
-		if !ok {
-			e.logger.Warn("events channel closed - stopping stream")
-			break
-		}
-
-		e.sendEvents(eventsHead, l2UpdatesChannel)
 	}
 }
 
@@ -394,12 +368,13 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 		return l2UpdatesChannel, func() {}
 	}
 
-	go e.sendBatchesFromSubscription(l2UpdatesChannel)
-	go e.sendEventsFromSubscription(l2UpdatesChannel)
+	e.registry.SubscribeForBatches(func(batch *core.Batch) {
+		e.sendBatch(batch, l2UpdatesChannel)
+		e.sendEvents(batch.NumberU64(), l2UpdatesChannel)
+	})
 
 	return l2UpdatesChannel, func() {
-		e.registry.Unsubscribe()
-		e.registry.UnsubscribeFromEvents()
+		e.registry.UnsubscribeFromBatches()
 	}
 }
 
@@ -991,7 +966,7 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2Ba
 
 func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
 	if e.stopControl.IsStopping() {
-		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the enclave stopping"))
+		return responses.ToInternalError(fmt.Errorf("requested SubscribeForBatches with the enclave stopping"))
 	}
 
 	return e.subscriptionManager.AddSubscription(id, encryptedSubscription)
@@ -1018,7 +993,7 @@ func (e *enclaveImpl) Stop() common.SystemError {
 	}
 
 	if e.registry != nil {
-		e.registry.Unsubscribe()
+		e.registry.UnsubscribeFromBatches()
 	}
 
 	time.Sleep(time.Second)
@@ -1500,41 +1475,6 @@ func extractGetLogsParams(paramList []interface{}) (*filters.FilterCriteria, *ge
 	}
 	forAddress := gethcommon.HexToAddress(forAddressHex)
 	return &filter, &forAddress, nil
-}
-
-// Retrieves and encrypts the logs for the block.
-func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (common.EncryptedSubscriptionLogs, error) {
-	result := map[gethrpc.ID][]*types.Log{}
-
-	// Go through each subscription and collect the logs
-	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
-		// 1. fetch the logs since the last request
-		from := big.NewInt(previousHead.Int64() + 1)
-		to := upToBatchNr
-
-		if from.Cmp(to) > 0 {
-			e.logger.Warn(fmt.Sprintf("Skipping subscription step id=%s: [%d, %d]", id, from, to))
-			return nil
-		}
-
-		logs, err := e.storage.FilterLogs(subscription.Account, from, to, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
-		e.logger.Info(fmt.Sprintf("Subscription id=%s: [%d, %d]. Logs %d, Err: %s", id, from, to, len(logs), err))
-		if err != nil {
-			return err
-		}
-
-		// 2.  store the current l2Head in the Subscription
-		e.subscriptionManager.SetLastHead(id, to)
-		result[id] = logs
-		return nil
-	})
-	if err != nil {
-		e.logger.Error("Could not retrieve subscription logs", log.ErrKey, err)
-		return nil, err
-	}
-
-	// Encrypt the results
-	return e.subscriptionManager.EncryptLogs(result)
 }
 
 func (e *enclaveImpl) rejectBlockErr(cause error) *errutil.BlockRejectError {

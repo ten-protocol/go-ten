@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/measure"
@@ -53,10 +52,6 @@ type sequencer struct {
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
-
-	// This is used to coordinate creating
-	// new batches and creating fork batches.
-	batchProductionMutex sync.Mutex
 }
 
 func NewSequencer(
@@ -96,9 +91,6 @@ func NewSequencer(
 }
 
 func (s *sequencer) CreateBatch() error {
-	s.batchProductionMutex.Lock()
-	defer s.batchProductionMutex.Unlock()
-
 	hasGenesis, err := s.batchRegistry.HasGenesisBatch()
 	if err != nil {
 		return fmt.Errorf("unknown genesis batch state. Cause: %w", err)

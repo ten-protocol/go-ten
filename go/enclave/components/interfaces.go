@@ -89,15 +89,9 @@ type BatchRegistry interface {
 	// rather than its stateDB only.
 	GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error)
 
-	// Subscribe - creates and returns a channel that will be used to push any newly created batches
-	// to the subscriber.
-	Subscribe() chan *core.Batch
-	// Unsubscribe - informs the registry that the subscriber is no longer listening, allowing it to
-	// gracefully terminate any streaming and stop queueing new batches.
-	Unsubscribe()
-
-	SubscribeForEvents() chan uint64
-	UnsubscribeFromEvents()
+	// SubscribeForBatches - register a callback for new batches
+	SubscribeForBatches(func(*core.Batch))
+	UnsubscribeFromBatches()
 
 	NotifySubscribers(batch *core.Batch)
 

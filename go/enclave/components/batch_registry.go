@@ -21,14 +21,8 @@ type batchRegistry struct {
 	storage storage.Storage
 	logger  gethlog.Logger
 
-	// Channel on which batches will be pushed. It is held by another caller outside the
-	// batch registry.
-	batchSubscription *chan *core.Batch
-	// Channel for pushing batch height numbers which are needed in order
-	// to figure out what events to send to subscribers.
-	eventSubscription *chan uint64
-
-	subscriptionMutex sync.Mutex
+	batchesCallback func(*core.Batch)
+	callbackMutex   sync.RWMutex
 }
 
 func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegistry {
@@ -38,48 +32,27 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 	}
 }
 
-func (br *batchRegistry) SubscribeForEvents() chan uint64 {
-	evSub := make(chan uint64)
-	br.eventSubscription = &evSub
-	return *br.eventSubscription
+func (br *batchRegistry) SubscribeForBatches(callback func(*core.Batch)) {
+	br.callbackMutex.Lock()
+	defer br.callbackMutex.Unlock()
+	br.batchesCallback = callback
 }
 
-func (br *batchRegistry) UnsubscribeFromEvents() {
-	br.eventSubscription = nil
+func (br *batchRegistry) UnsubscribeFromBatches() {
+	br.callbackMutex.Lock()
+	defer br.callbackMutex.Unlock()
+
+	br.batchesCallback = nil
 }
 
 func (br *batchRegistry) NotifySubscribers(batch *core.Batch) {
+	br.callbackMutex.RLock()
+	defer br.callbackMutex.RUnlock()
+
 	defer br.logger.Debug("Sending batch and events", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
-	br.subscriptionMutex.Lock()
-	subscriptionChan := br.batchSubscription
-	eventChan := br.eventSubscription
-	br.subscriptionMutex.Unlock()
-
-	if subscriptionChan != nil {
-		*subscriptionChan <- batch
-	}
-
-	if br.eventSubscription != nil {
-		*eventChan <- batch.NumberU64()
-	}
-}
-
-func (br *batchRegistry) Subscribe() chan *core.Batch {
-	br.subscriptionMutex.Lock()
-	defer br.subscriptionMutex.Unlock()
-	subChannel := make(chan *core.Batch)
-
-	br.batchSubscription = &subChannel
-	return *br.batchSubscription
-}
-
-func (br *batchRegistry) Unsubscribe() {
-	br.subscriptionMutex.Lock()
-	defer br.subscriptionMutex.Unlock()
-	if br.batchSubscription != nil {
-		close(*br.batchSubscription)
-		br.batchSubscription = nil
+	if br.batchesCallback != nil {
+		go br.batchesCallback(batch)
 	}
 }
 
