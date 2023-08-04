@@ -3,7 +3,6 @@ module github.com/obscuronet/go-obscuro
 go 1.20
 
 require (
-	github.com/allegro/bigcache v1.2.1
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/andybalholm/brotli v1.0.5
 	github.com/docker/docker v1.4.2-0.20180625184442-8e610b2b55bf
@@ -41,6 +40,7 @@ require (
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
+	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
