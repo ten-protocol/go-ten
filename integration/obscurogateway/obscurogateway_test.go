@@ -67,7 +67,7 @@ func TestObscuroGateway(t *testing.T) {
 
 	// make sure the server is ready to receive requests
 	// TODO Implement health endpoint
-	//serverAddress := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
+	// serverAddress := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
 
 	w := wallets.L2FaucetWallet
 
@@ -85,6 +85,7 @@ func TestObscuroGateway(t *testing.T) {
 
 	addr := w.Address()
 	receipts, err := authClient.GetReceiptsByAddress(context.Background(), &addr)
+	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(receipts))
 	assert.Equal(t, txHash.Hex(), receipts[0].TxHash.Hex())
