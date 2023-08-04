@@ -1,12 +1,10 @@
 package components
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 
 	"github.com/obscuronet/go-obscuro/go/common/measure"
@@ -77,7 +75,7 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) 
 	if len(rollups) > 0 {
 		for _, rollup := range rollups {
 			// read batch data from rollup, verify and store it
-			if err := rc.ProcessRollup(rollup); err != nil {
+			if err := rc.processRollup(rollup); err != nil {
 				rc.logger.Error("Failed processing rollup", log.ErrKey, err)
 				return err
 			}
@@ -132,38 +130,21 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*com
 	return rollups
 }
 
-func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
+func (rc *rollupConsumerImpl) processRollup(rollup *common.ExtRollup) error {
 	// todo logic to decompress the rollups on the fly
 	r, err := core.ToRollup(rollup, rc.dataEncryptionService, rc.dataCompressionService)
 	if err != nil {
 		return err
 	}
 
+	// only stores the batches. They will be executed later
 	for _, batch := range r.Batches {
-		rc.logger.Info("Processing batch from rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
-		b, batchFoundErr := rc.batchRegistry.GetBatch(batch.Hash())
-		// Process and store a batch only if it wasn't already processed via p2p.
-		if batchFoundErr != nil && !errors.Is(batchFoundErr, errutil.ErrNotFound) {
-			return batchFoundErr
-		}
-		// if the batch is already stored, skip
-		if b != nil {
-			continue
-		}
-		receipts, err := rc.batchRegistry.ValidateBatch(batch)
-		if errors.Is(err, errutil.ErrBlockForBatchNotFound) {
-			rc.logger.Warn("Unable to validate batch due to it being on a different chain.", log.BatchHashKey, batch.Hash())
-			continue
-		}
-		if err != nil {
-			rc.logger.Error("Failed validating batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
-			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
-		}
-
-		err = rc.batchRegistry.StoreBatch(batch, receipts)
+		rc.logger.Trace("Processing batch from rollup", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
+		err := rc.storage.StoreBatch(batch)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }

@@ -114,7 +114,6 @@ func TestObscuroGateway(t *testing.T) {
 	assert.Equal(t, 1, len(pubDataReq.Result))
 	assert.Equal(t, txHash.Hex(), pubDataReq.Result[0].TxHash.Hex())
 
-	time.Sleep(time.Hour)
 	// Gracefully shutdown
 	err = obscuroGwContainer.Stop()
 	assert.NoError(t, err)

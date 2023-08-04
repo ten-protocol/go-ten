@@ -575,8 +575,10 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 // Terminates all subscriptions and validates the received events.
 func checkReceivedLogs(t *testing.T, s *Simulation) {
 	logsFromSnapshots := 0
-	// at least one event per transfer tx for half the transactions
-	nrLogs := len(s.TxInjector.TxTracker.TransferL2Transactions) * len(s.RPCHandles.AuthObsClients) / 2
+	// rough estimation. In total there should be 2 relevant events for each successful transfer.
+	// We assume 66% will pass
+	nrLogs := len(s.TxInjector.TxTracker.TransferL2Transactions) * 2
+	nrLogs = nrLogs * 2 / 3
 	for _, clients := range s.RPCHandles.AuthObsClients {
 		for _, client := range clients {
 			logsFromSnapshots += checkSnapshotLogs(t, client)
