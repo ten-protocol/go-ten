@@ -50,6 +50,7 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	r.GET("/batch/:hash", server.getBatch)
 	r.GET("/block/:hash", server.getBatch)
 	r.GET("/tx/:hash", server.getTransaction)
+	r.GET("/items/transactions/", server.getPublicTransactions)
 
 	return server
 }
@@ -148,6 +149,16 @@ func (w *WebServer) getTransaction(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"item": batch})
+}
+
+func (w *WebServer) getPublicTransactions(c *gin.Context) {
+	publicTxs, err := w.backend.GetPublicTransactions()
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": publicTxs})
 }
 
 func errorHandler(c *gin.Context, err error, logger log.Logger) {

@@ -1394,6 +1394,15 @@ func (e *enclaveImpl) GetReceiptsByAddress(encryptedParams common.EncryptedParam
 	return responses.AsEncryptedResponse(&encryptReceipts, vkHandler), nil
 }
 
+func (e *enclaveImpl) GetPublicTransactionData() ([]common.PublicTxData, common.SystemError) {
+	// ensure the enclave is running
+	if e.stopControl.IsStopping() {
+		return nil, responses.ToInternalError(fmt.Errorf("requested GetPublicTransactionData with the enclave stopping"))
+	}
+
+	return e.storage.GetPublicTransactionData()
+}
+
 // Create a helper to check if a gas allowance results in an executable transaction
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
 func (e *enclaveImpl) isGasEnough(args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {

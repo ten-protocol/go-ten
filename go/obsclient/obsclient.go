@@ -110,3 +110,13 @@ func (oc *ObsClient) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	}
 	return header, nil
 }
+
+// GetPublicTxData returns a list of public transactions
+func (oc *ObsClient) GetPublicTxData() ([]common.PublicTxData, error) {
+	var result []common.PublicTxData
+	err := oc.rpcClient.Call(&result, rpc.GetPublicTransactionData)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}

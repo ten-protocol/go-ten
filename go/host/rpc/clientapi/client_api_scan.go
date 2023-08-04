@@ -34,3 +34,7 @@ func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
 func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	return s.host.DB().GetTipRollupHeader()
 }
+
+func (s *ScanAPI) GetPublicTransactionData() ([]common.PublicTxData, error) {
+	return s.host.EnclaveClient().GetPublicTransactionData()
+}
