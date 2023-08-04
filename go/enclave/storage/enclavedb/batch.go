@@ -335,40 +335,6 @@ func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args .
 	return allReceipts, nil
 }
 
-func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.PublicTxData, error) {
-	var publicTxs []common.PublicTxData
-
-	rows, err := db.Query(queryTxList+" "+query, args...)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
-			return nil, errutil.ErrNotFound
-		}
-		return nil, err
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var senderAddr []byte
-		var txHash []byte
-		var batchHeight uint64
-		err := rows.Scan(&senderAddr, &txHash, &batchHeight)
-		if err != nil {
-			return nil, err
-		}
-
-		publicTxs = append(publicTxs, common.PublicTxData{
-			SenderAddress:   gethcommon.BytesToAddress(senderAddr),
-			TransactionHash: gethcommon.BytesToHash(txHash),
-			BatchHeight:     big.NewInt(0).SetUint64(batchHeight),
-		})
-	}
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-
-	return publicTxs, nil
-}
-
 // ReadReceiptsByBatchHash retrieves all the transaction receipts belonging to a block, including
 // its corresponding metadata fields. If it is unable to populate these metadata
 // fields then nil is returned.
@@ -469,6 +435,6 @@ func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
 	return big.NewInt(count), nil
 }
 
-func ReadPublicTxsBySender(db *sql.DB, address *gethcommon.Address) ([]common.PublicTxData, error) {
-	return selectPublicTxsBySender(db, "where tx.sender_address = ?", address.Bytes())
+func GetReceiptsPerAddress(db *sql.DB, config *params.ChainConfig, address *gethcommon.Address) (types.Receipts, error) {
+	return selectReceipts(db, config, "where tx.sender_address = ?", address.Bytes())
 }

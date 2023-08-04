@@ -1352,13 +1352,13 @@ func (e *enclaveImpl) GetTotalContractCount() (*big.Int, common.SystemError) {
 	return e.storage.GetContractCount()
 }
 
-func (e *enclaveImpl) GetPublicTxsBySender(address *gethcommon.Address) ([]common.PublicTxData, common.SystemError) {
+func (e *enclaveImpl) GetReceiptsByAddress(address *gethcommon.Address) (types.Receipts, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetTotalContractCount with the enclave stopping"))
 	}
 
-	return e.storage.GetPublicTxsBySender(address)
+	return e.storage.GetReceiptsPerAddress(address)
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

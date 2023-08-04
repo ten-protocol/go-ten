@@ -75,7 +75,7 @@ type TransactionStorage interface {
 	GetTransaction(txHash common.L2TxHash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error)
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(txHash common.L2TxHash) (*types.Receipt, error)
-	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
+	// GetReceiptsByBatchHash retrieves the receipts for all transactions in a given rollup.
 	GetReceiptsByBatchHash(hash common.L2BatchHash) (types.Receipts, error)
 	// GetSender returns the sender of the tx by hash
 	GetSender(txHash common.L2TxHash) (gethcommon.Address, error)
@@ -131,5 +131,5 @@ type Storage interface {
 
 type ScanStorage interface {
 	GetContractCount() (*big.Int, error)
-	GetPublicTxsBySender(address *gethcommon.Address) ([]common.PublicTxData, error)
+	GetReceiptsPerAddress(address *gethcommon.Address) (types.Receipts, error)
 }

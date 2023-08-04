@@ -553,11 +553,11 @@ func (c *Client) GetTotalContractCount() (*big.Int, common.SystemError) {
 	return big.NewInt(response.Count), nil
 }
 
-func (c *Client) GetPublicTxsBySender(address *gethcommon.Address) ([]common.PublicTxData, common.SystemError) {
+func (c *Client) GetReceiptsByAddress(address *gethcommon.Address) (types.Receipts, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.GetPublicTxsBySender(timeoutCtx, &generated.GetPublicTxsBySenderRequest{
+	response, err := c.protoClient.GetReceiptsByAddress(timeoutCtx, &generated.GetReceiptsByAddressRequest{
 		Address: address.Bytes(),
 	})
 	if err != nil {
@@ -567,8 +567,8 @@ func (c *Client) GetPublicTxsBySender(address *gethcommon.Address) ([]common.Pub
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	var publicTxData []common.PublicTxData
-	err = rlp.DecodeBytes(response.PublicTxData, &publicTxData)
+	var publicTxData types.Receipts
+	err = json.Unmarshal(response.Receipts, &publicTxData)
 	if err != nil {
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}

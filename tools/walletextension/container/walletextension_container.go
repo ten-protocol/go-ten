@@ -119,7 +119,7 @@ func NewWalletExtensionContainer(
 	}
 }
 
-// TODO Start should not be
+// TODO Start should not be a locking process
 func (w *WalletExtensionContainer) Start() error {
 	httpErrChan := w.httpServer.Start()
 	wsErrChan := w.wsServer.Start()

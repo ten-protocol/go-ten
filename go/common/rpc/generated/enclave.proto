@@ -87,15 +87,15 @@ service EnclaveProto {
 
   rpc GetTotalContractCount(GetTotalContractCountRequest) returns (GetTotalContractCountResponse) {}
 
-  rpc GetPublicTxsBySender(GetPublicTxsBySenderRequest) returns (GetPublicTxsBySenderResponse) {}
+  rpc GetReceiptsByAddress(GetReceiptsByAddressRequest) returns (GetReceiptsByAddressResponse) {}
 }
 
-message GetPublicTxsBySenderRequest {
+message GetReceiptsByAddressRequest {
   bytes address = 1;
 }
 
-message GetPublicTxsBySenderResponse{
-  bytes publicTxData = 1;
+message GetReceiptsByAddressResponse{
+  bytes receipts = 1;
   SystemError systemError = 2;
 }
 

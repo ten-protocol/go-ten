@@ -104,7 +104,7 @@ func TestObscuroGateway(t *testing.T) {
 	require.Equal(t, 200, statusCode)
 
 	type request struct {
-		Result []common.PublicTxData `json:"result"`
+		Result types.Receipts `json:"result"`
 	}
 
 	pubDataReq := request{}
@@ -112,9 +112,9 @@ func TestObscuroGateway(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, len(pubDataReq.Result))
-	assert.Equal(t, w.Address(), pubDataReq.Result[0].SenderAddress)
-	assert.Equal(t, txHash.Hex(), pubDataReq.Result[0].TransactionHash.Hex())
+	assert.Equal(t, txHash.Hex(), pubDataReq.Result[0].TxHash.Hex())
 
+	time.Sleep(time.Hour)
 	// Gracefully shutdown
 	err = obscuroGwContainer.Stop()
 	assert.NoError(t, err)

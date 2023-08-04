@@ -348,24 +348,31 @@ func (s *RPCServer) GetTotalContractCount(_ context.Context, _ *generated.GetTot
 	}, nil
 }
 
-func (s *RPCServer) GetPublicTxsBySender(_ context.Context, req *generated.GetPublicTxsBySenderRequest) (*generated.GetPublicTxsBySenderResponse, error) {
+func (s *RPCServer) GetReceiptsByAddress(_ context.Context, req *generated.GetReceiptsByAddressRequest) (*generated.GetReceiptsByAddressResponse, error) {
 	addr := gethcommon.BytesToAddress(req.Address)
-	receipts, err := s.enclave.GetPublicTxsBySender(&addr)
+	receipts, err := s.enclave.GetReceiptsByAddress(&addr)
 	if err != nil {
-		return &generated.GetPublicTxsBySenderResponse{
+		return &generated.GetReceiptsByAddressResponse{
 			SystemError: toRPCError(err),
 		}, nil
 	}
 
-	bytes, err := rlp.EncodeToBytes(receipts)
+	bytes, err := json.Marshal(receipts)
 	if err != nil {
-		return &generated.GetPublicTxsBySenderResponse{
+		return &generated.GetReceiptsByAddressResponse{
 			SystemError: toRPCError(err),
 		}, nil
 	}
 
-	return &generated.GetPublicTxsBySenderResponse{
-		PublicTxData: bytes,
+	var receiptsDec types.Receipts
+	err = json.Unmarshal(bytes, &receiptsDec)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(receiptsDec)
+
+	return &generated.GetReceiptsByAddressResponse{
+		Receipts: bytes,
 	}, nil
 }
 

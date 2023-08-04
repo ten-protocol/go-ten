@@ -34,7 +34,7 @@ export default {
         // Get the user's address
         const address = await signer.getAddress()
 
-        const derp = await provider.send('eth_getStorageAt', [null, null, null])
+        const derp = await provider.send('eth_getStorageAt', [address, null, null])
 
         console.log(derp)
         // NOTE: As previously mentioned, the method `scan_listMyTransactions` does not exist in my knowledge.

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -170,8 +171,8 @@ func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams 
 }
 
 // GetStorageAt is a reused method for listing the users transactions
-func (api *EthereumAPI) GetStorageAt(_ context.Context, address gethcommon.Address, _ interface{}, _ interface{}) ([]common.PublicTxData, error) {
-	return api.host.EnclaveClient().GetPublicTxsBySender(&address)
+func (api *EthereumAPI) GetStorageAt(_ context.Context, address gethcommon.Address, _ interface{}, _ interface{}) (types.Receipts, error) {
+	return api.host.EnclaveClient().GetReceiptsByAddress(&address)
 }
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.

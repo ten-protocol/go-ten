@@ -416,8 +416,8 @@ func (s *storageImpl) GetContractCount() (*big.Int, error) {
 	return enclavedb.ReadContractCreationCount(s.db.GetSQLDB())
 }
 
-func (s *storageImpl) GetPublicTxsBySender(address *gethcommon.Address) ([]common.PublicTxData, error) {
-	return enclavedb.ReadPublicTxsBySender(s.db.GetSQLDB(), address)
+func (s *storageImpl) GetReceiptsPerAddress(address *gethcommon.Address) (types.Receipts, error) {
+	return enclavedb.GetReceiptsPerAddress(s.db.GetSQLDB(), s.chainConfig, address)
 }
 
 func (s *storageImpl) cacheBlock(blockHash common.L1BlockHash, b *types.Block) {

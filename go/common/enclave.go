@@ -2,6 +2,7 @@ package common
 
 import (
 	"encoding/json"
+	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -132,8 +133,8 @@ type EnclaveScan interface {
 	// GetTotalContractCount returns the total number of contracts that have been deployed
 	GetTotalContractCount() (*big.Int, SystemError)
 
-	// GetPublicTxsBySender returns a list of public txs given the sender address
-	GetPublicTxsBySender(address *gethcommon.Address) ([]PublicTxData, SystemError)
+	// GetReceiptsByAddress returns a list of receipts given the sender address
+	GetReceiptsByAddress(address *gethcommon.Address) (types.Receipts, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

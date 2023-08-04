@@ -4,12 +4,14 @@
         <el-col :span="6">
           <img src="@/assets/imgs/obscuroscan_logo.png" alt="obscu.ro" class="header-image" />
         </el-col>
-        <el-col :span="4"></el-col>
+        <el-col :span="4">
+          <meta-mask-connect-button/>
+        </el-col>
         <el-col :span="8">
           <nav class="nav-bar">
           <el-radio-group size="default">
             <el-radio-button label="top"> <RouterLink to="/">Home</RouterLink></el-radio-button>
-            <el-radio-button label="right"><RouterLink to="/about">Personal</RouterLink></el-radio-button>
+            <el-radio-button label="right"><RouterLink to="/personal">Personal</RouterLink></el-radio-button>
             <el-radio-button label="bottom"> <RouterLink to="/about">Blockchain</RouterLink></el-radio-button>
             <el-radio-button label="left"><RouterLink to="/about">Resources</RouterLink></el-radio-button>
           </el-radio-group>
@@ -27,10 +29,11 @@
 
 <script>
 import SearchBarItem from '@/components/SearchBarItem.vue'
+import MetaMaskConnectButton from "@/components/MetaMaskConnectButton.vue";
 
 export default {
   name: 'NavbarView',
-  components: { SearchBarItem }
+  components: {MetaMaskConnectButton, SearchBarItem }
 }
 </script>
 
