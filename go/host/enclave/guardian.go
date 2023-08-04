@@ -150,7 +150,7 @@ func (g *Guardian) HandleBlock(block *types.Block) {
 	}
 	err := g.submitL1Block(block, true)
 	if err != nil {
-		g.logger.Warn("error processing L1 block", log.ErrKey, err)
+		g.logger.Warn("failure processing L1 block", log.ErrKey, err)
 	}
 }
 

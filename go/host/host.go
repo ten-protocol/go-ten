@@ -149,6 +149,7 @@ func (h *host) Start() error {
 		return fmt.Errorf("could not print host config - %w", err)
 	}
 	h.logger.Info("Host started with following config", log.CfgKey, string(tomlConfig))
+
 	return nil
 }
 
