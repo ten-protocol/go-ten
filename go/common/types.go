@@ -59,6 +59,7 @@ type (
 	EncryptedParamsGetTxCount      []byte // As above, but for an RPC getTransactionCount request.
 	EncryptedParamsEstimateGas     []byte // As above, but for an RPC estimateGas request.
 	EncryptedParamsGetLogs         []byte // As above, but for an RPC getLogs request.
+	EncryptedParamsGetStorageAt    []byte
 
 	Nonce               = uint64
 	EncodedRollup       []byte

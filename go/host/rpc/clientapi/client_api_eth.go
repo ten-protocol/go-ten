@@ -169,6 +169,11 @@ func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams 
 	return *enclaveResponse, nil
 }
 
+// GetStorageAt is a reused method for listing the users transactions
+func (api *EthereumAPI) GetStorageAt(_ context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, error) {
+	return api.host.EnclaveClient().GetReceiptsByAddress(encryptedParams)
+}
+
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
 	// todo (#1621) - return a non-dummy fee history

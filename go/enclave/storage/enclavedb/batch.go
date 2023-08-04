@@ -96,9 +96,14 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
+			msg, err := transaction.AsMessage(types.LatestSignerForChainID(transaction.ChainId()), big.NewInt(0))
+			if err != nil {
+				return fmt.Errorf("unable to convert tx to message - %w", err)
+			}
+
 			args = append(args, transaction.Hash().Bytes()) // tx_hash
 			args = append(args, txBytes)                    // content
-			args = append(args, nil)                        // sender_address - todo - implement
+			args = append(args, msg.From().Bytes())         // sender_address
 			args = append(args, transaction.Nonce())        // nonce
 			args = append(args, i)                          // idx
 			args = append(args, bodyHash)                   // the batch body which contained it
@@ -336,14 +341,14 @@ func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args .
 	return allReceipts, nil
 }
 
-// ReadReceipts retrieves all the transaction receipts belonging to a block, including
+// ReadReceiptsByBatchHash retrieves all the transaction receipts belonging to a block, including
 // its corresponding metadata fields. If it is unable to populate these metadata
 // fields then nil is returned.
 //
 // The current implementation populates these metadata fields by reading the receipts'
 // corresponding block body, so if the block body is not found it will return nil even
 // if the receipt itself is stored.
-func ReadReceipts(db *sql.DB, hash common.L2BatchHash, config *params.ChainConfig) (types.Receipts, error) {
+func ReadReceiptsByBatchHash(db *sql.DB, hash common.L2BatchHash, config *params.ChainConfig) (types.Receipts, error) {
 	return selectReceipts(db, config, "where batch.hash = ?", hash.Bytes())
 }
 
@@ -450,4 +455,8 @@ func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
 	}
 
 	return result, nil
+}
+
+func GetReceiptsPerAddress(db *sql.DB, config *params.ChainConfig, address *gethcommon.Address) (types.Receipts, error) {
+	return selectReceipts(db, config, "where tx.sender_address = ?", address.Bytes())
 }

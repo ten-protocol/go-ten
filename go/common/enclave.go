@@ -131,6 +131,9 @@ type Enclave interface {
 type EnclaveScan interface {
 	// GetTotalContractCount returns the total number of contracts that have been deployed
 	GetTotalContractCount() (*big.Int, SystemError)
+
+	// GetReceiptsByAddress returns a list of receipts given the sender address
+	GetReceiptsByAddress(encryptedParams EncryptedParamsGetStorageAt) (*responses.Receipts, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block
