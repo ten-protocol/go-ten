@@ -364,7 +364,7 @@ func (s *RPCServer) GetPublicTransactionData(_ context.Context, _ *generated.Get
 
 	marshal, err := json.Marshal(publicTxData)
 	if err != nil {
-		return &generated.GetPublicTransactionDataResponse{SystemError: toRPCError(sysError)}, nil
+		return &generated.GetPublicTransactionDataResponse{SystemError: toRPCError(sysError)}, nil //nolint: nilerr
 	}
 
 	return &generated.GetPublicTransactionDataResponse{PublicTransactionData: marshal}, nil
