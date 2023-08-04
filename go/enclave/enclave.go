@@ -63,6 +63,8 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
+var _noHeadBatch = big.NewInt(0)
+
 type enclaveImpl struct {
 	config               *config.EnclaveConfig
 	storage              storage.Storage
@@ -305,20 +307,21 @@ func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 	_, err := e.storage.FetchSecret()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			return common.Status{StatusCode: common.AwaitingSecret}, nil
+			return common.Status{StatusCode: common.AwaitingSecret, L2Head: _noHeadBatch}, nil
 		}
 		return common.Status{StatusCode: common.Unavailable}, responses.ToInternalError(err)
 	}
-	l1Head, err := e.storage.FetchHeadBlock()
 	var l1HeadHash gethcommon.Hash
+	l1Head, err := e.storage.FetchHeadBlock()
 	if err != nil {
 		// this might be normal while enclave is starting up, just send empty hash
 		e.logger.Debug("failed to fetch L1 head block for status response", log.ErrKey, err)
 	} else {
 		l1HeadHash = l1Head.Hash()
 	}
+	// we use zero when there's no head batch yet, the first seq number is 1
+	l2HeadSeqNo := _noHeadBatch
 	l2Head, err := e.storage.FetchHeadBatch()
-	var l2HeadSeqNo *big.Int
 	if err != nil {
 		// this might be normal while enclave is starting up, just send empty hash
 		e.logger.Debug("failed to fetch L2 head batch for status response", log.ErrKey, err)

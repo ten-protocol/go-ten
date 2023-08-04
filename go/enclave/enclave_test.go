@@ -471,7 +471,7 @@ func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *c
 		L1Proof:          blkHash,
 		Root:             state.IntermediateRoot(true),
 		Number:           big.NewInt(int64(height)),
-		SequencerOrderNo: big.NewInt(int64(height)),
+		SequencerOrderNo: big.NewInt(int64(height + 1)), // seq number starts at 1 so need to offset
 		ReceiptHash:      types.EmptyRootHash,
 		Time:             uint64(time.Now().Unix()),
 	}

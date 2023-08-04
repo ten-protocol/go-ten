@@ -40,18 +40,21 @@ const (
 	L2Catchup
 )
 
+// when the L2 head is 0 then it means no batch has been seen or processed (first seq number is always 1)
+var _noBatch = big.NewInt(0)
+
 func (es Status) String() string {
 	return [...]string{"Live", "Disconnected", "Unavailable", "AwaitingSecret", "L1Catchup", "L2Catchup"}[es]
 }
 
 // StateTracker is the state machine for the enclave
 type StateTracker struct {
-	// status is the cached status of the enclave
+	// status is the status according to this enclave tracker
 	// It is a function of the properties below and recalculated when any of them change
 	status Status
 
 	// enclave states (updated when enclave returns Status and optimistically after successful actions)
-	enclaveStatusCode common.StatusCode
+	enclaveStatusCode common.StatusCode // this is the status code reported by the enclave (Running/AwaitingSecret/Unavailable)
 	enclaveL1Head     gethcommon.Hash
 	enclaveL2Head     *big.Int
 
@@ -96,9 +99,10 @@ func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int) {
 	defer s.m.Unlock()
 	if s.hostL2Head == nil || s.hostL2Head.Cmp(enclL2HeadSeqNo) < 0 {
 		// we've successfully processed this batch, so the host's head should be at least as high as the enclave's (this shouldn't happen, we want it to be visible if it happens)
-		s.logger.Warn("unexpected host head behind enclave head - updating to match", "hostHead", s.hostL2Head, "enclaveHead", enclL2HeadSeqNo)
+		s.logger.Trace("host head behind enclave head - updating to match", "hostHead", s.hostL2Head, "enclaveHead", enclL2HeadSeqNo)
 		s.hostL2Head = enclL2HeadSeqNo
 	}
+
 	s.enclaveL2Head = enclL2HeadSeqNo
 	s.setStatus(s.calculateStatus())
 }
@@ -146,7 +150,7 @@ func (s *StateTracker) calculateStatus() Status {
 		if s.hostL1Head != s.enclaveL1Head || s.enclaveL1Head == gethutil.EmptyHash {
 			return L1Catchup
 		}
-		if s.hostL2Head == nil || s.enclaveL2Head == nil || s.hostL2Head.Cmp(s.enclaveL2Head) != 0 {
+		if s.hostL2Head == nil || s.enclaveL2Head == nil || s.enclaveL2Head.Cmp(_noBatch) == 0 || s.hostL2Head.Cmp(s.enclaveL2Head) > 0 {
 			return L2Catchup
 		}
 		return Live
@@ -188,6 +192,6 @@ func (s *StateTracker) setStatus(newStatus Status) {
 	if s.status == newStatus {
 		return
 	}
-	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus))
+	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus), "state", s)
 	s.status = newStatus
 }

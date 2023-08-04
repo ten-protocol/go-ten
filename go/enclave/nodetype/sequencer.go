@@ -253,7 +253,7 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 	}
 
 	if err := s.signRollup(rollup); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to sign created rollup: %w", err)
 	}
 
 	s.logger.Info("Created new head rollup", log.RollupHashKey, rollup.Hash(), "numBatches", len(rollup.Batches))

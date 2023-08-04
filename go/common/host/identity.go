@@ -1,15 +1,23 @@
 package host
 
-import gethcommon "github.com/ethereum/go-ethereum/common"
+import (
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/config"
+)
 
 type Identity struct {
 	ID               gethcommon.Address
 	P2PPublicAddress string
+	IsGenesis        bool
+	IsSequencer      bool
 }
 
-func NewIdentity(id gethcommon.Address, p2pPublicAddress string) Identity {
+func NewIdentity(cfg *config.HostConfig) Identity {
 	return Identity{
-		ID:               id,
-		P2PPublicAddress: p2pPublicAddress,
+		ID:               cfg.ID,
+		P2PPublicAddress: cfg.P2PPublicAddress,
+		IsGenesis:        cfg.IsGenesis,
+		IsSequencer:      cfg.NodeType == common.Sequencer,
 	}
 }

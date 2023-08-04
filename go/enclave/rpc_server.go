@@ -233,7 +233,7 @@ func (s *RPCServer) HealthCheck(_ context.Context, _ *generated.EmptyArgs) (*gen
 
 func (s *RPCServer) CreateRollup(_ context.Context, req *generated.CreateRollupRequest) (*generated.CreateRollupResponse, error) {
 	var fromSeqNo uint64 = 1
-	if req.FromSequenceNumber != nil {
+	if req.FromSequenceNumber != nil && *req.FromSequenceNumber > common.L2GenesisSeqNo {
 		fromSeqNo = *req.FromSequenceNumber
 	}
 

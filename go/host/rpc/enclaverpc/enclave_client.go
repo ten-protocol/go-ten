@@ -192,6 +192,7 @@ func (c *Client) SubmitBatch(batch *common.ExtBatch) common.SystemError {
 	defer cancel()
 
 	batchMsg := rpc.ToExtBatchMsg(batch)
+
 	response, err := c.protoClient.SubmitBatch(timeoutCtx, &generated.SubmitBatchRequest{Batch: &batchMsg})
 	if err != nil {
 		return syserr.NewRPCError(err)
