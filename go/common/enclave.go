@@ -2,8 +2,9 @@ package common
 
 import (
 	"encoding/json"
-	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
