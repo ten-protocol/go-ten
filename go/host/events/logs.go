@@ -3,36 +3,67 @@ package events
 import (
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/pkg/errors"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
+type logSubsServiceLocator interface {
+	Enclaves() host.EnclaveService
+}
+
 // LogEventManager manages the routing of logs back to their subscribers.
+// todo (@matt) currently, this operates as a service but maybe it would make more sense to be owned by enclave service?
 type LogEventManager struct {
+	sl                logSubsServiceLocator
 	subscriptions     map[rpc.ID]*subscription // The channels that logs are sent to, one per subscription
 	subscriptionMutex *sync.RWMutex
 	logger            gethlog.Logger
 }
 
-func NewLogEventManager(logger gethlog.Logger) *LogEventManager {
+func NewLogEventManager(serviceLocator logSubsServiceLocator, logger gethlog.Logger) *LogEventManager {
 	return &LogEventManager{
+		sl:                serviceLocator,
 		subscriptions:     map[rpc.ID]*subscription{},
 		subscriptionMutex: &sync.RWMutex{},
 		logger:            logger,
 	}
 }
 
-// AddSubscription adds a subscription to the set of managed subscriptions.
-func (l *LogEventManager) AddSubscription(id rpc.ID, matchedLogsCh chan []byte) {
+func (l *LogEventManager) Start() error {
+	return nil
+}
+
+func (l *LogEventManager) Stop() error {
+	return nil
+}
+
+func (l *LogEventManager) HealthStatus() host.HealthStatus {
+	// always healthy for now
+	return &host.BasicErrHealthStatus{ErrMsg: ""}
+}
+
+func (l *LogEventManager) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
+	err := l.sl.Enclaves().Subscribe(id, encryptedLogSubscription)
+	if err != nil {
+		return errors.Wrap(err, "could not create subscription with enclave")
+	}
 	l.subscriptionMutex.Lock()
 	defer l.subscriptionMutex.Unlock()
 
 	l.subscriptions[id] = &subscription{ch: matchedLogsCh}
+	return nil
 }
 
-// RemoveSubscription removes a subscription from the set of managed subscriptions.
-func (l *LogEventManager) RemoveSubscription(id rpc.ID) {
+func (l *LogEventManager) Unsubscribe(id rpc.ID) {
+	err := l.sl.Enclaves().Unsubscribe(id)
+	if err != nil {
+		l.logger.Warn("could not terminate enclave subscription", log.ErrKey, err)
+	}
 	l.subscriptionMutex.Lock()
 	defer l.subscriptionMutex.Unlock()
 

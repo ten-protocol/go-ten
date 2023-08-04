@@ -184,3 +184,7 @@ func (n *MockP2P) ReceiveBatchRequest(requestID string, fromSeqNo *big.Int) {
 		sub.HandleBatchRequest(requestID, fromSeqNo)
 	}
 }
+
+func (n *MockP2P) RefreshPeerList() {
+	// no-op
+}

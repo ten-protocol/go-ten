@@ -127,32 +127,22 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	cfg.ID = ethWallet.Address()
 
 	fmt.Println("Connecting to the enclave...")
+	services := host.NewServicesRegistry(logger)
 	enclaveClient := enclaverpc.NewClient(cfg, logger)
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
-	aggP2P := p2p.NewSocketP2PLayer(cfg, p2pLogger, metricsService.Registry())
+	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
 	rpcServer := clientrpc.NewServer(cfg, logger)
 
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)
 
-	return NewHostContainer(cfg, aggP2P, l1Client, enclaveClient, mgmtContractLib, ethWallet, rpcServer, logger, metricsService)
+	return NewHostContainer(cfg, services, aggP2P, l1Client, enclaveClient, mgmtContractLib, ethWallet, rpcServer, logger, metricsService)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(
-	cfg *config.HostConfig, // provides various parameters that the host needs to function
-	// todo (@matt) sort out all this wiring, we should depend on interfaces not concrete types, we should make it obvious and consistent how services are instantiated
-	p2p host.P2PHostService, // provides the inbound and outbound p2p communication layer
-	l1Client ethadapter.EthClient, // provides inbound and outbound L1 connectivity
-	enclaveClient common.Enclave, // provides RPC connection to this host's Enclave
-	contractLib mgmtcontractlib.MgmtContractLib, // provides the management contract lib injection
-	hostWallet wallet.Wallet, // provides an L1 wallet for the host's transactions
-	rpcServer clientrpc.Server, // For communication with Obscuro client applications
-	logger gethlog.Logger, // provides logging with context
-	metricsService *metrics.Service, // provides the metrics service for other packages to use
-) *HostContainer {
-	h := host.NewHost(cfg, p2p, l1Client, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
+func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p host.P2PHostService, l1Client ethadapter.EthClient, enclaveClient common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer clientrpc.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
+	h := host.NewHost(cfg, services, p2p, l1Client, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
 
 	hostContainer := &HostContainer{
 		host:           h,
