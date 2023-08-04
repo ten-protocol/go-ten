@@ -160,6 +160,10 @@ func (api *DummyAPI) GetLogs(_ context.Context, encryptedParams common.Encrypted
 	return reEncryptParams, err
 }
 
+func (api *DummyAPI) GetStorageAt(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.EnclaveResponse, error) {
+	return api.reEncryptParams(encryptedParams)
+}
+
 // Decrypts the params with the enclave key, and returns them encrypted with the viewing key set via `setViewingKey`.
 func (api *DummyAPI) reEncryptParams(encryptedParams []byte) (*responses.EnclaveResponse, error) {
 	params, err := api.enclavePrivateKey.Decrypt(encryptedParams, nil, nil)
