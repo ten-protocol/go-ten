@@ -22,9 +22,7 @@ export const usePersonalDataStore = defineStore({
 
                 console.log(this.address)
                 const personalTxData = await walletStore.provider.send('eth_getStorageAt', [walletStore.address, null, null])
-                console.log(personalTxData)
                 this.personalTransactionList = personalTxData.result;
-                //this.personalTransactionList = personalTxData
             } catch (error) {
                 console.error("Failed to fetch count:", error);
             } finally {
