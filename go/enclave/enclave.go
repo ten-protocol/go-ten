@@ -1503,23 +1503,11 @@ func extractGetLogsParams(paramList []interface{}) (*filters.FilterCriteria, *ge
 func (e *enclaveImpl) subscriptionLogs(upToBatchNr *big.Int) (common.EncryptedSubscriptionLogs, error) {
 	result := map[gethrpc.ID][]*types.Log{}
 
-	batch, err := e.storage.FetchHeadBatch()
-	if err != nil {
-		return nil, err
-	}
-
 	// Go through each subscription and collect the logs
-	err = e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
+	err := e.subscriptionManager.ForEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
 		// 1. fetch the logs since the last request
-		var from *big.Int
+		from := big.NewInt(previousHead.Int64() + 1)
 		to := upToBatchNr
-
-		if previousHead == nil || previousHead.Int64() <= 0 {
-			// when the subscription is initialised, default from the latest batch
-			from = batch.Number()
-		} else {
-			from = big.NewInt(previousHead.Int64() + 1)
-		}
 
 		if from.Cmp(to) > 0 {
 			e.logger.Warn(fmt.Sprintf("Skipping subscription step id=%s: [%d, %d]", id, from, to))
