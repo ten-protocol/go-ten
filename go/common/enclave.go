@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -135,7 +133,7 @@ type EnclaveScan interface {
 	GetTotalContractCount() (*big.Int, SystemError)
 
 	// GetReceiptsByAddress returns a list of receipts given the sender address
-	GetReceiptsByAddress(address *gethcommon.Address) (types.Receipts, SystemError)
+	GetReceiptsByAddress(encryptedParams EncryptedParamsGetStorageAt) (*responses.Receipts, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

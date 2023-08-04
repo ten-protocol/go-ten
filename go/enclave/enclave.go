@@ -1357,13 +1357,41 @@ func (e *enclaveImpl) GetTotalContractCount() (*big.Int, common.SystemError) {
 	return e.storage.GetContractCount()
 }
 
-func (e *enclaveImpl) GetReceiptsByAddress(address *gethcommon.Address) (types.Receipts, common.SystemError) {
+func (e *enclaveImpl) GetReceiptsByAddress(encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetTotalContractCount with the enclave stopping"))
+		return nil, responses.ToInternalError(fmt.Errorf("requested GetReceiptsByAddress with the enclave stopping"))
 	}
 
-	return e.storage.GetReceiptsPerAddress(address)
+	// decode the received request into a []interface
+	paramList, err := e.decodeRequest(encryptedParams)
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_getStorageAt params - %w", err)), nil
+	}
+
+	// Parameters are [ViewingKey, Address, TBD, TBD]
+	if len(paramList) != 4 {
+		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
+	}
+
+	requestedAddress, err := gethencoding.ExtractAddress(paramList[1])
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("unable to extract requested address - %w", err)), nil
+	}
+
+	// extract, create and validate the VK encryption handler
+	vkHandler, err := createVKHandler(requestedAddress, paramList[0])
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
+	}
+
+	// params are correct, fetch the receipts of the requested address
+	encryptReceipts, err := e.storage.GetReceiptsPerAddress(requestedAddress)
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("unable to get balance - %w", err)), nil
+	}
+
+	return responses.AsEncryptedResponse(&encryptReceipts, vkHandler), nil
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

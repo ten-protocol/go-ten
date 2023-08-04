@@ -554,12 +554,12 @@ func (c *Client) GetTotalContractCount() (*big.Int, common.SystemError) {
 	return big.NewInt(response.Count), nil
 }
 
-func (c *Client) GetReceiptsByAddress(address *gethcommon.Address) (types.Receipts, common.SystemError) {
+func (c *Client) GetReceiptsByAddress(encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	response, err := c.protoClient.GetReceiptsByAddress(timeoutCtx, &generated.GetReceiptsByAddressRequest{
-		Address: address.Bytes(),
+		EncryptedParams: encryptedParams,
 	})
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
@@ -568,11 +568,5 @@ func (c *Client) GetReceiptsByAddress(address *gethcommon.Address) (types.Receip
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	var publicTxData types.Receipts
-	err = json.Unmarshal(response.Receipts, &publicTxData)
-	if err != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return publicTxData, nil
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }

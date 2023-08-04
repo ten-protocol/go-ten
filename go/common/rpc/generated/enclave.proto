@@ -91,11 +91,11 @@ service EnclaveProto {
 }
 
 message GetReceiptsByAddressRequest {
-  bytes address = 1;
+  bytes encryptedParams = 1;
 }
 
 message GetReceiptsByAddressResponse{
-  bytes receipts = 1;
+  bytes encodedEnclaveResponse = 1;
   SystemError systemError = 2;
 }
 

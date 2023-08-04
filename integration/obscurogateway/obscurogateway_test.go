@@ -2,7 +2,6 @@ package faucet
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"testing"
@@ -12,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/httputil"
 	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
@@ -26,7 +24,6 @@ import (
 	"github.com/obscuronet/go-obscuro/tools/walletextension/config"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/container"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func init() { //nolint:gochecknoinits
@@ -70,7 +67,7 @@ func TestObscuroGateway(t *testing.T) {
 
 	// make sure the server is ready to receive requests
 	// TODO Implement health endpoint
-	serverAddress := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
+	//serverAddress := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
 
 	w := wallets.L2FaucetWallet
 
@@ -86,34 +83,11 @@ func TestObscuroGateway(t *testing.T) {
 
 	txHash := transferRandomAddr(t, authClient, w)
 
-	// Issue tests
-	jsonRPCRequest := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  "eth_getStorageAt",
-		"params": []interface{}{
-			w.Address().String(),
-			nil,
-			nil,
-		},
-		"id": "1",
-	}
-	bodyReq, err := json.Marshal(jsonRPCRequest)
-	assert.NoError(t, err)
+	addr := w.Address()
+	receipts, err := authClient.GetReceiptsByAddress(context.Background(), &addr)
 
-	statusCode, body, err := httputil.PostDataJSON(serverAddress, bodyReq)
-	assert.NoError(t, err)
-	require.Equal(t, 200, statusCode)
-
-	type request struct {
-		Result types.Receipts `json:"result"`
-	}
-
-	pubDataReq := request{}
-	err = json.Unmarshal(body, &pubDataReq)
-	assert.NoError(t, err)
-
-	assert.Equal(t, 1, len(pubDataReq.Result))
-	assert.Equal(t, txHash.Hex(), pubDataReq.Result[0].TxHash.Hex())
+	assert.Equal(t, 1, len(receipts))
+	assert.Equal(t, txHash.Hex(), receipts[0].TxHash.Hex())
 
 	// Gracefully shutdown
 	err = obscuroGwContainer.Stop()

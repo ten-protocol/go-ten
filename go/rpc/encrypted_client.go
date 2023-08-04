@@ -40,6 +40,7 @@ var SensitiveMethods = []string{
 	SendRawTransaction,
 	EstimateGas,
 	GetLogs,
+	GetStorageAt,
 }
 
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
@@ -288,6 +289,10 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 
 		// Return the user error.
 		return decodedError
+	}
+
+	if decodedResult == nil {
+		return nil
 	}
 
 	// We get the bytes behind the raw json object.
