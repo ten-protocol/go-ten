@@ -311,8 +311,8 @@ func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 		}
 		return common.Status{StatusCode: common.Unavailable}, responses.ToInternalError(err)
 	}
-	l1Head, err := e.storage.FetchHeadBlock()
 	var l1HeadHash gethcommon.Hash
+	l1Head, err := e.storage.FetchHeadBlock()
 	if err != nil {
 		// this might be normal while enclave is starting up, just send empty hash
 		e.logger.Debug("failed to fetch L1 head block for status response", log.ErrKey, err)

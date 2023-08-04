@@ -90,7 +90,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	var messages common.CrossChainMessages
 	// Cross chain data is not accessible until one after the genesis batch
 	if context.SequencerNo.Int64() > int64(common.L2GenesisSeqNo+1) {
-		messages = bp.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
+		messages = executor.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
 	}
 	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 

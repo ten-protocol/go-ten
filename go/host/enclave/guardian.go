@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/gethutil"
+
 	"github.com/kamilsk/breaker"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -28,7 +30,7 @@ const (
 	_retryInterval = 100 * time.Millisecond
 
 	// when enclave is healthy this is the time before we call its status (can be slow, is just a sanity check)
-	_monitoringInterval = 30 * time.Second
+	_monitoringInterval = 1 * time.Second
 
 	// when we have submitted request to L1 for the secret, how long do we wait for an answer before we retry
 	_maxWaitForSecretResponse = 2 * time.Minute
@@ -223,7 +225,7 @@ func (g *Guardian) mainLoop() {
 			case <-time.After(_monitoringInterval):
 				// loop back to check status
 			case <-g.hostInterrupter.Done():
-				// stop sleeping, we've been interrupted
+				// stop sleeping, we've been interrupted by the host stopping
 			}
 		}
 	}
@@ -330,6 +332,9 @@ func (g *Guardian) catchupWithL1() error {
 		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(g.state.GetEnclaveL1Head())
 		if err != nil {
 			if errors.Is(err, l1.ErrNoNextBlock) {
+				if g.state.hostL1Head == gethutil.EmptyHash {
+					return fmt.Errorf("no L1 blocks found in repository")
+				}
 				return nil // we are up-to-date
 			}
 			return errors.Wrap(err, "could not fetch next L1 block")

@@ -3,6 +3,7 @@ package nodetype
 import (
 	"crypto/ecdsa"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"sort"
