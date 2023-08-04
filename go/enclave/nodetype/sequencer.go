@@ -298,9 +298,8 @@ func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []c
 			return fmt.Errorf("could not fetch sequencer no. Cause %w", err)
 		}
 		sequencerNo = sequencerNo.Add(sequencerNo, big.NewInt(1))
-		seqNoCp := *sequencerNo
 		// create the duplicate and store/broadcast it
-		b, err := s.produceBatch(&seqNoCp, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time)
+		b, err := s.produceBatch(sequencerNo, l1Head.ParentHash(), currentHead, orphanBatch.Transactions, orphanBatch.Header.Time)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}

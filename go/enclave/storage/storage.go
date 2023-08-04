@@ -306,13 +306,15 @@ func (s *storageImpl) FetchBatchesByBlock(block common.L1BlockHash) ([]*core.Bat
 
 func (s *storageImpl) StoreBatch(batch *core.Batch) error {
 	// sanity check that this is not overlapping
-	prev, err := s.FetchBatchBySeqNo(batch.SeqNo().Uint64())
-	if err == nil && prev.Hash() != batch.Hash() {
-		s.logger.Crit(fmt.Sprintf("Conflicting batches for the same sequence %d: (previous) %s != (incoming) %s", batch.SeqNo(), prev.Hash(), batch.Hash()))
+	existingBatchWithSameSequence, _ := s.FetchBatchBySeqNo(batch.SeqNo().Uint64())
+	if existingBatchWithSameSequence != nil && existingBatchWithSameSequence.Hash() != batch.Hash() {
+		// todo - tudor - remove the Critical before production, and return a challenge
+		s.logger.Crit(fmt.Sprintf("Conflicting batches for the same sequence %d: (previous) %s != (incoming) %s", batch.SeqNo(), existingBatchWithSameSequence.Hash(), batch.Hash()))
 		return fmt.Errorf("a different batch with same sequence number already exists: %d", batch.SeqNo())
 	}
 
-	if prev != nil {
+	// already processed batch with this seq number and hash
+	if existingBatchWithSameSequence != nil && existingBatchWithSameSequence.Hash() == batch.Hash() {
 		return nil
 	}
 
