@@ -96,7 +96,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
-			msg, err := transaction.AsMessage(types.NewEIP155Signer(transaction.ChainId()), big.NewInt(0))
+			msg, err := transaction.AsMessage(types.LatestSignerForChainID(transaction.ChainId()), big.NewInt(0))
 			if err != nil {
 				return fmt.Errorf("unable to convert tx to message - %w", err)
 			}
