@@ -125,7 +125,7 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 		batch, err := r.db.GetBatchBySequenceNumber(nextSeqNum)
 		if err != nil {
 			if !errors.Is(err, errutil.ErrNotFound) {
-				r.logger.Warn("unexpected error fetching batches for peer req", "seqNo", nextSeqNum, log.ErrKey, err)
+				r.logger.Warn("unexpected error fetching batches for peer req", log.BatchSeqNoKey, nextSeqNum, log.ErrKey, err)
 			}
 			break // once one batch lookup fails we don't expect to find any of them
 		}

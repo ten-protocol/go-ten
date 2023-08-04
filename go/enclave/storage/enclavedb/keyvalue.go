@@ -66,7 +66,7 @@ func PutKeyValues(tx *sql.Tx, keys [][]byte, vals [][]byte) error {
 		}
 		_, err := tx.Exec(update, values...)
 		if err != nil {
-			return fmt.Errorf("failed to exec batch statement. kv=%v, err=%w", values, err)
+			return fmt.Errorf("failed to exec k/v transaction statement. kv=%v, err=%w", values, err)
 		}
 	}
 

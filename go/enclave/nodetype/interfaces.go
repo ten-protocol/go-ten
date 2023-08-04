@@ -1,7 +1,9 @@
 package nodetype
 
 import (
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/enclave/components"
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 )
 
@@ -15,6 +17,9 @@ type NodeType interface {
 
 	// OnL1Fork - logic to be performed when there is an L1 Fork
 	OnL1Fork(fork *common.ChainFork) error
+
+	// OnL1Block - performed after the block was processed
+	OnL1Block(block types.Block, result *components.BlockIngestionType) error
 }
 
 type Sequencer interface {
@@ -29,10 +34,10 @@ type Sequencer interface {
 }
 
 type ObsValidator interface {
-	// ValidateAndStoreBatch - if all the prerequisites are available (parent batch, l1 block) then
-	// this function recomputes the batch using the exact same context and compares the results.
-	// If the batch is valid it will be stored.
-	ValidateAndStoreBatch(*core.Batch) error
+	// ExecuteBatches - try to execute all stored by unexecuted batches
+	ExecuteStoredBatches() error
+
+	VerifySequencerSignature(*core.Batch) error
 
 	NodeType
 }
