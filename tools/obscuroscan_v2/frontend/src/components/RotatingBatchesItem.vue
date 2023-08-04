@@ -35,6 +35,7 @@ export default {
 
     return {
       displayedCards:  computed(() => batch.batches.get()),
+      isAnimating: false
     }
   },
 }

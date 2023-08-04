@@ -249,7 +249,7 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 
 // GetReceiptsByBatchHash retrieves the receipts for all transactions in a given batch.
 func (s *storageImpl) GetReceiptsByBatchHash(hash gethcommon.Hash) (types.Receipts, error) {
-	return enclavedb.ReadReceipts(s.db.GetSQLDB(), hash, s.chainConfig)
+	return enclavedb.ReadReceiptsByBatchHash(s.db.GetSQLDB(), hash, s.chainConfig)
 }
 
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
@@ -435,6 +435,10 @@ func (s *storageImpl) FetchUnexecutedBatches() ([]*core.Batch, error) {
 
 func (s *storageImpl) BatchWasExecuted(hash common.L2BatchHash) (bool, error) {
 	return enclavedb.BatchWasExecuted(s.db.GetSQLDB(), hash)
+}
+
+func (s *storageImpl) GetReceiptsPerAddress(address *gethcommon.Address) (types.Receipts, error) {
+	return enclavedb.GetReceiptsPerAddress(s.db.GetSQLDB(), s.chainConfig, address)
 }
 
 func (s *storageImpl) cacheBlock(blockHash common.L1BlockHash, b *types.Block) {

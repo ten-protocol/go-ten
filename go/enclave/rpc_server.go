@@ -348,6 +348,14 @@ func (s *RPCServer) GetTotalContractCount(_ context.Context, _ *generated.GetTot
 	}, nil
 }
 
+func (s *RPCServer) GetReceiptsByAddress(_ context.Context, req *generated.GetReceiptsByAddressRequest) (*generated.GetReceiptsByAddressResponse, error) {
+	enclaveResp, sysError := s.enclave.GetReceiptsByAddress(req.EncryptedParams)
+	if sysError != nil {
+		return &generated.GetReceiptsByAddressResponse{SystemError: toRPCError(sysError)}, nil
+	}
+	return &generated.GetReceiptsByAddressResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
+}
+
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

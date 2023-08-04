@@ -138,4 +138,5 @@ type Storage interface {
 
 type ScanStorage interface {
 	GetContractCount() (*big.Int, error)
+	GetReceiptsPerAddress(address *gethcommon.Address) (types.Receipts, error)
 }
