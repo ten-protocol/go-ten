@@ -171,7 +171,7 @@ func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
 }
 
 func ReadBatchesByBlock(db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
-	return fetchBatches(db, " where b.l1_proof=?", hash.Bytes())
+	return fetchBatches(db, " where b.l1_proof=? order by b.sequence", hash.Bytes())
 }
 
 func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
@@ -442,7 +442,7 @@ func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
 }
 
 func ReadUnexecutedBatches(db *sql.DB) ([]*core.Batch, error) {
-	return fetchBatches(db, "where executed=false and is_canonical")
+	return fetchBatches(db, "where executed=false and is_canonical order by b.sequence")
 }
 
 func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
