@@ -3,6 +3,7 @@ package clientapi
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/responses"
@@ -54,9 +55,15 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	}
 
 	go func() {
+		// to avoid unsubscribe deadlocks we have a 1 second delay between the unsubscribe command
+		// and the moment we stop listening for messages
+		unsubscribed := false
 		for {
 			select {
 			case encryptedLog := <-logsFromSubscription:
+				if unsubscribed {
+					return
+				}
 				idAndEncLog := common.IDAndEncLog{
 					SubID:  subscription.ID,
 					EncLog: encryptedLog,
@@ -68,7 +75,11 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 
 			case <-subscription.Err(): // client sent an unsubscribe request
 				api.host.Unsubscribe(subscription.ID)
-				return
+				unsubscribed = true
+			case <-time.After(time.Second):
+				if unsubscribed {
+					return
+				}
 			}
 		}
 	}()
