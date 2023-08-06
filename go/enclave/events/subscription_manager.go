@@ -82,7 +82,7 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 
 	startAt := subscription.Filter.FromBlock
 	// Set the subscription to start from the current head if a specific start is not specified
-	if startAt == nil || startAt.Int64() < 0 {
+	if startAt == nil || startAt.Int64() <= 0 {
 		head, err := s.storage.FetchHeadBatch()
 		if err != nil {
 			return fmt.Errorf("unable to read head batch to create subscription - %w", err)
