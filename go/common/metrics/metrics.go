@@ -6,6 +6,12 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/db"
+
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/host"
+
 	"github.com/ethereum/go-ethereum/metrics/exp"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -17,32 +23,46 @@ var (
 	_threadCreateProfile                  = pprof.Lookup("threadcreate")
 )
 
+type metricsServiceLocator interface {
+	DB() *db.DB
+}
+
 // Service provides the metrics for the host
 // it registers the gethmetrics Registry
 // and handles the metrics server
 type Service struct {
 	registry gethmetrics.Registry
+	sl       metricsServiceLocator
 	port     uint
 	logger   gethlog.Logger
 }
 
-func New(enabled bool, port uint, logger gethlog.Logger) *Service {
+func ServiceFactory(config *config.HostConfig, serviceLocator host.ServiceLocator, logger gethlog.Logger) (host.MetricsService, error) {
+	return New(config.MetricsEnabled, config.MetricsHTTPPort, serviceLocator, logger), nil
+}
+
+func New(enabled bool, port uint, serviceLocator metricsServiceLocator, logger gethlog.Logger) *Service {
 	gethmetrics.Enabled = enabled
 	return &Service{
 		registry: gethmetrics.NewRegistry(),
+		sl:       serviceLocator,
 		port:     port,
 		logger:   logger,
 	}
 }
 
 // Start starts the metrics server
-func (m *Service) Start() {
+func (m *Service) Start() error {
+	// initialise the metrics on the DB (this is a workaround for a temporary cyclic dependency of the DB service)
+	m.sl.DB().InitialiseMetrics(m.registry)
+
 	// metrics not enabled
 	if !gethmetrics.Enabled {
-		return
+		m.logger.Info("Metrics not enabled - http service will not be active")
+		return nil
 	}
 
-	// start the process collection metric on it's own thread
+	// start the process collection metric on its own thread
 	go m.CollectProcessMetrics()
 
 	// starts the metric server
@@ -50,6 +70,8 @@ func (m *Service) Start() {
 	m.logger.Info("HTTP Metric server started", "address", address)
 	// todo - re-write this http server so to have a stop method
 	exp.Setup(address)
+
+	return nil
 }
 
 // Registry returns the registry for the metrics service
@@ -59,6 +81,11 @@ func (m *Service) Registry() gethmetrics.Registry {
 
 func (m *Service) Stop() {
 	// todo - re-write this http server so to have a stop method
+}
+
+func (m *Service) HealthStatus() hostcommon.HealthStatus {
+	// always healthy for now, this method is to satisfy the Service interface
+	return &hostcommon.BasicErrHealthStatus{ErrMsg: ""}
 }
 
 // CollectProcessMetrics collect process and system metrics

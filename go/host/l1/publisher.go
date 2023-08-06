@@ -7,11 +7,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/host"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
@@ -29,28 +32,53 @@ const (
 	// todo - these values have to be configurable
 	maxWaitForL1Receipt       = 100 * time.Second
 	retryIntervalForL1Receipt = 10 * time.Second
-	maxWaitForSecretResponse  = 120 * time.Second
 )
 
+type publisherServiceLocator interface {
+	host.L1RepoLocator
+}
+
 type Publisher struct {
-	hostData        host.Identity
+	hostData        hostcommon.Identity
 	hostWallet      wallet.Wallet // Wallet used to issue ethereum transactions
 	ethClient       ethadapter.EthClient
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 
-	repository host.L1BlockRepository
-	logger     gethlog.Logger
+	logger gethlog.Logger
 
 	running atomic.Bool
+	sl      publisherServiceLocator
 }
 
-func NewL1Publisher(hostData host.Identity, hostWallet wallet.Wallet, client ethadapter.EthClient, mgmtContract mgmtcontractlib.MgmtContractLib, repository host.L1BlockRepository, logger gethlog.Logger) *Publisher {
+// PublisherFactory is the default factory for the L1PublisherService
+func PublisherFactory(config *config.HostConfig, sl host.ServiceLocator, logger gethlog.Logger) (host.L1PublisherService, error) {
+	hostData := hostcommon.NewIdentity(config)
+	hostWallet := wallet.NewInMemoryWalletFromConfig(config.PrivateKeyString, config.L1ChainID, logger.New(log.CmpKey, "wallet"))
+
+	ethClient, err := ethadapter.NewEthClient(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1RPCTimeout, config.ID, logger.New(log.CmpKey, "ethclient"))
+	if err != nil {
+		return nil, fmt.Errorf("could not create eth client for l1 repo: %w", err)
+	}
+
+	// update the wallet nonce
+	nonce, err := ethClient.Nonce(hostWallet.Address())
+	if err != nil {
+		logger.Crit("could not retrieve Ethereum account nonce.", log.ErrKey, err)
+	}
+	hostWallet.SetNonce(nonce)
+
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&config.ManagementContractAddress, logger.New(log.CmpKey, "mgmtlib"))
+
+	return NewL1Publisher(hostData, hostWallet, ethClient, mgmtContractLib, sl, logger), nil
+}
+
+func NewL1Publisher(hostData hostcommon.Identity, hostWallet wallet.Wallet, client ethadapter.EthClient, mgmtContract mgmtcontractlib.MgmtContractLib, serviceLocator publisherServiceLocator, logger gethlog.Logger) *Publisher {
 	return &Publisher{
 		hostData:        hostData,
 		hostWallet:      hostWallet,
 		ethClient:       client,
 		mgmtContractLib: mgmtContract,
-		repository:      repository,
+		sl:              serviceLocator,
 		logger:          logger,
 	}
 }
@@ -60,18 +88,17 @@ func (p *Publisher) Start() error {
 	return nil
 }
 
-func (p *Publisher) Stop() error {
+func (p *Publisher) Stop() {
 	p.running.Store(false)
-	return nil
 }
 
-func (p *Publisher) HealthStatus() host.HealthStatus {
+func (p *Publisher) HealthStatus() hostcommon.HealthStatus {
 	// todo (@matt) do proper health status based on failed transactions or something
 	errMsg := ""
 	if !p.running.Load() {
 		errMsg = "not running"
 	}
-	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
+	return &hostcommon.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
 func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encSecret common.EncryptedSharedEnclaveSecret) error {

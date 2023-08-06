@@ -7,9 +7,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/subscription"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/host"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/common/subscription"
 
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -30,7 +32,7 @@ var (
 
 // Repository is a host service for subscribing to new blocks and looking up L1 data
 type Repository struct {
-	blockSubscribers *subscription.Manager[host.L1BlockHandler]
+	blockSubscribers *subscription.Manager[hostcommon.L1BlockHandler]
 	// this eth client should only be used by the repository, the repository may "reconnect" it at any time and don't want to interfere with other processes
 	ethClient ethadapter.EthClient
 	logger    gethlog.Logger
@@ -39,9 +41,19 @@ type Repository struct {
 	head    gethcommon.Hash
 }
 
+// RepoFactory is the default factory function for creating a new L1Repository, it creates an eth client
+func RepoFactory(config *config.HostConfig, _ host.ServiceLocator, logger gethlog.Logger) (host.L1BlockRepositoryService, error) {
+	ethLogger := logger.New(log.CmpKey, "ethclient")
+	l1Client, err := ethadapter.NewEthClient(config.L1NodeHost, config.L1NodeWebsocketPort, config.L1RPCTimeout, config.ID, ethLogger)
+	if err != nil {
+		return nil, fmt.Errorf("could not create eth client for l1 repo: %w", err)
+	}
+	return NewL1Repository(l1Client, logger), nil
+}
+
 func NewL1Repository(ethClient ethadapter.EthClient, logger gethlog.Logger) *Repository {
 	return &Repository{
-		blockSubscribers: subscription.NewManager[host.L1BlockHandler](),
+		blockSubscribers: subscription.NewManager[hostcommon.L1BlockHandler](),
 		ethClient:        ethClient,
 		running:          atomic.Bool{},
 		logger:           logger,
@@ -56,22 +68,21 @@ func (r *Repository) Start() error {
 	return nil
 }
 
-func (r *Repository) Stop() error {
+func (r *Repository) Stop() {
 	r.running.Store(false)
-	return nil
 }
 
-func (r *Repository) HealthStatus() host.HealthStatus {
+func (r *Repository) HealthStatus() hostcommon.HealthStatus {
 	// todo (@matt) do proper health status based on last received block or something
 	errMsg := ""
 	if !r.running.Load() {
 		errMsg = "not running"
 	}
-	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
+	return &hostcommon.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
 // Subscribe will register a new block handler to receive new blocks as they arrive, returns unsubscribe func
-func (r *Repository) Subscribe(handler host.L1BlockHandler) func() {
+func (r *Repository) Subscribe(handler hostcommon.L1BlockHandler) func() {
 	return r.blockSubscribers.Subscribe(handler)
 }
 

@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
+
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/go-kit/kit/transport/http/jsonrpc"
@@ -27,7 +29,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethnode "github.com/ethereum/go-ethereum/node"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 )
 
 const jsonID = "1"
@@ -71,14 +72,14 @@ func createDummyHost(t *testing.T, wsRPCPort int) (*DummyAPI, func() error) {
 	rpcServerNode, err := gethnode.New(&cfg)
 	rpcServerNode.RegisterAPIs([]gethrpc.API{
 		{
-			Namespace: hostcontainer.APINamespaceObscuro,
-			Version:   hostcontainer.APIVersion1,
+			Namespace: clientrpc.APINamespaceObscuro,
+			Version:   clientrpc.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},
 		{
-			Namespace: hostcontainer.APINamespaceEth,
-			Version:   hostcontainer.APIVersion1,
+			Namespace: clientrpc.APINamespaceEth,
+			Version:   clientrpc.APIVersion1,
 			Service:   dummyAPI,
 			Public:    true,
 		},

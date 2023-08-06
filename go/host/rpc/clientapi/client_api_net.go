@@ -2,22 +2,20 @@ package clientapi
 
 import (
 	"fmt"
-
-	"github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 // NetworkAPI implements a subset of the Ethereum network JSON RPC operations.
 type NetworkAPI struct {
-	host host.Host
+	chainID int64
 }
 
-func NewNetworkAPI(host host.Host) *NetworkAPI {
+func NewNetworkAPI(chainID int64) *NetworkAPI {
 	return &NetworkAPI{
-		host: host,
+		chainID: chainID,
 	}
 }
 
 // Version returns the protocol version of the Obscuro network.
 func (api *NetworkAPI) Version() string {
-	return fmt.Sprintf("%d", api.host.Config().ObscuroChainID)
+	return fmt.Sprintf("%d", api.chainID)
 }

@@ -3,10 +3,10 @@ package network
 import (
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/host/container"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/go/rpc"
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
@@ -32,7 +32,6 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
 	obscuroNodes := make([]*container.HostContainer, params.NumberOfNodes)
 	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
-	obscuroHosts := make([]host.Host, params.NumberOfNodes)
 
 	p2pNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency)
 
@@ -49,7 +48,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 
-		agg := createInMemObscuroNode(
+		inMemHostContainer, rpcClient := createInMemObscuroNode(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
@@ -58,18 +57,16 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			nil,
 			params.Wallets.NodeWallets[i],
 			miner,
-			p2pNetw.NewNode(i),
+			p2pNetw.P2PServiceFactory(i),
 			&disabledBus,
 			common.Hash{},
 			params.AvgBlockDuration/2,
 		)
-		obscuroClient := p2p.NewInMemObscuroClient(agg)
 
 		n.ethNodes[i] = miner
-		obscuroNodes[i] = agg
-		n.l2Clients[i] = obscuroClient
+		obscuroNodes[i] = inMemHostContainer
+		n.l2Clients[i] = rpcClient
 		l1Clients[i] = miner
-		obscuroHosts[i] = obscuroNodes[i].Host()
 	}
 
 	// populate the nodes field of each network

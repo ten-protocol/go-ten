@@ -6,24 +6,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/host"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
-
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/metrics"
 	"github.com/obscuronet/go-obscuro/go/config"
 	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
-	"github.com/obscuronet/go-obscuro/go/host/p2p"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
-	"github.com/obscuronet/go-obscuro/go/host/rpc/enclaverpc"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -130,17 +122,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.operatorIdx, log.CmpKey, log.HostCmp)
-
-	// create a socket P2P layer
-	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
-	svcLocator := host.NewServicesRegistry(n.logger)
-	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, svcLocator, p2pLogger, nil)
-	// create an enclave client
-
-	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, n.operatorIdx))
-	rpcServer := clientrpc.NewServer(hostConfig, n.logger)
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&hostConfig.ManagementContractAddress, n.logger)
-	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, enclaveClient, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger))
+	return hostcontainer.NewHostContainer(hostConfig, hostLogger)
 }
 
 func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveContainer {

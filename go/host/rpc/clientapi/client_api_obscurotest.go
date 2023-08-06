@@ -1,27 +1,17 @@
 package clientapi
 
-import (
-	"github.com/obscuronet/go-obscuro/go/common/container"
-)
-
 // TestAPI implements JSON RPC operations required for testing.
 type TestAPI struct {
-	container container.Container
+	stopHost func() error
 }
 
-func NewTestAPI(container container.Container) *TestAPI {
+func NewTestAPI(stopHost func() error) *TestAPI {
 	return &TestAPI{
-		container: container,
+		stopHost: stopHost,
 	}
 }
 
 // StopHost gracefully stops the host.
 func (api *TestAPI) StopHost() error {
-	if api.container != nil {
-		err := api.container.Stop()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return api.stopHost()
 }

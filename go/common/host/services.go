@@ -3,6 +3,8 @@ package host
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/metrics"
+
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/responses"
 
@@ -10,16 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
-)
-
-// service names - these are the keys used to register known services with the host
-const (
-	P2PName                    = "p2p"
-	L1BlockRepositoryName      = "l1-block-repo"
-	L1PublisherName            = "l1-publisher"
-	L2BatchRepositoryName      = "l2-batch-repo"
-	EnclaveServiceName         = "enclaves"
-	LogSubscriptionServiceName = "log-subs"
 )
 
 // The host has a number of services that encapsulate the various responsibilities of the host.
@@ -31,7 +23,7 @@ const (
 // They should be resilient to services availability, because the construction ordering is not guaranteed.
 type Service interface {
 	Start() error
-	Stop() error
+	Stop()
 	HealthStatus() HealthStatus
 }
 
@@ -156,4 +148,17 @@ type LogSubscriptionManager interface {
 	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error
 	Unsubscribe(id rpc.ID)
 	SendLogsToSubscribers(result *common.EncryptedSubscriptionLogs)
+}
+
+// Metrics service doesn't currently expose any methods internally to the host, its role is just to serve metrics data via HTTP
+type Metrics interface {
+	Registry() metrics.Registry
+}
+
+// RPCServer doesn't currently expose any methods internally to the host, its role is just to serve requests
+type RPCServer interface{}
+
+type HostControls interface { //nolint:revive
+	Stop()
+	HealthCheck() (*HealthCheck, error)
 }

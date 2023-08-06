@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
@@ -32,12 +31,12 @@ const (
 func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
-	obscuroHosts := make([]host.Host, params.NumberOfNodes)
+	var obscuroClients []rpc.Client
 	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency)
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
-		obscuroNodes[i] = createInMemObscuroNode(
+		hostContainer, rpcClient := createInMemObscuroNode(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
@@ -46,12 +45,13 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			genesisJSON,
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
-			mockP2PNetw.NewNode(i),
+			mockP2PNetw.P2PServiceFactory(i),
 			params.L1SetupData.MessageBusAddr,
 			params.L1SetupData.ObscuroStartBlock,
 			params.AvgBlockDuration/3,
 		)
-		obscuroHosts[i] = obscuroNodes[i].Host()
+		obscuroNodes[i] = hostContainer
+		obscuroClients = append(obscuroClients, rpcClient)
 	}
 
 	// start each obscuro node
@@ -65,11 +65,6 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 		}()
 	}
 
-	// Create a handle to each node
-	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
-	for i, node := range obscuroNodes {
-		obscuroClients[i] = p2p.NewInMemObscuroClient(node)
-	}
 	time.Sleep(100 * time.Millisecond)
 
 	return obscuroClients

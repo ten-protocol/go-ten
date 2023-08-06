@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/obscuronet/go-obscuro/go/host"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -16,20 +16,25 @@ import (
 
 const txLimit = 100
 
-// ObscuroScanAPI implements ObscuroScan-specific JSON RPC operations.
-type ObscuroScanAPI struct {
-	host host.Host
+type obscuroscanAPIServiceLocator interface {
+	host.DBLocator // todo (@matt) this api should depend on l1/l2 repos, not db directly
+	host.EnclaveLocator
 }
 
-func NewObscuroScanAPI(host host.Host) *ObscuroScanAPI {
+// ObscuroScanAPI implements ObscuroScan-specific JSON RPC operations.
+type ObscuroScanAPI struct {
+	sl obscuroscanAPIServiceLocator
+}
+
+func NewObscuroScanAPI(serviceLocator obscuroscanAPIServiceLocator) *ObscuroScanAPI {
 	return &ObscuroScanAPI{
-		host: host,
+		sl: serviceLocator,
 	}
 }
 
 // GetBlockHeaderByHash returns the header for the block with the given hash.
 func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*types.Header, error) {
-	blockHeader, err := api.host.DB().GetBlockHeader(blockHash)
+	blockHeader, err := api.sl.DB().GetBlockHeader(blockHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("no block with hash %s is stored", blockHash)
@@ -42,17 +47,17 @@ func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*typ
 // GetBatch returns the batch with the given hash. Unlike `EthereumAPI.GetBlockByHash()`, returns the full
 // `ExtBatch`, and not just the header.
 func (api *ObscuroScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
-	return api.host.DB().GetBatch(batchHash)
+	return api.sl.DB().GetBatch(batchHash)
 }
 
 // GetBatchForTx returns the batch containing a given transaction hash.
 func (api *ObscuroScanAPI) GetBatchForTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
-	batchNumber, err := api.host.DB().GetBatchNumber(txHash)
+	batchNumber, err := api.sl.DB().GetBatchNumber(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve batch containing a transaction with hash %s. Cause: %w", txHash, err)
 	}
 
-	batchHash, err := api.host.DB().GetBatchHash(batchNumber)
+	batchHash, err := api.sl.DB().GetBatchHash(batchNumber)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve batch with number %d. Cause: %w", batchNumber.Int64(), err)
 	}
@@ -68,7 +73,7 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 		return nil, fmt.Errorf("cannot request more than 100 latest transactions")
 	}
 
-	headBatchHeader, err := api.host.DB().GetHeadBatchHeader()
+	headBatchHeader, err := api.sl.DB().GetHeadBatchHeader()
 	if err != nil {
 		return nil, err
 	}
@@ -77,12 +82,12 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 	// We walk the chain until we've collected the requested number of transactions.
 	var txHashes []gethcommon.Hash
 	for {
-		batchHeader, err := api.host.DB().GetBatchHeader(currentBatchHash)
+		batchHeader, err := api.sl.DB().GetBatchHeader(currentBatchHash)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve batch for hash %s. Cause: %w", currentBatchHash, err)
 		}
 
-		batchTxHashes, err := api.host.DB().GetBatchTxs(batchHeader.Hash())
+		batchTxHashes, err := api.sl.DB().GetBatchTxs(batchHeader.Hash())
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve transaction hashes for batch hash %s. Cause: %w", currentBatchHash, err)
 		}
@@ -106,10 +111,10 @@ func (api *ObscuroScanAPI) GetLatestTransactions(num int) ([]gethcommon.Hash, er
 
 // GetTotalTransactions returns the number of recorded transactions on the network.
 func (api *ObscuroScanAPI) GetTotalTransactions() (*big.Int, error) {
-	return api.host.DB().GetTotalTransactions()
+	return api.sl.DB().GetTotalTransactions()
 }
 
 // Attestation returns the node's attestation details.
 func (api *ObscuroScanAPI) Attestation() (*common.AttestationReport, error) {
-	return api.host.EnclaveClient().Attestation()
+	return api.sl.Enclave().GetEnclaveClient().Attestation()
 }

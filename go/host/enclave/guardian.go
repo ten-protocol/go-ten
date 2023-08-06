@@ -8,19 +8,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/gethutil"
+	"github.com/obscuronet/go-obscuro/go/host"
 
-	"github.com/kamilsk/breaker"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/host/db"
 	"github.com/obscuronet/go-obscuro/go/host/l1"
 	"github.com/pkg/errors"
 )
@@ -34,15 +33,18 @@ const (
 
 	// when we have submitted request to L1 for the secret, how long do we wait for an answer before we retry
 	_maxWaitForSecretResponse = 2 * time.Minute
+
+	_initialBlockMaxWait = 10 * time.Second
 )
 
-// This private interface enforces the services that the guardian depends on
+// This private interface declares the services that the guardian depends on
 type guardianServiceLocator interface {
-	P2P() host.P2P
-	L1Publisher() host.L1Publisher
-	L1Repo() host.L1BlockRepository
-	L2Repo() host.L2BatchRepository
-	LogSubs() host.LogSubscriptionManager
+	host.P2PLocator
+	host.L1PublisherLocator
+	host.L1RepoLocator
+	host.L2RepoLocator
+	host.LogSubsLocator
+	host.DBLocator
 }
 
 // Guardian is a host service which monitors an enclave, it's responsibilities include:
@@ -50,39 +52,46 @@ type guardianServiceLocator interface {
 // - if it is an active sequencer then the guardian will trigger batch/rollup creation
 // - guardian provides access to the enclave data and reports the enclave status for other services - acting as a gatekeeper
 type Guardian struct {
-	hostData      host.Identity
+	hostData      hostcommon.Identity
 	state         *StateTracker // state machine that tracks our view of the enclave's state
 	enclaveClient common.Enclave
 
 	sl guardianServiceLocator
-	db *db.DB
 
 	submitDataLock sync.Mutex // we only submit one block, batch or transaction to enclave at a time
 
 	batchInterval  time.Duration
 	rollupInterval time.Duration
 
-	running         atomic.Bool
-	hostInterrupter breaker.Interface // host hostInterrupter so we can stop quickly
+	running       atomic.Bool
+	stopInterrupt chan bool // interrupt channel: closed when we are shutting down
 
-	logger gethlog.Logger
+	logger      gethlog.Logger
+	l1StartHash gethcommon.Hash // L1 hash to tell us first block we will feed to the enclave
 }
 
-func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter breaker.Interface, logger gethlog.Logger) *Guardian {
+func NewGuardian(hostData hostcommon.Identity, batchInterval time.Duration, rollupInterval time.Duration, startHash gethcommon.Hash,
+	serviceLocator guardianServiceLocator, enclaveClient common.Enclave, logger gethlog.Logger,
+) *Guardian {
 	return &Guardian{
-		hostData:        hostData,
-		state:           NewStateTracker(logger),
-		enclaveClient:   enclaveClient,
-		sl:              serviceLocator,
-		batchInterval:   cfg.BatchInterval,
-		rollupInterval:  cfg.RollupInterval,
-		db:              db,
-		hostInterrupter: interrupter,
-		logger:          logger,
+		hostData:       hostData,
+		state:          NewStateTracker(logger),
+		enclaveClient:  enclaveClient,
+		sl:             serviceLocator,
+		batchInterval:  batchInterval,
+		rollupInterval: rollupInterval,
+		l1StartHash:    startHash,
+		stopInterrupt:  make(chan bool),
+		logger:         logger,
 	}
 }
 
 func (g *Guardian) Start() error {
+	err := g.setInitialL1Block()
+	if err != nil {
+		return err
+	}
+
 	g.running.Store(true)
 	go g.mainLoop()
 	if g.hostData.IsSequencer {
@@ -103,8 +112,9 @@ func (g *Guardian) Start() error {
 	return nil
 }
 
-func (g *Guardian) Stop() error {
+func (g *Guardian) Stop() {
 	g.running.Store(false)
+	close(g.stopInterrupt)
 
 	err := g.enclaveClient.Stop()
 	if err != nil {
@@ -115,17 +125,15 @@ func (g *Guardian) Stop() error {
 	if err != nil {
 		g.logger.Warn("error stopping enclave client", log.ErrKey, err)
 	}
-
-	return nil
 }
 
-func (g *Guardian) HealthStatus() host.HealthStatus {
+func (g *Guardian) HealthStatus() hostcommon.HealthStatus {
 	// todo (@matt) do proper health status based on enclave state
 	errMsg := ""
 	if !g.running.Load() {
 		errMsg = "not running"
 	}
-	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
+	return &hostcommon.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
 func (g *Guardian) GetEnclaveState() *StateTracker {
@@ -224,8 +232,8 @@ func (g *Guardian) mainLoop() {
 			select {
 			case <-time.After(_monitoringInterval):
 				// loop back to check status
-			case <-g.hostInterrupter.Done():
-				// stop sleeping, we've been interrupted by the host stopping
+			case <-g.stopInterrupt:
+				// stop sleeping, we've been interrupted
 			}
 		}
 	}
@@ -327,6 +335,16 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 }
 
 func (g *Guardian) catchupWithL1() error {
+	// make sure the L1 head to stream from has been set
+	// note: we do this here rather than in Start() method because host might not be new (might have been restarted),
+	// so we want to see what head enclave reports
+	if g.state.enclaveL1Head == gethutil.EmptyHash {
+		err := g.setInitialL1Block()
+		if err != nil {
+			return fmt.Errorf("l1 catchup failed - unable to set initial L1 block to stream from: %w", err)
+		}
+	}
+
 	// while we are behind the L1 head and still running, fetch and submit L1 blocks
 	for g.running.Load() && g.state.GetStatus() == L1Catchup {
 		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(g.state.GetEnclaveL1Head())
@@ -398,7 +416,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
 	g.processL1BlockTransactions(block)
 
 	// todo (@matt) this should not be here, it is only used by the RPC API server for batch data which will eventually just use L1 repo
-	err = g.db.AddBlockHeader(block.Header())
+	err = g.sl.DB().AddBlockHeader(block.Header())
 	if err != nil {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
@@ -425,7 +443,7 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		if err != nil {
 			g.logger.Error("could not decode rollup.", log.ErrKey, err)
 		}
-		err = g.db.AddRollupHeader(r)
+		err = g.sl.DB().AddRollupHeader(r)
 		if err != nil {
 			g.logger.Error("could not store rollup.", log.ErrKey, err)
 		}
@@ -489,7 +507,7 @@ func (g *Guardian) periodicBatchProduction() {
 			if err != nil {
 				g.logger.Error("unable to produce batch", log.ErrKey, err)
 			}
-		case <-g.hostInterrupter.Done():
+		case <-g.stopInterrupt:
 			// interrupted - end periodic process
 			batchProdTicker.Stop()
 			return
@@ -529,7 +547,7 @@ func (g *Guardian) periodicRollupProduction() {
 			} else {
 				g.sl.L1Publisher().PublishRollup(producedRollup)
 			}
-		case <-g.hostInterrupter.Done():
+		case <-g.stopInterrupt:
 			// interrupted - end periodic process
 			rollupTicker.Stop()
 			return
@@ -586,9 +604,32 @@ func (g *Guardian) streamEnclaveData() {
 				return
 			}
 
-		case <-g.hostInterrupter.Done():
+		case <-g.stopInterrupt:
 			// interrupted - end periodic process
 			return
 		}
 	}
+}
+
+func (g *Guardian) setInitialL1Block() error {
+	// make sure the L1 start hash is set before we start streaming blocks to the enclave
+	if g.l1StartHash == (gethcommon.Hash{}) {
+		var startBlock *types.Block
+		// this retry only happens on sims where no initial hash has been set, we are waiting for L1 repo to be available
+		retryErr := retry.Do(func() error {
+			var err error
+			startBlock, err = g.sl.L1Repo().FetchBlockByHeight(big.NewInt(0))
+			if err != nil {
+				return fmt.Errorf("unable to find L1 start block to stream from: %w", err)
+			}
+			return nil
+		}, retry.NewTimeoutStrategy(_initialBlockMaxWait, 100*time.Millisecond))
+		if retryErr != nil {
+			// failed to fetch initial block, L1 service was unavailable?
+			return retryErr
+		}
+		g.l1StartHash = startBlock.Hash()
+	}
+	g.state.OnProcessedBlock(g.l1StartHash)
+	return nil
 }

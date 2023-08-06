@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/go/config"
 
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -38,25 +41,42 @@ type DB struct {
 	blockReads  gethmetrics.Gauge
 }
 
-// Stop is especially important for graceful shutdown of LevelDB as it may flush data to disk that is currently in cache
-func (db *DB) Stop() error {
-	db.logger.Info("Closing the host DB.")
-	err := db.kvStore.Close()
-	if err != nil {
-		return err
-	}
+func (db *DB) Start() error {
 	return nil
 }
 
-func CreateDBFromConfig(cfg *config.HostConfig, regMetrics gethmetrics.Registry, logger gethlog.Logger) (*DB, error) {
+// Stop is especially important for graceful shutdown of LevelDB as it may flush data to disk that is currently in cache
+func (db *DB) Stop() {
+	db.logger.Info("Closing the host DB.")
+	err := db.kvStore.Close()
+	if err != nil {
+		db.logger.Error("Error closing the host DB.", log.ErrKey, err)
+	}
+}
+
+func (db *DB) HealthStatus() hostcommon.HealthStatus {
+	// always healthy for now, satisfies Service interface
+	return &hostcommon.BasicErrHealthStatus{ErrMsg: ""}
+}
+
+// InitialiseMetrics registers the host DB metrics with the given registry (this is called by the metrics service when it starts)
+func (db *DB) InitialiseMetrics(registry gethmetrics.Registry) {
+	// register db metrics
+	db.batchWrites = gethmetrics.NewRegisteredGauge("host/db/batch/writes", registry)
+	db.batchReads = gethmetrics.NewRegisteredGauge("host/db/batch/reads", registry)
+	db.blockWrites = gethmetrics.NewRegisteredGauge("host/db/block/writes", registry)
+	db.blockReads = gethmetrics.NewRegisteredGauge("host/db/block/reads", registry)
+}
+
+func CreateDBFromConfig(cfg *config.HostConfig, logger gethlog.Logger) (*DB, error) {
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		return NewInMemoryDB(regMetrics, logger), nil
+		return NewInMemoryDB(logger), nil
 	}
-	return NewLevelDBBackedDB(cfg.LevelDBPath, regMetrics, logger)
+	return NewLevelDBBackedDB(cfg.LevelDBPath, logger)
 }
 
 func validateDBConf(cfg *config.HostConfig) error {
@@ -67,12 +87,12 @@ func validateDBConf(cfg *config.HostConfig) error {
 }
 
 // NewInMemoryDB returns a new instance of the Node DB
-func NewInMemoryDB(regMetrics gethmetrics.Registry, logger gethlog.Logger) *DB {
-	return newDB(gethdb.NewMemDB(), regMetrics, logger)
+func NewInMemoryDB(logger gethlog.Logger) *DB {
+	return newDB(gethdb.NewMemDB(), logger)
 }
 
 // NewLevelDBBackedDB creates a persistent DB for the host, if dbPath == "" it will generate a temp file
-func NewLevelDBBackedDB(dbPath string, regMetrics gethmetrics.Registry, logger gethlog.Logger) (*DB, error) {
+func NewLevelDBBackedDB(dbPath string, logger gethlog.Logger) (*DB, error) {
 	var err error
 	if dbPath == "" {
 		// todo (#1618) - we should remove this option before prod, if you want a temp DB it should be wired in via the config
@@ -97,16 +117,12 @@ func NewLevelDBBackedDB(dbPath string, regMetrics gethmetrics.Registry, logger g
 		return nil, fmt.Errorf("could not create leveldb - %w", err)
 	}
 	logger.Info(fmt.Sprintf("Opened %s level db dir at %s", dbDesc, dbPath))
-	return newDB(&ObscuroLevelDB{db: db}, regMetrics, logger), nil
+	return newDB(&ObscuroLevelDB{db: db}, logger), nil
 }
 
-func newDB(kvStore ethdb.KeyValueStore, regMetrics gethmetrics.Registry, logger gethlog.Logger) *DB {
+func newDB(kvStore ethdb.KeyValueStore, logger gethlog.Logger) *DB {
 	return &DB{
-		kvStore:     kvStore,
-		logger:      logger,
-		batchWrites: gethmetrics.NewRegisteredGauge("host/db/batch/writes", regMetrics),
-		batchReads:  gethmetrics.NewRegisteredGauge("host/db/batch/reads", regMetrics),
-		blockWrites: gethmetrics.NewRegisteredGauge("host/db/block/writes", regMetrics),
-		blockReads:  gethmetrics.NewRegisteredGauge("host/db/block/reads", regMetrics),
+		kvStore: kvStore,
+		logger:  logger,
 	}
 }

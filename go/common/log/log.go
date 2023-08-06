@@ -19,6 +19,7 @@ const (
 	BatchSeqNoKey  = "batch_seq_num"
 	RollupHashKey  = "rollup"
 	CmpKey         = "component"
+	ServiceKey     = "service"
 	NodeIDKey      = "node_id"
 	NetworkIDKey   = "network_id"
 	BlockHeightKey = "block_height"

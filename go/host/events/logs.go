@@ -3,8 +3,11 @@ package events
 import (
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/host"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/pkg/errors"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -13,7 +16,7 @@ import (
 )
 
 type logSubsServiceLocator interface {
-	Enclaves() host.EnclaveService
+	host.EnclaveLocator
 }
 
 // LogEventManager manages the routing of logs back to their subscribers.
@@ -23,6 +26,10 @@ type LogEventManager struct {
 	subscriptions     map[rpc.ID]*subscription // The channels that logs are sent to, one per subscription
 	subscriptionMutex *sync.RWMutex
 	logger            gethlog.Logger
+}
+
+func LogEventFactory(_ *config.HostConfig, serviceLocator host.ServiceLocator, logger gethlog.Logger) (host.LogSubscriptionManagerService, error) {
+	return NewLogEventManager(serviceLocator, logger), nil
 }
 
 func NewLogEventManager(serviceLocator logSubsServiceLocator, logger gethlog.Logger) *LogEventManager {
@@ -38,17 +45,16 @@ func (l *LogEventManager) Start() error {
 	return nil
 }
 
-func (l *LogEventManager) Stop() error {
-	return nil
+func (l *LogEventManager) Stop() {
 }
 
-func (l *LogEventManager) HealthStatus() host.HealthStatus {
+func (l *LogEventManager) HealthStatus() hostcommon.HealthStatus {
 	// always healthy for now
-	return &host.BasicErrHealthStatus{ErrMsg: ""}
+	return &hostcommon.BasicErrHealthStatus{ErrMsg: ""}
 }
 
 func (l *LogEventManager) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
-	err := l.sl.Enclaves().Subscribe(id, encryptedLogSubscription)
+	err := l.sl.Enclave().Subscribe(id, encryptedLogSubscription)
 	if err != nil {
 		return errors.Wrap(err, "could not create subscription with enclave")
 	}
@@ -60,7 +66,7 @@ func (l *LogEventManager) Subscribe(id rpc.ID, encryptedLogSubscription common.E
 }
 
 func (l *LogEventManager) Unsubscribe(id rpc.ID) {
-	err := l.sl.Enclaves().Unsubscribe(id)
+	err := l.sl.Enclave().Unsubscribe(id)
 	if err != nil {
 		l.logger.Warn("could not terminate enclave subscription", log.ErrKey, err)
 	}

@@ -3,108 +3,63 @@ package host
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
-	"os"
 
-	"github.com/kamilsk/breaker"
-
-	"github.com/obscuronet/go-obscuro/go/host/l2"
-
-	"github.com/obscuronet/go-obscuro/go/host/enclave"
-	"github.com/obscuronet/go-obscuro/go/host/l1"
-
-	"github.com/ethereum/go-ethereum/rpc"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/naoina/toml"
 	"github.com/obscuronet/go-obscuro/go/common"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/profiler"
-	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/host/db"
-	"github.com/obscuronet/go-obscuro/go/host/events"
-	"github.com/obscuronet/go-obscuro/go/responses"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethlog "github.com/ethereum/go-ethereum/log"
-	gethmetrics "github.com/ethereum/go-ethereum/metrics"
-	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
-type P2PHostService interface {
-	hostcommon.Service
-	hostcommon.P2P
-}
-
-// Implementation of host.Host.
+// The host has very little logic of its own.
+// It is responsible for creating, starting, stopping and monitoring a variety of interacting services.
 type host struct {
-	config   *config.HostConfig
-	shortID  uint64
-	services *ServicesRegistry // registry of services that the host manages and makes available
+	config *config.HostConfig
 
-	// ignore incoming requests
-	stopControl *stopcontrol.StopControl
-
-	db *db.DB // Stores the host's publicly-available data
+	// services
+	allServices map[string]hostcommon.Service
+	p2p         hostcommon.P2P                    // provides inbound and outbound communication with other obscuro hosts
+	l1Repo      hostcommon.L1BlockRepository      // provides L1 block data and subscriptions for new blocks
+	l1Publisher hostcommon.L1Publisher            // provides access to management contract functions on the L1
+	l2Repo      hostcommon.L2BatchRepository      // provides L2 batch data and subscriptions for new batches
+	enclaves    hostcommon.EnclaveService         // provides access to the node enclave(s) to submit and request data
+	logSubs     hostcommon.LogSubscriptionManager // manages event log subscriptions
+	metrics     hostcommon.Metrics                // record and expose metrics about the host
+	rpcServer   hostcommon.RPCServer              // provides RPC interfaces for the host
+	db          *db.DB                            // Stores the host's publicly-available data
 
 	logger gethlog.Logger
-
-	metricRegistry gethmetrics.Registry
-	interrupter    breaker.Interface
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p P2PHostService, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
-	database, err := db.CreateDBFromConfig(config, regMetrics, logger)
-	if err != nil {
-		logger.Crit("unable to create database for host", log.ErrKey, err)
-	}
-	l1Repo := l1.NewL1Repository(ethClient, logger)
-	l1StartHash := config.L1StartHash
-	if l1StartHash == (gethcommon.Hash{}) {
-		startBlock, err := l1Repo.FetchBlockByHeight(big.NewInt(0))
-		if err != nil {
-			logger.Crit("unable to fetch start block so stream from", log.ErrKey, err)
-		}
-		l1StartHash = startBlock.Hash()
-	}
-	enclStateTracker := enclave.NewStateTracker(logger)
-	enclStateTracker.OnProcessedBlock(l1StartHash) // this makes sure we start streaming from the right block, will be less clunky in the enclave guardian
-	hostIdentity := hostcommon.NewIdentity(config)
-	host := &host{
-		// config
-		config:  config,
-		shortID: common.ShortAddress(config.ID),
+// NewHost creates a new host instance.
+// It takes config, a logger, and a range of service factories.
+func NewHost(
+	config *config.HostConfig,
+	logger gethlog.Logger,
+	p2pFactory ServiceFactory[P2PService],
+	l1RepoFactory ServiceFactory[L1BlockRepositoryService],
+	l1PublisherFactory ServiceFactory[L1PublisherService],
+	l2RepoFactory ServiceFactory[L2BatchRepositoryService],
+	enclavesFactory ServiceFactory[EnclaveHostService],
+	logSubsFactory ServiceFactory[LogSubscriptionManagerService],
+	metricsFactory ServiceFactory[MetricsService],
+	rpcServerFactory ServiceFactory[RPCServerService],
+	dbFactory ServiceFactory[*db.DB],
+) hostcommon.Host {
+	h := &host{allServices: make(map[string]hostcommon.Service), config: config, logger: logger}
 
-		// services
-		services: hostServices,
-
-		// Initialize the host DB
-		db: database,
-
-		logger:         logger,
-		metricRegistry: regMetrics,
-
-		stopControl: stopcontrol.New(),
-	}
-	host.interrupter = breaker.Multiplex(
-		breaker.BreakBySignal(
-			os.Kill,
-			os.Interrupt,
-		),
-	)
-	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, database, host.interrupter, logger)
-	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardian, logger)
-	l2Repo := l2.NewBatchRepository(config, hostServices, database, logger)
-	subsService := events.NewLogEventManager(hostServices, logger)
-
-	hostServices.RegisterService(hostcommon.P2PName, p2p)
-	hostServices.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
-	hostServices.RegisterService(hostcommon.L1PublisherName, l1.NewL1Publisher(hostIdentity, ethWallet, ethClient, mgmtContractLib, l1Repo, logger))
-	hostServices.RegisterService(hostcommon.L2BatchRepositoryName, l2Repo)
-	hostServices.RegisterService(hostcommon.EnclaveServiceName, enclService)
-	hostServices.RegisterService(hostcommon.LogSubscriptionServiceName, subsService)
+	h.p2p = setupService("p2p", h, p2pFactory)
+	h.l1Repo = setupService("l1-repo", h, l1RepoFactory)
+	h.l1Publisher = setupService("l1-pub", h, l1PublisherFactory)
+	h.l2Repo = setupService("l2-repo", h, l2RepoFactory)
+	h.enclaves = setupService("enclaves", h, enclavesFactory)
+	h.logSubs = setupService("log-subs", h, logSubsFactory)
+	h.metrics = setupService("metrics", h, metricsFactory)
+	h.rpcServer = setupService("rpc-server", h, rpcServerFactory)
+	h.db = setupService("db", h, dbFactory)
 
 	var prof *profiler.Profiler
 	if config.ProfilerEnabled {
@@ -118,26 +73,51 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p P2PH
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Host service created with following config:", log.CfgKey, string(jsonConfig))
 
-	return host
+	return h
+}
+
+func (h *host) P2P() hostcommon.P2P {
+	return h.p2p
+}
+
+func (h *host) L1Repo() hostcommon.L1BlockRepository {
+	return h.l1Repo
+}
+
+func (h *host) L1Publisher() hostcommon.L1Publisher {
+	return h.l1Publisher
+}
+
+func (h *host) L2Repo() hostcommon.L2BatchRepository {
+	return h.l2Repo
+}
+
+func (h *host) Enclave() hostcommon.EnclaveService {
+	return h.enclaves
+}
+
+func (h *host) LogSubs() hostcommon.LogSubscriptionManager {
+	return h.logSubs
+}
+
+func (h *host) Metrics() hostcommon.Metrics {
+	return h.metrics
+}
+
+func (h *host) DB() *db.DB {
+	return h.db
+}
+
+func (h *host) HostControls() hostcommon.HostControls {
+	return h
 }
 
 // Start validates the host config and starts the Host in a go routine - immediately returns after
 func (h *host) Start() error {
-	if h.stopControl.IsStopping() {
-		return responses.ToInternalError(fmt.Errorf("requested Start with the host stopping"))
-	}
-
-	h.interrupter = breaker.Multiplex(
-		breaker.BreakBySignal(
-			os.Kill,
-			os.Interrupt,
-		),
-	)
-
 	h.validateConfig()
 
 	// start all registered services
-	for name, service := range h.services.All() {
+	for name, service := range h.allServices {
 		err := service.Start()
 		if err != nil {
 			return fmt.Errorf("could not start service=%s: %w", name, err)
@@ -153,71 +133,23 @@ func (h *host) Start() error {
 	return nil
 }
 
-func (h *host) Config() *config.HostConfig {
-	return h.config
-}
-
-func (h *host) DB() *db.DB {
-	return h.db
-}
-
-func (h *host) EnclaveClient() common.Enclave {
-	return h.services.Enclaves().GetEnclaveClient()
-}
-
-func (h *host) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
-	if h.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitAndBroadcastTx with the host stopping"))
-	}
-	return h.services.Enclaves().SubmitAndBroadcastTx(encryptedParams)
-}
-
-func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
-	if h.stopControl.IsStopping() {
-		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the host stopping"))
-	}
-	return h.services.LogSubs().Subscribe(id, encryptedLogSubscription, matchedLogsCh)
-}
-
-func (h *host) Unsubscribe(id rpc.ID) {
-	if h.stopControl.IsStopping() {
-		h.logger.Error("requested Subscribe with the host stopping")
-	}
-	h.services.LogSubs().Unsubscribe(id)
-}
-
-func (h *host) Stop() error {
-	// block all incoming requests
-	h.stopControl.Stop()
-
+func (h *host) Stop() {
 	h.logger.Info("Host received a stop command. Attempting shutdown...")
-	h.interrupter.Close()
 
 	// stop all registered services
-	for name, service := range h.services.All() {
-		if err := service.Stop(); err != nil {
-			h.logger.Error("failed to stop service", "service", name, log.ErrKey, err)
-		}
-	}
-
-	if err := h.db.Stop(); err != nil {
-		h.logger.Error("failed to stop DB", log.ErrKey, err)
+	for _, service := range h.allServices {
+		service.Stop()
 	}
 
 	h.logger.Info("Host shut down complete.")
-	return nil
 }
 
 // HealthCheck returns whether the host, enclave and DB are healthy
 func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
-	if h.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the host stopping"))
-	}
-
 	healthErrors := make([]string, 0)
 
 	// loop through all registered services and collect their health statuses
-	for name, service := range h.services.All() {
+	for name, service := range h.allServices {
 		status := service.HealthStatus()
 		if !status.OK() {
 			healthErrors = append(healthErrors, fmt.Sprintf("[%s] not healthy - %s", name, status.Message()))
@@ -242,4 +174,14 @@ func (h *host) validateConfig() {
 	if h.config.P2PPublicAddress == "" {
 		h.logger.Crit("the host must specify a public P2P address")
 	}
+}
+
+func setupService[S hostcommon.Service](serviceName string, h *host, factory ServiceFactory[S]) S {
+	logger := h.logger.New(log.ServiceKey, serviceName)
+	service, err := factory(h.config, h, logger)
+	if err != nil {
+		h.logger.Crit("could not create service", log.ServiceKey, serviceName, log.ErrKey, err)
+	}
+	h.allServices[serviceName] = service
+	return service
 }

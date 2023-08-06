@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host"
+
 	"github.com/obscuronet/go-obscuro/go/common/subscription"
 	"github.com/pkg/errors"
 
@@ -17,12 +19,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 )
 
 const (
@@ -49,16 +50,21 @@ type message struct {
 }
 
 type p2pServiceLocator interface {
-	L1Publisher() host.L1Publisher
-	L2Repo() host.L2BatchRepository
+	host.L1PublisherLocator
+	host.L2RepoLocator
+}
+
+// ServiceFactory is the default factory for the P2P service
+func ServiceFactory(config *config.HostConfig, serviceLocator host.ServiceLocator, logger gethlog.Logger) (host.P2PService, error) {
+	return NewSocketP2PLayer(config, serviceLocator, logger)
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocator, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
+func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocator, logger gethlog.Logger) (host.P2PService, error) {
 	return &Service{
-		batchSubscribers: subscription.NewManager[host.P2PBatchHandler](),
-		txSubscribers:    subscription.NewManager[host.P2PTxHandler](),
-		batchReqHandlers: subscription.NewManager[host.P2PBatchRequestHandler](),
+		batchSubscribers: subscription.NewManager[hostcommon.P2PBatchHandler](),
+		txSubscribers:    subscription.NewManager[hostcommon.P2PTxHandler](),
+		batchReqHandlers: subscription.NewManager[hostcommon.P2PBatchRequestHandler](),
 
 		sl: serviceLocator,
 
@@ -70,16 +76,15 @@ func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocat
 		refreshingPeersMx: sync.Mutex{},
 
 		// monitoring
-		peerTracker:     newPeerTracker(),
-		metricsRegistry: metricReg,
-		logger:          logger,
-	}
+		peerTracker: newPeerTracker(),
+		logger:      logger,
+	}, nil
 }
 
 type Service struct {
-	batchSubscribers *subscription.Manager[host.P2PBatchHandler]
-	txSubscribers    *subscription.Manager[host.P2PTxHandler]
-	batchReqHandlers *subscription.Manager[host.P2PBatchRequestHandler]
+	batchSubscribers *subscription.Manager[hostcommon.P2PBatchHandler]
+	txSubscribers    *subscription.Manager[hostcommon.P2PTxHandler]
+	batchReqHandlers *subscription.Manager[hostcommon.P2PBatchRequestHandler]
 
 	listener          net.Listener
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
@@ -92,7 +97,6 @@ type Service struct {
 	p2pTimeout    time.Duration
 
 	peerTracker       *peerTracker
-	metricsRegistry   gethmetrics.Registry
 	logger            gethlog.Logger
 	refreshingPeersMx sync.Mutex
 }
@@ -113,36 +117,38 @@ func (p *Service) Start() error {
 	return nil
 }
 
-func (p *Service) Stop() error {
+func (p *Service) Stop() {
 	p.logger.Info("Shutting down P2P.")
 	if p.listener != nil {
 		atomic.StoreInt32(p.listenerInterrupt, 1)
 		// todo immediately shutting down the listener seems to impact other hosts shutdown process
 		time.Sleep(time.Second)
-		return p.listener.Close()
+		err := p.listener.Close()
+		if err != nil {
+			p.logger.Error("Error closing P2P listener", log.ErrKey, err)
+		}
 	}
-	return nil
 }
 
-func (p *Service) HealthStatus() host.HealthStatus {
+func (p *Service) HealthStatus() hostcommon.HealthStatus {
 	msg := ""
 	if err := p.verifyHealth(); err != nil {
 		msg = err.Error()
 	}
-	return &host.BasicErrHealthStatus{
+	return &hostcommon.BasicErrHealthStatus{
 		ErrMsg: msg,
 	}
 }
 
-func (p *Service) SubscribeForBatches(handler host.P2PBatchHandler) func() {
+func (p *Service) SubscribeForBatches(handler hostcommon.P2PBatchHandler) func() {
 	return p.batchSubscribers.Subscribe(handler)
 }
 
-func (p *Service) SubscribeForTx(handler host.P2PTxHandler) func() {
+func (p *Service) SubscribeForTx(handler hostcommon.P2PTxHandler) func() {
 	return p.txSubscribers.Subscribe(handler)
 }
 
-func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler) func() {
+func (p *Service) SubscribeForBatchRequests(handler hostcommon.P2PBatchRequestHandler) func() {
 	return p.batchReqHandlers.Subscribe(handler)
 }
 
@@ -174,7 +180,7 @@ func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
 	if !p.isSequencer {
 		return errors.New("only sequencer can broadcast batches")
 	}
-	batchMsg := host.BatchMsg{
+	batchMsg := hostcommon.BatchMsg{
 		Batches: batches,
 		IsLive:  true,
 	}
@@ -219,7 +225,7 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 	if !p.isSequencer {
 		return errors.New("only sequencer can respond to batch requests")
 	}
-	batchMsg := &host.BatchMsg{
+	batchMsg := &hostcommon.BatchMsg{
 		Batches: batches,
 		IsLive:  true,
 	}
@@ -304,7 +310,7 @@ func (p *Service) handle(conn net.Conn) {
 			p.logger.Error("received batch from peer, but this is a sequencer node")
 			return
 		}
-		var batchMsg *host.BatchMsg
+		var batchMsg *hostcommon.BatchMsg
 		err := rlp.DecodeBytes(msg.Contents, &batchMsg)
 		if err != nil {
 			p.logger.Warn("unable to decode batch received from peer", log.ErrKey, err)

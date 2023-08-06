@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/host"
+
 	"github.com/obscuronet/go-obscuro/go/responses"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -15,15 +16,20 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+type filterAPIServiceLocator interface {
+	host.EnclaveLocator
+	host.LogSubsLocator
+}
+
 // FilterAPI exposes a subset of Geth's PublicFilterAPI operations.
 type FilterAPI struct {
-	host   host.Host
+	sl     filterAPIServiceLocator
 	logger gethlog.Logger
 }
 
-func NewFilterAPI(host host.Host, logger gethlog.Logger) *FilterAPI {
+func NewFilterAPI(serviceLocator filterAPIServiceLocator, logger gethlog.Logger) *FilterAPI {
 	return &FilterAPI{
-		host:   host,
+		sl:     serviceLocator,
 		logger: logger,
 	}
 }
@@ -37,7 +43,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	subscription := notifier.CreateSubscription()
 
 	logsFromSubscription := make(chan []byte)
-	err := api.host.Subscribe(subscription.ID, encryptedParams, logsFromSubscription)
+	err := api.sl.LogSubs().Subscribe(subscription.ID, encryptedParams, logsFromSubscription)
 	if err != nil {
 		return nil, fmt.Errorf("could not subscribe for logs. Cause: %w", err)
 	}
@@ -49,7 +55,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		SubID: subscription.ID,
 	})
 	if err != nil {
-		api.host.Unsubscribe(subscription.ID)
+		api.sl.LogSubs().Unsubscribe(subscription.ID)
 		return nil, fmt.Errorf("could not send subscription ID to client on subscription %s", subscription.ID)
 	}
 
@@ -67,7 +73,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 				}
 
 			case <-subscription.Err(): // client sent an unsubscribe request
-				api.host.Unsubscribe(subscription.ID)
+				api.sl.LogSubs().Unsubscribe(subscription.ID)
 				return
 			}
 		}
@@ -78,7 +84,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 
 // GetLogs returns the logs matching the filter.
 func (api *FilterAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetLogs(encryptedParams)
+	enclaveResponse, sysError := api.sl.Enclave().GetEnclaveClient().GetLogs(encryptedParams)
 	if sysError != nil {
 		return api.handleSysError(sysError)
 	}

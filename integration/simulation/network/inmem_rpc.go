@@ -1,4 +1,4 @@
-package p2p
+package network
 
 import (
 	"context"
@@ -6,105 +6,93 @@ import (
 	"fmt"
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/host/container"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/host"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 	"github.com/obscuronet/go-obscuro/go/responses"
 	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
-const (
-	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
-	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
-)
-
-// todo - move this from the P2P folder
-// An in-memory implementation of `rpc.Client` that speaks directly to the node.
-type inMemObscuroClient struct {
-	obscuroAPI       *clientapi.ObscuroAPI
-	ethAPI           *clientapi.EthereumAPI
-	filterAPI        *clientapi.FilterAPI
-	obscuroScanAPI   *clientapi.ObscuroScanAPI
-	testAPI          *clientapi.TestAPI
-	enclavePublicKey *ecies.PublicKey
+// the MockServer has the same 'Call' interface as an RPC client, but it
+// calls methods directly on the host (no network calls)
+type MockServer struct {
+	obscuroAPI     *clientapi.ObscuroAPI
+	ethAPI         *clientapi.EthereumAPI
+	filterAPI      *clientapi.FilterAPI
+	obscuroScanAPI *clientapi.ObscuroScanAPI
+	testAPI        *clientapi.TestAPI
 }
 
-func NewInMemObscuroClient(hostContainer *container.HostContainer) rpc.Client {
-	logger := testlog.Logger().New(log.CmpKey, log.RPCClientCmp)
-	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
-	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
-	if err != nil {
-		panic(err)
-	}
-	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
+func SetupMockServer(hostStop func() error) (host.ServiceFactory[host.RPCServerService], *MockServer) {
+	server := &MockServer{}
+	factory := func(config *config.HostConfig, serviceLocator host.ServiceLocator, logger gethlog.Logger) (host.RPCServerService, error) {
+		server.obscuroAPI = clientapi.NewObscuroAPI(serviceLocator)
+		server.ethAPI = clientapi.NewEthereumAPI(config.ObscuroChainID, serviceLocator, logger.New(log.CmpKey, "eth-rpc"))
+		server.obscuroScanAPI = clientapi.NewObscuroScanAPI(serviceLocator)
+		server.testAPI = clientapi.NewTestAPI(hostStop)
+		server.filterAPI = clientapi.NewFilterAPI(serviceLocator, logger.New(log.CmpKey, "filter-rpc"))
 
-	return &inMemObscuroClient{
-		obscuroAPI:       clientapi.NewObscuroAPI(hostContainer.Host()),
-		ethAPI:           clientapi.NewEthereumAPI(hostContainer.Host(), logger),
-		filterAPI:        clientapi.NewFilterAPI(hostContainer.Host(), logger),
-		obscuroScanAPI:   clientapi.NewObscuroScanAPI(hostContainer.Host()),
-		testAPI:          clientapi.NewTestAPI(hostContainer),
-		enclavePublicKey: enclPubKey,
+		return server, nil
 	}
+	return factory, server
 }
 
 // Call bypasses RPC, and invokes methods on the node directly.
-func (c *inMemObscuroClient) Call(result interface{}, method string, args ...interface{}) error {
+func (m *MockServer) Call(result interface{}, method string, args ...interface{}) error {
 	switch method {
 	case rpc.SendRawTransaction:
-		return c.sendRawTransaction(result, args)
+		return m.sendRawTransaction(result, args)
 
 	case rpc.GetTransactionByHash:
-		return c.getTransactionByHash(result, args)
+		return m.getTransactionByHash(result, args)
 
 	case rpc.Call:
-		return c.rpcCall(result, args)
+		return m.rpcCall(result, args)
 
 	case rpc.GetTransactionCount:
-		return c.getTransactionCount(result, args)
+		return m.getTransactionCount(result, args)
 
 	case rpc.GetTransactionReceipt:
-		return c.getTransactionReceipt(result, args)
+		return m.getTransactionReceipt(result, args)
 
 	case rpc.BatchNumber:
-		*result.(*hexutil.Uint64) = c.ethAPI.BlockNumber()
+		*result.(*hexutil.Uint64) = m.ethAPI.BlockNumber()
 		return nil
 
 	case rpc.StopHost:
-		return c.testAPI.StopHost()
+		return m.testAPI.StopHost()
 
 	case rpc.GetLogs:
-		return c.getLogs(result, args)
+		return m.getLogs(result, args)
 
 	case rpc.GetBatchByNumber:
-		return c.getBatchByNumber(result, args)
+		return m.getBatchByNumber(result, args)
 
 	case rpc.GetBatchByHash:
-		return c.getBatchByHash(result, args)
+		return m.getBatchByHash(result, args)
 
 	case rpc.Health:
-		return c.health(result)
+		return m.health(result)
 
 	case rpc.GetTotalTxs:
-		return c.getTotalTransactions(result)
+		return m.getTotalTransactions(result)
 
 	case rpc.GetLatestTxs:
-		return c.getLatestTransactions(result, args)
+		return m.getLatestTransactions(result, args)
 
 	case rpc.GetBatchForTx:
-		return c.getBatchForTx(result, args)
+		return m.getBatchForTx(result, args)
 
 	case rpc.GetBatch:
-		return c.getBatch(result, args)
+		return m.getBatch(result, args)
 
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
@@ -112,21 +100,21 @@ func (c *inMemObscuroClient) Call(result interface{}, method string, args ...int
 }
 
 // CallContext not currently supported by in-memory obscuro client, the context will be ignored.
-func (c *inMemObscuroClient) CallContext(_ context.Context, result interface{}, method string, args ...interface{}) error {
-	return c.Call(result, method, args...) //nolint: contextcheck
+func (m *MockServer) CallContext(_ context.Context, result interface{}, method string, args ...interface{}) error {
+	return m.Call(result, method, args...) //nolint: contextcheck
 }
 
-func (c *inMemObscuroClient) Subscribe(context.Context, interface{}, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {
+func (m *MockServer) Subscribe(context.Context, interface{}, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {
 	panic("not implemented")
 }
 
-func (c *inMemObscuroClient) sendRawTransaction(result interface{}, args []interface{}) error {
+func (m *MockServer) sendRawTransaction(result interface{}, args []interface{}) error {
 	encBytes, err := getEncryptedBytes(args, rpc.SendRawTransaction)
 	if err != nil {
 		return err
 	}
 
-	encryptedResponse, err := c.ethAPI.SendRawTransaction(context.Background(), encBytes)
+	encryptedResponse, err := m.ethAPI.SendRawTransaction(context.Background(), encBytes)
 	if err == nil {
 		*result.(*responses.EnclaveResponse) = encryptedResponse
 	}
@@ -134,12 +122,12 @@ func (c *inMemObscuroClient) sendRawTransaction(result interface{}, args []inter
 	return err
 }
 
-func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []interface{}) error {
+func (m *MockServer) getTransactionByHash(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.GetTransactionByHash)
 	if err != nil {
 		return err
 	}
-	encryptedResponse, err := c.ethAPI.GetTransactionByHash(context.Background(), enc)
+	encryptedResponse, err := m.ethAPI.GetTransactionByHash(context.Background(), enc)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionByHash, err)
 	}
@@ -149,12 +137,12 @@ func (c *inMemObscuroClient) getTransactionByHash(result interface{}, args []int
 	return nil
 }
 
-func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) error {
+func (m *MockServer) rpcCall(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.Call)
 	if err != nil {
 		return err
 	}
-	encryptedResponse, err := c.ethAPI.Call(context.Background(), enc)
+	encryptedResponse, err := m.ethAPI.Call(context.Background(), enc)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.Call, err)
 	}
@@ -162,12 +150,12 @@ func (c *inMemObscuroClient) rpcCall(result interface{}, args []interface{}) err
 	return nil
 }
 
-func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []interface{}) error {
+func (m *MockServer) getTransactionReceipt(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.GetTransactionReceipt)
 	if err != nil {
 		return err
 	}
-	encryptedResponse, err := c.ethAPI.GetTransactionReceipt(context.Background(), enc)
+	encryptedResponse, err := m.ethAPI.GetTransactionReceipt(context.Background(), enc)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionReceipt, err)
 	}
@@ -177,12 +165,12 @@ func (c *inMemObscuroClient) getTransactionReceipt(result interface{}, args []in
 	return nil
 }
 
-func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []interface{}) error {
+func (m *MockServer) getTransactionCount(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.GetTransactionCount)
 	if err != nil {
 		return err
 	}
-	encryptedResponse, err := c.ethAPI.GetTransactionCount(context.Background(), enc)
+	encryptedResponse, err := m.ethAPI.GetTransactionCount(context.Background(), enc)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTransactionCount, err)
 	}
@@ -191,12 +179,12 @@ func (c *inMemObscuroClient) getTransactionCount(result interface{}, args []inte
 	return nil
 }
 
-func (c *inMemObscuroClient) getLogs(result interface{}, args []interface{}) error {
+func (m *MockServer) getLogs(result interface{}, args []interface{}) error {
 	enc, err := getEncryptedBytes(args, rpc.GetLogs)
 	if err != nil {
 		return err
 	}
-	encryptedResponse, err := c.filterAPI.GetLogs(context.Background(), enc)
+	encryptedResponse, err := m.filterAPI.GetLogs(context.Background(), enc)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetLogs, err)
 	}
@@ -204,7 +192,7 @@ func (c *inMemObscuroClient) getLogs(result interface{}, args []interface{}) err
 	return nil
 }
 
-func (c *inMemObscuroClient) getBatchByNumber(result interface{}, args []interface{}) error {
+func (m *MockServer) getBatchByNumber(result interface{}, args []interface{}) error {
 	blockNumberHex, ok := args[0].(string)
 	if !ok {
 		return fmt.Errorf("arg to %s is of type %T, expected int64", rpc.GetBatchByNumber, args[0])
@@ -215,7 +203,7 @@ func (c *inMemObscuroClient) getBatchByNumber(result interface{}, args []interfa
 		return fmt.Errorf("arg to %s could not be decoded from hex. Cause: %w", rpc.GetBatchByNumber, err)
 	}
 
-	headerMap, err := c.ethAPI.GetBlockByNumber(nil, gethrpc.BlockNumber(blockNumber), false) //nolint:staticcheck
+	headerMap, err := m.ethAPI.GetBlockByNumber(nil, gethrpc.BlockNumber(blockNumber), false) //nolint:staticcheck
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchByNumber, err)
 	}
@@ -234,13 +222,13 @@ func (c *inMemObscuroClient) getBatchByNumber(result interface{}, args []interfa
 	return nil
 }
 
-func (c *inMemObscuroClient) getBatchByHash(result interface{}, args []interface{}) error {
+func (m *MockServer) getBatchByHash(result interface{}, args []interface{}) error {
 	blockHash, ok := args[0].(gethcommon.Hash)
 	if !ok {
 		return fmt.Errorf("arg to %s is of type %T, expected common.Hash", rpc.GetBatchByHash, args[0])
 	}
 
-	headerMap, err := c.ethAPI.GetBlockByHash(nil, blockHash, false) //nolint:staticcheck
+	headerMap, err := m.ethAPI.GetBlockByHash(nil, blockHash, false) //nolint:staticcheck
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchByHash, err)
 	}
@@ -259,25 +247,35 @@ func (c *inMemObscuroClient) getBatchByHash(result interface{}, args []interface
 	return nil
 }
 
-func (c *inMemObscuroClient) Stop() {
+func (m *MockServer) Start() error {
+	// There is no RPC connection to open.
+	return nil
+}
+
+func (m *MockServer) Stop() {
 	// There is no RPC connection to close.
 }
 
-func (c *inMemObscuroClient) SetViewingKey(_ *ecies.PrivateKey, _ []byte) {
+func (m *MockServer) HealthStatus() hostcommon.HealthStatus {
+	// always healthy, this is to satisfy the Service interface
+	return &hostcommon.BasicErrHealthStatus{ErrMsg: ""}
+}
+
+func (m *MockServer) SetViewingKey(_ *ecies.PrivateKey, _ []byte) {
 	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
 }
 
-func (c *inMemObscuroClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) error {
+func (m *MockServer) RegisterViewingKey(_ gethcommon.Address, _ []byte) error {
 	panic("viewing key encryption/decryption is not currently supported by in-memory obscuro-client")
 }
 
-func (c *inMemObscuroClient) health(result interface{}) error {
+func (m *MockServer) health(result interface{}) error {
 	*result.(**hostcommon.HealthCheck) = &hostcommon.HealthCheck{OverallHealth: true}
 	return nil
 }
 
-func (c *inMemObscuroClient) getTotalTransactions(result interface{}) error {
-	totalTxs, err := c.obscuroScanAPI.GetTotalTransactions()
+func (m *MockServer) getTotalTransactions(result interface{}) error {
+	totalTxs, err := m.obscuroScanAPI.GetTotalTransactions()
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetTotalTxs, err)
 	}
@@ -286,7 +284,7 @@ func (c *inMemObscuroClient) getTotalTransactions(result interface{}) error {
 	return nil
 }
 
-func (c *inMemObscuroClient) getLatestTransactions(result interface{}, args []interface{}) error {
+func (m *MockServer) getLatestTransactions(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetLatestTxs, len(args))
 	}
@@ -295,7 +293,7 @@ func (c *inMemObscuroClient) getLatestTransactions(result interface{}, args []in
 		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetLatestTxs, args[0])
 	}
 
-	latestTxs, err := c.obscuroScanAPI.GetLatestTransactions(numTxs)
+	latestTxs, err := m.obscuroScanAPI.GetLatestTransactions(numTxs)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetLatestTxs, err)
 	}
@@ -304,7 +302,7 @@ func (c *inMemObscuroClient) getLatestTransactions(result interface{}, args []in
 	return nil
 }
 
-func (c *inMemObscuroClient) getBatchForTx(result interface{}, args []interface{}) error {
+func (m *MockServer) getBatchForTx(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatchForTx, len(args))
 	}
@@ -313,7 +311,7 @@ func (c *inMemObscuroClient) getBatchForTx(result interface{}, args []interface{
 		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetBatchForTx, args[0])
 	}
 
-	batch, err := c.obscuroScanAPI.GetBatchForTx(txHash)
+	batch, err := m.obscuroScanAPI.GetBatchForTx(txHash)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchForTx, err)
 	}
@@ -322,7 +320,7 @@ func (c *inMemObscuroClient) getBatchForTx(result interface{}, args []interface{
 	return nil
 }
 
-func (c *inMemObscuroClient) getBatch(result interface{}, args []interface{}) error {
+func (m *MockServer) getBatch(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatch, len(args))
 	}
@@ -331,7 +329,7 @@ func (c *inMemObscuroClient) getBatch(result interface{}, args []interface{}) er
 		return fmt.Errorf("first arg to %s is of type %T, expected type int", rpc.GetBatch, args[0])
 	}
 
-	batch, err := c.obscuroScanAPI.GetBatch(batchHash)
+	batch, err := m.obscuroScanAPI.GetBatch(batchHash)
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatch, err)
 	}

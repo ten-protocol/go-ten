@@ -6,6 +6,14 @@ import (
 	"math/big"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	hostenclave "github.com/obscuronet/go-obscuro/go/host/enclave"
+	"github.com/obscuronet/go-obscuro/go/host/events"
+	"github.com/obscuronet/go-obscuro/go/host/l1"
+	"github.com/obscuronet/go-obscuro/go/host/l2"
+	"github.com/obscuronet/go-obscuro/go/rpc"
+
 	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -19,8 +27,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
-
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
@@ -53,11 +59,11 @@ func createInMemObscuroNode(
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
-	mockP2P *p2p.MockP2P,
+	mockP2PFactory host.ServiceFactory[host.P2PService],
 	l1BusAddress *gethcommon.Address,
 	l1StartBlk gethcommon.Hash,
 	batchInterval time.Duration,
-) *container.HostContainer {
+) (*container.HostContainer, rpc.Client) {
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
 	hostConfig := &config.HostConfig{
@@ -93,11 +99,26 @@ func createInMemObscuroNode(
 
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
-	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 
-	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
+	currentContainer := &container.HostContainer{Logger: hostLogger}
 
-	return currentContainer
+	mockRPCServerFactory, mockRPCClient := SetupMockServer(currentContainer.Stop)
+
+	h := host.NewHost(hostConfig, hostLogger,
+		mockP2PFactory, // we replace the real p2p service with a service that passes msgs directly between hosts
+		mockEthClientL1RepoFactory(ethClient),
+		mockInjectedL1PublisherFactory(ethClient, ethWallet, mgmtContractLib),
+		l2.RepoFactory,
+		injectedEnclaveFactory(enclaveClient), // need a different factory for enclave service because no RPC client to create
+		events.LogEventFactory,
+		metrics.ServiceFactory,
+		// the rpc server currently needs a way to stop the host, so we wire through this callback (aim to remove this soon)
+		mockRPCServerFactory,
+		host.DBServiceFactory,
+	)
+	currentContainer.Host = h
+
+	return currentContainer, mockRPCClient
 }
 
 func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereummock.MiningConfig {
@@ -112,5 +133,30 @@ func defaultMockEthNodeCfg(nrNodes int, avgBlockDuration time.Duration) ethereum
 			return testcommon.RndBtwTime(avgBlockDuration/time.Duration(span), avgBlockDuration*time.Duration(span))
 		},
 		LogFile: testlog.LogFile(),
+	}
+}
+
+// The following factories are used to initialise the host services with the mocked dependencies
+
+func injectedEnclaveFactory(enclaveClient common.Enclave) host.ServiceFactory[host.EnclaveHostService] {
+	return func(config *config.HostConfig, serviceLocator host.ServiceLocator, logger gethlog.Logger) (host.EnclaveHostService, error) {
+		hostData := hostcommon.NewIdentity(config)
+
+		guardian := hostenclave.NewGuardian(hostData, config.BatchInterval, config.RollupInterval, config.L1StartHash, serviceLocator,
+			enclaveClient, logger.New(log.CmpKey, "guardian-0"))
+
+		return hostenclave.NewService(hostData, serviceLocator, guardian, logger), nil
+	}
+}
+
+func mockEthClientL1RepoFactory(ethClient ethadapter.EthClient) host.ServiceFactory[host.L1BlockRepositoryService] {
+	return func(_ *config.HostConfig, _ host.ServiceLocator, logger gethlog.Logger) (host.L1BlockRepositoryService, error) {
+		return l1.NewL1Repository(ethClient, logger), nil
+	}
+}
+
+func mockInjectedL1PublisherFactory(ethClient ethadapter.EthClient, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib) host.ServiceFactory[host.L1PublisherService] {
+	return func(config *config.HostConfig, serviceLocator host.ServiceLocator, logger gethlog.Logger) (host.L1PublisherService, error) {
+		return l1.NewL1Publisher(hostcommon.NewIdentity(config), ethWallet, ethClient, mgmtContractLib, serviceLocator, logger), nil
 	}
 }

@@ -1,21 +1,26 @@
 package clientapi
 
 import (
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/host"
 )
+
+type obscuroAPIServiceLocator interface {
+	host.HostControlsLocator
+}
 
 // ObscuroAPI implements Obscuro-specific JSON RPC operations.
 type ObscuroAPI struct {
-	host host.Host
+	sl obscuroAPIServiceLocator
 }
 
-func NewObscuroAPI(host host.Host) *ObscuroAPI {
+func NewObscuroAPI(serviceLocator obscuroAPIServiceLocator) *ObscuroAPI {
 	return &ObscuroAPI{
-		host: host,
+		sl: serviceLocator,
 	}
 }
 
 // Health returns the health status of obscuro host + enclave + db
-func (api *ObscuroAPI) Health() (*host.HealthCheck, error) {
-	return api.host.HealthCheck()
+func (api *ObscuroAPI) Health() (*hostcommon.HealthCheck, error) {
+	return api.sl.HostControls().HealthCheck()
 }
