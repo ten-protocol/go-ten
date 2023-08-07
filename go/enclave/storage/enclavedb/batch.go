@@ -42,7 +42,7 @@ const (
 
 	isCanonQuery = "select is_canonical from block where hash=?"
 
-	queryTxList = "select tx.sender_address, tx.hash, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
+	queryTxList = "select tx.hash, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
@@ -480,18 +480,17 @@ func selectPublicTxsBySender(db *sql.DB) ([]common.PublicTxData, error) {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var senderAddr []byte
 		var txHash []byte
 		var batchHeight uint64
-		err := rows.Scan(&senderAddr, &txHash, &batchHeight)
+		err := rows.Scan(&txHash, &batchHeight)
 		if err != nil {
 			return nil, err
 		}
 
 		publicTxs = append(publicTxs, common.PublicTxData{
-			SenderAddress:   gethcommon.BytesToAddress(senderAddr),
 			TransactionHash: gethcommon.BytesToHash(txHash),
 			BatchHeight:     big.NewInt(0).SetUint64(batchHeight),
+			Finality:        common.BatchFinal,
 		})
 	}
 	if rows.Err() != nil {

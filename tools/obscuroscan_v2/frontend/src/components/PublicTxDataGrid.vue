@@ -2,8 +2,8 @@
   <el-card>
     <el-table height="250" :data="publicTransactionsData" style="width: 100%">
       <el-table-column prop="TransactionHash" label="Tx Hash" width="180" />
-      <el-table-column prop="SenderAddress" label="Sender" width="180" />
       <el-table-column prop="BatchHeight" label="BatchHeight" width="180" />
+      <el-table-column prop="Finality" label="Finality" width="180" />
     </el-table>
   </el-card>
 </template>

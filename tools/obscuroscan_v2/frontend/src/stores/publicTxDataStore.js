@@ -37,6 +37,5 @@ export const usePublicDataStore = defineStore({
                 this.timer = null;
             }
         }
-
     },
 });

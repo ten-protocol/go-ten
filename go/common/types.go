@@ -183,7 +183,14 @@ func (cf *ChainFork) String() string {
 }
 
 type PublicTxData struct {
-	SenderAddress   common.Address
 	TransactionHash TxHash
 	BatchHeight     *big.Int
+	Finality        FinalityType
 }
+
+type FinalityType string
+
+const (
+	MempoolPending FinalityType = "Pending"
+	BatchFinal     FinalityType = "Final"
+)
