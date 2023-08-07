@@ -441,6 +441,10 @@ func (s *storageImpl) GetReceiptsPerAddress(address *gethcommon.Address) (types.
 	return enclavedb.GetReceiptsPerAddress(s.db.GetSQLDB(), s.chainConfig, address)
 }
 
+func (s *storageImpl) GetPublicTransactionData() ([]common.PublicTxData, error) {
+	return enclavedb.GetPublicTransactionData(s.db.GetSQLDB())
+}
+
 func (s *storageImpl) cacheBlock(blockHash common.L1BlockHash, b *types.Block) {
 	var buffer bytes.Buffer
 	if err := b.EncodeRLP(&buffer); err != nil {

@@ -41,6 +41,8 @@ const (
 	queryBatchWasExecuted       = "select executed from batch where is_canonical and hash=?"
 
 	isCanonQuery = "select is_canonical from block where hash=?"
+
+	queryTxList = "select exec_tx.tx, batch.height from exec_tx join batch on batch.hash=exec_tx.batch order by height desc limit 100"
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
@@ -459,4 +461,41 @@ func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
 
 func GetReceiptsPerAddress(db *sql.DB, config *params.ChainConfig, address *gethcommon.Address) (types.Receipts, error) {
 	return selectReceipts(db, config, "where tx.sender_address = ?", address.Bytes())
+}
+
+func GetPublicTransactionData(db *sql.DB) ([]common.PublicTxData, error) {
+	return selectPublicTxsBySender(db)
+}
+
+func selectPublicTxsBySender(db *sql.DB) ([]common.PublicTxData, error) {
+	var publicTxs []common.PublicTxData
+
+	rows, err := db.Query(queryTxList)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var txHash []byte
+		var batchHeight uint64
+		err := rows.Scan(&txHash, &batchHeight)
+		if err != nil {
+			return nil, err
+		}
+
+		publicTxs = append(publicTxs, common.PublicTxData{
+			TransactionHash: gethcommon.BytesToHash(txHash),
+			BatchHeight:     big.NewInt(0).SetUint64(batchHeight),
+			Finality:        common.BatchFinal,
+		})
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return publicTxs, nil
 }

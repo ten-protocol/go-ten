@@ -38,7 +38,7 @@ type Client struct {
 	logger      gethlog.Logger
 }
 
-func NewClient(config *config.HostConfig, logger gethlog.Logger) *Client {
+func NewClient(config *config.HostConfig, logger gethlog.Logger) common.Enclave {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
 	if err != nil {
@@ -569,4 +569,25 @@ func (c *Client) GetReceiptsByAddress(encryptedParams common.EncryptedParamsGetS
 	}
 
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
+}
+
+func (c *Client) GetPublicTransactionData() ([]common.PublicTxData, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetPublicTransactionData(timeoutCtx, &generated.GetPublicTransactionDataRequest{})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	var result []common.PublicTxData
+	err = json.Unmarshal(response.PublicTransactionData, &result)
+	if err != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	return result, nil
 }
