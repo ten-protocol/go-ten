@@ -40,6 +40,7 @@ const (
 	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
 	GetTotalTransactionCount = "scan_getTotalTransactionCount"
 	GetTotalContractCount    = "scan_getTotalContractCount"
+	GetPublicTransactionData = "scan_getPublicTransactionData"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")

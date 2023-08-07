@@ -93,6 +93,19 @@ func TestObscuroscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/transactions/", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type publicTxsRes struct {
+		Result []common.PublicTxData `json:"result"`
+	}
+
+	publicTxsObj := publicTxsRes{}
+	err = json.Unmarshal(body, &publicTxsObj)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(publicTxsObj.Result))
+
 	// Gracefully shutdown
 	err = obsScanContainer.Stop()
 	assert.NoError(t, err)

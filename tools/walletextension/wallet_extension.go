@@ -176,7 +176,7 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 	}
 
 	// create UserID and store it in the database with the private key
-	userID := common.CalculateUserID(viewingKeyPrivate)
+	userID := common.CalculateUserID(common.PublicKeyBytesFromPrivateKey(viewingPrivateKeyEcies))
 	err = w.storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {
 		w.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
