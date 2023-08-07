@@ -348,9 +348,9 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 	outChannel <- resp
 }
 
-func (e *enclaveImpl) sendEvents(batchHead uint64, outChannel chan common.StreamL2UpdatesResponse) {
-	e.logger.Info("Send Events", "batchHead", batchHead)
-	logs, err := e.subscriptionManager.GetSubscribedLogsForBatch(big.NewInt(int64(batchHead)))
+func (e *enclaveImpl) sendEvents(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
+	e.logger.Info("Send Events", log.BatchHashKey, batch.Hash())
+	logs, err := e.subscriptionManager.GetSubscribedLogsForBatch(batch)
 	if err != nil {
 		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
 		return
@@ -370,7 +370,7 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 
 	e.registry.SubscribeForBatches(func(batch *core.Batch) {
 		e.sendBatch(batch, l2UpdatesChannel)
-		e.sendEvents(batch.NumberU64(), l2UpdatesChannel)
+		e.sendEvents(batch, l2UpdatesChannel)
 	})
 
 	return l2UpdatesChannel, func() {

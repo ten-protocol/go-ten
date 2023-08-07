@@ -3,6 +3,7 @@ package events
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
 	"math/big"
 	"sync"
 
@@ -28,8 +29,6 @@ const (
 	zeroBytesHex = "000000000000000000000000"
 )
 
-// todo (#1575, @tudor) - ensure chain reorgs are handled gracefully
-
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
 type SubscriptionManager struct {
@@ -37,7 +36,7 @@ type SubscriptionManager struct {
 	storage              storage.Storage
 
 	subscriptions     map[gethrpc.ID]*common.LogSubscription
-	lastHead          map[gethrpc.ID]*big.Int // This is the batch height up to which events were returned to the user
+	lastHead          map[gethrpc.ID]*big.Int // This is the sequence number up to which events were returned to the user
 	subscriptionMutex *sync.RWMutex           // the mutex guards the subscriptions/lastHead pair
 
 	logger gethlog.Logger
@@ -80,20 +79,19 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	}
 	subscription.VkHandler = encryptor
 
-	startAt := subscription.Filter.FromBlock
-	// Set the subscription to start from the current head if a specific start is not specified
-	if startAt == nil || startAt.Int64() <= 0 {
-		head, err := s.storage.FetchHeadBatch()
-		if err != nil {
-			return fmt.Errorf("unable to read head batch to create subscription - %w", err)
-		}
-		// adjust to -1 because the subscription will increment
-		startAt = big.NewInt(int64(head.NumberU64() - 1))
+	// Set the subscription to start from the current head
+	head, err := s.storage.FetchHeadBatch()
+	if err != nil {
+		return fmt.Errorf("unable to read head batch to create subscription - %w", err)
 	}
+	// adjust to -1 because the subscription will increment
+	startAt := big.NewInt(int64(head.SeqNo().Uint64() - 1))
+
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
 	s.SetLastHead(id, startAt)
 	s.subscriptions[id] = subscription
+
 	return nil
 }
 
@@ -126,23 +124,28 @@ func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2
 }
 
 // GetSubscribedLogsForBatch - Retrieves and encrypts the logs for the batch.
-func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *big.Int) (common.EncryptedSubscriptionLogs, error) {
+func (s *SubscriptionManager) GetSubscribedLogsForBatch(_ *core.Batch) (common.EncryptedSubscriptionLogs, error) {
 	result := map[gethrpc.ID][]*types.Log{}
 
 	// grab a write lock because the function will mutate the lastHead map
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
 
-	// Go through each subscription and collect the logs
-	err := s.forEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
-		// 1. fetch the logs since the last request
-		from := big.NewInt(previousHead.Int64() + 1)
-		to := batch
+	currentHeadBatch, err := s.storage.FetchHeadBatch()
+	if err != nil {
+		return nil, err
+	}
 
-		if from.Cmp(to) > 0 {
-			s.logger.Warn(fmt.Sprintf("Skipping subscription step id=%s: [%d, %d]", id, from, to))
+	// Go through each subscription and collect the logs
+	err = s.forEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousSeq *big.Int) error {
+		if previousSeq.Cmp(currentHeadBatch.SeqNo()) > 0 {
+			s.logger.Warn(fmt.Sprintf("Skipping subscription step id=%s: [%d, %d]", id, previousSeq, currentHeadBatch.SeqNo()))
 			return nil
 		}
+
+		// 1. fetch the logs since the last request
+		from := big.NewInt(previousSeq.Int64() + 1)
+		to := currentHeadBatch.SeqNo()
 
 		logs, err := s.storage.FilterLogs(subscription.Account, from, to, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
 		s.logger.Info(fmt.Sprintf("Subscription id=%s: [%d, %d]. Logs %d, Err: %s", id, from, to, len(logs), err))

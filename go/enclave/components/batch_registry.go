@@ -52,7 +52,7 @@ func (br *batchRegistry) NotifySubscribers(batch *core.Batch) {
 	defer br.logger.Debug("Sending batch and events", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	if br.batchesCallback != nil {
-		go br.batchesCallback(batch)
+		br.batchesCallback(batch)
 	}
 }
 
