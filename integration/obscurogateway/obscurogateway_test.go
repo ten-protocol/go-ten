@@ -3,13 +3,14 @@ package faucet
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/require"
-	"github.com/valyala/fasthttp"
 	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+	"github.com/valyala/fasthttp"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
