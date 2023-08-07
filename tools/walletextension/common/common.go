@@ -35,9 +35,8 @@ func BytesToPrivateKey(keyBytes []byte) (*ecies.PrivateKey, error) {
 }
 
 // CalculateUserID calculates userID from public key
-func CalculateUserID(pk *ecdsa.PrivateKey) []byte {
-	viewingPublicKeyBytes := crypto.CompressPubkey(&pk.PublicKey)
-	return crypto.Keccak256Hash(viewingPublicKeyBytes).Bytes()
+func CalculateUserID(publicKeyBytes []byte) []byte {
+	return crypto.Keccak256Hash(publicKeyBytes).Bytes()
 }
 
 // GetUserIDAndAddressFromMessage checks if message is in correct format and extracts userID and address from it
