@@ -72,7 +72,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(br *common.BlockAndReceipts) (*Blo
 
 	err = bp.storage.StoreBlock(block, ingestionType.ChainFork)
 	if err != nil {
-		return nil, fmt.Errorf("could not store block. Cause: %w", err)
+		return nil, fmt.Errorf("1. could not store block. Cause: %w", err)
 	}
 
 	return ingestionType, nil

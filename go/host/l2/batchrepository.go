@@ -24,13 +24,18 @@ const (
 	_timeoutWaitingForP2PResponse = 30 * time.Second
 )
 
+// This private interface enforces the services that the guardian depends on
+type batchRepoServiceLocator interface {
+	P2P() host.P2P
+	Enclaves() host.EnclaveService
+}
+
 // Repository is responsible for storing and retrieving batches from the database
 // If it can't find a batch it will request it from peers. It also subscribes for batch requests from peers and responds to them.
 type Repository struct {
 	subscribers []host.L2BatchHandler
 
-	p2p         host.P2P
-	enclave     host.EnclaveService
+	sl          batchRepoServiceLocator
 	db          *db.DB
 	isSequencer bool
 
@@ -49,10 +54,9 @@ type Repository struct {
 	logger  gethlog.Logger
 }
 
-func NewBatchRepository(cfg *config.HostConfig, p2p host.P2P, enclave host.EnclaveService, database *db.DB, logger gethlog.Logger) *Repository {
+func NewBatchRepository(cfg *config.HostConfig, hostService batchRepoServiceLocator, database *db.DB, logger gethlog.Logger) *Repository {
 	return &Repository{
-		p2p:              p2p,
-		enclave:          enclave,
+		sl:               hostService,
 		db:               database,
 		isSequencer:      cfg.NodeType == common.Sequencer,
 		latestBatchSeqNo: big.NewInt(0),
@@ -65,8 +69,8 @@ func (r *Repository) Start() error {
 	r.running.Store(true)
 
 	// register ourselves for new batches from p2p
-	r.p2p.SubscribeForBatches(r)
-	r.p2p.SubscribeForBatchRequests(r)
+	r.sl.P2P().SubscribeForBatches(r)
+	r.sl.P2P().SubscribeForBatchRequests(r)
 
 	return nil
 }
@@ -125,7 +129,7 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 		batch, err := r.db.GetBatchBySequenceNumber(nextSeqNum)
 		if err != nil {
 			if !errors.Is(err, errutil.ErrNotFound) {
-				r.logger.Warn("unexpected error fetching batches for peer req", "seqNo", nextSeqNum, log.ErrKey, err)
+				r.logger.Warn("unexpected error fetching batches for peer req", log.BatchSeqNoKey, nextSeqNum, log.ErrKey, err)
 			}
 			break // once one batch lookup fails we don't expect to find any of them
 		}
@@ -136,7 +140,7 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 		return // nothing to send
 	}
 
-	err := r.p2p.RespondToBatchRequest(requesterID, batches)
+	err := r.sl.P2P().RespondToBatchRequest(requesterID, batches)
 	if err != nil {
 		r.logger.Warn("unable to send batches to peer", "peer", requesterID, log.ErrKey, err)
 	}
@@ -170,6 +174,7 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 // - when the node is a validator to store batches read from roll-ups
 // If the repository already has the batch it returns an AlreadyExists error which is typically ignored.
 func (r *Repository) AddBatch(batch *common.ExtBatch) error {
+	r.logger.Info("adding batch to L2 batch repository", "seqNo", batch.Header.SequencerOrderNo)
 	err := r.db.AddBatch(batch)
 	if err != nil {
 		return err
@@ -184,7 +189,7 @@ func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 }
 
 func (r *Repository) fetchBatchFallbackToEnclave(seqNo *big.Int) (*common.ExtBatch, error) {
-	b, err := r.enclave.LookupBatchBySeqNo(seqNo)
+	b, err := r.sl.Enclaves().LookupBatchBySeqNo(seqNo)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +217,7 @@ func (r *Repository) requestMissingBatchesFromPeers(fromSeqNo *big.Int) {
 	}
 
 	r.logger.Debug("requesting missing batches from sequencer", "fromSeqNo", fromSeqNo)
-	err := r.p2p.RequestBatchesFromSequencer(fromSeqNo)
+	err := r.sl.P2P().RequestBatchesFromSequencer(fromSeqNo)
 	if err != nil {
 		r.logger.Warn("unable to request missing batches from sequencer", "fromSeqNo", fromSeqNo, log.ErrKey, err)
 		return

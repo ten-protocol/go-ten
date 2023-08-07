@@ -48,17 +48,26 @@ type message struct {
 	Contents []byte
 }
 
+type p2pServiceLocator interface {
+	L1Publisher() host.L1Publisher
+	L2Repo() host.L2BatchRepository
+}
+
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
+func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocator, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
 	return &Service{
 		batchSubscribers: subscription.NewManager[host.P2PBatchHandler](),
 		txSubscribers:    subscription.NewManager[host.P2PTxHandler](),
 		batchReqHandlers: subscription.NewManager[host.P2PBatchRequestHandler](),
 
+		sl: serviceLocator,
+
 		isSequencer:   config.NodeType == common.Sequencer,
 		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},
 		p2pTimeout:    config.P2PConnectionTimeout,
+
+		refreshingPeersMx: sync.Mutex{},
 
 		// monitoring
 		peerTracker:     newPeerTracker(),
@@ -75,21 +84,24 @@ type Service struct {
 	listener          net.Listener
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
 
+	sl p2pServiceLocator
+
 	isSequencer   bool
 	ourAddress    string
 	peerAddresses []string
 	p2pTimeout    time.Duration
 
-	peerTracker     *peerTracker
-	metricsRegistry gethmetrics.Registry
-	logger          gethlog.Logger
+	peerTracker       *peerTracker
+	metricsRegistry   gethmetrics.Registry
+	logger            gethlog.Logger
+	refreshingPeersMx sync.Mutex
 }
 
 func (p *Service) Start() error {
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.ourAddress)
 	if err != nil {
-		return errors.Wrapf(err, "could not listen for P2P connections on %s", p.ourAddress)
+		return fmt.Errorf("could not listen for P2P connections on %s: %w", p.ourAddress, err)
 	}
 
 	p.logger.Info(fmt.Sprintf("Started listening on port: %s", p.ourAddress))
@@ -134,7 +146,14 @@ func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler)
 	return p.batchReqHandlers.Subscribe(handler)
 }
 
-func (p *Service) UpdatePeerList(newPeers []string) {
+func (p *Service) RefreshPeerList() {
+	p.refreshingPeersMx.Lock()
+	defer p.refreshingPeersMx.Unlock()
+	newPeers, err := p.sl.L1Publisher().FetchLatestPeersList()
+	if err != nil {
+		p.logger.Error(fmt.Sprintf("unable to fetch latest peer list from L1 - %s", err.Error()))
+		return
+	}
 	p.logger.Info(fmt.Sprintf("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers))
 	p.peerAddresses = newPeers
 }

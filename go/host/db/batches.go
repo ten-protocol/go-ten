@@ -127,7 +127,7 @@ func (db *DB) GetBatchBySequenceNumber(sequenceNumber *big.Int) (*common.ExtBatc
 	db.batchReads.Inc(1)
 	batchHash, err := db.readBatchHashBySequenceNumber(sequenceNumber)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not retrieve batch hash for seqNo=%d", sequenceNumber)
+		return nil, fmt.Errorf("could not retrieve batch hash for seqNo=%d: %w", sequenceNumber, err)
 	}
 	return db.GetBatch(*batchHash)
 }

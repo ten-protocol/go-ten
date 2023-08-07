@@ -186,3 +186,15 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 		Data:     unEstimatedTx.Data(),
 	}
 }
+
+// GetReceiptsByAddress retrieves the receipts for the account registered on this client (due to obscuro privacy restrictions,
+// balance cannot be requested for other accounts)
+func (ac *AuthObsClient) GetReceiptsByAddress(ctx context.Context, address *gethcommon.Address) (types.Receipts, error) {
+	var result types.Receipts
+	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetStorageAt, address, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}

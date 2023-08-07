@@ -233,7 +233,7 @@ func (s *RPCServer) HealthCheck(_ context.Context, _ *generated.EmptyArgs) (*gen
 
 func (s *RPCServer) CreateRollup(_ context.Context, req *generated.CreateRollupRequest) (*generated.CreateRollupResponse, error) {
 	var fromSeqNo uint64 = 1
-	if req.FromSequenceNumber != nil {
+	if req.FromSequenceNumber != nil && *req.FromSequenceNumber > common.L2GenesisSeqNo {
 		fromSeqNo = *req.FromSequenceNumber
 	}
 
@@ -346,6 +346,14 @@ func (s *RPCServer) GetTotalContractCount(_ context.Context, _ *generated.GetTot
 		Count:       count.Int64(),
 		SystemError: toRPCError(err),
 	}, nil
+}
+
+func (s *RPCServer) GetReceiptsByAddress(_ context.Context, req *generated.GetReceiptsByAddressRequest) (*generated.GetReceiptsByAddressResponse, error) {
+	enclaveResp, sysError := s.enclave.GetReceiptsByAddress(req.EncryptedParams)
+	if sysError != nil {
+		return &generated.GetReceiptsByAddressResponse{SystemError: toRPCError(sysError)}, nil
+	}
+	return &generated.GetReceiptsByAddressResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {

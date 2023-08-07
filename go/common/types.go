@@ -59,6 +59,7 @@ type (
 	EncryptedParamsGetTxCount      []byte // As above, but for an RPC getTransactionCount request.
 	EncryptedParamsEstimateGas     []byte // As above, but for an RPC estimateGas request.
 	EncryptedParamsGetLogs         []byte // As above, but for an RPC getLogs request.
+	EncryptedParamsGetStorageAt    []byte
 
 	Nonce               = uint64
 	EncodedRollup       []byte
@@ -69,6 +70,7 @@ type (
 const (
 	L2GenesisHeight = uint64(0)
 	L1GenesisHeight = uint64(0)
+	L2GenesisSeqNo  = uint64(1)
 	// HeightCommittedBlocks is the number of blocks deep a transaction must be to be considered safe from reorganisations.
 	HeightCommittedBlocks = 15
 )
@@ -172,4 +174,9 @@ type ChainFork struct {
 
 func (cf *ChainFork) IsFork() bool {
 	return len(cf.NonCanonicalPath) > 0
+}
+
+func (cf *ChainFork) String() string {
+	return fmt.Sprintf("ChainFork{NewCanonical: %s, OldCanonical: %s, CommonAncestor: %s, CanonicalPath: %s, NonCanonicalPath: %s}",
+		cf.NewCanonical.Hash(), cf.OldCanonical.Hash(), cf.CommonAncestor.Hash(), cf.CanonicalPath, cf.NonCanonicalPath)
 }

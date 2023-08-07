@@ -216,7 +216,10 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 
 			for _, clients := range s.RPCHandles.AuthObsClients {
 				client := clients[0]
-				batchOnNode, _ := client.BatchHeaderByHash(batchHeader.Hash())
+				batchOnNode, err := client.BatchHeaderByHash(batchHeader.Hash())
+				if err != nil {
+					t.Fatalf("Node %d: Could not find batch header [idx=%s, hash=%s]. Cause: %s", nodeIdx, batchHeader.Number, batchHeader.Hash(), err)
+				}
 				if batchOnNode.Hash() != batchHeader.Hash() {
 					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
 				}
@@ -575,8 +578,10 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 // Terminates all subscriptions and validates the received events.
 func checkReceivedLogs(t *testing.T, s *Simulation) {
 	logsFromSnapshots := 0
-	// at least one event per transfer tx for half the transactions
-	nrLogs := len(s.TxInjector.TxTracker.TransferL2Transactions) * len(s.RPCHandles.AuthObsClients) / 2
+	// rough estimation. In total there should be 2 relevant events for each successful transfer.
+	// We assume 66% will pass
+	nrLogs := len(s.TxInjector.TxTracker.TransferL2Transactions) * 2
+	nrLogs = nrLogs * 2 / 3
 	for _, clients := range s.RPCHandles.AuthObsClients {
 		for _, client := range clients {
 			logsFromSnapshots += checkSnapshotLogs(t, client)

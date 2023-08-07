@@ -192,6 +192,7 @@ func (c *Client) SubmitBatch(batch *common.ExtBatch) common.SystemError {
 	defer cancel()
 
 	batchMsg := rpc.ToExtBatchMsg(batch)
+
 	response, err := c.protoClient.SubmitBatch(timeoutCtx, &generated.SubmitBatchRequest{Batch: &batchMsg})
 	if err != nil {
 		return syserr.NewRPCError(err)
@@ -551,4 +552,21 @@ func (c *Client) GetTotalContractCount() (*big.Int, common.SystemError) {
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 	return big.NewInt(response.Count), nil
+}
+
+func (c *Client) GetReceiptsByAddress(encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetReceiptsByAddress(timeoutCtx, &generated.GetReceiptsByAddressRequest{
+		EncryptedParams: encryptedParams,
+	})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }

@@ -39,6 +39,7 @@ tools/obscuroscan/main/main
 integration/eth2network/main/main
 
 
+
 # Logs files
 **/enclave_logs.txt
 **/host_logs.txt
@@ -47,6 +48,7 @@ integration/eth2network/main/main
 
 # Temp env files
 testnet/.env
+.obscuro/
 
 # Docs build files
 docs/_site

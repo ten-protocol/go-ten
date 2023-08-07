@@ -46,8 +46,8 @@ type storageImpl struct {
 
 	// cache for the immutable batches and blocks.
 	// this avoids a trip to the database.
-	batchCache *cache.Cache[*core.Batch]
-	blockCache *cache.Cache[*types.Block]
+	batchCache *cache.Cache[[]byte]
+	blockCache *cache.Cache[[]byte]
 
 	stateDB     state.Database
 	chainConfig *params.ChainConfig
@@ -87,8 +87,8 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 			Preimages: cacheConfig.Preimages,
 		}),
 		chainConfig: chainConfig,
-		batchCache:  cache.New[*core.Batch](bigcacheStore),
-		blockCache:  cache.New[*types.Block](bigcacheStore),
+		batchCache:  cache.New[[]byte](bigcacheStore),
+		blockCache:  cache.New[[]byte](bigcacheStore),
 		logger:      logger,
 	}
 }
@@ -110,17 +110,9 @@ func (s *storageImpl) FetchCurrentSequencerNo() (*big.Int, error) {
 }
 
 func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
-	value, err := s.batchCache.Get(context.Background(), hash)
-	if err != nil {
-		b, err := enclavedb.ReadBatchByHash(s.db.GetSQLDB(), hash)
-		if err != nil {
-			return b, err
-		}
-		s.cacheBatch(hash, b)
-		return b, err
-	}
-
-	return value, nil
+	return s.getCachedBatch(hash, func(hash common.L2BatchHash) (*core.Batch, error) {
+		return enclavedb.ReadBatchByHash(s.db.GetSQLDB(), hash)
+	})
 }
 
 func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error) {
@@ -136,20 +128,21 @@ func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block, chainFork *common.ChainFork) error {
-	dbBatch := s.db.NewDBTransaction()
+	dbTransaction := s.db.NewDBTransaction()
 	if chainFork != nil && chainFork.IsFork() {
-		s.logger.Info(fmt.Sprintf("Fork. %+v.", chainFork))
-		enclavedb.UpdateCanonicalBlocks(dbBatch, chainFork.CanonicalPath, chainFork.NonCanonicalPath)
-	} else {
-		enclavedb.UpdateCanonicalBlocks(dbBatch, nil, nil)
+		s.logger.Info(fmt.Sprintf("Fork. %s", chainFork))
+		enclavedb.UpdateCanonicalBlocks(dbTransaction, chainFork.CanonicalPath, chainFork.NonCanonicalPath)
 	}
 
-	if err := enclavedb.WriteBlock(dbBatch, b.Header()); err != nil {
-		return fmt.Errorf("could not store block %s. Cause: %w", b.Hash(), err)
+	// In case there were any batches inserted before this block was received
+	enclavedb.UpdateCanonicalBlocks(dbTransaction, []common.L1BlockHash{b.Hash()}, nil)
+
+	if err := enclavedb.WriteBlock(dbTransaction, b.Header()); err != nil {
+		return fmt.Errorf("2. could not store block %s. Cause: %w", b.Hash(), err)
 	}
 
-	if err := dbBatch.Write(); err != nil {
-		return fmt.Errorf("could not store block %s. Cause: %w", b.Hash(), err)
+	if err := dbTransaction.Write(); err != nil {
+		return fmt.Errorf("3. could not store block %s. Cause: %w", b.Hash(), err)
 	}
 
 	s.cacheBlock(b.Hash(), b)
@@ -158,17 +151,9 @@ func (s *storageImpl) StoreBlock(b *types.Block, chainFork *common.ChainFork) er
 }
 
 func (s *storageImpl) FetchBlock(blockHash common.L1BlockHash) (*types.Block, error) {
-	value, err := s.blockCache.Get(context.Background(), blockHash)
-	if err != nil {
-		b, err := enclavedb.FetchBlock(s.db.GetSQLDB(), blockHash)
-		if err != nil {
-			return b, err
-		}
-		s.cacheBlock(blockHash, b)
-		return b, err
-	}
-
-	return value, nil
+	return s.getCachedBlock(blockHash, func(hash common.L1BlockHash) (*types.Block, error) {
+		return enclavedb.FetchBlock(s.db.GetSQLDB(), blockHash)
+	})
 }
 
 func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
@@ -264,7 +249,7 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 
 // GetReceiptsByBatchHash retrieves the receipts for all transactions in a given batch.
 func (s *storageImpl) GetReceiptsByBatchHash(hash gethcommon.Hash) (types.Receipts, error) {
-	return enclavedb.ReadReceipts(s.db.GetSQLDB(), hash, s.chainConfig)
+	return enclavedb.ReadReceiptsByBatchHash(s.db.GetSQLDB(), hash, s.chainConfig)
 }
 
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
@@ -319,39 +304,46 @@ func (s *storageImpl) FetchBatchesByBlock(block common.L1BlockHash) ([]*core.Bat
 	return enclavedb.ReadBatchesByBlock(s.db.GetSQLDB(), block)
 }
 
-func (s *storageImpl) StoreBatch(batch *core.Batch, receipts []*types.Receipt) error {
+func (s *storageImpl) StoreBatch(batch *core.Batch) error {
 	// sanity check that this is not overlapping
-	prev, err := s.FetchBatchBySeqNo(batch.SeqNo().Uint64())
-	if err == nil && !bytes.Equal(prev.Hash().Bytes(), batch.Hash().Bytes()) {
+	existingBatchWithSameSequence, _ := s.FetchBatchBySeqNo(batch.SeqNo().Uint64())
+	if existingBatchWithSameSequence != nil && existingBatchWithSameSequence.Hash() != batch.Hash() {
+		// todo - tudor - remove the Critical before production, and return a challenge
+		s.logger.Crit(fmt.Sprintf("Conflicting batches for the same sequence %d: (previous) %s != (incoming) %s", batch.SeqNo(), existingBatchWithSameSequence.Hash(), batch.Hash()))
 		return fmt.Errorf("a different batch with same sequence number already exists: %d", batch.SeqNo())
 	}
 
+	// already processed batch with this seq number and hash
+	if existingBatchWithSameSequence != nil && existingBatchWithSameSequence.Hash() == batch.Hash() {
+		return nil
+	}
+
 	dbTx := s.db.NewDBTransaction()
-	s.logger.Trace("write batch", "hash", batch.Hash(), "l1_proof", batch.Header.L1Proof)
+	s.logger.Trace("write batch", log.BatchHashKey, batch.Hash(), "l1Proof", batch.Header.L1Proof, log.BatchSeqNoKey, batch.SeqNo())
 	if err := enclavedb.WriteBatchAndTransactions(dbTx, batch); err != nil {
 		return fmt.Errorf("could not write batch. Cause: %w", err)
 	}
 
-	if len(receipts) > 0 {
-		err := s.storeReceipts(batch, receipts, dbTx)
-		if err != nil {
-			return err
-		}
-	}
-
-	err = dbTx.Write()
-	if err != nil {
+	if err := dbTx.Write(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}
+
 	s.cacheBatch(batch.Hash(), batch)
 	return nil
 }
 
-func (s *storageImpl) storeReceipts(batch *core.Batch, receipts []*types.Receipt, dbTx enclavedb.DBTransaction) error {
-	for _, receipt := range receipts {
-		s.logger.Trace("store receipt", "txHash", receipt.TxHash, "batch", receipt.BlockHash)
+func (s *storageImpl) StoreExecutedBatch(batch *core.Batch, receipts []*types.Receipt) error {
+	executed, err := enclavedb.BatchWasExecuted(s.db.GetSQLDB(), batch.Hash())
+	if err != nil {
+		return err
 	}
-	if err := enclavedb.WriteReceipts(dbTx, receipts); err != nil {
+	if executed {
+		s.logger.Debug("Batch was already executed", log.BatchHashKey, batch.Hash())
+		return nil
+	}
+
+	dbTx := s.db.NewDBTransaction()
+	if err := enclavedb.WriteBatchExecution(dbTx, batch.Hash(), receipts); err != nil {
 		return fmt.Errorf("could not write transaction receipts. Cause: %w", err)
 	}
 
@@ -366,6 +358,11 @@ func (s *storageImpl) storeReceipts(batch *core.Batch, receipts []*types.Receipt
 			return fmt.Errorf("could not save logs %w", err2)
 		}
 	}
+
+	if err := dbTx.Write(); err != nil {
+		return fmt.Errorf("could not commit batch %w", err)
+	}
+
 	return nil
 }
 
@@ -432,15 +429,69 @@ func (s *storageImpl) GetContractCount() (*big.Int, error) {
 	return enclavedb.ReadContractCreationCount(s.db.GetSQLDB())
 }
 
+func (s *storageImpl) FetchUnexecutedBatches() ([]*core.Batch, error) {
+	return enclavedb.ReadUnexecutedBatches(s.db.GetSQLDB())
+}
+
+func (s *storageImpl) BatchWasExecuted(hash common.L2BatchHash) (bool, error) {
+	return enclavedb.BatchWasExecuted(s.db.GetSQLDB(), hash)
+}
+
+func (s *storageImpl) GetReceiptsPerAddress(address *gethcommon.Address) (types.Receipts, error) {
+	return enclavedb.GetReceiptsPerAddress(s.db.GetSQLDB(), s.chainConfig, address)
+}
+
 func (s *storageImpl) cacheBlock(blockHash common.L1BlockHash, b *types.Block) {
-	err := s.blockCache.Set(context.Background(), blockHash, b)
+	var buffer bytes.Buffer
+	if err := b.EncodeRLP(&buffer); err != nil {
+		s.logger.Error("Could not encode block to store block in cache", log.ErrKey, err)
+		return
+	}
+	err := s.blockCache.Set(context.Background(), blockHash, buffer.Bytes())
 	if err != nil {
 		s.logger.Error("Could not store block in cache", log.ErrKey, err)
 	}
 }
 
+func (s *storageImpl) getCachedBlock(hash common.L1BlockHash, onFailed func(common.L1BlockHash) (*types.Block, error)) (*types.Block, error) {
+	value, err := s.blockCache.Get(context.Background(), hash)
+	if err != nil {
+		b, err := onFailed(hash)
+		if err != nil {
+			return b, err
+		}
+		s.cacheBlock(hash, b)
+		return b, err
+	}
+
+	b := new(types.Block)
+	err = rlp.DecodeBytes(value, b)
+	return b, err
+}
+
+func (s *storageImpl) getCachedBatch(hash common.L2BatchHash, onFailed func(common.L2BatchHash) (*core.Batch, error)) (*core.Batch, error) {
+	value, err := s.batchCache.Get(context.Background(), hash)
+	if err != nil {
+		b, err := onFailed(hash)
+		if err != nil {
+			return b, err
+		}
+		s.cacheBatch(hash, b)
+		return b, err
+	}
+
+	b := new(core.Batch)
+	err = rlp.DecodeBytes(value, b)
+	return b, err
+}
+
 func (s *storageImpl) cacheBatch(batchHash common.L2BatchHash, b *core.Batch) {
-	err := s.batchCache.Set(context.Background(), batchHash, b)
+	value, err := rlp.EncodeToBytes(b)
+	if err != nil {
+		s.logger.Error("Could not encode block to store block in cache", log.ErrKey, err)
+		return
+	}
+	err = s.batchCache.Set(context.Background(), batchHash, value)
 	if err != nil {
 		s.logger.Error("Could not store batch in cache", log.ErrKey, err)
 	}

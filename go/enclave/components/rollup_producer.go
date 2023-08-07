@@ -54,7 +54,7 @@ func NewRollupProducer(sequencerID gethcommon.Address, transactionBlobCrypto cry
 func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, limiter limiters.RollupLimiter) (*core.Rollup, error) {
 	batches, err := re.batchRegistry.BatchesAfter(fromBatchNo, limiter)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not fetch 'from' batch (seqNo=%d) for rollup: %w", fromBatchNo, err)
 	}
 
 	hasBatches := len(batches) != 0

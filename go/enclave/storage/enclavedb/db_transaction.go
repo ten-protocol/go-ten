@@ -93,13 +93,13 @@ func (b *dbTransaction) Write() error {
 	for _, s := range b.statements {
 		_, err := tx.Exec(s.query, s.args...)
 		if err != nil {
-			return fmt.Errorf("failed to exec batch statement %s. err=%w", s.query, err)
+			return fmt.Errorf("failed to exec db statement `%s` (%v). Cause: %w", s.query, s.args, err)
 		}
 	}
 
 	err = tx.Commit()
 	if err != nil {
-		return fmt.Errorf("failed to commit batch of writes - %w", err)
+		return fmt.Errorf("failed to commit batch of writes. Cause: %w", err)
 	}
 	return nil
 }

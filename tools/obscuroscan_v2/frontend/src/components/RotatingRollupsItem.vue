@@ -35,6 +35,7 @@ export default {
 
     return {
       displayedCards:  computed(() => rollupsStore.rollups.get()),
+      isAnimating: false
     }
   },
 }
