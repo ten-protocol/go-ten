@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -106,5 +107,5 @@ func GenerateSignMessage(vkPubKey []byte) string {
 // format is expected to be "Register <userID> for <Account>"
 func GenerateSignMessageOG(vkPubKey []byte, addr *gethcommon.Address) string {
 	userID := crypto.Keccak256Hash(vkPubKey).Bytes()
-	return fmt.Sprintf("Register %s for %s", hex.EncodeToString(userID), addr.Hex())
+	return fmt.Sprintf("Register %s for %s", hex.EncodeToString(userID), strings.ToLower(addr.Hex()))
 }
