@@ -42,7 +42,7 @@ const (
 
 	isCanonQuery = "select is_canonical from block where hash=?"
 
-	queryTxList = "select tx.hash, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
+	queryTxList = "select exec_tx.tx, batch.height from exec_tx join batch on batch.hash=exec_tx.batch order by height desc limit 100"
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
