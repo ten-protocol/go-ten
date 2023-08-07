@@ -4,8 +4,13 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"net/http"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+	"github.com/valyala/fasthttp"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -66,8 +71,11 @@ func TestObscuroGateway(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// make sure the server is ready to receive requests
-	// TODO Implement health endpoint
-	// serverAddress := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
+	serverAddress := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
+
+	// make sure the server is ready to receive requests
+	err := waitServerIsReady(serverAddress)
+	require.NoError(t, err)
 
 	w := wallets.L2FaucetWallet
 
@@ -170,4 +178,22 @@ func createObscuroNetwork(t *testing.T, startPort int) *params.SimWallets {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
 	}
 	return wallets
+}
+
+func waitServerIsReady(serverAddr string) error {
+	for now := time.Now(); time.Since(now) < 30*time.Second; time.Sleep(500 * time.Millisecond) {
+		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/health/", serverAddr))
+		if err != nil {
+			// give it time to boot up
+			if strings.Contains(err.Error(), "connection") {
+				continue
+			}
+			return err
+		}
+
+		if statusCode == http.StatusOK {
+			return nil
+		}
+	}
+	return fmt.Errorf("timed out before server was ready")
 }
