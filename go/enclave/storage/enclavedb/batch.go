@@ -27,7 +27,8 @@ const (
 	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?)"
 	updateBatchExecuted = "update batch set executed=true where hash=?"
 
-	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
+	// todo - (tudor) - remove the hash
+	selectBatch  = "select b.hash, b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
 	selectHeader = "select b.header from batch b"
 
 	txExecInsert      = "insert into exec_tx values "
@@ -41,6 +42,8 @@ const (
 	queryBatchWasExecuted       = "select executed from batch where is_canonical and hash=?"
 
 	isCanonQuery = "select is_canonical from block where hash=?"
+
+	queryTxList = "select exec_tx.tx, batch.height from exec_tx join batch on batch.hash=exec_tx.batch order by height desc limit 100"
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
@@ -197,14 +200,15 @@ func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, 
 }
 
 func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error) {
+	var hashBytes []byte
 	var header string
 	var body []byte
 	query := selectBatch + " " + whereQuery
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&header, &body)
+		err = db.QueryRow(query, args...).Scan(&hashBytes, &header, &body)
 	} else {
-		err = db.QueryRow(query).Scan(&header, &body)
+		err = db.QueryRow(query).Scan(&hashBytes, &header, &body)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -222,6 +226,12 @@ func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error)
 		return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
 	}
 
+	// todo - tudor - remove once fixed
+	hash := common.L2BatchHash{}
+	hash.SetBytes(hashBytes)
+	if h.Hash() != hash {
+		panic("The hash of the batch stored in the db is invalid")
+	}
 	return &core.Batch{
 		Header:       h,
 		Transactions: *txs,
@@ -244,9 +254,10 @@ func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, er
 		return nil, err
 	}
 	for rows.Next() {
+		var hashBytes []byte
 		var header string
 		var body []byte
-		err := rows.Scan(&header, &body)
+		err := rows.Scan(&hashBytes, &header, &body)
 		if err != nil {
 			return nil, err
 		}
@@ -257,6 +268,12 @@ func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, er
 		txs := new([]*common.L2Tx)
 		if err := rlp.DecodeBytes(body, txs); err != nil {
 			return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
+		}
+		// todo - tudor - remove once fixed
+		hash := common.L2BatchHash{}
+		hash.SetBytes(hashBytes)
+		if h.Hash() != hash {
+			panic("The hash of the batch stored in the db is invalid")
 		}
 
 		result = append(result,
@@ -459,4 +476,41 @@ func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
 
 func GetReceiptsPerAddress(db *sql.DB, config *params.ChainConfig, address *gethcommon.Address) (types.Receipts, error) {
 	return selectReceipts(db, config, "where tx.sender_address = ?", address.Bytes())
+}
+
+func GetPublicTransactionData(db *sql.DB) ([]common.PublicTxData, error) {
+	return selectPublicTxsBySender(db)
+}
+
+func selectPublicTxsBySender(db *sql.DB) ([]common.PublicTxData, error) {
+	var publicTxs []common.PublicTxData
+
+	rows, err := db.Query(queryTxList)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var txHash []byte
+		var batchHeight uint64
+		err := rows.Scan(&txHash, &batchHeight)
+		if err != nil {
+			return nil, err
+		}
+
+		publicTxs = append(publicTxs, common.PublicTxData{
+			TransactionHash: gethcommon.BytesToHash(txHash),
+			BatchHeight:     big.NewInt(0).SetUint64(batchHeight),
+			Finality:        common.BatchFinal,
+		})
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return publicTxs, nil
 }

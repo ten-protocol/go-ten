@@ -134,6 +134,9 @@ type EnclaveScan interface {
 
 	// GetReceiptsByAddress returns a list of receipts given the sender address
 	GetReceiptsByAddress(encryptedParams EncryptedParamsGetStorageAt) (*responses.Receipts, SystemError)
+
+	// GetPublicTransactionData returns a list of public transaction data
+	GetPublicTransactionData() ([]PublicTxData, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

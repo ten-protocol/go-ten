@@ -356,6 +356,20 @@ func (s *RPCServer) GetReceiptsByAddress(_ context.Context, req *generated.GetRe
 	return &generated.GetReceiptsByAddressResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
+func (s *RPCServer) GetPublicTransactionData(_ context.Context, _ *generated.GetPublicTransactionDataRequest) (*generated.GetPublicTransactionDataResponse, error) {
+	publicTxData, sysError := s.enclave.GetPublicTransactionData()
+	if sysError != nil {
+		return &generated.GetPublicTransactionDataResponse{SystemError: toRPCError(sysError)}, nil
+	}
+
+	marshal, err := json.Marshal(publicTxData)
+	if err != nil {
+		return &generated.GetPublicTransactionDataResponse{SystemError: toRPCError(sysError)}, nil //nolint: nilerr
+	}
+
+	return &generated.GetPublicTransactionDataResponse{PublicTransactionData: marshal}, nil
+}
+
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

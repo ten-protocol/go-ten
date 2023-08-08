@@ -60,7 +60,11 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		unsubscribed := false
 		for {
 			select {
-			case encryptedLog := <-logsFromSubscription:
+				encryptedLog, ok := <-logsFromSubscription
+				if !ok {
+					api.logger.Info("subscription channel closed", log.SubIDKey, subscription.ID)
+					return
+				}
 				if unsubscribed {
 					return
 				}
@@ -71,18 +75,23 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 				err = notifier.Notify(subscription.ID, idAndEncLog)
 				if err != nil {
 					api.logger.Error("could not send encrypted log to client on subscription ", log.SubIDKey, subscription.ID)
-				}
-
-			case <-subscription.Err(): // client sent an unsubscribe request
-				api.host.Unsubscribe(subscription.ID)
-				unsubscribed = true
-			case <-time.After(time.Second):
+				}			case <-time.After(time.Second):
 				if unsubscribed {
 					return
 				}
 			}
+
+		}
+
 		}
 	}()
+
+	go func() {
+		<-subscription.Err()
+		api.host.Unsubscribe(subscription.ID)
+	unsubscribed = true
+
+}()
 
 	return subscription, nil
 }

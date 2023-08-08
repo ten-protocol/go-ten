@@ -24,7 +24,6 @@ func (b *Backend) GetLatestBatch() (*common.BatchHeader, error) {
 }
 
 func (b *Backend) GetLatestRollup() (*common.RollupHeader, error) {
-	// return b.obsClient.L1RollupHeaderByNumber(nil)
 	return &common.RollupHeader{}, nil
 }
 
@@ -51,4 +50,8 @@ func (b *Backend) GetBatch(hash gethcommon.Hash) (*common.BatchHeader, error) {
 
 func (b *Backend) GetTransaction(_ gethcommon.Hash) (*common.L2Tx, error) {
 	return nil, fmt.Errorf("unable to get encrypted Tx")
+}
+
+func (b *Backend) GetPublicTransactions() ([]common.PublicTxData, error) {
+	return b.obsClient.GetPublicTxData()
 }

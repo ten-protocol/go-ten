@@ -88,6 +88,16 @@ service EnclaveProto {
   rpc GetTotalContractCount(GetTotalContractCountRequest) returns (GetTotalContractCountResponse) {}
 
   rpc GetReceiptsByAddress(GetReceiptsByAddressRequest) returns (GetReceiptsByAddressResponse) {}
+
+  rpc GetPublicTransactionData(GetPublicTransactionDataRequest) returns (GetPublicTransactionDataResponse) {}
+
+}
+
+message GetPublicTransactionDataRequest {}
+
+message GetPublicTransactionDataResponse{
+  bytes publicTransactionData = 1;
+  SystemError systemError = 2;
 }
 
 message GetReceiptsByAddressRequest {
