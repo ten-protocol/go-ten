@@ -42,5 +42,5 @@ func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
 }
 
 func (s *ScanAPI) GetPublicTransactionData() ([]common.PublicTxData, error) {
-	return s.host.EnclaveClient().GetPublicTransactionData()
+	return s.sl.Enclave().GetEnclaveClient().GetPublicTransactionData()
 }
