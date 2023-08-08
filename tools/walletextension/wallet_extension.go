@@ -138,7 +138,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	if err != nil {
 		return fmt.Errorf("failed to create encrypted RPC client for account %s - %w", address, err)
 	}
-	defaultAccountManager, err := w.userAccountManager.GetUserAccountManager(common.DefaultUser)
+	defaultAccountManager, err := w.userAccountManager.GetUserAccountManager(hex.EncodeToString([]byte(common.DefaultUser)))
 	if err != nil {
 		return fmt.Errorf(fmt.Sprintf("error getting default user account manager: %s", err))
 	}
