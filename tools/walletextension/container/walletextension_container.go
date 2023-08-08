@@ -61,7 +61,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 
 	// iterate over users create accountManagers and add all accounts to them per user
 	for _, user := range allUsers {
-		currentUserAccountManager := userAccountManager.AddAndReturnAccountManager(string(user.UserID))
+		currentUserAccountManager := userAccountManager.AddAndReturnAccountManager(hex.EncodeToString(user.UserID))
 
 		accounts, err := databaseStorage.GetAccounts(user.UserID)
 		if err != nil {
