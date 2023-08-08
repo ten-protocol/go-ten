@@ -71,7 +71,6 @@ func TestObscuroGateway(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// make sure the server is ready to receive requests
-	// TODO Implement health endpoint
 	serverAddress := fmt.Sprintf("http://%s:%d", obscuroGatewayConf.WalletExtensionHost, obscuroGatewayConf.WalletExtensionPortHTTP)
 
 	// make sure the server is ready to receive requests

@@ -226,10 +226,12 @@ func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error)
 		return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
 	}
 
-	return &core.Batch{
+	b := core.Batch{
 		Header:       h,
 		Transactions: *txs,
-	}, nil
+	}
+
+	return &b, nil
 }
 
 func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, error) {
