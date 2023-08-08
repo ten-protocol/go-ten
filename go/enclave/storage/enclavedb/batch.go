@@ -27,8 +27,7 @@ const (
 	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?)"
 	updateBatchExecuted = "update batch set executed=true where hash=?"
 
-	// todo - (tudor) - remove the hash
-	selectBatch  = "select b.hash, b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
+	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
 	selectHeader = "select b.header from batch b"
 
 	txExecInsert      = "insert into exec_tx values "
@@ -200,15 +199,14 @@ func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, 
 }
 
 func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error) {
-	var hashBytes []byte
 	var header string
 	var body []byte
 	query := selectBatch + " " + whereQuery
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&hashBytes, &header, &body)
+		err = db.QueryRow(query, args...).Scan(&header, &body)
 	} else {
-		err = db.QueryRow(query).Scan(&hashBytes, &header, &body)
+		err = db.QueryRow(query).Scan(&header, &body)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -226,16 +224,12 @@ func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error)
 		return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
 	}
 
-	// todo - tudor - remove once fixed
-	hash := common.L2BatchHash{}
-	hash.SetBytes(hashBytes)
-	if h.Hash() != hash {
-		panic("The hash of the batch stored in the db is invalid")
-	}
-	return &core.Batch{
+	b := core.Batch{
 		Header:       h,
 		Transactions: *txs,
-	}, nil
+	}
+
+	return &b, nil
 }
 
 func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, error) {
@@ -254,10 +248,9 @@ func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, er
 		return nil, err
 	}
 	for rows.Next() {
-		var hashBytes []byte
 		var header string
 		var body []byte
-		err := rows.Scan(&hashBytes, &header, &body)
+		err := rows.Scan(&header, &body)
 		if err != nil {
 			return nil, err
 		}
@@ -268,12 +261,6 @@ func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, er
 		txs := new([]*common.L2Tx)
 		if err := rlp.DecodeBytes(body, txs); err != nil {
 			return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
-		}
-		// todo - tudor - remove once fixed
-		hash := common.L2BatchHash{}
-		hash.SetBytes(hashBytes)
-		if h.Hash() != hash {
-			panic("The hash of the batch stored in the db is invalid")
 		}
 
 		result = append(result,

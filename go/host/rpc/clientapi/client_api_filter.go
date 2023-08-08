@@ -3,6 +3,7 @@ package clientapi
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/host"
@@ -54,18 +55,20 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		return nil, fmt.Errorf("could not send subscription ID to client on subscription %s", subscription.ID)
 	}
 
+	var unsubscribed atomic.Bool
+
 	go func() {
-		// to avoid unsubscribe deadlocks we have a 1 second delay between the unsubscribe command
+		// to avoid unsubscribe deadlocks we have a 10 second delay between the unsubscribe command
 		// and the moment we stop listening for messages
-		unsubscribed := false
 		for {
 			select {
-				encryptedLog, ok := <-logsFromSubscription
+			case encryptedLog, ok := <-logsFromSubscription:
 				if !ok {
 					api.logger.Info("subscription channel closed", log.SubIDKey, subscription.ID)
 					return
 				}
-				if unsubscribed {
+				if unsubscribed.Load() {
+					api.logger.Debug("subscription unsubscribed", log.SubIDKey, subscription.ID)
 					return
 				}
 				idAndEncLog := common.IDAndEncLog{
@@ -75,23 +78,21 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 				err = notifier.Notify(subscription.ID, idAndEncLog)
 				if err != nil {
 					api.logger.Error("could not send encrypted log to client on subscription ", log.SubIDKey, subscription.ID)
-				}			case <-time.After(time.Second):
-				if unsubscribed {
+				}
+			case <-time.After(10 * time.Second):
+				if unsubscribed.Load() {
 					return
 				}
 			}
-
-		}
-
 		}
 	}()
 
+	// unsubscribe commands are handled in a different go-routine to avoid deadlocking with the log processing
 	go func() {
 		<-subscription.Err()
 		api.host.Unsubscribe(subscription.ID)
-	unsubscribed = true
-
-}()
+		unsubscribed.Store(true)
+	}()
 
 	return subscription, nil
 }
