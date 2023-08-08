@@ -55,22 +55,25 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 
 	go func() {
 		for {
-			select {
-			case encryptedLog := <-logsFromSubscription:
-				idAndEncLog := common.IDAndEncLog{
-					SubID:  subscription.ID,
-					EncLog: encryptedLog,
-				}
-				err = notifier.Notify(subscription.ID, idAndEncLog)
-				if err != nil {
-					api.logger.Error("could not send encrypted log to client on subscription ", log.SubIDKey, subscription.ID)
-				}
-
-			case <-subscription.Err(): // client sent an unsubscribe request
-				api.host.Unsubscribe(subscription.ID)
+			encryptedLog, ok := <-logsFromSubscription
+			if !ok {
+				api.logger.Info("subscription channel closed", log.SubIDKey, subscription.ID)
 				return
 			}
+			idAndEncLog := common.IDAndEncLog{
+				SubID:  subscription.ID,
+				EncLog: encryptedLog,
+			}
+			err = notifier.Notify(subscription.ID, idAndEncLog)
+			if err != nil {
+				api.logger.Error("could not send encrypted log to client on subscription ", log.SubIDKey, subscription.ID)
+			}
 		}
+	}()
+
+	go func() {
+		<-subscription.Err()
+		api.host.Unsubscribe(subscription.ID)
 	}()
 
 	return subscription, nil
