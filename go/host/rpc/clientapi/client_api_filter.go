@@ -79,7 +79,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 
 	go func() {
 		<-subscription.Err()
-		api.host.Unsubscribe(subscription.ID)
+		api.sl.LogSubs().Unsubscribe(subscription.ID)
 	}()
 
 	return subscription, nil
