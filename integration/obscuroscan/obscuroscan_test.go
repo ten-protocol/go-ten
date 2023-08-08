@@ -1,8 +1,17 @@
 package faucet
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"math/big"
 	"net/http"
 	"strings"
 	"testing"
@@ -93,19 +102,28 @@ func TestObscuroscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/transactions/", serverAddress))
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/transactions/?offset=0&size=99", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
 	type publicTxsRes struct {
-		Result []common.PublicTxData `json:"result"`
+		Result common.PublicQueryResponse `json:"result"`
 	}
 
 	publicTxsObj := publicTxsRes{}
 	err = json.Unmarshal(body, &publicTxsObj)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(publicTxsObj.Result))
+	assert.Equal(t, 1, len(publicTxsObj.Result.PublicTxData))
+	assert.Equal(t, uint64(1), publicTxsObj.Result.Total)
 
+	issueTransactions(
+		t,
+		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
+		wallet.NewInMemoryWalletFromConfig("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b", integration.ObscuroChainID, testlog.Logger()),
+		100,
+	)
+
+	// time.Sleep(time.Hour)
 	// Gracefully shutdown
 	err = obsScanContainer.Stop()
 	assert.NoError(t, err)
@@ -148,5 +166,77 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 	_, err := obscuroNetwork.Create(&simParams, nil)
 	if err != nil {
 		panic(fmt.Sprintf("failed to create test Obscuro network. Cause: %s", err))
+	}
+}
+
+func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wallet, numbTxs int) {
+	ctx := context.Background()
+
+	vk, err := viewingkey.GenerateViewingKeyForWallet(issuerWallet)
+	assert.Nil(t, err)
+	client, err := rpc.NewEncNetworkClient(hostWSAddr, vk, testlog.Logger())
+	assert.Nil(t, err)
+	authClient := obsclient.NewAuthObsClient(client)
+
+	balance, err := authClient.BalanceAt(ctx, nil)
+	assert.Nil(t, err)
+
+	if balance.Cmp(big.NewInt(0)) <= 0 {
+		t.Errorf("not enough balance: has %s has %s obx", issuerWallet.Address().Hex(), balance.String())
+	}
+
+	var receipts []gethcommon.Hash
+	for i := 0; i < numbTxs; i++ {
+		toAddr := datagenerator.RandomAddress()
+		nonce, err := authClient.NonceAt(ctx, nil)
+		assert.Nil(t, err)
+
+		issuerWallet.SetNonce(nonce)
+		estimatedTx := authClient.EstimateGasAndGasPrice(&types.LegacyTx{
+			Nonce:    issuerWallet.GetNonceAndIncrement(),
+			To:       &toAddr,
+			Value:    big.NewInt(100),
+			Gas:      uint64(1_000_000),
+			GasPrice: gethcommon.Big1,
+		})
+		assert.Nil(t, err)
+
+		signedTx, err := issuerWallet.SignTransaction(estimatedTx)
+		assert.Nil(t, err)
+
+		err = authClient.SendTransaction(ctx, signedTx)
+		assert.Nil(t, err)
+
+		fmt.Printf("Issued Tx: %s \n", signedTx.Hash().Hex())
+		receipts = append(receipts, signedTx.Hash())
+		time.Sleep(1500 * time.Millisecond)
+	}
+
+	for _, txHash := range receipts {
+		fmt.Printf("Checking for tx receipt for %s \n", txHash)
+		var receipt *types.Receipt
+		for start := time.Now(); time.Since(start) < time.Minute; time.Sleep(time.Second) {
+			receipt, err = authClient.TransactionReceipt(ctx, txHash)
+			if err == nil {
+				break
+			}
+			//
+			// Currently when a receipt is not available the obscuro node is returning nil instead of err ethereum.NotFound
+			// once that's fixed this commented block should be removed
+			//if !errors.Is(err, ethereum.NotFound) {
+			//	t.Fatal(err)
+			//}
+			if receipt != nil && receipt.Status == 1 {
+				break
+			}
+			fmt.Printf("no tx receipt after %s - %s\n", time.Since(start), err)
+		}
+
+		if receipt == nil {
+			t.Fatalf("Did not mine the transaction after %s seconds  - receipt: %+v", 30*time.Second, receipt)
+		}
+		if receipt.Status == 0 {
+			t.Fatalf("Tx Failed")
+		}
 	}
 }

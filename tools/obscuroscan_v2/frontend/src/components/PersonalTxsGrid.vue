@@ -1,4 +1,5 @@
 <template>
+  <el-card>
   <el-table height="250" style="width: 100%" :data="personalTransactionList">
     <el-table-column prop="transactionHash" label="Tx Hash" width="180" >
     </el-table-column>
@@ -20,6 +21,17 @@
     <el-table-column prop="blockHash" label="Batch Hash" width="180" >
     </el-table-column>
   </el-table>
+  <el-pagination
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+      :current-page="currentPage"
+      :page-sizes="[10, 20, 30, 40]"
+      :page-size="size"
+      :page-count="totalPages"
+      layout="total, sizes, prev, pager, next, jumper"
+      :total="personalTransactionCount"
+  ></el-pagination>
+  </el-card>
 </template>
 
 <script>
@@ -29,26 +41,49 @@ import {usePersonalDataStore} from "@/stores/personalDataStore";
 export default {
   name: "PersonalTxsGrid",
   setup() {
-    const personalDataStore = usePersonalDataStore()
+    const store = usePersonalDataStore()
 
     // Start polling when the component is mounted
     onMounted(() => {
-      personalDataStore.startPolling()
+      store.startPolling()
     })
 
     // Ensure to stop polling when component is destroyed or deactivated
     onUnmounted(() => {
-      personalDataStore.stopPolling()
+      store.stopPolling()
     })
 
     return {
-      personalTransactionList:  computed(() => personalDataStore.personalTransactionList),
-      isAnimating: false
+      personalTransactionList:  computed(() => store.personalTransactionList),
+      personalTransactionCount: computed(() => store.personalTransactionCount),
+      size: computed(() => store.size),
+      totalPages: computed(() => {
+        const store = usePersonalDataStore()
+        if (!store.personalTransactionCount) {
+          return 0
+        }
+        const pages = Math.ceil(store.personalTransactionCount / store.size)
+        console.log('Recalculated page count - ' + pages)
+        return pages
+      }),
+      currentPage: 0
+    }
+  },
+  methods: {
+    // Called when the page size is changed
+    handleSizeChange(newSize) {
+      const store = usePersonalDataStore()
+      store.size = newSize
+      store.offset = (this.currentPage - 1) * store.size
+    },
+    // Called when the current page is changed
+    handleCurrentChange(newPage) {
+      const store = usePersonalDataStore()
+      this.currentPage = newPage
+      store.offset = (newPage - 1) * store.size
     }
   },
 }
 </script>
 
-<style scoped>
-
-</style>
+<style scoped></style>
