@@ -88,7 +88,10 @@ func validateDBConf(cfg *config.HostConfig) error {
 
 // NewInMemoryDB returns a new instance of the Node DB
 func NewInMemoryDB(logger gethlog.Logger) *DB {
-	return newDB(gethdb.NewMemDB(), logger)
+	database := newDB(gethdb.NewMemDB(), logger)
+	// In-mem db is used for testing, we make sure the metrics are initialised to avoid nil pointers in unit tests
+	database.InitialiseMetrics(nil)
+	return database
 }
 
 // NewLevelDBBackedDB creates a persistent DB for the host, if dbPath == "" it will generate a temp file
@@ -121,8 +124,9 @@ func NewLevelDBBackedDB(dbPath string, logger gethlog.Logger) (*DB, error) {
 }
 
 func newDB(kvStore ethdb.KeyValueStore, logger gethlog.Logger) *DB {
-	return &DB{
+	database := &DB{
 		kvStore: kvStore,
 		logger:  logger,
 	}
+	return database
 }
