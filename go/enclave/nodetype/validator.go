@@ -74,7 +74,7 @@ func (val *obsValidator) VerifySequencerSignature(*core.Batch) error {
 }
 
 func (val *obsValidator) ExecuteStoredBatches() error {
-	batches, err := val.storage.FetchUnexecutedBatches()
+	batches, err := val.storage.FetchCanonicalUnexecutedBatches()
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil
