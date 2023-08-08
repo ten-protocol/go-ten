@@ -270,7 +270,7 @@ func ExtractViewingKey(vkBytesIntf interface{}) ([]byte, []byte, error) {
 	return vkPubkeyHexBytes, accountSignatureHexBytes, nil
 }
 
-func ExtractPrivateCustomQuery(header interface{}, query interface{}) (*common.PrivateCustomQueryListTransactions, error) {
+func ExtractPrivateCustomQuery(_ interface{}, query interface{}) (*common.PrivateCustomQueryListTransactions, error) {
 	// Convert the map to a JSON string
 	jsonData, err := json.Marshal(query)
 	if err != nil {

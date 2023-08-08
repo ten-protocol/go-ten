@@ -3,8 +3,9 @@ package common
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/types"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
 )
