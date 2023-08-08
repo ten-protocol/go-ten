@@ -170,7 +170,7 @@ func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, err
 
 // todo - is there a better way to write this query?
 func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
-	return fetchBatch(db, " where b.is_canonical and b.height=(select max(b1.height) from batch b1 where b1.is_canonical)")
+	return fetchBatch(db, " where b.is_canonical and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.executed)")
 }
 
 func ReadBatchesByBlock(db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
@@ -195,7 +195,7 @@ func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
 }
 
 func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
-	query := " where is_canonical and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.l1_proof=?)"
+	query := " where is_canonical and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.executed and b1.l1_proof=?)"
 	return fetchBatch(db, query, l1Hash.Bytes())
 }
 
