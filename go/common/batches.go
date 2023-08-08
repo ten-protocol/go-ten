@@ -22,7 +22,13 @@ type ExtBatch struct {
 // The hash is computed on the first call and cached thereafter.
 func (b *ExtBatch) Hash() L2BatchHash {
 	if hash := b.hash.Load(); hash != nil {
-		return hash.(L2BatchHash)
+		// todo (tudor) - remove this
+		v := b.Header.Hash()
+		cv := hash.(L2BatchHash)
+		if v != cv {
+			panic("cached ExtBatch hash is wrong!")
+		}
+		return v
 	}
 	v := b.Header.Hash()
 	b.hash.Store(v)
