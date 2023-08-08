@@ -33,7 +33,7 @@ jobs:
 
       - name: Store simulation logs
         uses: actions/upload-artifact@v3
-        if: always()
+        if: failure()
         with:
           name: ci-logs
           path: |
@@ -41,6 +41,6 @@ jobs:
             integration/.build/noderunner/noderunner-*.txt
             integration/.build/wallet_extension/wal-ext-*.txt
             integration/.build/eth2/*
-          retention-days: 2
+          retention-days: 1
 
 
