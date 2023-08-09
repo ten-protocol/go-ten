@@ -80,7 +80,7 @@ create table if not exists obsdb.batch
     header       blob,
     body         binary(32),
     l1_proof     binary(32),
-    executed     boolean,
+    is_executed     boolean,
     INDEX (parent),
     INDEX (body),
     INDEX (l1_proof),
