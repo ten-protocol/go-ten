@@ -437,12 +437,20 @@ func (s *storageImpl) BatchWasExecuted(hash common.L2BatchHash) (bool, error) {
 	return enclavedb.BatchWasExecuted(s.db.GetSQLDB(), hash)
 }
 
-func (s *storageImpl) GetReceiptsPerAddress(address *gethcommon.Address) (types.Receipts, error) {
-	return enclavedb.GetReceiptsPerAddress(s.db.GetSQLDB(), s.chainConfig, address)
+func (s *storageImpl) GetReceiptsPerAddress(address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
+	return enclavedb.GetReceiptsPerAddress(s.db.GetSQLDB(), s.chainConfig, address, pagination)
 }
 
-func (s *storageImpl) GetPublicTransactionData() ([]common.PublicTxData, error) {
-	return enclavedb.GetPublicTransactionData(s.db.GetSQLDB())
+func (s *storageImpl) GetReceiptsPerAddressCount(address *gethcommon.Address) (uint64, error) {
+	return enclavedb.GetReceiptsPerAddressCount(s.db.GetSQLDB(), address)
+}
+
+func (s *storageImpl) GetPublicTransactionData(pagination *common.QueryPagination) ([]common.PublicTxData, error) {
+	return enclavedb.GetPublicTransactionData(s.db.GetSQLDB(), pagination)
+}
+
+func (s *storageImpl) GetPublicTransactionCount() (uint64, error) {
+	return enclavedb.GetPublicTransactionCount(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) cacheBlock(blockHash common.L1BlockHash, b *types.Block) {

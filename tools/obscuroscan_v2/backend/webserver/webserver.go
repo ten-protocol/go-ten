@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -152,7 +153,22 @@ func (w *WebServer) getTransaction(c *gin.Context) {
 }
 
 func (w *WebServer) getPublicTransactions(c *gin.Context) {
-	publicTxs, err := w.backend.GetPublicTransactions()
+	offsetStr := c.DefaultQuery("offset", "0")
+	sizeStr := c.DefaultQuery("size", "10")
+
+	offset, err := strconv.ParseUint(offsetStr, 10, 32)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	publicTxs, err := w.backend.GetPublicTransactions(offset, parseUint)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
 		return

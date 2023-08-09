@@ -30,9 +30,10 @@ const (
 	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
 	selectHeader = "select b.header from batch b"
 
-	txExecInsert      = "insert into exec_tx values "
-	txExecInsertValue = "(?,?,?,?,?)"
-	queryReceipts     = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
+	txExecInsert       = "insert into exec_tx values "
+	txExecInsertValue  = "(?,?,?,?,?)"
+	queryReceipts      = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
+	queryReceiptsCount = "select count(1) from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 
 	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where batch.is_canonical and tx.hash=?"
 
@@ -42,7 +43,8 @@ const (
 
 	isCanonQuery = "select is_canonical from block where hash=?"
 
-	queryTxList = "select exec_tx.tx, batch.height from exec_tx join batch on batch.hash=exec_tx.batch order by height desc limit 100"
+	queryTxList      = "select exec_tx.tx, batch.height from exec_tx join batch on batch.hash=exec_tx.batch"
+	queryTxCountList = "select count(1) from exec_tx join batch on batch.hash=exec_tx.batch"
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
@@ -461,18 +463,30 @@ func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
 	return result, nil
 }
 
-func GetReceiptsPerAddress(db *sql.DB, config *params.ChainConfig, address *gethcommon.Address) (types.Receipts, error) {
-	return selectReceipts(db, config, "where tx.sender_address = ?", address.Bytes())
+func GetReceiptsPerAddress(db *sql.DB, config *params.ChainConfig, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
+	return selectReceipts(db, config, "where tx.sender_address = ? ORDER BY height DESC LIMIT ? OFFSET ? ", address.Bytes(), pagination.Size, pagination.Offset)
 }
 
-func GetPublicTransactionData(db *sql.DB) ([]common.PublicTxData, error) {
-	return selectPublicTxsBySender(db)
+func GetReceiptsPerAddressCount(db *sql.DB, address *gethcommon.Address) (uint64, error) {
+	row := db.QueryRow(queryReceiptsCount+" where tx.sender_address = ?", address.Bytes())
+
+	var count uint64
+	err := row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
-func selectPublicTxsBySender(db *sql.DB) ([]common.PublicTxData, error) {
+func GetPublicTransactionData(db *sql.DB, pagination *common.QueryPagination) ([]common.PublicTxData, error) {
+	return selectPublicTxsBySender(db, " ORDER BY height DESC LIMIT ? OFFSET ? ", pagination.Size, pagination.Offset)
+}
+
+func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.PublicTxData, error) {
 	var publicTxs []common.PublicTxData
 
-	rows, err := db.Query(queryTxList)
+	rows, err := db.Query(queryTxList+" "+query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -500,4 +514,16 @@ func selectPublicTxsBySender(db *sql.DB) ([]common.PublicTxData, error) {
 	}
 
 	return publicTxs, nil
+}
+
+func GetPublicTransactionCount(db *sql.DB) (uint64, error) {
+	row := db.QueryRow(queryTxCountList)
+
+	var count uint64
+	err := row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }

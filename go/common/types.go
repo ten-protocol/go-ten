@@ -3,7 +3,6 @@ package common
 import (
 	"bytes"
 	"fmt"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -181,16 +180,3 @@ func (cf *ChainFork) String() string {
 	return fmt.Sprintf("ChainFork{NewCanonical: %s, OldCanonical: %s, CommonAncestor: %s, CanonicalPath: %s, NonCanonicalPath: %s}",
 		cf.NewCanonical.Hash(), cf.OldCanonical.Hash(), cf.CommonAncestor.Hash(), cf.CanonicalPath, cf.NonCanonicalPath)
 }
-
-type PublicTxData struct {
-	TransactionHash TxHash
-	BatchHeight     *big.Int
-	Finality        FinalityType
-}
-
-type FinalityType string
-
-const (
-	MempoolPending FinalityType = "Pending"
-	BatchFinal     FinalityType = "Final"
-)

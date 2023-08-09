@@ -35,7 +35,7 @@ const (
 // l1 port: 9000
 // l2 host: testnet.obscu.ro
 // l2 port: 81
-// l2wallet: 8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b
+// l2wallet: 8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b -> 0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77
 
 var (
 	l1Wallet = wallet.NewInMemoryWalletFromConfig(

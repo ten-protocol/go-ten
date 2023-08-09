@@ -138,6 +138,9 @@ type Storage interface {
 
 type ScanStorage interface {
 	GetContractCount() (*big.Int, error)
-	GetReceiptsPerAddress(address *gethcommon.Address) (types.Receipts, error)
-	GetPublicTransactionData() ([]common.PublicTxData, error)
+	GetReceiptsPerAddress(address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error)
+	GetPublicTransactionData(pagination *common.QueryPagination) ([]common.PublicTxData, error)
+	GetPublicTransactionCount() (uint64, error)
+
+	GetReceiptsPerAddressCount(addr *gethcommon.Address) (uint64, error)
 }
