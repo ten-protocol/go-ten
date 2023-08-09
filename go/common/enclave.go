@@ -132,11 +132,11 @@ type EnclaveScan interface {
 	// GetTotalContractCount returns the total number of contracts that have been deployed
 	GetTotalContractCount() (*big.Int, SystemError)
 
-	// GetReceiptsByAddress returns a list of receipts given the sender address
-	GetReceiptsByAddress(encryptedParams EncryptedParamsGetStorageAt) (*responses.Receipts, SystemError)
+	// GetCustomQuery returns the data of a custom query
+	GetCustomQuery(encryptedParams EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, SystemError)
 
 	// GetPublicTransactionData returns a list of public transaction data
-	GetPublicTransactionData() ([]PublicTxData, SystemError)
+	GetPublicTransactionData(pagination *QueryPagination) (*PublicQueryResponse, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

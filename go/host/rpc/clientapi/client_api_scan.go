@@ -41,6 +41,6 @@ func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	return s.sl.DB().GetTipRollupHeader()
 }
 
-func (s *ScanAPI) GetPublicTransactionData() ([]common.PublicTxData, error) {
-	return s.sl.Enclave().GetEnclaveClient().GetPublicTransactionData()
+func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (*common.PublicQueryResponse, error) {
+	return s.sl.Enclave().GetEnclaveClient().GetPublicTransactionData(pagination)
 }

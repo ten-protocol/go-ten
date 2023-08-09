@@ -1332,7 +1332,7 @@ func (e *enclaveImpl) GetTotalContractCount() (*big.Int, common.SystemError) {
 	return e.storage.GetContractCount()
 }
 
-func (e *enclaveImpl) GetReceiptsByAddress(encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, common.SystemError) {
+func (e *enclaveImpl) GetCustomQuery(encryptedParams common.EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetReceiptsByAddress with the enclave stopping"))
@@ -1344,38 +1344,60 @@ func (e *enclaveImpl) GetReceiptsByAddress(encryptedParams common.EncryptedParam
 		return responses.AsPlaintextError(fmt.Errorf("unable to decode eth_getStorageAt params - %w", err)), nil
 	}
 
-	// Parameters are [ViewingKey, Address, TBD, TBD]
+	// Parameters are [ViewingKey, PrivateCustomQueryHeader, PrivateCustomQueryArgs, null]
 	if len(paramList) != 4 {
 		return responses.AsPlaintextError(fmt.Errorf("unexpected number of parameters")), nil
 	}
 
-	requestedAddress, err := gethencoding.ExtractAddress(paramList[1])
+	privateCustomQuery, err := gethencoding.ExtractPrivateCustomQuery(paramList[1], paramList[2])
 	if err != nil {
-		return responses.AsPlaintextError(fmt.Errorf("unable to extract requested address - %w", err)), nil
+		return responses.AsPlaintextError(fmt.Errorf("unable to extract query - %w", err)), nil
 	}
 
 	// extract, create and validate the VK encryption handler
-	vkHandler, err := createVKHandler(requestedAddress, paramList[0])
+	vkHandler, err := createVKHandler(&privateCustomQuery.Address, paramList[0])
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("unable to create VK encryptor - %w", err)), nil
 	}
 
 	// params are correct, fetch the receipts of the requested address
-	encryptReceipts, err := e.storage.GetReceiptsPerAddress(requestedAddress)
+	encryptReceipts, err := e.storage.GetReceiptsPerAddress(&privateCustomQuery.Address, &privateCustomQuery.Pagination)
 	if err != nil {
-		return responses.AsPlaintextError(fmt.Errorf("unable to get balance - %w", err)), nil
+		return responses.AsPlaintextError(fmt.Errorf("unable to get storage - %w", err)), nil
 	}
 
-	return responses.AsEncryptedResponse(&encryptReceipts, vkHandler), nil
+	receiptsCount, err := e.storage.GetReceiptsPerAddressCount(&privateCustomQuery.Address)
+	if err != nil {
+		return responses.AsPlaintextError(fmt.Errorf("unable to get storage - %w", err)), nil
+	}
+
+	return responses.AsEncryptedResponse(&common.PrivateQueryResponse{
+		Receipts: encryptReceipts,
+		Total:    receiptsCount,
+	}, vkHandler), nil
 }
 
-func (e *enclaveImpl) GetPublicTransactionData() ([]common.PublicTxData, common.SystemError) {
+func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPagination) (*common.PublicQueryResponse, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetPublicTransactionData with the enclave stopping"))
 	}
 
-	return e.storage.GetPublicTransactionData()
+	paginatedData, err := e.storage.GetPublicTransactionData(pagination)
+	if err != nil {
+		return nil, responses.ToInternalError(fmt.Errorf("unable to fetch data - %w", err))
+	}
+
+	// Todo eventually make this a cacheable method
+	totalData, err := e.storage.GetPublicTransactionCount()
+	if err != nil {
+		return nil, responses.ToInternalError(fmt.Errorf("unable to fetch data - %w", err))
+	}
+
+	return &common.PublicQueryResponse{
+		PublicTxData: paginatedData,
+		Total:        totalData,
+	}, nil
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction

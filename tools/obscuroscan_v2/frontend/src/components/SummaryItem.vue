@@ -46,7 +46,6 @@
 
       <el-card class="box" shadow="always">
         <p>Contracts</p>
-        {{ loading }}
         <div>
           <div v-if="totalContractCount">{{ totalContractCount }}</div>
           <div v-else>-</div>
@@ -95,9 +94,6 @@ export default {
       latestBatch: computed(() => batch.latestBatch),
       latestL1Proof: computed(() => batch.latestL1Proof),
       ethPriceUSD: computed(() => price.ethPriceUSD),
-      countLoading: computed(() => counter.loading),
-      batchLoading: computed(() => batch.loading),
-      priceLoading: computed(() => price.loading),
     }
   }
 }

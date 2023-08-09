@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import Config from "@/lib/config";
 import CachedList from "@/lib/cachedList";
+import Poller from "@/lib/poller";
 
 export const useBatchStore = defineStore({
     id: 'batchStore',
@@ -8,42 +9,31 @@ export const useBatchStore = defineStore({
         latestBatch: null,
         latestL1Proof: null,
         batches: new CachedList(),
-        loading: false,
-        pollingInterval: Config.pollingInterval,
-        timer: null,
+        poller: new Poller(() => {
+            const store = useBatchStore();
+            store.fetch();
+        }, Config.pollingInterval)
     }),
     actions: {
-        async fetchCount() {
-            this.loading = true;
+        async fetch() {
             try {
                 let response = await fetch( Config.backendServerAddress+'/items/batch/latest/');
                 let data = await response.json();
-                this.latestBatch = data.item.Number;
-                this.latestL1Proof = data.item.L1Proof;
+                this.latestBatch = data.item.number;
+                this.latestL1Proof = data.item.l1Proof;
 
                 this.batches.add(data.item);
-
-                console.log("Fetched "+this.latestBatch);
             } catch (error) {
                 console.error("Failed to fetch count:", error);
-            } finally {
-                this.loading = false;
             }
         },
 
         startPolling() {
-            this.stopPolling(); // Ensure previous intervals are cleared
-            this.timer = setInterval(async () => {
-                await this.fetchCount();
-            }, this.pollingInterval);
+            this.poller.start();
         },
 
         stopPolling() {
-            if (this.timer) {
-                clearInterval(this.timer);
-                this.timer = null;
-            }
+            this.poller.stop();
         }
-
     },
 });

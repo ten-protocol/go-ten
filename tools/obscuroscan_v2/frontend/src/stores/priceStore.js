@@ -1,17 +1,18 @@
 import { defineStore } from 'pinia';
 import Config from "@/lib/config";
+import Poller from "@/lib/poller";
 
 export const usePriceStore = defineStore({
     id: 'priceStore',
     state: () => ({
         ethPriceUSD: null,
-        loading: false,
-        pollingInterval: 60*Config.pollingInterval,
-        timer: null,
+        poller: new Poller(() => {
+            const store = usePriceStore();
+            store.fetch();
+        }, 60*Config.pollingInterval)
     }),
     actions: {
-        async fetchCount() {
-            this.loading = true;
+        async fetch() {
             try {
                 const response = await fetch( 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
                 const data = await response.json();
@@ -20,24 +21,15 @@ export const usePriceStore = defineStore({
                 console.log("Fetched "+this.ethPriceUSD);
             } catch (error) {
                 console.error("Failed to fetch count:", error);
-            } finally {
-                this.loading = false;
             }
         },
 
         startPolling() {
-            this.stopPolling(); // Ensure previous intervals are cleared
-            this.timer = setInterval(async () => {
-                await this.fetchCount();
-            }, this.pollingInterval);
+            this.poller.start();
         },
 
         stopPolling() {
-            if (this.timer) {
-                clearInterval(this.timer);
-                this.timer = null;
-            }
+            this.poller.stop();
         }
-
     },
 });

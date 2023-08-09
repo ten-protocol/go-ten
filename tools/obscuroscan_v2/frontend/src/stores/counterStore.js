@@ -1,49 +1,38 @@
 import { defineStore } from 'pinia';
 import Config from "@/lib/config";
+import Poller from "@/lib/poller";
 
 export const useCounterStore = defineStore({
     id: 'counterStore',
     state: () => ({
         totalContractCount: 0,
         totalTransactionCount:0,
-        loading: false,
-        pollingInterval: Config.pollingInterval,
-        timer: null,
+        poller: new Poller(() => {
+            const store = useCounterStore();
+            store.fetch();
+        }, Config.pollingInterval)
     }),
     actions: {
-        async fetchCount() {
-            this.loading = true;
+        async fetch() {
             try {
                 const totContractResp = await fetch( Config.backendServerAddress+'/count/contracts/');
                 const totContractData = await totContractResp.json();
                 this.totalContractCount = totContractData.count;
-                console.log("Fetched "+this.totalContractCount);
 
                 const totTxResp = await fetch( Config.backendServerAddress+'/count/transactions/');
                 const totTxData = await totTxResp.json();
                 this.totalTransactionCount = totTxData.count;
-                console.log("Fetched "+this.totalTransactionCount);
-
             } catch (error) {
                 console.error("Failed to fetch count:", error);
-            } finally {
-                this.loading = false;
             }
         },
 
         startPolling() {
-            this.stopPolling(); // Ensure previous intervals are cleared
-            this.timer = setInterval(async () => {
-                await this.fetchCount();
-            }, this.pollingInterval);
+            this.poller.start();
         },
 
         stopPolling() {
-            if (this.timer) {
-                clearInterval(this.timer);
-                this.timer = null;
-            }
+            this.poller.stop();
         }
-
     },
 });

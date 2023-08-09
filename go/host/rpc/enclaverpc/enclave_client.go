@@ -554,7 +554,7 @@ func (c *Client) GetTotalContractCount() (*big.Int, common.SystemError) {
 	return big.NewInt(response.Count), nil
 }
 
-func (c *Client) GetReceiptsByAddress(encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, common.SystemError) {
+func (c *Client) GetCustomQuery(encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -571,11 +571,16 @@ func (c *Client) GetReceiptsByAddress(encryptedParams common.EncryptedParamsGetS
 	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
-func (c *Client) GetPublicTransactionData() ([]common.PublicTxData, common.SystemError) {
+func (c *Client) GetPublicTransactionData(pagination *common.QueryPagination) (*common.PublicQueryResponse, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.GetPublicTransactionData(timeoutCtx, &generated.GetPublicTransactionDataRequest{})
+	response, err := c.protoClient.GetPublicTransactionData(timeoutCtx, &generated.GetPublicTransactionDataRequest{
+		Pagination: &generated.Pagination{
+			Offset: int32(pagination.Offset),
+			Size:   int32(pagination.Size),
+		},
+	})
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
 	}
@@ -583,11 +588,11 @@ func (c *Client) GetPublicTransactionData() ([]common.PublicTxData, common.Syste
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	var result []common.PublicTxData
+	var result common.PublicQueryResponse
 	err = json.Unmarshal(response.PublicTransactionData, &result)
 	if err != nil {
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	return result, nil
+	return &result, nil
 }
