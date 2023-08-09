@@ -25,10 +25,9 @@ const (
 	txInsertValue = "(?,?,?,?,?,?)"
 
 	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?)"
-	updateBatchExecuted = "update batch set executed=true where hash=?"
+	updateBatchExecuted = "update batch set is_executed=true where hash=?"
 
-	// todo - (tudor) - remove the hash
-	selectBatch  = "select b.hash, b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
+	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
 	selectHeader = "select b.header from batch b"
 
 	txExecInsert      = "insert into exec_tx values "
@@ -39,7 +38,7 @@ const (
 
 	selectContractCreationTx    = "select tx from exec_tx where created_contract_address=?"
 	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
-	queryBatchWasExecuted       = "select executed from batch where is_canonical and hash=?"
+	queryBatchWasExecuted       = "select is_executed from batch where is_canonical and hash=?"
 
 	isCanonQuery = "select is_canonical from block where hash=?"
 
@@ -170,7 +169,7 @@ func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, err
 
 // todo - is there a better way to write this query?
 func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
-	return fetchBatch(db, " where b.is_canonical and b.height=(select max(b1.height) from batch b1 where b1.is_canonical)")
+	return fetchBatch(db, " where b.is_canonical and b.is_executed and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.is_executed)")
 }
 
 func ReadBatchesByBlock(db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
@@ -195,20 +194,19 @@ func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
 }
 
 func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
-	query := " where is_canonical and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.l1_proof=?)"
+	query := " where b.is_canonical and b.is_executed and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.is_executed and b1.l1_proof=?)"
 	return fetchBatch(db, query, l1Hash.Bytes())
 }
 
 func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error) {
-	var hashBytes []byte
 	var header string
 	var body []byte
 	query := selectBatch + " " + whereQuery
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&hashBytes, &header, &body)
+		err = db.QueryRow(query, args...).Scan(&header, &body)
 	} else {
-		err = db.QueryRow(query).Scan(&hashBytes, &header, &body)
+		err = db.QueryRow(query).Scan(&header, &body)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -226,16 +224,12 @@ func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error)
 		return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
 	}
 
-	// todo - tudor - remove once fixed
-	hash := common.L2BatchHash{}
-	hash.SetBytes(hashBytes)
-	if h.Hash() != hash {
-		panic("The hash of the batch stored in the db is invalid")
-	}
-	return &core.Batch{
+	b := core.Batch{
 		Header:       h,
 		Transactions: *txs,
-	}, nil
+	}
+
+	return &b, nil
 }
 
 func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, error) {
@@ -254,10 +248,9 @@ func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, er
 		return nil, err
 	}
 	for rows.Next() {
-		var hashBytes []byte
 		var header string
 		var body []byte
-		err := rows.Scan(&hashBytes, &header, &body)
+		err := rows.Scan(&header, &body)
 		if err != nil {
 			return nil, err
 		}
@@ -268,12 +261,6 @@ func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, er
 		txs := new([]*common.L2Tx)
 		if err := rlp.DecodeBytes(body, txs); err != nil {
 			return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
-		}
-		// todo - tudor - remove once fixed
-		hash := common.L2BatchHash{}
-		hash.SetBytes(hashBytes)
-		if h.Hash() != hash {
-			panic("The hash of the batch stored in the db is invalid")
 		}
 
 		result = append(result,
@@ -459,7 +446,7 @@ func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
 }
 
 func ReadUnexecutedBatches(db *sql.DB) ([]*core.Batch, error) {
-	return fetchBatches(db, "where executed=false and is_canonical order by b.sequence")
+	return fetchBatches(db, "where is_executed=false and is_canonical order by b.sequence")
 }
 
 func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {

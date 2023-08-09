@@ -64,9 +64,9 @@ create table if not exists batch
     header       blob,
     body         binary(32) REFERENCES batch_body,
     l1_proof     binary(32), -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
-    executed     boolean
+    is_executed     boolean
 --   the unique constraint is commented for now because there might be multiple non-canonical batches for the same height
---   unique (height, is_canonical, executed)
+--   unique (height, is_canonical, is_executed)
 );
 create index IDX_BATCH_HEIGHT on batch (height);
 create index IDX_BATCH_SEQ on batch (sequence);

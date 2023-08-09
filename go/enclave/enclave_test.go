@@ -462,7 +462,11 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 	genesisBatch := dummyBatch(blk.Hash(), common.L2GenesisHeight, genesisPreallocStateDB)
 
 	// We update the database
-	return enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch)
+	err = enclave.(*enclaveImpl).storage.StoreBatch(genesisBatch)
+	if err != nil {
+		return err
+	}
+	return enclave.(*enclaveImpl).storage.StoreExecutedBatch(genesisBatch, nil)
 }
 
 func dummyBatch(blkHash gethcommon.Hash, height uint64, state *state.StateDB) *core.Batch {
