@@ -51,7 +51,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		SubID: subscription.ID,
 	})
 	if err != nil {
-		api.host.Unsubscribe(subscription.ID)
+		_ = api.host.Unsubscribe(subscription.ID)
 		return nil, fmt.Errorf("could not send subscription ID to client on subscription %s", subscription.ID)
 	}
 
@@ -90,7 +90,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 	// unsubscribe commands are handled in a different go-routine to avoid deadlocking with the log processing
 	go func() {
 		<-subscription.Err()
-		api.host.Unsubscribe(subscription.ID)
+		_ = api.host.Unsubscribe(subscription.ID)
 		unsubscribed.Store(true)
 	}()
 

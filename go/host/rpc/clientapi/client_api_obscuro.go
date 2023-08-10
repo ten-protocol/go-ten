@@ -16,6 +16,6 @@ func NewObscuroAPI(host host.Host) *ObscuroAPI {
 }
 
 // Health returns the health status of obscuro host + enclave + db
-func (api *ObscuroAPI) Health() (*host.HealthCheck, error) {
+func (api *ObscuroAPI) Health() *host.HealthCheck {
 	return api.host.HealthCheck()
 }

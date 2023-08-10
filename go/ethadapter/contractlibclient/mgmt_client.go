@@ -10,6 +10,7 @@ type MgmtContractLibClient struct {
 	mgmtContract mgmtcontractlib.MgmtContractLib
 }
 
+// NewMgmtContractLibClient takes care of interacting with the management contract state on-chain
 func NewMgmtContractLibClient(l1Client ethadapter.EthClient, mgmtContract mgmtcontractlib.MgmtContractLib) *MgmtContractLibClient {
 	return &MgmtContractLibClient{
 		l1Client:     l1Client,

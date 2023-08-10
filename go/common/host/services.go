@@ -12,23 +12,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 )
 
-// service names - these are the keys used to register known services with the host
-const (
-	P2PName                    = "p2p"
-	L1BlockRepositoryName      = "l1-block-repo"
-	L1PublisherName            = "l1-publisher"
-	L2BatchRepositoryName      = "l2-batch-repo"
-	EnclaveServiceName         = "enclaves"
-	LogSubscriptionServiceName = "log-subs"
-)
-
-// The host has a number of services that encapsulate the various responsibilities of the host.
-// This file contains service-level abstractions and utilities, as well as all the interfaces for these services, code
-// should depend on these interfaces rather than the concrete implementations.
-
 // Service interface allows the host to manage all services in a generic way
-// Note: Services may depend on other services but they shouldn't use them during construction, only when 'Start()' is called.
-// They should be resilient to services availability, because the construction ordering is not guaranteed.
 type Service interface {
 	Start() error
 	Stop() error

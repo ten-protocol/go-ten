@@ -29,6 +29,7 @@ import (
 type host struct {
 	hostcommon.APIDBRepository  // Access to the hosts public available db
 	hostcommon.APIEnclaveClient // Access to the Enclave operations
+	hostcommon.APIEnclaveService
 
 	config *config.HostConfig
 
@@ -79,12 +80,13 @@ func NewHost(
 	logger.Info("Host service created with following config:", log.CfgKey, string(jsonConfig))
 
 	return &host{
-		APIDBRepository:  database,
-		APIEnclaveClient: enclaveClient,
-		config:           config,
-		logger:           logger,
-		stopControl:      stopControl,
-		interrupter:      interrupter,
+		APIDBRepository:   database,
+		APIEnclaveClient:  enclaveClient,
+		APIEnclaveService: enclaveService,
+		config:            config,
+		logger:            logger,
+		stopControl:       stopControl,
+		interrupter:       interrupter,
 		services: &Services{
 			P2P:            p2p,
 			L1Repo:         l1RepoService,
@@ -137,15 +139,16 @@ func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 	return h.services.EnclaveService.Subscribe(id, encryptedLogSubscription, matchedLogsCh)
 }
 
-func (h *host) Unsubscribe(id rpc.ID) {
+func (h *host) Unsubscribe(id rpc.ID) error {
 	if h.stopControl.IsStopping() {
-		h.logger.Error("requested Subscribe with the host stopping")
+		return fmt.Errorf("requested Subscribe with the host stopping")
 	}
 	// todo surface this err
 	err := h.services.EnclaveService.Unsubscribe(id)
 	if err != nil {
-		h.logger.Warn("err unsubscribing - ", log.ErrKey, err)
+		return fmt.Errorf("err unsubscribing - %w ", err)
 	}
+	return nil
 }
 
 func (h *host) Stop() error {
@@ -166,10 +169,13 @@ func (h *host) Stop() error {
 	return nil
 }
 
-// HealthCheck returns whether the host, enclave and DB are healthy
-func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
+// HealthCheck returns whether the host and it's services are healthy
+func (h *host) HealthCheck() *hostcommon.HealthCheck {
 	if h.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the host stopping"))
+		return &hostcommon.HealthCheck{
+			OverallHealth: false,
+			Errors:        []string{"requested HealthCheck with the host stopping"},
+		}
 	}
 
 	healthErrors := make([]string, 0)
@@ -185,7 +191,7 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 	return &hostcommon.HealthCheck{
 		OverallHealth: len(healthErrors) == 0,
 		Errors:        healthErrors,
-	}, nil
+	}
 }
 
 // Checks the host config is valid.

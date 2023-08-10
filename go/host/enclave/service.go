@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/kamilsk/breaker"
-	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/host/db"
-	"github.com/pkg/errors"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/kamilsk/breaker"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/host/db"
 	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/pkg/errors"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 // Service is a host service that provides access to the enclave(s) - it handles failover, load balancing, circuit breaking when a host has multiple enclaves
@@ -127,10 +127,10 @@ func (e *Service) Subscribe(id rpc.ID, encryptedParams common.EncryptedParamsLog
 }
 
 func (e *Service) Unsubscribe(id rpc.ID) error {
+	e.enclaveGuardian.logEventManager.Unsubscribe(id)
 	err := e.enclaveGuardian.GetEnclaveClient().Unsubscribe(id)
 	if err != nil {
 		return errors.Wrap(err, "could not terminate enclave subscription")
 	}
-	e.enclaveGuardian.logEventManager.Unsubscribe(id)
 	return nil
 }

@@ -4,35 +4,39 @@ import (
 	"encoding/json"
 	"math/big"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/responses"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // Host is the half of the Obscuro node that lives outside the enclave.
 type Host interface {
 	APIDBRepository
 	APIEnclaveClient
-
-	Config() *config.HostConfig
+	APIEnclaveService
 
 	// Start initializes the main loop of the host.
 	Start() error
+	// Stop gracefully stops the host execution.
+	Stop() error
+	// HealthCheck returns the health status of the host + services
+	HealthCheck() *HealthCheck
+	Config() *config.HostConfig
+
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
 	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
+}
+
+type APIEnclaveService interface {
 	// Subscribe feeds logs matching the encrypted log subscription to the matchedLogs channel.
 	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error
 	// Unsubscribe terminates a log subscription between the host and the enclave.
-	Unsubscribe(id rpc.ID)
-	// Stop gracefully stops the host execution.
-	Stop() error
-
-	// HealthCheck returns the health status of the host + enclave + db
-	HealthCheck() (*HealthCheck, error)
+	Unsubscribe(id rpc.ID) error
 }
 
 type APIDBRepository interface {
