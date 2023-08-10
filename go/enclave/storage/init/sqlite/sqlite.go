@@ -46,7 +46,7 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (enclavedb.En
 		}
 	}
 
-	db, err := sql.Open("sqlite3", dbPath+"&_foreign_keys=on")
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?_foreign_keys=on", dbPath))
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
