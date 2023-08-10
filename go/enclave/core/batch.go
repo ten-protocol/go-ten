@@ -32,6 +32,10 @@ func (b *Batch) Hash() common.L2BatchHash {
 	return v
 }
 
+func (b *Batch) ResetHash() {
+	b.hash = atomic.Value{}
+}
+
 func (b *Batch) Size() (int, error) {
 	bytes, err := rlp.EncodeToBytes(b)
 	return len(bytes), err

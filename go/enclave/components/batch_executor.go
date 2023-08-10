@@ -110,6 +110,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 
 	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
+	copyBatch.ResetHash()
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
 	copyBatch.Transactions = successfulTxs
 
@@ -119,9 +120,12 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 
 	executor.populateHeader(&copyBatch, allReceipts(txReceipts, ccReceipts))
 
-	// the receipts produced by the EVM have the wrong hash which must be adjusted
+	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
 	for _, receipt := range txReceipts {
 		receipt.BlockHash = copyBatch.Hash()
+		for _, l := range receipt.Logs {
+			l.BlockHash = copyBatch.Hash()
+		}
 	}
 
 	return &ComputedBatch{
