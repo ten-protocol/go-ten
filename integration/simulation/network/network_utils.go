@@ -2,12 +2,13 @@ package network
 
 import (
 	"fmt"
-	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/host/db"
-	"github.com/obscuronet/go-obscuro/go/host/l1"
 	"math"
 	"math/big"
 	"time"
+
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/host/db"
+	"github.com/obscuronet/go-obscuro/go/host/l1"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -99,7 +100,7 @@ func createInMemObscuroNode(
 	if err != nil {
 		hostLogger.Crit("unable to create database for host", log.ErrKey, err)
 	}
-	
+
 	l1Publisher := l1.NewL1Publisher(hostcommon.NewIdentity(hostConfig), ethWallet, ethClient, mgmtContractLib, testlog.Logger())
 
 	currentContainer := container.NewHostContainer(

@@ -2,13 +2,14 @@ package p2p
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/contractlibclient"
 	"io"
 	"math/big"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/ethadapter/contractlibclient"
 
 	"github.com/obscuronet/go-obscuro/go/common/subscription"
 	"github.com/pkg/errors"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/config"
 
@@ -53,9 +53,9 @@ type message struct {
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
 func NewSocketP2PLayer(config *config.HostConfig, mgmtContractClient *contractlibclient.MgmtContractLibClient, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
 	return &Service{
-		batchSubscribers: subscription.NewManager[host.P2PBatchHandler](),
-		txSubscribers:    subscription.NewManager[host.P2PTxHandler](),
-		batchReqHandlers: subscription.NewManager[host.P2PBatchRequestHandler](),
+		batchSubscribers: subscription.NewManager[hostcommon.P2PBatchHandler](),
+		txSubscribers:    subscription.NewManager[hostcommon.P2PTxHandler](),
+		batchReqHandlers: subscription.NewManager[hostcommon.P2PBatchRequestHandler](),
 
 		isSequencer:   config.NodeType == common.Sequencer,
 		ourAddress:    config.P2PBindAddress,
@@ -74,9 +74,9 @@ func NewSocketP2PLayer(config *config.HostConfig, mgmtContractClient *contractli
 }
 
 type Service struct {
-	batchSubscribers *subscription.Manager[host.P2PBatchHandler]
-	txSubscribers    *subscription.Manager[host.P2PTxHandler]
-	batchReqHandlers *subscription.Manager[host.P2PBatchRequestHandler]
+	batchSubscribers *subscription.Manager[hostcommon.P2PBatchHandler]
+	txSubscribers    *subscription.Manager[hostcommon.P2PTxHandler]
+	batchReqHandlers *subscription.Manager[hostcommon.P2PBatchRequestHandler]
 
 	listener          net.Listener
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
@@ -122,25 +122,25 @@ func (p *Service) Stop() error {
 	return nil
 }
 
-func (p *Service) HealthStatus() host.HealthStatus {
+func (p *Service) HealthStatus() hostcommon.HealthStatus {
 	msg := ""
 	if err := p.verifyHealth(); err != nil {
 		msg = err.Error()
 	}
-	return &host.BasicErrHealthStatus{
+	return &hostcommon.BasicErrHealthStatus{
 		ErrMsg: msg,
 	}
 }
 
-func (p *Service) SubscribeForBatches(handler host.P2PBatchHandler) func() {
+func (p *Service) SubscribeForBatches(handler hostcommon.P2PBatchHandler) func() {
 	return p.batchSubscribers.Subscribe(handler)
 }
 
-func (p *Service) SubscribeForTx(handler host.P2PTxHandler) func() {
+func (p *Service) SubscribeForTx(handler hostcommon.P2PTxHandler) func() {
 	return p.txSubscribers.Subscribe(handler)
 }
 
-func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler) func() {
+func (p *Service) SubscribeForBatchRequests(handler hostcommon.P2PBatchRequestHandler) func() {
 	return p.batchReqHandlers.Subscribe(handler)
 }
 
@@ -186,7 +186,7 @@ func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
 	if !p.isSequencer {
 		return errors.New("only sequencer can broadcast batches")
 	}
-	batchMsg := host.BatchMsg{
+	batchMsg := hostcommon.BatchMsg{
 		Batches: batches,
 		IsLive:  true,
 	}
@@ -231,7 +231,7 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 	if !p.isSequencer {
 		return errors.New("only sequencer can respond to batch requests")
 	}
-	batchMsg := &host.BatchMsg{
+	batchMsg := &hostcommon.BatchMsg{
 		Batches: batches,
 		IsLive:  true,
 	}
@@ -316,7 +316,7 @@ func (p *Service) handle(conn net.Conn) {
 			p.logger.Error("received batch from peer, but this is a sequencer node")
 			return
 		}
-		var batchMsg *host.BatchMsg
+		var batchMsg *hostcommon.BatchMsg
 		err := rlp.DecodeBytes(msg.Contents, &batchMsg)
 		if err != nil {
 			p.logger.Warn("unable to decode batch received from peer", log.ErrKey, err)

@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/events"
+
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 
 	"github.com/kamilsk/breaker"
@@ -36,15 +38,6 @@ const (
 	_maxWaitForSecretResponse = 2 * time.Minute
 )
 
-// This private interface enforces the services that the guardian depends on
-type guardianServiceLocator interface {
-	P2P() host.P2P
-	L1Publisher() host.L1Publisher
-	L1Repo() host.L1BlockRepository
-	L2Repo() host.L2BatchRepository
-	LogSubs() host.LogSubscriptionManager
-}
-
 // Guardian is a host service which monitors an enclave, it's responsibilities include:
 // - monitor the enclave state and feed it the data it needs
 // - if it is an active sequencer then the guardian will trigger batch/rollup creation
@@ -63,13 +56,13 @@ type Guardian struct {
 	running         atomic.Bool
 	hostInterrupter breaker.Interface // host hostInterrupter so we can stop quickly
 
-	logger      gethlog.Logger
-	p2p         host.P2P
-	l1Publisher host.L1Publisher
-	l2Repo      host.L2BatchRepository
-	logSubs     host.LogSubscriptionManager
-	l1Repo      host.L1BlockRepository
-	isSequencer bool
+	logger          gethlog.Logger
+	p2p             host.P2P
+	l1Publisher     host.L1Publisher
+	l2Repo          host.L2BatchRepository
+	logEventManager host.LogSubscriptionManager
+	l1Repo          host.L1BlockRepository
+	isSequencer     bool
 }
 
 func NewGuardian(
@@ -79,8 +72,6 @@ func NewGuardian(
 	l1Publisher host.L1Publisher,
 	l1repo host.L1BlockRepository,
 	l2Repo host.L2BatchRepository,
-	logSubs host.LogSubscriptionManager,
-
 	enclaveClient common.Enclave,
 	db *db.DB,
 	interrupter breaker.Interface,
@@ -99,7 +90,7 @@ func NewGuardian(
 		l1Publisher:     l1Publisher,
 		l1Repo:          l1repo,
 		l2Repo:          l2Repo,
-		logSubs:         logSubs,
+		logEventManager: events.NewSubscriptionManager(),
 		isSequencer:     cfg.NodeType == common.Sequencer,
 	}
 }
@@ -381,23 +372,6 @@ func (g *Guardian) catchupWithL2() error {
 
 		g.logger.Trace("fetching next batch", log.BatchSeqNoKey, nextHead)
 		batch, err := g.l2Repo.FetchBatchBySeqNo(nextHead)
-		// if data is expected to exist then fetch it from the enclave if it's the sequencer
-		// validators will fetch the data async
-		if g.isSequencer && errors.Is(err, errutil.ErrExpectedData) {
-			// sequencer does not request batches from peers, it checks if its enclave has the batch
-			b, err := g.LookupBatchBySeqNo(nextHead)
-			if err != nil {
-				return err
-			}
-
-			// asynchronously add that batch to the repo, so we have it for the next request
-			go func() {
-				err := g.l2Repo.AddBatch(b)
-				if err != nil {
-					g.logger.Info("unable to add batch that was returned from the enclave", log.ErrKey, err)
-				}
-			}()
-		}
 		if err != nil {
 			return errors.Wrap(err, "could not fetch next L2 batch")
 		}
@@ -630,7 +604,7 @@ func (g *Guardian) streamEnclaveData() {
 			}
 
 			if resp.Logs != nil {
-				g.logSubs.SendLogsToSubscribers(&resp.Logs)
+				g.logEventManager.SendLogsToSubscribers(&resp.Logs)
 			}
 
 		case <-time.After(1 * time.Second):

@@ -4,6 +4,11 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/kamilsk/breaker"
+	"github.com/obscuronet/go-obscuro/go/config"
+	"github.com/obscuronet/go-obscuro/go/host/db"
+	"github.com/pkg/errors"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -14,8 +19,8 @@ import (
 
 // Service is a host service that provides access to the enclave(s) - it handles failover, load balancing, circuit breaking when a host has multiple enclaves
 type Service struct {
-	hostData host.Identity
-	p2p      host.P2P
+	hostIdentity host.Identity
+	p2p          host.P2P
 	// eventually this service will support multiple enclaves for HA, but currently there's only one
 	// The service goes via the Guardian to talk to the enclave (because guardian knows if the enclave is healthy etc.)
 	enclaveGuardian *Guardian
@@ -24,12 +29,34 @@ type Service struct {
 	logger  gethlog.Logger
 }
 
-func NewService(hostData host.Identity, p2p host.P2P, enclaveGuardian *Guardian, logger gethlog.Logger) *Service {
+func NewService(
+	cfg *config.HostConfig,
+	p2p host.P2P,
+	l1Publisher host.L1Publisher,
+	l1RepoService host.L1BlockRepository,
+	l2RepoService host.L2BatchRepository,
+	hostIdentity host.Identity,
+	enclaveClient common.Enclave,
+	database *db.DB,
+	interrupter breaker.Interface,
+	logger gethlog.Logger,
+) *Service {
 	return &Service{
-		hostData:        hostData,
-		p2p:             p2p,
-		enclaveGuardian: enclaveGuardian,
-		logger:          logger,
+		hostIdentity: hostIdentity,
+		p2p:          p2p,
+		enclaveGuardian: NewGuardian(
+			cfg,
+			hostIdentity,
+			p2p,
+			l1Publisher,
+			l1RepoService,
+			l2RepoService,
+			enclaveClient,
+			database,
+			interrupter,
+			logger,
+		),
+		logger: logger,
 	}
 }
 
@@ -81,7 +108,7 @@ func (e *Service) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSen
 		return enclaveResponse, nil //nolint: nilerr
 	}
 
-	if !e.hostData.IsSequencer {
+	if !e.hostIdentity.IsSequencer {
 		err := e.p2p.SendTxToSequencer(encryptedTx)
 		if err != nil {
 			return nil, fmt.Errorf("could not broadcast transaction to sequencer. Cause: %w", err)
@@ -91,10 +118,19 @@ func (e *Service) SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSen
 	return enclaveResponse, nil
 }
 
-func (e *Service) Subscribe(id rpc.ID, encryptedParams common.EncryptedParamsLogSubscription) error {
-	return e.enclaveGuardian.GetEnclaveClient().Subscribe(id, encryptedParams)
+func (e *Service) Subscribe(id rpc.ID, encryptedParams common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error {
+	err := e.enclaveGuardian.GetEnclaveClient().Subscribe(id, encryptedParams)
+	if err != nil {
+		return errors.Wrap(err, "could not create subscription with enclave")
+	}
+	return e.enclaveGuardian.logEventManager.Subscribe(id, matchedLogsCh)
 }
 
 func (e *Service) Unsubscribe(id rpc.ID) error {
-	return e.enclaveGuardian.GetEnclaveClient().Unsubscribe(id)
+	err := e.enclaveGuardian.GetEnclaveClient().Unsubscribe(id)
+	if err != nil {
+		return errors.Wrap(err, "could not terminate enclave subscription")
+	}
+	e.enclaveGuardian.logEventManager.Unsubscribe(id)
+	return nil
 }

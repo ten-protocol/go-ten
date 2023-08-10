@@ -2,13 +2,14 @@ package devnetwork
 
 import (
 	"fmt"
+	"math/big"
+	"os"
+	"time"
+
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/contractlibclient"
 	"github.com/obscuronet/go-obscuro/go/host/db"
 	"github.com/obscuronet/go-obscuro/go/host/l1"
-	"math/big"
-	"os"
-	"time"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
 

@@ -2,6 +2,8 @@ package host
 
 import (
 	"encoding/json"
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -9,7 +11,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
 	"github.com/obscuronet/go-obscuro/go/config"
 	"github.com/obscuronet/go-obscuro/go/responses"
-	"math/big"
 )
 
 // Host is the half of the Obscuro node that lives outside the enclave.

@@ -3,9 +3,9 @@ package host
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/host/db"
-	"os"
 
 	"github.com/kamilsk/breaker"
 
@@ -22,7 +22,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/host/events"
 	"github.com/obscuronet/go-obscuro/go/responses"
 )
 
@@ -31,17 +30,15 @@ type host struct {
 	hostcommon.APIDBRepository  // Access to the hosts public available db
 	hostcommon.APIEnclaveClient // Access to the Enclave operations
 
-	config  *config.HostConfig
-	shortID uint64
+	config *config.HostConfig
 
 	// ignore incoming requests
 	stopControl *stopcontrol.StopControl
+	interrupter breaker.Interface
 
 	logger gethlog.Logger
 
-	interrupter breaker.Interface
-	services    *Services
-	subsService *events.LogEventManager
+	services *Services
 }
 
 func NewHost(
@@ -57,34 +54,25 @@ func NewHost(
 	hostIdentity := hostcommon.NewIdentity(config)
 
 	// set up control mechanisms
+	// todo mix the two control packages
 	stopControl := stopcontrol.New()
-	interrupter := breaker.Multiplex(
-		breaker.BreakBySignal(
-			os.Kill,
-			os.Interrupt,
-		),
-	)
+	interrupter := breaker.New()
 
 	// create the Host controlled Services
-	l1RepoService := l1.NewL1Repository(l1Client, logger)
-	l2RepoService := l2.NewBatchRepository(config, p2p, database, logger)
-	logEventService := events.NewLogEventManager(enclaveClient, logger)
-	// todo review why there are 2 inits for the guardian ( guardian component + service )
-	// both exist at the same level and both have start/stop but the service should be the only available interface to the host
-	enclaveGuardianLib := enclave.NewGuardian(
+	l1RepoService := l1.NewL1Repository(l1Client, logger)                 // host controls the l1 block streaming
+	l2RepoService := l2.NewBatchRepository(config, p2p, database, logger) // host controls the p2p batch subscription
+	enclaveService := enclave.NewService(
 		config,
-		hostIdentity,
 		p2p,
 		l1Publisher,
 		l1RepoService,
 		l2RepoService,
-		logEventService,
+		hostIdentity,
 		enclaveClient,
 		database,
 		interrupter,
 		logger,
 	)
-	enclaveService := enclave.NewService(hostIdentity, p2p, enclaveGuardianLib, logger)
 
 	// log startup data for sanity control / tests
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
@@ -93,15 +81,10 @@ func NewHost(
 	return &host{
 		APIDBRepository:  database,
 		APIEnclaveClient: enclaveClient,
-
-		// config
-		config:  config,
-		shortID: common.ShortAddress(config.ID),
-		logger:  logger,
-
-		stopControl: stopControl,
-		interrupter: interrupter,
-		subsService: logEventService,
+		config:           config,
+		logger:           logger,
+		stopControl:      stopControl,
+		interrupter:      interrupter,
 		services: &Services{
 			P2P:            p2p,
 			L1Repo:         l1RepoService,
@@ -151,14 +134,18 @@ func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 	if h.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested Subscribe with the host stopping"))
 	}
-	return h.subsService.Subscribe(id, encryptedLogSubscription, matchedLogsCh)
+	return h.services.EnclaveService.Subscribe(id, encryptedLogSubscription, matchedLogsCh)
 }
 
 func (h *host) Unsubscribe(id rpc.ID) {
 	if h.stopControl.IsStopping() {
 		h.logger.Error("requested Subscribe with the host stopping")
 	}
-	h.subsService.Unsubscribe(id)
+	// todo surface this err
+	err := h.services.EnclaveService.Unsubscribe(id)
+	if err != nil {
+		h.logger.Warn("err unsubscribing - ", log.ErrKey, err)
+	}
 }
 
 func (h *host) Stop() error {

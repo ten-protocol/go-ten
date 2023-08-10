@@ -2,6 +2,7 @@ package l2
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -120,6 +121,7 @@ func (r *Repository) HandleBatchRequest(requesterID string, fromSeqNo *big.Int) 
 	batches := make([]*common.ExtBatch, 0)
 	nextSeqNum := fromSeqNo
 	for len(batches) <= _maxBatchesInP2PResponse {
+		// todo if the batch does not exist in the db, check the enclave
 		batch, err := r.db.GetBatchBySequenceNumber(nextSeqNum)
 		if err != nil {
 			if !errors.Is(err, errutil.ErrNotFound) {
@@ -151,8 +153,7 @@ func (r *Repository) FetchBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error)
 		if errors.Is(err, errutil.ErrNotFound) && seqNo.Cmp(r.latestBatchSeqNo) < 0 {
 			if r.isSequencer {
 				// sequencer does not request batches from peers, it checks if its enclave has the batch
-				return nil, errutil.ErrExpectedData
-				//return r.fetchBatchFallbackToEnclave(seqNo)
+				return nil, fmt.Errorf("sequencer should never reach here")
 			}
 			// we haven't seen this batch before, but it is older than the latest batch we have seen so far
 			// Request missing batches from peers (the batches from any response will be added asynchronously, so

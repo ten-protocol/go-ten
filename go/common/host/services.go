@@ -151,7 +151,7 @@ type EnclaveService interface {
 
 // LogSubscriptionManager provides an interface for the host to manage log subscriptions
 type LogSubscriptionManager interface {
-	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogsCh chan []byte) error
+	Subscribe(id rpc.ID, matchedLogsCh chan []byte) error
 	Unsubscribe(id rpc.ID)
 	SendLogsToSubscribers(result *common.EncryptedSubscriptionLogs)
 }
