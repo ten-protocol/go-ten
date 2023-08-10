@@ -34,7 +34,7 @@ func TestDefaultGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB, err := sqlite.CreateTemporarySQLiteDB("", testlog.Logger())
+	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", testlog.Logger())
 	if err != nil {
 		t.Fatalf("unable to create temp db: %s", err)
 	}
@@ -77,7 +77,7 @@ func TestCustomGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB, err := sqlite.CreateTemporarySQLiteDB("", testlog.Logger())
+	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", testlog.Logger())
 	if err != nil {
 		t.Fatalf("unable to create temp db: %s", err)
 	}
