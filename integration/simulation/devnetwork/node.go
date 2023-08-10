@@ -2,11 +2,13 @@ package devnetwork
 
 import (
 	"fmt"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/contractlibclient"
+	"github.com/obscuronet/go-obscuro/go/host/db"
+	"github.com/obscuronet/go-obscuro/go/host/l1"
 	"math/big"
 	"os"
 	"time"
-
-	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
 
@@ -133,14 +135,31 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 
 	// create a socket P2P layer
 	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
-	svcLocator := host.NewServicesRegistry(n.logger)
-	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, svcLocator, p2pLogger, nil)
+	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&hostConfig.ManagementContractAddress, n.logger)
+	mgmtContractLibClient := contractlibclient.NewMgmtContractLibClient(n.l1Client, mgmtContractLib)
+	l1Publisher := l1.NewL1Publisher(hostcommon.NewIdentity(hostConfig), n.l1Wallet, n.l1Client, mgmtContractLib, hostLogger)
+	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, mgmtContractLibClient, p2pLogger, nil)
 	// create an enclave client
+
+	database, err := db.CreateDBFromConfig(hostConfig, nil, testlog.Logger())
+	if err != nil {
+		testlog.Logger().Crit("unable to create database for host", log.ErrKey, err)
+	}
 
 	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, n.operatorIdx))
 	rpcServer := clientrpc.NewServer(hostConfig, n.logger)
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&hostConfig.ManagementContractAddress, n.logger)
-	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, enclaveClient, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger))
+
+	return hostcontainer.NewHostContainer(
+		hostConfig,
+		database,
+		n.l1Client,
+		l1Publisher,
+		nodeP2p,
+		enclaveClient,
+		rpcServer,
+		hostLogger,
+		metrics.New(false, 0, n.logger),
+	)
 }
 
 func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveContainer {

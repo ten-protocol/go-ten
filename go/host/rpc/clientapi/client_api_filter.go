@@ -99,7 +99,7 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 
 // GetLogs returns the logs matching the filter.
 func (api *FilterAPI) GetLogs(_ context.Context, encryptedParams common.EncryptedParamsGetLogs) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetLogs(encryptedParams)
+	enclaveResponse, sysError := api.host.GetLogs(encryptedParams)
 	if sysError != nil {
 		return api.handleSysError(sysError)
 	}

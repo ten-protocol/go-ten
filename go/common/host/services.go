@@ -111,8 +111,6 @@ type L1Publisher interface {
 	// PublishSecretResponse will create and publish a secret response tx to the management contract - fire and forget we don't wait for receipt
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error
 
-	FetchLatestPeersList() ([]string, error)
-
 	FetchLatestSeqNo() (*big.Int, error)
 }
 

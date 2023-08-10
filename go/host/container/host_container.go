@@ -2,6 +2,8 @@ package container
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/profiler"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/contractlibclient"
 	"time"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -12,6 +14,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 	"github.com/obscuronet/go-obscuro/go/host"
+	"github.com/obscuronet/go-obscuro/go/host/db"
+	"github.com/obscuronet/go-obscuro/go/host/l1"
 	"github.com/obscuronet/go-obscuro/go/host/p2p"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientapi"
 	"github.com/obscuronet/go-obscuro/go/host/rpc/clientrpc"
@@ -38,6 +42,7 @@ type HostContainer struct {
 	logger         gethlog.Logger
 	metricsService *metrics.Service
 	rpcServer      clientrpc.Server
+	prof           *profiler.Profiler
 }
 
 func (h *HostContainer) Start() error {
@@ -61,6 +66,13 @@ func (h *HostContainer) Start() error {
 		fmt.Println("Started Obscuro host RPC Server...")
 	}
 
+	if h.prof != nil {
+		err = h.prof.Start()
+		if err != nil {
+			h.logger.Crit("unable to start the profiler: %s", log.ErrKey, err)
+		}
+	}
+
 	return nil
 }
 
@@ -80,6 +92,13 @@ func (h *HostContainer) Stop() error {
 			time.Sleep(time.Second) // todo review this sleep
 			h.rpcServer.Stop()
 		}()
+	}
+
+	if h.prof != nil {
+		err = h.prof.Stop()
+		if err != nil {
+			h.logger.Crit("unable to start the profiler: %s", log.ErrKey, err)
+		}
 	}
 
 	return nil
@@ -126,29 +145,65 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	// set the Host ID as the Public Key Address
 	cfg.ID = ethWallet.Address()
 
-	fmt.Println("Connecting to the enclave...")
-	services := host.NewServicesRegistry(logger)
+	// Create services and components NOT controlled by the host
+	// Service: Component with a Start/Stop/Health
+	// Component: Library or Wrapper around a feature
+
+	fmt.Println("Host connecting to the enclave...")
 	enclaveClient := enclaverpc.NewClient(cfg, logger)
-	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
-	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
-	rpcServer := clientrpc.NewServer(cfg, logger)
+	rpcServerService := clientrpc.NewServer(cfg, logger)
+	database, err := db.CreateDBFromConfig(cfg, metricsService.Registry(), logger)
+	if err != nil {
+		logger.Crit("unable to create database for host", log.ErrKey, err)
+	}
 
+	// todo @pedro wrap the client in the contractlib and only pass the client to other components
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)
+	mgmtContractLibClient := contractlibclient.NewMgmtContractLibClient(l1Client, mgmtContractLib)
+	l1PublisherLib := l1.NewL1Publisher(hostcommon.NewIdentity(cfg), ethWallet, l1Client, mgmtContractLib, logger)
+	p2pServerService := p2p.NewSocketP2PLayer(cfg, mgmtContractLibClient, logger.New(log.CmpKey, log.P2PCmp), metricsService.Registry())
 
-	return NewHostContainer(cfg, services, aggP2P, l1Client, enclaveClient, mgmtContractLib, ethWallet, rpcServer, logger, metricsService)
+	return NewHostContainer(
+		cfg,
+		database,
+		l1Client,
+		l1PublisherLib,
+		p2pServerService,
+		enclaveClient,
+		rpcServerService,
+		logger,
+		metricsService,
+	)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p host.P2PHostService, l1Client ethadapter.EthClient, enclaveClient common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer clientrpc.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
-	h := host.NewHost(cfg, services, p2p, l1Client, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
+func NewHostContainer(
+	cfg *config.HostConfig,
+	database *db.DB,
+	l1Client ethadapter.EthClient,
+	l1PublisherLib *l1.Publisher,
+	p2pServer host.P2PHostService,
+	enclaveClient common.Enclave,
+	rpcServer clientrpc.Server,
+	logger gethlog.Logger,
+	metricsService *metrics.Service,
+) *HostContainer {
+	h := host.NewHost(cfg, database, l1Client, l1PublisherLib, p2pServer, enclaveClient, logger)
+
+	// The profiler is conditionally set here as a different profiler will never be injected as dependency of the host
+	var prof *profiler.Profiler
+	if cfg.ProfilerEnabled {
+		prof = profiler.NewProfiler(profiler.DefaultHostPort, logger)
+	}
 
 	hostContainer := &HostContainer{
 		host:           h,
 		logger:         logger,
 		rpcServer:      rpcServer,
 		metricsService: metricsService,
+		prof:           prof,
 	}
 
 	if cfg.HasClientRPCHTTP || cfg.HasClientRPCWebsockets {

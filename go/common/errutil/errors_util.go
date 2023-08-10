@@ -16,6 +16,7 @@ var (
 	ErrNotFound      = ethereum.NotFound
 	ErrAlreadyExists = errors.New("already exists")
 	ErrNoImpl        = errors.New("not implemented")
+	ErrExpectedData  = errors.New("data expected to exist")
 
 	// Standard errors that can be returned from block submission
 

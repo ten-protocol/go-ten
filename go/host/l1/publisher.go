@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"sync/atomic"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -37,41 +36,23 @@ type Publisher struct {
 	hostWallet      wallet.Wallet // Wallet used to issue ethereum transactions
 	ethClient       ethadapter.EthClient
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
-
-	repository host.L1BlockRepository
-	logger     gethlog.Logger
-
-	running atomic.Bool
+	logger          gethlog.Logger
 }
 
-func NewL1Publisher(hostData host.Identity, hostWallet wallet.Wallet, client ethadapter.EthClient, mgmtContract mgmtcontractlib.MgmtContractLib, repository host.L1BlockRepository, logger gethlog.Logger) *Publisher {
+func NewL1Publisher(
+	hostData host.Identity,
+	hostWallet wallet.Wallet,
+	client ethadapter.EthClient,
+	mgmtContract mgmtcontractlib.MgmtContractLib,
+	logger gethlog.Logger,
+) *Publisher {
 	return &Publisher{
 		hostData:        hostData,
 		hostWallet:      hostWallet,
 		ethClient:       client,
 		mgmtContractLib: mgmtContract,
-		repository:      repository,
 		logger:          logger,
 	}
-}
-
-func (p *Publisher) Start() error {
-	p.running.Store(true)
-	return nil
-}
-
-func (p *Publisher) Stop() error {
-	p.running.Store(false)
-	return nil
-}
-
-func (p *Publisher) HealthStatus() host.HealthStatus {
-	// todo (@matt) do proper health status based on failed transactions or something
-	errMsg := ""
-	if !p.running.Load() {
-		errMsg = "not running"
-	}
-	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
 func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encSecret common.EncryptedSharedEnclaveSecret) error {
@@ -108,6 +89,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 		Attestation: encodedAttestation,
 	}
 	// record the L1 head height before we submit the secret request, so we know which block to watch from
+	// todo @pedro move this reconnection feature elsewhere
 	l1Head, err := p.ethClient.FetchHeadBlock()
 	if err != nil {
 		err = p.ethClient.Reconnect()
@@ -186,6 +168,7 @@ func (p *Publisher) ExtractRollupTxs(block *types.Block) []*ethadapter.L1RollupT
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
+	// todo @pedro this is only ever used by the guardian - the guardian should reuse the mgmtContractLibClient
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 
@@ -226,41 +209,10 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	}
 }
 
-func (p *Publisher) FetchLatestPeersList() ([]string, error) {
-	msg, err := p.mgmtContractLib.GetHostAddresses()
-	if err != nil {
-		return nil, err
-	}
-	response, err := p.ethClient.CallContract(msg)
-	if err != nil {
-		return nil, err
-	}
-	decodedResponse, err := p.mgmtContractLib.DecodeCallResponse(response)
-	if err != nil {
-		return nil, err
-	}
-	hostAddresses := decodedResponse[0]
-
-	// We remove any duplicate addresses and our own address from the retrieved peer list
-	var filteredHostAddresses []string
-	uniqueHostKeys := make(map[string]bool) // map to track addresses we've seen already
-	for _, hostAddress := range hostAddresses {
-		// We exclude our own address.
-		if hostAddress == p.hostData.P2PPublicAddress {
-			continue
-		}
-		if _, found := uniqueHostKeys[hostAddress]; !found {
-			uniqueHostKeys[hostAddress] = true
-			filteredHostAddresses = append(filteredHostAddresses, hostAddress)
-		}
-	}
-
-	return filteredHostAddresses, nil
-}
-
 // `tries` is the number of times to attempt broadcasting the transaction.
 // if awaitReceipt is true then this method will block and synchronously wait to check the receipt, otherwise it is fire
 // and forget and the receipt tracking will happen in a separate go-routine
+// todo @pedro this should use the managmentcontractclient and avoid directly calling the ethclient
 func (p *Publisher) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitReceipt bool) error {
 	var err error
 	tx, err = p.ethClient.EstimateGasAndGasPrice(tx, p.hostWallet.Address())

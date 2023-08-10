@@ -53,9 +53,7 @@ type Guardian struct {
 	hostData      host.Identity
 	state         *StateTracker // state machine that tracks our view of the enclave's state
 	enclaveClient common.Enclave
-
-	sl guardianServiceLocator
-	db *db.DB
+	db            *db.DB
 
 	submitDataLock sync.Mutex // we only submit one block, batch or transaction to enclave at a time
 
@@ -65,20 +63,44 @@ type Guardian struct {
 	running         atomic.Bool
 	hostInterrupter breaker.Interface // host hostInterrupter so we can stop quickly
 
-	logger gethlog.Logger
+	logger      gethlog.Logger
+	p2p         host.P2P
+	l1Publisher host.L1Publisher
+	l2Repo      host.L2BatchRepository
+	logSubs     host.LogSubscriptionManager
+	l1Repo      host.L1BlockRepository
+	isSequencer bool
 }
 
-func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter breaker.Interface, logger gethlog.Logger) *Guardian {
+func NewGuardian(
+	cfg *config.HostConfig,
+	hostData host.Identity,
+	p2p host.P2P,
+	l1Publisher host.L1Publisher,
+	l1repo host.L1BlockRepository,
+	l2Repo host.L2BatchRepository,
+	logSubs host.LogSubscriptionManager,
+
+	enclaveClient common.Enclave,
+	db *db.DB,
+	interrupter breaker.Interface,
+	logger gethlog.Logger,
+) *Guardian {
 	return &Guardian{
 		hostData:        hostData,
 		state:           NewStateTracker(logger),
 		enclaveClient:   enclaveClient,
-		sl:              serviceLocator,
 		batchInterval:   cfg.BatchInterval,
 		rollupInterval:  cfg.RollupInterval,
 		db:              db,
 		hostInterrupter: interrupter,
 		logger:          logger,
+		p2p:             p2p,
+		l1Publisher:     l1Publisher,
+		l1Repo:          l1repo,
+		l2Repo:          l2Repo,
+		logSubs:         logSubs,
+		isSequencer:     cfg.NodeType == common.Sequencer,
 	}
 }
 
@@ -93,9 +115,9 @@ func (g *Guardian) Start() error {
 	}
 
 	// subscribe for L1 and P2P data
-	g.sl.P2P().SubscribeForTx(g)
-	g.sl.L1Repo().Subscribe(g)
-	g.sl.L2Repo().Subscribe(g)
+	g.p2p.SubscribeForTx(g)
+	g.l1Repo.Subscribe(g)
+	g.l2Repo.Subscribe(g)
 
 	// start streaming data from the enclave
 	go g.streamEnclaveData()
@@ -260,18 +282,18 @@ func (g *Guardian) provideSecret() error {
 
 	g.logger.Info("Requesting secret.")
 	// returns the L1 block when the request was published, any response will be after that block
-	awaitFromBlock, err := g.sl.L1Publisher().RequestSecret(att)
+	awaitFromBlock, err := g.l1Publisher.RequestSecret(att)
 	if err != nil {
 		return errors.Wrap(err, "could not request secret from L1")
 	}
 
 	// keep checking L1 blocks until we find a secret response for our request or timeout
 	err = retry.Do(func() error {
-		nextBlock, _, err := g.sl.L1Repo().FetchNextBlock(awaitFromBlock)
+		nextBlock, _, err := g.l1Repo.FetchNextBlock(awaitFromBlock)
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
-		secretRespTxs := g.sl.L1Publisher().ExtractSecretResponses(nextBlock)
+		secretRespTxs := g.l1Publisher.ExtractSecretResponses(nextBlock)
 		if err != nil {
 			return fmt.Errorf("could not extract secret responses from block=%s - %w", nextBlock.Hash(), err)
 		}
@@ -297,7 +319,7 @@ func (g *Guardian) provideSecret() error {
 	g.state.OnSecretProvided()
 
 	// we're now ready to catch up with network, sync peer list
-	go g.sl.P2P().RefreshPeerList()
+	go g.p2p.RefreshPeerList()
 	return nil
 }
 
@@ -317,7 +339,7 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 		return fmt.Errorf("could not generate secret. Cause: %w", err)
 	}
 
-	err = g.sl.L1Publisher().InitializeSecret(attestation, secret)
+	err = g.l1Publisher.InitializeSecret(attestation, secret)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialise enclave secret")
 	}
@@ -329,7 +351,7 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 func (g *Guardian) catchupWithL1() error {
 	// while we are behind the L1 head and still running, fetch and submit L1 blocks
 	for g.running.Load() && g.state.GetStatus() == L1Catchup {
-		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(g.state.GetEnclaveL1Head())
+		l1Block, isLatest, err := g.l1Repo.FetchNextBlock(g.state.GetEnclaveL1Head())
 		if err != nil {
 			if errors.Is(err, l1.ErrNoNextBlock) {
 				if g.state.hostL1Head == gethutil.EmptyHash {
@@ -358,7 +380,24 @@ func (g *Guardian) catchupWithL2() error {
 		nextHead := prevHead.Add(prevHead, big.NewInt(1))
 
 		g.logger.Trace("fetching next batch", log.BatchSeqNoKey, nextHead)
-		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(nextHead)
+		batch, err := g.l2Repo.FetchBatchBySeqNo(nextHead)
+		// if data is expected to exist then fetch it from the enclave if it's the sequencer
+		// validators will fetch the data async
+		if g.isSequencer && errors.Is(err, errutil.ErrExpectedData) {
+			// sequencer does not request batches from peers, it checks if its enclave has the batch
+			b, err := g.LookupBatchBySeqNo(nextHead)
+			if err != nil {
+				return err
+			}
+
+			// asynchronously add that batch to the repo, so we have it for the next request
+			go func() {
+				err := g.l2Repo.AddBatch(b)
+				if err != nil {
+					g.logger.Info("unable to add batch that was returned from the enclave", log.ErrKey, err)
+				}
+			}()
+		}
 		if err != nil {
 			return errors.Wrap(err, "could not fetch next L2 batch")
 		}
@@ -371,9 +410,20 @@ func (g *Guardian) catchupWithL2() error {
 	return nil
 }
 
+// LookupBatchBySeqNo is used to fetch batch data from the enclave - it is only used as a fallback for the sequencer
+// host if it's missing a batch (other host services should use L2Repo to fetch batch data)
+func (g *Guardian) LookupBatchBySeqNo(seqNo *big.Int) (*common.ExtBatch, error) {
+	state := g.GetEnclaveState()
+	if state.GetEnclaveL2Head().Cmp(seqNo) < 0 {
+		return nil, errutil.ErrNotFound
+	}
+	client := g.GetEnclaveClient()
+	return client.GetBatchBySeqNo(seqNo.Uint64())
+}
+
 func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
-	receipts := g.sl.L1Repo().FetchReceipts(block)
+	receipts := g.l1Repo.FetchReceipts(block)
 	if !g.submitDataLock.TryLock() {
 		// we are already submitting a block, and we don't want to leak goroutines, we wil catch up with the block later
 		return errors.New("unable to submit block, already submitting another block")
@@ -387,7 +437,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
 			// note: logging this because we don't expect it to happen often and would like visibility on that.
 			g.logger.Info("L1 block already processed by enclave, trying the next block", "block", block.Hash())
 			nextHeight := big.NewInt(0).Add(block.Number(), big.NewInt(1))
-			nextCanonicalBlock, err := g.sl.L1Repo().FetchBlockByHeight(nextHeight)
+			nextCanonicalBlock, err := g.l1Repo.FetchBlockByHeight(nextHeight)
 			if err != nil {
 				return fmt.Errorf("failed to fetch next block after forking block=%s: %w", block.Hash(), err)
 			}
@@ -416,13 +466,13 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
 
 func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 	// if there are any secret responses in the block we should refresh our P2P list to re-sync with the network
-	respTxs := g.sl.L1Publisher().ExtractSecretResponses(block)
+	respTxs := g.l1Publisher.ExtractSecretResponses(block)
 	if len(respTxs) > 0 {
 		// new peers may have been granted access to the network, notify p2p service to refresh its peer list
-		go g.sl.P2P().RefreshPeerList()
+		go g.p2p.RefreshPeerList()
 	}
 
-	rollupTxs := g.sl.L1Publisher().ExtractRollupTxs(block)
+	rollupTxs := g.l1Publisher.ExtractRollupTxs(block)
 	for _, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
@@ -445,7 +495,7 @@ func (g *Guardian) publishSharedSecretResponses(scrtResponses []*common.Produced
 			return nil
 		}
 
-		err := g.sl.L1Publisher().PublishSecretResponse(scrtResponse)
+		err := g.l1Publisher.PublishSecretResponse(scrtResponse)
 		if err != nil {
 			return errors.Wrap(err, "could not publish secret response")
 		}
@@ -521,7 +571,7 @@ func (g *Guardian) periodicRollupProduction() {
 				g.logger.Debug("skipping rollup production because L1 is not up to date", "state", g.state)
 				continue
 			}
-			lastBatchNo, err := g.sl.L1Publisher().FetchLatestSeqNo()
+			lastBatchNo, err := g.l1Publisher.FetchLatestSeqNo()
 			if err != nil {
 				g.logger.Warn("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
 				continue
@@ -530,7 +580,7 @@ func (g *Guardian) periodicRollupProduction() {
 			if err != nil {
 				g.logger.Error("unable to produce rollup", log.ErrKey, err)
 			} else {
-				g.sl.L1Publisher().PublishRollup(producedRollup)
+				g.l1Publisher.PublishRollup(producedRollup)
 			}
 		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
@@ -561,7 +611,7 @@ func (g *Guardian) streamEnclaveData() {
 			if resp.Batch != nil {
 				lastBatch = resp.Batch
 				g.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
-				err := g.sl.L2Repo().AddBatch(resp.Batch)
+				err := g.l2Repo.AddBatch(resp.Batch)
 				if err != nil && !errors.Is(err, errutil.ErrAlreadyExists) {
 					// todo (@matt) this is a catastrophic scenario, the host may never get that batch - handle this
 					g.logger.Crit("failed to add batch to L2 repo", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
@@ -570,7 +620,7 @@ func (g *Guardian) streamEnclaveData() {
 				if g.hostData.IsSequencer { // if we are the sequencer we need to broadcast this new batch to the network
 					g.logger.Info("Batch produced", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash())
 
-					err = g.sl.P2P().BroadcastBatches([]*common.ExtBatch{resp.Batch})
+					err = g.p2p.BroadcastBatches([]*common.ExtBatch{resp.Batch})
 					if err != nil {
 						g.logger.Error("failed to broadcast batch", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
 					}
@@ -580,7 +630,7 @@ func (g *Guardian) streamEnclaveData() {
 			}
 
 			if resp.Logs != nil {
-				g.sl.LogSubs().SendLogsToSubscribers(&resp.Logs)
+				g.logSubs.SendLogsToSubscribers(&resp.Logs)
 			}
 
 		case <-time.After(1 * time.Second):

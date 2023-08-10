@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/ethadapter/contractlibclient"
 	"io"
 	"math/big"
 	"net"
@@ -23,6 +24,7 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethmetrics "github.com/ethereum/go-ethereum/metrics"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
 const (
@@ -48,31 +50,26 @@ type message struct {
 	Contents []byte
 }
 
-type p2pServiceLocator interface {
-	L1Publisher() host.L1Publisher
-	L2Repo() host.L2BatchRepository
-}
-
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocator, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
+func NewSocketP2PLayer(config *config.HostConfig, mgmtContractClient *contractlibclient.MgmtContractLibClient, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
 	return &Service{
 		batchSubscribers: subscription.NewManager[host.P2PBatchHandler](),
 		txSubscribers:    subscription.NewManager[host.P2PTxHandler](),
 		batchReqHandlers: subscription.NewManager[host.P2PBatchRequestHandler](),
-
-		sl: serviceLocator,
 
 		isSequencer:   config.NodeType == common.Sequencer,
 		ourAddress:    config.P2PBindAddress,
 		peerAddresses: []string{},
 		p2pTimeout:    config.P2PConnectionTimeout,
 
-		refreshingPeersMx: sync.Mutex{},
+		refreshingPeersMx:  sync.Mutex{},
+		mgmtContractClient: mgmtContractClient,
 
 		// monitoring
 		peerTracker:     newPeerTracker(),
 		metricsRegistry: metricReg,
 		logger:          logger,
+		hostData:        hostcommon.NewIdentity(config),
 	}
 }
 
@@ -84,8 +81,6 @@ type Service struct {
 	listener          net.Listener
 	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
 
-	sl p2pServiceLocator
-
 	isSequencer   bool
 	ourAddress    string
 	peerAddresses []string
@@ -95,6 +90,9 @@ type Service struct {
 	metricsRegistry   gethmetrics.Registry
 	logger            gethlog.Logger
 	refreshingPeersMx sync.Mutex
+
+	mgmtContractClient *contractlibclient.MgmtContractLibClient
+	hostData           hostcommon.Identity
 }
 
 func (p *Service) Start() error {
@@ -149,13 +147,27 @@ func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler)
 func (p *Service) RefreshPeerList() {
 	p.refreshingPeersMx.Lock()
 	defer p.refreshingPeersMx.Unlock()
-	newPeers, err := p.sl.L1Publisher().FetchLatestPeersList()
+	allPeers, err := p.mgmtContractClient.FetchLatestPeersList()
 	if err != nil {
 		p.logger.Error(fmt.Sprintf("unable to fetch latest peer list from L1 - %s", err.Error()))
 		return
 	}
-	p.logger.Info(fmt.Sprintf("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers))
-	p.peerAddresses = newPeers
+	// We remove any duplicate addresses and our own address from the retrieved peer list
+	var filteredHostAddresses []string
+	uniqueHostKeys := make(map[string]bool) // map to track addresses we've seen already
+	for _, hostAddress := range allPeers {
+		// We exclude our own address.
+		if hostAddress == p.hostData.P2PPublicAddress {
+			continue
+		}
+		if _, found := uniqueHostKeys[hostAddress]; !found {
+			uniqueHostKeys[hostAddress] = true
+			filteredHostAddresses = append(filteredHostAddresses, hostAddress)
+		}
+	}
+
+	p.logger.Info(fmt.Sprintf("Updated peer list - old: %s new: %s", p.peerAddresses, filteredHostAddresses))
+	p.peerAddresses = filteredHostAddresses
 }
 
 func (p *Service) SendTxToSequencer(tx common.EncryptedTx) error {

@@ -2,11 +2,12 @@ package network
 
 import (
 	"fmt"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/obscuronet/go-obscuro/go/host/db"
+	"github.com/obscuronet/go-obscuro/go/host/l1"
 	"math"
 	"math/big"
 	"time"
-
-	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
@@ -94,8 +95,24 @@ func createInMemObscuroNode(
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
+	database, err := db.CreateDBFromConfig(hostConfig, metricsService.Registry(), hostLogger)
+	if err != nil {
+		hostLogger.Crit("unable to create database for host", log.ErrKey, err)
+	}
+	
+	l1Publisher := l1.NewL1Publisher(hostcommon.NewIdentity(hostConfig), ethWallet, ethClient, mgmtContractLib, testlog.Logger())
 
-	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
+	currentContainer := container.NewHostContainer(
+		hostConfig,
+		database,
+		ethClient,
+		l1Publisher,
+		mockP2P,
+		enclaveClient,
+		nil,
+		hostLogger,
+		metricsService,
+	)
 
 	return currentContainer
 }

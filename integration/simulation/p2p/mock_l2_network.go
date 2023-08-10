@@ -114,6 +114,10 @@ func (n *MockP2P) HealthStatus() host.HealthStatus {
 	return &host.BasicErrHealthStatus{ErrMsg: ""}
 }
 
+func (n *MockP2P) Health() host.HealthStatus {
+	return &host.BasicErrHealthStatus{ErrMsg: ""}
+}
+
 func (n *MockP2P) UpdatePeerList([]string) {
 	// Do nothing.
 }

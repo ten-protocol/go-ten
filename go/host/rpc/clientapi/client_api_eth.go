@@ -39,7 +39,7 @@ func (api *EthereumAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,re
 
 // BlockNumber returns the height of the current head batch.
 func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
-	header, err := api.host.DB().GetHeadBatchHeader()
+	header, err := api.host.GetHeadBatchHeader()
 	if err != nil {
 		// This error may be nefarious, but unfortunately the Eth API doesn't allow us to return an error.
 		api.logger.Error("could not retrieve head batch header", log.ErrKey, err)
@@ -59,7 +59,7 @@ func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNu
 
 // GetBlockByHash returns the header of the batch with the given hash.
 func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (common.BatchHeader, error) {
-	batchHeader, err := api.host.DB().GetBatchHeader(hash)
+	batchHeader, err := api.host.GetBatchHeader(hash)
 	if err != nil {
 		return common.BatchHeader{}, err
 	}
@@ -74,7 +74,7 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the
 // `address` field and encoded as hex.
 func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetBalance(encryptedParams)
+	enclaveResponse, sysError := api.host.GetBalance(encryptedParams)
 	if sysError != nil {
 		return api.handleSysError(sysError)
 	}
@@ -84,7 +84,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 // Call returns the result of executing the smart contract as a user, encrypted with the viewing key corresponding to
 // the `from` field and encoded as hex.
 func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().ObsCall(encryptedParams)
+	enclaveResponse, sysError := api.host.ObsCall(encryptedParams)
 	if sysError != nil {
 		return api.handleSysError(sysError)
 	}
@@ -94,7 +94,7 @@ func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.Encrypted
 // GetTransactionReceipt returns the transaction receipt for the given transaction hash, encrypted with the viewing key
 // corresponding to the original transaction submitter and encoded as hex, or nil if no matching transaction exists.
 func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionReceipt(encryptedParams)
+	enclaveResponse, sysError := api.host.GetTransactionReceipt(encryptedParams)
 	if sysError != nil {
 		return api.handleSysError(sysError)
 	}
@@ -103,7 +103,7 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 
 // EstimateGas requests the enclave the gas estimation based on the callMsg supplied params (encrypted)
 func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().EstimateGas(encryptedParams)
+	enclaveResponse, sysError := api.host.EstimateGas(encryptedParams)
 	if sysError != nil {
 		return api.handleSysError(sysError)
 	}
@@ -142,7 +142,7 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 		return nil, errors.New("invalid arguments; neither batch height nor batch hash specified")
 	}
 
-	code, sysError := api.host.EnclaveClient().GetCode(address, batchHash)
+	code, sysError := api.host.GetCode(address, batchHash)
 	if sysError != nil {
 		api.logger.Warn("Enclave System Error Response", log.ErrKey, sysError)
 		return nil, fmt.Errorf(responses.InternalErrMsg)
@@ -152,7 +152,7 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 }
 
 func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionCount(encryptedParams)
+	enclaveResponse, sysError := api.host.GetTransactionCount(encryptedParams)
 	if sysError != nil {
 		return api.handleSysError(sysError)
 	}
@@ -162,7 +162,7 @@ func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams c
 // GetTransactionByHash returns the transaction with the given hash, encrypted with the viewing key corresponding to the
 // `from` field and encoded as hex, or nil if no matching transaction exists.
 func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetTransaction(encryptedParams)
+	enclaveResponse, sysError := api.host.GetTransaction(encryptedParams)
 	if sysError != nil {
 		return api.handleSysError(sysError)
 	}
@@ -171,7 +171,7 @@ func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams 
 
 // GetStorageAt is a reused method for listing the users transactions
 func (api *EthereumAPI) GetStorageAt(_ context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, error) {
-	return api.host.EnclaveClient().GetCustomQuery(encryptedParams)
+	return api.host.GetCustomQuery(encryptedParams)
 }
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
@@ -197,7 +197,7 @@ type FeeHistoryResult struct {
 func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*gethcommon.Hash, error) {
 	// Handling the special cases first. No special handling is required for rpc.EarliestBlockNumber.
 	if batchNumber == rpc.LatestBlockNumber {
-		batchHeader, err := api.host.DB().GetHeadBatchHeader()
+		batchHeader, err := api.host.GetHeadBatchHeader()
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +210,7 @@ func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*ge
 	}
 
 	batchNumberBig := big.NewInt(batchNumber.Int64())
-	batchHash, err := api.host.DB().GetBatchHash(batchNumberBig)
+	batchHash, err := api.host.GetBatchHash(batchNumberBig)
 	if err != nil {
 		return nil, err
 	}

@@ -23,18 +23,18 @@ func NewScanAPI(host host.Host, logger log.Logger) *ScanAPI {
 
 // GetTotalContractCount returns the number of recorded contracts on the network.
 func (s *ScanAPI) GetTotalContractCount() (*big.Int, error) {
-	return s.host.EnclaveClient().GetTotalContractCount()
+	return s.host.GetTotalContractCount()
 }
 
 // GetTotalTransactionCount returns the number of recorded transactions on the network.
 func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
-	return s.host.DB().GetTotalTransactions()
+	return s.host.GetTotalTransactions()
 }
 
 func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
-	return s.host.DB().GetTipRollupHeader()
+	return s.host.GetTipRollupHeader()
 }
 
 func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (*common.PublicQueryResponse, error) {
-	return s.host.EnclaveClient().GetPublicTransactionData(pagination)
+	return s.host.GetPublicTransactionData(pagination)
 }
