@@ -112,6 +112,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
 	copyBatch.Transactions = successfulTxs
+	copyBatch.ResetHash()
 
 	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
 		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
@@ -119,9 +120,12 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 
 	executor.populateHeader(&copyBatch, allReceipts(txReceipts, ccReceipts))
 
-	// the receipts produced by the EVM have the wrong hash which must be adjusted
+	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
 	for _, receipt := range txReceipts {
 		receipt.BlockHash = copyBatch.Hash()
+		for _, l := range receipt.Logs {
+			l.BlockHash = copyBatch.Hash()
+		}
 	}
 
 	return &ComputedBatch{
