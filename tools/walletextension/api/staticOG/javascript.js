@@ -2,6 +2,7 @@ const eventClick = "click";
 const eventDomLoaded = "DOMContentLoaded";
 const idJoin = "join";
 const idAddAccount = "addAccount";
+const idAddAllAccounts = "addAllAccounts";
 const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
 const idUserID = "userID";
@@ -106,6 +107,7 @@ async function revokeUserID(userID) {
 const initialize = () => {
     const joinButton = document.getElementById(idJoin);
     const addAccountButton = document.getElementById(idAddAccount);
+    const addAllAccountsButton = document.getElementById(idAddAllAccounts);
     const revokeUserIDButton = document.getElementById(idRevokeUserID);
     const statusArea = document.getElementById(idStatus);
     const userIDArea = document.getElementById(idUserID);
@@ -158,7 +160,8 @@ const initialize = () => {
             statusArea.innerText = "Failed to add network"
             return
         }
-
+        statusArea.innerText = "Successfully joined Obscuro Gateway";
+        /*
         // get accounts from metamask
         const accounts = await ethereum.request({method: metamaskRequestAccounts});
         if (accounts.length === 0) {
@@ -169,8 +172,10 @@ const initialize = () => {
 
         statusArea.innerText = "\n Authentication status: " + authenticateAccountStatus
 
+         */
         // show users an option to add another account and revoke userID
         addAccountButton.style.display = "block"
+        addAllAccountsButton.style.display = "block"
         revokeUserIDButton.style.display = "block"
     })
 
@@ -190,6 +195,27 @@ const initialize = () => {
         }
         let authenticateAccountStatus = await authenticateAccountWithObscuroGateway(ethereum, accounts[0], userID)
         statusArea.innerText = "\n Authentication status: " + authenticateAccountStatus
+    })
+
+    addAllAccountsButton.addEventListener(eventClick, async () => {
+        // check if we have userID and it is correct length
+        if (!isValidUserIDFormat(userID)){
+            statusArea.innerText = "\n Please join Obscuro network first"
+            joinButton.style.display = "block"
+            addAccountButton.style.display = "none"
+        }
+
+        // Get account and prompt user to sign joining with selected account
+        const accounts = await ethereum.request({method: metamaskRequestAccounts});
+        if (accounts.length === 0) {
+            statusArea.innerText = "No MetaMask accounts found."
+            return
+        }
+
+        for (const account of accounts) {
+            let authenticateAccountStatus = await authenticateAccountWithObscuroGateway(ethereum, account, userID)
+            statusArea.innerText += "\n Authentication status: " + authenticateAccountStatus + " for account: " + account;
+        }
     })
 
     revokeUserIDButton.addEventListener(eventClick, async () => {
