@@ -48,7 +48,7 @@ Metamask can disassemble the cost components for layer 1 and layer 2 for specifi
 
 ## Design for Gas Deposit
 
-Given that Ethereum as a currency operates on the layer 1 protocol, it needs to be bridged to Obscuro for usage. This transition mechanism will be facilitated by the standard Obscuro bridge. The deposited value will produce a cross-chain message indicating the Ethereum recipient through the smart contract.
+Given that Ethereum as a currency operates on the layer 1 protocol, it needs to be bridged to Obscuro for usage. This transition mechanism will be facilitated by the standard Obscuro bridge. The deposited value will produce a cross-chain message indicating the Ethereum recipient through the bridge smart contract.
 
 ```EthereumDeposited(address receiver, uint256 amount)```
 
