@@ -20,6 +20,8 @@ const jsonHeaders = {
 const metamaskRequestAccounts = "eth_requestAccounts";
 const metamaskPersonalSign = "personal_sign";
 
+import Config from "./config/config.js";
+
 function isValidUserIDFormat(value) {
     return typeof value === 'string' && value.length === 64;
 }
@@ -40,7 +42,7 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
                         symbol: 'OBX',
                         decimals: 18
                     },
-                    rpcUrls: ['http://127.0.0.1:3000/?u='+userID],
+                    rpcUrls: [Config.ObscuroGatewayAddress+'/?u='+userID],
                     blockExplorerUrls: null,
                 },
             ],
@@ -121,6 +123,7 @@ const initialize = () => {
         userIDArea.innerText = "Your userID is: " + userID
         joinButton.style.display = "none"
         addAccountButton.style.display = "block"
+        addAllAccountsButton.style.display = "block"
         revokeUserIDButton.style.display = "block"
     } else {
         joinButton.style.display = "block"
@@ -161,18 +164,6 @@ const initialize = () => {
             return
         }
         statusArea.innerText = "Successfully joined Obscuro Gateway";
-        /*
-        // get accounts from metamask
-        const accounts = await ethereum.request({method: metamaskRequestAccounts});
-        if (accounts.length === 0) {
-            statusArea.innerText = "No MetaMask accounts found."
-            return
-        }
-        let authenticateAccountStatus = await authenticateAccountWithObscuroGateway(ethereum, accounts[0], userID)
-
-        statusArea.innerText = "\n Authentication status: " + authenticateAccountStatus
-
-         */
         // show users an option to add another account and revoke userID
         addAccountButton.style.display = "block"
         addAllAccountsButton.style.display = "block"
@@ -224,6 +215,7 @@ const initialize = () => {
             localStorage.removeItem("ObscuroGatewayUserID")
             joinButton.style.display = "block";
             revokeUserIDButton.style.display = "none";
+            addAllAccountsButton.style.display = "none";
             userIDArea.innerText = "";
             statusArea.innerText = "Revoking UserID successful. Please remove current network from Metamask."
             addAccountButton.style.display = "none";
