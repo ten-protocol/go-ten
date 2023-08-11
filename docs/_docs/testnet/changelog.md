@@ -4,7 +4,7 @@
 
 # Aug 2023-08-11 (v0.14.0)
 * A list of the PRs merged in this release is as below;
-  * `6d2997e3` Fix pee addresses mutex (#1439)
+  * `6d2997e3` Fix peer addresses mutex (#1439)
   * `2224f956` Add hash reset (#1436)
   * `bb03475f` Use compressed pub key (#1435)
   * `90a768d2` Fix encoding of userid (#1429)
