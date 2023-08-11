@@ -2,12 +2,16 @@ const eventClick = "click";
 const eventDomLoaded = "DOMContentLoaded";
 const idJoin = "join";
 const idAddAccount = "addAccount";
+const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
+const idUserID = "userID";
 const pathJoin = "/join/";
 const pathAuthenticate = "/authenticate/";
-const obscuroChainIDDecimal = 777
+const pathQuery = "/query/";
+const pathRevoke = "/revoke/";
+const obscuroChainIDDecimal = 777;
 const methodPost = "post";
-const methodGet = "get"
+const methodGet = "get";
 const jsonHeaders = {
     "Accept": "application/json",
     "Content-Type": "application/json"
@@ -21,7 +25,7 @@ function isValidUserIDFormat(value) {
 
 async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
     // add network to MetaMask
-    let chainIdHex = "0x" + chainIDDecimal.toString(); // Convert to hexadecimal and prefix with '0x'
+    let chainIdHex = "0x" + chainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
 
     try {
         await ethereum.request({
@@ -48,6 +52,12 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
 }
 
 async function authenticateAccountWithObscuroGateway(ethereum, account, userID) {
+    const isAuthenticated = await accountIsAuthenticated(account, userID)
+
+    if (isAuthenticated) {
+        return "Account is already authenticated"
+    }
+
     const textToSign = "Register " + userID + " for " + account;
     const signature = await ethereum.request({
         method: metamaskPersonalSign,
@@ -69,10 +79,36 @@ async function authenticateAccountWithObscuroGateway(ethereum, account, userID) 
     return await authenticateResp.text()
 }
 
+async function accountIsAuthenticated(account, userID) {
+    const queryAccountUserID = pathQuery+"?u="+userID+"&a="+account
+    const isAuthenticatedResponse = await fetch(
+        queryAccountUserID, {
+            method: methodGet,
+            headers: jsonHeaders,
+        }
+    );
+    let response = await isAuthenticatedResponse.text();
+    let jsonResponseObject = JSON.parse(response);
+    return jsonResponseObject.status
+}
+
+async function revokeUserID(userID) {
+    const queryAccountUserID = pathRevoke+"?u="+userID
+    const revokeResponse = await fetch(
+        queryAccountUserID, {
+            method: methodGet,
+            headers: jsonHeaders,
+        }
+    );
+    return revokeResponse.ok
+}
+
 const initialize = () => {
     const joinButton = document.getElementById(idJoin);
     const addAccountButton = document.getElementById(idAddAccount);
+    const revokeUserIDButton = document.getElementById(idRevokeUserID);
     const statusArea = document.getElementById(idStatus);
+    const userIDArea = document.getElementById(idUserID);
 
     // get ObscuroGatewayUserID from local storage
     let userID = localStorage.getItem("ObscuroGatewayUserID")
@@ -80,12 +116,14 @@ const initialize = () => {
     // check if userID exists and has correct type and length (is valid) and display either
     // option to join or to add new account to existing user
     if (isValidUserIDFormat(userID)) {
-        statusArea.innerText = "Your userID is: " + userID
+        userIDArea.innerText = "Your userID is: " + userID
         joinButton.style.display = "none"
         addAccountButton.style.display = "block"
+        revokeUserIDButton.style.display = "block"
     } else {
         joinButton.style.display = "block"
         addAccountButton.style.display = "none"
+        revokeUserIDButton.style.display = "none"
     }
 
     let ethereum = window.ethereum;
@@ -129,10 +167,11 @@ const initialize = () => {
         }
         let authenticateAccountStatus = await authenticateAccountWithObscuroGateway(ethereum, accounts[0], userID)
 
-        statusArea.innerText += "\n Authentication status: " + authenticateAccountStatus
+        statusArea.innerText = "\n Authentication status: " + authenticateAccountStatus
 
-        // show users an option to add another account
+        // show users an option to add another account and revoke userID
         addAccountButton.style.display = "block"
+        revokeUserIDButton.style.display = "block"
     })
 
     addAccountButton.addEventListener(eventClick, async () => {
@@ -150,7 +189,21 @@ const initialize = () => {
             return
         }
         let authenticateAccountStatus = await authenticateAccountWithObscuroGateway(ethereum, accounts[0], userID)
-        statusArea.innerText += "\n Authentication status: " + authenticateAccountStatus
+        statusArea.innerText = "\n Authentication status: " + authenticateAccountStatus
+    })
+
+    revokeUserIDButton.addEventListener(eventClick, async () => {
+        let result = await revokeUserID(userID);
+        if (result) {
+            localStorage.removeItem("ObscuroGatewayUserID")
+            joinButton.style.display = "block";
+            revokeUserIDButton.style.display = "none";
+            userIDArea.innerText = "";
+            statusArea.innerText = "Revoking UserID successful. Please remove current network from Metamask."
+            addAccountButton.style.display = "none";
+        }else{
+            statusArea.innerText = "Revoking UserID failed";
+        }
     })
 
 }
