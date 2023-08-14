@@ -3,8 +3,10 @@ package common
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
@@ -45,9 +47,13 @@ type (
 	L2Receipt      = types.Receipt
 	L2Receipts     = types.Receipts
 
-	CrossChainMessage     = MessageBus.StructsCrossChainMessage
-	CrossChainMessages    = []CrossChainMessage
-	ValueTransferEvent    = MessageBus.MessageBusValueTransfer
+	CrossChainMessage  = MessageBus.StructsCrossChainMessage
+	CrossChainMessages = []CrossChainMessage
+	ValueTransferEvent struct {
+		Sender   gethcommon.Address
+		Receiver gethcommon.Address
+		Amount   *big.Int
+	}
 	ValueTransferEvents   = []ValueTransferEvent
 	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
 	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup, with the nonce prepended.

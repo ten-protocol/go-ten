@@ -38,6 +38,8 @@ type BatchHeader struct {
 	R, S               *big.Int                              // signature values
 	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 
+	TransfersTree common.Hash `json:"transfersTree"`
+
 	// The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHash common.Hash `json:"inboundCrossChainHash"`
 

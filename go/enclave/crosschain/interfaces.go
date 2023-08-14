@@ -17,6 +17,8 @@ type BlockMessageExtractor interface {
 	// StoreCrossChainMessages - Verifies receipts belong to block and saves the relevant cross chain messages from the receipts
 	StoreCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error
 
+	StoreCrossChainValueTransfers(block *common.L1Block, receipts common.L1Receipts) error
+
 	// GetBusAddress - Returns the L1 message bus address.
 	GetBusAddress() *common.L1Address
 
@@ -48,7 +50,11 @@ type Manager interface {
 	// ExtractOutboundMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
 	ExtractOutboundMessages(receipts common.L2Receipts) (common.CrossChainMessages, error)
 
+	ExtractOutboundTransfers(receipts common.L2Receipts) (common.ValueTransferEvents, error)
+
 	CreateSyntheticTransactions(messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions
 
-	RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.CrossChainMessages
+	ExecuteValueTransfers(transfers common.ValueTransferEvents, rollupState *state.StateDB) error
+
+	RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents)
 }

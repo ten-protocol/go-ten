@@ -160,7 +160,11 @@ func convertLogsToValueTransfers(logs []types.Log, eventName string, messageBusA
 			return nil, err
 		}
 
-		messages = append(messages, event)
+		messages = append(messages, common.ValueTransferEvent{
+			Sender:   event.Sender,
+			Receiver: event.Receiver,
+			Amount:   event.Amount,
+		})
 	}
 
 	return messages, nil

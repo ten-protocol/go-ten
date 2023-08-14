@@ -5,9 +5,11 @@ import (
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const TestnetPrefundedPK = "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b" // The genesis main account private key.
+var GasBridgingKeys, _ = crypto.GenerateKey()                                                 //todo - make static
 
 var TestnetGenesis = Genesis{
 	Accounts: []Account{
@@ -22,6 +24,10 @@ var TestnetGenesis = Genesis{
 		},
 		{ // Address for POC owner
 			Address: gethcommon.HexToAddress("0xDEe530E22045939e6f6a0A593F829e35A140D3F1"),
+			Amount:  parseHugeNumber("7500000000000000000000000000000"),
+		},
+		{ // Address for value transfer testing
+			Address: crypto.PubkeyToAddress(GasBridgingKeys.PublicKey),
 			Amount:  parseHugeNumber("7500000000000000000000000000000"),
 		},
 	},

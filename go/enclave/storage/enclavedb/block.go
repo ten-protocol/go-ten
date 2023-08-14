@@ -100,6 +100,7 @@ func WriteL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, messages [
 		}
 		args = append(args, data)
 		args = append(args, blockHash.Bytes())
+		args = append(args, isValueTransfer)
 	}
 	if len(messages) > 0 {
 		_, err := db.Exec(insert, args...)
@@ -108,10 +109,10 @@ func WriteL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, messages [
 	return nil
 }
 
-func FetchL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash) ([]T, error) {
+func FetchL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, isTransfer bool) ([]T, error) {
 	var result []T
-	query := selectL1Msg + " where block = ?"
-	rows, err := db.Query(query, blockHash.Bytes())
+	query := selectL1Msg + " where block = ? and is_transfer = ?"
+	rows, err := db.Query(query, blockHash.Bytes(), isTransfer)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error

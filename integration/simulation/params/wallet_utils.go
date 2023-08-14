@@ -36,6 +36,8 @@ type SimWallets struct {
 	SimEthWallets []wallet.Wallet // the wallets of the simulated users on the Ethereum side
 	SimObsWallets []wallet.Wallet // and their equivalents on the obscuro side (with a different chainId)
 
+	GasBridgeWallet wallet.Wallet
+
 	L2FaucetWallet wallet.Wallet                  // the wallet of the L2 faucet
 	Tokens         map[testcommon.ERC20]*SimToken // The supported tokens
 }
@@ -66,6 +68,8 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	}
 	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), l2FaucetPrivKey, testlog.Logger())
 
+	gasWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(ethereumChainID), genesis.GasBridgingKeys, testlog.Logger())
+
 	// create the L1 addresses of the two tokens, and connect them to the hardcoded addresses from the enclave
 	hoc := SimToken{
 		Name:              testcommon.HOC,
@@ -81,11 +85,12 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	}
 
 	return &SimWallets{
-		MCOwnerWallet:  mcOwnerWallet,
-		NodeWallets:    nodeWallets,
-		SimEthWallets:  simEthWallets,
-		SimObsWallets:  simObsWallets,
-		L2FaucetWallet: l2FaucetWallet,
+		MCOwnerWallet:   mcOwnerWallet,
+		NodeWallets:     nodeWallets,
+		SimEthWallets:   simEthWallets,
+		SimObsWallets:   simObsWallets,
+		L2FaucetWallet:  l2FaucetWallet,
+		GasBridgeWallet: gasWallet,
 		Tokens: map[testcommon.ERC20]*SimToken{
 			testcommon.HOC: &hoc,
 			testcommon.POC: &poc,
@@ -98,14 +103,8 @@ func (w *SimWallets) AllEthWallets() []wallet.Wallet {
 	for _, token := range w.Tokens {
 		ethWallets = append(ethWallets, token.L1Owner)
 	}
+	ethWallets = append(ethWallets, w.GasBridgeWallet)
 	return append(append(append(w.NodeWallets, w.SimEthWallets...), w.MCOwnerWallet), ethWallets...)
-}
-
-func (w *SimWallets) AllEthAddresses() []*common.Address {
-	addresses := make([]*common.Address, 0)
-	addresses = append(addresses, w.Tokens[testcommon.HOC].L1ContractAddress)
-	addresses = append(addresses, w.Tokens[testcommon.POC].L1ContractAddress)
-	return addresses
 }
 
 func (w *SimWallets) AllObsWallets() []wallet.Wallet {

@@ -144,6 +144,7 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 		GasUsed:                     header.GasUsed,
 		Time:                        header.Time,
 		BaseFee:                     baseFee,
+		TransferTree:                header.TransfersTree.Bytes(),
 		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
 	}
@@ -196,6 +197,7 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 		GasLimit:                      header.GasLimit,
 		GasUsed:                       header.GasUsed,
 		Time:                          header.Time,
+		TransfersTree:                 gethcommon.BytesToHash(header.TransferTree),
 		BaseFee:                       big.NewInt(int64(header.BaseFee)),
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),

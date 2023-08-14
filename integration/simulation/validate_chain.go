@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common/compression"
 
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
@@ -365,6 +366,31 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		efficiencyL2 := float64(totalL2Blocks-l2Height.Uint64()) / float64(totalL2Blocks)
 		if efficiencyL2 > s.Params.L2EfficiencyThreshold {
 			t.Errorf("Node %d: Efficiency in L2 is %f. Expected:%f", nodeIdx, efficiencyL2, s.Params.L2EfficiencyThreshold)
+		}
+	}
+
+	mbusABI, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	gasBridgeRecords := s.TxInjector.TxTracker.GasBridgeTransactions
+	for _, record := range gasBridgeRecords {
+		inputs, err := mbusABI.Methods["sendValueToL2"].Inputs.Unpack(record.L1BridgeTx.Data()[4:])
+		if err != nil {
+			panic(err)
+		}
+
+		receiver := inputs[0].(gethcommon.Address)
+		amount := inputs[1].(*big.Int)
+
+		if receiver != record.ReceiverWallet.Address() {
+			panic("Test setup is broken. Receiver in tx should match recorded wallet.")
+		}
+		obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, record.ReceiverWallet)
+		balance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+		if err != nil {
+			panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+		}
+
+		if balance.Cmp(amount) != 0 {
+			t.Errorf("Node %d: Balance doesnt match the bridged amount. Have: %d, Want: %d", nodeIdx, balance, amount)
 		}
 	}
 

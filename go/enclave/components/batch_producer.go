@@ -11,6 +11,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -87,16 +88,13 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 	}
 
 	var messages common.CrossChainMessages
+	var transfers common.ValueTransferEvents
 	if context.SequencerNo.Int64() > 1 {
-		messages = bp.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
-	}
-	for _, message := range messages {
-		if message.Sender == gethcommon.BigToAddress(gethcommon.Big0) {
-
-		}
+		messages, transfers = bp.crossChainProcessors.Local.RetrieveInboundMessages(parentBlock, block, stateDB)
 	}
 
 	crossChainTransactions := bp.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
+	bp.crossChainProcessors.Local.ExecuteValueTransfers(transfers, stateDB)
 
 	successfulTxs, txReceipts, err := bp.processTransactions(batch, 0, context.Transactions, stateDB, context.ChainConfig)
 	if err != nil {
@@ -177,6 +175,16 @@ func (bp *batchProducerImpl) CreateGenesisState(blkHash common.L1BlockHash, time
 	return genesisBatch, deployTx, nil
 }
 
+type ValueTransfers common.ValueTransferEvents
+
+func (vt ValueTransfers) EncodeIndex(i int, w *bytes.Buffer) {
+	transfer := vt[i]
+	rlp.Encode(w, transfer)
+}
+func (vt ValueTransfers) Len() int {
+	return len(vt)
+}
+
 func (bp *batchProducerImpl) populateOutboundCrossChainData(batch *core.Batch, block *types.Block, receipts types.Receipts) error {
 	crossChainMessages, err := bp.crossChainProcessors.Local.ExtractOutboundMessages(receipts)
 	if err != nil {
@@ -184,7 +192,16 @@ func (bp *batchProducerImpl) populateOutboundCrossChainData(batch *core.Batch, b
 		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
 	}
 
+	valueTransferMessages, err := bp.crossChainProcessors.Local.ExtractOutboundTransfers(receipts)
+	if err != nil {
+		bp.logger.Error("Extracting messages L2->L1 failed", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
+	}
+
+	transfersHash := types.DeriveSha(ValueTransfers(valueTransferMessages), &trie.StackTrie{})
+
 	batch.Header.CrossChainMessages = crossChainMessages
+	batch.Header.TransfersTree = transfersHash
 
 	bp.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)

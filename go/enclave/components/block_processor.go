@@ -44,6 +44,11 @@ func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts) (*BlockIngestio
 		if err != nil {
 			return nil, errors.New("failed to process cross chain messages")
 		}
+
+		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(br.Block, *br.Receipts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to process cross chain transfers. Cause: %w", err)
+		}
 	}
 
 	return ingestion, nil

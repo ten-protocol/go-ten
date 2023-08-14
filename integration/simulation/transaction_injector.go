@@ -8,9 +8,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
+	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
@@ -18,6 +21,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/datagenerator"
 	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"github.com/obscuronet/go-obscuro/integration/simulation/params"
 	"golang.org/x/sync/errgroup"
@@ -125,6 +129,11 @@ func (ti *TransactionInjector) Start() {
 	})
 
 	wg.Go(func() error {
+		ti.bridgeRandomGasTransfers()
+		return nil
+	})
+
+	wg.Go(func() error {
 		ti.issueRandomTransfers()
 		return nil
 	})
@@ -221,6 +230,48 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 
 		go ti.TxTracker.trackTransferL2Tx(signedTx)
 		sleepRndBtw(ti.avgBlockDuration/10, ti.avgBlockDuration/4)
+	}
+}
+
+func (ti *TransactionInjector) bridgeRandomGasTransfers() {
+	gasWallet := ti.wallets.GasBridgeWallet
+
+	ethClient := ti.rpcHandles.RndEthClient()
+
+	mgmtCtr, err := ManagementContract.NewManagementContract(*ti.mgmtContractAddr, ethClient.EthClient())
+	if err != nil {
+		panic(err)
+	}
+	busAddr, err := mgmtCtr.MessageBus(&bind.CallOpts{})
+	if err != nil {
+		panic(err)
+	}
+
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
+		ethClient = ti.rpcHandles.RndEthClient()
+
+		busCtr, err := MessageBus.NewMessageBus(busAddr, ethClient.EthClient())
+		if err != nil {
+			panic(err)
+		}
+
+		opts, err := bind.NewKeyedTransactorWithChainID(gasWallet.PrivateKey(), gasWallet.ChainID())
+		if err != nil {
+			panic(err)
+		}
+
+		receiverWallet := datagenerator.RandomWallet(ti.rndObsWallet().ChainID().Int64())
+		amount := big.NewInt(0).SetUint64(testcommon.RndBtw(500, 100_000))
+		opts.Value = big.NewInt(0).Set(amount)
+
+		tx, err := busCtr.SendValueToL2(opts, receiverWallet.Address(), amount)
+		if err != nil {
+			panic(err)
+		}
+
+		go ti.TxTracker.trackGasBridgingTx(tx, receiverWallet)
+
+		sleepRndBtw(ti.avgBlockDuration/3, ti.avgBlockDuration)
 	}
 }
 

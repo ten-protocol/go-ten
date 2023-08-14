@@ -329,15 +329,11 @@ func (s *storageImpl) StoreL1Messages(blockHash common.L1BlockHash, messages com
 }
 
 func (s *storageImpl) GetL1Messages(blockHash common.L1BlockHash) (common.CrossChainMessages, error) {
-	return enclavedb.FetchL1Messages[common.CrossChainMessage](s.db.GetSQLDB(), blockHash)
+	return enclavedb.FetchL1Messages[common.CrossChainMessage](s.db.GetSQLDB(), blockHash, false)
 }
 
 func (s *storageImpl) GetL1Transfers(blockHash common.L1BlockHash) (common.ValueTransferEvents, error) {
-	return enclavedb.FetchL1Messages[common.ValueTransferEvent](s.db.GetSQLDB(), blockHash)
-}
-
-func (s *storageImpl) GetValueTransfers(blockHash common.L1BlockHash) (common.ValueTransferEvents, error) {
-	return enclavedb.FetchL1Messages[common.ValueTransferEvent](s.db.GetSQLDB(), blockHash)
+	return enclavedb.FetchL1Messages[common.ValueTransferEvent](s.db.GetSQLDB(), blockHash, true)
 }
 
 const enclaveKeyKey = "ek"

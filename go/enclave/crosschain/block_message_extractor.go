@@ -64,6 +64,13 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Bl
 		return nil
 	}
 
+	m.logger.Trace(fmt.Sprintf("Storing %d value transfers for block", len(transfers)), log.BlockHashKey, block.Hash())
+	err = m.storage.StoreValueTransfers(block.Hash(), transfers)
+	if err != nil {
+		m.logger.Crit("Unable to store the transfers", log.ErrKey, err)
+		return err
+	}
+
 	return nil
 }
 
