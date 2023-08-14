@@ -304,7 +304,8 @@ func (n *Impl) Start() error {
 	}
 
 	// this locks the process waiting up to one minute for the event to happen
-	timeoutCtx, _ := context.WithTimeout(context.Background(), 1*time.Minute)
+	timeoutCtx, cancelCtx := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancelCtx()
 	return n.waitForMergeEvent(timeoutCtx, startTime)
 }
 
@@ -481,7 +482,7 @@ func (n *Impl) waitForMergeEvent(ctx context.Context, startTime time.Time) error
 
 	// wait for the merge block (exit if context closes)
 	for ; number <= 7; time.Sleep(time.Second) {
-		if ctx.Err() == nil {
+		if ctx.Err() != nil {
 			return fmt.Errorf("failed to reach merge block - context closed: %w", ctx.Err())
 		}
 		number, err = dial.BlockNumber(ctx)
