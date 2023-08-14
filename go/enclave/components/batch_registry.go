@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -21,7 +23,7 @@ type batchRegistry struct {
 	storage storage.Storage
 	logger  gethlog.Logger
 
-	batchesCallback func(*core.Batch)
+	batchesCallback func(*core.Batch, types.Receipts)
 	callbackMutex   sync.RWMutex
 }
 
@@ -32,7 +34,7 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 	}
 }
 
-func (br *batchRegistry) SubscribeForBatches(callback func(*core.Batch)) {
+func (br *batchRegistry) SubscribeForExecutedBatches(callback func(*core.Batch, types.Receipts)) {
 	br.callbackMutex.Lock()
 	defer br.callbackMutex.Unlock()
 	br.batchesCallback = callback
@@ -45,14 +47,14 @@ func (br *batchRegistry) UnsubscribeFromBatches() {
 	br.batchesCallback = nil
 }
 
-func (br *batchRegistry) NotifySubscribers(batch *core.Batch) {
+func (br *batchRegistry) OnBatchExecuted(batch *core.Batch, receipts types.Receipts) {
 	br.callbackMutex.RLock()
 	defer br.callbackMutex.RUnlock()
 
 	defer br.logger.Debug("Sending batch and events", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
 
 	if br.batchesCallback != nil {
-		go br.batchesCallback(batch)
+		br.batchesCallback(batch, receipts)
 	}
 }
 

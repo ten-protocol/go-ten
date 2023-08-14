@@ -429,7 +429,7 @@ func (s *storageImpl) GetContractCount() (*big.Int, error) {
 	return enclavedb.ReadContractCreationCount(s.db.GetSQLDB())
 }
 
-func (s *storageImpl) FetchUnexecutedBatches() ([]*core.Batch, error) {
+func (s *storageImpl) FetchCanonicalUnexecutedBatches() ([]*core.Batch, error) {
 	return enclavedb.ReadUnexecutedBatches(s.db.GetSQLDB())
 }
 

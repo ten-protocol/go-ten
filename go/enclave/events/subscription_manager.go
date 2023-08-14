@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/core"
+
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
@@ -28,8 +30,6 @@ const (
 	zeroBytesHex = "000000000000000000000000"
 )
 
-// todo (#1575, @tudor) - ensure chain reorgs are handled gracefully
-
 // SubscriptionManager manages the creation/deletion of subscriptions, and the filtering and encryption of logs for
 // active subscriptions.
 type SubscriptionManager struct {
@@ -37,8 +37,7 @@ type SubscriptionManager struct {
 	storage              storage.Storage
 
 	subscriptions     map[gethrpc.ID]*common.LogSubscription
-	lastHead          map[gethrpc.ID]*big.Int // This is the batch height up to which events were returned to the user
-	subscriptionMutex *sync.RWMutex           // the mutex guards the subscriptions/lastHead pair
+	subscriptionMutex *sync.RWMutex // the mutex guards the subscriptions/lastHead pair
 
 	logger gethlog.Logger
 }
@@ -49,15 +48,9 @@ func NewSubscriptionManager(rpcEncryptionManager *rpc.EncryptionManager, storage
 		storage:              storage,
 
 		subscriptions:     map[gethrpc.ID]*common.LogSubscription{},
-		lastHead:          map[gethrpc.ID]*big.Int{},
 		subscriptionMutex: &sync.RWMutex{},
 		logger:            logger,
 	}
-}
-
-// SetLastHead - only call with a write lock on the subscription mutex
-func (s *SubscriptionManager) SetLastHead(id gethrpc.ID, nr *big.Int) {
-	s.lastHead[id] = big.NewInt(nr.Int64())
 }
 
 // AddSubscription adds a log subscription to the enclave under the given ID, provided the request is authenticated
@@ -80,20 +73,10 @@ func (s *SubscriptionManager) AddSubscription(id gethrpc.ID, encryptedSubscripti
 	}
 	subscription.VkHandler = encryptor
 
-	startAt := subscription.Filter.FromBlock
-	// Set the subscription to start from the current head if a specific start is not specified
-	if startAt == nil || startAt.Int64() <= 0 {
-		head, err := s.storage.FetchHeadBatch()
-		if err != nil {
-			return fmt.Errorf("unable to read head batch to create subscription - %w", err)
-		}
-		// adjust to -1 because the subscription will increment
-		startAt = big.NewInt(int64(head.NumberU64() - 1))
-	}
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
-	s.SetLastHead(id, startAt)
 	s.subscriptions[id] = subscription
+
 	return nil
 }
 
@@ -103,14 +86,13 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	s.subscriptionMutex.Lock()
 	defer s.subscriptionMutex.Unlock()
 	delete(s.subscriptions, id)
-	delete(s.lastHead, id)
 }
 
-// FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs
+// FilterLogs takes a list of logs and the hash of the batch to use to create the state DB. It returns the logs
 // filtered based on the provided account and filter.
-func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2BatchHash, account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
+func (s *SubscriptionManager) FilterLogs(logs []*types.Log, batchHash common.L2BatchHash, account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
 	filteredLogs := []*types.Log{}
-	stateDB, err := s.storage.CreateStateDB(rollupHash)
+	stateDB, err := s.storage.CreateStateDB(batchHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}
@@ -125,39 +107,37 @@ func (s *SubscriptionManager) FilterLogs(logs []*types.Log, rollupHash common.L2
 	return filteredLogs, nil
 }
 
-// GetSubscribedLogsForBatch - Retrieves and encrypts the logs for the batch.
-func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *big.Int) (common.EncryptedSubscriptionLogs, error) {
+// GetSubscribedLogsForBatch - Retrieves and encrypts the logs for the batch in live mode.
+// The assumption is that this function is called synchronously after the batch is produced
+func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, receipts types.Receipts) (common.EncryptedSubscriptionLogs, error) {
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
+
+	// exit early if there are no subscriptions
+	if len(s.subscriptions) == 0 {
+		return nil, nil
+	}
+
 	result := map[gethrpc.ID][]*types.Log{}
 
-	// grab a write lock because the function will mutate the lastHead map
-	s.subscriptionMutex.Lock()
-	defer s.subscriptionMutex.Unlock()
+	var allLogs []*types.Log
+	for _, receipt := range receipts {
+		allLogs = append(allLogs, receipt.Logs...)
+	}
 
-	// Go through each subscription and collect the logs
-	err := s.forEachSubscription(func(id gethrpc.ID, subscription *common.LogSubscription, previousHead *big.Int) error {
-		// 1. fetch the logs since the last request
-		from := big.NewInt(previousHead.Int64() + 1)
-		to := batch
+	if len(allLogs) == 0 {
+		return nil, nil
+	}
 
-		if from.Cmp(to) > 0 {
-			s.logger.Warn(fmt.Sprintf("Skipping subscription step id=%s: [%d, %d]", id, from, to))
-			return nil
-		}
-
-		logs, err := s.storage.FilterLogs(subscription.Account, from, to, nil, subscription.Filter.Addresses, subscription.Filter.Topics)
-		s.logger.Info(fmt.Sprintf("Subscription id=%s: [%d, %d]. Logs %d, Err: %s", id, from, to, len(logs), err))
+	for id, sub := range s.subscriptions {
+		l, err := s.FilterLogs(allLogs, batch.Hash(), sub.Account, sub.Filter)
 		if err != nil {
-			return err
+			s.logger.Error("Could not retrieve subscription logs", log.ErrKey, err)
+			return nil, err
 		}
-
-		// 2.  store the current l2Head in the Subscription
-		s.SetLastHead(id, to)
-		result[id] = logs
-		return nil
-	})
-	if err != nil {
-		s.logger.Error("Could not retrieve subscription logs", log.ErrKey, err)
-		return nil, err
+		if len(l) > 0 {
+			result[id] = l
+		}
 	}
 
 	// Encrypt the results
@@ -190,38 +170,28 @@ func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 	return encryptedLogsByID, nil
 }
 
-func (s *SubscriptionManager) forEachSubscription(f func(gethrpc.ID, *common.LogSubscription, *big.Int) error) error {
-	for id, subscription := range s.subscriptions {
-		err := f(id, subscription, s.lastHead[id])
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Of the log's topics, returns those that are (potentially) user addresses. A topic is considered a user address if:
 //   - It has 12 leading zero bytes (since addresses are 20 bytes long, while hashes are 32)
 //   - It has a non-zero nonce (to prevent accidental or malicious creation of the address matching a given topic,
 //     forcing its events to become permanently private
 //   - It does not have associated code (meaning it's a smart-contract address)
-func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
-	var userAddrs []string
+func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []*gethcommon.Address {
+	var userAddrs []*gethcommon.Address
 
 	// We skip over the first topic, which is always the hash of the event.
 	for _, topic := range log.Topics[1:len(log.Topics)] {
-		potentialAddr := gethcommon.HexToAddress(topic.Hex())
-
 		if topic.Hex()[2:len(zeroBytesHex)+2] != zeroBytesHex {
 			continue
 		}
+
+		potentialAddr := gethcommon.BytesToAddress(topic.Bytes())
 
 		// A user address must have a non-zero nonce. This prevents accidental or malicious sending of funds to an
 		// address matching a topic, forcing its events to become permanently private.
 		if db.GetNonce(potentialAddr) != 0 {
 			// If the address has code, it's a smart contract address instead.
 			if db.GetCode(potentialAddr) == nil {
-				userAddrs = append(userAddrs, potentialAddr.Hex())
+				userAddrs = append(userAddrs, &potentialAddr)
 			}
 		}
 	}
@@ -232,7 +202,7 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 // Indicates whether BOTH of the following apply:
 //   - One of the log's user addresses matches the subscription's account
 //   - The log matches the filter
-func isRelevant(logItem *types.Log, userAddrs []string, account *gethcommon.Address, filter *filters.FilterCriteria, logger gethlog.Logger) bool {
+func isRelevant(logItem *types.Log, userAddrs []*gethcommon.Address, account *gethcommon.Address, filter *filters.FilterCriteria, logger gethlog.Logger) bool {
 	logger.Info(fmt.Sprintf("Checking if log = %v is relevant for account - %s. Addresses extracted from topics =  %v", logItem, account.String(), userAddrs))
 
 	filteredLogs := filterLogs([]*types.Log{logItem}, filter.FromBlock, filter.ToBlock, filter.Addresses, filter.Topics, logger)
@@ -246,7 +216,7 @@ func isRelevant(logItem *types.Log, userAddrs []string, account *gethcommon.Addr
 	}
 
 	for _, addr := range userAddrs {
-		if addr == account.Hex() {
+		if *addr == *account {
 			return true
 		}
 	}
@@ -264,7 +234,7 @@ Logs:
 			logger.Info(fmt.Sprintf("Skipping log = %v", logItem), "reason", "In the past. The starting block num for filter is bigger than log")
 			continue
 		}
-		if toBlock != nil && toBlock.Int64() >= 0 && toBlock.Uint64() < logItem.BlockNumber {
+		if toBlock != nil && toBlock.Int64() > 0 && toBlock.Uint64() < logItem.BlockNumber {
 			logger.Info(fmt.Sprintf("Skipping log = %v", logItem), "reason", "In the future. The ending block num for filter is smaller than log")
 			continue
 		}
