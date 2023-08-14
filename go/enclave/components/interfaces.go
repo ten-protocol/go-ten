@@ -89,11 +89,11 @@ type BatchRegistry interface {
 	// rather than its stateDB only.
 	GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error)
 
-	// SubscribeForBatches - register a callback for new batches
-	SubscribeForBatches(func(*core.Batch))
+	// SubscribeForExecutedBatches - register a callback for new batches
+	SubscribeForExecutedBatches(func(*core.Batch, types.Receipts))
 	UnsubscribeFromBatches()
 
-	NotifySubscribers(batch *core.Batch)
+	OnBatchExecuted(batch *core.Batch, receipts types.Receipts)
 
 	// HasGenesisBatch - returns if genesis batch is available yet or not, or error in case
 	// the function is unable to determine.

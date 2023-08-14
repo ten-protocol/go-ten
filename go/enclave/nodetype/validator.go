@@ -104,7 +104,7 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 			if err != nil {
 				return fmt.Errorf("could not store executed batch %s. Cause: %w", batch.Hash(), err)
 			}
-			val.batchRegistry.NotifySubscribers(batch)
+			val.batchRegistry.OnBatchExecuted(batch, receipts)
 		}
 	}
 	return nil
@@ -142,7 +142,7 @@ func (val *obsValidator) handleGenesis(batch *core.Batch) error {
 	if err != nil {
 		return err
 	}
-	val.batchRegistry.NotifySubscribers(batch)
+	val.batchRegistry.OnBatchExecuted(batch, nil)
 	return nil
 }
 

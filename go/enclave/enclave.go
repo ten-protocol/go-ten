@@ -348,9 +348,10 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 	outChannel <- resp
 }
 
-func (e *enclaveImpl) sendEvents(batch *core.Batch, outChannel chan common.StreamL2UpdatesResponse) {
-	e.logger.Info("Send Events", log.BatchHashKey, batch.Hash())
-	logs, err := e.subscriptionManager.GetSubscribedLogsForBatch(batch)
+// this function is only called when the executed batch is the new head
+func (e *enclaveImpl) streamEventsForNewHeadBatch(batch *core.Batch, receipts types.Receipts, outChannel chan common.StreamL2UpdatesResponse) {
+	e.logger.Info("Stream Events for", log.BatchHashKey, batch.Hash())
+	logs, err := e.subscriptionManager.GetSubscribedLogsForBatch(batch, receipts)
 	if err != nil {
 		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
 		return
@@ -368,9 +369,9 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 		return l2UpdatesChannel, func() {}
 	}
 
-	e.registry.SubscribeForBatches(func(batch *core.Batch) {
+	e.registry.SubscribeForExecutedBatches(func(batch *core.Batch, receipts types.Receipts) {
 		e.sendBatch(batch, l2UpdatesChannel)
-		e.sendEvents(batch, l2UpdatesChannel)
+		e.streamEventsForNewHeadBatch(batch, receipts, l2UpdatesChannel)
 	})
 
 	return l2UpdatesChannel, func() {
@@ -966,7 +967,7 @@ func (e *enclaveImpl) GetCode(address gethcommon.Address, batchHash *common.L2Ba
 
 func (e *enclaveImpl) Subscribe(id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
 	if e.stopControl.IsStopping() {
-		return responses.ToInternalError(fmt.Errorf("requested SubscribeForBatches with the enclave stopping"))
+		return responses.ToInternalError(fmt.Errorf("requested SubscribeForExecutedBatches with the enclave stopping"))
 	}
 
 	return e.subscriptionManager.AddSubscription(id, encryptedSubscription)
