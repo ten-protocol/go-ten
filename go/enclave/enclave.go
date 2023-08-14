@@ -109,6 +109,9 @@ func NewEnclave(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	logger gethlog.Logger,
 ) common.Enclave {
+	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
+	logger.Info("Creating enclave service with following config", log.CfgKey, string(jsonConfig))
+
 	// todo (#1053) - add the delay: N hashes
 
 	var prof *profiler.Profiler
@@ -246,8 +249,7 @@ func NewEnclave(
 	// TODO ensure debug is allowed/disallowed
 	debug := debugger.New(chain, storage, &chainConfig)
 
-	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
-	logger.Info("Enclave service created with following config", log.CfgKey, string(jsonConfig))
+	logger.Info("Enclave service created with following config", log.CfgKey, config.HostID)
 	return &enclaveImpl{
 		config:                 config,
 		storage:                storage,

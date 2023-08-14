@@ -303,8 +303,10 @@ func (n *Impl) Start() error {
 		}()
 	}
 
-	// this locks the process waiting for the event to happen
-	return n.waitForMergeEvent(startTime)
+	// this locks the process waiting up to one minute for the event to happen
+	timeoutCtx, cancelCtx := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancelCtx()
+	return n.waitForMergeEvent(timeoutCtx, startTime)
 }
 
 // Stop stops the network
@@ -468,18 +470,19 @@ func (n *Impl) prysmStartValidator(beaconHTTPPort int, nodeDataDir string) (*exe
 }
 
 // waitForMergeEvent connects to the geth node and waits until block 2 (the merge block) is reached
-func (n *Impl) waitForMergeEvent(startTime time.Time) error {
+func (n *Impl) waitForMergeEvent(ctx context.Context, startTime time.Time) error {
 	dial, err := ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.gethHTTPPorts[0]))
 	if err != nil {
 		return err
 	}
-	number, err := dial.BlockNumber(context.Background())
+	number, err := dial.BlockNumber(ctx)
 	if err != nil {
 		return err
 	}
 
-	for ; number != 7; time.Sleep(time.Second) {
-		number, err = dial.BlockNumber(context.Background())
+	// wait for the merge block (exit if context closes)
+	for ; number <= 7; time.Sleep(time.Second) {
+		number, err = dial.BlockNumber(ctx)
 		if err != nil {
 			return err
 		}
