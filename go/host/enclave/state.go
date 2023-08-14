@@ -126,7 +126,12 @@ func (s *StateTracker) OnEnclaveStatus(es common.Status) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.enclaveStatusCode = es.StatusCode
-	s.enclaveL1Head = es.L1Head
+	if es.L1Head != gethutil.EmptyHash {
+		// when host starts for the first time it assumes the enclave is at the Obscuro management contract deployment block
+		// this is safe because blocks before then are irrelevant to the Obscuro network.
+		// We don't want to overwrite that value here when the enclave hasn't processed any blocks yet.
+		s.hostL1Head = es.L1Head
+	}
 	s.enclaveL2Head = es.L2Head
 
 	s.setStatus(s.calculateStatus())
