@@ -140,9 +140,15 @@ func (m *MessageBusManager) RetrieveInboundMessages(fromBlock *common.L1Block, t
 		}
 
 		m.logger.Trace(fmt.Sprintf("Looking for cross chain messages at block %s", b.Hash().Hex()))
+
 		messagesForBlock, err := m.storage.GetL1Messages(b.Hash())
 		if err != nil {
 			m.logger.Crit("Reading the key for the block failed with uncommon reason.", log.ErrKey, err)
+		}
+
+		_, err = m.storage.GetL1Transfers(b.Hash())
+		if err != nil {
+			m.logger.Crit("Unable to get L1 transfers for block that should be there.", log.ErrKey, err)
 		}
 
 		messages = append(messages, messagesForBlock...) // Ordering here might work in POBI, but might be weird for fast finality

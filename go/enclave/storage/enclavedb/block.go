@@ -17,8 +17,8 @@ const (
 	blockInsert       = "insert into block values (?,?,?,?,?)"
 	selectBlockHeader = "select header from block"
 
-	l1msgInsert = "insert into l1_msg (message, block) values "
-	l1msgValue  = "(?,?)"
+	l1msgInsert = "insert into l1_msg (message, block, is_transfer) values "
+	l1msgValue  = "(?,?,?)"
 	selectL1Msg = "select message from l1_msg "
 
 	rollupInsert = "insert into rollup values (?,?,?,?)"
@@ -87,7 +87,7 @@ func FetchHeadBlock(db *sql.DB) (*types.Block, error) {
 	return fetchBlock(db, "where is_canonical and height=(select max(b.height) from block b where is_canonical)")
 }
 
-func WriteL1Messages(db *sql.DB, blockHash common.L1BlockHash, messages common.CrossChainMessages) error {
+func WriteL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash, messages []T, isValueTransfer bool) error {
 	insert := l1msgInsert + strings.Repeat(l1msgValue+",", len(messages))
 	insert = insert[0 : len(insert)-1] // remove trailing comma
 
@@ -108,8 +108,8 @@ func WriteL1Messages(db *sql.DB, blockHash common.L1BlockHash, messages common.C
 	return nil
 }
 
-func FetchL1Messages(db *sql.DB, blockHash common.L1BlockHash) (common.CrossChainMessages, error) {
-	var result common.CrossChainMessages
+func FetchL1Messages[T any](db *sql.DB, blockHash common.L1BlockHash) ([]T, error) {
+	var result []T
 	query := selectL1Msg + " where block = ?"
 	rows, err := db.Query(query, blockHash.Bytes())
 	if err != nil {
@@ -126,7 +126,7 @@ func FetchL1Messages(db *sql.DB, blockHash common.L1BlockHash) (common.CrossChai
 		if err != nil {
 			return nil, err
 		}
-		ccm := new(common.CrossChainMessage)
+		ccm := new(T)
 		if err := rlp.Decode(bytes.NewReader(msg), ccm); err != nil {
 			return nil, fmt.Errorf("could not decode cross chain message. Cause: %w", err)
 		}

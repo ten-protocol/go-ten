@@ -320,12 +320,24 @@ func (s *storageImpl) storeReceipts(batch *core.Batch, receipts []*types.Receipt
 	return nil
 }
 
+func (s *storageImpl) StoreValueTransfers(blockHash common.L1BlockHash, transfers common.ValueTransferEvents) error {
+	return enclavedb.WriteL1Messages(s.db.GetSQLDB(), blockHash, transfers, true)
+}
+
 func (s *storageImpl) StoreL1Messages(blockHash common.L1BlockHash, messages common.CrossChainMessages) error {
-	return enclavedb.WriteL1Messages(s.db.GetSQLDB(), blockHash, messages)
+	return enclavedb.WriteL1Messages(s.db.GetSQLDB(), blockHash, messages, false)
 }
 
 func (s *storageImpl) GetL1Messages(blockHash common.L1BlockHash) (common.CrossChainMessages, error) {
-	return enclavedb.FetchL1Messages(s.db.GetSQLDB(), blockHash)
+	return enclavedb.FetchL1Messages[common.CrossChainMessage](s.db.GetSQLDB(), blockHash)
+}
+
+func (s *storageImpl) GetL1Transfers(blockHash common.L1BlockHash) (common.ValueTransferEvents, error) {
+	return enclavedb.FetchL1Messages[common.ValueTransferEvent](s.db.GetSQLDB(), blockHash)
+}
+
+func (s *storageImpl) GetValueTransfers(blockHash common.L1BlockHash) (common.ValueTransferEvents, error) {
+	return enclavedb.FetchL1Messages[common.ValueTransferEvent](s.db.GetSQLDB(), blockHash)
 }
 
 const enclaveKeyKey = "ek"
