@@ -67,7 +67,7 @@ func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocat
 		peerAddresses: []string{},
 		p2pTimeout:    config.P2PConnectionTimeout,
 
-		refreshingPeersMx: sync.Mutex{},
+		peerAddressesMutex: sync.RWMutex{},
 
 		// monitoring
 		peerTracker:     newPeerTracker(),
@@ -91,10 +91,10 @@ type Service struct {
 	peerAddresses []string
 	p2pTimeout    time.Duration
 
-	peerTracker       *peerTracker
-	metricsRegistry   gethmetrics.Registry
-	logger            gethlog.Logger
-	refreshingPeersMx sync.Mutex
+	peerTracker        *peerTracker
+	metricsRegistry    gethmetrics.Registry
+	logger             gethlog.Logger
+	peerAddressesMutex sync.RWMutex
 }
 
 func (p *Service) Start() error {
@@ -147,13 +147,14 @@ func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler)
 }
 
 func (p *Service) RefreshPeerList() {
-	p.refreshingPeersMx.Lock()
-	defer p.refreshingPeersMx.Unlock()
 	newPeers, err := p.sl.L1Publisher().FetchLatestPeersList()
 	if err != nil {
 		p.logger.Error(fmt.Sprintf("unable to fetch latest peer list from L1 - %s", err.Error()))
 		return
 	}
+
+	p.peerAddressesMutex.Lock()
+	defer p.peerAddressesMutex.Unlock()
 	p.logger.Info(fmt.Sprintf("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers))
 	p.peerAddresses = newPeers
 }
@@ -198,9 +199,6 @@ func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
 	}
 	defer p.logger.Info("Requested batches from sequencer", "fromSeqNo", batchRequest.FromSeqNo, log.DurationKey, measure.NewStopwatch())
 
-	if len(p.peerAddresses) == 0 {
-		return errors.New("no peers available to request batches")
-	}
 	encodedBatchRequest, err := rlp.EncodeToBytes(batchRequest)
 	if err != nil {
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
@@ -332,8 +330,14 @@ func (p *Service) broadcast(msg message) error {
 		return fmt.Errorf("could not encode message to send to peers. Cause: %w", err)
 	}
 
+	// clone current known addresses
+	p.peerAddressesMutex.RLock()
+	currentAddresses := make([]string, len(p.peerAddresses))
+	copy(currentAddresses, p.peerAddresses)
+	p.peerAddressesMutex.RUnlock()
+
 	var wg sync.WaitGroup
-	for _, address := range p.peerAddresses {
+	for _, address := range currentAddresses {
 		wg.Add(1)
 		go p.sendBytesWithRetry(&wg, address, msgEncoded) //nolint: errcheck
 	}
@@ -390,6 +394,9 @@ func (p *Service) sendBytes(address string, tx []byte) error {
 // Retrieves the sequencer's address.
 // todo (#718) - use better method to identify the sequencer?
 func (p *Service) getSequencer() (string, error) {
+	p.peerAddressesMutex.RLock()
+	defer p.peerAddressesMutex.RUnlock()
+
 	if len(p.peerAddresses) == 0 {
 		return "", errUnknownSequencer
 	}

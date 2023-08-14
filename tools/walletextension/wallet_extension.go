@@ -138,7 +138,7 @@ func (w *WalletExtension) SubmitViewingKey(address gethcommon.Address, signature
 	if err != nil {
 		return fmt.Errorf("failed to create encrypted RPC client for account %s - %w", address, err)
 	}
-	defaultAccountManager, err := w.userAccountManager.GetUserAccountManager(common.DefaultUser)
+	defaultAccountManager, err := w.userAccountManager.GetUserAccountManager(hex.EncodeToString([]byte(common.DefaultUser)))
 	if err != nil {
 		return fmt.Errorf(fmt.Sprintf("error getting default user account manager: %s", err))
 	}
@@ -176,7 +176,7 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 	}
 
 	// create UserID and store it in the database with the private key
-	userID := common.CalculateUserID(common.PublicKeyBytesFromPrivateKey(viewingPrivateKeyEcies))
+	userID := common.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
 	err = w.storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {
 		w.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))

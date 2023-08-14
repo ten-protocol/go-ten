@@ -16,11 +16,11 @@ import (
 
 var authenticateMessageRegex = regexp.MustCompile(MessageFormatRegex)
 
-// PublicKeyBytesFromPrivateKey converts *ecies.PrivateKey to []bytes
-func PublicKeyBytesFromPrivateKey(prvKey *ecies.PrivateKey) []byte {
+// PrivateKeyToCompressedPubKey converts *ecies.PrivateKey to compressed PubKey ([]byte with length 33)
+func PrivateKeyToCompressedPubKey(prvKey *ecies.PrivateKey) []byte {
 	ecdsaPublicKey := prvKey.PublicKey.ExportECDSA()
-	pubKeyBytes := crypto.FromECDSAPub(ecdsaPublicKey)
-	return pubKeyBytes
+	compressedPubKey := crypto.CompressPubkey(ecdsaPublicKey)
+	return compressedPubKey
 }
 
 // BytesToPrivateKey converts []bytes to *ecies.PrivateKey
@@ -74,7 +74,7 @@ func CreateEncClient(hostRPCBindAddr string, addressBytes []byte, privateKeyByte
 	vk := &viewingkey.ViewingKey{
 		Account:    &address,
 		PrivateKey: privateKey,
-		PublicKey:  PublicKeyBytesFromPrivateKey(privateKey),
+		PublicKey:  PrivateKeyToCompressedPubKey(privateKey),
 		Signature:  signature,
 	}
 	encClient, err := rpc.NewEncNetworkClient(hostRPCBindAddr, vk, nil)

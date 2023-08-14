@@ -25,25 +25,26 @@ const (
 	txInsertValue = "(?,?,?,?,?,?)"
 
 	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?)"
-	updateBatchExecuted = "update batch set executed=true where hash=?"
+	updateBatchExecuted = "update batch set is_executed=true where hash=?"
 
-	// todo - (tudor) - remove the hash
-	selectBatch  = "select b.hash, b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
+	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
 	selectHeader = "select b.header from batch b"
 
-	txExecInsert      = "insert into exec_tx values "
-	txExecInsertValue = "(?,?,?,?,?)"
-	queryReceipts     = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
+	txExecInsert       = "insert into exec_tx values "
+	txExecInsertValue  = "(?,?,?,?,?)"
+	queryReceipts      = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
+	queryReceiptsCount = "select count(1) from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 
 	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where batch.is_canonical and tx.hash=?"
 
 	selectContractCreationTx    = "select tx from exec_tx where created_contract_address=?"
 	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
-	queryBatchWasExecuted       = "select executed from batch where is_canonical and hash=?"
+	queryBatchWasExecuted       = "select is_executed from batch where is_canonical and hash=?"
 
 	isCanonQuery = "select is_canonical from block where hash=?"
 
-	queryTxList = "select exec_tx.tx, batch.height from exec_tx join batch on batch.hash=exec_tx.batch order by height desc limit 100"
+	queryTxList      = "select exec_tx.tx, batch.height from exec_tx join batch on batch.hash=exec_tx.batch"
+	queryTxCountList = "select count(1) from exec_tx join batch on batch.hash=exec_tx.batch"
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
@@ -170,7 +171,7 @@ func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, err
 
 // todo - is there a better way to write this query?
 func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
-	return fetchBatch(db, " where b.is_canonical and b.height=(select max(b1.height) from batch b1 where b1.is_canonical)")
+	return fetchBatch(db, " where b.is_canonical and b.is_executed and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.is_executed)")
 }
 
 func ReadBatchesByBlock(db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
@@ -195,20 +196,19 @@ func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
 }
 
 func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
-	query := " where is_canonical and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.l1_proof=?)"
+	query := " where b.is_canonical and b.is_executed and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.is_executed and b1.l1_proof=?)"
 	return fetchBatch(db, query, l1Hash.Bytes())
 }
 
 func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error) {
-	var hashBytes []byte
 	var header string
 	var body []byte
 	query := selectBatch + " " + whereQuery
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&hashBytes, &header, &body)
+		err = db.QueryRow(query, args...).Scan(&header, &body)
 	} else {
-		err = db.QueryRow(query).Scan(&hashBytes, &header, &body)
+		err = db.QueryRow(query).Scan(&header, &body)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -226,16 +226,12 @@ func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error)
 		return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
 	}
 
-	// todo - tudor - remove once fixed
-	hash := common.L2BatchHash{}
-	hash.SetBytes(hashBytes)
-	if h.Hash() != hash {
-		panic("The hash of the batch stored in the db is invalid")
-	}
-	return &core.Batch{
+	b := core.Batch{
 		Header:       h,
 		Transactions: *txs,
-	}, nil
+	}
+
+	return &b, nil
 }
 
 func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, error) {
@@ -254,10 +250,9 @@ func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, er
 		return nil, err
 	}
 	for rows.Next() {
-		var hashBytes []byte
 		var header string
 		var body []byte
-		err := rows.Scan(&hashBytes, &header, &body)
+		err := rows.Scan(&header, &body)
 		if err != nil {
 			return nil, err
 		}
@@ -268,12 +263,6 @@ func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, er
 		txs := new([]*common.L2Tx)
 		if err := rlp.DecodeBytes(body, txs); err != nil {
 			return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
-		}
-		// todo - tudor - remove once fixed
-		hash := common.L2BatchHash{}
-		hash.SetBytes(hashBytes)
-		if h.Hash() != hash {
-			panic("The hash of the batch stored in the db is invalid")
 		}
 
 		result = append(result,
@@ -459,7 +448,7 @@ func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
 }
 
 func ReadUnexecutedBatches(db *sql.DB) ([]*core.Batch, error) {
-	return fetchBatches(db, "where executed=false and is_canonical order by b.sequence")
+	return fetchBatches(db, "where is_executed=false and is_canonical order by b.sequence")
 }
 
 func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
@@ -474,18 +463,30 @@ func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
 	return result, nil
 }
 
-func GetReceiptsPerAddress(db *sql.DB, config *params.ChainConfig, address *gethcommon.Address) (types.Receipts, error) {
-	return selectReceipts(db, config, "where tx.sender_address = ?", address.Bytes())
+func GetReceiptsPerAddress(db *sql.DB, config *params.ChainConfig, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
+	return selectReceipts(db, config, "where tx.sender_address = ? ORDER BY height DESC LIMIT ? OFFSET ? ", address.Bytes(), pagination.Size, pagination.Offset)
 }
 
-func GetPublicTransactionData(db *sql.DB) ([]common.PublicTxData, error) {
-	return selectPublicTxsBySender(db)
+func GetReceiptsPerAddressCount(db *sql.DB, address *gethcommon.Address) (uint64, error) {
+	row := db.QueryRow(queryReceiptsCount+" where tx.sender_address = ?", address.Bytes())
+
+	var count uint64
+	err := row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
-func selectPublicTxsBySender(db *sql.DB) ([]common.PublicTxData, error) {
+func GetPublicTransactionData(db *sql.DB, pagination *common.QueryPagination) ([]common.PublicTxData, error) {
+	return selectPublicTxsBySender(db, " ORDER BY height DESC LIMIT ? OFFSET ? ", pagination.Size, pagination.Offset)
+}
+
+func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.PublicTxData, error) {
 	var publicTxs []common.PublicTxData
 
-	rows, err := db.Query(queryTxList)
+	rows, err := db.Query(queryTxList+" "+query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -513,4 +514,16 @@ func selectPublicTxsBySender(db *sql.DB) ([]common.PublicTxData, error) {
 	}
 
 	return publicTxs, nil
+}
+
+func GetPublicTransactionCount(db *sql.DB) (uint64, error) {
+	row := db.QueryRow(queryTxCountList)
+
+	var count uint64
+	err := row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }

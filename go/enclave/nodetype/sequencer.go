@@ -152,7 +152,7 @@ func (s *sequencer) createNewHeadBatch(l1HeadBlock *common.L1Block) error {
 
 	stateDB, err := s.storage.CreateStateDB(headBatch.Hash())
 	if err != nil {
-		return fmt.Errorf("unable to create stateDB for selecting transactions.Batch: %s Cause: %w", headBatch.Hash(), err)
+		return fmt.Errorf("unable to create stateDB for selecting transactions. Batch: %s Cause: %w", headBatch.Hash(), err)
 	}
 
 	// todo (@stefan) - limit on receipts too

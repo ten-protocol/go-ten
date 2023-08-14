@@ -349,15 +349,18 @@ func (s *RPCServer) GetTotalContractCount(_ context.Context, _ *generated.GetTot
 }
 
 func (s *RPCServer) GetReceiptsByAddress(_ context.Context, req *generated.GetReceiptsByAddressRequest) (*generated.GetReceiptsByAddressResponse, error) {
-	enclaveResp, sysError := s.enclave.GetReceiptsByAddress(req.EncryptedParams)
+	enclaveResp, sysError := s.enclave.GetCustomQuery(req.EncryptedParams)
 	if sysError != nil {
 		return &generated.GetReceiptsByAddressResponse{SystemError: toRPCError(sysError)}, nil
 	}
 	return &generated.GetReceiptsByAddressResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
-func (s *RPCServer) GetPublicTransactionData(_ context.Context, _ *generated.GetPublicTransactionDataRequest) (*generated.GetPublicTransactionDataResponse, error) {
-	publicTxData, sysError := s.enclave.GetPublicTransactionData()
+func (s *RPCServer) GetPublicTransactionData(_ context.Context, req *generated.GetPublicTransactionDataRequest) (*generated.GetPublicTransactionDataResponse, error) {
+	publicTxData, sysError := s.enclave.GetPublicTransactionData(&common.QueryPagination{
+		Offset: uint64(req.Pagination.GetOffset()),
+		Size:   uint(req.Pagination.GetSize()),
+	})
 	if sysError != nil {
 		return &generated.GetPublicTransactionDataResponse{SystemError: toRPCError(sysError)}, nil
 	}
