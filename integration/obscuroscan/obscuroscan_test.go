@@ -47,7 +47,7 @@ const (
 )
 
 func TestObscuroscan(t *testing.T) {
-	t.Skip("Commented it out until more testing is driven from this test")
+	//t.Skip("Commented it out until more testing is driven from this test")
 	startPort := integration.StartPortObscuroscanUnitTest
 	createObscuroNetwork(t, startPort)
 
@@ -108,7 +108,7 @@ func TestObscuroscan(t *testing.T) {
 	assert.Equal(t, 200, statusCode)
 
 	type publicTxsRes struct {
-		Result common.PublicQueryResponse `json:"result"`
+		Result common.PublicTxListingResponse `json:"result"`
 	}
 
 	publicTxsObj := publicTxsRes{}
@@ -117,6 +117,34 @@ func TestObscuroscan(t *testing.T) {
 	assert.Equal(t, 1, len(publicTxsObj.Result.PublicTxData))
 	assert.Equal(t, uint64(1), publicTxsObj.Result.Total)
 
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batches/?offset=0&size=10", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type batchlisting struct {
+		Result common.BatchListingResponse `json:"result"`
+	}
+
+	batchlistingObj := batchlisting{}
+	err = json.Unmarshal(body, &batchlistingObj)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, 9, len(batchlistingObj.Result.BatchData))
+	assert.LessOrEqual(t, uint64(9), batchlistingObj.Result.Total)
+
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/blocks/?offset=0&size=10", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type blockListing struct {
+		Result common.BlockListingResponse `json:"result"`
+	}
+
+	blocklistingObj := blockListing{}
+	err = json.Unmarshal(body, &blocklistingObj)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, 9, len(blocklistingObj.Result.BlockData))
+	assert.LessOrEqual(t, uint64(9), blocklistingObj.Result.Total)
+
 	issueTransactions(
 		t,
 		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
@@ -124,7 +152,7 @@ func TestObscuroscan(t *testing.T) {
 		100,
 	)
 
-	// time.Sleep(time.Hour)
+	time.Sleep(time.Hour)
 	// Gracefully shutdown
 	err = obsScanContainer.Stop()
 	assert.NoError(t, err)

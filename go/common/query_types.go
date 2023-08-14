@@ -15,15 +15,67 @@ type PrivateQueryResponse struct {
 	Total    uint64
 }
 
-type PublicQueryResponse struct {
+type PublicTxListingResponse struct {
 	PublicTxData []PublicTxData
 	Total        uint64
+}
+
+type BatchListingResponse struct {
+	BatchData []PublicBatchListing
+	Total     uint64
+}
+
+type BlockListingResponse struct {
+	BlockData []PublicBlockListing
+	Total     uint64
 }
 
 type PublicTxData struct {
 	TransactionHash TxHash
 	BatchHeight     *big.Int
 	Finality        FinalityType
+}
+
+type PublicBatchListing struct {
+	BatchHeader
+}
+
+type PublicBlockListing struct {
+	BlockHeader types.Header `json:"blockHeader"`
+	RollupHash  common.Hash  `json:"rollupHash"`
+}
+
+// MarshalJSON custom marshals the RollupHeader into a json
+func (p *PublicBlockListing) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		RollupHash string       `json:"rollupHash"`
+		Header     types.Header `json:"blockHeader"`
+	}{
+		RollupHash: p.RollupHash.Hex(),
+		Header:     p.BlockHeader,
+	})
+}
+
+func (p *PublicBlockListing) UnmarshalJSON(data []byte) error {
+	// Create an anonymous structure that matches the expected JSON structure
+	type Alias struct {
+		RollupHash string       `json:"rollupHash"`
+		Header     types.Header `json:"blockHeader"`
+	}
+
+	// Temporary variable to hold the unmarshalled data
+	var aux Alias
+
+	// Unmarshal the JSON data into the temporary structure
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Transfer the data from the temporary structure to the actual TestEntity struct
+	p.RollupHash = common.HexToHash(aux.RollupHash)
+	p.BlockHeader = aux.Header
+
+	return nil
 }
 
 type FinalityType string

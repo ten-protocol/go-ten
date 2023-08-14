@@ -401,7 +401,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
 	g.processL1BlockTransactions(block)
 
 	// todo (@matt) this should not be here, it is only used by the RPC API server for batch data which will eventually just use L1 repo
-	err = g.db.AddBlockHeader(block.Header())
+	err = g.db.AddBlock(block.Header())
 	if err != nil {
 		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}

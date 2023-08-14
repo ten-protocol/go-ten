@@ -16,6 +16,7 @@ import (
 // Schema keys, in alphabetical order.
 var (
 	blockHeaderPrefix       = []byte("b")
+	blockNumberHeaderPrefix = []byte("bnh")
 	batchHeaderPrefix       = []byte("ba")
 	batchHashPrefix         = []byte("bh")
 	batchNumberPrefix       = []byte("bn")
@@ -25,7 +26,9 @@ var (
 	headBatch               = []byte("hb")
 	totalTransactionsKey    = []byte("t")
 	rollupHeaderPrefix      = []byte("rh")
+	rollupHeaderBlockPrefix = []byte("rhb")
 	tipRollupHash           = []byte("tr")
+	blockHeadedAtTip        = []byte("bht")
 )
 
 // DB allows to access the nodes public nodeDB

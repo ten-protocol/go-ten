@@ -33,6 +33,10 @@ func (db *DB) AddRollupHeader(rollup *common.ExtRollup) error {
 		return fmt.Errorf("could not write rollup header. Cause: %w", err)
 	}
 
+	if err := db.writeRollupByBlockHash(b, rollup.Header); err != nil {
+		return fmt.Errorf("could not write rollup block. Cause: %w", err)
+	}
+
 	// Update the tip if the new height is greater than the existing one.
 	tipRollupHeader, err := db.GetTipRollupHeader()
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -53,12 +57,26 @@ func (db *DB) AddRollupHeader(rollup *common.ExtRollup) error {
 
 // GetRollupHeader returns the rollup with the given hash.
 func (db *DB) GetRollupHeader(hash gethcommon.Hash) (*common.RollupHeader, error) {
-	return db.readRollupHeader(hash)
+	return db.readRollupHeader(rollupHashKey(hash))
+}
+
+// GetTipRollupHeader returns the header of the node's current tip rollup.
+func (db *DB) GetTipRollupHeader() (*common.RollupHeader, error) {
+	headBatchHash, err := db.readTipRollupHash()
+	if err != nil {
+		return nil, err
+	}
+	return db.readRollupHeader(rollupHashKey(*headBatchHash))
+}
+
+// GetRollupHeaderByBlock returns the rollup for the given block
+func (db *DB) GetRollupHeaderByBlock(blockHash gethcommon.Hash) (*common.RollupHeader, error) {
+	return db.readRollupHeader(rollupBlockKey(blockHash))
 }
 
 // Retrieves the rollup corresponding to the hash.
-func (db *DB) readRollupHeader(hash gethcommon.Hash) (*common.RollupHeader, error) {
-	data, err := db.kvStore.Get(rollupKey(hash))
+func (db *DB) readRollupHeader(key []byte) (*common.RollupHeader, error) {
+	data, err := db.kvStore.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -79,23 +97,9 @@ func (db *DB) writeRollupHeader(w ethdb.KeyValueWriter, header *common.RollupHea
 	if err != nil {
 		return err
 	}
-	key := rollupKey(header.Hash())
+	key := rollupHashKey(header.Hash())
 
 	return w.Put(key, data)
-}
-
-// rollupKey = rollupHeaderPrefix  + hash
-func rollupKey(hash gethcommon.Hash) []byte {
-	return append(rollupHeaderPrefix, hash.Bytes()...)
-}
-
-// GetTipRollupHeader returns the header of the node's current tip rollup.
-func (db *DB) GetTipRollupHeader() (*common.RollupHeader, error) {
-	headBatchHash, err := db.readTipRollupHash()
-	if err != nil {
-		return nil, err
-	}
-	return db.readRollupHeader(*headBatchHash)
 }
 
 // Retrieves the hash of the rollup at tip
@@ -115,4 +119,27 @@ func (db *DB) writeTipRollupHeader(w ethdb.KeyValueWriter, val gethcommon.Hash) 
 		return err
 	}
 	return nil
+}
+
+// Stores if a rollup is in a block
+func (db *DB) writeRollupByBlockHash(w ethdb.KeyValueWriter, header *common.RollupHeader) error {
+	// Write the encoded header
+	data, err := rlp.EncodeToBytes(header)
+	if err != nil {
+		return err
+	}
+	key := rollupBlockKey(header.L1Proof)
+	fmt.Println("stored rollup ", header.Hash(), " for block ", header.L1ProofNumber)
+
+	return w.Put(key, data)
+}
+
+// rollupHashKey = rollupHeaderPrefix  + hash
+func rollupHashKey(hash gethcommon.Hash) []byte {
+	return append(rollupHeaderPrefix, hash.Bytes()...)
+}
+
+// rollupBlockKey = rollupHeaderBlockPrefix  + hash
+func rollupBlockKey(hash gethcommon.Hash) []byte {
+	return append(rollupHeaderBlockPrefix, hash.Bytes()...)
 }

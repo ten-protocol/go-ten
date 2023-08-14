@@ -1377,7 +1377,7 @@ func (e *enclaveImpl) GetCustomQuery(encryptedParams common.EncryptedParamsGetSt
 	}, vkHandler), nil
 }
 
-func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPagination) (*common.PublicQueryResponse, common.SystemError) {
+func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPagination) (*common.PublicTxListingResponse, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetPublicTransactionData with the enclave stopping"))
@@ -1394,7 +1394,7 @@ func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPaginatio
 		return nil, responses.ToInternalError(fmt.Errorf("unable to fetch data - %w", err))
 	}
 
-	return &common.PublicQueryResponse{
+	return &common.PublicTxListingResponse{
 		PublicTxData: paginatedData,
 		Total:        totalData,
 	}, nil

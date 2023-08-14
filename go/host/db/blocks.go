@@ -2,7 +2,10 @@ package db
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"math/big"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
@@ -12,19 +15,41 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-// DB methods relating to blocks.
+// DB methods relating to block headers.
 
-// GetBlockHeader returns the block header given the hash.
-func (db *DB) GetBlockHeader(hash gethcommon.Hash) (*types.Header, error) {
-	return db.readBlockHeader(db.kvStore, hash)
+// GetBlockByHash returns the block header given the hash.
+func (db *DB) GetBlockByHash(hash gethcommon.Hash) (*types.Header, error) {
+	return db.readBlock(db.kvStore, blockHashKey(hash))
 }
 
-// AddBlockHeader adds a types.Header to the known headers
-func (db *DB) AddBlockHeader(header *types.Header) error {
+// GetBlockByHeight returns the block header given the height
+func (db *DB) GetBlockByHeight(height *big.Int) (*types.Header, error) {
+	return db.readBlock(db.kvStore, blockNumberKey(height))
+}
+
+// AddBlock adds a types.Header to the known headers
+func (db *DB) AddBlock(header *types.Header) error {
 	b := db.kvStore.NewBatch()
-	err := db.writeBlockHeader(header)
+	err := db.writeBlockByHash(header)
 	if err != nil {
 		return fmt.Errorf("could not write block header. Cause: %w", err)
+	}
+
+	err = db.writeBlockByHeight(header)
+	if err != nil {
+		return fmt.Errorf("could not write block header. Cause: %w", err)
+	}
+
+	// Update the tip if the new height is greater than the existing one.
+	tipBlockHeader, err := db.GetBlockAtTip()
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("could not retrieve block header at tip. Cause: %w", err)
+	}
+	if tipBlockHeader == nil || tipBlockHeader.Number.Cmp(header.Number) == -1 {
+		err = db.writeBlockAtTip(b, header.Hash())
+		if err != nil {
+			return fmt.Errorf("could not write new block hash at tip. Cause: %w", err)
+		}
 	}
 
 	if err = b.Write(); err != nil {
@@ -34,19 +59,71 @@ func (db *DB) AddBlockHeader(header *types.Header) error {
 	return nil
 }
 
-// headerKey = blockHeaderPrefix  + hash
-func blockHeaderKey(hash gethcommon.Hash) []byte {
-	return append(blockHeaderPrefix, hash.Bytes()...)
+// GetBlockListing returns a list of blocks given the pagination
+func (db *DB) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
+	// fetch requested batches
+	var blocks []common.PublicBlockListing
+	for i := pagination.Offset; i < pagination.Offset+uint64(pagination.Size); i++ {
+		header, err := db.GetBlockByHeight(big.NewInt(int64(i)))
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			return nil, err
+		}
+
+		// check if the block has a rollup
+		rollup, err := db.GetRollupHeaderByBlock(header.Hash())
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			return nil, err
+		}
+
+		if header != nil {
+			listedBlock := common.PublicBlockListing{BlockHeader: *header}
+			if rollup != nil {
+				listedBlock.RollupHash = rollup.Hash()
+				fmt.Println("added at block: ", header.Number.Int64(), " - ", listedBlock.RollupHash)
+			}
+			blocks = append(blocks, listedBlock)
+		}
+	}
+	// fetch the total blocks so we can paginate
+	tipHeader, err := db.GetBlockAtTip()
+	if err != nil {
+		return nil, err
+	}
+
+	return &common.BlockListingResponse{
+		BlockData: blocks,
+		Total:     tipHeader.Number.Uint64(),
+	}, nil
 }
 
-// Stores a block header into the database
-func (db *DB) writeBlockHeader(header *types.Header) error {
+// GetBlockAtTip returns the block at current Head or Tip
+func (db *DB) GetBlockAtTip() (*types.Header, error) {
+	value, err := db.kvStore.Get(blockHeadedAtTip)
+	if err != nil {
+		return nil, err
+	}
+	h := gethcommon.BytesToHash(value)
+
+	return db.GetBlockByHash(h)
+}
+
+// Stores the hash of the block at tip
+func (db *DB) writeBlockAtTip(w ethdb.KeyValueWriter, hash gethcommon.Hash) error {
+	err := w.Put(blockHeadedAtTip, hash.Bytes())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Stores a block header into the database using the hash as key
+func (db *DB) writeBlockByHash(header *types.Header) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
 		return err
 	}
-	key := blockHeaderKey(header.Hash())
+	key := blockHashKey(header.Hash())
 	if err := db.kvStore.Put(key, data); err != nil {
 		return err
 	}
@@ -54,9 +131,23 @@ func (db *DB) writeBlockHeader(header *types.Header) error {
 	return nil
 }
 
-// Retrieves the block header corresponding to the hash.
-func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*types.Header, error) {
-	data, err := r.Get(blockHeaderKey(hash))
+// Stores a block header into the database using the height as key
+func (db *DB) writeBlockByHeight(header *types.Header) error {
+	// Write the encoded header
+	data, err := rlp.EncodeToBytes(header)
+	if err != nil {
+		return err
+	}
+	key := blockNumberKey(header.Number)
+	if err := db.kvStore.Put(key, data); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Retrieves the block header corresponding to the key.
+func (db *DB) readBlock(r ethdb.KeyValueReader, key []byte) (*types.Header, error) {
+	data, err := r.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -69,4 +160,14 @@ func (db *DB) readBlockHeader(r ethdb.KeyValueReader, hash gethcommon.Hash) (*ty
 	}
 	db.blockReads.Inc(1)
 	return header, nil
+}
+
+// headerKey = blockNumberHeaderPrefix  + hash
+func blockNumberKey(height *big.Int) []byte {
+	return append(blockNumberHeaderPrefix, height.Bytes()...)
+}
+
+// headerKey = blockHeaderPrefix  + hash
+func blockHashKey(hash gethcommon.Hash) []byte {
+	return append(blockHeaderPrefix, hash.Bytes()...)
 }
