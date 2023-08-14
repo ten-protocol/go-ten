@@ -230,7 +230,6 @@ func (s *sequencer) StoreExecutedBatch(batch *core.Batch, receipts types.Receipt
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	// on the sequencer, a new executed batch is always canonical
 	s.batchRegistry.OnBatchExecuted(batch, receipts)
 
 	return nil

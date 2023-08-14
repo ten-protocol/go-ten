@@ -356,8 +356,10 @@ func (e *enclaveImpl) streamEventsForNewHeadBatch(batch *core.Batch, receipts ty
 		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
 		return
 	}
-	outChannel <- common.StreamL2UpdatesResponse{
-		Logs: logs,
+	if logs != nil {
+		outChannel <- common.StreamL2UpdatesResponse{
+			Logs: logs,
+		}
 	}
 }
 
@@ -371,7 +373,9 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 
 	e.registry.SubscribeForExecutedBatches(func(batch *core.Batch, receipts types.Receipts) {
 		e.sendBatch(batch, l2UpdatesChannel)
-		e.streamEventsForNewHeadBatch(batch, receipts, l2UpdatesChannel)
+		if receipts != nil {
+			e.streamEventsForNewHeadBatch(batch, receipts, l2UpdatesChannel)
+		}
 	})
 
 	return l2UpdatesChannel, func() {

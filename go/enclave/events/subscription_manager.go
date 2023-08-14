@@ -91,7 +91,7 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 // FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs
 // filtered based on the provided account and filter.
 func (s *SubscriptionManager) FilterLogs(logs []*types.Log, batchHash common.L2BatchHash, account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
-	var filteredLogs []*types.Log
+	filteredLogs := []*types.Log{}
 	stateDB, err := s.storage.CreateStateDB(batchHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
@@ -110,15 +110,20 @@ func (s *SubscriptionManager) FilterLogs(logs []*types.Log, batchHash common.L2B
 // GetSubscribedLogsForBatch - Retrieves and encrypts the logs for the batch in live mode.
 // The assumption is that this function is called synchronously after the batch is produced
 func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, receipts types.Receipts) (common.EncryptedSubscriptionLogs, error) {
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
+
+	// exit early if there are no subscriptions
+	if len(s.subscriptions) == 0 {
+		return nil, nil
+	}
+
 	result := map[gethrpc.ID][]*types.Log{}
 
 	var allLogs []*types.Log
 	for _, receipt := range receipts {
 		allLogs = append(allLogs, receipt.Logs...)
 	}
-
-	s.subscriptionMutex.RLock()
-	defer s.subscriptionMutex.RUnlock()
 
 	var err error
 	for id, sub := range s.subscriptions {
@@ -128,6 +133,7 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 			return nil, err
 		}
 	}
+
 	// Encrypt the results
 	return s.encryptLogs(result)
 }
