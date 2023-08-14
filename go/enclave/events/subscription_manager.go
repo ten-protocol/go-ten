@@ -88,7 +88,7 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	delete(s.subscriptions, id)
 }
 
-// FilterLogs takes a list of logs and the hash of the rollup to use to create the state DB. It returns the logs
+// FilterLogs takes a list of logs and the hash of the batch to use to create the state DB. It returns the logs
 // filtered based on the provided account and filter.
 func (s *SubscriptionManager) FilterLogs(logs []*types.Log, batchHash common.L2BatchHash, account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
 	filteredLogs := []*types.Log{}
@@ -125,12 +125,18 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 		allLogs = append(allLogs, receipt.Logs...)
 	}
 
-	var err error
+	if len(allLogs) == 0 {
+		return nil, nil
+	}
+
 	for id, sub := range s.subscriptions {
-		result[id], err = s.FilterLogs(allLogs, batch.Hash(), sub.Account, sub.Filter)
+		l, err := s.FilterLogs(allLogs, batch.Hash(), sub.Account, sub.Filter)
 		if err != nil {
 			s.logger.Error("Could not retrieve subscription logs", log.ErrKey, err)
 			return nil, err
+		}
+		if len(l) > 0 {
+			result[id] = l
 		}
 	}
 
@@ -169,23 +175,23 @@ func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) 
 //   - It has a non-zero nonce (to prevent accidental or malicious creation of the address matching a given topic,
 //     forcing its events to become permanently private
 //   - It does not have associated code (meaning it's a smart-contract address)
-func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
-	var userAddrs []string
+func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []*gethcommon.Address {
+	var userAddrs []*gethcommon.Address
 
 	// We skip over the first topic, which is always the hash of the event.
 	for _, topic := range log.Topics[1:len(log.Topics)] {
-		potentialAddr := gethcommon.HexToAddress(topic.Hex())
-
 		if topic.Hex()[2:len(zeroBytesHex)+2] != zeroBytesHex {
 			continue
 		}
+
+		potentialAddr := gethcommon.BytesToAddress(topic.Bytes())
 
 		// A user address must have a non-zero nonce. This prevents accidental or malicious sending of funds to an
 		// address matching a topic, forcing its events to become permanently private.
 		if db.GetNonce(potentialAddr) != 0 {
 			// If the address has code, it's a smart contract address instead.
 			if db.GetCode(potentialAddr) == nil {
-				userAddrs = append(userAddrs, potentialAddr.Hex())
+				userAddrs = append(userAddrs, &potentialAddr)
 			}
 		}
 	}
@@ -196,7 +202,7 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []string {
 // Indicates whether BOTH of the following apply:
 //   - One of the log's user addresses matches the subscription's account
 //   - The log matches the filter
-func isRelevant(logItem *types.Log, userAddrs []string, account *gethcommon.Address, filter *filters.FilterCriteria, logger gethlog.Logger) bool {
+func isRelevant(logItem *types.Log, userAddrs []*gethcommon.Address, account *gethcommon.Address, filter *filters.FilterCriteria, logger gethlog.Logger) bool {
 	logger.Info(fmt.Sprintf("Checking if log = %v is relevant for account - %s. Addresses extracted from topics =  %v", logItem, account.String(), userAddrs))
 
 	filteredLogs := filterLogs([]*types.Log{logItem}, filter.FromBlock, filter.ToBlock, filter.Addresses, filter.Topics, logger)
@@ -210,7 +216,7 @@ func isRelevant(logItem *types.Log, userAddrs []string, account *gethcommon.Addr
 	}
 
 	for _, addr := range userAddrs {
-		if addr == account.Hex() {
+		if *addr == *account {
 			return true
 		}
 	}
@@ -228,7 +234,7 @@ Logs:
 			logger.Info(fmt.Sprintf("Skipping log = %v", logItem), "reason", "In the past. The starting block num for filter is bigger than log")
 			continue
 		}
-		if toBlock != nil && toBlock.Int64() >= 0 && toBlock.Uint64() < logItem.BlockNumber {
+		if toBlock != nil && toBlock.Int64() > 0 && toBlock.Uint64() < logItem.BlockNumber {
 			logger.Info(fmt.Sprintf("Skipping log = %v", logItem), "reason", "In the future. The ending block num for filter is smaller than log")
 			continue
 		}
