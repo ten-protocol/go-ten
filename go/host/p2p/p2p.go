@@ -62,10 +62,11 @@ func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocat
 
 		sl: serviceLocator,
 
-		isSequencer:   config.NodeType == common.Sequencer,
-		ourAddress:    config.P2PBindAddress,
-		peerAddresses: []string{},
-		p2pTimeout:    config.P2PConnectionTimeout,
+		isSequencer:      config.NodeType == common.Sequencer,
+		ourBindAddress:   config.P2PBindAddress,
+		ourPublicAddress: config.P2PPublicAddress,
+		peerAddresses:    []string{},
+		p2pTimeout:       config.P2PConnectionTimeout,
 
 		peerAddressesMutex: sync.RWMutex{},
 
@@ -86,10 +87,11 @@ type Service struct {
 
 	sl p2pServiceLocator
 
-	isSequencer   bool
-	ourAddress    string
-	peerAddresses []string
-	p2pTimeout    time.Duration
+	isSequencer      bool
+	ourBindAddress   string
+	ourPublicAddress string
+	peerAddresses    []string
+	p2pTimeout       time.Duration
 
 	peerTracker        *peerTracker
 	metricsRegistry    gethmetrics.Registry
@@ -99,12 +101,12 @@ type Service struct {
 
 func (p *Service) Start() error {
 	// We listen for P2P connections.
-	listener, err := net.Listen("tcp", p.ourAddress)
+	listener, err := net.Listen("tcp", p.ourBindAddress)
 	if err != nil {
-		return fmt.Errorf("could not listen for P2P connections on %s: %w", p.ourAddress, err)
+		return fmt.Errorf("could not listen for P2P connections on %s: %w", p.ourBindAddress, err)
 	}
 
-	p.logger.Info(fmt.Sprintf("Started listening on port: %s", p.ourAddress))
+	p.logger.Info("P2P server started listening", "bindAddress", p.ourBindAddress, "publicAddress", p.ourPublicAddress)
 	i := int32(0)
 	p.listenerInterrupt = &i
 	p.listener = listener
@@ -163,7 +165,7 @@ func (p *Service) SendTxToSequencer(tx common.EncryptedTx) error {
 	if p.isSequencer {
 		return errors.New("sequencer cannot send tx to itself")
 	}
-	msg := message{Sender: p.ourAddress, Type: msgTypeTx, Contents: tx}
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeTx, Contents: tx}
 	sequencer, err := p.getSequencer()
 	if err != nil {
 		return fmt.Errorf("failed to find sequencer - %w", err)
@@ -185,7 +187,7 @@ func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
 
-	msg := message{Sender: p.ourAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
 	return p.broadcast(msg)
 }
 
@@ -194,7 +196,7 @@ func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
 		return errors.New("sequencer cannot request batches from itself")
 	}
 	batchRequest := &common.BatchRequest{
-		Requester: p.ourAddress,
+		Requester: p.ourPublicAddress,
 		FromSeqNo: fromSeqNo,
 	}
 	defer p.logger.Info("Requested batches from sequencer", "fromSeqNo", batchRequest.FromSeqNo, log.DurationKey, measure.NewStopwatch())
@@ -204,7 +206,7 @@ func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
 	}
 
-	msg := message{Sender: p.ourAddress, Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
 	// todo (#718) - allow missing batches to be requested from peers other than sequencer?
 	sequencer, err := p.getSequencer()
 	if err != nil {
@@ -227,7 +229,7 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 		return fmt.Errorf("could not encode batches using RLP. Cause: %w", err)
 	}
 
-	msg := message{Sender: p.ourAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
 	return p.send(msg, requestID)
 }
 
@@ -241,7 +243,7 @@ func (p *Service) verifyHealth() error {
 		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {
 			noMsgReceivedPeers = append(noMsgReceivedPeers, peer)
 			p.logger.Warn("no message from peer in the alert period",
-				"ourAddress", p.ourAddress,
+				"ourAddress", p.ourPublicAddress,
 				"peer", peer,
 				"alertPeriod", _alertPeriod,
 			)
