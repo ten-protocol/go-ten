@@ -482,9 +482,6 @@ func (n *Impl) waitForMergeEvent(ctx context.Context, startTime time.Time) error
 
 	// wait for the merge block (exit if context closes)
 	for ; number <= 7; time.Sleep(time.Second) {
-		if ctx.Err() != nil {
-			return fmt.Errorf("failed to reach merge block - context closed: %w", ctx.Err())
-		}
 		number, err = dial.BlockNumber(ctx)
 		if err != nil {
 			return err
