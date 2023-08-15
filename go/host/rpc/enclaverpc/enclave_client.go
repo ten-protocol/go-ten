@@ -455,7 +455,7 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	return json.RawMessage(response.Msg), nil
 }
 
-func (c *Client) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
+func (c *Client) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -467,7 +467,7 @@ func (c *Client) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
 	return common.DecodeExtBatch(batchMsg.Batch)
 }
 
-func (c *Client) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, error) {
+func (c *Client) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
