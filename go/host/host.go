@@ -3,7 +3,6 @@ package host
 import (
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 
 	"github.com/kamilsk/breaker"
@@ -27,7 +26,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/responses"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
@@ -61,16 +59,6 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p P2PH
 		logger.Crit("unable to create database for host", log.ErrKey, err)
 	}
 	l1Repo := l1.NewL1Repository(ethClient, logger)
-	l1StartHash := config.L1StartHash
-	if l1StartHash == (gethcommon.Hash{}) {
-		startBlock, err := l1Repo.FetchBlockByHeight(big.NewInt(0))
-		if err != nil {
-			logger.Crit("unable to fetch start block so stream from", log.ErrKey, err)
-		}
-		l1StartHash = startBlock.Hash()
-	}
-	enclStateTracker := enclave.NewStateTracker(logger)
-	enclStateTracker.OnProcessedBlock(l1StartHash) // this makes sure we start streaming from the right block, will be less clunky in the enclave guardian
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
 		// config

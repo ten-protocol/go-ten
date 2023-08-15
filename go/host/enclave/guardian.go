@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 
 	"github.com/kamilsk/breaker"
@@ -61,6 +63,7 @@ type Guardian struct {
 
 	batchInterval  time.Duration
 	rollupInterval time.Duration
+	l1StartHash    gethcommon.Hash
 
 	running         atomic.Bool
 	hostInterrupter breaker.Interface // host hostInterrupter so we can stop quickly
@@ -76,6 +79,7 @@ func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator 
 		sl:              serviceLocator,
 		batchInterval:   cfg.BatchInterval,
 		rollupInterval:  cfg.RollupInterval,
+		l1StartHash:     cfg.L1StartHash,
 		db:              db,
 		hostInterrupter: interrupter,
 		logger:          logger,
@@ -329,7 +333,14 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 func (g *Guardian) catchupWithL1() error {
 	// while we are behind the L1 head and still running, fetch and submit L1 blocks
 	for g.running.Load() && g.state.GetStatus() == L1Catchup {
-		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(g.state.GetEnclaveL1Head())
+		// generally we will be feeding the block after the enclave's current head
+		enclaveHead := g.state.GetEnclaveL1Head()
+		if enclaveHead == gethutil.EmptyHash {
+			// but if enclave has no current head, then we use the configured hash to find the first block to feed
+			enclaveHead = g.l1StartHash
+		}
+
+		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(enclaveHead)
 		if err != nil {
 			if errors.Is(err, l1.ErrNoNextBlock) {
 				if g.state.hostL1Head == gethutil.EmptyHash {
