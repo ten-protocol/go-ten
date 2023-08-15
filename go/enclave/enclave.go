@@ -323,12 +323,13 @@ func (e *enclaveImpl) Status() (common.Status, common.SystemError) {
 	}
 	// we use zero when there's no head batch yet, the first seq number is 1
 	l2HeadSeqNo := _noHeadBatch
-	l2Head, err := e.storage.FetchHeadBatch()
+	// this is the highest seq number that has been received and stored on the enclave (it may not have been executed)
+	currSeqNo, err := e.storage.FetchCurrentSequencerNo()
 	if err != nil {
 		// this might be normal while enclave is starting up, just send empty hash
 		e.logger.Debug("failed to fetch L2 head batch for status response", log.ErrKey, err)
 	} else {
-		l2HeadSeqNo = l2Head.Header.SequencerOrderNo
+		l2HeadSeqNo = currSeqNo
 	}
 	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadSeqNo}, nil
 }
