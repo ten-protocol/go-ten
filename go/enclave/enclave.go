@@ -1281,7 +1281,7 @@ func (e *enclaveImpl) HealthCheck() (bool, common.SystemError) {
 	storageHealthy, err := e.storage.HealthCheck()
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
-		e.logger.Debug("HealthCheck failed for the enclave storage", log.ErrKey, err)
+		e.logger.Info("HealthCheck failed for the enclave storage", log.ErrKey, err)
 		return false, nil
 	}
 	// todo (#1148) - enclave healthcheck operations
