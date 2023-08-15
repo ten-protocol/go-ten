@@ -213,7 +213,7 @@ func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, ti
 func (executor *batchExecutor) populateOutboundCrossChainData(batch *core.Batch, block *types.Block, receipts types.Receipts) error {
 	crossChainMessages, err := executor.crossChainProcessors.Local.ExtractOutboundMessages(receipts)
 	if err != nil {
-		executor.logger.Error("Extracting messages L2->L1 failed", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		executor.logger.Error("Failed extracting L2->L1 messages", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
 	}
 

@@ -197,7 +197,7 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 
 	p, err := s.FetchBlock(block.ParentHash())
 	if err != nil {
-		s.logger.Warn("Could not find block with hash", log.BlockHashKey, block.ParentHash(), log.ErrKey, err)
+		s.logger.Debug("Could not find block with hash", log.BlockHashKey, block.ParentHash(), log.ErrKey, err)
 		return false
 	}
 
@@ -215,7 +215,7 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 func (s *storageImpl) HealthCheck() (bool, error) {
 	headBatch, err := s.FetchHeadBatch()
 	if err != nil {
-		s.logger.Error("unable to HealthCheck storage", log.ErrKey, err)
+		s.logger.Info("HealthCheck failed for enclave storage", log.ErrKey, err)
 		return false, err
 	}
 	return headBatch != nil, nil
