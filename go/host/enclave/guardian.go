@@ -371,6 +371,8 @@ func (g *Guardian) catchupWithL2() error {
 	return nil
 }
 
+// returns false if the block was not processed
+// todo - @matt - think about removing the TryLock
 func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, error) {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
 	receipts := g.sl.L1Repo().FetchReceipts(block)
