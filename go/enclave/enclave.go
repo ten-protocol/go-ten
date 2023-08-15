@@ -423,7 +423,12 @@ func (e *enclaveImpl) ingestL1Block(br *common.BlockAndReceipts) (*components.Bl
 
 	ingestion, err := e.l1BlockProcessor.Process(br)
 	if err != nil {
-		e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
+		// only warn for unexpected errors
+		if errors.Is(err, errutil.ErrBlockAncestorNotFound) || errors.Is(err, errutil.ErrBlockAlreadyProcessed) {
+			e.logger.Debug("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
+		} else {
+			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.Block.Hash())
+		}
 		return nil, err
 	}
 
@@ -1276,7 +1281,7 @@ func (e *enclaveImpl) HealthCheck() (bool, common.SystemError) {
 	storageHealthy, err := e.storage.HealthCheck()
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
-		e.logger.Error("unable to HealthCheck enclave storage", log.ErrKey, err)
+		e.logger.Debug("HealthCheck failed for the enclave storage", log.ErrKey, err)
 		return false, nil
 	}
 	// todo (#1148) - enclave healthcheck operations

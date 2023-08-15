@@ -253,7 +253,7 @@ func (e *gethRPCClient) Reconnect() error {
 func (e *gethRPCClient) Alive() bool {
 	_, err := e.client.BlockNumber(context.Background())
 	if err != nil {
-		e.logger.Error("unable to fetch BlockNumber rpc endpoint - client connection is in error state")
+		e.logger.Error("Unable to fetch BlockNumber rpc endpoint - client connection is in error state")
 		return false
 	}
 	return err == nil

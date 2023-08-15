@@ -300,7 +300,7 @@ func (o *Obscuroscan) getBlock(resp http.ResponseWriter, req *http.Request) {
 	var blockHeader *types.Header
 	err = o.client.Call(&blockHeader, rpc.GetBlockHeaderByHash, blockHash)
 	if err != nil {
-		o.logger.Error(fmt.Sprintf("could not retrieve block with hash %s", blockHash), log.ErrKey, err)
+		o.logger.Info(fmt.Sprintf("could not retrieve block with hash %s", blockHash), log.ErrKey, err)
 		logAndSendErr(resp, "Could not fetch block.")
 		return
 	}

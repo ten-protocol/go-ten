@@ -76,7 +76,7 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().GetBalance(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("GetBalance", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -86,7 +86,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().ObsCall(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("Call", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -96,7 +96,7 @@ func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.Encrypted
 func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionReceipt(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("GetTransactionReceipt", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -105,7 +105,7 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().EstimateGas(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("EstimateGas", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -114,7 +114,7 @@ func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.En
 func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.SubmitAndBroadcastTx(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("SendRawTransaction", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -144,7 +144,7 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 
 	code, sysError := api.host.EnclaveClient().GetCode(address, batchHash)
 	if sysError != nil {
-		api.logger.Warn("Enclave System Error Response", log.ErrKey, sysError)
+		api.logger.Error(fmt.Sprintf("Enclave System Error. Function %s", "GetCode"), log.ErrKey, sysError)
 		return nil, fmt.Errorf(responses.InternalErrMsg)
 	}
 
@@ -154,7 +154,7 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionCount(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("GetTransactionCount", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -164,7 +164,7 @@ func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams c
 func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().GetTransaction(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("GetTransactionByHash", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -217,8 +217,8 @@ func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*ge
 	return batchHash, nil
 }
 
-func (api *EthereumAPI) handleSysError(sysError common.SystemError) (responses.EnclaveResponse, error) {
-	api.logger.Warn("Enclave System Error Response", log.ErrKey, sysError)
+func (api *EthereumAPI) handleSysError(function string, sysError common.SystemError) (responses.EnclaveResponse, error) {
+	api.logger.Error(fmt.Sprintf("Enclave System Error. Function %s", function), log.ErrKey, sysError)
 	return responses.EnclaveResponse{
 		Err: &responses.InternalErrMsg,
 	}, nil

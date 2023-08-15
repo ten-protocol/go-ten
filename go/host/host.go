@@ -181,7 +181,7 @@ func (h *host) Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedPar
 
 func (h *host) Unsubscribe(id rpc.ID) {
 	if h.stopControl.IsStopping() {
-		h.logger.Error("requested Subscribe with the host stopping")
+		h.logger.Debug("requested Subscribe with the host stopping")
 	}
 	h.services.LogSubs().Unsubscribe(id)
 }
