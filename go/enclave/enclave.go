@@ -51,7 +51,6 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 
 	_ "github.com/obscuronet/go-obscuro/go/common/tracers/native" // make sure the tracers are loaded
@@ -66,15 +65,16 @@ import (
 var _noHeadBatch = big.NewInt(0)
 
 type enclaveImpl struct {
-	config               *config.EnclaveConfig
-	storage              storage.Storage
-	blockResolver        storage.BlockResolver
-	l1BlockProcessor     components.L1BlockProcessor
-	rollupConsumer       components.RollupConsumer
-	l1Blockchain         *gethcore.BlockChain
-	rpcEncryptionManager rpc.EncryptionManager
-	subscriptionManager  *events.SubscriptionManager
-	crossChainProcessors *crosschain.Processors
+	config                *config.EnclaveConfig
+	storage               storage.Storage
+	blockResolver         storage.BlockResolver
+	l1BlockProcessor      components.L1BlockProcessor
+	rollupConsumer        components.RollupConsumer
+	l1Blockchain          *gethcore.BlockChain
+	rpcEncryptionManager  rpc.EncryptionManager
+	subscriptionManager   *events.SubscriptionManager
+	crossChainProcessors  *crosschain.Processors
+	sharedSecretProcessor *components.SharedSecretProcessor
 
 	chain    l2chain.ObscuroChain
 	service  nodetype.NodeType
@@ -85,7 +85,7 @@ type enclaveImpl struct {
 	BaseFee      *big.Int //              gethcommon.Big0,
 
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
-	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
+	attestationProvider components.AttestationProvider // interface for producing attestation reports and verifying them
 
 	enclaveKey    *ecdsa.PrivateKey // this is a key specific to this enclave, which is included in the Attestation. Used for signing rollups and for encryption of the shared secret.
 	enclavePubKey []byte            // the public key of the above
@@ -155,12 +155,12 @@ func NewEnclave(
 	}
 
 	// todo (#1474) - make sure the enclave cannot be started in production with WillAttest=false
-	var attestationProvider AttestationProvider
+	var attestationProvider components.AttestationProvider
 	if config.WillAttest {
-		attestationProvider = &EgoAttestationProvider{}
+		attestationProvider = &components.EgoAttestationProvider{}
 	} else {
 		logger.Info("WARNING - Attestation is not enabled, enclave will not create a verified attestation report.")
-		attestationProvider = &DummyAttestationProvider{}
+		attestationProvider = &components.DummyAttestationProvider{}
 	}
 
 	// attempt to fetch the enclave key from the database
@@ -206,6 +206,7 @@ func NewEnclave(
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, dataEncryptionService, dataCompressionService, config.ObscuroChainID, config.L1ChainID, storage, logger, sigVerifier)
+	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, storage, logger)
 
 	var service nodetype.NodeType
 	if config.NodeType == common.Sequencer {
@@ -262,6 +263,7 @@ func NewEnclave(
 		crossChainProcessors:   crossChainProcessors,
 		mgmtContractLib:        mgmtContractLib,
 		attestationProvider:    attestationProvider,
+		sharedSecretProcessor:  sharedSecretProcessor,
 		enclaveKey:             enclaveKey,
 		enclavePubKey:          serializedEnclavePubKey,
 		dataEncryptionService:  dataEncryptionService,
@@ -282,22 +284,30 @@ func NewEnclave(
 	}
 }
 
-func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
+func (e *enclaveImpl) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
 	batch, err := e.storage.FetchBatch(hash)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting batch. Cause: %w", err)
+		return nil, responses.ToInternalError(fmt.Errorf("failed getting batch. Cause: %w", err))
 	}
 
-	return batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+	b, err := batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+	if err != nil {
+		return nil, responses.ToInternalError(err)
+	}
+	return b, nil
 }
 
-func (e *enclaveImpl) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, error) {
+func (e *enclaveImpl) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.SystemError) {
 	batch, err := e.storage.FetchBatchBySeqNo(seqNo)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting batch. Cause: %w", err)
+		return nil, responses.ToInternalError(fmt.Errorf("failed getting batch. Cause: %w", err))
 	}
 
-	return batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+	b, err := batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+	if err != nil {
+		return nil, responses.ToInternalError(err)
+	}
+	return b, nil
 }
 
 // Status is only implemented by the RPC wrapper
@@ -414,7 +424,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.processNetworkSecretMsgs(br)}
+	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(br)}
 	return bsr, nil
 }
 
@@ -845,7 +855,7 @@ func (e *enclaveImpl) Attestation() (*common.AttestationReport, common.SystemErr
 	}
 	report, err := e.attestationProvider.GetReport(e.enclavePubKey, e.config.HostID, e.config.HostAddress)
 	if err != nil {
-		return nil, responses.ToInternalError(fmt.Errorf("could not produce remote report"))
+		return nil, responses.ToInternalError(fmt.Errorf("could not produce remote report. Cause %w", err))
 	}
 	return report, nil
 }
@@ -883,41 +893,6 @@ func (e *enclaveImpl) InitEnclave(s common.EncryptedSharedEnclaveSecret) common.
 		return responses.ToInternalError(fmt.Errorf("could not store secret. Cause: %w", err))
 	}
 	e.logger.Trace(fmt.Sprintf("Secret decrypted and stored. Secret: %v", secret))
-	return nil
-}
-
-// ShareSecret verifies the request and if it trusts the report and the public key it will return the secret encrypted with that public key.
-func (e *enclaveImpl) verifyAttestationAndEncryptSecret(att *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
-	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
-	data, err := e.attestationProvider.VerifyReport(att)
-	if err != nil {
-		return nil, fmt.Errorf("unable to verify report - %w", err)
-	}
-	// Then we verify the public key provided has come from the same enclave as that attestation report
-	if err = VerifyIdentity(data, att); err != nil {
-		return nil, fmt.Errorf("unable to verify identity - %w", err)
-	}
-	e.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.Owner))
-
-	secret, err := e.storage.FetchSecret()
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve secret; this should not happen. Cause: %w", err)
-	}
-	return crypto.EncryptSecret(att.PubKey, *secret, e.logger)
-}
-
-// storeAttestation stores the attested keys of other nodes so we can decrypt their rollups
-func (e *enclaveImpl) storeAttestation(att *common.AttestationReport) error {
-	e.logger.Info(fmt.Sprintf("Store attestation. Owner: %s", att.Owner))
-	// Store the attestation
-	key, err := gethcrypto.DecompressPubkey(att.PubKey)
-	if err != nil {
-		return fmt.Errorf("failed to parse public key %w", err)
-	}
-	err = e.storage.StoreAttestedKey(att.Owner, key)
-	if err != nil {
-		return fmt.Errorf("could not store attested key. Cause: %w", err)
-	}
 	return nil
 }
 
@@ -1467,70 +1442,6 @@ func (e *enclaveImpl) checkGas(tx *types.Transaction) error {
 		return fmt.Errorf("rejected transaction %s. Gas price was only %d, wanted at least %d", tx.Hash(), txGasPrice, minGasPrice)
 	}
 	return nil
-}
-
-// processNetworkSecretMsgs we watch for all messages that are requesting or receiving the secret and we store the nodes attested keys
-func (e *enclaveImpl) processNetworkSecretMsgs(br *common.BlockAndReceipts) []*common.ProducedSecretResponse {
-	var responses []*common.ProducedSecretResponse
-	transactions := br.SuccessfulTransactions()
-	block := br.Block
-	for _, tx := range *transactions {
-		t := e.mgmtContractLib.DecodeTx(tx)
-
-		// this transaction is for a node that has joined the network and needs to be sent the network secret
-		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
-			e.logger.Info("Process shared secret request.", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash(), log.TxKey, tx.Hash())
-			resp, err := e.processSecretRequest(scrtReqTx)
-			if err != nil {
-				e.logger.Error("Failed to process shared secret request.", log.ErrKey, err)
-				continue
-			}
-			responses = append(responses, resp)
-		}
-
-		// this transaction was created by the genesis node, we need to store their attested key to decrypt their rollup
-		if initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx); ok {
-			// todo (#1580) - ensure that we don't accidentally skip over the real `L1InitializeSecretTx` message. Otherwise
-			//  our node will never be able to speak to other nodes.
-			// there must be a way to make sure that this transaction can only be sent once.
-			att, err := common.DecodeAttestation(initSecretTx.Attestation)
-			if err != nil {
-				e.logger.Error("Could not decode attestation report", log.ErrKey, err)
-			}
-
-			err = e.storeAttestation(att)
-			if err != nil {
-				e.logger.Error("Could not store the attestation report.", log.ErrKey, err)
-			}
-		}
-	}
-	return responses
-}
-
-func (e *enclaveImpl) processSecretRequest(req *ethadapter.L1RequestSecretTx) (*common.ProducedSecretResponse, error) {
-	att, err := common.DecodeAttestation(req.Attestation)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode attestation - %w", err)
-	}
-
-	e.logger.Info("received attestation", "attestation", att)
-	secret, err := e.verifyAttestationAndEncryptSecret(att)
-	if err != nil {
-		return nil, fmt.Errorf("secret request failed, no response will be published - %w", err)
-	}
-
-	// Store the attested key only if the attestation process succeeded.
-	err = e.storeAttestation(att)
-	if err != nil {
-		return nil, fmt.Errorf("could not store attestation, no response will be published. Cause: %w", err)
-	}
-
-	e.logger.Trace("Processed secret request.", "owner", att.Owner)
-	return &common.ProducedSecretResponse{
-		Secret:      secret,
-		RequesterID: att.Owner,
-		HostAddress: att.HostAddress,
-	}, nil
 }
 
 // Returns the params extracted from an eth_getLogs request.
