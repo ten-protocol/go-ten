@@ -221,7 +221,7 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 	}
 	batchMsg := &host.BatchMsg{
 		Batches: batches,
-		IsLive:  true,
+		IsLive:  false,
 	}
 
 	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
