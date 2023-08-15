@@ -86,6 +86,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().ObsCall(encryptedParams)
 	if sysError != nil {
+		api.logger.Error("Error getting attestation", log.ErrKey, sysError)
 		return api.handleSysError("Call", sysError)
 	}
 	return *enclaveResponse, nil
