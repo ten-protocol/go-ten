@@ -283,7 +283,7 @@ func (g *Guardian) provideSecret() error {
 			if scrt.RequesterID.Hex() == g.hostData.ID.Hex() {
 				err = g.enclaveClient.InitEnclave(scrt.Secret)
 				if err != nil {
-					g.logger.Warn("could not initialize enclave with received secret response", log.ErrKey, err)
+					g.logger.Error("could not initialize enclave with received secret response", log.ErrKey, err)
 					continue // try the next secret response in the block if there are more
 				}
 				return nil // successfully initialized enclave with secret, break out of retry loop function
