@@ -3,16 +3,17 @@ package helpful
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"testing"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/obsclient"
 
 	"github.com/obscuronet/go-obscuro/integration/networktest"
 	"github.com/obscuronet/go-obscuro/integration/networktest/actions"
 	"github.com/obscuronet/go-obscuro/integration/networktest/env"
 )
 
-const _testTimeSpan = 20 * time.Second
+const _testTimeSpan = 120 * time.Second
 
 // basic test that verifies it can connect the L1 client and L2 client and sees block numbers increasing (useful to sanity check testnet issues etc.)
 func TestNetworkAvailability(t *testing.T) {
