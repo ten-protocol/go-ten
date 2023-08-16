@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"io"
 	"net/http"
 	"os"
@@ -483,14 +484,21 @@ func (n *Impl) waitForMergeEvent(startTime time.Time) error {
 	}
 
 	// wait for the merge block
-	for timeoutStartTime := time.Now(); number <= 7; time.Sleep(time.Second) {
-		number, err = dial.BlockNumber(ctx)
-		if err != nil {
-			return err
-		}
-		if time.Now().After(timeoutStartTime.Add(n.timeout)) {
-			return fmt.Errorf("network did not start after %s", time.Since(timeoutStartTime))
-		}
+	err = retry.Do(
+		func() error {
+			number, err = dial.BlockNumber(ctx)
+			if err != nil {
+				return err
+			}
+			if number <= 7 {
+				return fmt.Errorf("has not arrived at The Merge")
+			}
+			return nil
+		},
+		retry.NewTimeoutStrategy(n.timeout, time.Second),
+	)
+	if err != nil {
+		return err
 	}
 
 	fmt.Printf("Reached the merge block after %s\n", time.Since(startTime))
