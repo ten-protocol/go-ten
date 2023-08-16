@@ -363,8 +363,8 @@ func (e *enclaveImpl) sendBatch(batch *core.Batch, outChannel chan common.Stream
 
 // this function is only called when the executed batch is the new head
 func (e *enclaveImpl) streamEventsForNewHeadBatch(batch *core.Batch, receipts types.Receipts, outChannel chan common.StreamL2UpdatesResponse) {
-	e.logger.Info("Stream Events for", log.BatchHashKey, batch.Hash())
 	logs, err := e.subscriptionManager.GetSubscribedLogsForBatch(batch, receipts)
+	e.logger.Info("Stream Events for", log.BatchHashKey, batch.Hash(), "nr_events", len(logs))
 	if err != nil {
 		e.logger.Error("Error while getting subscription logs", log.ErrKey, err)
 		return
@@ -797,7 +797,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	// todo - optimise these calls. This can be done with a single sql
 	e.logger.Trace("Get receipt for ", "txHash", txHash)
 	// We retrieve the transaction.
-	tx, txBatchHash, _, _, err := e.storage.GetTransaction(txHash)
+	tx, _, _, _, err := e.storage.GetTransaction(txHash) //nolint:dogsled
 	if err != nil {
 		e.logger.Trace("error getting tx ", "txHash", txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -834,7 +834,7 @@ func (e *enclaveImpl) GetTransactionReceipt(encryptedParams common.EncryptedPara
 	}
 
 	// We filter out irrelevant logs.
-	txReceipt.Logs, err = e.subscriptionManager.FilterLogs(txReceipt.Logs, txBatchHash, &sender, &filters.FilterCriteria{})
+	txReceipt.Logs, err = e.subscriptionManager.FilterLogsForReceipt(txReceipt, &sender)
 	if err != nil {
 		e.logger.Trace("error filter logs ", "txHash", txHash, log.ErrKey, err)
 		return nil, responses.ToInternalError(err)

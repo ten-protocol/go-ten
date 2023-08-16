@@ -8,13 +8,10 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/core"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/enclave/rpc"
@@ -88,18 +85,17 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 	delete(s.subscriptions, id)
 }
 
-// FilterLogs takes a list of logs and the hash of the batch to use to create the state DB. It returns the logs
-// filtered based on the provided account and filter.
-func (s *SubscriptionManager) FilterLogs(logs []*types.Log, batchHash common.L2BatchHash, account *gethcommon.Address, filter *filters.FilterCriteria) ([]*types.Log, error) {
+// FilterLogsForReceipt removes the logs that the sender of a transaction is not allowed to view
+func (s *SubscriptionManager) FilterLogsForReceipt(receipt *types.Receipt, account *gethcommon.Address) ([]*types.Log, error) {
 	filteredLogs := []*types.Log{}
-	stateDB, err := s.storage.CreateStateDB(batchHash)
+	stateDB, err := s.storage.CreateStateDB(receipt.BlockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 	}
 
-	for _, logItem := range logs {
+	for _, logItem := range receipt.Logs {
 		userAddrs := getUserAddrsFromLogTopics(logItem, stateDB)
-		if isRelevant(logItem, userAddrs, account, filter, s.logger) {
+		if isRelevant(account, userAddrs) {
 			filteredLogs = append(filteredLogs, logItem)
 		}
 	}
@@ -118,8 +114,9 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 		return nil, nil
 	}
 
-	result := map[gethrpc.ID][]*types.Log{}
+	relevantLogsPerSubscription := map[gethrpc.ID][]*types.Log{}
 
+	// extract the logs from all receipts
 	var allLogs []*types.Log
 	for _, receipt := range receipts {
 		allLogs = append(allLogs, receipt.Logs...)
@@ -129,19 +126,53 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 		return nil, nil
 	}
 
+	// the stateDb is needed to extract the user addresses from the topics
+	stateDB, err := s.storage.CreateStateDB(batch.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
+	}
+
+	// cache for the user addresses extracted from the individual logs
+	// this is an expensive operation so we are doing it lazy, and caching the result
+	userAddrsForLog := map[*types.Log][]*gethcommon.Address{}
+
 	for id, sub := range s.subscriptions {
-		l, err := s.FilterLogs(allLogs, batch.Hash(), sub.Account, sub.Filter)
-		if err != nil {
-			s.logger.Error("Could not retrieve subscription logs", log.ErrKey, err)
-			return nil, err
+		// first filter the logs
+		filteredLogs := filterLogs(allLogs, sub.Filter.FromBlock, sub.Filter.ToBlock, sub.Filter.Addresses, sub.Filter.Topics, s.logger)
+
+		relevantLogsForSub := []*types.Log{}
+		for _, logItem := range filteredLogs {
+			userAddrs, f := userAddrsForLog[logItem]
+			if !f {
+				userAddrs = getUserAddrsFromLogTopics(logItem, stateDB)
+				userAddrsForLog[logItem] = userAddrs
+			}
+			relevant := isRelevant(sub.Account, userAddrs)
+			if relevant {
+				relevantLogsForSub = append(relevantLogsForSub, logItem)
+			}
+			s.logger.Info(fmt.Sprintf("Subscription %s. Account %s. Log %v. Extracted addresses: %v. Relevant: %t", id, sub.Account, logItem, userAddrs, relevant))
 		}
-		if len(l) > 0 {
-			result[id] = l
+		if len(relevantLogsForSub) > 0 {
+			relevantLogsPerSubscription[id] = relevantLogsForSub
 		}
 	}
 
 	// Encrypt the results
-	return s.encryptLogs(result)
+	return s.encryptLogs(relevantLogsPerSubscription)
+}
+
+func isRelevant(sub *gethcommon.Address, userAddrs []*gethcommon.Address) bool {
+	// If there are no user addresses, this is a lifecycle event, and is therefore relevant to everyone.
+	if len(userAddrs) == 0 {
+		return true
+	}
+	for _, addr := range userAddrs {
+		if *addr == *sub {
+			return true
+		}
+	}
+	return false
 }
 
 // Encrypts each log with the appropriate viewing key.
@@ -197,31 +228,6 @@ func getUserAddrsFromLogTopics(log *types.Log, db *state.StateDB) []*gethcommon.
 	}
 
 	return userAddrs
-}
-
-// Indicates whether BOTH of the following apply:
-//   - One of the log's user addresses matches the subscription's account
-//   - The log matches the filter
-func isRelevant(logItem *types.Log, userAddrs []*gethcommon.Address, account *gethcommon.Address, filter *filters.FilterCriteria, logger gethlog.Logger) bool {
-	logger.Info(fmt.Sprintf("Checking if log = %v is relevant for account - %s. Addresses extracted from topics =  %v", logItem, account.String(), userAddrs))
-
-	filteredLogs := filterLogs([]*types.Log{logItem}, filter.FromBlock, filter.ToBlock, filter.Addresses, filter.Topics, logger)
-	if len(filteredLogs) == 0 {
-		return false
-	}
-
-	// If there are no user addresses, this is a lifecycle event, and is therefore relevant to everyone.
-	if len(userAddrs) == 0 {
-		return true
-	}
-
-	for _, addr := range userAddrs {
-		if *addr == *account {
-			return true
-		}
-	}
-
-	return false
 }
 
 // Lifted from eth/filters/filter.go in the go-ethereum repository.
