@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common"
 	"math/big"
+
+	"github.com/obscuronet/go-obscuro/go/common"
 
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
@@ -139,10 +140,7 @@ func (db *DB) writeBlockByHeight(header *types.Header) error {
 		return err
 	}
 	key := blockNumberKey(header.Number)
-	if err := db.kvStore.Put(key, data); err != nil {
-		return err
-	}
-	return nil
+	return db.kvStore.Put(key, data)
 }
 
 // Retrieves the block header corresponding to the key.
