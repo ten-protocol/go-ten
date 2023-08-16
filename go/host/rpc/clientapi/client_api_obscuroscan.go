@@ -29,7 +29,7 @@ func NewObscuroScanAPI(host host.Host) *ObscuroScanAPI {
 
 // GetBlockHeaderByHash returns the header for the block with the given hash.
 func (api *ObscuroScanAPI) GetBlockHeaderByHash(blockHash gethcommon.Hash) (*types.Header, error) {
-	blockHeader, err := api.host.DB().GetBlockHeader(blockHash)
+	blockHeader, err := api.host.DB().GetBlockByHash(blockHash)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("no block with hash %s is stored", blockHash)

@@ -108,14 +108,42 @@ func TestObscuroscan(t *testing.T) {
 	assert.Equal(t, 200, statusCode)
 
 	type publicTxsRes struct {
-		Result common.PublicQueryResponse `json:"result"`
+		Result common.TransactionListingResponse `json:"result"`
 	}
 
 	publicTxsObj := publicTxsRes{}
 	err = json.Unmarshal(body, &publicTxsObj)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(publicTxsObj.Result.PublicTxData))
+	assert.Equal(t, 1, len(publicTxsObj.Result.TransactionsData))
 	assert.Equal(t, uint64(1), publicTxsObj.Result.Total)
+
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batches/?offset=0&size=10", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type batchlisting struct {
+		Result common.BatchListingResponse `json:"result"`
+	}
+
+	batchlistingObj := batchlisting{}
+	err = json.Unmarshal(body, &batchlistingObj)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, 9, len(batchlistingObj.Result.BatchesData))
+	assert.LessOrEqual(t, uint64(9), batchlistingObj.Result.Total)
+
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/blocks/?offset=0&size=10", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type blockListing struct {
+		Result common.BlockListingResponse `json:"result"`
+	}
+
+	blocklistingObj := blockListing{}
+	err = json.Unmarshal(body, &blocklistingObj)
+	assert.NoError(t, err)
+	assert.LessOrEqual(t, 9, len(blocklistingObj.Result.BlocksData))
+	assert.LessOrEqual(t, uint64(9), blocklistingObj.Result.Total)
 
 	issueTransactions(
 		t,

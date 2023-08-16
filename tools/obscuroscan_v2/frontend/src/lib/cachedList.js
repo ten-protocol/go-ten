@@ -4,7 +4,7 @@ class CachedList {
     }
 
     add(item) {
-        if (!this.items.some(i => i.hash == item.hash)) {
+        if (!this.items.some(i => i.hash === item.hash)) {
             this.items.push(item);
         }
     }

@@ -17,10 +17,10 @@ export const usePublicDataStore = defineStore({
     actions: {
         async fetch() {
             try {
-                let response = await fetch( Config.backendServerAddress+`/items/transactions/?offset=${this.offset}&size=${this.size}`);
+                const response = await fetch( Config.backendServerAddress+`/items/transactions/?offset=${this.offset}&size=${this.size}`);
 
-                let data  = await response.json();
-                this.publicTransactionsData = data.result.PublicTxData;
+                const data  = await response.json();
+                this.publicTransactionsData = data.result.TransactionsData;
                 this.publicTransactionsCount = data.result.Total;
             } catch (error) {
                 console.error("Failed to fetch count:", error);

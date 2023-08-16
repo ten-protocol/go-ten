@@ -1,5 +1,5 @@
 <template>
-  <el-card>
+  <el-card class="fill-width">
     <el-table height="250" :data="publicTransactionsData">
       <el-table-column prop="TransactionHash" label="Tx Hash" width="180" />
       <el-table-column prop="BatchHeight" label="BatchHeight" width="180" />
@@ -70,4 +70,8 @@ export default {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+.fill-width {
+  width: 100%;
+}
+</style>

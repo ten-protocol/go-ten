@@ -21,6 +21,21 @@ const router = createRouter({
       path: '/personal',
       name: 'personal',
       component: () => import('../views/PersonalView.vue')
+    },
+    {
+      path: '/transactions',
+      name: 'transactions',
+      component: () => import('../views/TransactionsView.vue')
+    },
+    {
+      path: '/batches',
+      name: 'batches',
+      component: () => import('../views/BatchesView.vue')
+    },
+    {
+      path: '/rollups',
+      name: 'rollups',
+      component: () => import('../views/BlocksView.vue')
     }
   ]
 })

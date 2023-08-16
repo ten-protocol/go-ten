@@ -119,10 +119,30 @@ func (oc *ObsClient) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	return header, nil
 }
 
-// GetPublicTxData returns a list of public transactions
-func (oc *ObsClient) GetPublicTxData(pagination *common.QueryPagination) (*common.PublicQueryResponse, error) {
-	var result common.PublicQueryResponse
+// GetPublicTxListing returns a list of public transactions
+func (oc *ObsClient) GetPublicTxListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	var result common.TransactionListingResponse
 	err := oc.rpcClient.Call(&result, rpc.GetPublicTransactionData, pagination)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetBatchesListing returns a list of batches
+func (oc *ObsClient) GetBatchesListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	var result common.BatchListingResponse
+	err := oc.rpcClient.Call(&result, rpc.GetBatchListing, pagination)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetBlockListing returns a list of block headers
+func (oc *ObsClient) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
+	var result common.BlockListingResponse
+	err := oc.rpcClient.Call(&result, rpc.GetBlockListing, pagination)
 	if err != nil {
 		return nil, err
 	}
