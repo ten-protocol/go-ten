@@ -152,10 +152,21 @@ func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler)
 	return p.batchReqHandlers.Subscribe(handler)
 }
 
+// RefreshPeerList - fetches the latest peer list from L1 and updates the peerAddresses.
+// Note: this is designed to be run in a separate goroutine, it will retry a few times before giving up.
 func (p *Service) RefreshPeerList() {
-	newPeers, err := p.sl.L1Publisher().FetchLatestPeersList()
+	var newPeers []string
+	err := retry.Do(func() error {
+		var retryErr error
+		newPeers, retryErr = p.sl.L1Publisher().FetchLatestPeersList()
+		if retryErr != nil {
+			p.logger.Error("failed to fetch latest peer list from L1", log.ErrKey, retryErr)
+			return retryErr
+		}
+		return nil
+	}, retry.NewTimeoutStrategy(1*time.Minute, 5*time.Second))
 	if err != nil {
-		p.logger.Error(fmt.Sprintf("unable to fetch latest peer list from L1 - %s", err.Error()))
+		p.logger.Error("unable to fetch latest peer list from L1", log.ErrKey, err)
 		return
 	}
 
