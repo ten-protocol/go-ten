@@ -23,7 +23,7 @@ create table if not exists attestation_key
 create table if not exists block
 (
     hash         binary(32) primary key,
-    parent       binary(32) REFERENCES block,
+    parent       binary(32),
     is_canonical boolean,
     header       blob,
     height       int

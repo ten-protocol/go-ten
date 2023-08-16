@@ -51,10 +51,7 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Log
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
 
-	// Sqlite in memory fails with table locks when there are multiple connections
-	if inMem {
-		db.SetMaxOpenConns(1)
-	}
+	db.SetMaxOpenConns(1)
 
 	if !initialsed {
 		err = initialiseDB(db)

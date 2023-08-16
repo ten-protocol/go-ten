@@ -1,12 +1,13 @@
 package obsclient
 
 import (
-	"math/big"
-
+	"errors"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/rpc"
+	"math/big"
+	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
@@ -78,7 +79,13 @@ func (oc *ObsClient) BatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHeade
 func (oc *ObsClient) Health() (bool, error) {
 	var healthy *hostcommon.HealthCheck
 	err := oc.rpcClient.Call(&healthy, rpc.Health)
-	return healthy.OverallHealth, err
+	if err != nil {
+		return false, err
+	}
+	if !healthy.OverallHealth {
+		return false, errors.New(strings.Join(healthy.Errors, ", "))
+	}
+	return healthy.OverallHealth, nil
 }
 
 // GetTotalContractCount returns the total count of created contracts
