@@ -2,12 +2,13 @@ package obsclient
 
 import (
 	"errors"
+	"math/big"
+	"strings"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/rpc"
-	"math/big"
-	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"

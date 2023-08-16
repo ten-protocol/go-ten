@@ -2,11 +2,12 @@ package env
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/integration/networktest"
 	"github.com/obscuronet/go-obscuro/integration/simulation/devnetwork"
-	"time"
 )
 
 type devNetworkEnv struct{}
@@ -23,7 +24,7 @@ func (d *devNetworkEnv) Prepare() (networktest.NetworkConnector, func(), error) 
 	return devNet, devNet.CleanUp, nil
 }
 
-func awaitNodesAvailable(nc networktest.NetworkConnector) error { //nolint:unparam
+func awaitNodesAvailable(nc networktest.NetworkConnector) error {
 	err := awaitHealthStatus(nc.GetSequencerNode().HostRPCAddress(), 30*time.Second)
 	if err != nil {
 		return err
