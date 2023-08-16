@@ -61,7 +61,7 @@ func (db *DB) AddBlock(header *types.Header) error {
 // GetBlockListing returns a list of blocks given the pagination
 func (db *DB) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
 	// fetch requested batches
-	var blocks []common.PublicBlockListing
+	var blocks []common.PublicBlock
 	for i := pagination.Offset; i < pagination.Offset+uint64(pagination.Size); i++ {
 		header, err := db.GetBlockByHeight(big.NewInt(int64(i)))
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -75,7 +75,7 @@ func (db *DB) GetBlockListing(pagination *common.QueryPagination) (*common.Block
 		}
 
 		if header != nil {
-			listedBlock := common.PublicBlockListing{BlockHeader: *header}
+			listedBlock := common.PublicBlock{BlockHeader: *header}
 			if rollup != nil {
 				listedBlock.RollupHash = rollup.Hash()
 				fmt.Println("added at block: ", header.Number.Int64(), " - ", listedBlock.RollupHash)

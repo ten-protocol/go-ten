@@ -445,7 +445,7 @@ func (s *storageImpl) GetReceiptsPerAddressCount(address *gethcommon.Address) (u
 	return enclavedb.GetReceiptsPerAddressCount(s.db.GetSQLDB(), address)
 }
 
-func (s *storageImpl) GetPublicTransactionData(pagination *common.QueryPagination) ([]common.PublicTransactionListing, error) {
+func (s *storageImpl) GetPublicTransactionData(pagination *common.QueryPagination) ([]common.PublicTransaction, error) {
 	return enclavedb.GetPublicTransactionData(s.db.GetSQLDB(), pagination)
 }
 

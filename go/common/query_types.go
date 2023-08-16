@@ -16,31 +16,31 @@ type PrivateQueryResponse struct {
 }
 
 type TransactionListingResponse struct {
-	TransactionsData []PublicTransactionListing
+	TransactionsData []PublicTransaction
 	Total            uint64
 }
 
 type BatchListingResponse struct {
-	BatchesData []PublicBatchListing
+	BatchesData []PublicBatch
 	Total       uint64
 }
 
 type BlockListingResponse struct {
-	BlocksData []PublicBlockListing
+	BlocksData []PublicBlock
 	Total      uint64
 }
 
-type PublicTransactionListing struct {
+type PublicTransaction struct {
 	TransactionHash TxHash
 	BatchHeight     *big.Int
 	Finality        FinalityType
 }
 
-type PublicBatchListing struct {
+type PublicBatch struct {
 	BatchHeader
 }
 
-type PublicBlockListing struct {
+type PublicBlock struct {
 	BlockHeader types.Header `json:"blockHeader"`
 	RollupHash  common.Hash  `json:"rollupHash"`
 }

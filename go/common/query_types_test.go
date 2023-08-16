@@ -15,13 +15,13 @@ import (
 func TestPublicBlockListing_MarshalJSON(t *testing.T) {
 	tests := []struct {
 		name    string
-		input   PublicBlockListing
+		input   PublicBlock
 		want    string
 		wantErr bool
 	}{
 		{
 			name: "Non-zero RollupHash",
-			input: PublicBlockListing{BlockHeader: types.Header{
+			input: PublicBlock{BlockHeader: types.Header{
 				Number:     big.NewInt(1),
 				Difficulty: big.NewInt(2),
 			}, RollupHash: common.BytesToHash([]byte("hello"))},
@@ -39,7 +39,7 @@ func TestPublicBlockListing_MarshalJSON(t *testing.T) {
 				t.Errorf("no rollupHash found")
 			}
 
-			pub := PublicBlockListing{}
+			pub := PublicBlock{}
 			err = json.Unmarshal(marshal, &pub)
 			if err != nil {
 				t.Error(err)
