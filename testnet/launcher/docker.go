@@ -62,7 +62,7 @@ func (t *Testnet) Start() error {
 		node.WithManagementContractAddress(networkConfig.ManagementContractAddress),
 		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
 		node.WithL1Start(networkConfig.L1StartHash),
-		node.WithInMemoryDB(true),
+		node.WithInMemoryHostDB(true),
 		node.WithDebugNamespaceEnabled(true),
 	)
 
@@ -101,7 +101,7 @@ func (t *Testnet) Start() error {
 		node.WithManagementContractAddress(networkConfig.ManagementContractAddress),
 		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
 		node.WithL1Start(networkConfig.L1StartHash),
-		node.WithInMemoryDB(true),
+		node.WithInMemoryHostDB(true),
 	)
 
 	validatorNode := node.NewDockerNode(validatorNodeConfig)
