@@ -457,6 +457,10 @@ func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
 	var result bool
 	err := row.Scan(&result)
 	if err != nil {
+		// When there are no rows returned it means there is no canonical batch with that hash.
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
 		return false, err
 	}
 

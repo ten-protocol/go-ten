@@ -49,8 +49,8 @@ type BatchResolver interface {
 	// FetchBatchesByBlock returns all batches with the block hash as the L1 proof
 	FetchBatchesByBlock(common.L1BlockHash) ([]*core.Batch, error)
 
-	// FetchUnexecutedBatches - return a list of the unexecuted batches that were not permanently marked as non-canonical
-	FetchUnexecutedBatches() ([]*core.Batch, error)
+	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
+	FetchCanonicalUnexecutedBatches() ([]*core.Batch, error)
 
 	// BatchWasExecuted - return true if the batch was executed
 	BatchWasExecuted(hash common.L2BatchHash) (bool, error)

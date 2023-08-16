@@ -104,10 +104,10 @@ type Enclave interface {
 	HealthCheck() (bool, SystemError)
 
 	// GetBatch - retrieve a batch if existing within the enclave db.
-	GetBatch(hash L2BatchHash) (*ExtBatch, error)
+	GetBatch(hash L2BatchHash) (*ExtBatch, SystemError)
 
 	// GetBatchBySeqNo - retrieve batch by sequencer number if it's in the db
-	GetBatchBySeqNo(seqNo uint64) (*ExtBatch, error)
+	GetBatchBySeqNo(seqNo uint64) (*ExtBatch, SystemError)
 
 	// CreateBatch - creates a new head batch extending the previous one for the latest known L1 head if the node is
 	// a sequencer. Will panic otherwise.

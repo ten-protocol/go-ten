@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
 
 	"github.com/kamilsk/breaker"
@@ -61,6 +63,7 @@ type Guardian struct {
 
 	batchInterval  time.Duration
 	rollupInterval time.Duration
+	l1StartHash    gethcommon.Hash
 
 	running         atomic.Bool
 	hostInterrupter breaker.Interface // host hostInterrupter so we can stop quickly
@@ -76,6 +79,7 @@ func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator 
 		sl:              serviceLocator,
 		batchInterval:   cfg.BatchInterval,
 		rollupInterval:  cfg.RollupInterval,
+		l1StartHash:     cfg.L1StartHash,
 		db:              db,
 		hostInterrupter: interrupter,
 		logger:          logger,
@@ -150,7 +154,7 @@ func (g *Guardian) HandleBlock(block *types.Block) {
 		// the enclave is still catching up with the L1 chain, it won't be able to process this new head block yet so return
 		return
 	}
-	err := g.submitL1Block(block, true)
+	_, err := g.submitL1Block(block, true)
 	if err != nil {
 		g.logger.Warn("failure processing L1 block", log.ErrKey, err)
 	}
@@ -279,7 +283,7 @@ func (g *Guardian) provideSecret() error {
 			if scrt.RequesterID.Hex() == g.hostData.ID.Hex() {
 				err = g.enclaveClient.InitEnclave(scrt.Secret)
 				if err != nil {
-					g.logger.Warn("could not initialize enclave with received secret response", log.ErrKey, err)
+					g.logger.Error("could not initialize enclave with received secret response", log.ErrKey, err)
 					continue // try the next secret response in the block if there are more
 				}
 				return nil // successfully initialized enclave with secret, break out of retry loop function
@@ -329,7 +333,14 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 func (g *Guardian) catchupWithL1() error {
 	// while we are behind the L1 head and still running, fetch and submit L1 blocks
 	for g.running.Load() && g.state.GetStatus() == L1Catchup {
-		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(g.state.GetEnclaveL1Head())
+		// generally we will be feeding the block after the enclave's current head
+		enclaveHead := g.state.GetEnclaveL1Head()
+		if enclaveHead == gethutil.EmptyHash {
+			// but if enclave has no current head, then we use the configured hash to find the first block to feed
+			enclaveHead = g.l1StartHash
+		}
+
+		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(enclaveHead)
 		if err != nil {
 			if errors.Is(err, l1.ErrNoNextBlock) {
 				if g.state.hostL1Head == gethutil.EmptyHash {
@@ -339,7 +350,7 @@ func (g *Guardian) catchupWithL1() error {
 			}
 			return errors.Wrap(err, "could not fetch next L1 block")
 		}
-		err = g.submitL1Block(l1Block, isLatest)
+		_, err = g.submitL1Block(l1Block, isLatest)
 		if err != nil {
 			return err
 		}
@@ -371,12 +382,15 @@ func (g *Guardian) catchupWithL2() error {
 	return nil
 }
 
-func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
+// returns false if the block was not processed
+// todo - @matt - think about removing the TryLock
+func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, error) {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
 	receipts := g.sl.L1Repo().FetchReceipts(block)
 	if !g.submitDataLock.TryLock() {
+		g.logger.Info("Unable to submit block, already submitting another block")
 		// we are already submitting a block, and we don't want to leak goroutines, we wil catch up with the block later
-		return errors.New("unable to submit block, already submitting another block")
+		return false, nil
 	}
 	resp, err := g.enclaveClient.SubmitL1Block(*block, receipts, isLatest)
 	g.submitDataLock.Unlock()
@@ -389,12 +403,12 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
 			nextHeight := big.NewInt(0).Add(block.Number(), big.NewInt(1))
 			nextCanonicalBlock, err := g.sl.L1Repo().FetchBlockByHeight(nextHeight)
 			if err != nil {
-				return fmt.Errorf("failed to fetch next block after forking block=%s: %w", block.Hash(), err)
+				return false, fmt.Errorf("failed to fetch next block after forking block=%s: %w", block.Hash(), err)
 			}
 			return g.submitL1Block(nextCanonicalBlock, isLatest)
 		}
 		// something went wrong, return error and let the main loop check status and try again when appropriate
-		return errors.Wrap(err, "could not submit L1 block to enclave")
+		return false, errors.Wrap(err, "could not submit L1 block to enclave")
 	}
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
@@ -403,7 +417,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
 	// todo (@matt) this should not be here, it is only used by the RPC API server for batch data which will eventually just use L1 repo
 	err = g.db.AddBlock(block.Header())
 	if err != nil {
-		return fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
+		return false, fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
 	}
 
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
@@ -411,7 +425,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) error {
 	if err != nil {
 		g.logger.Error("failed to publish response to secret request", log.ErrKey, err)
 	}
-	return nil
+	return true, nil
 }
 
 func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
@@ -430,7 +444,11 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		}
 		err = g.db.AddRollupHeader(r)
 		if err != nil {
-			g.logger.Error("could not store rollup.", log.ErrKey, err)
+			if errors.Is(err, errutil.ErrAlreadyExists) {
+				g.logger.Info("rollup already stored", log.RollupHashKey, r.Hash())
+			} else {
+				g.logger.Error("could not store rollup.", log.ErrKey, err)
+			}
 		}
 	}
 }
@@ -575,7 +593,7 @@ func (g *Guardian) streamEnclaveData() {
 						g.logger.Error("failed to broadcast batch", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
 					}
 				}
-				g.logger.Info("Batch streamed", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash())
+				g.logger.Info("Received batch from enclave", log.BatchSeqNoKey, resp.Batch.Header.SequencerOrderNo, log.BatchHashKey, resp.Batch.Hash())
 				g.state.OnProcessedBatch(resp.Batch.Header.SequencerOrderNo)
 			}
 

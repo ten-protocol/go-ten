@@ -76,7 +76,7 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) 
 		for _, rollup := range rollups {
 			// read batch data from rollup, verify and store it
 			if err := rc.processRollup(rollup); err != nil {
-				rc.logger.Error("Failed processing rollup", log.ErrKey, err)
+				rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 				return err
 			}
 		}
