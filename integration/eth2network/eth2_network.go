@@ -195,6 +195,7 @@ func NewEth2Network(
 		preFundedMinerAddrs:      preFundedMinerAddrs,
 		preFundedMinerPKs:        preFundedMinerPKs,
 		gethGenesisBytes:         []byte(genesisStr),
+		timeout:                  timeout,
 	}
 }
 
