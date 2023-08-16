@@ -129,7 +129,6 @@ func (db *DB) writeRollupByBlockHash(w ethdb.KeyValueWriter, header *common.Roll
 		return err
 	}
 	key := rollupBlockKey(header.L1Proof)
-	fmt.Println("stored rollup ", header.Hash(), " for block ", header.L1ProofNumber)
 
 	return w.Put(key, data)
 }

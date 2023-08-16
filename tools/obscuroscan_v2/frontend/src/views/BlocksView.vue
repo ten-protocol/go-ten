@@ -1,7 +1,7 @@
 <template>
   <el-container>
     <el-card class="margin-top">
-      <el-header>Rollups</el-header>
+      <el-header>Blocks</el-header>
       <blocks-data-grid />
     </el-card>
   </el-container>

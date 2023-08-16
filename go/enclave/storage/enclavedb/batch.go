@@ -483,12 +483,12 @@ func GetReceiptsPerAddressCount(db *sql.DB, address *gethcommon.Address) (uint64
 	return count, nil
 }
 
-func GetPublicTransactionData(db *sql.DB, pagination *common.QueryPagination) ([]common.PublicTxData, error) {
+func GetPublicTransactionData(db *sql.DB, pagination *common.QueryPagination) ([]common.PublicTransactionListing, error) {
 	return selectPublicTxsBySender(db, " ORDER BY height DESC LIMIT ? OFFSET ? ", pagination.Size, pagination.Offset)
 }
 
-func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.PublicTxData, error) {
-	var publicTxs []common.PublicTxData
+func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.PublicTransactionListing, error) {
+	var publicTxs []common.PublicTransactionListing
 
 	rows, err := db.Query(queryTxList+" "+query, args...)
 	if err != nil {
@@ -507,7 +507,7 @@ func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.Pu
 			return nil, err
 		}
 
-		publicTxs = append(publicTxs, common.PublicTxData{
+		publicTxs = append(publicTxs, common.PublicTransactionListing{
 			TransactionHash: gethcommon.BytesToHash(txHash),
 			BatchHeight:     big.NewInt(0).SetUint64(batchHeight),
 			Finality:        common.BatchFinal,

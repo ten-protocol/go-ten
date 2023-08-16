@@ -24,16 +24,16 @@ export const useBatchStore = defineStore({
         async fetch() {
             try {
                 // fetch the latest batch
-                let response = await fetch( Config.backendServerAddress+'/items/batch/latest/');
-                let data = await response.json();
+                const response = await fetch( Config.backendServerAddress+'/items/batch/latest/');
+                const data = await response.json();
                 this.latestBatch = data.item.number;
                 this.latestL1Proof = data.item.l1Proof;
 
                 this.batches.add(data.item);
 
                 // fetch data listing
-                let responseList = await fetch( Config.backendServerAddress+`/items/batches/?offset=${this.offset}&size=${this.size}`);
-                let dataList  = await responseList.json();
+                const responseList = await fetch( Config.backendServerAddress+`/items/batches/?offset=${this.offset}&size=${this.size}`);
+                const dataList  = await responseList.json();
                 this.batchListing = dataList.result.BatchesData;
                 this.batchListingCount = dataList.result.Total;
 

@@ -17,8 +17,8 @@ export const useRollupStore = defineStore({
         async fetch() {
             this.loading = true;
             try {
-                let response = await fetch( Config.backendServerAddress+'/items/rollup/latest/');
-                let data = await response.json();
+                const response = await fetch( Config.backendServerAddress+'/items/rollup/latest/');
+                const data = await response.json();
                 this.rollups.add(data.item);
             } catch (error) {
                 console.error("Failed to fetch count:", error);
