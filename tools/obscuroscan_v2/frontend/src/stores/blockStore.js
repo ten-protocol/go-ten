@@ -23,7 +23,7 @@ export const useBlockStore = defineStore({
                 // fetch data listing
                 let responseList = await fetch( Config.backendServerAddress+`/items/blocks/?offset=${this.offset}&size=${this.size}`);
                 let dataList  = await responseList.json();
-                this.blocksListing = dataList.result.BlockData;
+                this.blocksListing = dataList.result.BlocksData;
                 this.blocksListingCount = dataList.result.Total;
             } catch (error) {
                 console.error("Failed to fetch count:", error);

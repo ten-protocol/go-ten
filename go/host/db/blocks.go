@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 )
 
 // DB methods relating to block headers.
@@ -92,8 +90,8 @@ func (db *DB) GetBlockListing(pagination *common.QueryPagination) (*common.Block
 	}
 
 	return &common.BlockListingResponse{
-		BlockData: blocks,
-		Total:     tipHeader.Number.Uint64(),
+		BlocksData: blocks,
+		Total:      tipHeader.Number.Uint64(),
 	}, nil
 }
 

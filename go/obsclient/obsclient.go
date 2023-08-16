@@ -112,8 +112,8 @@ func (oc *ObsClient) GetLatestRollupHeader() (*common.RollupHeader, error) {
 }
 
 // GetPublicTxListing returns a list of public transactions
-func (oc *ObsClient) GetPublicTxListing(pagination *common.QueryPagination) (*common.PublicTxListingResponse, error) {
-	var result common.PublicTxListingResponse
+func (oc *ObsClient) GetPublicTxListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	var result common.TransactionListingResponse
 	err := oc.rpcClient.Call(&result, rpc.GetPublicTransactionData, pagination)
 	if err != nil {
 		return nil, err

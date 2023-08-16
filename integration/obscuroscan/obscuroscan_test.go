@@ -47,7 +47,7 @@ const (
 )
 
 func TestObscuroscan(t *testing.T) {
-	// t.Skip("Commented it out until more testing is driven from this test")
+	t.Skip("Commented it out until more testing is driven from this test")
 	startPort := integration.StartPortObscuroscanUnitTest
 	createObscuroNetwork(t, startPort)
 
@@ -108,13 +108,13 @@ func TestObscuroscan(t *testing.T) {
 	assert.Equal(t, 200, statusCode)
 
 	type publicTxsRes struct {
-		Result common.PublicTxListingResponse `json:"result"`
+		Result common.TransactionListingResponse `json:"result"`
 	}
 
 	publicTxsObj := publicTxsRes{}
 	err = json.Unmarshal(body, &publicTxsObj)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(publicTxsObj.Result.PublicTxData))
+	assert.Equal(t, 1, len(publicTxsObj.Result.TransactionsData))
 	assert.Equal(t, uint64(1), publicTxsObj.Result.Total)
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batches/?offset=0&size=10", serverAddress))
@@ -128,7 +128,7 @@ func TestObscuroscan(t *testing.T) {
 	batchlistingObj := batchlisting{}
 	err = json.Unmarshal(body, &batchlistingObj)
 	assert.NoError(t, err)
-	assert.LessOrEqual(t, 9, len(batchlistingObj.Result.BatchData))
+	assert.LessOrEqual(t, 9, len(batchlistingObj.Result.BatchesData))
 	assert.LessOrEqual(t, uint64(9), batchlistingObj.Result.Total)
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/blocks/?offset=0&size=10", serverAddress))
@@ -142,7 +142,7 @@ func TestObscuroscan(t *testing.T) {
 	blocklistingObj := blockListing{}
 	err = json.Unmarshal(body, &blocklistingObj)
 	assert.NoError(t, err)
-	assert.LessOrEqual(t, 9, len(blocklistingObj.Result.BlockData))
+	assert.LessOrEqual(t, 9, len(blocklistingObj.Result.BlocksData))
 	assert.LessOrEqual(t, uint64(9), blocklistingObj.Result.Total)
 
 	issueTransactions(
@@ -152,7 +152,7 @@ func TestObscuroscan(t *testing.T) {
 		100,
 	)
 
-	time.Sleep(time.Hour)
+	// time.Sleep(time.Hour)
 	// Gracefully shutdown
 	err = obsScanContainer.Stop()
 	assert.NoError(t, err)

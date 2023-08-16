@@ -34,7 +34,7 @@ export const useBatchStore = defineStore({
                 // fetch data listing
                 let responseList = await fetch( Config.backendServerAddress+`/items/batches/?offset=${this.offset}&size=${this.size}`);
                 let dataList  = await responseList.json();
-                this.batchListing = dataList.result.BatchData;
+                this.batchListing = dataList.result.BatchesData;
                 this.batchListingCount = dataList.result.Total;
 
             } catch (error) {

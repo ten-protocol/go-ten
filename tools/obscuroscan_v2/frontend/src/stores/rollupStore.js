@@ -8,12 +8,6 @@ export const useRollupStore = defineStore({
     id: 'rollupStore',
     state: () => ({
         rollups: new CachedList(),
-
-        rollupsListing: null,
-        rollupsListingCount: null,
-        offset: 0,
-        size: 10,
-
         poller: new Poller(() => {
             const store = useRollupStore();
             store.fetch();

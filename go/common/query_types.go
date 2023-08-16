@@ -15,19 +15,19 @@ type PrivateQueryResponse struct {
 	Total    uint64
 }
 
-type PublicTxListingResponse struct {
-	PublicTxData []PublicTxData
-	Total        uint64
+type TransactionListingResponse struct {
+	TransactionsData []PublicTxData
+	Total            uint64
 }
 
 type BatchListingResponse struct {
-	BatchData []PublicBatchListing
-	Total     uint64
+	BatchesData []PublicBatchListing
+	Total       uint64
 }
 
 type BlockListingResponse struct {
-	BlockData []PublicBlockListing
-	Total     uint64
+	BlocksData []PublicBlockListing
+	Total      uint64
 }
 
 type PublicTxData struct {

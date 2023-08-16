@@ -52,7 +52,7 @@ func (b *Backend) GetTransaction(_ gethcommon.Hash) (*common.L2Tx, error) {
 	return nil, fmt.Errorf("unable to get encrypted Tx")
 }
 
-func (b *Backend) GetPublicTransactions(offset uint64, size uint64) (*common.PublicTxListingResponse, error) {
+func (b *Backend) GetPublicTransactions(offset uint64, size uint64) (*common.TransactionListingResponse, error) {
 	return b.obsClient.GetPublicTxListing(&common.QueryPagination{
 		Offset: offset,
 		Size:   uint(size),

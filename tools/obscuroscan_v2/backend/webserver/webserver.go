@@ -226,7 +226,7 @@ func (w *WebServer) getBlockListing(c *gin.Context) {
 		return
 	}
 
-	for _, data := range batchesListing.BlockData {
+	for _, data := range batchesListing.BlocksData {
 		if data.RollupHash.Hex() != "0x0000000000000000000000000000000000000000000000000000000000000000" {
 			fmt.Println("output found rollupHash has at block: ", data.BlockHeader.Number.Int64(), " - ", data.RollupHash)
 		}

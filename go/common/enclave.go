@@ -136,7 +136,7 @@ type EnclaveScan interface {
 	GetCustomQuery(encryptedParams EncryptedParamsGetStorageAt) (*responses.PrivateQueryResponse, SystemError)
 
 	// GetPublicTransactionData returns a list of public transaction data
-	GetPublicTransactionData(pagination *QueryPagination) (*PublicTxListingResponse, SystemError)
+	GetPublicTransactionData(pagination *QueryPagination) (*TransactionListingResponse, SystemError)
 }
 
 // BlockSubmissionResponse is the response sent from the enclave back to the node after ingesting a block

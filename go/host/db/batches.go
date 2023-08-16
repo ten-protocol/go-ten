@@ -132,6 +132,7 @@ func (db *DB) GetBatchBySequenceNumber(sequenceNumber *big.Int) (*common.ExtBatc
 	return db.GetBatch(*batchHash)
 }
 
+// GetBatchListing returns BatchListingResponse given a pagination
 // todo change this when the db changes - this is not super performant
 func (db *DB) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	// fetch requested batches
@@ -152,8 +153,8 @@ func (db *DB) GetBatchListing(pagination *common.QueryPagination) (*common.Batch
 	}
 
 	return &common.BatchListingResponse{
-		BatchData: batches,
-		Total:     header.Number.Uint64(),
+		BatchesData: batches,
+		Total:       header.Number.Uint64(),
 	}, nil
 }
 
