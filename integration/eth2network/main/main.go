@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/integration/eth2network"
 )
@@ -39,6 +40,7 @@ func main() {
 		config.slotsPerEpoch,
 		config.secondsPerSlot,
 		config.prefundedAddrs,
+		5*time.Minute,
 	)
 
 	err = eth2Network.Start()

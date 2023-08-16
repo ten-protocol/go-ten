@@ -55,6 +55,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, bl
 		2,
 		2,
 		walletAddresses,
+		time.Minute,
 	)
 
 	err = eth2Network.Start()
