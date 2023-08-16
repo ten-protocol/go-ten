@@ -446,8 +446,9 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block) {
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("rollup already stored", log.RollupHashKey, r.Hash())
+			} else {
+				g.logger.Error("could not store rollup.", log.ErrKey, err)
 			}
-			g.logger.Error("could not store rollup.", log.ErrKey, err)
 		}
 	}
 }
