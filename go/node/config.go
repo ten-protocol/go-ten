@@ -247,7 +247,7 @@ func WithPCCSAddr(s string) Option {
 	}
 }
 
-func WithInMemoryDB(b bool) Option {
+func WithInMemoryHostDB(b bool) Option {
 	return func(c *Config) {
 		c.hostInMemDB = b
 	}

@@ -350,6 +350,17 @@ func (p *Service) broadcast(msg message) error {
 
 // Sends a message to the provided address.
 func (p *Service) send(msg message, to string) error {
+	// sanity check the message to discover bugs
+	if !(msg.Type >= 1 && msg.Type <= 3) {
+		p.logger.Error(fmt.Sprintf("Sending message with wrong message type: %v", msg))
+	}
+	if len(msg.Sender) == 0 {
+		p.logger.Error(fmt.Sprintf("Sending message with wrong sender type: %v", msg))
+	}
+	if len(msg.Contents) == 0 {
+		p.logger.Error(fmt.Sprintf("Sending message with empty contents: %v", msg))
+	}
+
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to sequencer. Cause: %w", err)

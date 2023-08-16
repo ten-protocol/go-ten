@@ -1,7 +1,9 @@
 package obsclient
 
 import (
+	"errors"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -78,7 +80,13 @@ func (oc *ObsClient) BatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHeade
 func (oc *ObsClient) Health() (bool, error) {
 	var healthy *hostcommon.HealthCheck
 	err := oc.rpcClient.Call(&healthy, rpc.Health)
-	return healthy.OverallHealth, err
+	if err != nil {
+		return false, err
+	}
+	if !healthy.OverallHealth {
+		return false, errors.New(strings.Join(healthy.Errors, ", "))
+	}
+	return healthy.OverallHealth, nil
 }
 
 // GetTotalContractCount returns the total count of created contracts
