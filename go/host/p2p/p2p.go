@@ -112,6 +112,10 @@ func (p *Service) Start() error {
 	p.listener = listener
 
 	go p.handleConnections()
+
+	// ensure we have re-synced the peer list from management contract after startup
+	go p.RefreshPeerList()
+
 	return nil
 }
 
