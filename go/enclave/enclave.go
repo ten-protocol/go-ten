@@ -574,7 +574,7 @@ func (e *enclaveImpl) CreateBatch() common.SystemError {
 
 	callStart := time.Now()
 	defer func() {
-		e.logger.Info("CreateBatch call ended", "duration", time.Since(callStart))
+		e.logger.Info("CreateBatch call ended", log.DurationMilliKey, time.Since(callStart).Milliseconds())
 	}()
 
 	// todo - remove once the db operations are more atomic
