@@ -2,6 +2,35 @@
 ---
 # Obscuro Testnet Change Log
 
+# Aug 2023-08-17 (v0.15.0)
+* A list of the PRs merged in this release is as below;
+    * `d137cce6` Adjust the timer log for easier extraction from datadog (#1463)
+    * `f0a978f2` Update p2p stopping mechanism (#1466)
+    * `fd2de555` Add not null constraints (#1465)
+    * `9fa606b4` Change l1 smoke test to check batches and blocks (#1464)
+    * `2bc00d09` Fix eth2 timeout (#1462)
+    * `1b9830bf` Create single page for blocks, transaction and batches lists (#1448)
+    * `b895a4f3` Optimise the relevancy check and improve logging (#1461)
+    * `f74a3057` Ensure p2p peer list resync after restart (#1460)
+    * `2847ce46` Clarify in-mem flag is for host db (#1459)
+    * `66606eb8` Fixes for tests using persistent sqlite db (#1457)
+    * `f8bf2433` Sanity check p2p message before sending (#1458)
+    * `ce6bbf7f` Fix logging bug (#1456)
+    * `756798a7` Log errors (#1455)
+    * `ce0bb0a6` Some errors, plus extract shared secret processing (#1454)
+    * `6efc3a96` Fix wiring of l1 start hash (#1452)
+    * `889bb3de` New location (#1453)
+    * `3e671d79` P2p batch request data is historic not (#1451)
+    * `95f7b986` Tweak log messages (#1450)
+    * `09a3815e` Bug: l1 start hash was overwritten so catching up from genesis (#1445)
+    * `5fa006e6` Fix enclave latest seq number reporting (#1449)
+    * `d837842c` Add timeout to wait for l1 merge (#1447)
+    * `ea7d338e` Fix bug with restarting enclaves sqlite connection (#1438)
+    * `430125fb` Changed test timeout (#1446)
+    * `509a1bae` Refactor the subscription logic (#1443)
+    * `4d078d50` Use public address for p2p requests (#1444)
+    * `3ce52056` Remove extraneous hyphen (#1442)
+
 # Aug 2023-08-11 (v0.14.0)
 * A list of the PRs merged in this release is as below;
   * `6d2997e3` Fix peer addresses mutex (#1439)
