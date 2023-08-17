@@ -4,8 +4,9 @@
     <div class="slider-content" :class="{ 'slide-out': isAnimating }">
       <el-card v-for="card in displayedCards"  class="card-content">
         <h3>Block: {{ card.L1ProofNumber }}</h3>
-        <h5>Hash: <ShortenedHash :hash="card.hash" /></h5>
-        <h5>Block Hash: <ShortenedHash :hash="card.hash" /></h5>
+        <p>&nbsp;</p>
+        <h5>R: <ShortenedHash :hash="card.hash" /></h5>
+        <h5>Block: <ShortenedHash :hash="card.L1Proof" /></h5>
         <h5>No of Txs: N/A</h5>
       </el-card>
     </div>

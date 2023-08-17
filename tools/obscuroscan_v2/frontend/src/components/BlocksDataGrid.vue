@@ -18,8 +18,8 @@
       </el-table-column>
       <el-table-column label="RollupHash" width="180">
         <template #default="scope">
-          <span v-if="scope.row.rollupHash !== '0x0000000000000000000000000000000000000000000000000000000000000000'" style="margin-left: 10px">
-            {{ scope.row.rollupHash }}
+          <span v-if="scope.row.rollupHash !== '0x0000000000000000000000000000000000000000000000000000000000000000'">
+            <ShortenedHash :hash="scope.row.rollupHash" />
           </span>
         </template>
       </el-table-column>

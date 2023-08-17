@@ -4,8 +4,9 @@
     <div class="slider-content" :class="{ 'slide-out': isAnimating }">
       <el-card v-for="card in displayedCards" :key="card.hash" class="card-content">
         <h3>Height: {{ card.number }}</h3>
-        <h5>Hash:  <ShortenedHash :hash="card.hash" /></h5>
-        <h5>Time:  <Timestamp :unixTimestampSeconds="Number(card.timestamp)" /></h5>
+        <p>&nbsp;</p>
+        <h5><ShortenedHash :hash="card.hash" /></h5>
+        <h5><Timestamp :unixTimestampSeconds="Number(card.timestamp)" /></h5>
         <h5>No of Txs: N/A</h5>
       </el-card>
     </div>

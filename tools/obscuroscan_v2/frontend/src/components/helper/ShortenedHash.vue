@@ -6,7 +6,7 @@
         :content="this.hash"
         placement="top-start"
     >
-    <span>{{ shortenedHash }}</span>
+   {{ shortenedHash }}
     </el-tooltip>
   </div>
 </template>

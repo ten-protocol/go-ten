@@ -10,8 +10,8 @@
       <el-col :span="8">
         <nav class="nav-bar">
           <el-radio-group size="default">
-            <el-radio-button label="top"> <RouterLink to="/">Home</RouterLink></el-radio-button>
-            <el-radio-button label="right"><RouterLink to="/personal">Personal</RouterLink></el-radio-button>
+            <RouterLink to="/">  <el-radio-button label="top"> Home</el-radio-button></RouterLink>
+            <RouterLink to="/personal">  <el-radio-button label="right">Personal</el-radio-button></RouterLink>
             <el-radio-button label="left">
               <el-dropdown>
                 <span class="el-dropdown-link">
@@ -19,16 +19,26 @@
                 </span>
                 <template #dropdown>
                   <el-dropdown-menu>
-                    <el-dropdown-item><RouterLink to="/transactions">Transactions</RouterLink></el-dropdown-item>
-                    <el-dropdown-item><RouterLink to="/batches">Batches</RouterLink></el-dropdown-item>
-                    <el-dropdown-item><RouterLink to="/blocks">Blocks</RouterLink></el-dropdown-item>
+                    <RouterLink to="/transactions"> <el-dropdown-item>Transactions</el-dropdown-item></RouterLink>
+                    <RouterLink to="/batches"> <el-dropdown-item>Batches</el-dropdown-item></RouterLink>
+                    <RouterLink to="/blocks"> <el-dropdown-item>Blocks</el-dropdown-item></RouterLink>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>
               </el-radio-button>
-            <el-radio-button label="left"
-              ><RouterLink to="/about">Resources</RouterLink></el-radio-button
-            >
+            <el-radio-button label="left">
+              <el-dropdown>
+                <span class="el-dropdown-link">
+                  Resources
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <RouterLink to="/decrypt"> <el-dropdown-item>Decrypt</el-dropdown-item></RouterLink>
+                    <RouterLink to="/verified"> <el-dropdown-item>Verified Contracts</el-dropdown-item></RouterLink>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </el-radio-button>
           </el-radio-group>
         </nav>
       </el-col>
