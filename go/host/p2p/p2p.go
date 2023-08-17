@@ -82,8 +82,8 @@ type Service struct {
 	txSubscribers    *subscription.Manager[host.P2PTxHandler]
 	batchReqHandlers *subscription.Manager[host.P2PBatchRequestHandler]
 
-	listener          net.Listener
-	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
+	listener net.Listener
+	running  atomic.Bool // new connections won't be accepted if this is false
 
 	sl p2pServiceLocator
 
@@ -107,8 +107,7 @@ func (p *Service) Start() error {
 	}
 
 	p.logger.Info("P2P server started listening", "bindAddress", p.ourBindAddress, "publicAddress", p.ourPublicAddress)
-	i := int32(0)
-	p.listenerInterrupt = &i
+	p.running.Store(true)
 	p.listener = listener
 
 	go p.handleConnections()
@@ -121,8 +120,8 @@ func (p *Service) Start() error {
 
 func (p *Service) Stop() error {
 	p.logger.Info("Shutting down P2P.")
+	p.running.Store(false)
 	if p.listener != nil {
-		atomic.StoreInt32(p.listenerInterrupt, 1)
 		// todo immediately shutting down the listener seems to impact other hosts shutdown process
 		time.Sleep(time.Second)
 		return p.listener.Close()
@@ -157,6 +156,10 @@ func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler)
 func (p *Service) RefreshPeerList() {
 	var newPeers []string
 	err := retry.Do(func() error {
+		if !p.running.Load() {
+			return retry.FailFast(fmt.Errorf("p2p service is stopped - abandoning peer list refresh"))
+		}
+
 		var retryErr error
 		newPeers, retryErr = p.sl.L1Publisher().FetchLatestPeersList()
 		if retryErr != nil {
@@ -273,10 +276,10 @@ func (p *Service) verifyHealth() error {
 
 // Listens for connections and handles them in a separate goroutine.
 func (p *Service) handleConnections() {
-	for atomic.LoadInt32(p.listenerInterrupt) != 1 {
+	for p.running.Load() {
 		conn, err := p.listener.Accept()
 		if err != nil {
-			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
+			if p.running.Load() {
 				p.logger.Warn("host could not form P2P connection", log.ErrKey, err)
 			}
 			return
