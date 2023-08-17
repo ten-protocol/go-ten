@@ -47,7 +47,7 @@ const (
 )
 
 func TestObscuroscan(t *testing.T) {
-	// t.Skip("Commented it out until more testing is driven from this test")
+	t.Skip("Commented it out until more testing is driven from this test")
 	startPort := integration.StartPortObscuroscanUnitTest
 	createObscuroNetwork(t, startPort)
 
@@ -152,7 +152,7 @@ func TestObscuroscan(t *testing.T) {
 		100,
 	)
 
-	time.Sleep(time.Hour)
+	// time.Sleep(time.Hour)
 	// Gracefully shutdown
 	err = obsScanContainer.Stop()
 	assert.NoError(t, err)
