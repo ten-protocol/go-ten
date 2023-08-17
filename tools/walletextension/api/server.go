@@ -68,7 +68,7 @@ func createHTTPServer(address string, routes []Route) *http.Server {
 
 	noPrefixStaticFilesOG, err := fs.Sub(staticFiles, "staticOG")
 	if err != nil {
-		panic(fmt.Sprintf("could not serve static files. Cause: %s", err))
+		panic(fmt.Errorf("could not serve static files. Cause: %w", err).Error())
 	}
 	serveMux.Handle(common.PathObscuroGateway, http.StripPrefix(common.PathObscuroGateway, http.FileServer(http.FS(noPrefixStaticFilesOG))))
 
