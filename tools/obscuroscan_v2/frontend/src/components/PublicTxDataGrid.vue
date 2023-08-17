@@ -1,9 +1,9 @@
 <template>
   <el-card class="fill-width">
     <el-table height="250" :data="publicTransactionsData">
-      <el-table-column prop="TransactionHash" label="Tx Hash" width="180" />
       <el-table-column prop="BatchHeight" label="BatchHeight" width="180" />
       <el-table-column prop="Finality" label="Finality" width="180" />
+      <el-table-column prop="TransactionHash" label="Tx Hash"  />
     </el-table>
     <el-pagination
       @size-change="handleSizeChange"
@@ -12,7 +12,7 @@
       :page-sizes="[10, 20, 30, 40]"
       :page-size="size"
       :page-count="totalPages"
-      layout="total, sizes, prev, pager, next, jumper"
+      layout="total, sizes, prev, pager, next"
       :total="publicTransactionsCount"
     ></el-pagination>
   </el-card>

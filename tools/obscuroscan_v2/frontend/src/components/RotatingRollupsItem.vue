@@ -3,10 +3,10 @@
   <div class="slider-container">
     <div class="slider-content" :class="{ 'slide-out': isAnimating }">
       <el-card v-for="card in displayedCards"  class="card-content">
-        <h2>Block: {{ card.L1ProofNumber }}</h2>
-        <div>Hash: {{ card.hash }}</div>
-        <div>Block Hash: {{ card.L1Proof }}</div>
-        <div>No of Txs: N/A</div>
+        <h3>Block: {{ card.L1ProofNumber }}</h3>
+        <h5>Hash: <ShortenedHash :hash="card.hash" /></h5>
+        <h5>Block Hash: <ShortenedHash :hash="card.hash" /></h5>
+        <h5>No of Txs: N/A</h5>
       </el-card>
     </div>
   </div>
@@ -16,9 +16,11 @@
 <script>
 import {computed, onMounted, onUnmounted} from "vue";
 import {useRollupStore} from "@/stores/rollupStore";
+import ShortenedHash from "@/components/helper/ShortenedHash.vue";
 
 export default {
   name: "RotatingRollupsItem",
+  components: {ShortenedHash},
 
   setup() {
     const rollupsStore = useRollupStore()

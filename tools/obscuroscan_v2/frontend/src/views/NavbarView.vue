@@ -21,7 +21,7 @@
                   <el-dropdown-menu>
                     <el-dropdown-item><RouterLink to="/transactions">Transactions</RouterLink></el-dropdown-item>
                     <el-dropdown-item><RouterLink to="/batches">Batches</RouterLink></el-dropdown-item>
-                    <el-dropdown-item><RouterLink to="/rollups">Rollups</RouterLink></el-dropdown-item>
+                    <el-dropdown-item><RouterLink to="/blocks">Blocks</RouterLink></el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>

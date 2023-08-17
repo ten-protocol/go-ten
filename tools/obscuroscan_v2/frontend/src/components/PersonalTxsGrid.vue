@@ -1,24 +1,25 @@
 <template>
   <el-card>
   <el-table height="250" style="width: 100%" :data="personalTransactionList">
-    <el-table-column prop="transactionHash" label="Tx Hash" width="180" >
+    <el-table-column prop="blockNumber" label="Batch Height" width="180" >
+      <template #default="scope">
+        <span style="margin-left: 10px">{{ Number(scope.row.blockNumber) }}</span>
+      </template>
+    </el-table-column>
+    <el-table-column prop="transactionHash" label="Tx Hash" width="250" >
     </el-table-column>
     <el-table-column prop="status" label="Status" width="180" >
       <template #default="scope">
         <span style="margin-left: 10px">{{ (Number(scope.row.status) === 1) ? "Sucess" : "Failed" }}</span>
       </template>
     </el-table-column>
-    <el-table-column prop="gasUsed" label="Fee" width="180" >
+    <el-table-column prop="gasUsed" label="Gas Cost" width="180" >
       <template #default="scope">
         <span style="margin-left: 10px">{{ Number(scope.row.gasUsed) }}</span>
       </template>
     </el-table-column>
-    <el-table-column prop="blockNumber" label="Batch Height" width="180" >
-      <template #default="scope">
-        <span style="margin-left: 10px">{{ Number(scope.row.blockNumber) }}</span>
-      </template>
-    </el-table-column>
-    <el-table-column prop="blockHash" label="Batch Hash" width="180" >
+
+    <el-table-column prop="blockHash" label="Batch Hash"  >
     </el-table-column>
   </el-table>
   <el-pagination
@@ -28,7 +29,7 @@
       :page-sizes="[10, 20, 30, 40]"
       :page-size="size"
       :page-count="totalPages"
-      layout="total, sizes, prev, pager, next, jumper"
+      layout="total, sizes, prev, pager, next"
       :total="personalTransactionCount"
   ></el-pagination>
   </el-card>

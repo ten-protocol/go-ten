@@ -33,8 +33,8 @@ const router = createRouter({
       component: () => import('../views/BatchesView.vue')
     },
     {
-      path: '/rollups',
-      name: 'rollups',
+      path: '/blocks',
+      name: 'blocks',
       component: () => import('../views/BlocksView.vue')
     }
   ]
