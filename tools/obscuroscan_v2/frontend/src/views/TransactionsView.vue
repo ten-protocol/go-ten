@@ -1,9 +1,11 @@
 <template>
   <el-container>
-    <el-card class="margin-top">
-      <el-header>Transactions</el-header>
-      <public-tx-data-grid />
-    </el-card>
+    <el-main>
+      <el-card>
+        <el-header>Transactions</el-header>
+        <public-tx-data-grid />
+      </el-card>
+    </el-main>
   </el-container>
 </template>
 

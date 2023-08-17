@@ -1,21 +1,29 @@
 <template>
   <el-card class="fill-width">
     <el-table height="250" :data="blocksListing">
-      <el-table-column prop="blockHeader.hash" label="Hash" width="180"/>
       <el-table-column label="Height" width="180">
         <template #default="scope">
           <span style="margin-left: 10px">{{ Number(scope.row.blockHeader.number) }}</span>
         </template>
       </el-table-column>
+      <el-table-column prop="blockHeader.hash" label="Hash" width="180">
+        <template #default="scope">
+          <ShortenedHash :hash="scope.row.blockHeader.hash" />
+        </template>
+      </el-table-column>
+      <el-table-column label="Time" width="180">
+        <template #default="scope">
+          <Timestamp :unixTimestampSeconds="Number(scope.row.blockHeader.timestamp)" />
+        </template>
+      </el-table-column>
       <el-table-column label="RollupHash" width="180">
         <template #default="scope">
-          <span v-if="scope.row.rollupHash !== '0x0000000000000000000000000000000000000000000000000000000000000000'" style="margin-left: 10px">
-            {{ scope.row.rollupHash }}
+          <span v-if="scope.row.rollupHash !== '0x0000000000000000000000000000000000000000000000000000000000000000'">
+            <ShortenedHash :hash="scope.row.rollupHash" />
           </span>
         </template>
       </el-table-column>
-      <el-table-column prop="blockHeader.parentHash" label="Parent" width="180"/>
-      <el-table-column prop="blockHeader.timestamp" label="Time" width="180"/>
+      <el-table-column prop="blockHeader.parentHash" label="Parent"/>
 
     </el-table>
     <el-pagination
@@ -25,7 +33,7 @@
         :page-sizes="[10, 20, 30, 40]"
         :page-size="size"
         :page-count="totalPages"
-        layout="total, sizes, prev, pager, next, jumper"
+        layout="total, sizes, prev, pager, next"
         :total="blocksListingCount"
     ></el-pagination>
   </el-card>
@@ -34,9 +42,12 @@
 <script>
 import {computed, onMounted, onUnmounted} from 'vue'
 import {useBlockStore} from "@/stores/blockStore";
+import ShortenedHash from "@/components/helper/ShortenedHash.vue";
+import Timestamp from "@/components/helper/Timestamp.vue";
 
 export default {
   name: 'BlocksDataGrid',
+  components: {Timestamp, ShortenedHash},
   setup() {
     const store = useBlockStore()
 

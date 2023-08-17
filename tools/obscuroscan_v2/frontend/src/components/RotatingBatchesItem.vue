@@ -3,10 +3,11 @@
   <div class="slider-container">
     <div class="slider-content" :class="{ 'slide-out': isAnimating }">
       <el-card v-for="card in displayedCards" :key="card.hash" class="card-content">
-        <h2>Height: {{ card.Number }}</h2>
-        <div>Hash: {{ card.hash }}</div>
-        <div>Time: {{ card.timestamp }}</div>
-        <div>No of Txs: {{ card.hash }}</div>
+        <h3>Height: {{ card.number }}</h3>
+        <p>&nbsp;</p>
+        <h5><ShortenedHash :hash="card.hash" /></h5>
+        <h5><Timestamp :unixTimestampSeconds="Number(card.timestamp)" /></h5>
+        <h5>No of Txs: N/A</h5>
       </el-card>
     </div>
   </div>
@@ -16,9 +17,12 @@
 <script>
 import {useBatchStore} from "@/stores/batchStore";
 import {computed, onMounted, onUnmounted} from "vue";
+import Timestamp from "@/components/helper/Timestamp.vue";
+import ShortenedHash from "@/components/helper/ShortenedHash.vue";
 
 export default {
   name: "RotatingBatchesItem",
+  components: {ShortenedHash, Timestamp},
 
   setup() {
     const batch = useBatchStore()
