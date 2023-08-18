@@ -8,6 +8,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/gas"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -35,18 +36,59 @@ type batchProducerImpl struct {
 	crossChainProcessors *crosschain.Processors
 	genesis              *genesis.Genesis
 	logger               gethlog.Logger
+	gasOracle            gas.Oracle
 	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
 	stateDBMutex sync.Mutex
 }
 
-func NewBatchProducer(storage storage.Storage, cc *crosschain.Processors, genesis *genesis.Genesis, logger gethlog.Logger) BatchProducer {
+func NewBatchProducer(
+	storage storage.Storage,
+	cc *crosschain.Processors,
+	genesis *genesis.Genesis,
+	gasOracle gas.Oracle,
+	logger gethlog.Logger,
+) BatchProducer {
 	return &batchProducerImpl{
 		storage:              storage,
 		crossChainProcessors: cc,
 		genesis:              genesis,
 		logger:               logger,
+		gasOracle:            gasOracle,
 		stateDBMutex:         sync.Mutex{},
 	}
+}
+
+func (bp *batchProducerImpl) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2Transactions, error) {
+	return context.Transactions, nil
+
+	transactions := make(common.L2Transactions, 0)
+
+	for _, tx := range context.Transactions {
+		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
+		if err != nil {
+			bp.logger.Warn("Unable to extract sender for tx", log.TxKey, tx.Hash())
+			continue
+		}
+		accBalance := stateDB.GetBalance(*sender)
+		cost, err := bp.gasOracle.GetGasCostForTx(tx)
+		if err != nil {
+			bp.logger.Warn("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
+			continue
+		}
+
+		isFreeTransaction := tx.GasFeeCap().Cmp(gethcommon.Big0) == 0
+		isFreeTransaction = isFreeTransaction && tx.GasPrice().Cmp(gethcommon.Big0) == 0
+
+		if !isFreeTransaction {
+			if accBalance.Cmp(cost) != -1 {
+				//	bp.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
+				stateDB.SubBalance(*sender, cost)
+				stateDB.AddBalance(context.Creator, cost)
+			}
+		}
+		transactions = append(transactions, tx)
+	}
+	return transactions, nil
 }
 
 func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
@@ -95,6 +137,8 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 
 	crossChainTransactions := bp.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 	bp.crossChainProcessors.Local.ExecuteValueTransfers(transfers, stateDB)
+
+	//	transactionsToProcess, _ := bp.payL1Fees(stateDB, context)
 
 	successfulTxs, txReceipts, err := bp.processTransactions(batch, 0, context.Transactions, stateDB, context.ChainConfig)
 	if err != nil {
@@ -157,6 +201,7 @@ func (bp *batchProducerImpl) CreateGenesisState(blkHash common.L1BlockHash, time
 			Number:           big.NewInt(int64(0)),
 			SequencerOrderNo: big.NewInt(int64(0)),
 			ReceiptHash:      types.EmptyRootHash,
+			TransfersTree:    types.EmptyRootHash,
 			Time:             timeNow,
 		},
 		Transactions: []*common.L2Tx{},

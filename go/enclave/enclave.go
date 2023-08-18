@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/enclave/gas"
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
@@ -193,8 +194,9 @@ func NewEnclave(
 
 	subscriptionManager := events.NewSubscriptionManager(&rpcEncryptionManager, storage, logger)
 
-	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, logger)
-	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, logger)
+	gasOracle := gas.NewGasOracle()
+	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
+	producer := components.NewBatchProducer(storage, crossChainProcessors, genesis, gasOracle, logger)
 	sigVerifier, err := components.NewSignatureValidator(config.SequencerID, storage)
 	registry := components.NewBatchRegistry(storage, producer, sigVerifier, &chainConfig, logger)
 	rProducer := components.NewRollupProducer(config.SequencerID, dataEncryptionService, config.ObscuroChainID, config.L1ChainID, storage, registry, blockProcessor, logger)
