@@ -1,7 +1,12 @@
 <template>
   <el-card class="fill-width">
     <BatchInfoWindow ref="batchInfoWindowRef" />
-    <el-table height="60vh" :data="batchesData" @expand-change="handleExpandChange" @row-click="toggleWindow">
+    <el-table
+        height="60vh"
+        :data="batchesData"
+        @row-click="toggleWindow"
+        style="cursor: pointer"
+    >
       <el-table-column prop="sequencerOrderNo" label="Height" width="180"/>
       <el-table-column prop="hash" label="Hash" width="250">
         <template #default="scope">
@@ -29,6 +34,7 @@
 </template>
 
 <script>
+
 import {computed, onMounted, onUnmounted} from 'vue'
 import {useBatchStore} from "@/stores/batchStore";
 import ShortenedHash from "@/components/helper/ShortenedHash.vue";
@@ -81,13 +87,15 @@ export default {
       this.currentPage = newPage
       store.offset = (newPage - 1) * store.size
     },
-    handleExpandChange(row, expanded) {
-      console.log(`Hash: ${expanded[0].hash}`)
-    },
     toggleWindow(data) {
       this.$refs.batchInfoWindowRef.displayData(data.hash);
     },
   },
+  computed: {
+    tableRowClassName() {
+      return "hover"
+    }
+  }
 }
 </script>
 
