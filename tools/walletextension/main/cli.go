@@ -40,6 +40,10 @@ const (
 	databasePathDefault = ".obscuro/gateway_database.db"
 	databasePathUsage   = "The path for the wallet extension's database file. Default: .obscuro/gateway_database.db"
 
+	hostedName        = "hosted"
+	hostedNameDefault = "local"
+	hostedNameUsage   = "Select where Obscuro Gateway is running (needed for Metamask): local (default), dev-testnet, testnet" // Needed for Metamask to know where to connect to
+
 	verboseFlagName    = "verbose"
 	verboseFlagDefault = false
 	verboseFlagUsage   = "Flag to enable verbose logging of wallet extension traffic"
@@ -54,6 +58,7 @@ func parseCLIArgs() config.Config {
 	nodeWebsocketPort := flag.Int(nodeWebsocketPortName, nodeWebsocketPortDefault, nodeWebsocketPortUsage)
 	logPath := flag.String(logPathName, logPathDefault, logPathUsage)
 	databasePath := flag.String(databasePathName, databasePathDefault, databasePathUsage)
+	hosted := flag.String(hostedName, hostedNameDefault, hostedNameUsage)
 	verboseFlag := flag.Bool(verboseFlagName, verboseFlagDefault, verboseFlagUsage)
 	flag.Parse()
 
@@ -65,6 +70,7 @@ func parseCLIArgs() config.Config {
 		NodeRPCWebsocketAddress: fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
 		LogPath:                 *logPath,
 		DBPathOverride:          *databasePath,
+		Hosted:                  *hosted,
 		VerboseFlag:             *verboseFlag,
 	}
 }

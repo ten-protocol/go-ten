@@ -9,5 +9,6 @@ type Config struct {
 	NodeRPCWebsocketAddress string
 	LogPath                 string
 	DBPathOverride          string // Overrides the database file location. Used in tests.
+	Hosted                  string
 	VerboseFlag             bool
 }

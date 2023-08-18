@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -82,4 +83,13 @@ func CreateEncClient(hostRPCBindAddr string, addressBytes []byte, privateKeyByte
 		return nil, fmt.Errorf("unable to create EncRPCClient: %w", err)
 	}
 	return encClient, nil
+}
+
+func RenameFile(oldPath, newPath string) error {
+	err := os.Rename(oldPath, newPath)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	return nil
 }

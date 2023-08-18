@@ -16,6 +16,7 @@ import (
 var staticFiles embed.FS
 
 const staticDir = "static"
+const staticDirOG = "staticOG"
 
 // Server is a wrapper for the http server
 type Server struct {
@@ -66,7 +67,7 @@ func createHTTPServer(address string, routes []Route) *http.Server {
 	}
 	serveMux.Handle(common.PathViewingKeys, http.StripPrefix(common.PathViewingKeys, http.FileServer(http.FS(noPrefixStaticFiles))))
 
-	noPrefixStaticFilesOG, err := fs.Sub(staticFiles, "staticOG")
+	noPrefixStaticFilesOG, err := fs.Sub(staticFiles, staticDirOG)
 	if err != nil {
 		panic(fmt.Errorf("could not serve static files. Cause: %w", err).Error())
 	}

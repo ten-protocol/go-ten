@@ -47,6 +47,22 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 	}
 
+	// Check which address we are deploying into
+	switch config.Hosted {
+	case "local":
+		logger.Info("Hosted locally")
+		wecommon.RenameFile("../api/staticOG/config/config.local.js", "../api/staticOG/config/config.js")
+	case "testnet":
+		logger.Info("Hosted at testnet")
+		wecommon.RenameFile("../api/staticOG/config/config.testnet.js", "../api/staticOG/config/config.js")
+	case "dev-testnet":
+		logger.Info("Hosted at dev-testnet")
+		wecommon.RenameFile("../api/staticOG/config/config.dev-testnet.js", "../api/staticOG/config/config.js")
+	default:
+		logger.Warn("Unknown option for -hosted, using default: local")
+		wecommon.RenameFile("../api/staticOG/config/config.local.js", "../api/staticOG/config/config.js")
+	}
+
 	// Get all the data from the database and add all the clients for all users
 	// todo (@ziga) - implement lazy loading for clients to reduce number of connections and speed up loading
 
