@@ -48,6 +48,19 @@ export const useBatchStore = defineStore({
 
         stopPolling() {
             this.poller.stop();
+        },
+
+        async getByHash(hash) {
+            let batch = this.batches.getByHash(hash)
+            if (batch) {
+                return batch
+            }
+
+            const response = await fetch( Config.backendServerAddress+`/items/batch/${hash}`);
+            const data = await response.json();
+            this.batches.addByHash(data.item);
+
+            return this.batches.getByHash(hash)
         }
     },
 });

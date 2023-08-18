@@ -1,6 +1,6 @@
 <template>
   <el-card class="fill-width">
-    <el-table height="250" :data="publicTransactionsData">
+    <el-table  height="60vh" :data="publicTransactionsData">
       <el-table-column prop="BatchHeight" label="BatchHeight" width="180" />
       <el-table-column prop="Finality" label="Finality" width="180" />
       <el-table-column prop="TransactionHash" label="Tx Hash"  />

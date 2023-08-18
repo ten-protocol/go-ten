@@ -56,6 +56,16 @@ func (oc *ObsClient) BatchNumber() (uint64, error) {
 	return uint64(result), err
 }
 
+// BatchByHash returns the batch with the given hash.
+func (oc *ObsClient) BatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
+	var batch *common.ExtBatch
+	err := oc.rpcClient.Call(&batch, rpc.GetFullBatchByHash, hash)
+	if err == nil && batch == nil {
+		err = ethereum.NotFound
+	}
+	return batch, err
+}
+
 // BatchHeaderByNumber returns the header of the rollup with the given number
 func (oc *ObsClient) BatchHeaderByNumber(number *big.Int) (*common.BatchHeader, error) {
 	var batchHeader *common.BatchHeader

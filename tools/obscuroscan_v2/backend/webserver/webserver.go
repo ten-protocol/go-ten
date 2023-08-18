@@ -2,6 +2,7 @@ package webserver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -48,12 +49,13 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	r.GET("/count/transactions/", server.getTotalTransactionCount)
 	r.GET("/items/batch/latest/", server.getLatestBatch)
 	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
-	r.GET("/batch/:hash", server.getBatch)
-	r.GET("/block/:hash", server.getBatch)
+	r.GET("/batchHeader/:hash", server.getBatchHeader)
+	r.GET("/items/batch/:hash", server.getBatch)
 	r.GET("/tx/:hash", server.getTransaction)
 	r.GET("/items/transactions/", server.getPublicTransactions)
 	r.GET("/items/batches/", server.getBatchListing)
 	r.GET("/items/blocks/", server.getBlockListing)
+	r.POST("/actions/decryptTxBlob/", server.decryptTxBlob)
 
 	return server
 }
@@ -133,7 +135,19 @@ func (w *WebServer) getLatestRollupHeader(c *gin.Context) {
 func (w *WebServer) getBatch(c *gin.Context) {
 	hash := c.Param("hash")
 	parsedHash := gethcommon.HexToHash(hash)
-	batch, err := w.backend.GetBatch(parsedHash)
+	batch, err := w.backend.GetBatchByHash(parsedHash)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": batch})
+}
+
+func (w *WebServer) getBatchHeader(c *gin.Context) {
+	hash := c.Param("hash")
+	parsedHash := gethcommon.HexToHash(hash)
+	batch, err := w.backend.GetBatchHeader(parsedHash)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
 		return
@@ -227,6 +241,34 @@ func (w *WebServer) getBlockListing(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"result": batchesListing})
+}
+
+func (w *WebServer) decryptTxBlob(c *gin.Context) {
+	// Read the payload as a string
+	payloadBytes, err := c.GetRawData()
+	if err != nil {
+		c.JSON(400, gin.H{"error": "Failed to read payload"})
+		return
+	}
+
+	payload := PostData{}
+	err = json.Unmarshal(payloadBytes, &payload)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	result, err := w.backend.DecryptTxBlob(payload.StrData)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": result})
+}
+
+type PostData struct {
+	StrData string `json:"strData"`
 }
 
 func errorHandler(c *gin.Context, err error, logger log.Logger) {

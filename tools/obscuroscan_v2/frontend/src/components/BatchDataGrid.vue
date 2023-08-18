@@ -1,6 +1,7 @@
 <template>
   <el-card class="fill-width">
-    <el-table height="250" :data="batchesData">
+    <BatchInfoWindow ref="batchInfoWindowRef" />
+    <el-table height="60vh" :data="batchesData" @expand-change="handleExpandChange" @row-click="toggleWindow">
       <el-table-column prop="sequencerOrderNo" label="Height" width="180"/>
       <el-table-column prop="hash" label="Hash" width="250">
         <template #default="scope">
@@ -32,10 +33,11 @@ import {computed, onMounted, onUnmounted} from 'vue'
 import {useBatchStore} from "@/stores/batchStore";
 import ShortenedHash from "@/components/helper/ShortenedHash.vue";
 import Timestamp from "@/components/helper/Timestamp.vue";
+import BatchInfoWindow from "@/components/helper/BatchInfoWindow.vue";
 
 export default {
   name: 'BatchesDataGrid',
-  components: {Timestamp, ShortenedHash},
+  components: {BatchInfoWindow, Timestamp, ShortenedHash},
   setup() {
     const store = useBatchStore()
 
@@ -62,7 +64,8 @@ export default {
         console.log('Recalculated page count - ' + pages)
         return pages
       }),
-      currentPage: 0
+      currentPage: 0,
+      isWindowVisible: false
     }
   },
   methods: {
@@ -77,7 +80,13 @@ export default {
       const store = useBatchStore()
       this.currentPage = newPage
       store.offset = (newPage - 1) * store.size
-    }
+    },
+    handleExpandChange(row, expanded) {
+      console.log(`Hash: ${expanded[0].hash}`)
+    },
+    toggleWindow(data) {
+      this.$refs.batchInfoWindowRef.displayData(data.hash);
+    },
   },
 }
 </script>

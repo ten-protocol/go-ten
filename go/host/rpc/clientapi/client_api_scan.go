@@ -6,6 +6,8 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // ScanAPI implements metric specific RPC endpoints
@@ -41,6 +43,10 @@ func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (
 
 func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	return s.host.DB().GetBatchListing(pagination)
+}
+
+func (s *ScanAPI) GetBatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
+	return s.host.DB().GetBatch(hash)
 }
 
 func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
