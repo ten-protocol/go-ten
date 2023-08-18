@@ -112,7 +112,6 @@ func (bp *batchProducerImpl) ComputeBatch(context *BatchExecutionContext) (*Comp
 
 	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
-	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
 	copyBatch.Transactions = successfulTxs
 
 	if err = bp.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {

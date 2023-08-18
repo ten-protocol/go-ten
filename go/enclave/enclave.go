@@ -1069,7 +1069,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
-	gasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.GlobalGasCap)
+	executionGasEstimate, err := e.DoEstimateGas(callMsg, blockNumber, e.GlobalGasCap)
 	if err != nil {
 		err = fmt.Errorf("unable to estimate transaction - %w", err)
 
@@ -1086,7 +1086,7 @@ func (e *enclaveImpl) EstimateGas(encryptedParams common.EncryptedParamsEstimate
 		return responses.AsEncryptedError(err, vkHandler), nil
 	}
 
-	return responses.AsEncryptedResponse(&gasEstimate, vkHandler), nil
+	return responses.AsEncryptedResponse(&executionGasEstimate, vkHandler), nil
 }
 
 func (e *enclaveImpl) GetLogs(encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) { //nolint
