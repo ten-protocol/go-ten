@@ -1,4 +1,4 @@
-package enclave
+package components
 
 import (
 	"bytes"

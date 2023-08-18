@@ -135,7 +135,8 @@ func (m *Node) FetchLastBatchSeqNo(gethcommon.Address) (*big.Int, error) {
 			return big.NewInt(int64(rollup.Header.LastBatchSeqNo)), nil
 		}
 	}
-	return big.NewInt(0), nil
+	// the first batch is number 1
+	return big.NewInt(int64(common.L2GenesisSeqNo)), nil
 }
 
 // BlockListener provides stream of latest mock head headers as they are created

@@ -40,6 +40,7 @@ var SensitiveMethods = []string{
 	SendRawTransaction,
 	EstimateGas,
 	GetLogs,
+	GetStorageAt,
 }
 
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
@@ -160,13 +161,12 @@ func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh 
 					SubID: idAndEncLog.SubID,
 					Log:   decryptedLog,
 				}
-				c.logger.Info(fmt.Sprintf("Received log. Subscription %v. Log: %v", idAndLog.SubID, idAndLog.Log))
 				logCh <- idAndLog
 			}
 
 		case err := <-subscription.Err():
 			if err != nil {
-				c.logger.Error("subscription closed", log.ErrKey, err)
+				c.logger.Info("subscription closed", log.ErrKey, err)
 			} else {
 				c.logger.Trace("subscription closed")
 			}
@@ -288,6 +288,10 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 
 		// Return the user error.
 		return decodedError
+	}
+
+	if decodedResult == nil {
+		return nil
 	}
 
 	// We get the bytes behind the raw json object.

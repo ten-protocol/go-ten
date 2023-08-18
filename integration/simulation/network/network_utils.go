@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host"
+
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/metrics"
@@ -93,7 +95,7 @@ func createInMemObscuroNode(
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 
-	currentContainer := container.NewHostContainer(hostConfig, mockP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
+	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
 
 	return currentContainer
 }

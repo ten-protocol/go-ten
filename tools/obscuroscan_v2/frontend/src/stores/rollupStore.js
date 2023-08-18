@@ -1,45 +1,36 @@
 import { defineStore } from 'pinia';
 import Config from "@/lib/config";
 import CachedList from "@/lib/cachedList";
+import Poller from "@/lib/poller";
 
 
 export const useRollupStore = defineStore({
     id: 'rollupStore',
     state: () => ({
         rollups: new CachedList(),
-        loading: false,
-        pollingInterval: Config.pollingInterval,
-        timer: null,
+        poller: new Poller(() => {
+            const store = useRollupStore();
+            store.fetch();
+        }, Config.pollingInterval)
     }),
     actions: {
-        async fetchCount() {
+        async fetch() {
             this.loading = true;
             try {
-                let response = await fetch( Config.backendServerAddress+'/items/rollup/latest/');
-                let data = await response.json();
+                const response = await fetch( Config.backendServerAddress+'/items/rollup/latest/');
+                const data = await response.json();
                 this.rollups.add(data.item);
-
-                console.log("Fetched "+data.item.L1ProofNumber);
             } catch (error) {
                 console.error("Failed to fetch count:", error);
-            } finally {
-                this.loading = false;
             }
         },
 
         startPolling() {
-            this.stopPolling(); // Ensure previous intervals are cleared
-            this.timer = setInterval(async () => {
-                await this.fetchCount();
-            }, this.pollingInterval);
+            this.poller.start();
         },
 
         stopPolling() {
-            if (this.timer) {
-                clearInterval(this.timer);
-                this.timer = null;
-            }
+            this.poller.stop();
         }
-
     },
 });

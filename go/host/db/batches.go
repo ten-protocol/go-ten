@@ -127,9 +127,35 @@ func (db *DB) GetBatchBySequenceNumber(sequenceNumber *big.Int) (*common.ExtBatc
 	db.batchReads.Inc(1)
 	batchHash, err := db.readBatchHashBySequenceNumber(sequenceNumber)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not retrieve batch hash for seqNo=%d", sequenceNumber)
+		return nil, fmt.Errorf("could not retrieve batch hash for seqNo=%d: %w", sequenceNumber, err)
 	}
 	return db.GetBatch(*batchHash)
+}
+
+// GetBatchListing returns BatchListingResponse given a pagination
+// todo change this when the db changes - this is not super performant
+func (db *DB) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	// fetch requested batches
+	var batches []common.PublicBatch
+	for i := pagination.Offset; i < pagination.Offset+uint64(pagination.Size); i++ {
+		extBatch, err := db.GetBatchBySequenceNumber(big.NewInt(int64(i)))
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			return nil, err
+		}
+		if extBatch != nil {
+			batches = append(batches, common.PublicBatch{BatchHeader: *extBatch.Header})
+		}
+	}
+	// fetch the total batches so we can paginate
+	header, err := db.GetHeadBatchHeader()
+	if err != nil {
+		return nil, err
+	}
+
+	return &common.BatchListingResponse{
+		BatchesData: batches,
+		Total:       header.Number.Uint64(),
+	}, nil
 }
 
 // headerKey = batchHeaderPrefix  + hash

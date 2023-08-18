@@ -51,7 +51,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	// todo (@ziga) - implement lazy loading for clients to reduce number of connections and speed up loading
 
 	// add default user (when no UserID is provided in the query parameter - for WE endpoints)
-	userAccountManager.AddAndReturnAccountManager(wecommon.DefaultUser)
+	userAccountManager.AddAndReturnAccountManager(hex.EncodeToString([]byte(wecommon.DefaultUser)))
 
 	// get all users and their private keys from the database
 	allUsers, err := databaseStorage.GetAllUsers()
@@ -61,7 +61,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 
 	// iterate over users create accountManagers and add all accounts to them per user
 	for _, user := range allUsers {
-		currentUserAccountManager := userAccountManager.AddAndReturnAccountManager(string(user.UserID))
+		currentUserAccountManager := userAccountManager.AddAndReturnAccountManager(hex.EncodeToString(user.UserID))
 
 		accounts, err := databaseStorage.GetAccounts(user.UserID)
 		if err != nil {
@@ -119,6 +119,7 @@ func NewWalletExtensionContainer(
 	}
 }
 
+// TODO Start should not be a locking process
 func (w *WalletExtensionContainer) Start() error {
 	httpErrChan := w.httpServer.Start()
 	wsErrChan := w.wsServer.Start()

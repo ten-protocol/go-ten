@@ -197,7 +197,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		// todo (@pedro) - retrieve receipt
 
 		go ti.TxTracker.trackNativeValueTransferL2Tx(signedTx)
-		sleepRndBtw(ti.avgBlockDuration/4, ti.avgBlockDuration)
+		sleepRndBtw(ti.avgBlockDuration/10, ti.avgBlockDuration/4)
 	}
 }
 
@@ -229,7 +229,7 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 		// todo (@pedro) - retrieve receipt
 
 		go ti.TxTracker.trackTransferL2Tx(signedTx)
-		sleepRndBtw(ti.avgBlockDuration/10, ti.avgBlockDuration/4)
+		sleepRndBtw(ti.avgBlockDuration/100, ti.avgBlockDuration/20)
 	}
 }
 

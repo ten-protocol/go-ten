@@ -36,6 +36,7 @@ const (
 	PathAuthenticate          = "/authenticate/"
 	PathQuery                 = "/query/"
 	PathRevoke                = "/revoke/"
+	PathHealth                = "/health/"
 	WSProtocol                = "ws://"
 	DefaultUser               = "defaultUser"
 	UserQueryParameter        = "u"

@@ -49,21 +49,21 @@ func (api *EthereumAPI) BlockNumber() hexutil.Uint64 {
 }
 
 // GetBlockByNumber returns the header of the batch with the given height.
-func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (map[string]interface{}, error) {
+func (api *EthereumAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, _ bool) (common.BatchHeader, error) {
 	batchHash, err := api.batchNumberToBatchHash(number)
 	if err != nil {
-		return nil, fmt.Errorf("could not find batch with height %d. Cause: %w", number, err)
+		return common.BatchHeader{}, fmt.Errorf("could not find batch with height %d. Cause: %w", number, err)
 	}
 	return api.GetBlockByHash(ctx, *batchHash, true)
 }
 
 // GetBlockByHash returns the header of the batch with the given hash.
-func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (map[string]interface{}, error) {
+func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, _ bool) (common.BatchHeader, error) {
 	batchHeader, err := api.host.DB().GetBatchHeader(hash)
 	if err != nil {
-		return nil, err
+		return common.BatchHeader{}, err
 	}
-	return headerToMap(batchHeader), nil
+	return *batchHeader, nil
 }
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
@@ -76,7 +76,7 @@ func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
 func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.EncryptedParamsGetBalance) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().GetBalance(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("GetBalance", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -86,7 +86,7 @@ func (api *EthereumAPI) GetBalance(_ context.Context, encryptedParams common.Enc
 func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.EncryptedParamsCall) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().ObsCall(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("Call", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -96,7 +96,7 @@ func (api *EthereumAPI) Call(_ context.Context, encryptedParams common.Encrypted
 func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionReceipt(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("GetTransactionReceipt", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -105,7 +105,7 @@ func (api *EthereumAPI) GetTransactionReceipt(_ context.Context, encryptedParams
 func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.EncryptedParamsEstimateGas) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().EstimateGas(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("EstimateGas", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -114,7 +114,7 @@ func (api *EthereumAPI) EstimateGas(_ context.Context, encryptedParams common.En
 func (api *EthereumAPI) SendRawTransaction(_ context.Context, encryptedParams common.EncryptedParamsSendRawTx) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.SubmitAndBroadcastTx(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("SendRawTransaction", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -144,7 +144,7 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 
 	code, sysError := api.host.EnclaveClient().GetCode(address, batchHash)
 	if sysError != nil {
-		api.logger.Warn("Enclave System Error Response", log.ErrKey, sysError)
+		api.logger.Error(fmt.Sprintf("Enclave System Error. Function %s", "GetCode"), log.ErrKey, sysError)
 		return nil, fmt.Errorf(responses.InternalErrMsg)
 	}
 
@@ -154,7 +154,7 @@ func (api *EthereumAPI) GetCode(_ context.Context, address gethcommon.Address, b
 func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams common.EncryptedParamsGetTxCount) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().GetTransactionCount(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("GetTransactionCount", sysError)
 	}
 	return *enclaveResponse, nil
 }
@@ -164,9 +164,14 @@ func (api *EthereumAPI) GetTransactionCount(_ context.Context, encryptedParams c
 func (api *EthereumAPI) GetTransactionByHash(_ context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (responses.EnclaveResponse, error) {
 	enclaveResponse, sysError := api.host.EnclaveClient().GetTransaction(encryptedParams)
 	if sysError != nil {
-		return api.handleSysError(sysError)
+		return api.handleSysError("GetTransactionByHash", sysError)
 	}
 	return *enclaveResponse, nil
+}
+
+// GetStorageAt is a reused method for listing the users transactions
+func (api *EthereumAPI) GetStorageAt(_ context.Context, encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, error) {
+	return api.host.EnclaveClient().GetCustomQuery(encryptedParams)
 }
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
@@ -178,37 +183,6 @@ func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockN
 		BaseFee:      []*hexutil.Big{},
 		GasUsedRatio: []float64{},
 	}, nil
-}
-
-// Converts a batch header to a key/value map.
-// todo (#1620) - include all the fields of the rollup header that do not exist in the Geth block headers as well
-func headerToMap(header *common.BatchHeader) map[string]interface{} {
-	return map[string]interface{}{
-		// The fields present in Geth's `types/Header` struct.
-		"parentHash":       header.ParentHash,
-		"sha3Uncles":       nil,
-		"miner":            nil,
-		"stateRoot":        header.Root,
-		"transactionsRoot": header.TxHash,
-		"receiptsRoot":     header.ReceiptHash,
-		"logsBloom":        nil,
-		"difficulty":       nil,
-		"number":           header.Number,
-		"sequencerOrderNo": header.SequencerOrderNo,
-		"gasLimit":         header.GasLimit,
-		"gasUsed":          header.GasUsed,
-		"timestamp":        header.Time,
-		"extraData":        header.Extra,
-		"nonce":            nil,
-		"baseFeePerGas":    header.BaseFee,
-
-		// The custom Obscuro fields.
-		"l1Proof":                 header.L1Proof,
-		"transfersTree":           header.TransfersTree,
-		"crossChainMessages":      header.CrossChainMessages,
-		"inboundCrossChainHash":   header.LatestInboundCrossChainHash,
-		"inboundCrossChainHeight": header.LatestInboundCrossChainHeight,
-	}
 }
 
 // FeeHistoryResult is the structure returned by Geth `eth_feeHistory` API.
@@ -243,8 +217,8 @@ func (api *EthereumAPI) batchNumberToBatchHash(batchNumber rpc.BlockNumber) (*ge
 	return batchHash, nil
 }
 
-func (api *EthereumAPI) handleSysError(sysError common.SystemError) (responses.EnclaveResponse, error) {
-	api.logger.Warn("Enclave System Error Response", log.ErrKey, sysError)
+func (api *EthereumAPI) handleSysError(function string, sysError common.SystemError) (responses.EnclaveResponse, error) {
+	api.logger.Error(fmt.Sprintf("Enclave System Error. Function %s", function), log.ErrKey, sysError)
 	return responses.EnclaveResponse{
 		Err: &responses.InternalErrMsg,
 	}, nil

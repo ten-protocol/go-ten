@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/obscuronet/go-obscuro/tools/obscuroscan_v2/backend"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 type WebServer struct {
@@ -45,6 +48,12 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	r.GET("/count/transactions/", server.getTotalTransactionCount)
 	r.GET("/items/batch/latest/", server.getLatestBatch)
 	r.GET("/items/rollup/latest/", server.getLatestRollupHeader)
+	r.GET("/batch/:hash", server.getBatch)
+	r.GET("/block/:hash", server.getBatch)
+	r.GET("/tx/:hash", server.getTransaction)
+	r.GET("/items/transactions/", server.getPublicTransactions)
+	r.GET("/items/batches/", server.getBatchListing)
+	r.GET("/items/blocks/", server.getBlockListing)
 
 	return server
 }
@@ -119,6 +128,105 @@ func (w *WebServer) getLatestRollupHeader(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"item": block})
+}
+
+func (w *WebServer) getBatch(c *gin.Context) {
+	hash := c.Param("hash")
+	parsedHash := gethcommon.HexToHash(hash)
+	batch, err := w.backend.GetBatch(parsedHash)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": batch})
+}
+
+func (w *WebServer) getTransaction(c *gin.Context) {
+	hash := c.Param("hash")
+	parsedHash := gethcommon.HexToHash(hash)
+	batch, err := w.backend.GetTransaction(parsedHash)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": batch})
+}
+
+func (w *WebServer) getPublicTransactions(c *gin.Context) {
+	offsetStr := c.DefaultQuery("offset", "0")
+	sizeStr := c.DefaultQuery("size", "10")
+
+	offset, err := strconv.ParseUint(offsetStr, 10, 32)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	publicTxs, err := w.backend.GetPublicTransactions(offset, parseUint)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": publicTxs})
+}
+
+func (w *WebServer) getBatchListing(c *gin.Context) {
+	offsetStr := c.DefaultQuery("offset", "0")
+	sizeStr := c.DefaultQuery("size", "10")
+
+	offset, err := strconv.ParseUint(offsetStr, 10, 32)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	batchesListing, err := w.backend.GetBatchesListing(offset, parseUint)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": batchesListing})
+}
+
+func (w *WebServer) getBlockListing(c *gin.Context) {
+	offsetStr := c.DefaultQuery("offset", "0")
+	sizeStr := c.DefaultQuery("size", "10")
+
+	offset, err := strconv.ParseUint(offsetStr, 10, 32)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	batchesListing, err := w.backend.GetBlockListing(offset, parseUint)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": batchesListing})
 }
 
 func errorHandler(c *gin.Context, err error, logger log.Logger) {

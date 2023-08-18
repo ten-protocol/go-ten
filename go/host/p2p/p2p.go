@@ -48,17 +48,27 @@ type message struct {
 	Contents []byte
 }
 
+type p2pServiceLocator interface {
+	L1Publisher() host.L1Publisher
+	L2Repo() host.L2BatchRepository
+}
+
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config *config.HostConfig, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
+func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocator, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
 	return &Service{
 		batchSubscribers: subscription.NewManager[host.P2PBatchHandler](),
 		txSubscribers:    subscription.NewManager[host.P2PTxHandler](),
 		batchReqHandlers: subscription.NewManager[host.P2PBatchRequestHandler](),
 
-		isSequencer:   config.NodeType == common.Sequencer,
-		ourAddress:    config.P2PBindAddress,
-		peerAddresses: []string{},
-		p2pTimeout:    config.P2PConnectionTimeout,
+		sl: serviceLocator,
+
+		isSequencer:      config.NodeType == common.Sequencer,
+		ourBindAddress:   config.P2PBindAddress,
+		ourPublicAddress: config.P2PPublicAddress,
+		peerAddresses:    []string{},
+		p2pTimeout:       config.P2PConnectionTimeout,
+
+		peerAddressesMutex: sync.RWMutex{},
 
 		// monitoring
 		peerTracker:     newPeerTracker(),
@@ -72,39 +82,46 @@ type Service struct {
 	txSubscribers    *subscription.Manager[host.P2PTxHandler]
 	batchReqHandlers *subscription.Manager[host.P2PBatchRequestHandler]
 
-	listener          net.Listener
-	listenerInterrupt *int32 // A value of 1 indicates that new connections should not be accepted
+	listener net.Listener
+	running  atomic.Bool // new connections won't be accepted if this is false
 
-	isSequencer   bool
-	ourAddress    string
-	peerAddresses []string
-	p2pTimeout    time.Duration
+	sl p2pServiceLocator
 
-	peerTracker     *peerTracker
-	metricsRegistry gethmetrics.Registry
-	logger          gethlog.Logger
+	isSequencer      bool
+	ourBindAddress   string
+	ourPublicAddress string
+	peerAddresses    []string
+	p2pTimeout       time.Duration
+
+	peerTracker        *peerTracker
+	metricsRegistry    gethmetrics.Registry
+	logger             gethlog.Logger
+	peerAddressesMutex sync.RWMutex
 }
 
 func (p *Service) Start() error {
 	// We listen for P2P connections.
-	listener, err := net.Listen("tcp", p.ourAddress)
+	listener, err := net.Listen("tcp", p.ourBindAddress)
 	if err != nil {
-		return errors.Wrapf(err, "could not listen for P2P connections on %s", p.ourAddress)
+		return fmt.Errorf("could not listen for P2P connections on %s: %w", p.ourBindAddress, err)
 	}
 
-	p.logger.Info(fmt.Sprintf("Started listening on port: %s", p.ourAddress))
-	i := int32(0)
-	p.listenerInterrupt = &i
+	p.logger.Info("P2P server started listening", "bindAddress", p.ourBindAddress, "publicAddress", p.ourPublicAddress)
+	p.running.Store(true)
 	p.listener = listener
 
 	go p.handleConnections()
+
+	// ensure we have re-synced the peer list from management contract after startup
+	go p.RefreshPeerList()
+
 	return nil
 }
 
 func (p *Service) Stop() error {
 	p.logger.Info("Shutting down P2P.")
+	p.running.Store(false)
 	if p.listener != nil {
-		atomic.StoreInt32(p.listenerInterrupt, 1)
 		// todo immediately shutting down the listener seems to impact other hosts shutdown process
 		time.Sleep(time.Second)
 		return p.listener.Close()
@@ -134,7 +151,30 @@ func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler)
 	return p.batchReqHandlers.Subscribe(handler)
 }
 
-func (p *Service) UpdatePeerList(newPeers []string) {
+// RefreshPeerList - fetches the latest peer list from L1 and updates the peerAddresses.
+// Note: this is designed to be run in a separate goroutine, it will retry a few times before giving up.
+func (p *Service) RefreshPeerList() {
+	var newPeers []string
+	err := retry.Do(func() error {
+		if !p.running.Load() {
+			return retry.FailFast(fmt.Errorf("p2p service is stopped - abandoning peer list refresh"))
+		}
+
+		var retryErr error
+		newPeers, retryErr = p.sl.L1Publisher().FetchLatestPeersList()
+		if retryErr != nil {
+			p.logger.Error("failed to fetch latest peer list from L1", log.ErrKey, retryErr)
+			return retryErr
+		}
+		return nil
+	}, retry.NewTimeoutStrategy(1*time.Minute, 5*time.Second))
+	if err != nil {
+		p.logger.Error("unable to fetch latest peer list from L1", log.ErrKey, err)
+		return
+	}
+
+	p.peerAddressesMutex.Lock()
+	defer p.peerAddressesMutex.Unlock()
 	p.logger.Info(fmt.Sprintf("Updated peer list - old: %s new: %s", p.peerAddresses, newPeers))
 	p.peerAddresses = newPeers
 }
@@ -143,7 +183,7 @@ func (p *Service) SendTxToSequencer(tx common.EncryptedTx) error {
 	if p.isSequencer {
 		return errors.New("sequencer cannot send tx to itself")
 	}
-	msg := message{Sender: p.ourAddress, Type: msgTypeTx, Contents: tx}
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeTx, Contents: tx}
 	sequencer, err := p.getSequencer()
 	if err != nil {
 		return fmt.Errorf("failed to find sequencer - %w", err)
@@ -165,7 +205,7 @@ func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
 		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
 	}
 
-	msg := message{Sender: p.ourAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
 	return p.broadcast(msg)
 }
 
@@ -174,20 +214,17 @@ func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
 		return errors.New("sequencer cannot request batches from itself")
 	}
 	batchRequest := &common.BatchRequest{
-		Requester: p.ourAddress,
+		Requester: p.ourPublicAddress,
 		FromSeqNo: fromSeqNo,
 	}
 	defer p.logger.Info("Requested batches from sequencer", "fromSeqNo", batchRequest.FromSeqNo, log.DurationKey, measure.NewStopwatch())
 
-	if len(p.peerAddresses) == 0 {
-		return errors.New("no peers available to request batches")
-	}
 	encodedBatchRequest, err := rlp.EncodeToBytes(batchRequest)
 	if err != nil {
 		return fmt.Errorf("could not encode batch request using RLP. Cause: %w", err)
 	}
 
-	msg := message{Sender: p.ourAddress, Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeBatchRequest, Contents: encodedBatchRequest}
 	// todo (#718) - allow missing batches to be requested from peers other than sequencer?
 	sequencer, err := p.getSequencer()
 	if err != nil {
@@ -202,7 +239,7 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 	}
 	batchMsg := &host.BatchMsg{
 		Batches: batches,
-		IsLive:  true,
+		IsLive:  false,
 	}
 
 	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
@@ -210,7 +247,7 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 		return fmt.Errorf("could not encode batches using RLP. Cause: %w", err)
 	}
 
-	msg := message{Sender: p.ourAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
 	return p.send(msg, requestID)
 }
 
@@ -224,7 +261,7 @@ func (p *Service) verifyHealth() error {
 		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {
 			noMsgReceivedPeers = append(noMsgReceivedPeers, peer)
 			p.logger.Warn("no message from peer in the alert period",
-				"ourAddress", p.ourAddress,
+				"ourAddress", p.ourPublicAddress,
 				"peer", peer,
 				"alertPeriod", _alertPeriod,
 			)
@@ -239,10 +276,10 @@ func (p *Service) verifyHealth() error {
 
 // Listens for connections and handles them in a separate goroutine.
 func (p *Service) handleConnections() {
-	for atomic.LoadInt32(p.listenerInterrupt) != 1 {
+	for p.running.Load() {
 		conn, err := p.listener.Accept()
 		if err != nil {
-			if atomic.LoadInt32(p.listenerInterrupt) != 1 {
+			if p.running.Load() {
 				p.logger.Warn("host could not form P2P connection", log.ErrKey, err)
 			}
 			return
@@ -313,8 +350,14 @@ func (p *Service) broadcast(msg message) error {
 		return fmt.Errorf("could not encode message to send to peers. Cause: %w", err)
 	}
 
+	// clone current known addresses
+	p.peerAddressesMutex.RLock()
+	currentAddresses := make([]string, len(p.peerAddresses))
+	copy(currentAddresses, p.peerAddresses)
+	p.peerAddressesMutex.RUnlock()
+
 	var wg sync.WaitGroup
-	for _, address := range p.peerAddresses {
+	for _, address := range currentAddresses {
 		wg.Add(1)
 		go p.sendBytesWithRetry(&wg, address, msgEncoded) //nolint: errcheck
 	}
@@ -325,6 +368,17 @@ func (p *Service) broadcast(msg message) error {
 
 // Sends a message to the provided address.
 func (p *Service) send(msg message, to string) error {
+	// sanity check the message to discover bugs
+	if !(msg.Type >= 1 && msg.Type <= 3) {
+		p.logger.Error(fmt.Sprintf("Sending message with wrong message type: %v", msg))
+	}
+	if len(msg.Sender) == 0 {
+		p.logger.Error(fmt.Sprintf("Sending message with wrong sender type: %v", msg))
+	}
+	if len(msg.Contents) == 0 {
+		p.logger.Error(fmt.Sprintf("Sending message with empty contents: %v", msg))
+	}
+
 	msgEncoded, err := rlp.EncodeToBytes(msg)
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to sequencer. Cause: %w", err)
@@ -371,6 +425,9 @@ func (p *Service) sendBytes(address string, tx []byte) error {
 // Retrieves the sequencer's address.
 // todo (#718) - use better method to identify the sequencer?
 func (p *Service) getSequencer() (string, error) {
+	p.peerAddressesMutex.RLock()
+	defer p.peerAddressesMutex.RUnlock()
+
 	if len(p.peerAddresses) == 0 {
 		return "", errUnknownSequencer
 	}

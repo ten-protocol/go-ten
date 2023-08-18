@@ -34,3 +34,15 @@ func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
 func (s *ScanAPI) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	return s.host.DB().GetTipRollupHeader()
 }
+
+func (s *ScanAPI) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	return s.host.EnclaveClient().GetPublicTransactionData(pagination)
+}
+
+func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	return s.host.DB().GetBatchListing(pagination)
+}
+
+func (s *ScanAPI) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
+	return s.host.DB().GetBlockListing(pagination)
+}

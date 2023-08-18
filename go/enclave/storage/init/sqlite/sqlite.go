@@ -23,7 +23,7 @@ var sqlInitFile string
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
+func CreateTemporarySQLiteDB(dbPath string, dbOptions string, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	initialsed := false
 
 	if dbPath == "" {
@@ -34,7 +34,7 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (enclavedb.En
 		dbPath = tempPath
 	}
 
-	inMem := strings.Contains(dbPath, "mode=memory")
+	inMem := strings.Contains(dbOptions, "mode=memory")
 	description := "in memory"
 	if !inMem {
 		_, err := os.Stat(dbPath)
@@ -46,15 +46,13 @@ func CreateTemporarySQLiteDB(dbPath string, logger gethlog.Logger) (enclavedb.En
 		}
 	}
 
-	db, err := sql.Open("sqlite3", dbPath+"&_foreign_keys=on")
+	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?%s", dbPath, dbOptions))
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
 
-	// Sqlite in memory fails with table locks when there are multiple connections
-	if inMem {
-		db.SetMaxOpenConns(1)
-	}
+	// Sqlite fails with table locks when there are multiple connections
+	db.SetMaxOpenConns(1)
 
 	if !initialsed {
 		err = initialiseDB(db)

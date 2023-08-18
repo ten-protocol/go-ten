@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -97,6 +98,14 @@ func Sign(userPrivKey *ecdsa.PrivateKey, vkPubKey []byte) ([]byte, error) {
 
 // GenerateSignMessage creates the message to be signed
 // vkPubKey is expected to be a []byte("0x....") to create the signing message
+// todo (@ziga) Remove this method once old WE endpoints are removed
 func GenerateSignMessage(vkPubKey []byte) string {
 	return SignedMsgPrefix + hex.EncodeToString(vkPubKey)
+}
+
+// GenerateSignMessageOG creates the message to be signed by Obscuro Gateway (new format)
+// format is expected to be "Register <userID> for <Account>" (with the account in lowercase)
+func GenerateSignMessageOG(vkPubKey []byte, addr *gethcommon.Address) string {
+	userID := crypto.Keccak256Hash(vkPubKey).Bytes()
+	return fmt.Sprintf("Register %s for %s", hex.EncodeToString(userID), strings.ToLower(addr.Hex()))
 }

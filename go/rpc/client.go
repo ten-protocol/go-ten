@@ -21,6 +21,7 @@ const (
 	SendRawTransaction    = "eth_sendRawTransaction"
 	EstimateGas           = "eth_estimateGas"
 	GetLogs               = "eth_getLogs"
+	GetStorageAt          = "eth_getStorageAt"
 	Health                = "obscuro_health"
 	GetBlockHeaderByHash  = "obscuroscan_getBlockHeaderByHash"
 	GetBatch              = "obscuroscan_getBatch"
@@ -39,6 +40,9 @@ const (
 	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
 	GetTotalTransactionCount = "scan_getTotalTransactionCount"
 	GetTotalContractCount    = "scan_getTotalContractCount"
+	GetPublicTransactionData = "scan_getPublicTransactionData"
+	GetBatchListing          = "scan_getBatchListing"
+	GetBlockListing          = "scan_getBlockListing"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")

@@ -24,21 +24,27 @@ const (
 	txInsert      = "replace into tx values "
 	txInsertValue = "(?,?,?,?,?,?)"
 
-	bInsert = "insert into batch values (?,?,?,?,?,?,?,?)"
+	bInsert             = "insert into batch values (?,?,?,?,?,?,?,?,?)"
+	updateBatchExecuted = "update batch set is_executed=true where hash=?"
 
 	selectBatch  = "select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash"
 	selectHeader = "select b.header from batch b"
 
-	txExecInsert      = "insert into exec_tx values "
-	txExecInsertValue = "(?,?,?,?,?)"
-	queryReceipts     = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
+	txExecInsert       = "insert into exec_tx values "
+	txExecInsertValue  = "(?,?,?,?,?)"
+	queryReceipts      = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
+	queryReceiptsCount = "select count(1) from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 
-	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where tx.hash=?"
+	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where batch.is_canonical and tx.hash=?"
 
 	selectContractCreationTx    = "select tx from exec_tx where created_contract_address=?"
 	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
+	queryBatchWasExecuted       = "select is_executed from batch where is_canonical and hash=?"
 
 	isCanonQuery = "select is_canonical from block where hash=?"
+
+	queryTxList      = "select exec_tx.tx, batch.height from exec_tx join batch on batch.hash=exec_tx.batch"
+	queryTxCountList = "select count(1) from exec_tx join batch on batch.hash=exec_tx.batch"
 )
 
 // WriteBatchAndTransactions - persists the batch and the transactions
@@ -65,6 +71,8 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 	var isCanon bool
 	err = dbtx.GetDB().QueryRow(isCanonQuery, batch.Header.L1Proof.Bytes()).Scan(&isCanon)
 	if err != nil {
+		// if the block is not found, we assume it is non-canonical
+		// fmt.Printf("IsCanon %s err: %s\n", batch.Header.L1Proof, err)
 		isCanon = false
 	}
 
@@ -77,6 +85,7 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 		header,                                 // header blob
 		bodyHash,                               // reference to the batch body
 		batch.Header.L1Proof.Bytes(),           // l1_proof
+		false,                                  // executed
 	)
 
 	// creates a big insert statement for all transactions
@@ -91,9 +100,14 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
+			msg, err := transaction.AsMessage(types.LatestSignerForChainID(transaction.ChainId()), big.NewInt(0))
+			if err != nil {
+				return fmt.Errorf("unable to convert tx to message - %w", err)
+			}
+
 			args = append(args, transaction.Hash().Bytes()) // tx_hash
 			args = append(args, txBytes)                    // content
-			args = append(args, nil)                        // sender_address - todo - implement
+			args = append(args, msg.From().Bytes())         // sender_address
 			args = append(args, transaction.Nonce())        // nonce
 			args = append(args, i)                          // idx
 			args = append(args, bodyHash)                   // the batch body which contained it
@@ -104,8 +118,10 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 	return nil
 }
 
-// WriteReceipts - insert all receipts to the db
-func WriteReceipts(dbtx DBTransaction, receipts []*types.Receipt) error {
+// WriteBatchExecution - insert all receipts to the db
+func WriteBatchExecution(dbtx DBTransaction, hash common.L2BatchHash, receipts []*types.Receipt) error {
+	dbtx.ExecuteSQL(updateBatchExecuted, hash.Bytes())
+
 	args := make([]any, 0)
 	for _, receipt := range receipts {
 		// Convert the receipt into their storage form and serialize them
@@ -155,11 +171,11 @@ func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, err
 
 // todo - is there a better way to write this query?
 func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
-	return fetchBatch(db, " where b.height=(select max(b1.height) from batch b1 where b1.is_canonical) and is_canonical")
+	return fetchBatch(db, " where b.is_canonical and b.is_executed and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.is_executed)")
 }
 
 func ReadBatchesByBlock(db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
-	return fetchBatches(db, " where b.l1_proof=?", hash.Bytes())
+	return fetchBatches(db, " where b.l1_proof=? order by b.sequence", hash.Bytes())
 }
 
 func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
@@ -180,7 +196,7 @@ func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
 }
 
 func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
-	query := " where is_canonical and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.l1_proof=?)"
+	query := " where b.is_canonical and b.is_executed and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.is_executed and b1.l1_proof=?)"
 	return fetchBatch(db, query, l1Hash.Bytes())
 }
 
@@ -210,10 +226,12 @@ func fetchBatch(db *sql.DB, whereQuery string, args ...any) (*core.Batch, error)
 		return nil, fmt.Errorf("could not decode L2 transactions %v. Cause: %w", body, err)
 	}
 
-	return &core.Batch{
+	b := core.Batch{
 		Header:       h,
 		Transactions: *txs,
-	}, nil
+	}
+
+	return &b, nil
 }
 
 func fetchBatches(db *sql.DB, whereQuery string, args ...any) ([]*core.Batch, error) {
@@ -329,14 +347,14 @@ func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args .
 	return allReceipts, nil
 }
 
-// ReadReceipts retrieves all the transaction receipts belonging to a block, including
+// ReadReceiptsByBatchHash retrieves all the transaction receipts belonging to a block, including
 // its corresponding metadata fields. If it is unable to populate these metadata
 // fields then nil is returned.
 //
 // The current implementation populates these metadata fields by reading the receipts'
 // corresponding block body, so if the block body is not found it will return nil even
 // if the receipt itself is stored.
-func ReadReceipts(db *sql.DB, hash common.L2BatchHash, config *params.ChainConfig) (types.Receipts, error) {
+func ReadReceiptsByBatchHash(db *sql.DB, hash common.L2BatchHash, config *params.ChainConfig) (types.Receipts, error) {
 	return selectReceipts(db, config, "where batch.hash = ?", hash.Bytes())
 }
 
@@ -427,4 +445,89 @@ func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
 	}
 
 	return big.NewInt(count), nil
+}
+
+func ReadUnexecutedBatches(db *sql.DB) ([]*core.Batch, error) {
+	return fetchBatches(db, "where is_executed=false and is_canonical order by b.sequence")
+}
+
+func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {
+	row := db.QueryRow(queryBatchWasExecuted, hash.Bytes())
+
+	var result bool
+	err := row.Scan(&result)
+	if err != nil {
+		// When there are no rows returned it means there is no canonical batch with that hash.
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+
+	return result, nil
+}
+
+func GetReceiptsPerAddress(db *sql.DB, config *params.ChainConfig, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
+	return selectReceipts(db, config, "where tx.sender_address = ? ORDER BY height DESC LIMIT ? OFFSET ? ", address.Bytes(), pagination.Size, pagination.Offset)
+}
+
+func GetReceiptsPerAddressCount(db *sql.DB, address *gethcommon.Address) (uint64, error) {
+	row := db.QueryRow(queryReceiptsCount+" where tx.sender_address = ?", address.Bytes())
+
+	var count uint64
+	err := row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
+func GetPublicTransactionData(db *sql.DB, pagination *common.QueryPagination) ([]common.PublicTransaction, error) {
+	return selectPublicTxsBySender(db, " ORDER BY height DESC LIMIT ? OFFSET ? ", pagination.Size, pagination.Offset)
+}
+
+func selectPublicTxsBySender(db *sql.DB, query string, args ...any) ([]common.PublicTransaction, error) {
+	var publicTxs []common.PublicTransaction
+
+	rows, err := db.Query(queryTxList+" "+query, args...)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var txHash []byte
+		var batchHeight uint64
+		err := rows.Scan(&txHash, &batchHeight)
+		if err != nil {
+			return nil, err
+		}
+
+		publicTxs = append(publicTxs, common.PublicTransaction{
+			TransactionHash: gethcommon.BytesToHash(txHash),
+			BatchHeight:     big.NewInt(0).SetUint64(batchHeight),
+			Finality:        common.BatchFinal,
+		})
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return publicTxs, nil
+}
+
+func GetPublicTransactionCount(db *sql.DB) (uint64, error) {
+	row := db.QueryRow(queryTxCountList)
+
+	var count uint64
+	err := row.Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }

@@ -279,7 +279,7 @@ func (p *Publisher) signAndBroadcastL1Tx(tx types.TxData, tries uint64, awaitRec
 		return p.ethClient.SendTransaction(signedTx)
 	}, retry.NewDoublingBackoffStrategy(time.Second, tries)) // doubling retry wait (3 tries = 7sec, 7 tries = 63sec)
 	if err != nil {
-		return errors.Wrapf(err, "could not broadcast L1 tx after %d tries", tries)
+		return fmt.Errorf("could not broadcast L1 tx after %d tries: %w", tries, err)
 	}
 	p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
 
@@ -308,7 +308,7 @@ func (p *Publisher) waitForReceipt(txHash common.TxHash) error {
 			receipt, err = p.ethClient.TransactionReceipt(txHash)
 			if err != nil {
 				// adds more info on the error
-				return errors.Wrapf(err, "could not get receipt for L1 tx=%s", txHash)
+				return fmt.Errorf("could not get receipt for L1 tx=%s: %w", txHash, err)
 			}
 			return err
 		},

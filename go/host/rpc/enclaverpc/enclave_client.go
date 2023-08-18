@@ -38,7 +38,7 @@ type Client struct {
 	logger      gethlog.Logger
 }
 
-func NewClient(config *config.HostConfig, logger gethlog.Logger) *Client {
+func NewClient(config *config.HostConfig, logger gethlog.Logger) common.Enclave {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.Dial(config.EnclaveRPCAddress, opts...)
 	if err != nil {
@@ -134,11 +134,13 @@ func (c *Client) InitEnclave(secret common.EncryptedSharedEnclaveSecret) common.
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	_, err := c.protoClient.InitEnclave(timeoutCtx, &generated.InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
+	response, err := c.protoClient.InitEnclave(timeoutCtx, &generated.InitEnclaveRequest{EncryptedSharedEnclaveSecret: secret})
 	if err != nil {
 		return syserr.NewRPCError(err)
 	}
-
+	if response != nil && response.SystemError != nil {
+		return syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
 	return nil
 }
 
@@ -184,15 +186,19 @@ func (c *Client) SubmitTx(tx common.EncryptedTx) (*responses.RawTx, common.Syste
 }
 
 func (c *Client) SubmitBatch(batch *common.ExtBatch) common.SystemError {
-	defer c.logger.Info("SubmitBatch rpc call", log.DurationKey, measure.NewStopwatch())
+	defer c.logger.Debug("SubmitBatch rpc call", log.DurationKey, measure.NewStopwatch())
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
 	batchMsg := rpc.ToExtBatchMsg(batch)
-	_, err := c.protoClient.SubmitBatch(timeoutCtx, &generated.SubmitBatchRequest{Batch: &batchMsg})
+
+	response, err := c.protoClient.SubmitBatch(timeoutCtx, &generated.SubmitBatchRequest{Batch: &batchMsg})
 	if err != nil {
 		return syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 	return nil
 }
@@ -235,9 +241,12 @@ func (c *Client) Stop() common.SystemError {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	_, err := c.protoClient.Stop(timeoutCtx, &generated.StopRequest{})
+	response, err := c.protoClient.Stop(timeoutCtx, &generated.StopRequest{})
 	if err != nil {
 		return syserr.NewRPCError(fmt.Errorf("could not stop enclave: %w", err))
+	}
+	if response != nil && response.SystemError != nil {
+		return syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 	return nil
 }
@@ -311,12 +320,15 @@ func (c *Client) Subscribe(id gethrpc.ID, encryptedParams common.EncryptedParams
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	_, err := c.protoClient.Subscribe(timeoutCtx, &generated.SubscribeRequest{
+	response, err := c.protoClient.Subscribe(timeoutCtx, &generated.SubscribeRequest{
 		Id:                    []byte(id),
 		EncryptedSubscription: encryptedParams,
 	})
 	if err != nil {
 		return syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 	return nil
 }
@@ -325,11 +337,14 @@ func (c *Client) Unsubscribe(id gethrpc.ID) common.SystemError {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	_, err := c.protoClient.Unsubscribe(timeoutCtx, &generated.UnsubscribeRequest{
+	response, err := c.protoClient.Unsubscribe(timeoutCtx, &generated.UnsubscribeRequest{
 		Id: []byte(id),
 	})
 	if err != nil {
 		return syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 	return nil
 }
@@ -383,17 +398,23 @@ func (c *Client) HealthCheck() (bool, common.SystemError) {
 }
 
 func (c *Client) CreateBatch() common.SystemError {
-	defer c.logger.Info("CreateBatch rpc call", log.DurationKey, measure.NewStopwatch())
+	defer c.logger.Debug("CreateBatch rpc call", log.DurationKey, measure.NewStopwatch())
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
-	_, err := c.protoClient.CreateBatch(timeoutCtx, &generated.CreateBatchRequest{})
+	response, err := c.protoClient.CreateBatch(timeoutCtx, &generated.CreateBatchRequest{})
+	if err != nil {
+		return syserr.NewInternalError(err)
+	}
+	if response != nil && response.Error != "" {
+		return syserr.NewInternalError(fmt.Errorf("%s", response.Error))
+	}
 	return err
 }
 
 func (c *Client) CreateRollup(fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
-	defer c.logger.Info("CreateRollup rpc call", log.DurationKey, measure.NewStopwatch())
+	defer c.logger.Debug("CreateRollup rpc call", log.DurationKey, measure.NewStopwatch())
 
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
@@ -434,7 +455,7 @@ func (c *Client) DebugTraceTransaction(hash gethcommon.Hash, config *tracers.Tra
 	return json.RawMessage(response.Msg), nil
 }
 
-func (c *Client) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
+func (c *Client) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -446,7 +467,7 @@ func (c *Client) GetBatch(hash common.L2BatchHash) (*common.ExtBatch, error) {
 	return common.DecodeExtBatch(batchMsg.Batch)
 }
 
-func (c *Client) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, error) {
+func (c *Client) GetBatchBySeqNo(seqNo uint64) (*common.ExtBatch, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -531,4 +552,47 @@ func (c *Client) GetTotalContractCount() (*big.Int, common.SystemError) {
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 	return big.NewInt(response.Count), nil
+}
+
+func (c *Client) GetCustomQuery(encryptedParams common.EncryptedParamsGetStorageAt) (*responses.Receipts, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetReceiptsByAddress(timeoutCtx, &generated.GetReceiptsByAddressRequest{
+		EncryptedParams: encryptedParams,
+	})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
+}
+
+func (c *Client) GetPublicTransactionData(pagination *common.QueryPagination) (*common.TransactionListingResponse, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetPublicTransactionData(timeoutCtx, &generated.GetPublicTransactionDataRequest{
+		Pagination: &generated.Pagination{
+			Offset: int32(pagination.Offset),
+			Size:   int32(pagination.Size),
+		},
+	})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	var result common.TransactionListingResponse
+	err = json.Unmarshal(response.PublicTransactionData, &result)
+	if err != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	return &result, nil
 }

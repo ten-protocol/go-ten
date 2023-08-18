@@ -28,8 +28,6 @@ type Host interface {
 
 	// HealthCheck returns the health status of the host + enclave + db
 	HealthCheck() (*HealthCheck, error)
-
-	P2PTxHandler
 }
 
 type BlockStream struct {

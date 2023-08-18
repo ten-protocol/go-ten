@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
@@ -21,30 +22,25 @@ var hasherPool = sync.Pool{
 // BatchHeader is a public / plaintext struct that holds common properties of batches.
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type BatchHeader struct {
-	ParentHash       L2BatchHash
+	ParentHash       L2BatchHash `json:"parentHash"`
 	Root             StateRoot   `json:"stateRoot"`
 	TxHash           common.Hash `json:"transactionsRoot"`
 	ReceiptHash      common.Hash `json:"receiptsRoot"`
-	Number           *big.Int    // height of the batch
-	SequencerOrderNo *big.Int    // multiple batches can be created with the same height in case of L1 reorgs. The sequencer is responsible for including all of them in the rollups.
-	GasLimit         uint64
-	GasUsed          uint64
-	Time             uint64 `json:"timestamp"`
-	Extra            []byte `json:"extraData"`
-	BaseFee          *big.Int
+	Number           *big.Int    `json:"number"`           // height of the batch
+	SequencerOrderNo *big.Int    `json:"sequencerOrderNo"` // multiple batches can be created with the same height in case of L1 reorgs. The sequencer is responsible for including all of them in the rollups.
+	GasLimit         uint64      `json:"gasLimit"`
+	GasUsed          uint64      `json:"gasUsed"`
+	Time             uint64      `json:"timestamp"`
+	Extra            []byte      `json:"extraData"`
+	BaseFee          *big.Int    `json:"baseFee"`
 
 	// The custom Obscuro fields.
-	L1Proof            L1BlockHash                           // the L1 block used by the enclave to generate the current batch
-	R, S               *big.Int                              // signature values
-	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
-
-	TransfersTree common.Hash `json:"transfersTree"`
-
-	// The block hash of the latest block that has been scanned for cross chain messages.
-	LatestInboundCrossChainHash common.Hash `json:"inboundCrossChainHash"`
-
-	// The block height of the latest block that has been scanned for cross chain messages.
-	LatestInboundCrossChainHeight *big.Int `json:"inboundCrossChainHeight"`
+	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
+	R, S                          *big.Int                              // signature values
+	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
+	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
+	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
+	TransfersTree                 common.Hash                           `json:"transfersTree"`
 }
 
 // MarshalJSON custom marshals the BatchHeader into a json
@@ -52,10 +48,24 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 	type Alias BatchHeader
 	return json.Marshal(struct {
 		*Alias
-		Hash common.Hash `json:"hash"`
+		Hash       common.Hash       `json:"hash"`
+		UncleHash  *common.Hash      `json:"sha3Uncles"`
+		Coinbase   *common.Address   `json:"miner"`
+		Bloom      *types.Bloom      `json:"logsBloom"`
+		Difficulty *big.Int          `json:"difficulty"`
+		Nonce      *types.BlockNonce `json:"nonce"`
+
+		// BaseFee was added by EIP-1559 and is ignored in legacy headers.
+		BaseFee *big.Int `json:"baseFeePerGas"`
 	}{
 		(*Alias)(b),
 		b.Hash(),
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
 	})
 }
 

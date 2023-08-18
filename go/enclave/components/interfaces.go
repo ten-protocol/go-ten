@@ -61,12 +61,15 @@ type ComputedBatch struct {
 	Receipts types.Receipts
 	Commit   func(bool) (gethcommon.Hash, error)
 }
-type BatchProducer interface {
-	// ComputeBatch - will formulate a batch and execute the transactions according to the
-	// state provided in the BatchContext.
+
+type BatchExecutor interface {
+	// ComputeBatch - a more primitive ExecuteBatch
 	// Call with same BatchContext should always produce identical extBatch - idempotent
 	// Should be safe to call in parallel
 	ComputeBatch(*BatchExecutionContext) (*ComputedBatch, error)
+
+	// ExecuteBatch - executes the transactions and xchain messages, returns the receipts, and updates the stateDB
+	ExecuteBatch(*core.Batch) (types.Receipts, error)
 
 	// CreateGenesisState - will create and commit the genesis state in the stateDB for the given block hash,
 	// and uint64 timestamp representing the time now. In this genesis state is where one can
@@ -75,33 +78,6 @@ type BatchProducer interface {
 }
 
 type BatchRegistry interface {
-	// ValidateBatch - validates a batch
-	ValidateBatch(incomingBatch *core.Batch) (types.Receipts, error)
-
-	// StoreBatch - will store the batch and receipts in storage.
-	// Furthermore any heads and pointers would be updated here and
-	// after all is done the batch will be pushed to the subscribers
-	// in order to update them.
-	StoreBatch(*core.Batch, types.Receipts) error
-
-	// GetHeadBatch - Returns the batch considered to be the L2 head.
-	GetHeadBatch() (*core.Batch, error)
-
-	// GetHeadBatchFor - Returns the head batch for given L1 block.
-	// Note that this does not seek backwards so if a given block does not have
-	// any pointers to batches then `ErrNotFound` will be returned.
-	GetHeadBatchFor(common.L1BlockHash) (*core.Batch, error)
-
-	// GetBatch - Given a batch hash returns the matching batch taken from the
-	// storage. If no such batch is found then nil and `ErrNotFound` should
-	// be returned.
-	GetBatch(common.L2BatchHash) (*core.Batch, error)
-
-	// FindAncestralBatchFor - this function is akin to `GetHeadBatchFor`, but
-	// it does not check the block passed as a parameter, but rather starts from its
-	// parent block and then seeks backwards until a head batch is found or genesis is reached.
-	FindAncestralBatchFor(*common.L1Block) (*core.Batch, error)
-
 	// BatchesAfter - Given a hash, will return batches following it until the head batch
 	BatchesAfter(batchSeqNo uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, error)
 
@@ -109,26 +85,19 @@ type BatchRegistry interface {
 	// the batch with height matching the blockNumber was created and stored.
 	GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
 
-	// GetBatchStateAtHeight - same as `GetBatchStateAtHeight`, but instead returns the full batch
+	// GetBatchAtHeight - same as `GetBatchStateAtHeight`, but instead returns the full batch
 	// rather than its stateDB only.
 	GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error)
 
-	// Subscribe - creates and returns a channel that will be used to push any newly created batches
-	// to the subscriber.
-	Subscribe() chan *core.Batch
-	// Unsubscribe - informs the registry that the subscriber is no longer listening, allowing it to
-	// gracefully terminate any streaming and stop queueing new batches.
-	Unsubscribe()
+	// SubscribeForExecutedBatches - register a callback for new batches
+	SubscribeForExecutedBatches(func(*core.Batch, types.Receipts))
+	UnsubscribeFromBatches()
 
-	SubscribeForEvents() chan uint64
-	UnsubscribeFromEvents()
+	OnBatchExecuted(batch *core.Batch, receipts types.Receipts)
 
 	// HasGenesisBatch - returns if genesis batch is available yet or not, or error in case
 	// the function is unable to determine.
 	HasGenesisBatch() (bool, error)
-
-	// CommitBatch - Commits any state changes from a batch computation to the database.
-	CommitBatch(cb *ComputedBatch) error
 }
 
 type RollupProducer interface {
@@ -142,6 +111,4 @@ type RollupConsumer interface {
 	// and verifies its integrity, saving and processing any batches that have
 	// not been seen previously.
 	ProcessRollupsInBlock(b *common.BlockAndReceipts) error
-
-	ProcessRollup(rollup *common.ExtRollup) error
 }

@@ -29,7 +29,9 @@
       <el-card class="box" shadow="always">
         <p>Latest L1 Rollup</p>
         <div>
-          <div v-if="latestL1Proof">{{ latestL1Proof.substring(0, 10) }}...</div>
+          <div v-if="latestL1Proof">
+            <ShortenedHash :hash="latestL1Proof" />
+          </div>
           <div v-else>-</div>
         </div>
       </el-card>
@@ -46,7 +48,6 @@
 
       <el-card class="box" shadow="always">
         <p>Contracts</p>
-        {{ loading }}
         <div>
           <div v-if="totalContractCount">{{ totalContractCount }}</div>
           <div v-else>-</div>
@@ -67,9 +68,11 @@ import { onMounted, onUnmounted } from 'vue'
 import { computed } from 'vue'
 import { useBatchStore } from '@/stores/batchStore'
 import { usePriceStore } from '@/stores/priceStore'
+import ShortenedHash from "@/components/helper/ShortenedHash.vue";
 
 export default {
   name: 'SummaryItem',
+  components: {ShortenedHash},
   setup() {
     const counter = useCounterStore()
     const batch = useBatchStore()
@@ -95,9 +98,6 @@ export default {
       latestBatch: computed(() => batch.latestBatch),
       latestL1Proof: computed(() => batch.latestL1Proof),
       ethPriceUSD: computed(() => price.ethPriceUSD),
-      countLoading: computed(() => counter.loading),
-      batchLoading: computed(() => batch.loading),
-      priceLoading: computed(() => price.loading),
     }
   }
 }

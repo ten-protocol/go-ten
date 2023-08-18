@@ -19,33 +19,35 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	EnclaveProto_Status_FullMethodName                 = "/generated.EnclaveProto/Status"
-	EnclaveProto_Attestation_FullMethodName            = "/generated.EnclaveProto/Attestation"
-	EnclaveProto_GenerateSecret_FullMethodName         = "/generated.EnclaveProto/GenerateSecret"
-	EnclaveProto_InitEnclave_FullMethodName            = "/generated.EnclaveProto/InitEnclave"
-	EnclaveProto_SubmitL1Block_FullMethodName          = "/generated.EnclaveProto/SubmitL1Block"
-	EnclaveProto_SubmitTx_FullMethodName               = "/generated.EnclaveProto/SubmitTx"
-	EnclaveProto_SubmitBatch_FullMethodName            = "/generated.EnclaveProto/SubmitBatch"
-	EnclaveProto_ObsCall_FullMethodName                = "/generated.EnclaveProto/ObsCall"
-	EnclaveProto_GetTransactionCount_FullMethodName    = "/generated.EnclaveProto/GetTransactionCount"
-	EnclaveProto_Stop_FullMethodName                   = "/generated.EnclaveProto/Stop"
-	EnclaveProto_GetTransaction_FullMethodName         = "/generated.EnclaveProto/GetTransaction"
-	EnclaveProto_GetTransactionReceipt_FullMethodName  = "/generated.EnclaveProto/GetTransactionReceipt"
-	EnclaveProto_GetBalance_FullMethodName             = "/generated.EnclaveProto/GetBalance"
-	EnclaveProto_GetCode_FullMethodName                = "/generated.EnclaveProto/GetCode"
-	EnclaveProto_Subscribe_FullMethodName              = "/generated.EnclaveProto/Subscribe"
-	EnclaveProto_Unsubscribe_FullMethodName            = "/generated.EnclaveProto/Unsubscribe"
-	EnclaveProto_EstimateGas_FullMethodName            = "/generated.EnclaveProto/EstimateGas"
-	EnclaveProto_GetLogs_FullMethodName                = "/generated.EnclaveProto/GetLogs"
-	EnclaveProto_HealthCheck_FullMethodName            = "/generated.EnclaveProto/HealthCheck"
-	EnclaveProto_GetBatch_FullMethodName               = "/generated.EnclaveProto/GetBatch"
-	EnclaveProto_GetBatchBySeqNo_FullMethodName        = "/generated.EnclaveProto/GetBatchBySeqNo"
-	EnclaveProto_CreateBatch_FullMethodName            = "/generated.EnclaveProto/CreateBatch"
-	EnclaveProto_CreateRollup_FullMethodName           = "/generated.EnclaveProto/CreateRollup"
-	EnclaveProto_DebugTraceTransaction_FullMethodName  = "/generated.EnclaveProto/DebugTraceTransaction"
-	EnclaveProto_StreamL2Updates_FullMethodName        = "/generated.EnclaveProto/StreamL2Updates"
-	EnclaveProto_DebugEventLogRelevancy_FullMethodName = "/generated.EnclaveProto/DebugEventLogRelevancy"
-	EnclaveProto_GetTotalContractCount_FullMethodName  = "/generated.EnclaveProto/GetTotalContractCount"
+	EnclaveProto_Status_FullMethodName                   = "/generated.EnclaveProto/Status"
+	EnclaveProto_Attestation_FullMethodName              = "/generated.EnclaveProto/Attestation"
+	EnclaveProto_GenerateSecret_FullMethodName           = "/generated.EnclaveProto/GenerateSecret"
+	EnclaveProto_InitEnclave_FullMethodName              = "/generated.EnclaveProto/InitEnclave"
+	EnclaveProto_SubmitL1Block_FullMethodName            = "/generated.EnclaveProto/SubmitL1Block"
+	EnclaveProto_SubmitTx_FullMethodName                 = "/generated.EnclaveProto/SubmitTx"
+	EnclaveProto_SubmitBatch_FullMethodName              = "/generated.EnclaveProto/SubmitBatch"
+	EnclaveProto_ObsCall_FullMethodName                  = "/generated.EnclaveProto/ObsCall"
+	EnclaveProto_GetTransactionCount_FullMethodName      = "/generated.EnclaveProto/GetTransactionCount"
+	EnclaveProto_Stop_FullMethodName                     = "/generated.EnclaveProto/Stop"
+	EnclaveProto_GetTransaction_FullMethodName           = "/generated.EnclaveProto/GetTransaction"
+	EnclaveProto_GetTransactionReceipt_FullMethodName    = "/generated.EnclaveProto/GetTransactionReceipt"
+	EnclaveProto_GetBalance_FullMethodName               = "/generated.EnclaveProto/GetBalance"
+	EnclaveProto_GetCode_FullMethodName                  = "/generated.EnclaveProto/GetCode"
+	EnclaveProto_Subscribe_FullMethodName                = "/generated.EnclaveProto/Subscribe"
+	EnclaveProto_Unsubscribe_FullMethodName              = "/generated.EnclaveProto/Unsubscribe"
+	EnclaveProto_EstimateGas_FullMethodName              = "/generated.EnclaveProto/EstimateGas"
+	EnclaveProto_GetLogs_FullMethodName                  = "/generated.EnclaveProto/GetLogs"
+	EnclaveProto_HealthCheck_FullMethodName              = "/generated.EnclaveProto/HealthCheck"
+	EnclaveProto_GetBatch_FullMethodName                 = "/generated.EnclaveProto/GetBatch"
+	EnclaveProto_GetBatchBySeqNo_FullMethodName          = "/generated.EnclaveProto/GetBatchBySeqNo"
+	EnclaveProto_CreateBatch_FullMethodName              = "/generated.EnclaveProto/CreateBatch"
+	EnclaveProto_CreateRollup_FullMethodName             = "/generated.EnclaveProto/CreateRollup"
+	EnclaveProto_DebugTraceTransaction_FullMethodName    = "/generated.EnclaveProto/DebugTraceTransaction"
+	EnclaveProto_StreamL2Updates_FullMethodName          = "/generated.EnclaveProto/StreamL2Updates"
+	EnclaveProto_DebugEventLogRelevancy_FullMethodName   = "/generated.EnclaveProto/DebugEventLogRelevancy"
+	EnclaveProto_GetTotalContractCount_FullMethodName    = "/generated.EnclaveProto/GetTotalContractCount"
+	EnclaveProto_GetReceiptsByAddress_FullMethodName     = "/generated.EnclaveProto/GetReceiptsByAddress"
+	EnclaveProto_GetPublicTransactionData_FullMethodName = "/generated.EnclaveProto/GetPublicTransactionData"
 )
 
 // EnclaveProtoClient is the client API for EnclaveProto service.
@@ -107,6 +109,8 @@ type EnclaveProtoClient interface {
 	StreamL2Updates(ctx context.Context, in *StreamL2UpdatesRequest, opts ...grpc.CallOption) (EnclaveProto_StreamL2UpdatesClient, error)
 	DebugEventLogRelevancy(ctx context.Context, in *DebugEventLogRelevancyRequest, opts ...grpc.CallOption) (*DebugEventLogRelevancyResponse, error)
 	GetTotalContractCount(ctx context.Context, in *GetTotalContractCountRequest, opts ...grpc.CallOption) (*GetTotalContractCountResponse, error)
+	GetReceiptsByAddress(ctx context.Context, in *GetReceiptsByAddressRequest, opts ...grpc.CallOption) (*GetReceiptsByAddressResponse, error)
+	GetPublicTransactionData(ctx context.Context, in *GetPublicTransactionDataRequest, opts ...grpc.CallOption) (*GetPublicTransactionDataResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -383,6 +387,24 @@ func (c *enclaveProtoClient) GetTotalContractCount(ctx context.Context, in *GetT
 	return out, nil
 }
 
+func (c *enclaveProtoClient) GetReceiptsByAddress(ctx context.Context, in *GetReceiptsByAddressRequest, opts ...grpc.CallOption) (*GetReceiptsByAddressResponse, error) {
+	out := new(GetReceiptsByAddressResponse)
+	err := c.cc.Invoke(ctx, EnclaveProto_GetReceiptsByAddress_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *enclaveProtoClient) GetPublicTransactionData(ctx context.Context, in *GetPublicTransactionDataRequest, opts ...grpc.CallOption) (*GetPublicTransactionDataResponse, error) {
+	out := new(GetPublicTransactionDataResponse)
+	err := c.cc.Invoke(ctx, EnclaveProto_GetPublicTransactionData_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility
@@ -442,6 +464,8 @@ type EnclaveProtoServer interface {
 	StreamL2Updates(*StreamL2UpdatesRequest, EnclaveProto_StreamL2UpdatesServer) error
 	DebugEventLogRelevancy(context.Context, *DebugEventLogRelevancyRequest) (*DebugEventLogRelevancyResponse, error)
 	GetTotalContractCount(context.Context, *GetTotalContractCountRequest) (*GetTotalContractCountResponse, error)
+	GetReceiptsByAddress(context.Context, *GetReceiptsByAddressRequest) (*GetReceiptsByAddressResponse, error)
+	GetPublicTransactionData(context.Context, *GetPublicTransactionDataRequest) (*GetPublicTransactionDataResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -529,6 +553,12 @@ func (UnimplementedEnclaveProtoServer) DebugEventLogRelevancy(context.Context, *
 }
 func (UnimplementedEnclaveProtoServer) GetTotalContractCount(context.Context, *GetTotalContractCountRequest) (*GetTotalContractCountResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetTotalContractCount not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetReceiptsByAddress(context.Context, *GetReceiptsByAddressRequest) (*GetReceiptsByAddressResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetReceiptsByAddress not implemented")
+}
+func (UnimplementedEnclaveProtoServer) GetPublicTransactionData(context.Context, *GetPublicTransactionDataRequest) (*GetPublicTransactionDataResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPublicTransactionData not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 
@@ -1032,6 +1062,42 @@ func _EnclaveProto_GetTotalContractCount_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EnclaveProto_GetReceiptsByAddress_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetReceiptsByAddressRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetReceiptsByAddress(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EnclaveProto_GetReceiptsByAddress_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetReceiptsByAddress(ctx, req.(*GetReceiptsByAddressRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EnclaveProto_GetPublicTransactionData_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPublicTransactionDataRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).GetPublicTransactionData(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EnclaveProto_GetPublicTransactionData_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).GetPublicTransactionData(ctx, req.(*GetPublicTransactionDataRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1142,6 +1208,14 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetTotalContractCount",
 			Handler:    _EnclaveProto_GetTotalContractCount_Handler,
+		},
+		{
+			MethodName: "GetReceiptsByAddress",
+			Handler:    _EnclaveProto_GetReceiptsByAddress_Handler,
+		},
+		{
+			MethodName: "GetPublicTransactionData",
+			Handler:    _EnclaveProto_GetPublicTransactionData_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

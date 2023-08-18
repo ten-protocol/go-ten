@@ -58,6 +58,10 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 			Name: common.PathRevoke,
 			Func: httpHandler(walletExt, revokeRequestHandler),
 		},
+		{
+			Name: common.PathHealth,
+			Func: httpHandler(walletExt, healthRequestHandler),
+		},
 	}
 }
 
@@ -156,7 +160,7 @@ func ethRequestHandler(walletExt *walletextension.WalletExtension, conn userconn
 	hexUserID, err := getQueryParameter(conn.ReadRequestParams(), common.UserQueryParameter)
 	if err != nil {
 		walletExt.Logger().Error(fmt.Errorf("user not found in the query params: %w. Using the default user", err).Error())
-		hexUserID = common.DefaultUser // todo (@ziga) - this can be removed once old WE endpoints are removed
+		hexUserID = hex.EncodeToString([]byte(common.DefaultUser)) // todo (@ziga) - this can be removed once old WE endpoints are removed
 	}
 
 	// todo (@pedro) remove this conn dependency
@@ -407,6 +411,21 @@ func revokeRequestHandler(walletExt *walletextension.WalletExtension, userConn u
 	if err != nil {
 		userConn.HandleError("Internal error")
 		walletExt.Logger().Error(fmt.Errorf("unable to delete user %s: %w", hexUserID, err).Error())
+		return
+	}
+
+	err = userConn.WriteResponse([]byte(common.SuccessMsg))
+	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error writing success response, %w", err).Error())
+	}
+}
+
+// Handles request to /health endpoint.
+func healthRequestHandler(walletExt *walletextension.WalletExtension, userConn userconn.UserConn) {
+	// read the request
+	_, err := userConn.ReadRequest()
+	if err != nil {
+		walletExt.Logger().Error(fmt.Errorf("error reading request: %w", err).Error())
 		return
 	}
 

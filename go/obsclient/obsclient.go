@@ -1,7 +1,9 @@
 package obsclient
 
 import (
+	"errors"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -78,7 +80,13 @@ func (oc *ObsClient) BatchHeaderByHash(hash gethcommon.Hash) (*common.BatchHeade
 func (oc *ObsClient) Health() (bool, error) {
 	var healthy *hostcommon.HealthCheck
 	err := oc.rpcClient.Call(&healthy, rpc.Health)
-	return healthy.OverallHealth, err
+	if err != nil {
+		return false, err
+	}
+	if !healthy.OverallHealth {
+		return false, errors.New(strings.Join(healthy.Errors, ", "))
+	}
+	return healthy.OverallHealth, nil
 }
 
 // GetTotalContractCount returns the total count of created contracts
@@ -109,4 +117,34 @@ func (oc *ObsClient) GetLatestRollupHeader() (*common.RollupHeader, error) {
 		return nil, err
 	}
 	return header, nil
+}
+
+// GetPublicTxListing returns a list of public transactions
+func (oc *ObsClient) GetPublicTxListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	var result common.TransactionListingResponse
+	err := oc.rpcClient.Call(&result, rpc.GetPublicTransactionData, pagination)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetBatchesListing returns a list of batches
+func (oc *ObsClient) GetBatchesListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	var result common.BatchListingResponse
+	err := oc.rpcClient.Call(&result, rpc.GetBatchListing, pagination)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetBlockListing returns a list of block headers
+func (oc *ObsClient) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
+	var result common.BlockListingResponse
+	err := oc.rpcClient.Call(&result, rpc.GetBlockListing, pagination)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
 }

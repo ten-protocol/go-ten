@@ -71,6 +71,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 		2,
 		2,
 		[]string{workerWallet.Address().String()},
+		time.Minute,
 	)
 
 	if err = eth2Network.Start(); err != nil {

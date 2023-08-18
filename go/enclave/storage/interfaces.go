@@ -5,10 +5,11 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core/state"
+
 	"github.com/ethereum/go-ethereum/trie"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/tracers"
@@ -47,16 +48,23 @@ type BatchResolver interface {
 	FetchCurrentSequencerNo() (*big.Int, error)
 	// FetchBatchesByBlock returns all batches with the block hash as the L1 proof
 	FetchBatchesByBlock(common.L1BlockHash) ([]*core.Batch, error)
-}
 
-type BatchUpdater interface {
-	// StoreBatch stores a batch.
-	StoreBatch(batch *core.Batch, receipts []*types.Receipt) error
-}
+	// FetchCanonicalUnexecutedBatches - return the list of the unexecuted batches that are canonical
+	FetchCanonicalUnexecutedBatches() ([]*core.Batch, error)
 
-type HeadsAfterL1BlockStorage interface {
+	// BatchWasExecuted - return true if the batch was executed
+	BatchWasExecuted(hash common.L2BatchHash) (bool, error)
+
 	// FetchHeadBatchForBlock returns the hash of the head batch at a given L1 block.
 	FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error)
+
+	// StoreBatch stores an un-executed batch.
+	StoreBatch(batch *core.Batch) error
+	// StoreExecutedBatch - store the batch after it was executed
+	StoreExecutedBatch(batch *core.Batch, receipts []*types.Receipt) error
+}
+
+type GethStateDB interface {
 	// CreateStateDB creates a database that can be used to execute transactions
 	CreateStateDB(hash common.L2BatchHash) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
@@ -75,7 +83,7 @@ type TransactionStorage interface {
 	GetTransaction(txHash common.L2TxHash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error)
 	// GetTransactionReceipt - returns the receipt of a tx by tx hash
 	GetTransactionReceipt(txHash common.L2TxHash) (*types.Receipt, error)
-	// GetReceiptsByHash retrieves the receipts for all transactions in a given rollup.
+	// GetReceiptsByBatchHash retrieves the receipts for all transactions in a given rollup.
 	GetReceiptsByBatchHash(hash common.L2BatchHash) (types.Receipts, error)
 	// GetSender returns the sender of the tx by hash
 	GetSender(txHash common.L2TxHash) (gethcommon.Address, error)
@@ -107,9 +115,8 @@ type EnclaveKeyStorage interface {
 type Storage interface {
 	BlockResolver
 	BatchResolver
-	BatchUpdater
+	GethStateDB
 	SharedSecretStorage
-	HeadsAfterL1BlockStorage
 	TransactionStorage
 	AttestationStorage
 	CrossChainMessagesStorage
@@ -134,4 +141,9 @@ type Storage interface {
 
 type ScanStorage interface {
 	GetContractCount() (*big.Int, error)
+	GetReceiptsPerAddress(address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error)
+	GetPublicTransactionData(pagination *common.QueryPagination) ([]common.PublicTransaction, error)
+	GetPublicTransactionCount() (uint64, error)
+
+	GetReceiptsPerAddressCount(addr *gethcommon.Address) (uint64, error)
 }

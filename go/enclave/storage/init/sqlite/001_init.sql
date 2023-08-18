@@ -1,13 +1,13 @@
 create table if not exists keyvalue
 (
     ky  varbinary(64) primary key,
-    val mediumblob
+    val mediumblob NOT NULL
 );
 
 create table if not exists config
 (
     ky  varchar(64) primary key,
-    val mediumblob
+    val mediumblob NOT NULL
 );
 
 insert into config
@@ -17,54 +17,57 @@ create table if not exists attestation_key
 (
 --     party  binary(20) primary key, // todo -pk
     party binary(20),
-    ky    binary(33)
+    ky    binary(33) NOT NULL
 );
 
 create table if not exists block
 (
     hash         binary(32) primary key,
-    parent       binary(32) REFERENCES block,
-    is_canonical boolean,
-    header       blob,
-    height       int,
-    unique (height, is_canonical)
+    parent       binary(32),
+    is_canonical boolean NOT NULL,
+    header       blob    NOT NULL,
+    height       int     NOT NULL
+--   the unique constraint is commented for now because there might be multiple non-canonical blocks for the same height
+--     unique (height, is_canonical)
 );
 create index IDX_BLOCK_HEIGHT on block (height);
 
 create table if not exists l1_msg
 (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    message varbinary(1024),
-    block   binary(32) REFERENCES block,
+    message varbinary(1024) NOT NULL,
+    block   binary(32)      NOT NULL REFERENCES block,
     is_transfer boolean
 );
 
 create table if not exists rollup
 (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
-    start_seq int,
-    end_seq   int,
-    header    blob,
-    block     binary(32) REFERENCES block
+    start_seq int        NOT NULL,
+    end_seq   int        NOT NULL,
+    header    blob       NOT NULL,
+    block     binary(32) NOT NULL REFERENCES block
 );
 
 create table if not exists batch_body
 (
     hash    binary(32) primary key,
-    content mediumblob
+    content mediumblob NOT NULL
 );
 
 create table if not exists batch
 (
     hash         binary(32) primary key,
-    parent       binary(32) REFERENCES batch,
-    sequence     int NOT NULL unique,
-    height       int,
-    is_canonical boolean,
-    header       blob,
-    body         binary(32) REFERENCES batch_body,
-    l1_proof     binary(32), -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
-    unique (height, is_canonical)
+    parent       binary(32),-- REFERENCES batch,
+    sequence     int     NOT NULL unique,
+    height int NOT NULL,
+    is_canonical boolean NOT NULL,
+    header blob NOT NULL,
+    body binary(32) NOT NULL REFERENCES batch_body,
+    l1_proof binary(32) NOT NULL, -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
+    is_executed  boolean NOT NULL
+--   the unique constraint is commented for now because there might be multiple non-canonical batches for the same height
+--   unique (height, is_canonical, is_executed)
 );
 create index IDX_BATCH_HEIGHT on batch (height);
 create index IDX_BATCH_SEQ on batch (sequence);
@@ -73,10 +76,10 @@ create index IDX_BATCH_Block on batch (l1_proof);
 create table if not exists tx
 (
     hash           binary(32) primary key,
-    content        mediumblob,
-    sender_address binary(20),
-    nonce          int,
-    idx            int,
+    content        mediumblob NOT NULL,
+    sender_address binary(20) NOT NULL,
+    nonce          int        NOT NULL,
+    idx            int        NOT NULL,
     body           binary(32) REFERENCES batch_body
 );
 
@@ -87,22 +90,22 @@ create table if not exists exec_tx
     receipt                  mediumblob,
 --     commenting out the fk until synthetic transactions are also stored
 --     tx                       binary(32) REFERENCES tx,
-    tx                       binary(32),
-    batch                    binary(32) REFERENCES batch
+    tx                       binary(32) NOT NULL,
+    batch                    binary(32) NOT NULL REFERENCES batch
 );
 create index IX_EX_TX1 on exec_tx (tx);
 
 create table if not exists events
 (
-    topic0          binary(32),
+    topic0          binary(32) NOT NULL,
     topic1          binary(32),
     topic2          binary(32),
     topic3          binary(32),
     topic4          binary(32),
     datablob        mediumblob,
-    log_idx         int,
-    address         binary(20),
-    lifecycle_event boolean,
+    log_idx         int        NOT NULL,
+    address         binary(20) NOT NULL,
+    lifecycle_event boolean    NOT NULL,
     rel_address1    binary(20),
     rel_address2    binary(20),
     rel_address3    binary(20),

@@ -26,7 +26,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	simParams := params.SimParams{
 		NumberOfNodes: numberOfNodes,
 		//  todo (#718) - try reducing this back to 50 milliseconds once faster-finality model is optimised
-		AvgBlockDuration:          250 * time.Millisecond,
+		AvgBlockDuration:          125 * time.Millisecond,
 		SimulationTime:            30 * time.Second,
 		L1EfficiencyThreshold:     0.2,
 		L2EfficiencyThreshold:     0.5,
@@ -38,7 +38,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		IsInMem:                   true,
 		L1SetupData:               &params.L1SetupData{},
 		ReceiptTimeout:            10 * time.Second,
-		StoppingDelay:             2 * time.Second,
+		StoppingDelay:             5 * time.Second,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
