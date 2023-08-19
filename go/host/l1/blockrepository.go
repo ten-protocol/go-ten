@@ -23,9 +23,11 @@ import (
 
 var (
 	// todo (@matt) make this configurable?
-	_timeoutNoBlocks = 30 * time.Second
-	one              = big.NewInt(1)
-	ErrNoNextBlock   = errors.New("no next block")
+	_timeoutNoBlocks        = 30 * time.Second
+	_newBlockLookupTimeout  = 20 * time.Second
+	_newBlockLookupInterval = 1 * time.Second
+	one                     = big.NewInt(1)
+	ErrNoNextBlock          = errors.New("no next block")
 )
 
 // Repository is a host service for subscribing to new blocks and looking up L1 data
@@ -153,11 +155,13 @@ func (r *Repository) streamLiveBlocks() {
 		select {
 		case header := <-liveStream:
 			r.head = header.Hash()
+			block, err := r.ethClient.BlockByHash(header.Hash())
+			if err != nil {
+				r.logger.Error("error fetching new block", log.BlockHashKey, header.Hash(),
+					log.BlockHeightKey, header.Number, log.ErrKey, err)
+				continue
+			}
 			for _, handler := range r.blockSubscribers.Subscribers() {
-				block, err := r.ethClient.BlockByHash(header.Hash())
-				if err != nil {
-					r.logger.Error("error fetching new block", log.ErrKey, err)
-				}
 				go handler.HandleBlock(block)
 			}
 		case <-time.After(_timeoutNoBlocks):
