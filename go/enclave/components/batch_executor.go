@@ -157,6 +157,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 
 	// we need to copy the batch to reset the internal hash cache
 	copyBatch := *batch
+	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
 	copyBatch.Transactions = successfulTxs
 	copyBatch.ResetHash()
 
