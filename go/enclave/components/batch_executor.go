@@ -60,8 +60,6 @@ func NewBatchExecutor(
 }
 
 func (bp *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2Transactions, error) {
-	return context.Transactions, nil
-
 	transactions := make(common.L2Transactions, 0)
 
 	for _, tx := range context.Transactions {
@@ -81,11 +79,12 @@ func (bp *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecuti
 		isFreeTransaction = isFreeTransaction && tx.GasPrice().Cmp(gethcommon.Big0) == 0
 
 		if !isFreeTransaction {
-			if accBalance.Cmp(cost) != -1 {
-				//	bp.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
-				stateDB.SubBalance(*sender, cost)
-				stateDB.AddBalance(context.Creator, cost)
+			if accBalance.Cmp(cost) == -1 {
+				bp.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
+				continue
 			}
+			stateDB.SubBalance(*sender, cost)
+			stateDB.AddBalance(context.Creator, cost)
 		}
 		transactions = append(transactions, tx)
 	}
@@ -139,7 +138,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 	executor.crossChainProcessors.Local.ExecuteValueTransfers(transfers, stateDB)
 
-	//	transactionsToProcess, _ := bp.payL1Fees(stateDB, context)
+	//	transactionsToProcess, _ := executor.payL1Fees(stateDB, context)
 
 	successfulTxs, txReceipts, err := executor.processTransactions(batch, 0, context.Transactions, stateDB, context.ChainConfig)
 	if err != nil {

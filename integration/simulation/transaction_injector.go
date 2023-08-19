@@ -72,6 +72,8 @@ type TransactionInjector struct {
 	// context for the transaction injector so in-flight requests can be cancelled gracefully
 	ctx context.Context
 
+	params *params.SimParams
+
 	logger gethlog.Logger
 }
 
@@ -85,6 +87,7 @@ func NewTransactionInjector(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	txsToIssue int,
+	params *params.SimParams,
 ) *TransactionInjector {
 	interrupt := int32(0)
 
@@ -108,6 +111,7 @@ func NewTransactionInjector(
 		TxTracker:        newCounter(),
 		enclavePublicKey: enclavePublicKeyEcies,
 		txsToIssue:       txsToIssue,
+		params:           params,
 		ctx:              context.Background(), // for now we create a new context here, should allow it to be passed in
 		logger:           testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
 	}
@@ -128,10 +132,14 @@ func (ti *TransactionInjector) Start() {
 		return nil
 	})
 
-	wg.Go(func() error {
-		ti.bridgeRandomGasTransfers()
-		return nil
-	})
+	// in mem sim does not support the contract libraries required
+	// to do complex bridge transactions
+	if !ti.params.IsInMem {
+		wg.Go(func() error {
+			ti.bridgeRandomGasTransfers()
+			return nil
+		})
+	}
 
 	wg.Go(func() error {
 		ti.issueRandomTransfers()

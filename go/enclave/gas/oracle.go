@@ -18,12 +18,15 @@ type oracle struct {
 
 func NewGasOracle() Oracle {
 	return &oracle{
-		baseFee: big.NewInt(0),
+		baseFee: big.NewInt(1),
 	}
 }
 
 func (o *oracle) ProcessL1Block(block *types.Block) {
-	o.baseFee = block.BaseFee()
+	blockBaseFee := block.BaseFee()
+	if blockBaseFee != nil {
+		o.baseFee = blockBaseFee
+	}
 }
 
 func (o *oracle) GetGasCostForTx(tx *types.Transaction) (*big.Int, error) {
