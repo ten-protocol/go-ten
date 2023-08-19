@@ -40,6 +40,7 @@ type BatchHeader struct {
 	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
 	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
 	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
+	TransfersTree                 common.Hash                           `json:"transfersTree"`
 }
 
 // MarshalJSON custom marshals the BatchHeader into a json

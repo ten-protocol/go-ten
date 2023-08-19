@@ -9,7 +9,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 )
 
 // Functions to convert classes that need to be sent between the host and the enclave to and from their equivalent
@@ -145,7 +144,7 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 		GasUsed:                     header.GasUsed,
 		Time:                        header.Time,
 		BaseFee:                     baseFee,
-		TransferTree:                types.EmptyRootHash.Bytes(),
+		TransferTree:                header.TransfersTree.Bytes(),
 		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
 	}
@@ -198,6 +197,7 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 		GasLimit:                      header.GasLimit,
 		GasUsed:                       header.GasUsed,
 		Time:                          header.Time,
+		TransfersTree:                 gethcommon.BytesToHash(header.TransferTree),
 		BaseFee:                       big.NewInt(int64(header.BaseFee)),
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),

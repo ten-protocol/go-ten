@@ -81,12 +81,11 @@ func (bp *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecuti
 		isFreeTransaction = isFreeTransaction && tx.GasPrice().Cmp(gethcommon.Big0) == 0
 
 		if !isFreeTransaction {
-			if accBalance.Cmp(cost) == -1 {
-				bp.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
-				continue
+			if accBalance.Cmp(cost) != -1 {
+				//	bp.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
+				stateDB.SubBalance(*sender, cost)
+				stateDB.AddBalance(context.Creator, cost)
 			}
-			stateDB.SubBalance(*sender, cost)
-			stateDB.AddBalance(context.Creator, cost)
 		}
 		transactions = append(transactions, tx)
 	}
@@ -240,6 +239,7 @@ func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, ti
 			Number:           big.NewInt(int64(0)),
 			SequencerOrderNo: big.NewInt(int64(common.L2GenesisSeqNo)), // genesis batch has seq number 1
 			ReceiptHash:      types.EmptyRootHash,
+			TransfersTree:    types.EmptyRootHash,
 			Time:             timeNow,
 		},
 		Transactions: []*common.L2Tx{},
@@ -273,7 +273,7 @@ func (executor *batchExecutor) populateOutboundCrossChainData(batch *core.Batch,
 		transfersHash := types.DeriveSha(ValueTransfers(valueTransferMessages), &trie.StackTrie{})
 	*/
 	batch.Header.CrossChainMessages = crossChainMessages
-	//batch.Header.TransfersTree = types.EmptyRootHash
+	batch.Header.TransfersTree = types.EmptyRootHash
 
 	executor.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
