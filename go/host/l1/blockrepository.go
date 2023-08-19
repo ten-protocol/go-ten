@@ -23,11 +23,9 @@ import (
 
 var (
 	// todo (@matt) make this configurable?
-	_timeoutNoBlocks        = 30 * time.Second
-	_newBlockLookupTimeout  = 20 * time.Second
-	_newBlockLookupInterval = 1 * time.Second
-	one                     = big.NewInt(1)
-	ErrNoNextBlock          = errors.New("no next block")
+	_timeoutNoBlocks = 30 * time.Second
+	one              = big.NewInt(1)
+	ErrNoNextBlock   = errors.New("no next block")
 )
 
 // Repository is a host service for subscribing to new blocks and looking up L1 data
