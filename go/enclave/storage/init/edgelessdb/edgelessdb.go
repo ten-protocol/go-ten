@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -145,6 +147,14 @@ func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, erro
 	if err != nil {
 		return nil, err
 	}
+
+	exec, err := sqlDB.Exec("ALTER TABLE obsdb.batch ADD INDEX (is_executed, is_canonical);")
+	if err != nil {
+		logger.Crit("could not add index", log.ErrKey, err)
+		return nil, nil
+	}
+	rows, err := exec.RowsAffected()
+	logger.Info(fmt.Sprintf("Added canonical index. Nr rows: %d ", rows))
 
 	// wrap it in our eth-compatible key-value store layer
 	return enclavedb.NewEnclaveDB(sqlDB, logger)
