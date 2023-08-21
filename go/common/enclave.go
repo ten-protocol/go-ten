@@ -126,7 +126,7 @@ type Enclave interface {
 	// DebugEventLogRelevancy returns the logs of a transaction
 	DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, SystemError)
 
-	Config() (*ObscuroEnclaveConfig, SystemError)
+	Config() (*ObscuroEnclaveInfo, SystemError)
 }
 
 // EnclaveScan represents the methods that are used for data scanning in the enclave
@@ -154,8 +154,8 @@ type ProducedSecretResponse struct {
 	HostAddress string
 }
 
-// ObscuroEnclaveConfig contains the data to return on Config requests
-type ObscuroEnclaveConfig struct {
+// ObscuroEnclaveInfo contains the data to return on Config requests
+type ObscuroEnclaveInfo struct {
 	SequencerID       gethcommon.Address
 	MessageBusAddress gethcommon.Address
 }

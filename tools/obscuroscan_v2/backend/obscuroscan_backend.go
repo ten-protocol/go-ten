@@ -123,6 +123,6 @@ func (b *Backend) DecryptTxBlob(payload string) ([]*common.L2Tx, error) {
 	return cleartextTxs, nil
 }
 
-func (b *Backend) GetConfig() (*common.ObscuroInfo, error) {
+func (b *Backend) GetConfig() (*common.ObscuroNetworkInfo, error) {
 	return b.obsClient.GetConfig()
 }

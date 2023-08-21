@@ -30,7 +30,7 @@ type Host interface {
 	HealthCheck() (*HealthCheck, error)
 
 	// ObscuroConfig returns the info of the Obscuro network
-	ObscuroConfig() (*common.ObscuroInfo, error)
+	ObscuroConfig() (*common.ObscuroNetworkInfo, error)
 }
 
 type BlockStream struct {

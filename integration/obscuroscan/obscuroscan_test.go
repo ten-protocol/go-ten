@@ -163,7 +163,7 @@ func TestObscuroscan(t *testing.T) {
 	assert.Equal(t, 200, statusCode)
 
 	type configFetch struct {
-		Item common.ObscuroInfo `json:"item"`
+		Item common.ObscuroNetworkInfo `json:"item"`
 	}
 
 	configFetchObj := configFetch{}

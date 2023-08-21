@@ -1388,8 +1388,8 @@ func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPaginatio
 	}, nil
 }
 
-func (e *enclaveImpl) Config() (*common.ObscuroEnclaveConfig, common.SystemError) {
-	return &common.ObscuroEnclaveConfig{
+func (e *enclaveImpl) Config() (*common.ObscuroEnclaveInfo, common.SystemError) {
+	return &common.ObscuroEnclaveInfo{
 		SequencerID:       e.config.SequencerID,
 		MessageBusAddress: e.config.MessageBusAddress,
 	}, nil

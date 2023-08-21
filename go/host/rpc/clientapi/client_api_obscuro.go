@@ -22,6 +22,6 @@ func (api *ObscuroAPI) Health() (*host.HealthCheck, error) {
 }
 
 // Config returns the config status of obscuro host + enclave + db
-func (api *ObscuroAPI) Config() (*common.ObscuroInfo, error) {
+func (api *ObscuroAPI) Config() (*common.ObscuroNetworkInfo, error) {
 	return api.host.ObscuroConfig()
 }

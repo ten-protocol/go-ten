@@ -597,7 +597,7 @@ func (c *Client) GetPublicTransactionData(pagination *common.QueryPagination) (*
 	return &result, nil
 }
 
-func (c *Client) Config() (*common.ObscuroEnclaveConfig, common.SystemError) {
+func (c *Client) Config() (*common.ObscuroEnclaveInfo, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
 	defer cancel()
 
@@ -609,7 +609,7 @@ func (c *Client) Config() (*common.ObscuroEnclaveConfig, common.SystemError) {
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	var result common.ObscuroEnclaveConfig
+	var result common.ObscuroEnclaveInfo
 	err = json.Unmarshal(response.Config, &result)
 	if err != nil {
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
