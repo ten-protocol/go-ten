@@ -37,7 +37,8 @@ create table if not exists obsdb.block
     INDEX (parent),
     primary key (hash),
     INDEX (is_canonical),
-    INDEX (height)
+    INDEX (height),
+    INDEX (is_canonical, height)
 );
 GRANT ALL ON obsdb.block TO obscuro;
 
@@ -87,8 +88,10 @@ create table if not exists obsdb.batch
     INDEX (l1_proof),
     INDEX (height),
     INDEX (sequence),
-    INDEX (is_executed),
     INDEX (is_canonical),
+    INDEX (is_executed),
+    INDEX (is_canonical, is_executed),
+    INDEX (is_canonical, is_executed, height),
     primary key (hash)
 );
 GRANT ALL ON obsdb.batch TO obscuro;

@@ -24,8 +24,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -147,74 +145,6 @@ func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, erro
 	if err != nil {
 		return nil, err
 	}
-	//
-	//exec, err := sqlDB.Exec("ALTER TABLE obsdb.batch ADD INDEX (is_executed);")
-	//if err != nil {
-	//	logger.Crit("could not add index", log.ErrKey, err)
-	//	return nil, nil
-	//}
-	//nrRows, err := exec.RowsAffected()
-	//logger.Info(fmt.Sprintf("Added executed index. Nr rows: %d ", nrRows))
-	//
-	//exec, err = sqlDB.Exec("ALTER TABLE obsdb.batch ADD INDEX (is_canonical);")
-	//if err != nil {
-	//	logger.Crit("could not add index", log.ErrKey, err)
-	//	return nil, nil
-	//}
-	//nrRows, err = exec.RowsAffected()
-	//logger.Info(fmt.Sprintf("Added canonical index. Nr rows: %d ", nrRows))
-	//
-	//exec, err = sqlDB.Exec("ALTER TABLE obsdb.block ADD INDEX (is_canonical);")
-	//if err != nil {
-	//	logger.Crit("could not add index", log.ErrKey, err)
-	//	return nil, nil
-	//}
-	//nrRows, err = exec.RowsAffected()
-	//logger.Info(fmt.Sprintf("Added canonical index. Nr rows: %d ", nrRows))
-
-	exec, err := sqlDB.Exec("ALTER TABLE obsdb.batch ADD INDEX (is_canonical, is_executed, height);")
-	if err != nil {
-		logger.Crit("could not add index", log.ErrKey, err)
-		return nil, nil
-	}
-	nrRows, err := exec.RowsAffected()
-	logger.Info(fmt.Sprintf("Added canonical/exec/height index. Nr rows: %d ", nrRows))
-
-	rows, err := sqlDB.Query("ANALYZE FORMAT=JSON select * from batch b join batch_body bb on b.body=bb.hash where  b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")
-	if err != nil {
-		logger.Crit("", log.ErrKey, err)
-	}
-
-	explainStatement := ""
-	for rows.Next() {
-		var s string
-		if err := rows.Scan(&s); err != nil {
-			logger.Crit("", log.ErrKey, err)
-		}
-		explainStatement += s + "\n"
-	}
-	if err := rows.Err(); err != nil {
-		logger.Crit("", log.ErrKey, err)
-	}
-	logger.Info(fmt.Sprintf("Explain Analyze: %s", strings.Replace(explainStatement, "\n", "", -1)))
-
-	rows, err = sqlDB.Query("EXPLAIN FORMAT=JSON select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")
-	if err != nil {
-		logger.Crit("", log.ErrKey, err)
-	}
-
-	explainStatement = ""
-	for rows.Next() {
-		var s string
-		if err := rows.Scan(&s); err != nil {
-			logger.Crit("", log.ErrKey, err)
-		}
-		explainStatement += s + "\n"
-	}
-	if err := rows.Err(); err != nil {
-		logger.Crit("", log.ErrKey, err)
-	}
-	logger.Info(fmt.Sprintf("Explain Tree: %s", strings.Replace(explainStatement, "\n", "", -1)))
 
 	// wrap it in our eth-compatible key-value store layer
 	return enclavedb.NewEnclaveDB(sqlDB, logger)
