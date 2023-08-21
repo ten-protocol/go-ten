@@ -172,6 +172,14 @@ func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, erro
 	//nrRows, err = exec.RowsAffected()
 	//logger.Info(fmt.Sprintf("Added canonical index. Nr rows: %d ", nrRows))
 
+	exec, err := sqlDB.Exec("ALTER TABLE obsdb.block ADD INDEX (is_canonical, is_executed, height);")
+	if err != nil {
+		logger.Crit("could not add index", log.ErrKey, err)
+		return nil, nil
+	}
+	nrRows, err := exec.RowsAffected()
+	logger.Info(fmt.Sprintf("Added canonical/exec/height index. Nr rows: %d ", nrRows))
+
 	rows, err := sqlDB.Query("ANALYZE FORMAT=JSON select * from batch b join batch_body bb on b.body=bb.hash where  b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")
 	if err != nil {
 		logger.Crit("", log.ErrKey, err)
