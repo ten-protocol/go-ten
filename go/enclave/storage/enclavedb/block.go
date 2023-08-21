@@ -84,7 +84,7 @@ func FetchBlock(db *sql.DB, hash common.L2BatchHash) (*types.Block, error) {
 }
 
 func FetchHeadBlock(db *sql.DB) (*types.Block, error) {
-	return fetchBlock(db, "where is_canonical and height=(select max(b.height) from block b where is_canonical)")
+	return fetchBlock(db, "where is_canonical=true and height=(select max(b.height) from block b where is_canonical=true)")
 }
 
 func WriteL1Messages(db *sql.DB, blockHash common.L1BlockHash, messages common.CrossChainMessages) error {

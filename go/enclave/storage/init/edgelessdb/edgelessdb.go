@@ -148,15 +148,31 @@ func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, erro
 		return nil, err
 	}
 
-	//exec, err := sqlDB.Exec("ALTER TABLE obsdb.batch ADD INDEX (is_executed, is_canonical);")
-	//if err != nil {
-	//	logger.Crit("could not add index", log.ErrKey, err)
-	//	return nil, nil
-	//}
-	//rows, err := exec.RowsAffected()
-	//logger.Info(fmt.Sprintf("Added canonical index. Nr rows: %d ", rows))
+	exec, err := sqlDB.Exec("ALTER TABLE obsdb.batch ADD INDEX (is_executed);")
+	if err != nil {
+		logger.Crit("could not add index", log.ErrKey, err)
+		return nil, nil
+	}
+	nrRows, err := exec.RowsAffected()
+	logger.Info(fmt.Sprintf("Added executed index. Nr rows: %d ", nrRows))
 
-	rows, err := sqlDB.Query("ANALYZE FORMAT=JSON select * from batch b join batch_body bb on b.body=bb.hash where is_executed=false and is_canonical order by b.sequence")
+	exec, err = sqlDB.Exec("ALTER TABLE obsdb.batch ADD INDEX (is_canonical);")
+	if err != nil {
+		logger.Crit("could not add index", log.ErrKey, err)
+		return nil, nil
+	}
+	nrRows, err = exec.RowsAffected()
+	logger.Info(fmt.Sprintf("Added canonical index. Nr rows: %d ", nrRows))
+
+	exec, err = sqlDB.Exec("ALTER TABLE obsdb.block ADD INDEX (is_canonical);")
+	if err != nil {
+		logger.Crit("could not add index", log.ErrKey, err)
+		return nil, nil
+	}
+	nrRows, err = exec.RowsAffected()
+	logger.Info(fmt.Sprintf("Added canonical index. Nr rows: %d ", nrRows))
+
+	rows, err := sqlDB.Query("ANALYZE FORMAT=JSON select * from batch b join batch_body bb on b.body=bb.hash where is_executed=false and is_canonical=true order by b.sequence")
 	if err != nil {
 		logger.Crit("", log.ErrKey, err)
 	}
@@ -174,7 +190,7 @@ func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, erro
 	}
 	logger.Info(fmt.Sprintf("Explain Analyze: %s", explainStatement))
 
-	rows, err = sqlDB.Query("EXPLAIN FORMAT=JSON select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash where is_executed=false and is_canonical order by b.sequence")
+	rows, err = sqlDB.Query("EXPLAIN FORMAT=JSON select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash where is_executed=false and is_canonical=true order by b.sequence")
 	if err != nil {
 		logger.Crit("", log.ErrKey, err)
 	}
