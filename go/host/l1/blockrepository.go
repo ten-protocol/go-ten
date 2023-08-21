@@ -153,11 +153,13 @@ func (r *Repository) streamLiveBlocks() {
 		select {
 		case header := <-liveStream:
 			r.head = header.Hash()
+			block, err := r.ethClient.BlockByHash(header.Hash())
+			if err != nil {
+				r.logger.Error("error fetching new block", log.BlockHashKey, header.Hash(),
+					log.BlockHeightKey, header.Number, log.ErrKey, err)
+				continue
+			}
 			for _, handler := range r.blockSubscribers.Subscribers() {
-				block, err := r.ethClient.BlockByHash(header.Hash())
-				if err != nil {
-					r.logger.Error("error fetching new block", log.ErrKey, err)
-				}
 				go handler.HandleBlock(block)
 			}
 		case <-time.After(_timeoutNoBlocks):
