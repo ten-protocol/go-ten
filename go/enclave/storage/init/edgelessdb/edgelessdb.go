@@ -172,7 +172,7 @@ func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, erro
 	//nrRows, err = exec.RowsAffected()
 	//logger.Info(fmt.Sprintf("Added canonical index. Nr rows: %d ", nrRows))
 
-	exec, err := sqlDB.Exec("ALTER TABLE obsdb.block ADD INDEX (is_canonical, is_executed, height);")
+	exec, err := sqlDB.Exec("ALTER TABLE obsdb.batch ADD INDEX (is_canonical, is_executed, height);")
 	if err != nil {
 		logger.Crit("could not add index", log.ErrKey, err)
 		return nil, nil
