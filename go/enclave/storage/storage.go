@@ -39,7 +39,10 @@ import (
 )
 
 // todo - this will require a dedicated table when updates are implemented
-const masterSeedCfg = "MASTER_SEED"
+const (
+	masterSeedCfg            = "MASTER_SEED"
+	_slowCallThresholdMillis = 50 // requests that take longer than this will be logged
+)
 
 type storageImpl struct {
 	db enclavedb.EnclaveDB
@@ -592,5 +595,9 @@ func (s *storageImpl) cacheBatch(batchHash common.L2BatchHash, b *core.Batch) {
 }
 
 func (s *storageImpl) logDuration(method string, callStart time.Time) {
-	s.logger.Info(fmt.Sprintf("Storage::%s completed", method), log.DurationMilliKey, time.Since(callStart).Milliseconds())
+	durationMillis := time.Since(callStart).Milliseconds()
+	// we only log 'slow' calls to reduce noise
+	if durationMillis > _slowCallThresholdMillis {
+		s.logger.Info(fmt.Sprintf("Storage::%s completed", method), log.DurationMilliKey, durationMillis)
+	}
 }
