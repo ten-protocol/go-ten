@@ -35,7 +35,7 @@ const (
 	queryReceipts      = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 	queryReceiptsCount = "select count(1) from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 
-	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where batch.is_canonical and tx.hash=?"
+	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where batch.is_canonical=true and tx.hash=?"
 
 	selectContractCreationTx    = "select tx from exec_tx where created_contract_address=?"
 	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
@@ -171,7 +171,7 @@ func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, err
 
 // todo - is there a better way to write this query?
 func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
-	return fetchBatch(db, " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.is_executed)")
+	return fetchBatch(db, " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")
 }
 
 func ReadBatchesByBlock(db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
@@ -196,7 +196,7 @@ func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
 }
 
 func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
-	query := " where b.is_canonical and b.is_executed and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.is_executed and b1.l1_proof=?)"
+	query := " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true and b1.l1_proof=?)"
 	return fetchBatch(db, query, l1Hash.Bytes())
 }
 
