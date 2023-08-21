@@ -156,7 +156,7 @@ func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, erro
 	//rows, err := exec.RowsAffected()
 	//logger.Info(fmt.Sprintf("Added canonical index. Nr rows: %d ", rows))
 
-	rows, err := sqlDB.Query("EXPLAIN ANALYZE select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash where is_executed=false and is_canonical order by b.sequence")
+	rows, err := sqlDB.Query("ANALYZE FORMAT=JSON select * from batch b join batch_body bb on b.body=bb.hash where is_executed=false and is_canonical order by b.sequence")
 	if err != nil {
 		logger.Crit("", log.ErrKey, err)
 	}
@@ -174,7 +174,7 @@ func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, erro
 	}
 	logger.Info(fmt.Sprintf("Explain Analyze: %s", explainStatement))
 
-	rows, err = sqlDB.Query("EXPLAIN EXPLAIN FORMAT=TREE select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash where is_executed=false and is_canonical order by b.sequence")
+	rows, err = sqlDB.Query("EXPLAIN FORMAT=JSON select b.header, bb.content from batch b join batch_body bb on b.body=bb.hash where is_executed=false and is_canonical order by b.sequence")
 	if err != nil {
 		logger.Crit("", log.ErrKey, err)
 	}
