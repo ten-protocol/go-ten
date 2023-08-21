@@ -34,7 +34,6 @@
                 <template #dropdown>
                   <el-dropdown-menu>
                     <RouterLink to="/decrypt"> <el-dropdown-item>Decrypt</el-dropdown-item></RouterLink>
-                    <RouterLink to="/verified"> <el-dropdown-item>Verified Contracts</el-dropdown-item></RouterLink>
                   </el-dropdown-menu>
                 </template>
               </el-dropdown>

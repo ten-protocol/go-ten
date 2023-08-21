@@ -43,6 +43,7 @@ const (
 	GetPublicTransactionData = "scan_getPublicTransactionData"
 	GetBatchListing          = "scan_getBatchListing"
 	GetBlockListing          = "scan_getBlockListing"
+	GetFullBatchByHash       = "scan_getBatchByHash"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")
