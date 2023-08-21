@@ -28,6 +28,9 @@ type Host interface {
 
 	// HealthCheck returns the health status of the host + enclave + db
 	HealthCheck() (*HealthCheck, error)
+
+	// ObscuroConfig returns the info of the Obscuro network
+	ObscuroConfig() (*common.ObscuroInfo, error)
 }
 
 type BlockStream struct {

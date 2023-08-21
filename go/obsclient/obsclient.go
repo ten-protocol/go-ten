@@ -158,3 +158,13 @@ func (oc *ObsClient) GetBlockListing(pagination *common.QueryPagination) (*commo
 	}
 	return &result, nil
 }
+
+// GetConfig returns the network config for obscuro
+func (oc *ObsClient) GetConfig() (*common.ObscuroInfo, error) {
+	var result common.ObscuroInfo
+	err := oc.rpcClient.Call(&result, rpc.Config)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}

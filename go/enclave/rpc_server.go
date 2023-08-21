@@ -422,6 +422,18 @@ func (s *RPCServer) GetPublicTransactionData(_ context.Context, req *generated.G
 	return &generated.GetPublicTransactionDataResponse{PublicTransactionData: marshal}, nil
 }
 
+func (s *RPCServer) Config(_ context.Context, _ *generated.ConfigRequest) (*generated.ConfigResponse, error) {
+	config, _ := s.enclave.Config() // No reason to error out, but we want to maintain the signature for RPC methods
+
+	marshal, err := json.Marshal(config)
+	if err != nil {
+		s.logger.Error("Error marshalling config data", log.ErrKey, err)
+		return &generated.ConfigResponse{SystemError: toRPCError(err)}, nil
+	}
+
+	return &generated.ConfigResponse{Config: marshal}, nil
+}
+
 func (s *RPCServer) decodeBlock(encodedBlock []byte) types.Block {
 	block := types.Block{}
 	err := rlp.DecodeBytes(encodedBlock, &block)

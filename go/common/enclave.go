@@ -125,6 +125,8 @@ type Enclave interface {
 	StreamL2Updates() (chan StreamL2UpdatesResponse, func())
 	// DebugEventLogRelevancy returns the logs of a transaction
 	DebugEventLogRelevancy(hash gethcommon.Hash) (json.RawMessage, SystemError)
+
+	Config() (*ObscuroEnclaveConfig, SystemError)
 }
 
 // EnclaveScan represents the methods that are used for data scanning in the enclave
@@ -150,4 +152,10 @@ type ProducedSecretResponse struct {
 	Secret      []byte
 	RequesterID gethcommon.Address
 	HostAddress string
+}
+
+// ObscuroEnclaveConfig contains the data to return on Config requests
+type ObscuroEnclaveConfig struct {
+	SequencerID       gethcommon.Address
+	MessageBusAddress gethcommon.Address
 }

@@ -158,6 +158,19 @@ func TestObscuroscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Hash(), batchObj.Item.Hash())
 
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type configFetch struct {
+		Item common.ObscuroInfo `json:"item"`
+	}
+
+	configFetchObj := configFetch{}
+	err = json.Unmarshal(body, &configFetchObj)
+	assert.NoError(t, err)
+	assert.NotEqual(t, configFetchObj.Item.SequencerID, gethcommon.Address{})
+
 	issueTransactions(
 		t,
 		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),

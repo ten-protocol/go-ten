@@ -218,6 +218,22 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 	}, nil
 }
 
+// ObscuroConfig returns info on the Obscuro network
+func (h *host) ObscuroConfig() (*common.ObscuroInfo, error) {
+	enclaveConfig, err := h.EnclaveClient().Config()
+	if err != nil {
+		return nil, fmt.Errorf("unable to `retrieve` enclave info - %w", err)
+	}
+
+	return &common.ObscuroInfo{
+		ManagementContractAddress: h.config.ManagementContractAddress,
+		L1StartHash:               h.config.L1StartHash,
+
+		SequencerID:       enclaveConfig.SequencerID,
+		MessageBusAddress: enclaveConfig.MessageBusAddress,
+	}, nil
+}
+
 // Checks the host config is valid.
 func (h *host) validateConfig() {
 	if h.config.IsGenesis && h.config.NodeType != common.Sequencer {
