@@ -74,6 +74,14 @@ func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, co
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
 
+	// check if requested method is GetStorageAt, since we use for gettingUserID if correct parameters are used
+	if request.Method == rpc.GetStorageAt {
+		interceptedResponse := w.getStorageAtInterceptor(request, hexUserID)
+		if interceptedResponse != nil {
+			return interceptedResponse, nil
+		}
+	}
+
 	// get account manager for current user (if there is no users in the query parameters - use defaultUser for WE endpoints)
 	selectedAccountManager, err := w.userAccountManager.GetUserAccountManager(hexUserID)
 	if err != nil {
@@ -345,4 +353,47 @@ func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
 			}
 		}
 	}
+}
+
+// getStorageAtInterceptor checks method name in the request and if it is one of the methods that we use differently than an eth standard.
+// At the moment, it is only getStorageAt method. It returns response if we should use that response or nil otherwise
+func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCRequest, hexUserID string) map[string]interface{} {
+	response := map[string]interface{}{}
+	// all responses must contain the request id. Both successful and unsuccessful.
+	response[common.JSONKeyRPCVersion] = jsonrpc.Version
+	response[common.JSONKeyID] = request.ID
+
+	// check if parameters are correct, and we can intercept a request, otherwise return nil
+	if interceptGetStorageAtParametersCheck(request.Params) {
+		// check if userID in the parameters is also in our database
+		userID, err := common.GetUserIDbyte(hexUserID)
+		if err != nil {
+			w.logger.Warn("GetStorageAt called with appropriate parameters to return userID, but not found in the database: ", "userId", hexUserID)
+			return nil
+		}
+
+		key, err := w.storage.GetUserPrivateKey(userID)
+		if err != nil || len(key) == 0 {
+			w.logger.Info("Trying to get userID, but it is not present in our database: ")
+			return nil
+		}
+
+		response[common.JSONKeyResult] = hexUserID
+		return response
+	}
+
+	return nil
+}
+
+func interceptGetStorageAtParametersCheck(params []interface{}) bool {
+	for _, item := range params {
+		if m, ok := item.(map[string]interface{}); ok {
+			address, addrOk := m["address"].(string)
+			position, posOk := m["position"].(string)
+			if addrOk && address == common.GetStorageAtUserIDSpecialAddress && posOk && position == common.GetStorageAtUserIDSpecialPosition {
+				return true
+			}
+		}
+	}
+	return false
 }
