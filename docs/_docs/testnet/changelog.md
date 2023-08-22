@@ -2,6 +2,15 @@
 ---
 # Obscuro Testnet Change Log
 
+# Aug 2023-08-22 (v0.16.0)
+* A list of the PRs merged in this release is as below;
+    * `670af392` Add condition to only log slow storage calls (#1475)
+    * `915c5f21` Add index (#1474)
+    * `28ab67ac` Add timer to storage calls (#1473)
+    * `01f1cd94` Nil pointer when eth new block not found (#1472)
+    * `89c09486` Add decryption + fixes to the grids (#1470)
+    * `6687cf32` Fixes to the obscuroscan ui (#1468)
+
 # Aug 2023-08-17 (v0.15.0)
 * A list of the PRs merged in this release is as below;
     * `d137cce6` Adjust the timer log for easier extraction from datadog (#1463)
