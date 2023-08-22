@@ -2,8 +2,8 @@
   <el-container>
     <el-main>
       <el-card>
-        <el-header>Personal Transactions</el-header>
-       <personal-txs-grid/>
+        <el-header>Official Verified Data</el-header>
+        <verified-contracts-data-grid />
       </el-card>
     </el-main>
   </el-container>
@@ -11,10 +11,10 @@
 
 <script>
 import { defineComponent } from 'vue'
-import PersonalTxsGrid from "@/components/PersonalTxsGrid.vue";
+import VerifiedContractsDataGrid from "@/components/VerifiedContractsDataGrid.vue";
 
 export default defineComponent({
-  components: {PersonalTxsGrid}
+  components: {VerifiedContractsDataGrid}
 })
 </script>
 <style></style>

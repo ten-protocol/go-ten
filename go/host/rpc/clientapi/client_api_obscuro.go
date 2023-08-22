@@ -1,6 +1,7 @@
 package clientapi
 
 import (
+	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/host"
 )
 
@@ -18,4 +19,9 @@ func NewObscuroAPI(host host.Host) *ObscuroAPI {
 // Health returns the health status of obscuro host + enclave + db
 func (api *ObscuroAPI) Health() (*host.HealthCheck, error) {
 	return api.host.HealthCheck()
+}
+
+// Config returns the config status of obscuro host + enclave + db
+func (api *ObscuroAPI) Config() (*common.ObscuroNetworkInfo, error) {
+	return api.host.ObscuroConfig()
 }

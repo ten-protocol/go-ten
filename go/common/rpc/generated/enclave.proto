@@ -91,6 +91,15 @@ service EnclaveProto {
 
   rpc GetPublicTransactionData(GetPublicTransactionDataRequest) returns (GetPublicTransactionDataResponse) {}
 
+  rpc Config(ConfigRequest) returns (ConfigResponse) {}
+
+}
+
+message ConfigRequest {}
+
+message ConfigResponse{
+  bytes config = 1;
+  SystemError systemError = 2;
 }
 
 message GetPublicTransactionDataRequest {

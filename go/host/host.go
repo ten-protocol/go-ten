@@ -51,6 +51,7 @@ type host struct {
 
 	metricRegistry gethmetrics.Registry
 	interrupter    breaker.Interface
+	enclaveConfig  *common.ObscuroEnclaveInfo
 }
 
 func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p P2PHostService, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
@@ -215,6 +216,25 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 	return &hostcommon.HealthCheck{
 		OverallHealth: len(healthErrors) == 0,
 		Errors:        healthErrors,
+	}, nil
+}
+
+// ObscuroConfig returns info on the Obscuro network
+func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
+	if h.enclaveConfig != nil {
+		enclaveConfig, err := h.EnclaveClient().Config()
+		if err != nil {
+			return nil, fmt.Errorf("unable to `retrieve` enclave info - %w", err)
+		}
+		h.enclaveConfig = enclaveConfig
+	}
+
+	return &common.ObscuroNetworkInfo{
+		ManagementContractAddress: h.config.ManagementContractAddress,
+		L1StartHash:               h.config.L1StartHash,
+
+		SequencerID:       h.enclaveConfig.SequencerID,
+		MessageBusAddress: h.enclaveConfig.MessageBusAddress,
 	}, nil
 }
 

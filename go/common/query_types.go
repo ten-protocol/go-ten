@@ -82,3 +82,10 @@ type PrivateCustomQueryListTransactions struct {
 	Address    common.Address  `json:"address"`
 	Pagination QueryPagination `json:"pagination"`
 }
+
+type ObscuroNetworkInfo struct {
+	ManagementContractAddress common.Address
+	L1StartHash               common.Hash
+	SequencerID               common.Address
+	MessageBusAddress         common.Address
+}
