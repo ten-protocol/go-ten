@@ -78,11 +78,11 @@ func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, 
 const emptyFilterCriteria = "[]" // This is the value that gets passed for an empty filter criteria.
 
 // determine the client based on the topics
-// if none is found use the first client and assume this is a lifecycle method
+// if none is found use all clients from current user
 func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) ([]rpc.Client, error) {
 	clients := make([]rpc.Client, 0, len(m.accountClients))
 
-	// if none is found subscribe to all accounts
+	// by default, if no client is identified as a candidate, then subscribe to all accounts
 	for _, c := range m.accountClients {
 		clients = append(clients, c)
 	}
