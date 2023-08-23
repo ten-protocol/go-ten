@@ -27,10 +27,35 @@ const (
 )
 
 func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, blockDurationSeconds int) (*params.L1SetupData, []ethadapter.EthClient, eth2network.Eth2Network) {
+	eth2Network, err := StartGethNetwork(wallets, startPort, blockDurationSeconds)
+	if err != nil {
+		panic(err)
+	}
+
+	// connect to the first host to deploy
+	tmpEthClient, err := ethadapter.NewEthClient(Localhost, uint(startPort+100), DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
+	if err != nil {
+		panic(err)
+	}
+
+	l1Data, err := DeployObscuroNetworkContracts(tmpEthClient, wallets, true)
+	if err != nil {
+		panic(err)
+	}
+
+	ethClients := make([]ethadapter.EthClient, nrNodes)
+	for i := 0; i < nrNodes; i++ {
+		ethClients[i] = CreateEthClientConnection(int64(i), uint(startPort+100))
+	}
+
+	return l1Data, ethClients, eth2Network
+}
+
+func StartGethNetwork(wallets *params.SimWallets, startPort int, blockDurationSeconds int) (eth2network.Eth2Network, error) {
 	// make sure the geth network binaries exist
 	path, err := eth2network.EnsureBinariesExist()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// get the node wallet addresses to prefund them with Eth, so they can submit rollups, deploy contracts, deposit to the bridge, etc
@@ -60,50 +85,61 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int, bl
 
 	err = eth2Network.Start()
 	if err != nil {
-		panic(err)
-	}
-	// connect to the first host to deploy
-	tmpEthClient, err := ethadapter.NewEthClient(Localhost, uint(startPort+100), DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
-	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
+	return eth2Network, nil
+}
+
+func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1SetupData, error) {
 	bytecode, err := constants.Bytecode()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	mgmtContractReceipt, err := DeployContract(tmpEthClient, wallets.MCOwnerWallet, bytecode)
+	mgmtContractReceipt, err := DeployContract(client, wallets.MCOwnerWallet, bytecode)
 	if err != nil {
-		panic(fmt.Sprintf("failed to deploy management contract. Cause: %s", err))
+		return nil, fmt.Errorf("failed to deploy management contract. Cause: %w", err)
 	}
 
-	managementContract, _ := ManagementContract.NewManagementContract(mgmtContractReceipt.ContractAddress, tmpEthClient.EthClient())
-	l1BusAddress, _ := managementContract.MessageBus(&bind.CallOpts{})
+	managementContract, err := ManagementContract.NewManagementContract(mgmtContractReceipt.ContractAddress, client.EthClient())
+	if err != nil {
+		return nil, fmt.Errorf("failed to instantiate management contract. Cause: %w", err)
+	}
+
+	l1BusAddress, err := managementContract.MessageBus(&bind.CallOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch MessageBus address. Cause: %w", err)
+	}
+
+	fmt.Println("Deployed Management Contract successfully",
+		"address: ", mgmtContractReceipt.ContractAddress, "txHash: ", mgmtContractReceipt.TxHash,
+		"blockHash: ", mgmtContractReceipt.BlockHash, "l1BusAddress: ", l1BusAddress)
+
+	if !deployERC20s {
+		return &params.L1SetupData{
+			ObscuroStartBlock:   mgmtContractReceipt.BlockHash,
+			MgmtContractAddress: mgmtContractReceipt.ContractAddress,
+			MessageBusAddr:      &l1BusAddress,
+		}, nil
+	}
 
 	erc20ContractAddr := make([]common.Address, 0)
 	for _, token := range wallets.Tokens {
-		erc20receipt, err := DeployContract(tmpEthClient, token.L1Owner, erc20contract.L1BytecodeWithDefaultSupply(string(token.Name), mgmtContractReceipt.ContractAddress))
+		erc20receipt, err := DeployContract(client, token.L1Owner, erc20contract.L1BytecodeWithDefaultSupply(string(token.Name), mgmtContractReceipt.ContractAddress))
 		if err != nil {
-			panic(fmt.Sprintf("failed to deploy ERC20 contract. Cause: %s", err))
+			return nil, fmt.Errorf("failed to deploy ERC20 contract. Cause: %w", err)
 		}
 		token.L1ContractAddress = &erc20receipt.ContractAddress
 		erc20ContractAddr = append(erc20ContractAddr, erc20receipt.ContractAddress)
 	}
 
-	ethClients := make([]ethadapter.EthClient, nrNodes)
-	for i := 0; i < nrNodes; i++ {
-		ethClients[i] = createEthClientConnection(int64(i), uint(startPort+100))
-	}
-
-	l1Data := &params.L1SetupData{
+	return &params.L1SetupData{
 		ObscuroStartBlock:   mgmtContractReceipt.BlockHash,
 		MgmtContractAddress: mgmtContractReceipt.ContractAddress,
 		ObxErc20Address:     erc20ContractAddr[0],
 		EthErc20Address:     erc20ContractAddr[1],
 		MessageBusAddr:      &l1BusAddress,
-	}
-
-	return l1Data, ethClients, eth2Network
+	}, nil
 }
 
 func StopEth2Network(clients []ethadapter.EthClient, netw eth2network.Eth2Network) {
@@ -162,7 +198,7 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 	return nil, fmt.Errorf("failed to mine contract deploy tx into a block after %s. Aborting", time.Since(start))
 }
 
-func createEthClientConnection(id int64, port uint) ethadapter.EthClient {
+func CreateEthClientConnection(id int64, port uint) ethadapter.EthClient {
 	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1RPCTimeout, common.BigToAddress(big.NewInt(id)), testlog.Logger())
 	if err != nil {
 		panic(err)

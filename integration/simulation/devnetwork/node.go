@@ -2,11 +2,9 @@ package devnetwork
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/host"
 	"math/big"
 	"os"
-	"time"
-
-	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
 
@@ -125,8 +123,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		UseInMemoryDB:             false,
 		LevelDBPath:               n.hostDBFilepath,
 		DebugNamespaceEnabled:     true,
-		BatchInterval:             1 * time.Second,
-		RollupInterval:            3 * time.Second,
+		BatchInterval:             n.config.BatchInterval,
+		RollupInterval:            n.config.RollupInterval,
 	}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, n.operatorIdx, log.CmpKey, log.HostCmp)
@@ -217,6 +215,13 @@ func NewInMemNodeOperator(operatorIdx int, config ObscuroConfig, nodeType common
 	if err != nil {
 		panic("failed to create temp levelDBPath")
 	}
+
+	l1Nonce, err := l1Client.Nonce(l1Wallet.Address())
+	if err != nil {
+		panic("failed to get l1 nonce")
+	}
+	l1Wallet.SetNonce(l1Nonce)
+
 	return &InMemNodeOperator{
 		operatorIdx:       operatorIdx,
 		config:            config,

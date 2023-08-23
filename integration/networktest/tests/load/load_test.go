@@ -14,7 +14,7 @@ func TestNativeTransfers(t *testing.T) {
 	networktest.Run(
 		"native-transfers-load-test",
 		t,
-		env.LocalDevNetwork(),
+		env.LongRunningLocalNetwork(),
 		actions.Series(
 			actions.CreateAndFundTestUsers(25),
 			actions.GenerateUsersRandomisedTransferActionsInParallel(10, 60*time.Second),

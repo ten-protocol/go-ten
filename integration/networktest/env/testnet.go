@@ -5,6 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"math/big"
 	"net/http"
 	"time"
 
@@ -17,21 +21,34 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/networktest"
 )
 
+var _defaultFaucetAmount = big.NewInt(750_000_000_000_000)
+
 type testnetConnector struct {
 	seqRPCAddress         string
 	validatorRPCAddresses []string
 	faucetHTTPAddress     string
-	l1Host                string
-	l1HttpPort            uint
+	l1RPCAddress          string
+	faucetWallet          *userwallet.UserWallet
 }
 
-func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1Host string, l1Port uint) networktest.NetworkConnector {
+func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1RPCAddress string) networktest.NetworkConnector {
 	return &testnetConnector{
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
 		faucetHTTPAddress:     faucetHTTPAddress,
-		l1Host:                l1Host,
-		l1HttpPort:            l1Port,
+		l1RPCAddress:          l1RPCAddress,
+	}
+}
+func NewTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddressses []string, faucetPK string, l1RPCAddress string) networktest.NetworkConnector {
+	ecdsaKey, err := crypto.HexToECDSA(faucetPK)
+	if err != nil {
+		panic(err)
+	}
+	return &testnetConnector{
+		seqRPCAddress:         seqRPCAddr,
+		validatorRPCAddresses: validatorRPCAddressses,
+		faucetWallet:          userwallet.NewUserWallet(ecdsaKey, validatorRPCAddressses[0], testlog.Logger(), userwallet.WithChainID(big.NewInt(integration.ObscuroChainID))),
+		l1RPCAddress:          l1RPCAddress,
 	}
 }
 
@@ -40,6 +57,10 @@ func (t *testnetConnector) ChainID() int64 {
 }
 
 func (t *testnetConnector) AllocateFaucetFunds(ctx context.Context, account gethcommon.Address) error {
+	if t.faucetWallet != nil {
+		// if we have a faucet wallet available, use it to send funds - if not we'll use the http faucet
+		return t.AllocateFaucetFundsWithWallet(ctx, account)
+	}
 	payload := map[string]string{"address": account.Hex()}
 	jsonPayload, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.faucetHTTPAddress, bytes.NewBuffer(jsonPayload))
@@ -71,7 +92,7 @@ func (t *testnetConnector) NumValidators() int {
 }
 
 func (t *testnetConnector) GetL1Client() (ethadapter.EthClient, error) {
-	client, err := ethadapter.NewEthClient(t.l1Host, t.l1HttpPort, time.Minute, gethcommon.Address{}, testlog.Logger())
+	client, err := ethadapter.NewEthClientFromAddress(t.l1RPCAddress, time.Minute, gethcommon.Address{}, testlog.Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -84,4 +105,20 @@ func (t *testnetConnector) GetSequencerNode() networktest.NodeOperator {
 
 func (t *testnetConnector) GetValidatorNode(_ int) networktest.NodeOperator {
 	panic("node operators cannot be accessed for testnets")
+}
+
+func (t *testnetConnector) AllocateFaucetFundsWithWallet(ctx context.Context, account gethcommon.Address) error {
+	txHash, err := t.faucetWallet.SendFunds(ctx, account, _defaultFaucetAmount)
+	if err != nil {
+		return err
+	}
+
+	receipt, err := t.faucetWallet.AwaitReceipt(ctx, txHash)
+	if err != nil {
+		return err
+	}
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		return fmt.Errorf("faucet transaction receipt status not successful - %v", receipt.Status)
+	}
+	return nil
 }
