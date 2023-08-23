@@ -2,8 +2,9 @@ package env
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/wallet"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/wallet"
 
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/obsclient"

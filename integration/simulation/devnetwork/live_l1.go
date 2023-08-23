@@ -2,11 +2,12 @@ package devnetwork
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"time"
 )
 
 type liveL1Network struct {

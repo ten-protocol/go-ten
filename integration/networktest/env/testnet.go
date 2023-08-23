@@ -5,12 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
 	"math/big"
 	"net/http"
 	"time"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
@@ -39,6 +40,7 @@ func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, fau
 		l1RPCAddress:          l1RPCAddress,
 	}
 }
+
 func NewTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddressses []string, faucetPK string, l1RPCAddress string) networktest.NetworkConnector {
 	ecdsaKey, err := crypto.HexToECDSA(faucetPK)
 	if err != nil {

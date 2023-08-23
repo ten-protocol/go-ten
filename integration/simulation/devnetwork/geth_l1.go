@@ -2,6 +2,7 @@ package devnetwork
 
 import (
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/integration"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"

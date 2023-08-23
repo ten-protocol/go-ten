@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/datagenerator"
@@ -17,7 +18,7 @@ func main() {
 	pk := hex.EncodeToString(datagenerator.RandomBytes(32))
 
 	// OR set PK here to check acc number
-	//pk := "b56aa8059fe42fd702f32a1055cf06f3f7ca851f9da5cc89541b2fcf9a3c654b"
+	// pk := "b56aa8059fe42fd702f32a1055cf06f3f7ca851f9da5cc89541b2fcf9a3c654b"
 
 	fmt.Println("Private key:", pk)
 

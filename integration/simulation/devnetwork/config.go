@@ -1,13 +1,14 @@
 package devnetwork
 
 import (
+	"math/big"
+	"sync"
+	"time"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-	"math/big"
-	"sync"
-	"time"
 
 	"github.com/obscuronet/go-obscuro/integration"
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"

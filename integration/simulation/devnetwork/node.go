@@ -2,9 +2,10 @@ package devnetwork
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/host"
 	"math/big"
 	"os"
+
+	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
 

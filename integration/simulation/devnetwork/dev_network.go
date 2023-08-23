@@ -3,11 +3,12 @@ package devnetwork
 import (
 	"context"
 	"fmt"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
 
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
