@@ -5,10 +5,10 @@ import (
 	"embed"
 	"errors"
 	"io/fs"
+	"math/big"
 	"sort"
 	"strconv"
 	"strings"
-	"unsafe"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
@@ -65,7 +65,7 @@ func executeMigration(db *sql.DB, content string, migrationOrder int64) error {
 		return err
 	}
 
-	_, err = enclavedb.WriteConfigToTx(tx, currentFileKey, IntToByteArray(migrationOrder))
+	_, err = enclavedb.WriteConfigToTx(tx, currentFileKey, big.NewInt(migrationOrder).Bytes())
 	if err != nil {
 		return err
 	}
@@ -104,21 +104,8 @@ func getPrefix(migrationFile fs.DirEntry) int {
 	return number
 }
 
-func IntToByteArray(num int64) []byte {
-	size := int(unsafe.Sizeof(num))
-	arr := make([]byte, size)
-	for i := 0; i < size; i++ {
-		byt := *(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&num)) + uintptr(i)))
-		arr[i] = byt
-	}
-	return arr
-}
-
 func ByteArrayToInt(arr []byte) int64 {
-	val := int64(0)
-	size := len(arr)
-	for i := 0; i < size; i++ {
-		*(*uint8)(unsafe.Pointer(uintptr(unsafe.Pointer(&val)) + uintptr(i))) = arr[i]
-	}
-	return val
+	b := big.NewInt(0)
+	b.SetBytes(arr)
+	return b.Int64()
 }
