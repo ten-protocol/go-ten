@@ -23,6 +23,10 @@ func WriteConfigToBatch(dbtx DBTransaction, key string, value any) {
 	dbtx.ExecuteSQL(cfgInsert, key, value)
 }
 
+func WriteConfigToTx(dbtx *sql.Tx, key string, value any) (sql.Result, error) {
+	return dbtx.Exec(cfgInsert, key, value)
+}
+
 func WriteConfig(db *sql.DB, key string, value []byte) (sql.Result, error) {
 	return db.Exec(cfgInsert, key, value)
 }
