@@ -15,8 +15,10 @@ import (
 //go:embed staticOG
 var staticFiles embed.FS
 
-const staticDir = "static"
-const staticDirOG = "staticOG"
+const (
+	staticDir   = "static"
+	staticDirOG = "staticOG"
+)
 
 // Server is a wrapper for the http server
 type Server struct {

@@ -20,11 +20,11 @@ const jsonHeaders = {
 const metamaskRequestAccounts = "eth_requestAccounts";
 const metamaskPersonalSign = "personal_sign";
 
-import Config from "./config/config.js";
-
 function isValidUserIDFormat(value) {
     return typeof value === 'string' && value.length === 64;
 }
+
+let obscuroGatewayAddress = window.location.protocol + "//" + window.location.host;
 
 async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
     // add network to MetaMask
@@ -42,7 +42,7 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
                         symbol: 'OBX',
                         decimals: 18
                     },
-                    rpcUrls: [Config.ObscuroGatewayAddress+'/?u='+userID],
+                    rpcUrls: [obscuroGatewayAddress+'/?u='+userID],
                     blockExplorerUrls: null,
                 },
             ],
