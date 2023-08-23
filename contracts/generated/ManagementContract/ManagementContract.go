@@ -389,11 +389,15 @@ func (_ManagementContract *ManagementContractCallerSession) LastBatchSeqNo() (*b
 func (_ManagementContract *ManagementContractCaller) MessageBus(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
 	err := _ManagementContract.contract.Call(opts, &out, "messageBus")
+
 	if err != nil {
 		return *new(common.Address), err
 	}
 
-	return *abi.ConvertType(out[0], new(common.Address)).(*common.Address), nil
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	return out0, err
+
 }
 
 // MessageBus is a free data retrieval call binding the contract method 0xa1a227fa.
