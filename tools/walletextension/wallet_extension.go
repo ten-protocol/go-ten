@@ -186,6 +186,7 @@ func (w *WalletExtension) GenerateAndStoreNewUser() (string, error) {
 	hexUserID := hex.EncodeToString(userID)
 
 	w.userAccountManager.AddAndReturnAccountManager(hexUserID)
+	w.Logger().Info(fmt.Sprintf("new user added: %s", hexUserID))
 
 	return hexUserID, nil
 }
@@ -241,6 +242,8 @@ func (w *WalletExtension) AddAddressToUser(hexUserID string, message string, sig
 
 	accManager.AddClient(addressFromMessage, encClient)
 
+	w.Logger().Info(fmt.Sprintf("user: %s added a new address: %s", hexUserID, addressFromMessage))
+
 	return nil
 }
 
@@ -294,6 +297,8 @@ func (w *WalletExtension) DeleteUser(hexUserID string) error {
 	err = w.userAccountManager.DeleteUserAccountManager(hexUserID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error deleting UserAccointManager for user (%s), %w", hexUserID, err).Error())
+	} else {
+		w.Logger().Info(fmt.Sprintf("user: %s successfully deleted", hexUserID))
 	}
 
 	return nil
