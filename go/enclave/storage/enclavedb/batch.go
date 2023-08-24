@@ -100,14 +100,14 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
-			msg, err := transaction.AsMessage(types.LatestSignerForChainID(transaction.ChainId()), big.NewInt(0))
+			from, err := types.Sender(types.LatestSignerForChainID(transaction.ChainId()), transaction)
 			if err != nil {
 				return fmt.Errorf("unable to convert tx to message - %w", err)
 			}
 
 			args = append(args, transaction.Hash().Bytes()) // tx_hash
 			args = append(args, txBytes)                    // content
-			args = append(args, msg.From().Bytes())         // sender_address
+			args = append(args, from.Bytes())               // sender_address
 			args = append(args, transaction.Nonce())        // nonce
 			args = append(args, i)                          // idx
 			args = append(args, bodyHash)                   // the batch body which contained it
@@ -335,7 +335,7 @@ func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args .
 
 		hash := common.L2BatchHash{}
 		hash.SetBytes(batchHash)
-		if err = receipts.DeriveFields(config, hash, height, transactions); err != nil {
+		if err = receipts.DeriveFields(config, hash, height, 0, big.NewInt(0), big.NewInt(0), transactions); err != nil {
 			return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; err = %w", hash, height, err)
 		}
 		allReceipts = append(allReceipts, receipts[0])
@@ -387,7 +387,7 @@ func ReadReceipt(db *sql.DB, hash common.L2TxHash, config *params.ChainConfig) (
 
 	batchhash := common.L2BatchHash{}
 	batchhash.SetBytes(batchHash)
-	if err = receipts.DeriveFields(config, batchhash, height, transactions); err != nil {
+	if err = receipts.DeriveFields(config, batchhash, height, 0, big.NewInt(0), big.NewInt(0), transactions); err != nil {
 		return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; err = %w", hash, height, err)
 	}
 	return receipts[0], nil

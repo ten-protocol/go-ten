@@ -108,7 +108,10 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 					NetworkID: _networkName,
 				},
 			},
-		}, containerName)
+		},
+		nil,
+		containerName,
+	)
 	if err != nil {
 		return "", err
 	}

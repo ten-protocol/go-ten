@@ -17,9 +17,9 @@ func TestInvalidBlocksAreRejected(t *testing.T) {
 	blockConsumer := l1BlockProcessor{}
 
 	invalidHeaders := []types.Header{
-		{ParentHash: common.HexToHash("0x0")},                                                            // Unknown ancestor.
-		{ParentHash: core.DefaultGenesisBlock().ToBlock(nil).Hash(), Number: big.NewInt(999)},            // Wrong block number.
-		{ParentHash: core.DefaultGenesisBlock().ToBlock(nil).Hash(), Number: big.NewInt(1), GasLimit: 1}, // Wrong gas limit.
+		{ParentHash: common.HexToHash("0x0")},                                                         // Unknown ancestor.
+		{ParentHash: core.DefaultGenesisBlock().ToBlock().Hash(), Number: big.NewInt(999)},            // Wrong block number.
+		{ParentHash: core.DefaultGenesisBlock().ToBlock().Hash(), Number: big.NewInt(1), GasLimit: 1}, // Wrong gas limit.
 	}
 
 	for _, header := range invalidHeaders {

@@ -4,23 +4,25 @@ import (
 	"errors"
 	"fmt"
 	"math"
-
-	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/go/common/gethencoding"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/obscuronet/go-obscuro/go/enclave/storage"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethcore "github.com/ethereum/go-ethereum/core"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 )
 
 // ExecuteTransactions
@@ -48,7 +50,19 @@ func ExecuteTransactions(
 
 	hash := header.Hash()
 	for i, t := range txs {
-		r, err := executeTransaction(s, chainConfig, chain, gp, ethHeader, t, usedGas, vmCfg, fromTxIndex+i, hash)
+		r, err := executeTransaction(
+			s,
+			chainConfig,
+			chain,
+			gp,
+			ethHeader,
+			t,
+			usedGas,
+			vmCfg,
+			fromTxIndex+i,
+			hash,
+			header.Number.Uint64(),
+		)
 		if err != nil {
 			result[t.Hash()] = err
 			logger.Info("Failed to execute tx:", log.TxKey, t.Hash(), log.CtrErrKey, err)
@@ -72,9 +86,16 @@ func executeTransaction(
 	vmCfg vm.Config,
 	tCount int,
 	batchHash common.L2BatchHash,
+	batchHeight uint64,
 ) (*types.Receipt, error) {
-	s.Prepare(t.Hash(), tCount)
+	rules := cc.Rules(big.NewInt(0), true, 0)
+	from, err := types.Sender(types.LatestSigner(cc), t)
+	if err != nil {
+		return nil, err
+	}
+	s.Prepare(rules, from, gethcommon.Address{}, t.To(), nil, nil)
 	snap := s.Snapshot()
+	s.SetTxContext(t.Hash(), tCount)
 
 	before := header.MixDigest
 	// calculate a random value per transaction
@@ -83,8 +104,9 @@ func executeTransaction(
 
 	// adjust the receipt to point to the right batch hash
 	if receipt != nil {
-		receipt.Logs = s.GetLogs(t.Hash(), batchHash)
+		receipt.Logs = s.GetLogs(t.Hash(), batchHeight, batchHash)
 		receipt.BlockHash = batchHash
+		receipt.BlockNumber = big.NewInt(int64(batchHeight))
 		for _, l := range receipt.Logs {
 			l.BlockHash = batchHash
 		}
@@ -117,7 +139,7 @@ func logReceipt(r *types.Receipt, logger gethlog.Logger) {
 
 // ExecuteObsCall - executes the eth_call call
 func ExecuteObsCall(
-	msg *types.Message,
+	msg *gethcore.Message,
 	s *state.StateDB,
 	header *common.BatchHeader,
 	storage storage.Storage,
@@ -163,7 +185,6 @@ func ExecuteObsCall(
 func initParams(storage storage.Storage, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config, *gethcore.GasPool) {
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
-		Debug:     false,
 	}
 	gp := gethcore.GasPool(math.MaxUint64)
 	return NewObscuroChainContext(storage, l), vmCfg, &gp
