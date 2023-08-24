@@ -394,9 +394,9 @@ func (s *storageImpl) StoreExecutedBatch(batch *core.Batch, receipts []*types.Re
 			return fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 		}
 
-		err2 := enclavedb.StoreEventLogs(dbTx, receipts, stateDB)
-		if err2 != nil {
-			return fmt.Errorf("could not save logs %w", err2)
+		err = enclavedb.StoreEventLogs(dbTx, receipts, stateDB)
+		if err != nil {
+			return fmt.Errorf("could not save logs %w", err)
 		}
 	}
 

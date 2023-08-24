@@ -96,6 +96,7 @@ func executeTransaction(
 	}
 	s.Prepare(rules, from, gethcommon.Address{}, t.To(), nil, nil)
 	snap := s.Snapshot()
+	s.SetTxContext(t.Hash(), tCount)
 
 	before := header.MixDigest
 	// calculate a random value per transaction
@@ -104,7 +105,13 @@ func executeTransaction(
 
 	// adjust the receipt to point to the right batch hash
 	if receipt != nil {
+		if receipt.ContractAddress.Hex() != gethcommon.HexToAddress("").Hex() {
+			fmt.Println("stored log for contract: ", receipt.ContractAddress.Hex())
+		}
 		receipt.Logs = s.GetLogs(t.Hash(), batchHeight, batchHash)
+		if len(receipt.Logs) > 0 {
+			fmt.Println("Found logs for receipt contract: ", receipt.ContractAddress.Hex())
+		}
 		receipt.BlockHash = batchHash
 		receipt.BlockNumber = big.NewInt(int64(batchHeight))
 		for _, l := range receipt.Logs {
