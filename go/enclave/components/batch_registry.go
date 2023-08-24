@@ -142,13 +142,12 @@ func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Bat
 	case gethrpc.PendingBlockNumber:
 		// todo - depends on the current pending rollup; leaving it for a different iteration as it will need more thought
 		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
-	case gethrpc.LatestBlockNumber:
+	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber, gethrpc.LatestBlockNumber:
 		headBatch, err := br.storage.FetchHeadBatch()
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)
 		}
 		batch = headBatch
-	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber:
 	default:
 		maybeBatch, err := br.storage.FetchBatchByHeight(uint64(height))
 		if err != nil {
