@@ -76,8 +76,7 @@ func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, co
 
 	// wallet extension can override the GetStorageAt to retrieve the current userID
 	if request.Method == rpc.GetStorageAt {
-		interceptedResponse := w.getStorageAtInterceptor(request, hexUserID)
-		if interceptedResponse != nil {
+		if w.getStorageAtInterceptor(request, hexUserID) != nil {
 			w.logger.Info("interception successful for getStorageAt, returning userID response")
 			return interceptedResponse, nil
 		}
