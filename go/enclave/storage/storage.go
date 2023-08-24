@@ -400,7 +400,7 @@ func (s *storageImpl) StoreExecutedBatch(batch *core.Batch, receipts []*types.Re
 		}
 	}
 
-	if err := dbTx.Write(); err != nil {
+	if err = dbTx.Write(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 

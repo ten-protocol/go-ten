@@ -282,7 +282,6 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 
 		signedTx := ti.createInvalidSignage(tx, fromWallet)
 
-		fmt.Println("Invalid Tx: ", signedTx.Hash())
 		err := ti.rpcHandles.ObscuroWalletRndClient(fromWallet).SendTransaction(ti.ctx, signedTx)
 		if err != nil {
 			ti.logger.Warn("Failed to issue withdrawal via RPC. ", log.ErrKey, err)
