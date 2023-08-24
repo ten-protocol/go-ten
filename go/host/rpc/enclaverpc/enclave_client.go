@@ -52,7 +52,7 @@ func NewClient(config *config.HostConfig, logger gethlog.Logger) common.Enclave 
 	err = retry.Do(func() error {
 		currState := connection.GetState()
 		if currState != connectivity.Ready {
-			logger.Info("retrying connection until enclave is available", "status", currState.String())
+			logger.Info("retrying connection until enclave is available", "status", currState.String(), "rpcAddr", config.EnclaveRPCAddress)
 			connection.Connect()
 			return fmt.Errorf("connection is not ready, status=%s", currState)
 		}
