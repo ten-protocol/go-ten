@@ -185,7 +185,6 @@ func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 	}
 	// Recompute transactions up to the target index.
 	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
-	// signer := types.MakeSigner(eth.blockchain.Config(), batch.Number())
 	rules := oc.chainConfig.Rules(big.NewInt(0), true, 0)
 	signer := types.LatestSigner(oc.chainConfig)
 	for idx, tx := range batch.Transactions {

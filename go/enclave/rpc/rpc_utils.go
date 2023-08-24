@@ -29,7 +29,6 @@ func GetSender(tx *common.L2Tx) (gethcommon.Address, error) {
 
 	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
 	if err != nil {
-		fmt.Println("errorSubmitTx: ", tx.Hash())
 		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
 	}
 

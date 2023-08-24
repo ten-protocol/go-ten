@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -105,13 +104,7 @@ func executeTransaction(
 
 	// adjust the receipt to point to the right batch hash
 	if receipt != nil {
-		if receipt.ContractAddress.Hex() != gethcommon.HexToAddress("").Hex() {
-			fmt.Println("stored log for contract: ", receipt.ContractAddress.Hex())
-		}
 		receipt.Logs = s.GetLogs(t.Hash(), batchHeight, batchHash)
-		if len(receipt.Logs) > 0 {
-			fmt.Println("Found logs for receipt contract: ", receipt.ContractAddress.Hex())
-		}
 		receipt.BlockHash = batchHash
 		receipt.BlockNumber = big.NewInt(int64(batchHeight))
 		for _, l := range receipt.Logs {

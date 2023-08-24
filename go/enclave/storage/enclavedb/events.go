@@ -26,9 +26,6 @@ func StoreEventLogs(dbtx DBTransaction, receipts []*types.Receipt, stateDB *stat
 	var args []any
 	totalLogs := 0
 	for _, receipt := range receipts {
-		if receipt.ContractAddress.Hex() != gethcommon.HexToAddress("").Hex() {
-			fmt.Println("stored log for contract: ", receipt.ContractAddress.Hex())
-		}
 		for _, l := range receipt.Logs {
 			logArgs, err := writeLog(dbtx.GetDB(), l, receipt, stateDB)
 			if err != nil {
