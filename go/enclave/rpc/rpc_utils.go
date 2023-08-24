@@ -26,10 +26,12 @@ func ExtractTx(txBinary string) (*common.L2Tx, error) {
 // given a transaction.
 func GetSender(tx *common.L2Tx) (gethcommon.Address, error) {
 	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
-	msg, err := tx.AsMessage(types.LatestSignerForChainID(tx.ChainId()), tx.GasTipCap())
+
+	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
 	if err != nil {
+		fmt.Println("errorSubmitTx: ", tx.Hash())
 		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
 	}
 
-	return msg.From(), nil
+	return from, nil
 }

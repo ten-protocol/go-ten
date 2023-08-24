@@ -44,7 +44,7 @@ func (g Genesis) CommitGenesisState(storage storage.Storage) error {
 	if err != nil {
 		return err
 	}
-	_, err = stateDB.Commit(true)
+	_, err = stateDB.Commit(0, false)
 	if err != nil {
 		return err
 	}

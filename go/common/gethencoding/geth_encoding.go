@@ -25,6 +25,7 @@ const (
 	callFieldData                 = "data"
 	callFieldValue                = "value"
 	callFieldGas                  = "gas"
+	callFieldNonce                = "nonce"
 	callFieldGasPrice             = "gasprice"
 	callFieldMaxFeePerGas         = "maxfeepergas"
 	callFieldMaxPriorityFeePerGas = "maxpriorityfeepergas"
@@ -135,7 +136,9 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 	var data *hexutil.Bytes
 	var value, gasPrice, maxFeePerGas, maxPriorityFeePerGas *hexutil.Big
 	var ok bool
-	var gas *hexutil.Uint64
+	zeroUint := hexutil.Uint64(0)
+	gas := &zeroUint
+	nonce := &zeroUint
 
 	for field, val := range param.(map[string]interface{}) {
 		if val == nil {
@@ -167,6 +170,12 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
 			}
 			value = (*hexutil.Big)(valueVal)
+		case callFieldNonce:
+			nonceVal, err := hexutil.DecodeUint64(valString)
+			if err != nil {
+				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
+			}
+			nonce = (*hexutil.Uint64)(&nonceVal)
 		case callFieldGas:
 			gasVal, err := hexutil.DecodeUint64(valString)
 			if err != nil {
@@ -207,6 +216,7 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 		MaxPriorityFeePerGas: maxPriorityFeePerGas,
 		Value:                value,
 		Data:                 data,
+		Nonce:                nonce,
 		AccessList:           nil,
 	}
 

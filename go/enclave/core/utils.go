@@ -51,6 +51,7 @@ func GetAuthenticatedSender(chainID int64, tx *types.Transaction) (*gethcommon.A
 	signer := types.NewLondonSigner(big.NewInt(chainID))
 	sender, err := types.Sender(signer, tx)
 	if err != nil {
+		fmt.Println("errorGetAuthenticatedSenderTx: ", tx.Hash())
 		return nil, err
 	}
 	return &sender, nil

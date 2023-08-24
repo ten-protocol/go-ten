@@ -85,8 +85,6 @@ type TransactionStorage interface {
 	GetTransactionReceipt(txHash common.L2TxHash) (*types.Receipt, error)
 	// GetReceiptsByBatchHash retrieves the receipts for all transactions in a given rollup.
 	GetReceiptsByBatchHash(hash common.L2BatchHash) (types.Receipts, error)
-	// GetSender returns the sender of the tx by hash
-	GetSender(txHash common.L2TxHash) (gethcommon.Address, error)
 	// GetContractCreationTx returns the hash of the tx that created a contract
 	GetContractCreationTx(address gethcommon.Address) (*gethcommon.Hash, error)
 }

@@ -132,7 +132,7 @@ func (br *batchRegistry) GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber)
 
 func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error) {
 	var batch *core.Batch
-	switch height {
+	switch height { //
 	case gethrpc.EarliestBlockNumber:
 		genesisBatch, err := br.storage.FetchBatchByHeight(0)
 		if err != nil {
@@ -148,6 +148,7 @@ func (br *batchRegistry) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Bat
 			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)
 		}
 		batch = headBatch
+	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber:
 	default:
 		maybeBatch, err := br.storage.FetchBatchByHeight(uint64(height))
 		if err != nil {

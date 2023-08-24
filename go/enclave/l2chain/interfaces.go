@@ -28,5 +28,5 @@ type ObscuroChain interface {
 	ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error)
 
 	// GetChainStateAtTransaction - returns the stateDB after applying all the transactions in the batch leading to the desired transaction.
-	GetChainStateAtTransaction(batch *core.Batch, txIndex int, reexec uint64) (gethcore.Message, vm.BlockContext, *state.StateDB, error)
+	GetChainStateAtTransaction(batch *core.Batch, txIndex int, reexec uint64) (*gethcore.Message, vm.BlockContext, *state.StateDB, error)
 }
