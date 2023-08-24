@@ -275,7 +275,7 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 	return nil, fmt.Errorf("no known account found in data bytes")
 }
 
-func (m *AccountManager) executeSubscribe(client rpc.Client, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
+func (m *AccountManager) executeSubscribe(client rpc.Client, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error { //nolint: gocognit
 	if len(req.Params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
@@ -311,7 +311,10 @@ func (m *AccountManager) executeSubscribe(client rpc.Client, req *RPCRequest, re
 
 			case err = <-subscription.Err():
 				// An error on this channel means the subscription has ended, so we exit the loop.
-				userConn.HandleError(err.Error())
+				if userConn != nil && err != nil {
+					userConn.HandleError(err.Error())
+				}
+
 				return
 			}
 		}
