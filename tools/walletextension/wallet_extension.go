@@ -356,14 +356,9 @@ func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
 	}
 }
 
-// getStorageAtInterceptor checks method name in the request and if it is one of the methods that we use differently than an eth standard.
-// At the moment, it is only getStorageAt method. It returns response if we should use that response or nil otherwise
+// getStorageAtInterceptor checks if the parameters for getStorageAt are set to values that require interception
+// and return response or nil if the gateway should forward the request to the node.
 func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCRequest, hexUserID string) map[string]interface{} {
-	response := map[string]interface{}{}
-	// all responses must contain the request id. Both successful and unsuccessful.
-	response[common.JSONKeyRPCVersion] = jsonrpc.Version
-	response[common.JSONKeyID] = request.ID
-
 	// check if parameters are correct, and we can intercept a request, otherwise return nil
 	if w.checkParametersForInterceptedGetStorageAt(request.Params) {
 		// check if userID in the parameters is also in our database
@@ -378,7 +373,9 @@ func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCReq
 			w.logger.Info("Trying to get userID, but it is not present in our database: ")
 			return nil
 		}
-
+		response := map[string]interface{}{}
+		response[common.JSONKeyRPCVersion] = jsonrpc.Version
+		response[common.JSONKeyID] = request.ID
 		response[common.JSONKeyResult] = hexUserID
 		return response
 	}
@@ -387,18 +384,16 @@ func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCReq
 	return nil
 }
 
+// checkParametersForInterceptedGetStorageAt checks
+// if parameters for getStorageAt are in the correct format to intercept the function
 func (w *WalletExtension) checkParametersForInterceptedGetStorageAt(params []interface{}) bool {
 	if len(params) != 3 {
 		w.logger.Info(fmt.Sprintf("getStorageAt expects 3 parameters, but %d received", len(params)))
 		return false
 	}
 
-	address, _ := params[0].(string)
-	position, _ := params[1].(string)
-
-	// we only want to intercept getStorageAt if those parameters match pre-defined ones
-	if address == common.GetStorageAtUserIDSpecialAddress && position == common.GetStorageAtUserIDSpecialPosition {
-		return true
+	if methodName, ok := params[0].(string); ok {
+		return methodName == common.GetStorageAtUserIDRequestMethodName
 	}
 	return false
 }
