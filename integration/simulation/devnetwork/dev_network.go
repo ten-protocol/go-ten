@@ -7,6 +7,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -37,6 +40,11 @@ type InMemDevNetwork struct {
 	networkWallets *params.SimWallets
 
 	l1Network L1Network
+
+	// When Obscuro network has been initialised on the L1 network, this will be populated
+	// - if reconnecting to an existing network it needs to be populated when initialising this object
+	// - if it is nil when `Start()` is called then Obscuro contracts will be deployed on the L1
+	l1SetupData *params.L1SetupData
 
 	obscuroConfig     ObscuroConfig
 	obscuroSequencer  *InMemNodeOperator
@@ -105,7 +113,17 @@ func (s *InMemDevNetwork) NumValidators() int {
 }
 
 func (s *InMemDevNetwork) Start() {
-	s.l1Network.Start()
+	if s.logger == nil {
+		s.logger = testlog.Logger()
+	}
+	fmt.Println("Starting L1 network")
+	s.l1Network.Prepare()
+	if s.l1SetupData == nil {
+		// this is a new network, deploy the contracts to the L1
+		fmt.Println("Deploying obscuro contracts to L1")
+		s.deployObscuroNetworkContracts()
+	}
+	fmt.Println("Starting obscuro nodes")
 	s.startNodes()
 }
 
@@ -116,10 +134,10 @@ func (s *InMemDevNetwork) DeployL1StandardContracts() {
 func (s *InMemDevNetwork) startNodes() {
 	if s.obscuroSequencer == nil {
 		// initialise node operators
-		s.obscuroSequencer = NewInMemNodeOperator(0, s.obscuroConfig, common.Sequencer, s.l1Network.ObscuroSetupData(), s.l1Network.GetClient(0), s.networkWallets.NodeWallets[0], s.logger)
+		s.obscuroSequencer = NewInMemNodeOperator(0, s.obscuroConfig, common.Sequencer, s.l1SetupData, s.l1Network.GetClient(0), s.networkWallets.NodeWallets[0], s.logger)
 		for i := 1; i <= s.obscuroConfig.InitNumValidators; i++ {
 			l1Client := s.l1Network.GetClient(i % s.l1Network.NumNodes())
-			s.obscuroValidators = append(s.obscuroValidators, NewInMemNodeOperator(i, s.obscuroConfig, common.Validator, s.l1Network.ObscuroSetupData(), l1Client, s.networkWallets.NodeWallets[i], s.logger))
+			s.obscuroValidators = append(s.obscuroValidators, NewInMemNodeOperator(i, s.obscuroConfig, common.Validator, s.l1SetupData, l1Client, s.networkWallets.NodeWallets[i], s.logger))
 		}
 	}
 
@@ -155,8 +173,18 @@ func (s *InMemDevNetwork) CleanUp() {
 			fmt.Println("failed to stop sequencer", err.Error())
 		}
 	}()
-	go s.l1Network.Stop()
+	go s.l1Network.CleanUp()
 
 	s.logger.Info("Waiting for servers to stop.")
 	time.Sleep(3 * time.Second)
+}
+
+func (s *InMemDevNetwork) deployObscuroNetworkContracts() {
+	client := s.l1Network.GetClient(0)
+	// note: we don't currently deploy ERC20s here, don't want to waste gas on sepolia
+	l1SetupData, err := network.DeployObscuroNetworkContracts(client, s.networkWallets, false)
+	if err != nil {
+		panic(err)
+	}
+	s.l1SetupData = l1SetupData
 }
