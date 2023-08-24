@@ -74,10 +74,11 @@ func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, co
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
 
-	// check if requested method is GetStorageAt, since we use for gettingUserID if correct parameters are used
+	// check if the requested method is GetStorageAt, since we use for gettingUserID if correct parameters are used
 	if request.Method == rpc.GetStorageAt {
 		interceptedResponse := w.getStorageAtInterceptor(request, hexUserID)
 		if interceptedResponse != nil {
+			w.logger.Info("interception successful for getStorageAt, returning userID response")
 			return interceptedResponse, nil
 		}
 	}
@@ -364,7 +365,7 @@ func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCReq
 	response[common.JSONKeyID] = request.ID
 
 	// check if parameters are correct, and we can intercept a request, otherwise return nil
-	if interceptGetStorageAtParametersCheck(request.Params) {
+	if w.checkParametersForInterceptedGetStorageAt(request.Params) {
 		// check if userID in the parameters is also in our database
 		userID, err := common.GetUserIDbyte(hexUserID)
 		if err != nil {
@@ -381,19 +382,23 @@ func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCReq
 		response[common.JSONKeyResult] = hexUserID
 		return response
 	}
+	w.logger.Info(fmt.Sprintf("parameters used in the request do not match requited parameters for interception: %s", request.Params))
 
 	return nil
 }
 
-func interceptGetStorageAtParametersCheck(params []interface{}) bool {
-	for _, item := range params {
-		if m, ok := item.(map[string]interface{}); ok {
-			address, addrOk := m["address"].(string)
-			position, posOk := m["position"].(string)
-			if addrOk && address == common.GetStorageAtUserIDSpecialAddress && posOk && position == common.GetStorageAtUserIDSpecialPosition {
-				return true
-			}
-		}
+func (w *WalletExtension) checkParametersForInterceptedGetStorageAt(params []interface{}) bool {
+	if len(params) != 3 {
+		w.logger.Info(fmt.Sprintf("getStorageAt expects 3 parameters, but %d received", len(params)))
+		return false
+	}
+
+	address, _ := params[0].(string)
+	position, _ := params[1].(string)
+
+	// we only want to intercept getStorageAt if those parameters match pre-defined ones
+	if address == common.GetStorageAtUserIDSpecialAddress && position == common.GetStorageAtUserIDSpecialPosition {
+		return true
 	}
 	return false
 }
