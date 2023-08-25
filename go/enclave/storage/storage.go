@@ -274,7 +274,7 @@ func (s *storageImpl) CreateStateDB(hash common.L2BatchHash) (*state.StateDB, er
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	callStart := time.Now()
 	defer s.logDuration("EmptyStateDB", callStart)
-	statedb, err := state.New(gethcommon.BigToHash(big.NewInt(0)), s.stateDB, nil)
+	statedb, err := state.New(types.EmptyRootHash, s.stateDB, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}
