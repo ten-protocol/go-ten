@@ -11,9 +11,10 @@ Key performance indicators (KPIs) will be used to determine the amount of Testne
 ### Selected KPIs for Users
 | KPI NAME | RATIONALE | SOURCE | METRIC | TARGET |
 |--|--|--|--|--|
-| Testnet uptime | Captures how robust and ready for mainnet Obscuro is | DataDog avg:system.uptime{*} | Average Testnet uptime over the last 4 weeks|99%|
+| Testnet uptime | Captures how robust and ready for mainnet Obscuro is | DataDog avg:system.uptime{*} | Average Testnet uptime over the last 4 weeks|99.9%|
 | Number of wallets connected to Obscuro Gateway| Good proxy for the number of active users. Straightforward to capture.| Datadog? |Number of daily connections|500|
 | Number of transactions| Typical guage of the amount of activity on testnet (even though it can be gamed).| Datadog? |Number of daily transactions|2000|
+| Number of RPC requests| Alternative guage of the amount of activity on testnet. Can also show where RPC performance degrades.| Datadog? |Number of daily RPC requests|2000|
 
 ### Selected KPIs for Developers
 | KPI NAME | RATIONALE | SOURCE | METRIC | TARGET |
