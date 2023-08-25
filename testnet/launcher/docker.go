@@ -1,12 +1,9 @@
 package launcher
 
 import (
-	"bytes"
-	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
+	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/obscuronet/go-obscuro/go/rpc"
 	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common/retry"
@@ -210,49 +207,30 @@ func deployL1Contracts() (*node.NetworkConfig, error) {
 
 // waitForHealthyNode retries continuously for the node to respond to a healthcheck http request
 func waitForHealthyNode(port int) error { // todo: hook the cfg
-	requestURL := fmt.Sprintf("http://localhost:%d", port)
-	reqBody := `{"method": "obscuro_health", "id": 1}`
-
 	timeStart := time.Now()
 
+	hostRPCAddress := fmt.Sprintf("http://localhost:%d", port)
 	fmt.Println("Waiting for Obscuro node to be healthy...")
 	err := retry.Do(
 		func() error {
-			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, requestURL, bytes.NewBufferString(reqBody))
-			if err != nil {
-				return fmt.Errorf("client: could not create request: %w", err)
-			}
-			req.Header.Set("Content-Type", "application/json")
-
-			res, err := http.DefaultClient.Do(req)
+			client, err := rpc.NewNetworkClient(hostRPCAddress)
 			if err != nil {
 				return err
 			}
-			defer res.Body.Close()
+			defer client.Stop()
 
-			resBody, err := io.ReadAll(res.Body)
+			obsClient := obsclient.NewObsClient(client)
+			health, err := obsClient.Health()
 			if err != nil {
 				return err
 			}
-
-			response := map[string]interface{}{}
-			err = json.Unmarshal(resBody, &response)
-			if err != nil {
-				return err
+			if health {
+				fmt.Println("obscuro node is ready")
+				return nil
 			}
 
-			if r := response["result"]; r != nil { //nolint: nestif
-				if h, ok := r.(map[string]interface{}); ok {
-					if overallHealth := h["OverallHealth"]; overallHealth != nil {
-						if health, ok := overallHealth.(bool); ok && health {
-							fmt.Println("obscuro node is ready")
-							return nil
-						}
-					}
-				}
-			}
 			return fmt.Errorf("node OverallHealth is not good yet")
-		}, retry.NewTimeoutStrategy(2*time.Minute, 1*time.Second),
+		}, retry.NewTimeoutStrategy(5*time.Minute, 1*time.Second),
 	)
 	if err != nil {
 		return err
