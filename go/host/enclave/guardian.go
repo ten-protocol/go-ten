@@ -2,12 +2,13 @@ package enclave
 
 import (
 	"fmt"
-	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"math/big"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 

@@ -3,6 +3,7 @@ package host
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/go/host/l2"
 
 	"github.com/obscuronet/go-obscuro/go/host/enclave"
@@ -163,7 +164,7 @@ func (h *host) Stop() error {
 	h.stopControl.Stop()
 
 	h.logger.Info("Host received a stop command. Attempting shutdown...")
-	
+
 	// stop all registered services
 	for name, service := range h.services.All() {
 		if err := service.Stop(); err != nil {
