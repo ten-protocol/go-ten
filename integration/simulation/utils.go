@@ -67,7 +67,6 @@ func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethc
 		From: address,
 		To:   l2ContractAddress,
 		Data: balanceData,
-		Gas:  uint64(1_000_000),
 	}
 
 	response, err := client.CallContract(ctx, callMsg, nil)

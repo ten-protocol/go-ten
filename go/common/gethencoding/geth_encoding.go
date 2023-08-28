@@ -137,8 +137,9 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 	var value, gasPrice, maxFeePerGas, maxPriorityFeePerGas *hexutil.Big
 	var ok bool
 	zeroUint := hexutil.Uint64(0)
-	gas := &zeroUint
 	nonce := &zeroUint
+	// if gas is not set it should be null
+	gas := (*hexutil.Uint64)(nil)
 
 	for field, val := range param.(map[string]interface{}) {
 		if val == nil {
