@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"fmt"
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"math/big"
 	"strings"
 	"sync"
@@ -11,8 +12,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
-
-	"github.com/kamilsk/breaker"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -66,12 +65,12 @@ type Guardian struct {
 	l1StartHash    gethcommon.Hash
 
 	running         atomic.Bool
-	hostInterrupter breaker.Interface // host hostInterrupter so we can stop quickly
+	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
 
 	logger gethlog.Logger
 }
 
-func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter breaker.Interface, logger gethlog.Logger) *Guardian {
+func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
 		hostData:        hostData,
 		state:           NewStateTracker(logger),
