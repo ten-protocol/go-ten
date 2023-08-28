@@ -61,6 +61,7 @@ func (t *Testnet) Start() error {
 		node.WithL1Start(networkConfig.L1StartHash),
 		node.WithInMemoryHostDB(true),
 		node.WithDebugNamespaceEnabled(true),
+		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
 	)
 
 	sequencerNode := node.NewDockerNode(sequencerNodeConfig)
@@ -99,6 +100,7 @@ func (t *Testnet) Start() error {
 		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
 		node.WithL1Start(networkConfig.L1StartHash),
 		node.WithInMemoryHostDB(true),
+		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
 	)
 
 	validatorNode := node.NewDockerNode(validatorNodeConfig)
