@@ -3,9 +3,6 @@ package host
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-
-	"github.com/kamilsk/breaker"
 
 	"github.com/obscuronet/go-obscuro/go/host/l2"
 
@@ -50,7 +47,6 @@ type host struct {
 	logger gethlog.Logger
 
 	metricRegistry gethmetrics.Registry
-	interrupter    breaker.Interface
 	enclaveConfig  *common.ObscuroEnclaveInfo
 }
 
@@ -77,13 +73,8 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p P2PH
 
 		stopControl: stopcontrol.New(),
 	}
-	host.interrupter = breaker.Multiplex(
-		breaker.BreakBySignal(
-			os.Kill,
-			os.Interrupt,
-		),
-	)
-	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, database, host.interrupter, logger)
+
+	enclGuardian := enclave.NewGuardian(config, hostIdentity, hostServices, enclaveClient, database, host.stopControl, logger)
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardian, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, database, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
@@ -115,13 +106,6 @@ func (h *host) Start() error {
 	if h.stopControl.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("requested Start with the host stopping"))
 	}
-
-	h.interrupter = breaker.Multiplex(
-		breaker.BreakBySignal(
-			os.Kill,
-			os.Interrupt,
-		),
-	)
 
 	h.validateConfig()
 
@@ -180,7 +164,6 @@ func (h *host) Stop() error {
 	h.stopControl.Stop()
 
 	h.logger.Info("Host received a stop command. Attempting shutdown...")
-	h.interrupter.Close()
 
 	// stop all registered services
 	for name, service := range h.services.All() {
