@@ -225,7 +225,7 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 				return err
 			}
 			if health {
-				fmt.Println("obscuro node is ready")
+				fmt.Println("Obscuro node is ready")
 				return nil
 			}
 
