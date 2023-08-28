@@ -6,7 +6,7 @@ const (
 	validatorEnclaveDebugFlag       = "validator-enclave-debug"
 	sequencerEnclaveDockerImageFlag = "sequencer-enclave-docker-image"
 	sequencerEnclaveDebugFlag       = "sequencer-enclave-debug"
-	isSGXEnabledFlag                = "is-sgx_enabled"
+	isSGXEnabledFlag                = "is-sgx-enabled"
 )
 
 // Returns a map of the flag usages.
