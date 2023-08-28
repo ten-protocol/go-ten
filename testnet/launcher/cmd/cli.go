@@ -10,6 +10,7 @@ type TestnetConfigCLI struct {
 	validatorEnclaveDebug       bool
 	sequencerEnclaveDockerImage string
 	sequencerEnclaveDebug       bool
+	isSGXEnabled                bool
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -21,12 +22,14 @@ func ParseConfigCLI() *TestnetConfigCLI {
 	validatorEnclaveDebug := flag.Bool(validatorEnclaveDebugFlag, false, flagUsageMap[validatorEnclaveDebugFlag])
 	sequencerEnclaveDockerImage := flag.String(sequencerEnclaveDockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", flagUsageMap[sequencerEnclaveDockerImageFlag])
 	sequencerEnclaveDebug := flag.Bool(sequencerEnclaveDebugFlag, false, flagUsageMap[sequencerEnclaveDebugFlag])
+	isSGXEnabled := flag.Bool(isSGXEnabledFlag, false, flagUsageMap[isSGXEnabledFlag])
 	flag.Parse()
 
 	cfg.validatorEnclaveDockerImage = *validatorEnclaveDockerImage
 	cfg.sequencerEnclaveDockerImage = *sequencerEnclaveDockerImage
 	cfg.validatorEnclaveDebug = *validatorEnclaveDebug
 	cfg.sequencerEnclaveDebug = *sequencerEnclaveDebug
+	cfg.isSGXEnabled = *isSGXEnabled
 
 	return cfg
 }

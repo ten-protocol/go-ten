@@ -6,6 +6,7 @@ const (
 	validatorEnclaveDebugFlag       = "validator-enclave-debug"
 	sequencerEnclaveDockerImageFlag = "sequencer-enclave-docker-image"
 	sequencerEnclaveDebugFlag       = "sequencer-enclave-debug"
+	isSGXEnabledFlag                = "is-sgx_enabled"
 )
 
 // Returns a map of the flag usages.
@@ -16,5 +17,6 @@ func getFlagUsageMap() map[string]string {
 		validatorEnclaveDebugFlag:       "Enables the use of DLV to debug the validator enclave",
 		sequencerEnclaveDockerImageFlag: "The docker image that runs the sequencer enclave",
 		sequencerEnclaveDebugFlag:       "Enables the use of DLV to debug the sequencer enclave",
+		isSGXEnabledFlag:                "Enables the SGX usage",
 	}
 }
