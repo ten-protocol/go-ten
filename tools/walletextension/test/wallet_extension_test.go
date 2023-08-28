@@ -292,7 +292,7 @@ func TestGetStorageAtForReturningUserID(t *testing.T) {
 	createWalExt(t, walExtCfg)
 
 	// create userID
-	respJoin := makeHTTPEthJSONReqWithPath(walletHTTPPort, "join")
+	respJoin := makeHTTPEthJSONReqWithPath(walletHTTPPort, "v1/join")
 	userID := string(respJoin)
 
 	// make a request to GetStorageAt with correct parameters to get userID that exists in the database

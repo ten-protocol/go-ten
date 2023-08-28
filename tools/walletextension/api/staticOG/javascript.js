@@ -6,10 +6,10 @@ const idAddAllAccounts = "addAllAccounts";
 const idRevokeUserID = "revokeUserID";
 const idStatus = "status";
 const idUserID = "userID";
-const pathJoin = "/join/";
-const pathAuthenticate = "/authenticate/";
-const pathQuery = "/query/";
-const pathRevoke = "/revoke/";
+const pathJoin = "/v1/join/";
+const pathAuthenticate = "/v1/authenticate/";
+const pathQuery = "/v1/query/";
+const pathRevoke = "/v1/revoke/";
 const obscuroChainIDDecimal = 777;
 const methodPost = "post";
 const methodGet = "get";
@@ -25,6 +25,7 @@ function isValidUserIDFormat(value) {
 }
 
 let obscuroGatewayAddress = window.location.protocol + "//" + window.location.host;
+let obscutoGatewayVersion = "v1"
 
 async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
     // add network to MetaMask
@@ -42,7 +43,7 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
                         symbol: 'OBX',
                         decimals: 18
                     },
-                    rpcUrls: [obscuroGatewayAddress+'/?u='+userID],
+                    rpcUrls: [obscuroGatewayAddress+"/"+obscutoGatewayVersion+'/?u='+userID],
                     blockExplorerUrls: null,
                 },
             ],

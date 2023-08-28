@@ -26,7 +26,7 @@ type Route struct {
 func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 	return []Route{
 		{
-			Name: common.PathRoot,
+			Name: common.APIVersion_1 + common.PathRoot,
 			Func: httpHandler(walletExt, ethRequestHandler),
 		},
 		{
@@ -43,19 +43,19 @@ func NewHTTPRoutes(walletExt *walletextension.WalletExtension) []Route {
 			Func: httpHandler(walletExt, submitViewingKeyRequestHandler),
 		},
 		{
-			Name: common.PathJoin,
+			Name: common.APIVersion_1 + common.PathJoin,
 			Func: httpHandler(walletExt, joinRequestHandler),
 		},
 		{
-			Name: common.PathAuthenticate,
+			Name: common.APIVersion_1 + common.PathAuthenticate,
 			Func: httpHandler(walletExt, authenticateRequestHandler),
 		},
 		{
-			Name: common.PathQuery,
+			Name: common.APIVersion_1 + common.PathQuery,
 			Func: httpHandler(walletExt, queryRequestHandler),
 		},
 		{
-			Name: common.PathRevoke,
+			Name: common.APIVersion_1 + common.PathRevoke,
 			Func: httpHandler(walletExt, revokeRequestHandler),
 		},
 		{
