@@ -459,6 +459,7 @@ func (n *Impl) prysmStartValidator(beaconHTTPPort int, nodeDataDir string) (*exe
 		"--interop-start-index", "0",
 		"--chain-config-file", n.prysmConfigPath,
 		"--config-file", n.prysmConfigPath,
+		"--suggested-fee-recipient", "0x52FfeB84540173B15eEC5a486FdB5c769F50400a", // random address to avoid a continuous warning
 		"--force-clear-db",
 		"--disable-account-metrics",
 		"--accept-terms-of-use",
