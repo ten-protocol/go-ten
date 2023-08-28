@@ -227,8 +227,10 @@ func NewEnclave(
 			dataEncryptionService,
 			dataCompressionService,
 			nodetype.SequencerSettings{
-				MaxBatchSize:  config.MaxBatchSize,
-				MaxRollupSize: config.MaxRollupSize,
+				MaxBatchSize:      config.MaxBatchSize,
+				MaxRollupSize:     config.MaxRollupSize,
+				GasPaymentAddress: config.GasPaymentAddress,
+				BaseFee:           config.BaseFee,
 			},
 		)
 	} else {

@@ -145,6 +145,7 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 		Time:                        header.Time,
 		BaseFee:                     baseFee,
 		TransferTree:                header.TransfersTree.Bytes(),
+		Coinbase:                    header.Coinbase.Bytes(),
 		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
 	}
@@ -199,6 +200,7 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 		Time:                          header.Time,
 		TransfersTree:                 gethcommon.BytesToHash(header.TransferTree),
 		BaseFee:                       big.NewInt(int64(header.BaseFee)),
+		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
 		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),

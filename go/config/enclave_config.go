@@ -63,6 +63,9 @@ type EnclaveConfig struct {
 	// a protocol limit, but a miner imposed limit and it might be hard to find someone
 	// to include a transaction if it goes above it
 	MaxRollupSize uint64
+
+	GasPaymentAddress gethcommon.Address
+	BaseFee           *big.Int
 }
 
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
@@ -90,5 +93,7 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		DebugNamespaceEnabled:     false,
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
+		GasPaymentAddress:         gethcommon.BigToAddress(gethcommon.Big2),
+		BaseFee:                   gethcommon.Big0,
 	}
 }

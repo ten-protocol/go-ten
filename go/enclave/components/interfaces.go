@@ -48,6 +48,7 @@ type BatchExecutionContext struct {
 	Creator      gethcommon.Address
 	ChainConfig  *params.ChainConfig
 	SequencerNo  *big.Int
+	BaseFee      *big.Int
 }
 
 // ComputedBatch - a structure representing the result of a batch

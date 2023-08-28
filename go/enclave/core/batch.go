@@ -24,9 +24,9 @@ type Batch struct {
 // Hash returns the keccak256 hash of b's header.
 // The hash is computed on the first call and cached thereafter.
 func (b *Batch) Hash() common.L2BatchHash {
-	if hash := b.hash.Load(); hash != nil {
+	/*	if hash := b.hash.Load(); hash != nil {
 		return hash.(common.L2BatchHash)
-	}
+	}*/
 	v := b.Header.Hash()
 	b.hash.Store(v)
 	return v
@@ -98,6 +98,8 @@ func DeterministicEmptyBatch(
 	block *types.Block,
 	time uint64,
 	sequencerNo *big.Int,
+	baseFee *big.Int,
+	coinbase gethcommon.Address,
 ) *Batch {
 	h := common.BatchHeader{
 		ParentHash:       parent.Hash(),
@@ -105,7 +107,9 @@ func DeterministicEmptyBatch(
 		Number:           big.NewInt(0).Add(parent.Number, big.NewInt(1)),
 		SequencerOrderNo: sequencerNo,
 		// todo (#1548) - Consider how this time should align with the time of the L1 block used as proof.
-		Time: time,
+		Time:     time,
+		BaseFee:  baseFee,
+		Coinbase: coinbase,
 	}
 	b := Batch{
 		Header: &h,

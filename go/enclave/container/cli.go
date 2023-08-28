@@ -69,6 +69,8 @@ func ParseConfig() (*config.EnclaveConfig, error) {
 	debugNamespaceEnabled := flag.Bool(debugNamespaceEnabledName, cfg.DebugNamespaceEnabled, flagUsageMap[debugNamespaceEnabledName])
 	maxBatchSize := flag.Uint64(maxBatchSizeName, cfg.MaxBatchSize, flagUsageMap[maxBatchSizeName])
 	maxRollupSize := flag.Uint64(maxRollupSizeName, cfg.MaxRollupSize, flagUsageMap[maxRollupSizeName])
+	baseFee := flag.Uint64("l2BaseFee", cfg.BaseFee.Uint64(), "")
+	coinbaseAddress := flag.String("l2Coinbase", cfg.GasPaymentAddress.Hex(), "")
 
 	flag.Parse()
 
@@ -103,6 +105,8 @@ func ParseConfig() (*config.EnclaveConfig, error) {
 	cfg.DebugNamespaceEnabled = *debugNamespaceEnabled
 	cfg.MaxBatchSize = *maxBatchSize
 	cfg.MaxRollupSize = *maxRollupSize
+	cfg.BaseFee = big.NewInt(0).SetUint64(*baseFee)
+	cfg.GasPaymentAddress = gethcommon.HexToAddress(*coinbaseAddress)
 
 	return cfg, nil
 }

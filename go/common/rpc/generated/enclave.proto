@@ -387,6 +387,7 @@ message BatchHeaderMsg {
   bytes LatestInboundCrossChainHash = 16;
   repeated CrossChainMsg CrossChainMessages = 17;
   bytes TransferTree = 18;
+  bytes Coinbase = 19;
 }
 
 message ExtRollupMsg {

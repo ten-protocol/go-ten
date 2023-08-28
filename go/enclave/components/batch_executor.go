@@ -1,6 +1,7 @@
 package components
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
@@ -11,6 +12,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -122,7 +124,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	}
 
 	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch := core.DeterministicEmptyBatch(parent.Header, block, context.AtTime, context.SequencerNo)
+	batch := core.DeterministicEmptyBatch(parent.Header, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
 
 	stateDB, err := executor.storage.CreateStateDB(batch.Header.ParentHash)
 	if err != nil {
@@ -138,9 +140,9 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 	executor.crossChainProcessors.Local.ExecuteValueTransfers(transfers, stateDB)
 
-	//	transactionsToProcess, _ := executor.payL1Fees(stateDB, context)
+	transactionsToProcess, _ := executor.payL1Fees(stateDB, context)
 
-	successfulTxs, txReceipts, err := executor.processTransactions(batch, 0, context.Transactions, stateDB, context.ChainConfig)
+	successfulTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig)
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
@@ -158,6 +160,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
 	copyBatch.Transactions = successfulTxs
+	copyBatch.Header.BaseFee = big.NewInt(0).Set(batch.Header.BaseFee)
 	copyBatch.ResetHash()
 
 	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
@@ -182,7 +185,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 			defer executor.stateDBMutex.Unlock()
 			h, err := stateDB.Commit(deleteEmptyObjects)
 			if err != nil {
-				return gethcommon.Hash{}, err
+				return gethcommon.Hash{}, fmt.Errorf("commit failure for batch %d. Cause: %w", batch.SeqNo(), err)
 			}
 			trieDB := executor.storage.TrieDB()
 			err = trieDB.Commit(h, true, nil)
@@ -206,6 +209,8 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 		AtTime:       batch.Header.Time,
 		ChainConfig:  executor.chainConfig,
 		SequencerNo:  batch.Header.SequencerOrderNo,
+		Creator:      batch.Header.Coinbase,
+		BaseFee:      batch.Header.BaseFee,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
@@ -222,6 +227,16 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 	}
 
 	return cb.Receipts, nil
+}
+
+type ValueTransfers []common.ValueTransferEvent
+
+func (vt ValueTransfers) Len() int {
+	return len(vt)
+}
+func (vt ValueTransfers) EncodeIndex(index int, w *bytes.Buffer) {
+	transfer := vt[index]
+	rlp.Encode(w, transfer)
 }
 
 func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, timeNow uint64) (*core.Batch, *types.Transaction, error) {
@@ -241,6 +256,8 @@ func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, ti
 			ReceiptHash:      types.EmptyRootHash,
 			TransfersTree:    types.EmptyRootHash,
 			Time:             timeNow,
+			Coinbase:         gethcommon.BigToAddress(gethcommon.Big0),
+			BaseFee:          big.NewInt(0),
 		},
 		Transactions: []*common.L2Tx{},
 	}
@@ -263,17 +280,17 @@ func (executor *batchExecutor) populateOutboundCrossChainData(batch *core.Batch,
 		executor.logger.Error("Failed extracting L2->L1 messages", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
 	}
-	/*
-		valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(receipts)
-		if err != nil {
-			executor.logger.Error("Extracting messages L2->L1 failed", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
-			return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
-		}
 
-		transfersHash := types.DeriveSha(ValueTransfers(valueTransferMessages), &trie.StackTrie{})
-	*/
+	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(receipts)
+	if err != nil {
+		executor.logger.Error("Extracting messages L2->L1 failed", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
+		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
+	}
+
+	transfersHash := types.DeriveSha(ValueTransfers(valueTransferMessages), &trie.StackTrie{})
+
 	batch.Header.CrossChainMessages = crossChainMessages
-	batch.Header.TransfersTree = types.EmptyRootHash
+	batch.Header.TransfersTree = transfersHash
 
 	executor.logger.Trace(fmt.Sprintf("Added %d cross chain messages to batch.",
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)

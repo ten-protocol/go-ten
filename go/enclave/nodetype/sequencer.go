@@ -31,8 +31,10 @@ import (
 )
 
 type SequencerSettings struct {
-	MaxBatchSize  uint64
-	MaxRollupSize uint64
+	MaxBatchSize      uint64
+	MaxRollupSize     uint64
+	GasPaymentAddress gethcommon.Address
+	BaseFee           *big.Int
 }
 
 type sequencer struct {
@@ -185,7 +187,8 @@ func (s *sequencer) produceBatch(sequencerNo *big.Int, l1Hash common.L1BlockHash
 		ParentPtr:    headBatch,
 		Transactions: transactions,
 		AtTime:       batchTime,
-		Creator:      s.hostID,
+		Creator:      s.settings.GasPaymentAddress,
+		BaseFee:      s.settings.BaseFee,
 		ChainConfig:  s.chainConfig,
 		SequencerNo:  sequencerNo,
 	})

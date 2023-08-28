@@ -22,17 +22,18 @@ var hasherPool = sync.Pool{
 // BatchHeader is a public / plaintext struct that holds common properties of batches.
 // Making changes to this struct will require GRPC + GRPC Converters regen
 type BatchHeader struct {
-	ParentHash       L2BatchHash `json:"parentHash"`
-	Root             StateRoot   `json:"stateRoot"`
-	TxHash           common.Hash `json:"transactionsRoot"`
-	ReceiptHash      common.Hash `json:"receiptsRoot"`
-	Number           *big.Int    `json:"number"`           // height of the batch
-	SequencerOrderNo *big.Int    `json:"sequencerOrderNo"` // multiple batches can be created with the same height in case of L1 reorgs. The sequencer is responsible for including all of them in the rollups.
-	GasLimit         uint64      `json:"gasLimit"`
-	GasUsed          uint64      `json:"gasUsed"`
-	Time             uint64      `json:"timestamp"`
-	Extra            []byte      `json:"extraData"`
-	BaseFee          *big.Int    `json:"baseFee"`
+	ParentHash       L2BatchHash    `json:"parentHash"`
+	Root             StateRoot      `json:"stateRoot"`
+	TxHash           common.Hash    `json:"transactionsRoot"`
+	ReceiptHash      common.Hash    `json:"receiptsRoot"`
+	Number           *big.Int       `json:"number"`           // height of the batch
+	SequencerOrderNo *big.Int       `json:"sequencerOrderNo"` // multiple batches can be created with the same height in case of L1 reorgs. The sequencer is responsible for including all of them in the rollups.
+	GasLimit         uint64         `json:"gasLimit"`
+	GasUsed          uint64         `json:"gasUsed"`
+	Time             uint64         `json:"timestamp"`
+	Extra            []byte         `json:"extraData"`
+	BaseFee          *big.Int       `json:"baseFee"`
+	Coinbase         common.Address `json:"coinbase"`
 
 	// The custom Obscuro fields.
 	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
@@ -61,11 +62,11 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 		(*Alias)(b),
 		b.Hash(),
 		nil,
+		&b.Coinbase,
 		nil,
 		nil,
 		nil,
-		nil,
-		nil,
+		b.BaseFee,
 	})
 }
 

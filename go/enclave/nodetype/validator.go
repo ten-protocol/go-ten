@@ -68,9 +68,8 @@ func (val *obsValidator) OnL1Fork(_ *common.ChainFork) error {
 	return nil
 }
 
-func (val *obsValidator) VerifySequencerSignature(*core.Batch) error {
-	// todo
-	return nil
+func (val *obsValidator) VerifySequencerSignature(b *core.Batch) error {
+	return val.sigValidator.CheckSequencerSignature(b.Hash(), b.Header.R, b.Header.S)
 }
 
 func (val *obsValidator) ExecuteStoredBatches() error {
