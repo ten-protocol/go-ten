@@ -257,7 +257,7 @@ func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, ti
 			TransfersTree:    types.EmptyRootHash,
 			Time:             timeNow,
 			Coinbase:         gethcommon.BigToAddress(gethcommon.Big0),
-			BaseFee:          big.NewInt(0),
+			BaseFee:          new(big.Int).SetUint64(params.InitialBaseFee),
 		},
 		Transactions: []*common.L2Tx{},
 	}

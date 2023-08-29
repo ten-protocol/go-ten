@@ -38,7 +38,8 @@ type SimWallets struct {
 
 	GasBridgeWallet wallet.Wallet
 
-	L2FaucetWallet wallet.Wallet                  // the wallet of the L2 faucet
+	L2FaucetWallet wallet.Wallet // the wallet of the L2 faucet
+	L2FeesWallet   wallet.Wallet
 	Tokens         map[testcommon.ERC20]*SimToken // The supported tokens
 }
 
@@ -70,6 +71,9 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 
 	gasWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(ethereumChainID), genesis.GasBridgingKeys, testlog.Logger())
 
+	sequencerGasKeys, _ := crypto.GenerateKey()
+	sequencerFeeWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), sequencerGasKeys, testlog.Logger())
+
 	// create the L1 addresses of the two tokens, and connect them to the hardcoded addresses from the enclave
 	hoc := SimToken{
 		Name:              testcommon.HOC,
@@ -90,6 +94,7 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 		SimEthWallets:   simEthWallets,
 		SimObsWallets:   simObsWallets,
 		L2FaucetWallet:  l2FaucetWallet,
+		L2FeesWallet:    sequencerFeeWallet,
 		GasBridgeWallet: gasWallet,
 		Tokens: map[testcommon.ERC20]*SimToken{
 			testcommon.HOC: &hoc,

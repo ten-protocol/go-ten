@@ -45,6 +45,7 @@ type Config struct {
 	hostInMemDB               bool
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
+	coinbaseAddress           string
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -71,6 +72,10 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.HostAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
 	cfg.LogPath = testlog.LogFile()
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
+
+	if c.nodeType == "sequencer" && c.coinbaseAddress != "" {
+		cfg.GasPaymentAddress = gethcommon.HexToAddress(c.coinbaseAddress)
+	}
 
 	return cfg
 }
@@ -107,6 +112,12 @@ func (c *Config) UpdateNodeConfig(opts ...Option) *Config {
 	}
 
 	return c
+}
+
+func WithCoinbase(s string) Option {
+	return func(c *Config) {
+		c.coinbaseAddress = s
+	}
 }
 
 func WithNodeName(s string) Option {

@@ -91,6 +91,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithNodeType(nodeTypeStr),
 				node.WithL1Host("127.0.0.1"),
 				node.WithL1WSPort(simParams.StartPort+100),
+				node.WithCoinbase(simParams.Wallets.L2FeesWallet.Address().Hex()),
 			),
 		)
 

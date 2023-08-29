@@ -14,6 +14,7 @@ import (
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
@@ -22,6 +23,8 @@ import (
 const (
 	testLogs = "../.build/simulations/"
 )
+
+var SequencerGasKeys, _ = crypto.GenerateKey()
 
 func setupSimTestLog(simType string) {
 	testlog.Setup(&testlog.Cfg{

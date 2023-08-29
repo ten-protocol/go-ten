@@ -137,8 +137,31 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeIdx, height, minHeight)
 	}
 
-	deposits, rollups, _, blockCount, _ := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
+	deposits, rollups, _, blockCount, _, rollupReceipts := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
+
+	costOfRollups := big.NewInt(0)
+	for _, receipt := range rollupReceipts {
+		block, err := node.EthClient().BlockByHash(context.Background(), receipt.BlockHash)
+		if err != nil {
+			panic(err)
+		}
+
+		txCost := big.NewInt(0).Mul(block.BaseFee(), big.NewInt(0).SetUint64(receipt.GasUsed))
+		costOfRollups.Add(costOfRollups, txCost)
+	}
+
+	l2FeesWallet := s.Params.Wallets.L2FeesWallet
+	obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, l2FeesWallet)
+	feeBalance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+	if err != nil {
+		panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+	}
+
+	// if balance of collected fees is less than cost of published rollups fail
+	if feeBalance.Cmp(costOfRollups) == -1 {
+		t.Errorf("Node %d: Sequencer has collected insufficient fees. Has: %d, needs: %d", nodeIdx, feeBalance, costOfRollups)
+	}
 
 	if len(findHashDups(deposits)) > 0 {
 		dups := findHashDups(deposits)
@@ -277,9 +300,10 @@ func ExtractDataFromEthereumChain(
 	node ethadapter.EthClient,
 	s *Simulation,
 	nodeIdx int,
-) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int, uint64) {
+) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int, uint64, types.Receipts) {
 	deposits := make([]gethcommon.Hash, 0)
 	rollups := make([]*common.ExtRollup, 0)
+	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
 	blockchain := node.BlocksBetween(startBlock, endBlock)
@@ -312,6 +336,7 @@ func ExtractDataFromEthereumChain(
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
 				rollups = append(rollups, r)
+				rollupReceipts = append(rollupReceipts, receipt)
 				if node.IsBlockAncestor(block, r.Header.L1Proof) {
 					// only count the rollup if it is published in the right branch
 					// todo (@tudor) - once logic is added to the l1 - this can be made into a check
@@ -320,7 +345,7 @@ func ExtractDataFromEthereumChain(
 			}
 		}
 	}
-	return deposits, rollups, totalDeposited, len(blockchain), successfulDeposits
+	return deposits, rollups, totalDeposited, len(blockchain), successfulDeposits, rollupReceipts
 }
 
 func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {

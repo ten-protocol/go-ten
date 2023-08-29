@@ -6,6 +6,7 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -94,6 +95,6 @@ func DefaultEnclaveConfig() *EnclaveConfig {
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
 		GasPaymentAddress:         gethcommon.BigToAddress(gethcommon.Big2),
-		BaseFee:                   gethcommon.Big0,
+		BaseFee:                   new(big.Int).SetUint64(params.InitialBaseFee),
 	}
 }
