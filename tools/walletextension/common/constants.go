@@ -48,7 +48,7 @@ const (
 	PersonalSignMessagePrefix           = "\x19Ethereum Signed Message:\n%d%s"
 	GetStorageAtUserIDRequestMethodName = "getUserID"
 	SuccessMsg                          = "success"
-	APIVersion_1                        = "/v1"
+	APIVersion1                         = "/v1"
 )
 
 var (
