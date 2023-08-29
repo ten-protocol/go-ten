@@ -318,8 +318,8 @@ func TestGetStorageAtForReturningUserID(t *testing.T) {
 	}
 
 	// make a request with wrong rpcMethod
-	respBody5 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetBalance, []interface{}{"getUserID", "0", nil}, userID)
-	if strings.Contains(string(respBody5), userID) {
+	respBody4 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetBalance, []interface{}{"getUserID", "0", nil}, userID)
+	if strings.Contains(string(respBody4), userID) {
 		t.Fatalf("expected response not containing userID as the parameters are wrong ")
 	}
 }
