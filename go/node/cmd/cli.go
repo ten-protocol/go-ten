@@ -72,7 +72,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	pccsAddr := flag.String(pccsAddrFlag, "", flagUsageMap[pccsAddrFlag])
 	edgelessDBImage := flag.String(edgelessDBImageFlag, "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2", flagUsageMap[edgelessDBImageFlag])
 	isDebugNamespaceEnabled := flag.Bool(isDebugNamespaceEnabledFlag, false, flagUsageMap[isDebugNamespaceEnabledFlag])
-	logLevel := flag.Int(logLevelFlag, 2, flagUsageMap[logLevelFlag])
+	logLevel := flag.Int(logLevelFlag, 3, flagUsageMap[logLevelFlag])
 
 	flag.Parse()
 	cfg.nodeName = *nodeName

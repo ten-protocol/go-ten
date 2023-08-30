@@ -19,7 +19,7 @@ on:
       log_level:
         description: 'Log Level 1-Error 5-Trace'
         required: true
-        default: 2
+        default: 3
         type: number
 
 jobs:
