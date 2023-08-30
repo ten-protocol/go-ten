@@ -7,7 +7,7 @@
 name: '[M] Deploy Testnet L2'
 on:
   workflow_dispatch:
-    inputs:
+    testnet_type:
       testnet_type:
         description: 'Testnet Type'
         required: true
@@ -16,6 +16,11 @@ on:
         options:
           - 'dev-testnet'
           - 'testnet'
+      log_level:
+        description: 'Log Level 1-Error 5-Trace'
+        required: true
+        default: 2
+        type: number
 
 jobs:
   build:
@@ -258,6 +263,7 @@ jobs:
                -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
                -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
                -is_debug_namespace_enabled=true \
+               -log_level=${{ github.event.inputs.log_level }} \
                start'
 
 

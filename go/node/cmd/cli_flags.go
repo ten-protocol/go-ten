@@ -26,6 +26,7 @@ const (
 	pccsAddrFlag                = "pccs_addr"
 	edgelessDBImageFlag         = "edgeless_db_image"
 	isDebugNamespaceEnabledFlag = "is_debug_namespace_enabled"
+	logLevelFlag                = "log_level"
 )
 
 // Returns a map of the flag usages.
@@ -56,5 +57,6 @@ func getFlagUsageMap() map[string]string {
 		hostHTTPPortFlag:            "Host HTTPs bound port",
 		hostWSPortFlag:              "Host WebSocket bound port",
 		isDebugNamespaceEnabledFlag: "Enables the debug namespace for both enclave and host",
+		logLevelFlag:                "Sets the log level 1-Error, 5-Trace",
 	}
 }
