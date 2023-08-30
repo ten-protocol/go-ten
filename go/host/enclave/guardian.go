@@ -386,7 +386,7 @@ func (g *Guardian) catchupWithL2() error {
 // todo - @matt - think about removing the TryLock
 func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, error) {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
-	receipts := g.sl.L1Repo().FetchReceipts(block)
+	receipts := g.sl.L1Repo().FetchObscuroReceipts(block)
 	if !g.submitDataLock.TryLock() {
 		g.logger.Info("Unable to submit block, already submitting another block")
 		// we are already submitting a block, and we don't want to leak goroutines, we wil catch up with the block later

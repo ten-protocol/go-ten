@@ -54,7 +54,7 @@ func createInMemObscuroNode(
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	mockP2P *p2p.MockP2P,
-	l1BusAddress *gethcommon.Address,
+	l1BusAddress gethcommon.Address,
 	l1StartBlk gethcommon.Hash,
 	batchInterval time.Duration,
 ) *container.HostContainer {
@@ -67,7 +67,9 @@ func createInMemObscuroNode(
 		HasClientRPCHTTP:          false,
 		P2PPublicAddress:          fmt.Sprintf("%d", id),
 		L1StartHash:               l1StartBlk,
+		SequencerID:               gethcommon.BigToAddress(big.NewInt(0)),
 		ManagementContractAddress: *mgtContractAddress,
+		MessageBusAddress:         l1BusAddress,
 		BatchInterval:             batchInterval,
 	}
 
@@ -82,7 +84,7 @@ func createInMemObscuroNode(
 		GenesisJSON:               genesisJSON,
 		UseInMemoryDB:             true,
 		MinGasPrice:               big.NewInt(1),
-		MessageBusAddress:         *l1BusAddress,
+		MessageBusAddress:         l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,

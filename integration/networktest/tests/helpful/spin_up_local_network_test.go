@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/wallet"
@@ -89,4 +92,65 @@ func keepRunning(networkConnector networktest.NetworkConnector) {
 	signal.Notify(done, syscall.SIGINT, syscall.SIGTERM)
 	fmt.Println("Network running until test is stopped...")
 	<-done // Will block here until user hits ctrl+c
+}
+
+func TestReceiptSerialization(t *testing.T) {
+	rec := types.Receipt{
+		Type:              1,
+		PostState:         []byte{1},
+		Status:            1,
+		CumulativeGasUsed: 123,
+		Bloom:             types.Bloom{123},
+		Logs:              nil,
+		TxHash:            common.Hash{123},
+		ContractAddress:   common.Address{123},
+		GasUsed:           123,
+		EffectiveGasPrice: big.NewInt(123),
+		BlobGasUsed:       123,
+		BlobGasPrice:      big.NewInt(123),
+		BlockHash:         common.Hash{123},
+		BlockNumber:       big.NewInt(123),
+		TransactionIndex:  123,
+	}
+
+	recs := []*types.Receipt{&rec}
+	ser, err := rlp.EncodeToBytes(recs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	receipts := make(types.Receipts, 0)
+
+	err = rlp.DecodeBytes(ser, &receipts)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(receipts) != 1 {
+		t.Fatal("unexpected number of receipts")
+	}
+
+	if receipts[0].Type != rec.Type {
+		t.Fatal("unexpected receipt type")
+	}
+
+	if receipts[0].Status != rec.Status {
+		fmt.Println(receipts[0].Status, rec.Status)
+		t.Fatal("unexpected receipt status")
+	}
+
+	if receipts[0].ContractAddress != rec.ContractAddress {
+		fmt.Println(receipts[0].ContractAddress, rec.ContractAddress)
+		t.Fatal("unexpected receipt contract address")
+	}
+
+	if receipts[0].TxHash != rec.TxHash {
+		fmt.Println(receipts[0].TxHash, rec.TxHash)
+		t.Fatal("unexpected receipt tx hash")
+	}
+
+	if receipts[0].TransactionIndex != rec.TransactionIndex {
+		fmt.Println(receipts[0].TransactionIndex, rec.TransactionIndex)
+		t.Fatal("unexpected receipt transaction index")
+	}
 }

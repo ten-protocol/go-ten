@@ -59,7 +59,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			params.Wallets.NodeWallets[i],
 			miner,
 			p2pNetw.NewNode(i),
-			&disabledBus,
+			disabledBus,
 			common.Hash{},
 			params.AvgBlockDuration/2,
 		)

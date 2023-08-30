@@ -28,6 +28,7 @@ services:
       "--l1NodePort=$L1PORT",
       "--enclaveRPCAddress=enclave:11000",
       "--managementContractAddress=$MGMTCONTRACTADDR",
+      "--messageBusContractAddress=$MSGBUSCONTRACTADDR",
       "--privateKey=$PKSTRING",
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
@@ -35,7 +36,8 @@ services:
       "--logLevel=$LOGLEVEL",
       "--logPath=sys_out",
       "--profilerEnabled=$PROFILERENABLED",
-      "--p2pPublicAddress=$P2PPUBLICADDRESS"
+      "--p2pPublicAddress=$P2PPUBLICADDRESS",
+      "--sequencerID=$SEQUENCERID"
     ]
 
   enclave:
