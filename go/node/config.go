@@ -45,6 +45,7 @@ type Config struct {
 	hostInMemDB               bool
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
+	logLevel                  int
 	isInboundP2PEnabled       bool
 }
 
@@ -71,6 +72,7 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.HostID = gethcommon.HexToAddress(c.hostID)
 	cfg.HostAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
 	cfg.LogPath = testlog.LogFile()
+	cfg.LogLevel = c.logLevel
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
 
 	return cfg
@@ -98,6 +100,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.LogPath = testlog.LogFile()
 	cfg.ProfilerEnabled = c.profilerEnabled
 	cfg.MetricsEnabled = false
+	cfg.LogLevel = c.logLevel
 	cfg.IsInboundP2PEnabled = c.isInboundP2PEnabled
 
 	return cfg
@@ -264,6 +267,12 @@ func WithDebugNamespaceEnabled(b bool) Option {
 func WithProfiler(b bool) Option {
 	return func(c *Config) {
 		c.profilerEnabled = b
+	}
+}
+
+func WithLogLevel(i int) Option {
+	return func(c *Config) {
+		c.logLevel = i
 	}
 }
 
