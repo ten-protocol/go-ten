@@ -45,6 +45,7 @@ type Config struct {
 	hostInMemDB               bool
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
+	isInboundP2PEnabled       bool
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -97,6 +98,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.LogPath = testlog.LogFile()
 	cfg.ProfilerEnabled = c.profilerEnabled
 	cfg.MetricsEnabled = false
+	cfg.IsInboundP2PEnabled = c.isInboundP2PEnabled
 
 	return cfg
 }
@@ -262,5 +264,11 @@ func WithDebugNamespaceEnabled(b bool) Option {
 func WithProfiler(b bool) Option {
 	return func(c *Config) {
 		c.profilerEnabled = b
+	}
+}
+
+func WithInboundP2PEnabled(b bool) Option {
+	return func(c *Config) {
+		c.isInboundP2PEnabled = b
 	}
 }

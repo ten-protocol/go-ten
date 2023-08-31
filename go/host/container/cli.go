@@ -84,6 +84,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	debugNamespaceEnabled := flag.Bool(debugNamespaceEnabledName, cfg.DebugNamespaceEnabled, flagUsageMap[debugNamespaceEnabledName])
 	batchInterval := flag.String(batchIntervalName, cfg.BatchInterval.String(), flagUsageMap[batchIntervalName])
 	rollupInterval := flag.String(rollupIntervalName, cfg.RollupInterval.String(), flagUsageMap[rollupIntervalName])
+	isInboundP2PEnabled := flag.Bool(isInboundP2PEnabledName, cfg.IsInboundP2PEnabled, flagUsageMap[isInboundP2PEnabledName])
 
 	flag.Parse()
 
@@ -132,6 +133,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfg.IsInboundP2PEnabled = *isInboundP2PEnabled
 
 	return cfg, nil
 }

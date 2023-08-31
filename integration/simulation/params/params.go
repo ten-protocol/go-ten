@@ -41,7 +41,8 @@ type SimParams struct {
 
 	ReceiptTimeout time.Duration // How long to wait for transactions to be confirmed.
 
-	StoppingDelay time.Duration // How long to wait between injection and verification
+	StoppingDelay        time.Duration // How long to wait between injection and verification
+	IsIncomingP2PEnabled bool
 }
 
 type L1SetupData struct {

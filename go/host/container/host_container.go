@@ -131,7 +131,14 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	enclaveClient := enclaverpc.NewClient(cfg, logger)
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
-	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
+
+	var aggP2P host.P2PHostService
+	if cfg.IsInboundP2PEnabled {
+		aggP2P = p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
+	} else {
+		aggP2P = p2p.NewNoInboundP2P(cfg, services, p2pLogger)
+	}
+
 	rpcServer := clientrpc.NewServer(cfg, logger)
 
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)

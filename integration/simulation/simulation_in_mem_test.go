@@ -39,6 +39,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		L1SetupData:               &params.L1SetupData{},
 		ReceiptTimeout:            10 * time.Second,
 		StoppingDelay:             5 * time.Second,
+		IsIncomingP2PEnabled:      true,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

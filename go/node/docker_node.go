@@ -116,6 +116,7 @@ func (d *DockerNode) startHost() error {
 		// todo (@stefan): once the limiter is in, increase it back to 5 or 10s
 		"-batchInterval=1s",
 		"-rollupInterval=3s",
+		fmt.Sprintf("-isInboundP2PEnabled=%t", d.cfg.isInboundP2PEnabled),
 	}
 	if !d.cfg.hostInMemDB {
 		cmd = append(cmd, "-levelDBPath", _hostDataDir)

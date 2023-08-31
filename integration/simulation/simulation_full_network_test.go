@@ -34,6 +34,7 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 		StartPort:                 integration.StartPortSimulationFullNetwork,
 		ReceiptTimeout:            15 * time.Second,
 		StoppingDelay:             10 * time.Second,
+		IsIncomingP2PEnabled:      false,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 
