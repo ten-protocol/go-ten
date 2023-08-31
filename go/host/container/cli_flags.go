@@ -32,7 +32,7 @@ const (
 	debugNamespaceEnabledName    = "debugNamespaceEnabled"
 	batchIntervalName            = "batchInterval"
 	rollupIntervalName           = "rollupInterval"
-	isInboundP2PEnabledName      = "isInboundP2PEnabledName"
+	isInboundP2PEnabledName      = "isInboundP2PEnabled"
 )
 
 // Returns a map of the flag usages.

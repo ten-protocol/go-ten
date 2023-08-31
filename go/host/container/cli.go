@@ -47,6 +47,7 @@ type HostConfigToml struct {
 	DebugNamespaceEnabled     bool
 	BatchInterval             string
 	RollupInterval            string
+	IsInboundP2PEnabled       bool
 }
 
 // ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
@@ -194,5 +195,6 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		LevelDBPath:               tomlConfig.LevelDBPath,
 		BatchInterval:             batchInterval,
 		RollupInterval:            rollupInterval,
+		IsInboundP2PEnabled:       tomlConfig.IsInboundP2PEnabled,
 	}, nil
 }
