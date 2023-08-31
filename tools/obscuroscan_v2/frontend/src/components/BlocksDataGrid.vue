@@ -1,6 +1,6 @@
 <template>
   <el-card class="fill-width">
-    <el-table height="250" :data="blocksListing">
+    <el-table  height="60vh" :data="blocksListing">
       <el-table-column label="Height" width="180">
         <template #default="scope">
           <span style="margin-left: 10px">{{ Number(scope.row.blockHeader.number) }}</span>

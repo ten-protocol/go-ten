@@ -144,24 +144,17 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 
 	oc.logger.Trace("Obs_Call: Successful result", "result", gethlog.Lazy{Fn: func() string {
 		return fmt.Sprintf("contractAddress=%s, from=%s, data=%s, batch=%s, state=%s",
-			callMsg.To(),
-			callMsg.From(),
-			hexutils.BytesToHex(callMsg.Data()),
+			callMsg.To,
+			callMsg.From,
+			hexutils.BytesToHex(callMsg.Data),
 			batch.Hash(),
 			batch.Header.Root.Hex())
 	}})
 
-	result, err := evm.ExecuteObsCall(&callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.logger)
+	result, err := evm.ExecuteObsCall(callMsg, blockState, batch.Header, oc.storage, oc.chainConfig, oc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err
-	}
-
-	// the execution outcome was unsuccessful, but it was able to execute the call
-	if result.Failed() {
-		// do not return an error
-		// the result object should be evaluated upstream
-		oc.logger.Debug(fmt.Sprintf("ObsCall: Failed to execute contract %s.", callMsg.To()), log.CtrErrKey, result.Err)
 	}
 
 	return result, nil
@@ -169,7 +162,7 @@ func (oc *obscuroChain) ObsCallAtBlock(apiArgs *gethapi.TransactionArgs, blockNu
 
 // GetChainStateAtTransaction Returns the state of the chain at certain block height after executing transactions up to the selected transaction
 // TODO make this cacheable
-func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex int, _ uint64) (gethcore.Message, vm.BlockContext, *state.StateDB, error) {
+func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex int, _ uint64) (*gethcore.Message, vm.BlockContext, *state.StateDB, error) {
 	// Short circuit if it's genesis batch.
 	if batch.NumberU64() == 0 {
 		return nil, vm.BlockContext{}, nil, errors.New("no transaction in genesis")
@@ -192,12 +185,14 @@ func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 	}
 	// Recompute transactions up to the target index.
 	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
-	// signer := types.MakeSigner(eth.blockchain.Config(), batch.Number())
-	signer := types.NewLondonSigner(oc.chainConfig.ChainID)
+	rules := oc.chainConfig.Rules(big.NewInt(0), true, 0)
+	signer := types.LatestSigner(oc.chainConfig)
 	for idx, tx := range batch.Transactions {
 		// Assemble the transaction call message and return if the requested offset
-		// msg, _ := tx.AsMessage(signer, batch.BaseFee)
-		msg, _ := tx.AsMessage(signer, nil)
+		msg, err := gethcore.TransactionToMessage(tx, signer, big.NewInt(0))
+		if err != nil {
+			return nil, vm.BlockContext{}, nil, fmt.Errorf("unable to convert tx to message - %w", err)
+		}
 		txContext := gethcore.NewEVMTxContext(msg)
 
 		chain := evm.NewObscuroChainContext(oc.storage, oc.logger)
@@ -211,7 +206,7 @@ func (oc *obscuroChain) GetChainStateAtTransaction(batch *core.Batch, txIndex in
 		}
 		// Not yet the searched for transaction, execute on top of the current state
 		vmenv := vm.NewEVM(context, txContext, statedb, oc.chainConfig, vm.Config{})
-		statedb.Prepare(tx.Hash(), idx)
+		statedb.Prepare(rules, msg.From, gethcommon.Address{}, tx.To(), nil, nil)
 		if _, err := gethcore.ApplyMessage(vmenv, msg, new(gethcore.GasPool).AddGas(tx.Gas())); err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %w", tx.Hash(), err)
 		}

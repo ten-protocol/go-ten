@@ -125,6 +125,7 @@ func NewEnclave(
 		}
 	}
 
+	zeroTimestamp := uint64(0)
 	// Initialise the database
 	chainConfig := params.ChainConfig{
 		ChainID:             big.NewInt(config.ObscuroChainID),
@@ -140,6 +141,11 @@ func NewEnclave(
 		MuirGlacierBlock:    gethcommon.Big0,
 		BerlinBlock:         gethcommon.Big0,
 		LondonBlock:         gethcommon.Big0,
+
+		CancunTime:   &zeroTimestamp,
+		ShanghaiTime: &zeroTimestamp,
+		PragueTime:   &zeroTimestamp,
+		VerkleTime:   &zeroTimestamp,
 	}
 	storage := storage.NewStorageFromConfig(config, &chainConfig, logger)
 
@@ -1389,6 +1395,13 @@ func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPaginatio
 	return &common.TransactionListingResponse{
 		TransactionsData: paginatedData,
 		Total:            totalData,
+	}, nil
+}
+
+func (e *enclaveImpl) Config() (*common.ObscuroEnclaveInfo, common.SystemError) {
+	return &common.ObscuroEnclaveInfo{
+		SequencerID:       e.config.SequencerID,
+		MessageBusAddress: e.config.MessageBusAddress,
 	}, nil
 }
 

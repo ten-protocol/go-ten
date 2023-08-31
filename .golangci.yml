@@ -31,7 +31,7 @@ linters:
     - goheader
     - goimports
     - revive
-    - gomoddirectives
+    #- gomoddirectives It complains with docker import fix
     - gomodguard
     - goprintffuncname
     - gosec

@@ -35,11 +35,11 @@ const (
 	queryReceipts      = "select exec_tx.receipt, tx.content, exec_tx.batch, batch.height from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 	queryReceiptsCount = "select count(1) from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch "
 
-	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where batch.is_canonical and tx.hash=?"
+	selectTxQuery = "select tx.content, exec_tx.batch, batch.height, tx.idx from exec_tx join tx on tx.hash=exec_tx.tx join batch on batch.hash=exec_tx.batch where batch.is_canonical=true and tx.hash=?"
 
 	selectContractCreationTx    = "select tx from exec_tx where created_contract_address=?"
 	selectTotalCreatedContracts = "select count( distinct created_contract_address) from exec_tx "
-	queryBatchWasExecuted       = "select is_executed from batch where is_canonical and hash=?"
+	queryBatchWasExecuted       = "select is_executed from batch where is_canonical=true and hash=?"
 
 	isCanonQuery = "select is_canonical from block where hash=?"
 
@@ -100,14 +100,14 @@ func WriteBatchAndTransactions(dbtx DBTransaction, batch *core.Batch) error {
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
-			msg, err := transaction.AsMessage(types.LatestSignerForChainID(transaction.ChainId()), big.NewInt(0))
+			from, err := types.Sender(types.LatestSignerForChainID(transaction.ChainId()), transaction)
 			if err != nil {
 				return fmt.Errorf("unable to convert tx to message - %w", err)
 			}
 
 			args = append(args, transaction.Hash().Bytes()) // tx_hash
 			args = append(args, txBytes)                    // content
-			args = append(args, msg.From().Bytes())         // sender_address
+			args = append(args, from.Bytes())               // sender_address
 			args = append(args, transaction.Nonce())        // nonce
 			args = append(args, i)                          // idx
 			args = append(args, bodyHash)                   // the batch body which contained it
@@ -162,7 +162,7 @@ func ReadBatchByHash(db *sql.DB, hash common.L2BatchHash) (*core.Batch, error) {
 }
 
 func ReadCanonicalBatchByHeight(db *sql.DB, height uint64) (*core.Batch, error) {
-	return fetchBatch(db, " where b.height=? and is_canonical", height)
+	return fetchBatch(db, " where b.height=? and is_canonical=true", height)
 }
 
 func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, error) {
@@ -171,7 +171,7 @@ func ReadBatchHeader(db *sql.DB, hash gethcommon.Hash) (*common.BatchHeader, err
 
 // todo - is there a better way to write this query?
 func ReadCurrentHeadBatch(db *sql.DB) (*core.Batch, error) {
-	return fetchBatch(db, " where b.is_canonical and b.is_executed and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.is_executed)")
+	return fetchBatch(db, " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true)")
 }
 
 func ReadBatchesByBlock(db *sql.DB, hash common.L1BlockHash) ([]*core.Batch, error) {
@@ -196,7 +196,7 @@ func ReadCurrentSequencerNo(db *sql.DB) (*big.Int, error) {
 }
 
 func ReadHeadBatchForBlock(db *sql.DB, l1Hash common.L1BlockHash) (*core.Batch, error) {
-	query := " where b.is_canonical and b.is_executed and b.height=(select max(b1.height) from batch b1 where b1.is_canonical and b1.is_executed and b1.l1_proof=?)"
+	query := " where b.is_canonical=true and b.is_executed=true and b.height=(select max(b1.height) from batch b1 where b1.is_canonical=true and b1.is_executed=true and b1.l1_proof=?)"
 	return fetchBatch(db, query, l1Hash.Bytes())
 }
 
@@ -335,7 +335,7 @@ func selectReceipts(db *sql.DB, config *params.ChainConfig, query string, args .
 
 		hash := common.L2BatchHash{}
 		hash.SetBytes(batchHash)
-		if err = receipts.DeriveFields(config, hash, height, transactions); err != nil {
+		if err = receipts.DeriveFields(config, hash, height, 0, big.NewInt(0), big.NewInt(0), transactions); err != nil {
 			return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; err = %w", hash, height, err)
 		}
 		allReceipts = append(allReceipts, receipts[0])
@@ -387,7 +387,7 @@ func ReadReceipt(db *sql.DB, hash common.L2TxHash, config *params.ChainConfig) (
 
 	batchhash := common.L2BatchHash{}
 	batchhash.SetBytes(batchHash)
-	if err = receipts.DeriveFields(config, batchhash, height, transactions); err != nil {
+	if err = receipts.DeriveFields(config, batchhash, height, 0, big.NewInt(0), big.NewInt(0), transactions); err != nil {
 		return nil, fmt.Errorf("failed to derive block receipts fields. hash = %s; number = %d; err = %w", hash, height, err)
 	}
 	return receipts[0], nil
@@ -448,7 +448,7 @@ func ReadContractCreationCount(db *sql.DB) (*big.Int, error) {
 }
 
 func ReadUnexecutedBatches(db *sql.DB) ([]*core.Batch, error) {
-	return fetchBatches(db, "where is_executed=false and is_canonical order by b.sequence")
+	return fetchBatches(db, "where is_executed=false and is_canonical=true order by b.sequence")
 }
 
 func BatchWasExecuted(db *sql.DB, hash common.L2BatchHash) (bool, error) {

@@ -1,7 +1,14 @@
 package backend
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"encoding/base64"
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/obscuronet/go-obscuro/go/common/compression"
+	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
@@ -44,7 +51,11 @@ func (b *Backend) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	return b.obsClient.GetLatestRollupHeader()
 }
 
-func (b *Backend) GetBatch(hash gethcommon.Hash) (*common.BatchHeader, error) {
+func (b *Backend) GetBatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
+	return b.obsClient.BatchByHash(hash)
+}
+
+func (b *Backend) GetBatchHeader(hash gethcommon.Hash) (*common.BatchHeader, error) {
 	return b.obsClient.BatchHeaderByHash(hash)
 }
 
@@ -71,4 +82,47 @@ func (b *Backend) GetBlockListing(offset uint64, size uint64) (*common.BlockList
 		Offset: offset,
 		Size:   uint(size),
 	})
+}
+
+func (b *Backend) DecryptTxBlob(payload string) ([]*common.L2Tx, error) {
+	encryptedTxBytes, err := base64.StdEncoding.DecodeString(payload)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode encrypted transaction blob from Base64. Cause: %w", err)
+	}
+
+	key := gethcommon.Hex2Bytes(crypto.RollupEncryptionKeyHex)
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, fmt.Errorf("could not initialise AES cipher for enclave rollup key. Cause: %w", err)
+	}
+	transactionCipher, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, fmt.Errorf("could not initialise wrapper for AES cipher for enclave rollup key. Cause: %w", err)
+	}
+
+	// The nonce is prepended to the ciphertext.
+	nonce := encryptedTxBytes[0:crypto.NonceLength]
+	ciphertext := encryptedTxBytes[crypto.NonceLength:]
+	compressedTxs, err := transactionCipher.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt encrypted L2 transactions. Cause: %w", err)
+	}
+
+	compressionService := compression.NewBrotliDataCompressionService()
+
+	encodedTxs, err := compressionService.Decompress(compressedTxs)
+	if err != nil {
+		return nil, fmt.Errorf("could not decompress L2 transactions. Cause: %w", err)
+	}
+
+	var cleartextTxs []*common.L2Tx
+	if err = rlp.DecodeBytes(encodedTxs, &cleartextTxs); err != nil {
+		return nil, fmt.Errorf("could not decode encoded L2 transactions. Cause: %w", err)
+	}
+
+	return cleartextTxs, nil
+}
+
+func (b *Backend) GetConfig() (*common.ObscuroNetworkInfo, error) {
+	return b.obsClient.GetConfig()
 }

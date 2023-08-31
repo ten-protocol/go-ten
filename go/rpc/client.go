@@ -22,17 +22,20 @@ const (
 	EstimateGas           = "eth_estimateGas"
 	GetLogs               = "eth_getLogs"
 	GetStorageAt          = "eth_getStorageAt"
-	Health                = "obscuro_health"
-	GetBlockHeaderByHash  = "obscuroscan_getBlockHeaderByHash"
-	GetBatch              = "obscuroscan_getBatch"
-	GetBatchForTx         = "obscuroscan_getBatchForTx"
-	GetLatestTxs          = "obscuroscan_getLatestTransactions"
-	GetTotalTxs           = "obscuroscan_getTotalTransactions"
-	Attestation           = "obscuroscan_attestation"
-	StopHost              = "test_stopHost"
-	Subscribe             = "eth_subscribe"
-	SubscribeNamespace    = "eth"
-	SubscriptionTypeLogs  = "logs"
+
+	Health = "obscuro_health"
+	Config = "obscuro_config"
+
+	GetBlockHeaderByHash = "obscuroscan_getBlockHeaderByHash"
+	GetBatch             = "obscuroscan_getBatch"
+	GetBatchForTx        = "obscuroscan_getBatchForTx"
+	GetLatestTxs         = "obscuroscan_getLatestTransactions"
+	GetTotalTxs          = "obscuroscan_getTotalTransactions"
+	Attestation          = "obscuroscan_attestation"
+	StopHost             = "test_stopHost"
+	Subscribe            = "eth_subscribe"
+	SubscribeNamespace   = "eth"
+	SubscriptionTypeLogs = "logs"
 
 	// GetL1RollupHeaderByHash  = "scan_getL1RollupHeaderByHash"
 	// GetActiveNodeCount       = "scan_getActiveNodeCount"
@@ -43,6 +46,7 @@ const (
 	GetPublicTransactionData = "scan_getPublicTransactionData"
 	GetBatchListing          = "scan_getBatchListing"
 	GetBlockListing          = "scan_getBlockListing"
+	GetFullBatchByHash       = "scan_getBatchByHash"
 )
 
 var ErrNilResponse = errors.New("nil response received from Obscuro node")

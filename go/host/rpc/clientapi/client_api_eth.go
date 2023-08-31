@@ -175,7 +175,8 @@ func (api *EthereumAPI) GetStorageAt(_ context.Context, encryptedParams common.E
 }
 
 // FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
-func (api *EthereumAPI) FeeHistory(context.Context, rpc.DecimalOrHex, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
+// rpc.DecimalOrHex -> []byte
+func (api *EthereumAPI) FeeHistory(context.Context, []byte, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
 	// todo (#1621) - return a non-dummy fee history
 	return &FeeHistoryResult{
 		OldestBlock:  (*hexutil.Big)(big.NewInt(0)),

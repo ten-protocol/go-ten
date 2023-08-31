@@ -454,7 +454,7 @@ func createFakeGenesis(enclave common.Enclave, addresses []genesis.Account) erro
 		genesisPreallocStateDB.SetBalance(prefundedAddr.Address, prefundedAddr.Amount)
 	}
 
-	_, err = genesisPreallocStateDB.Commit(false)
+	_, err = genesisPreallocStateDB.Commit(0, false)
 	if err != nil {
 		return err
 	}

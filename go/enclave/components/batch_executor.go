@@ -183,12 +183,12 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 		Commit: func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
 			executor.stateDBMutex.Lock()
 			defer executor.stateDBMutex.Unlock()
-			h, err := stateDB.Commit(deleteEmptyObjects)
+			h, err := stateDB.Commit(copyBatch.Number().Uint64(), deleteEmptyObjects)
 			if err != nil {
 				return gethcommon.Hash{}, fmt.Errorf("commit failure for batch %d. Cause: %w", batch.SeqNo(), err)
 			}
 			trieDB := executor.storage.TrieDB()
-			err = trieDB.Commit(h, true, nil)
+			err = trieDB.Commit(h, true)
 			return h, err
 		},
 	}, nil

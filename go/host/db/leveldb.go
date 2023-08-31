@@ -15,6 +15,16 @@ type ObscuroLevelDB struct {
 	db *ethldb.Database
 }
 
+func (o *ObscuroLevelDB) NewBatchWithSize(int) ethdb.Batch {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (o *ObscuroLevelDB) NewSnapshot() (ethdb.Snapshot, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (o *ObscuroLevelDB) Has(key []byte) (bool, error) {
 	return o.db.Has(key)
 }

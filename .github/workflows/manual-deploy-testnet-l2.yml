@@ -7,7 +7,7 @@
 name: '[M] Deploy Testnet L2'
 on:
   workflow_dispatch:
-    inputs:
+    testnet_type:
       testnet_type:
         description: 'Testnet Type'
         required: true
@@ -16,6 +16,11 @@ on:
         options:
           - 'dev-testnet'
           - 'testnet'
+      log_level:
+        description: 'Log Level 1-Error 5-Trace'
+        required: true
+        default: 3
+        type: number
 
 jobs:
   build:
@@ -205,7 +210,7 @@ jobs:
             --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
             --tags deploygroup=ObscuroNode-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{needs.build.outputs.RESOURCE_TAG_NAME}}=true \
             --vnet-name ObscuroHost-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-01VNET --subnet ObscuroHost-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-01Subnet \
-            --size Standard_DC4s_v2 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:20.04.202206220 \
+            --size Standard_DC4s_v2 --image ObscuroConfUbuntu \
             --public-ip-sku Basic --authentication-type password
 
       - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
@@ -227,10 +232,6 @@ jobs:
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
-            && sudo apt-get update \
-            && sudo apt-get install -y gcc \
-            && sudo snap refresh && sudo snap install --channel=1.18 go --classic \
-            && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
             && docker network create --driver bridge node_network || true \
             && docker run -d --name datadog-agent \
                --network node_network \
@@ -262,6 +263,7 @@ jobs:
                -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
                -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
                -is_debug_namespace_enabled=true \
+               -log_level=${{ github.event.inputs.log_level }} \
                start'
 
 

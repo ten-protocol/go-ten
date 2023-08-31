@@ -4,24 +4,27 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/wallet"
+
 	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/obscuronet/go-obscuro/go/obsclient"
 	"github.com/obscuronet/go-obscuro/integration/networktest"
 	"github.com/obscuronet/go-obscuro/integration/simulation/devnetwork"
 )
 
-type devNetworkEnv struct{}
+type devNetworkEnv struct {
+	inMemDevNetwork *devnetwork.InMemDevNetwork
+}
 
 func (d *devNetworkEnv) Prepare() (networktest.NetworkConnector, func(), error) {
-	devNet := devnetwork.DefaultDevNetwork()
-	devNet.Start()
+	d.inMemDevNetwork.Start()
 
-	err := awaitNodesAvailable(devNet)
+	err := awaitNodesAvailable(d.inMemDevNetwork)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return devNet, devNet.CleanUp, nil
+	return d.inMemDevNetwork, d.inMemDevNetwork.CleanUp, nil
 }
 
 func awaitNodesAvailable(nc networktest.NetworkConnector) error {
@@ -59,5 +62,11 @@ func awaitHealthStatus(rpcAddress string, timeout time.Duration) error {
 }
 
 func LocalDevNetwork() networktest.Environment {
-	return &devNetworkEnv{}
+	return &devNetworkEnv{inMemDevNetwork: devnetwork.DefaultDevNetwork()}
+}
+
+// LocalNetworkLiveL1 creates a local network that points to a live running L1.
+// Note: seqWallet and validatorWallets need funds. seqWallet is used to deploy the L1 contracts
+func LocalNetworkLiveL1(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet, l1RPCAddress string) networktest.Environment {
+	return &devNetworkEnv{inMemDevNetwork: devnetwork.LiveL1DevNetwork(seqWallet, validatorWallets, l1RPCAddress)}
 }

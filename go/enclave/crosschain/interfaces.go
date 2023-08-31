@@ -3,14 +3,13 @@ package crosschain
 import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/go/common"
 )
 
 type (
 	EVMExecutorResponse = map[common.TxHash]interface{}
 	EVMExecutorFunc     = func(common.L2Transactions) map[common.TxHash]interface{}
-	ObsCallEVMFunc      = func(types.Message) (*core.ExecutionResult, error)
+	ObsCallEVMFunc      = func(core.Message) (*core.ExecutionResult, error)
 )
 
 type BlockMessageExtractor interface {

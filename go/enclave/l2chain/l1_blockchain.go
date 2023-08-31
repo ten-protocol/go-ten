@@ -1,17 +1,13 @@
 package l2chain
 
 import (
+	"errors"
 	"os"
 	"path"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/obscuronet/go-obscuro/go/common/log"
-
-	"github.com/ethereum/go-ethereum/consensus/clique"
-
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/beacon"
+	"github.com/ethereum/go-ethereum/consensus/clique"
 	"github.com/ethereum/go-ethereum/consensus/ethash"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -20,6 +16,10 @@ import (
 	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/trie"
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -40,18 +40,31 @@ func NewL1Blockchain(genesisJSON []byte, logger gethlog.Logger) *core.BlockChain
 	dataDir := createDataDir(logger)
 
 	db := createDB(dataDir, logger)
-	cacheConfig := createCacheConfig(dataDir)
-	chainConfig := createChainConfig(db, genesisJSON, logger)
-	engine := createEngine(dataDir, chainConfig, db)
+	cacheConfig := createCacheConfig()
+	trieDB := createTrie(db, cacheConfig)
+	genesis := createGenesis(genesisJSON, logger)
+	chainConfig := createChainConfig(db, trieDB, genesis, logger)
+	engine, err := createEngine(chainConfig, db)
+	if err != nil {
+		logger.Crit(err.Error())
+	}
 	vmConfig := createVMConfig()
 	shouldPreserve := createShouldPreserve()
 	txLookupLimit := ethconfig.Defaults.TxLookupLimit // Default.
 
-	blockchain, err := core.NewBlockChain(db, cacheConfig, chainConfig, engine, vmConfig, shouldPreserve, &txLookupLimit)
+	blockchain, err := core.NewBlockChain(db, cacheConfig, genesis, nil, engine, vmConfig, shouldPreserve, &txLookupLimit)
 	if err != nil {
 		logger.Crit("l1 blockchain could not be created. ", log.ErrKey, err)
 	}
 	return blockchain
+}
+
+func createTrie(db ethdb.Database, cacheConfig *core.CacheConfig) *trie.Database {
+	// Open trie database with provided config
+	return trie.NewDatabaseWithConfig(db, &trie.Config{
+		Cache:     cacheConfig.TrieCleanLimit,
+		Preimages: cacheConfig.Preimages,
+	})
 }
 
 func createDataDir(logger gethlog.Logger) string {
@@ -68,45 +81,38 @@ func createDataDir(logger gethlog.Logger) string {
 }
 
 func createDB(dataDir string, logger gethlog.Logger) ethdb.Database {
-	root := path.Join(dataDir, gethDir, chainDataDir)           // Defaults to `geth/chaindata` in the node's data directory.
-	cache := 2048                                               // Default.
-	handles := 2048                                             // Default.
-	freezer := path.Join(dataDir, gethDir, chainDataAncientDir) // Defaults to `geth/chaindata/ancient` in the node's data directory.
-	namespace := ""                                             // Defaults to `eth/db/chaindata`.
-	readonly := false                                           // Default.
+	root := path.Join(dataDir, gethDir, chainDataDir) // Defaults to `geth/chaindata` in the node's data directory.
+	cache := 2048                                     // Default.
+	handles := 2048                                   // Default.
+	namespace := ""                                   // Defaults to `eth/db/chaindata`.
+	readonly := false                                 // Default.
 
-	db, err := rawdb.NewLevelDBDatabaseWithFreezer(root, cache, handles, freezer, namespace, readonly)
+	db, err := rawdb.NewLevelDBDatabase(root, cache, handles, namespace, readonly)
 	if err != nil {
 		logger.Crit("l1 blockchain database could not be created. ", log.ErrKey, err)
 	}
 	return db
 }
 
-func createCacheConfig(dataDir string) *core.CacheConfig {
+func createCacheConfig() *core.CacheConfig {
 	return &core.CacheConfig{
-		TrieCleanLimit:      4096 * 15 / 100,                            // Default. 15% of 4096MB allowance for internal caching on mainnet.
-		TrieCleanJournal:    path.Join(dataDir, gethDir, trieCacheDir),  // Defaults to `geth/triecache` in the node's data directory.
-		TrieCleanRejournal:  ethconfig.Defaults.TrieCleanCacheRejournal, // Default.
-		TrieCleanNoPrefetch: false,                                      // Default.
-		TrieDirtyLimit:      4096 * 25 / 100,                            // Default. 25% of 4096MB allowance for internal caching on mainnet.
-		TrieDirtyDisabled:   false,                                      // Default.
-		TrieTimeLimit:       ethconfig.Defaults.TrieTimeout,             // Default.
-		SnapshotLimit:       4096 * 10 / 100,                            // Default. 10% of 4096MB allowance for internal caching on mainnet.
-		Preimages:           false,                                      // Default.
+		TrieCleanLimit: 4096 * 15 / 100, // Default. 15% of 4096MB allowance for internal caching on mainnet.
+		// TrieCleanJournal:    path.Join(dataDir, gethDir, trieCacheDir),  // Defaults to `geth/triecache` in the node's data directory.
+		// TrieCleanRejournal:  ethconfig.Defaults.TrieCleanCacheRejournal, // Default.
+		TrieCleanNoPrefetch: false,                          // Default.
+		TrieDirtyLimit:      4096 * 25 / 100,                // Default. 25% of 4096MB allowance for internal caching on mainnet.
+		TrieDirtyDisabled:   false,                          // Default.
+		TrieTimeLimit:       ethconfig.Defaults.TrieTimeout, // Default.
+		SnapshotLimit:       4096 * 10 / 100,                // Default. 10% of 4096MB allowance for internal caching on mainnet.
+		Preimages:           false,                          // Default.
 	}
 }
 
-func createChainConfig(db ethdb.Database, genesisJSON []byte, logger gethlog.Logger) *params.ChainConfig {
-	genesis := &core.Genesis{}
-	err := genesis.UnmarshalJSON(genesisJSON)
-	if err != nil {
-		logger.Crit("l1 blockchain genesis JSON could not be parsed. ", log.ErrKey, err)
-	}
-
+func createChainConfig(db ethdb.Database, triedb *trie.Database, genesis *core.Genesis, logger gethlog.Logger) *params.ChainConfig {
 	chainConfig, _, err := core.SetupGenesisBlockWithOverride(
 		db,
+		triedb,
 		genesis,
-		nil, // Default.
 		nil, // Default.
 	)
 	if err != nil {
@@ -116,32 +122,33 @@ func createChainConfig(db ethdb.Database, genesisJSON []byte, logger gethlog.Log
 }
 
 // Recreates `eth/ethconfig/config.go/CreateConsensusEngine()`.
-func createEngine(dataDir string, chainConfig *params.ChainConfig, db ethdb.Database) consensus.Engine {
-	var engine consensus.Engine
+func createEngine(chainConfig *params.ChainConfig, db ethdb.Database) (consensus.Engine, error) {
+	// If proof-of-authority is requested, set it up
 	if chainConfig.Clique != nil {
-		engine = clique.New(chainConfig.Clique, db)
-	} else {
-		engine = ethash.New(ethash.Config{
-			PowMode:          ethash.ModeNormal,                          // Default.
-			CacheDir:         path.Join(dataDir, gethDir, ethashDir),     // Defaults to `geth/ethash` in the node's data directory.
-			CachesInMem:      ethconfig.Defaults.Ethash.CachesInMem,      // Default.
-			CachesOnDisk:     ethconfig.Defaults.Ethash.CachesOnDisk,     // Default.
-			CachesLockMmap:   ethconfig.Defaults.Ethash.CachesLockMmap,   // Default.
-			DatasetDir:       "",                                         // Defaults to `~/Library/Ethash` in the node's data directory.
-			DatasetsInMem:    ethconfig.Defaults.Ethash.DatasetsInMem,    // Default.
-			DatasetsOnDisk:   ethconfig.Defaults.Ethash.DatasetsOnDisk,   // Default.
-			DatasetsLockMmap: ethconfig.Defaults.Ethash.DatasetsLockMmap, // Default.
-			NotifyFull:       false,                                      // Default.
-		}, nil, false) // Defaults.
-		interface{}(engine).(*ethash.Ethash).SetThreads(-1) // Disables CPU mining.
+		return beacon.New(clique.New(chainConfig.Clique, db)), nil
 	}
-	return beacon.New(engine)
+	// If defaulting to proof-of-work, enforce an already merged network since
+	// we cannot run PoW algorithms and more, so we cannot even follow a chain
+	// not coordinated by a beacon node.
+	if !chainConfig.TerminalTotalDifficultyPassed {
+		return nil, errors.New("ethash is only supported as a historical component of already merged networks")
+	}
+	return beacon.New(ethash.NewFaker()), nil
 }
 
 func createVMConfig() vm.Config {
 	return vm.Config{
 		EnablePreimageRecording: false, // Default.
 	}
+}
+
+func createGenesis(genesisJSON []byte, logger gethlog.Logger) *core.Genesis {
+	genesis := &core.Genesis{}
+	err := genesis.UnmarshalJSON(genesisJSON)
+	if err != nil {
+		logger.Crit("l1 blockchain genesis JSON could not be parsed. ", log.ErrKey, err)
+	}
+	return genesis
 }
 
 // We indicate that no blocks are authored by local accounts, and thus all blocks are discarded during reorgs.

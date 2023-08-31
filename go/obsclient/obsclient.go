@@ -56,6 +56,16 @@ func (oc *ObsClient) BatchNumber() (uint64, error) {
 	return uint64(result), err
 }
 
+// BatchByHash returns the batch with the given hash.
+func (oc *ObsClient) BatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
+	var batch *common.ExtBatch
+	err := oc.rpcClient.Call(&batch, rpc.GetFullBatchByHash, hash)
+	if err == nil && batch == nil {
+		err = ethereum.NotFound
+	}
+	return batch, err
+}
+
 // BatchHeaderByNumber returns the header of the rollup with the given number
 func (oc *ObsClient) BatchHeaderByNumber(number *big.Int) (*common.BatchHeader, error) {
 	var batchHeader *common.BatchHeader
@@ -143,6 +153,16 @@ func (oc *ObsClient) GetBatchesListing(pagination *common.QueryPagination) (*com
 func (oc *ObsClient) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
 	var result common.BlockListingResponse
 	err := oc.rpcClient.Call(&result, rpc.GetBlockListing, pagination)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetConfig returns the network config for obscuro
+func (oc *ObsClient) GetConfig() (*common.ObscuroNetworkInfo, error) {
+	var result common.ObscuroNetworkInfo
+	err := oc.rpcClient.Call(&result, rpc.Config)
 	if err != nil {
 		return nil, err
 	}

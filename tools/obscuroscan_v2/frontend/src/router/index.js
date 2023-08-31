@@ -36,8 +36,8 @@ const router = createRouter({
     },
     {
       path: '/verified',
-      name: 'verifiedContracts',
-      component: () => import('../views/VerifiedContracts.vue')
+      name: 'verifiedData',
+      component: () => import('../views/VerifiedData.vue')
     }
   ]
 })

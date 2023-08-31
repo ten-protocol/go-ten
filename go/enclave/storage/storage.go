@@ -39,7 +39,10 @@ import (
 )
 
 // todo - this will require a dedicated table when updates are implemented
-const masterSeedCfg = "MASTER_SEED"
+const (
+	masterSeedCfg            = "MASTER_SEED"
+	_slowCallThresholdMillis = 50 // requests that take longer than this will be logged
+)
 
 type storageImpl struct {
 	db enclavedb.EnclaveDB
@@ -83,7 +86,6 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 		db: backingDB,
 		stateDB: state.NewDatabaseWithConfig(backingDB, &trie.Config{
 			Cache:     cacheConfig.TrieCleanLimit,
-			Journal:   cacheConfig.TrieCleanJournal,
 			Preimages: cacheConfig.Preimages,
 		}),
 		chainConfig: chainConfig,
@@ -102,20 +104,28 @@ func (s *storageImpl) Close() error {
 }
 
 func (s *storageImpl) FetchHeadBatch() (*core.Batch, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchHeadBatch", callStart)
 	return enclavedb.ReadCurrentHeadBatch(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) FetchCurrentSequencerNo() (*big.Int, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchCurrentSequencerNo", callStart)
 	return enclavedb.ReadCurrentSequencerNo(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) FetchBatch(hash common.L2BatchHash) (*core.Batch, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchBatch", callStart)
 	return s.getCachedBatch(hash, func(hash common.L2BatchHash) (*core.Batch, error) {
 		return enclavedb.ReadBatchByHash(s.db.GetSQLDB(), hash)
 	})
 }
 
 func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHeader, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchBatchHeader", callStart)
 	b, err := s.FetchBatch(hash)
 	if err != nil {
 		return nil, err
@@ -124,10 +134,14 @@ func (s *storageImpl) FetchBatchHeader(hash common.L2BatchHash) (*common.BatchHe
 }
 
 func (s *storageImpl) FetchBatchByHeight(height uint64) (*core.Batch, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchBatchByHeight", callStart)
 	return enclavedb.ReadCanonicalBatchByHeight(s.db.GetSQLDB(), height)
 }
 
 func (s *storageImpl) StoreBlock(b *types.Block, chainFork *common.ChainFork) error {
+	callStart := time.Now()
+	defer s.logDuration("StoreBlock", callStart)
 	dbTransaction := s.db.NewDBTransaction()
 	if chainFork != nil && chainFork.IsFork() {
 		s.logger.Info(fmt.Sprintf("Fork. %s", chainFork))
@@ -151,16 +165,22 @@ func (s *storageImpl) StoreBlock(b *types.Block, chainFork *common.ChainFork) er
 }
 
 func (s *storageImpl) FetchBlock(blockHash common.L1BlockHash) (*types.Block, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchBlock", callStart)
 	return s.getCachedBlock(blockHash, func(hash common.L1BlockHash) (*types.Block, error) {
 		return enclavedb.FetchBlock(s.db.GetSQLDB(), blockHash)
 	})
 }
 
 func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchHeadBlock", callStart)
 	return enclavedb.FetchHeadBlock(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
+	callStart := time.Now()
+	defer s.logDuration("StoreSecret", callStart)
 	enc, err := rlp.EncodeToBytes(secret)
 	if err != nil {
 		return fmt.Errorf("could not encode shared secret. Cause: %w", err)
@@ -173,6 +193,8 @@ func (s *storageImpl) StoreSecret(secret crypto.SharedEnclaveSecret) error {
 }
 
 func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchSecret", callStart)
 	var ss crypto.SharedEnclaveSecret
 
 	cfg, err := enclavedb.FetchConfig(s.db.GetSQLDB(), masterSeedCfg)
@@ -187,6 +209,8 @@ func (s *storageImpl) FetchSecret() (*crypto.SharedEnclaveSecret, error) {
 }
 
 func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block) bool {
+	callStart := time.Now()
+	defer s.logDuration("IsAncestor", callStart)
 	if bytes.Equal(maybeAncestor.Hash().Bytes(), block.Hash().Bytes()) {
 		return true
 	}
@@ -205,6 +229,8 @@ func (s *storageImpl) IsAncestor(block *types.Block, maybeAncestor *types.Block)
 }
 
 func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L1BlockHash) bool {
+	callStart := time.Now()
+	defer s.logDuration("IsBlockAncestor", callStart)
 	resolvedBlock, err := s.FetchBlock(maybeAncestor)
 	if err != nil {
 		return false
@@ -213,6 +239,8 @@ func (s *storageImpl) IsBlockAncestor(block *types.Block, maybeAncestor common.L
 }
 
 func (s *storageImpl) HealthCheck() (bool, error) {
+	callStart := time.Now()
+	defer s.logDuration("HealthCheck", callStart)
 	headBatch, err := s.FetchHeadBatch()
 	if err != nil {
 		s.logger.Info("HealthCheck failed for enclave storage", log.ErrKey, err)
@@ -222,10 +250,14 @@ func (s *storageImpl) HealthCheck() (bool, error) {
 }
 
 func (s *storageImpl) FetchHeadBatchForBlock(blockHash common.L1BlockHash) (*core.Batch, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchHeadBatchForBlock", callStart)
 	return enclavedb.ReadHeadBatchForBlock(s.db.GetSQLDB(), blockHash)
 }
 
 func (s *storageImpl) CreateStateDB(hash common.L2BatchHash) (*state.StateDB, error) {
+	callStart := time.Now()
+	defer s.logDuration("CreateStateDB", callStart)
 	batch, err := s.FetchBatch(hash)
 	if err != nil {
 		return nil, err
@@ -240,7 +272,9 @@ func (s *storageImpl) CreateStateDB(hash common.L2BatchHash) (*state.StateDB, er
 }
 
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
-	statedb, err := state.New(gethcommon.BigToHash(big.NewInt(0)), s.stateDB, nil)
+	callStart := time.Now()
+	defer s.logDuration("EmptyStateDB", callStart)
+	statedb, err := state.New(types.EmptyRootHash, s.stateDB, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}
@@ -249,35 +283,32 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 
 // GetReceiptsByBatchHash retrieves the receipts for all transactions in a given batch.
 func (s *storageImpl) GetReceiptsByBatchHash(hash gethcommon.Hash) (types.Receipts, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetReceiptsByBatchHash", callStart)
 	return enclavedb.ReadReceiptsByBatchHash(s.db.GetSQLDB(), hash, s.chainConfig)
 }
 
 func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction, gethcommon.Hash, uint64, uint64, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetTransaction", callStart)
 	return enclavedb.ReadTransaction(s.db.GetSQLDB(), txHash)
 }
 
-func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, error) {
-	tx, _, _, _, err := s.GetTransaction(txHash) //nolint:dogsled
-	if err != nil {
-		return gethcommon.Address{}, err
-	}
-	// todo - make the signer a field of the rollup chain
-	msg, err := tx.AsMessage(types.NewLondonSigner(tx.ChainId()), nil)
-	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-	return msg.From(), nil
-}
-
 func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (*gethcommon.Hash, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetContractCreationTx", callStart)
 	return enclavedb.GetContractCreationTx(s.db.GetSQLDB(), address)
 }
 
 func (s *storageImpl) GetTransactionReceipt(txHash gethcommon.Hash) (*types.Receipt, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetTransactionReceipt", callStart)
 	return enclavedb.ReadReceipt(s.db.GetSQLDB(), txHash, s.chainConfig)
 }
 
 func (s *storageImpl) FetchAttestedKey(address gethcommon.Address) (*ecdsa.PublicKey, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchAttestedKey", callStart)
 	key, err := enclavedb.FetchAttKey(s.db.GetSQLDB(), address)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", address, err)
@@ -292,19 +323,27 @@ func (s *storageImpl) FetchAttestedKey(address gethcommon.Address) (*ecdsa.Publi
 }
 
 func (s *storageImpl) StoreAttestedKey(aggregator gethcommon.Address, key *ecdsa.PublicKey) error {
+	callStart := time.Now()
+	defer s.logDuration("StoreAttestedKey", callStart)
 	_, err := enclavedb.WriteAttKey(s.db.GetSQLDB(), aggregator, gethcrypto.CompressPubkey(key))
 	return err
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*core.Batch, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchBatchBySeqNo", callStart)
 	return enclavedb.ReadBatchBySeqNo(s.db.GetSQLDB(), seqNum)
 }
 
 func (s *storageImpl) FetchBatchesByBlock(block common.L1BlockHash) ([]*core.Batch, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchBatchesByBlock", callStart)
 	return enclavedb.ReadBatchesByBlock(s.db.GetSQLDB(), block)
 }
 
 func (s *storageImpl) StoreBatch(batch *core.Batch) error {
+	callStart := time.Now()
+	defer s.logDuration("StoreBatch", callStart)
 	// sanity check that this is not overlapping
 	existingBatchWithSameSequence, _ := s.FetchBatchBySeqNo(batch.SeqNo().Uint64())
 	if existingBatchWithSameSequence != nil && existingBatchWithSameSequence.Hash() != batch.Hash() {
@@ -333,6 +372,8 @@ func (s *storageImpl) StoreBatch(batch *core.Batch) error {
 }
 
 func (s *storageImpl) StoreExecutedBatch(batch *core.Batch, receipts []*types.Receipt) error {
+	callStart := time.Now()
+	defer s.logDuration("StoreExecutedBatch", callStart)
 	executed, err := enclavedb.BatchWasExecuted(s.db.GetSQLDB(), batch.Hash())
 	if err != nil {
 		return err
@@ -353,13 +394,13 @@ func (s *storageImpl) StoreExecutedBatch(batch *core.Batch, receipts []*types.Re
 			return fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 		}
 
-		err2 := enclavedb.StoreEventLogs(dbTx, receipts, stateDB)
-		if err2 != nil {
-			return fmt.Errorf("could not save logs %w", err2)
+		err = enclavedb.StoreEventLogs(dbTx, receipts, stateDB)
+		if err != nil {
+			return fmt.Errorf("could not save logs %w", err)
 		}
 	}
 
-	if err := dbTx.Write(); err != nil {
+	if err = dbTx.Write(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 
@@ -371,10 +412,14 @@ func (s *storageImpl) StoreValueTransfers(blockHash common.L1BlockHash, transfer
 }
 
 func (s *storageImpl) StoreL1Messages(blockHash common.L1BlockHash, messages common.CrossChainMessages) error {
+	callStart := time.Now()
+	defer s.logDuration("StoreL1Messages", callStart)
 	return enclavedb.WriteL1Messages(s.db.GetSQLDB(), blockHash, messages, false)
 }
 
 func (s *storageImpl) GetL1Messages(blockHash common.L1BlockHash) (common.CrossChainMessages, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetL1Messages", callStart)
 	return enclavedb.FetchL1Messages[common.CrossChainMessage](s.db.GetSQLDB(), blockHash, false)
 }
 
@@ -385,6 +430,8 @@ func (s *storageImpl) GetL1Transfers(blockHash common.L1BlockHash) (common.Value
 const enclaveKeyKey = "ek"
 
 func (s *storageImpl) StoreEnclaveKey(enclaveKey *ecdsa.PrivateKey) error {
+	callStart := time.Now()
+	defer s.logDuration("StoreEnclaveKey", callStart)
 	if enclaveKey == nil {
 		return errors.New("enclaveKey cannot be nil")
 	}
@@ -395,6 +442,8 @@ func (s *storageImpl) StoreEnclaveKey(enclaveKey *ecdsa.PrivateKey) error {
 }
 
 func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetEnclaveKey", callStart)
 	keyBytes, err := enclavedb.FetchConfig(s.db.GetSQLDB(), enclaveKeyKey)
 	if err != nil {
 		return nil, err
@@ -407,6 +456,8 @@ func (s *storageImpl) GetEnclaveKey() (*ecdsa.PrivateKey, error) {
 }
 
 func (s *storageImpl) StoreRollup(rollup *common.ExtRollup) error {
+	callStart := time.Now()
+	defer s.logDuration("StoreRollup", callStart)
 	dbBatch := s.db.NewDBTransaction()
 
 	if err := enclavedb.WriteRollup(dbBatch, rollup.Header); err != nil {
@@ -420,6 +471,8 @@ func (s *storageImpl) StoreRollup(rollup *common.ExtRollup) error {
 }
 
 func (s *storageImpl) DebugGetLogs(txHash common.TxHash) ([]*tracers.DebugLogs, error) {
+	callStart := time.Now()
+	defer s.logDuration("DebugGetLogs", callStart)
 	return enclavedb.DebugGetLogs(s.db.GetSQLDB(), txHash)
 }
 
@@ -430,34 +483,50 @@ func (s *storageImpl) FilterLogs(
 	addresses []gethcommon.Address,
 	topics [][]gethcommon.Hash,
 ) ([]*types.Log, error) {
+	callStart := time.Now()
+	defer s.logDuration("FilterLogs", callStart)
 	return enclavedb.FilterLogs(s.db.GetSQLDB(), requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
 }
 
 func (s *storageImpl) GetContractCount() (*big.Int, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetContractCount", callStart)
 	return enclavedb.ReadContractCreationCount(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) FetchCanonicalUnexecutedBatches() ([]*core.Batch, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchCanonicalUnexecutedBatches", callStart)
 	return enclavedb.ReadUnexecutedBatches(s.db.GetSQLDB())
 }
 
 func (s *storageImpl) BatchWasExecuted(hash common.L2BatchHash) (bool, error) {
+	callStart := time.Now()
+	defer s.logDuration("BatchWasExecuted", callStart)
 	return enclavedb.BatchWasExecuted(s.db.GetSQLDB(), hash)
 }
 
 func (s *storageImpl) GetReceiptsPerAddress(address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetReceiptsPerAddress", callStart)
 	return enclavedb.GetReceiptsPerAddress(s.db.GetSQLDB(), s.chainConfig, address, pagination)
 }
 
 func (s *storageImpl) GetReceiptsPerAddressCount(address *gethcommon.Address) (uint64, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetReceiptsPerAddressCount", callStart)
 	return enclavedb.GetReceiptsPerAddressCount(s.db.GetSQLDB(), address)
 }
 
 func (s *storageImpl) GetPublicTransactionData(pagination *common.QueryPagination) ([]common.PublicTransaction, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetPublicTransactionData", callStart)
 	return enclavedb.GetPublicTransactionData(s.db.GetSQLDB(), pagination)
 }
 
 func (s *storageImpl) GetPublicTransactionCount() (uint64, error) {
+	callStart := time.Now()
+	defer s.logDuration("GetPublicTransactionCount", callStart)
 	return enclavedb.GetPublicTransactionCount(s.db.GetSQLDB())
 }
 
@@ -514,5 +583,13 @@ func (s *storageImpl) cacheBatch(batchHash common.L2BatchHash, b *core.Batch) {
 	err = s.batchCache.Set(context.Background(), batchHash, value)
 	if err != nil {
 		s.logger.Error("Could not store batch in cache", log.ErrKey, err)
+	}
+}
+
+func (s *storageImpl) logDuration(method string, callStart time.Time) {
+	durationMillis := time.Since(callStart).Milliseconds()
+	// we only log 'slow' calls to reduce noise
+	if durationMillis > _slowCallThresholdMillis {
+		s.logger.Info(fmt.Sprintf("Storage::%s completed", method), log.DurationMilliKey, durationMillis)
 	}
 }

@@ -11,7 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"database/sql"
-	_ "embed"
+	"embed"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -23,6 +23,9 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/migration"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/enclavedb"
 
@@ -81,11 +84,8 @@ const (
 	certSubject     = "obscuroUser"
 	enclaveHostName = "enclave"
 
-	dbUser    = "obscuro"
-	dbName    = "obsdb"
-	tableName = "keyvalue"
-	keyCol    = "ky"
-	valueCol  = "val"
+	dbUser = "obscuro"
+	dbName = "obsdb"
 
 	// change this flag to true to debug issues with edgeless DB (and start EDB process with -e EDG_EDB_DEBUG=1
 	//   this will give you:
@@ -93,11 +93,13 @@ const (
 	//		- write the edb.pem file out for connecting to Edgeless DB services manually
 	//		- versions of files created with a '.unsealed' suffix that can be used to connect to the database using mysql-client
 	debugMode = false
+
+	initFile = "001_init.sql"
 )
 
 var (
-	//go:embed 001_init.sql
-	edbInitFile string
+	//go:embed *.sql
+	sqlFiles embed.FS
 
 	edbCredentialsFilepath = filepath.Join(dataDir, "edb-credentials.json")
 
@@ -142,6 +144,12 @@ func Connector(edbCfg *Config, logger gethlog.Logger) (enclavedb.EnclaveDB, erro
 	}
 
 	sqlDB, err := connectToEdgelessDB(edbCfg.Host, tlsCfg, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// perform db migration
+	err = migration.DBMigration(sqlDB, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
 	if err != nil {
 		return nil, err
 	}
@@ -231,8 +239,13 @@ func performHandshake(edbCfg *Config, logger gethlog.Logger) (*Credentials, erro
 		return nil, err
 	}
 
+	edbInitFile, err := sqlFiles.ReadFile(initFile)
+	if err != nil {
+		logger.Crit("Could not read the initialisation sql file", log.ErrKey, err)
+	}
+
 	manifest := &manifest{
-		SQL:   createManifestFormat(edbInitFile),
+		SQL:   createManifestFormat(string(edbInitFile)),
 		Cert:  caCertPEM,
 		Debug: debugMode,
 	}

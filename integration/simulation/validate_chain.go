@@ -469,7 +469,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	total := big.NewInt(0)
 	for _, wallet := range s.Params.Wallets.SimObsWallets {
 		client := rpcHandles.ObscuroWalletClient(wallet.Address(), nodeIdx)
-		bal := balance(s.ctx, client, wallet.Address(), s.Params.Wallets.Tokens[testcommon.HOC].L2ContractAddress)
+		bal := balance(s.ctx, client, wallet.Address(), s.Params.Wallets.Tokens[testcommon.HOC].L2ContractAddress, nodeIdx)
 		total.Add(total, bal)
 	}
 
@@ -556,11 +556,11 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 }
 
 func getSender(tx *common.L2Tx) gethcommon.Address {
-	msg, err := tx.AsMessage(types.NewLondonSigner(tx.ChainId()), nil)
+	from, err := types.Sender(types.NewEIP155Signer(tx.ChainId()), tx)
 	if err != nil {
 		panic(fmt.Errorf("couldn't find sender to verify transaction - %w", err))
 	}
-	return msg.From()
+	return from
 }
 
 // Checks that there is a receipt available for each L2 transaction.

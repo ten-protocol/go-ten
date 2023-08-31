@@ -46,6 +46,7 @@ type Config struct {
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
 	coinbaseAddress           string
+	logLevel                  int
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -71,7 +72,9 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.HostID = gethcommon.HexToAddress(c.hostID)
 	cfg.HostAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
 	cfg.LogPath = testlog.LogFile()
+	cfg.LogLevel = c.logLevel
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
+	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 
 	if c.nodeType == "sequencer" && c.coinbaseAddress != "" {
 		cfg.GasPaymentAddress = gethcommon.HexToAddress(c.coinbaseAddress)
@@ -102,6 +105,8 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.LogPath = testlog.LogFile()
 	cfg.ProfilerEnabled = c.profilerEnabled
 	cfg.MetricsEnabled = false
+	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
+	cfg.LogLevel = c.logLevel
 
 	return cfg
 }
@@ -273,5 +278,11 @@ func WithDebugNamespaceEnabled(b bool) Option {
 func WithProfiler(b bool) Option {
 	return func(c *Config) {
 		c.profilerEnabled = b
+	}
+}
+
+func WithLogLevel(i int) Option {
+	return func(c *Config) {
+		c.logLevel = i
 	}
 }

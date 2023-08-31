@@ -62,12 +62,14 @@ func (m *AccountManager) AddClient(address gethcommon.Address, client *rpc.EncRP
 // the request with all clients until it succeeds
 func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, userConn userconn.UserConn) error {
 	if rpcReq.Method == rpc.Subscribe {
-		client, err := m.suggestSubscriptionClient(rpcReq)
+		clients, err := m.suggestSubscriptionClient(rpcReq)
 		if err != nil {
 			return err
 		}
-		// fetch the client from a topic
-		return m.executeSubscribe(client, rpcReq, rpcResp, userConn)
+		// fetch the clients from a topic
+		for _, client := range clients {
+			return m.executeSubscribe(client, rpcReq, rpcResp, userConn)
+		}
 	}
 
 	return m.executeCall(rpcReq, rpcResp)
@@ -76,18 +78,17 @@ func (m *AccountManager) ProxyRequest(rpcReq *RPCRequest, rpcResp *interface{}, 
 const emptyFilterCriteria = "[]" // This is the value that gets passed for an empty filter criteria.
 
 // determine the client based on the topics
-// if none is found use the first client and assume this is a lifecycle method
-func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) (rpc.Client, error) {
-	var client rpc.Client //= m.unauthedClient // todo (@ziga) - support lifecycle events through an unauthed client
+// if none is found use all clients from current user
+func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) ([]rpc.Client, error) {
+	clients := make([]rpc.Client, 0, len(m.accountClients))
 
-	// by default use the first client for lifecycle events
+	// by default, if no client is identified as a candidate, then subscribe to all accounts
 	for _, c := range m.accountClients {
-		client = c
-		break
+		clients = append(clients, c)
 	}
 
 	if len(rpcReq.Params) < 2 {
-		return client, nil
+		return clients, nil
 	}
 
 	// The filter is the second parameter
@@ -112,16 +113,19 @@ func (m *AccountManager) suggestSubscriptionClient(rpcReq *RPCRequest) (rpc.Clie
 		}
 		for _, topic := range topicCondition {
 			potentialAddr := common.ExtractPotentialAddress(topic)
+			m.logger.Info(fmt.Sprintf("Potential address (%s) found for the request %s", potentialAddr, rpcReq))
 			if potentialAddr != nil {
 				cl, found := m.accountClients[*potentialAddr]
 				if found {
-					return cl, nil
+					m.logger.Info("Client found for potential address: ", potentialAddr)
+					return []rpc.Client{cl}, nil
 				}
+				m.logger.Info("Potential address does not have a client", potentialAddr)
 			}
 		}
 	}
 
-	return client, nil
+	return clients, nil
 }
 
 func (m *AccountManager) executeCall(rpcReq *RPCRequest, rpcResp *interface{}) error {
@@ -271,10 +275,11 @@ func searchDataFieldForAccount(callParams map[string]interface{}, accClients map
 	return nil, fmt.Errorf("no known account found in data bytes")
 }
 
-func (m *AccountManager) executeSubscribe(client rpc.Client, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error {
+func (m *AccountManager) executeSubscribe(client rpc.Client, req *RPCRequest, resp *interface{}, userConn userconn.UserConn) error { //nolint: gocognit
 	if len(req.Params) == 0 {
 		return fmt.Errorf("could not subscribe as no subscription namespace was provided")
 	}
+	m.logger.Info(fmt.Sprintf("Subscribing client: %s for request: %s", client, req))
 	ch := make(chan common.IDAndLog)
 	subscription, err := client.Subscribe(context.Background(), resp, rpc.SubscribeNamespace, ch, req.Params...)
 	if err != nil {
@@ -306,7 +311,10 @@ func (m *AccountManager) executeSubscribe(client rpc.Client, req *RPCRequest, re
 
 			case err = <-subscription.Err():
 				// An error on this channel means the subscription has ended, so we exit the loop.
-				userConn.HandleError(err.Error())
+				if userConn != nil && err != nil {
+					userConn.HandleError(err.Error())
+				}
+
 				return
 			}
 		}

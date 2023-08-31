@@ -52,7 +52,7 @@ func NewClient(config *config.HostConfig, logger gethlog.Logger) common.Enclave 
 	err = retry.Do(func() error {
 		currState := connection.GetState()
 		if currState != connectivity.Ready {
-			logger.Info("retrying connection until enclave is available", "status", currState.String())
+			logger.Info("retrying connection until enclave is available", "status", currState.String(), "rpcAddr", config.EnclaveRPCAddress)
 			connection.Connect()
 			return fmt.Errorf("connection is not ready, status=%s", currState)
 		}
@@ -590,6 +590,27 @@ func (c *Client) GetPublicTransactionData(pagination *common.QueryPagination) (*
 
 	var result common.TransactionListingResponse
 	err = json.Unmarshal(response.PublicTransactionData, &result)
+	if err != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	return &result, nil
+}
+
+func (c *Client) Config() (*common.ObscuroEnclaveInfo, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), c.config.EnclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.Config(timeoutCtx, &generated.ConfigRequest{})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	var result common.ObscuroEnclaveInfo
+	err = json.Unmarshal(response.Config, &result)
 	if err != nil {
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
