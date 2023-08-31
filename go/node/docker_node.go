@@ -118,7 +118,6 @@ func (d *DockerNode) startHost() error {
 		"-rollupInterval=3s",
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
 		fmt.Sprintf("-isInboundP2PEnabled=%t", d.cfg.isInboundP2PEnabled),
-
 	}
 	if !d.cfg.hostInMemDB {
 		cmd = append(cmd, "-levelDBPath", _hostDataDir)
