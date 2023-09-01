@@ -6,8 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
-
 	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -26,6 +24,7 @@ import (
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 )
 

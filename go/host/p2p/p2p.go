@@ -9,11 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/subscription"
-	"github.com/pkg/errors"
-
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/obscuronet/go-obscuro/go/common/subscription"
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -356,12 +355,15 @@ func (p *Service) broadcast(msg message) error {
 	copy(currentAddresses, p.peerAddresses)
 	p.peerAddressesMutex.RUnlock()
 
-	var wg sync.WaitGroup
 	for _, address := range currentAddresses {
-		wg.Add(1)
-		go p.sendBytesWithRetry(&wg, address, msgEncoded) //nolint: errcheck
+		closureAddr := address
+		go func() {
+			err := p.sendBytesWithRetry(closureAddr, msgEncoded)
+			if err != nil {
+				p.logger.Error("unsuccessful broadcast", log.ErrKey, err)
+			}
+		}()
 	}
-	wg.Wait()
 
 	return nil
 }
@@ -383,7 +385,7 @@ func (p *Service) send(msg message, to string) error {
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to sequencer. Cause: %w", err)
 	}
-	err = p.sendBytesWithRetry(nil, to, msgEncoded)
+	err = p.sendBytesWithRetry(to, msgEncoded)
 	if err != nil {
 		return err
 	}
@@ -392,10 +394,7 @@ func (p *Service) send(msg message, to string) error {
 
 // Sends the bytes to the provided address.
 // Until introducing libp2p (or equivalent), we have a simple retry
-func (p *Service) sendBytesWithRetry(wg *sync.WaitGroup, address string, msgEncoded []byte) error {
-	if wg != nil {
-		defer wg.Done()
-	}
+func (p *Service) sendBytesWithRetry(address string, msgEncoded []byte) error {
 	// retry for about 2 seconds
 	err := retry.Do(func() error {
 		return p.sendBytes(address, msgEncoded)

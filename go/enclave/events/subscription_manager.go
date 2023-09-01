@@ -151,7 +151,6 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(batch *core.Batch, recei
 			if relevant {
 				relevantLogsForSub = append(relevantLogsForSub, logItem)
 			}
-			s.logger.Info(fmt.Sprintf("Subscription %s. Account %s. Log %v. Extracted addresses: %v. Relevant: %t", id, sub.Account, logItem, userAddrs, relevant))
 		}
 		if len(relevantLogsForSub) > 0 {
 			relevantLogsPerSubscription[id] = relevantLogsForSub

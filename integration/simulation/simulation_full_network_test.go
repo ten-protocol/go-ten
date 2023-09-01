@@ -32,9 +32,9 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 		L2ToL1EfficiencyThreshold:   0.7,  // nodes might stop producing rollups but the geth network is still going
 		Wallets:                     wallets,
 		StartPort:                   integration.StartPortSimulationFullNetwork,
-		ReceiptTimeout:              15 * time.Second,
+		ReceiptTimeout:              65 * time.Second,
 		StoppingDelay:               10 * time.Second,
-		NodeWithIncomingP2PDisabled: 0,
+		NodeWithIncomingP2PDisabled: 2,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 

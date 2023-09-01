@@ -198,7 +198,6 @@ func (g *Guardian) mainLoop() {
 		// check enclave status on every loop (this will happen whenever we hit an error while trying to resolve a state,
 		// or after the monitoring interval if we are healthy)
 		g.checkEnclaveStatus()
-		g.logger.Trace("mainLoop - enclave status", "status", g.state.GetStatus())
 		switch g.state.GetStatus() {
 		case Disconnected, Unavailable:
 			// nothing to do, we are waiting for the enclave to be available

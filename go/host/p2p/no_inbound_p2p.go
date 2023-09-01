@@ -15,7 +15,6 @@ import (
 	"github.com/obscuronet/go-obscuro/go/common/host"
 	"github.com/obscuronet/go-obscuro/go/common/log"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 	"github.com/obscuronet/go-obscuro/go/common/subscription"
 	"github.com/obscuronet/go-obscuro/go/config"
 
@@ -23,13 +22,10 @@ import (
 )
 
 type NoInboundP2P struct {
-	batchSubscribers *subscription.Manager[host.P2PBatchHandler]
-	txSubscribers    *subscription.Manager[host.P2PTxHandler]
-	batchReqHandlers *subscription.Manager[host.P2PBatchRequestHandler]
+	txSubscribers *subscription.Manager[host.P2PTxHandler]
 
 	isSequencer      bool
 	ourPublicAddress string
-	stopControl      *stopcontrol.StopControl
 	logger           gethlog.Logger
 	sl               p2pServiceLocator
 	sequencerAddress string
@@ -42,14 +38,11 @@ type NoInboundP2P struct {
 
 func NewNoInboundP2P(config *config.HostConfig, serviceLocator p2pServiceLocator, logger gethlog.Logger) *NoInboundP2P {
 	return &NoInboundP2P{
-		batchSubscribers: subscription.NewManager[host.P2PBatchHandler](),
-		txSubscribers:    subscription.NewManager[host.P2PTxHandler](),
-		batchReqHandlers: subscription.NewManager[host.P2PBatchRequestHandler](),
+		txSubscribers: subscription.NewManager[host.P2PTxHandler](),
 
 		isSequencer:      config.NodeType == common.Sequencer,
 		ourPublicAddress: config.P2PPublicAddress,
 		ourBindAddress:   config.P2PBindAddress,
-		stopControl:      stopcontrol.New(),
 		logger:           logger,
 		sl:               serviceLocator,
 		p2pTimeout:       config.P2PConnectionTimeout,
@@ -58,19 +51,18 @@ func NewNoInboundP2P(config *config.HostConfig, serviceLocator p2pServiceLocator
 
 func (n *NoInboundP2P) Start() error {
 	// Only the sequencer accepts data in
-	if !n.isSequencer {
-		return nil
-	}
-	listener, err := net.Listen("tcp", n.ourBindAddress)
-	if err != nil {
-		return fmt.Errorf("could not listen for P2P connections on %s: %w", n.ourBindAddress, err)
+	if n.isSequencer {
+		listener, err := net.Listen("tcp", n.ourBindAddress)
+		if err != nil {
+			return fmt.Errorf("could not listen for P2P connections on %s: %w", n.ourBindAddress, err)
+		}
+		n.listener = listener
+
+		n.logger.Info("P2P server started listening", "bindAddress", n.ourBindAddress, "publicAddress", n.ourPublicAddress)
+		go n.handleConnections()
 	}
 
-	n.logger.Info("P2P server started listening", "bindAddress", n.ourBindAddress, "publicAddress", n.ourPublicAddress)
 	n.running.Store(true)
-	n.listener = listener
-
-	go n.handleConnections()
 
 	// ensure we have re-synced the peer list from management contract after startup
 	go n.RefreshPeerList()
@@ -88,16 +80,16 @@ func (n *NoInboundP2P) HealthStatus() host.HealthStatus {
 	}
 }
 
-func (n *NoInboundP2P) SubscribeForBatches(handler host.P2PBatchHandler) func() {
-	return func() {}
+func (n *NoInboundP2P) SubscribeForBatches(_ host.P2PBatchHandler) func() {
+	return nil
 }
 
 func (n *NoInboundP2P) SubscribeForTx(handler host.P2PTxHandler) func() {
 	return n.txSubscribers.Subscribe(handler)
 }
 
-func (n *NoInboundP2P) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler) func() {
-	return func() {}
+func (n *NoInboundP2P) SubscribeForBatchRequests(_ host.P2PBatchRequestHandler) func() {
+	return nil
 }
 
 func (n *NoInboundP2P) RefreshPeerList() {
@@ -108,7 +100,7 @@ func (n *NoInboundP2P) RefreshPeerList() {
 
 	var newPeers []string
 	err := retry.Do(func() error {
-		if n.stopControl.IsStopping() {
+		if !n.running.Load() {
 			return retry.FailFast(fmt.Errorf("p2p service is stopped - abandoning peer list refresh"))
 		}
 
@@ -137,6 +129,7 @@ func (n *NoInboundP2P) SendTxToSequencer(tx common.EncryptedTx) error {
 	if n.isSequencer {
 		return errors.New("sequencer cannot send tx to itself")
 	}
+
 	msg := message{Sender: n.ourPublicAddress, Type: msgTypeTx, Contents: tx}
 	if n.sequencerAddress == "" {
 		return fmt.Errorf("failed to find sequencer - no sequencerAddress")
@@ -259,13 +252,6 @@ func (n *NoInboundP2P) handle(conn net.Conn) {
 		if n.isSequencer {
 			n.logger.Error("received batch from peer, but this is a sequencer node")
 			return
-		}
-		var batchMsg *host.BatchMsg
-		err := rlp.DecodeBytes(msg.Contents, &batchMsg)
-		if err != nil {
-			n.logger.Warn("unable to decode batch received from peer", log.ErrKey, err)
-			// nothing to send to subscribers
-			break
 		}
 
 	case msgTypeBatchRequest:
