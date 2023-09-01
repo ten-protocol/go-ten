@@ -182,7 +182,7 @@ func FilterLogs(
 func DebugGetLogs(db *sql.DB, txHash common.TxHash) ([]*tracers.DebugLogs, error) {
 	var queryParams []any
 
-	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + "AND txHash = ?"
+	query := baseDebugEventsQuerySelect + " " + baseEventsJoin + "AND tx.hash = ?"
 
 	queryParams = append(queryParams, txHash.Bytes())
 
