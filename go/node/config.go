@@ -74,6 +74,7 @@ func (c *Config) ToEnclaveConfig() *config.EnclaveConfig {
 	cfg.LogPath = testlog.LogFile()
 	cfg.LogLevel = c.logLevel
 	cfg.Address = fmt.Sprintf("%s:%d", _localhost, c.enclaveWSPort)
+	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 
 	return cfg
 }
@@ -100,6 +101,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.LogPath = testlog.LogFile()
 	cfg.ProfilerEnabled = c.profilerEnabled
 	cfg.MetricsEnabled = false
+	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 	cfg.LogLevel = c.logLevel
 	cfg.IsInboundP2PEnabled = c.isInboundP2PEnabled
 
