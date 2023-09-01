@@ -34,7 +34,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
 	obscuroHosts := make([]host.Host, params.NumberOfNodes)
 
-	p2pNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency)
+	p2pNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithIncomingP2PDisabled)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyOBXAddress := datagenerator.RandomAddress()

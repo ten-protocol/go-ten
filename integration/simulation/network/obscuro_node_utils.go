@@ -33,7 +33,9 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 	// Create the in memory obscuro nodes, each connect each to a geth node
 	obscuroNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
 	obscuroHosts := make([]host.Host, params.NumberOfNodes)
-	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency)
+
+	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithIncomingP2PDisabled)
+
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
