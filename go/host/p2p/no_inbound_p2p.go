@@ -89,7 +89,7 @@ func (n *NoInboundP2P) HealthStatus() host.HealthStatus {
 }
 
 func (n *NoInboundP2P) SubscribeForBatches(handler host.P2PBatchHandler) func() {
-	return n.batchSubscribers.Subscribe(handler)
+	return func() {}
 }
 
 func (n *NoInboundP2P) SubscribeForTx(handler host.P2PTxHandler) func() {
@@ -97,7 +97,7 @@ func (n *NoInboundP2P) SubscribeForTx(handler host.P2PTxHandler) func() {
 }
 
 func (n *NoInboundP2P) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler) func() {
-	return n.batchReqHandlers.Subscribe(handler)
+	return func() {}
 }
 
 func (n *NoInboundP2P) RefreshPeerList() {
@@ -267,29 +267,11 @@ func (n *NoInboundP2P) handle(conn net.Conn) {
 			// nothing to send to subscribers
 			break
 		}
-		for _, batchSubs := range n.batchSubscribers.Subscribers() {
-			go batchSubs.HandleBatches(batchMsg.Batches, batchMsg.IsLive)
-		}
+
 	case msgTypeBatchRequest:
 		if !n.isSequencer {
 			n.logger.Error("received batch request from peer, but not a sequencer node")
 			return
 		}
-		// this is an incoming request, p2p service is responsible for finding the response and returning it
-		go n.handleBatchRequest(msg.Contents)
-	}
-}
-
-func (n *NoInboundP2P) handleBatchRequest(encodedBatchRequest common.EncodedBatchRequest) {
-	var batchRequest *common.BatchRequest
-	err := rlp.DecodeBytes(encodedBatchRequest, &batchRequest)
-	if err != nil {
-		n.logger.Warn("unable to decode batch request received from peer using RLP", log.ErrKey, err)
-		return
-	}
-
-	// todo (@matt) should this response be synchronous?
-	for _, requestHandler := range n.batchReqHandlers.Subscribers() {
-		go requestHandler.HandleBatchRequest(batchRequest.Requester, batchRequest.FromSeqNo)
 	}
 }

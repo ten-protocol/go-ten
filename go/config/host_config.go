@@ -85,7 +85,7 @@ type HostInputConfig struct {
 	// Min interval before creating the next rollup (only used by Sequencer nodes)
 	RollupInterval time.Duration
 
-	// Whether inboundp2p is enabled or not
+	// Whether inbound p2p is enabled or not
 	IsInboundP2PEnabled bool
 }
 
