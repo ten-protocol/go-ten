@@ -23,10 +23,6 @@ type BlockMessageExtractor interface {
 
 	// Enabled - Returns true if there is a configured message bus, otherwise it is considered disabled
 	Enabled() bool
-
-	// IsAutoRelayedMessage - Returns if the message has been authorized for automatic relaying. This is mainly for
-	// gas mechanics deposits.
-	IsAutoRelayedMessage(message common.CrossChainMessage) bool
 }
 
 type Manager interface {

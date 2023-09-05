@@ -20,7 +20,6 @@ type blockMessageExtractor struct {
 
 func NewBlockMessageExtractor(
 	busAddress *common.L1Address,
-	l2BusAddress *common.L2Address,
 	storage storage.Storage,
 	logger gethlog.Logger,
 ) BlockMessageExtractor {
@@ -29,10 +28,6 @@ func NewBlockMessageExtractor(
 		storage:    storage,
 		logger:     logger.New(log.CmpKey, log.CrossChainCmp),
 	}
-}
-
-func (m *blockMessageExtractor) IsAutoRelayedMessage(message common.CrossChainMessage) bool {
-	return false
 }
 
 func (m *blockMessageExtractor) Enabled() bool {
@@ -53,7 +48,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Bl
 		return nil
 	}
 
-	transfers, err := m.getValueTransferMessages(block, receipts)
+	transfers, err := m.getValueTransferMessages(receipts)
 	if err != nil {
 		m.logger.Error("Error encountered while getting inbound value transfers from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
 		return err
@@ -141,7 +136,7 @@ func (m *blockMessageExtractor) getCrossChainMessages(block *common.L1Block, rec
 	return messages, nil
 }
 
-func (m *blockMessageExtractor) getValueTransferMessages(block *common.L1Block, receipts common.L1Receipts) (common.ValueTransferEvents, error) {
+func (m *blockMessageExtractor) getValueTransferMessages(receipts common.L1Receipts) (common.ValueTransferEvents, error) {
 	if len(receipts) == 0 {
 		return make(common.ValueTransferEvents, 0), nil
 	}
