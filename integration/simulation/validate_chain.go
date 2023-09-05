@@ -349,6 +349,33 @@ func ExtractDataFromEthereumChain(
 	return deposits, rollups, totalDeposited, len(blockchain), successfulDeposits, rollupReceipts
 }
 
+func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
+	mbusABI, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	gasBridgeRecords := s.TxInjector.TxTracker.GasBridgeTransactions
+	for _, record := range gasBridgeRecords {
+		inputs, err := mbusABI.Methods["sendValueToL2"].Inputs.Unpack(record.L1BridgeTx.Data()[4:])
+		if err != nil {
+			panic(err)
+		}
+
+		receiver := inputs[0].(gethcommon.Address)
+		amount := inputs[1].(*big.Int)
+
+		if receiver != record.ReceiverWallet.Address() {
+			panic("Test setup is broken. Receiver in tx should match recorded wallet.")
+		}
+		obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, record.ReceiverWallet)
+		balance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+		if err != nil {
+			panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+		}
+
+		if balance.Cmp(amount) != 0 {
+			t.Errorf("Node %d: Balance doesnt match the bridged amount. Have: %d, Want: %d", nodeIdx, balance, amount)
+		}
+	}
+}
+
 func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {
 	defer wg.Done()
 	obscuroClient := rpcHandles.ObscuroClients[nodeIdx]
@@ -398,30 +425,7 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		}
 	}
 
-	mbusABI, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	gasBridgeRecords := s.TxInjector.TxTracker.GasBridgeTransactions
-	for _, record := range gasBridgeRecords {
-		inputs, err := mbusABI.Methods["sendValueToL2"].Inputs.Unpack(record.L1BridgeTx.Data()[4:])
-		if err != nil {
-			panic(err)
-		}
-
-		receiver := inputs[0].(gethcommon.Address)
-		amount := inputs[1].(*big.Int)
-
-		if receiver != record.ReceiverWallet.Address() {
-			panic("Test setup is broken. Receiver in tx should match recorded wallet.")
-		}
-		obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, record.ReceiverWallet)
-		balance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
-		if err != nil {
-			panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
-		}
-
-		if balance.Cmp(amount) != 0 {
-			t.Errorf("Node %d: Balance doesnt match the bridged amount. Have: %d, Want: %d", nodeIdx, balance, amount)
-		}
-	}
+	verifyGasBridgeTransactions(t, s, nodeIdx)
 
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
