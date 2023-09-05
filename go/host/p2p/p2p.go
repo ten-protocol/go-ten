@@ -73,6 +73,8 @@ func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocat
 		peerTracker:     newPeerTracker(),
 		metricsRegistry: metricReg,
 		logger:          logger,
+
+		isIncomingP2PDisabled: !config.IsInboundP2PEnabled,
 	}
 }
 
@@ -92,13 +94,21 @@ type Service struct {
 	peerAddresses    []string
 	p2pTimeout       time.Duration
 
-	peerTracker        *peerTracker
-	metricsRegistry    gethmetrics.Registry
-	logger             gethlog.Logger
-	peerAddressesMutex sync.RWMutex
+	peerTracker           *peerTracker
+	metricsRegistry       gethmetrics.Registry
+	logger                gethlog.Logger
+	peerAddressesMutex    sync.RWMutex
+	isIncomingP2PDisabled bool
 }
 
 func (p *Service) Start() error {
+	p.running.Store(true)
+
+	if p.isIncomingP2PDisabled {
+		go p.RefreshPeerList()
+		return nil
+	}
+
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.ourBindAddress)
 	if err != nil {
@@ -106,7 +116,7 @@ func (p *Service) Start() error {
 	}
 
 	p.logger.Info("P2P server started listening", "bindAddress", p.ourBindAddress, "publicAddress", p.ourPublicAddress)
-	p.running.Store(true)
+
 	p.listener = listener
 
 	go p.handleConnections()
@@ -139,6 +149,9 @@ func (p *Service) HealthStatus() host.HealthStatus {
 }
 
 func (p *Service) SubscribeForBatches(handler host.P2PBatchHandler) func() {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	return p.batchSubscribers.Subscribe(handler)
 }
 
@@ -147,6 +160,9 @@ func (p *Service) SubscribeForTx(handler host.P2PTxHandler) func() {
 }
 
 func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler) func() {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	return p.batchReqHandlers.Subscribe(handler)
 }
 
@@ -191,6 +207,9 @@ func (p *Service) SendTxToSequencer(tx common.EncryptedTx) error {
 }
 
 func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	if !p.isSequencer {
 		return errors.New("only sequencer can broadcast batches")
 	}
@@ -209,6 +228,9 @@ func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
 }
 
 func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	if p.isSequencer {
 		return errors.New("sequencer cannot request batches from itself")
 	}
@@ -233,6 +255,9 @@ func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
 }
 
 func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtBatch) error {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	if !p.isSequencer {
 		return errors.New("only sequencer can respond to batch requests")
 	}
@@ -255,6 +280,9 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 // if there's more than 100 failures on a given fail type
 // if there's a known peer for which a message hasn't been received
 func (p *Service) verifyHealth() error {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	var noMsgReceivedPeers []string
 	for peer, lastMsgTimestamp := range p.peerTracker.receivedMessagesByPeer() {
 		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {

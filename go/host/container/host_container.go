@@ -132,12 +132,7 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
 
-	var aggP2P hostcommon.P2PHostService
-	if cfg.IsInboundP2PEnabled {
-		aggP2P = p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
-	} else {
-		aggP2P = p2p.NewNoInboundP2P(cfg, services, p2pLogger)
-	}
+	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
 
 	rpcServer := clientrpc.NewServer(cfg, logger)
 
