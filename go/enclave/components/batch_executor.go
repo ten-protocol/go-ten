@@ -144,12 +144,12 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 
 	transactionsToProcess := executor.payL1Fees(stateDB, context)
 
-	successfulTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig)
+	successfulTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig, false)
 	if err != nil {
 		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
-	ccSuccessfulTxs, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), crossChainTransactions, stateDB, context.ChainConfig)
+	ccSuccessfulTxs, ccReceipts, err := executor.processTransactions(batch, len(successfulTxs), crossChainTransactions, stateDB, context.ChainConfig, true)
 	if err != nil {
 		return nil, err
 	}
@@ -333,11 +333,11 @@ func (executor *batchExecutor) verifyInboundCrossChainTransactions(transactions 
 	return nil
 }
 
-func (executor *batchExecutor) processTransactions(batch *core.Batch, tCount int, txs []*common.L2Tx, stateDB *state.StateDB, cc *params.ChainConfig) ([]*common.L2Tx, []*types.Receipt, error) {
+func (executor *batchExecutor) processTransactions(batch *core.Batch, tCount int, txs []*common.L2Tx, stateDB *state.StateDB, cc *params.ChainConfig, noBaseFee bool) ([]*common.L2Tx, []*types.Receipt, error) {
 	var executedTransactions []*common.L2Tx
 	var txReceipts []*types.Receipt
 
-	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, executor.storage, cc, tCount, executor.logger)
+	txResults := evm.ExecuteTransactions(txs, stateDB, batch.Header, executor.storage, cc, tCount, noBaseFee, executor.logger)
 	for _, tx := range txs {
 		result, f := txResults[tx.Hash()]
 		if !f {

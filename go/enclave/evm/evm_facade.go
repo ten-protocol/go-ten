@@ -35,9 +35,10 @@ func ExecuteTransactions(
 	storage storage.Storage,
 	chainConfig *params.ChainConfig,
 	fromTxIndex int,
+	noBaseFee bool,
 	logger gethlog.Logger,
 ) map[common.TxHash]interface{} {
-	chain, vmCfg, gp := initParams(storage, true, logger)
+	chain, vmCfg, gp := initParams(storage, noBaseFee, logger)
 	zero := uint64(0)
 	usedGas := &zero
 	result := map[common.TxHash]interface{}{}
