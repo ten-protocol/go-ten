@@ -34,7 +34,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
 	obscuroHosts := make([]host.Host, params.NumberOfNodes)
 
-	p2pNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithIncomingP2PDisabled)
+	p2pNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyOBXAddress := datagenerator.RandomAddress()
@@ -46,10 +46,8 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
-		incomingP2PEnabled := true
-		if !isGenesis && i == params.NodeWithIncomingP2PDisabled {
-			incomingP2PEnabled = false
-		}
+		incomingP2PDisabled := !isGenesis && i == params.NodeWithInboundP2PDisabled
+
 		// create the in memory l1 and l2 node
 		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
 
@@ -66,7 +64,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			&disabledBus,
 			common.Hash{},
 			params.AvgBlockDuration/2,
-			incomingP2PEnabled,
+			incomingP2PDisabled,
 		)
 		obscuroClient := p2p.NewInMemObscuroClient(agg)
 

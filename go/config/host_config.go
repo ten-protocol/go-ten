@@ -86,7 +86,7 @@ type HostInputConfig struct {
 	RollupInterval time.Duration
 
 	// Whether inbound p2p is enabled or not
-	IsInboundP2PEnabled bool
+	IsInboundP2PDisabled bool
 }
 
 // ToHostConfig returns a HostConfig given a HostInputConfig
@@ -123,7 +123,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		DebugNamespaceEnabled:     p.DebugNamespaceEnabled,
 		BatchInterval:             p.BatchInterval,
 		RollupInterval:            p.RollupInterval,
-		IsInboundP2PEnabled:       p.IsInboundP2PEnabled,
+		IsInboundP2PDisabled:      p.IsInboundP2PDisabled,
 	}
 }
 
@@ -201,7 +201,7 @@ type HostConfig struct {
 	RollupInterval time.Duration
 
 	// Whether p2p is enabled or not
-	IsInboundP2PEnabled bool
+	IsInboundP2PDisabled bool
 }
 
 // DefaultHostParsedConfig returns a HostConfig with default values.
@@ -236,6 +236,6 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		DebugNamespaceEnabled:     false,
 		BatchInterval:             1 * time.Second,
 		RollupInterval:            5 * time.Second,
-		IsInboundP2PEnabled:       true,
+		IsInboundP2PDisabled:      false,
 	}
 }

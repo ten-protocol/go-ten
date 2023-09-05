@@ -74,7 +74,7 @@ func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocat
 		metricsRegistry: metricReg,
 		logger:          logger,
 
-		isIncomingP2PDisabled: !config.IsInboundP2PEnabled,
+		isIncomingP2PDisabled: config.IsInboundP2PDisabled,
 	}
 }
 
