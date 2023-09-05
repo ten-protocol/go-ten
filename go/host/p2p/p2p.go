@@ -192,23 +192,21 @@ func (p *Service) SendTxToSequencer(tx common.EncryptedTx) error {
 }
 
 func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
-	/*	if !p.isSequencer {
-			return errors.New("only sequencer can broadcast batches")
-		}
-		batchMsg := host.BatchMsg{
-			Batches: batches,
-			IsLive:  true,
-		}
+	if !p.isSequencer {
+		return errors.New("only sequencer can broadcast batches")
+	}
+	batchMsg := host.BatchMsg{
+		Batches: batches,
+		IsLive:  true,
+	}
 
-		encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
-		if err != nil {
-			return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
-		}
+	encodedBatchMsg, err := rlp.EncodeToBytes(batchMsg)
+	if err != nil {
+		return fmt.Errorf("could not encode batch using RLP. Cause: %w", err)
+	}
 
-		msg := message{Sender: p.ourPublicAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
-		return p.broadcast(msg)
-	*/
-	return nil
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeBatches, Contents: encodedBatchMsg}
+	return p.broadcast(msg)
 }
 
 func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
