@@ -68,6 +68,8 @@ type BatchExecutor interface {
 	// Should be safe to call in parallel
 	ComputeBatch(*BatchExecutionContext) (*ComputedBatch, error)
 
+	ComputeBatchLight(BlockPtr common.L1BlockHash, ParentPtr common.L2BatchHash, Transactions common.L2Transactions, AtTime uint64, SequencerNo *big.Int) (*ComputedBatch, error)
+
 	// ExecuteBatch - executes the transactions and xchain messages, returns the receipts, and updates the stateDB
 	ExecuteBatch(*core.Batch) (types.Receipts, error)
 

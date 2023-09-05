@@ -5,16 +5,11 @@ import (
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-
 	"github.com/obscuronet/go-obscuro/go/common/measure"
-
-	"github.com/obscuronet/go-obscuro/go/common/compression"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
 	"github.com/obscuronet/go-obscuro/go/ethadapter"
 	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
 )
@@ -22,12 +17,8 @@ import (
 type rollupConsumerImpl struct {
 	MgmtContractLib mgmtcontractlib.MgmtContractLib
 
-	dataEncryptionService  crypto.DataEncryptionService
-	dataCompressionService compression.DataCompressionService
-	batchRegistry          BatchRegistry
-
-	ObscuroChainID  int64
-	EthereumChainID int64
+	rollupCompression *RollupCompression
+	batchRegistry     BatchRegistry
 
 	logger gethlog.Logger
 
@@ -38,24 +29,18 @@ type rollupConsumerImpl struct {
 func NewRollupConsumer(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	batchRegistry BatchRegistry,
-	dataEncryptionService crypto.DataEncryptionService,
-	dataCompressionService compression.DataCompressionService,
-	obscuroChainID int64,
-	ethereumChainID int64,
+	rollupCompression *RollupCompression,
 	storage storage.Storage,
 	logger gethlog.Logger,
 	verifier *SignatureValidator,
 ) RollupConsumer {
 	return &rollupConsumerImpl{
-		MgmtContractLib:        mgmtContractLib,
-		batchRegistry:          batchRegistry,
-		dataEncryptionService:  dataEncryptionService,
-		dataCompressionService: dataCompressionService,
-		ObscuroChainID:         obscuroChainID,
-		EthereumChainID:        ethereumChainID,
-		logger:                 logger,
-		storage:                storage,
-		sigValidator:           verifier,
+		MgmtContractLib:   mgmtContractLib,
+		batchRegistry:     batchRegistry,
+		rollupCompression: rollupCompression,
+		logger:            logger,
+		storage:           storage,
+		sigValidator:      verifier,
 	}
 }
 
@@ -75,13 +60,12 @@ func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) 
 	if len(rollups) > 0 {
 		for _, rollup := range rollups {
 			// read batch data from rollup, verify and store it
-			if err := rc.processRollup(rollup); err != nil {
+			if err := rc.rollupCompression.ProcessExtRollup(rollup); err != nil {
 				rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 				return err
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -126,25 +110,5 @@ func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*com
 		rollups = append(rollups, r)
 		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, b.Hash())
 	}
-
 	return rollups
-}
-
-func (rc *rollupConsumerImpl) processRollup(rollup *common.ExtRollup) error {
-	// todo logic to decompress the rollups on the fly
-	r, err := core.ToRollup(rollup, rc.dataEncryptionService, rc.dataCompressionService)
-	if err != nil {
-		return err
-	}
-
-	// only stores the batches. They will be executed later
-	for _, batch := range r.Batches {
-		rc.logger.Trace("Processing batch from rollup", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
-		err := rc.storage.StoreBatch(batch)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

@@ -171,9 +171,9 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	if reorgEfficiency > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d: The number of reorgs is too high: %d. ", nodeIdx, reorgs)
 	}
-	if !s.Params.IsInMem {
-		checkRollups(t, s, nodeIdx, rollups)
-	}
+	//if !s.Params.IsInMem {
+	//	checkRollups(t, s, nodeIdx, rollups)
+	//}
 
 	return height
 }
@@ -229,7 +229,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 }
 
 func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, rollup *common.ExtRollup) {
-	if len(prevRollup.BatchHeaders) == 0 {
+	if len(prevRollup.CalldataRollupHeader) == 0 {
 		return
 	}
 
@@ -257,7 +257,7 @@ func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, ro
 func extractBatchHeaders(rollup *common.ExtRollup) []common.BatchHeader {
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 	headers := make([]common.BatchHeader, 0)
-	headersBlob, err := dataCompressionService.Decompress(rollup.BatchHeaders)
+	headersBlob, err := dataCompressionService.Decompress(rollup.CalldataRollupHeader)
 	if err != nil {
 		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
 	}

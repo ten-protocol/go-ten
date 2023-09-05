@@ -69,15 +69,22 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, c
 	if err != nil {
 		return nil, err
 	}
+	enc, err := transactionBlobCrypto.Encrypt(compressed)
+	if err != nil {
+		return nil, err
+	}
 	return &common.ExtBatch{
 		Header:          b.Header,
 		TxHashes:        txHashes,
-		EncryptedTxBlob: transactionBlobCrypto.Encrypt(compressed),
+		EncryptedTxBlob: enc,
 	}, nil
 }
 
 func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*Batch, error) {
-	compressed := transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob)
+	compressed, err := transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob)
+	if err != nil {
+		return nil, err
+	}
 	encoded, err := compression.Decompress(compressed)
 	if err != nil {
 		return nil, err

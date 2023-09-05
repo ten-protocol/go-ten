@@ -20,7 +20,7 @@ import (
 
 type obsValidator struct {
 	blockProcessor components.L1BlockProcessor
-	batchProducer  components.BatchExecutor
+	batchExecutor  components.BatchExecutor
 	batchRegistry  components.BatchRegistry
 	rollupConsumer components.RollupConsumer
 
@@ -34,7 +34,7 @@ type obsValidator struct {
 
 func NewValidator(
 	consumer components.L1BlockProcessor,
-	producer components.BatchExecutor,
+	batchExecutor components.BatchExecutor,
 	registry components.BatchRegistry,
 	rollupConsumer components.RollupConsumer,
 
@@ -47,7 +47,7 @@ func NewValidator(
 ) ObsValidator {
 	return &obsValidator{
 		blockProcessor: consumer,
-		batchProducer:  producer,
+		batchExecutor:  batchExecutor,
 		batchRegistry:  registry,
 		rollupConsumer: rollupConsumer,
 		chainConfig:    chainConfig,
@@ -96,7 +96,7 @@ func (val *obsValidator) ExecuteStoredBatches() error {
 		}
 
 		if canExecute {
-			receipts, err := val.batchProducer.ExecuteBatch(batch)
+			receipts, err := val.batchExecutor.ExecuteBatch(batch)
 			if err != nil {
 				return fmt.Errorf("could not execute batch %s. Cause: %w", batch.Hash(), err)
 			}
@@ -129,7 +129,7 @@ func (val *obsValidator) executionPrerequisites(batch *core.Batch) (bool, error)
 }
 
 func (val *obsValidator) handleGenesis(batch *core.Batch) error {
-	genBatch, _, err := val.batchProducer.CreateGenesisState(batch.Header.L1Proof, batch.Header.Time)
+	genBatch, _, err := val.batchExecutor.CreateGenesisState(batch.Header.L1Proof, batch.Header.Time)
 	if err != nil {
 		return err
 	}

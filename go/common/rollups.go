@@ -6,10 +6,10 @@ import (
 
 // ExtRollup is an encrypted form of rollup used when passing the rollup around outside an enclave.
 type ExtRollup struct {
-	Header        *RollupHeader // the fields required by the management contract
-	BatchHeaders  []byte        // compressed batch headers
-	BatchPayloads []byte        // The batches included in the rollup, in external/encrypted form.
-	hash          atomic.Value
+	Header               *RollupHeader // the fields required by the management contract
+	CalldataRollupHeader []byte        // encrypted header useful for recreating the batches
+	BatchPayloads        []byte        // The transactions included in the rollup, in external/encrypted form.
+	hash                 atomic.Value
 }
 
 // Hash returns the keccak256 hash of the rollup's header.
