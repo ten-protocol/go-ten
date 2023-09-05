@@ -61,7 +61,6 @@ func (t *Testnet) Start() error {
 		node.WithL1Start(networkConfig.L1StartHash),
 		node.WithInMemoryHostDB(true),
 		node.WithDebugNamespaceEnabled(true),
-		node.WithInboundP2PEnabled(true),
 		node.WithLogLevel(4),
 	)
 
@@ -102,7 +101,6 @@ func (t *Testnet) Start() error {
 		node.WithL1Start(networkConfig.L1StartHash),
 		node.WithInMemoryHostDB(true),
 		node.WithDebugNamespaceEnabled(true),
-		node.WithInboundP2PEnabled(true),
 		node.WithLogLevel(4),
 	)
 

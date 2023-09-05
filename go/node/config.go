@@ -46,7 +46,7 @@ type Config struct {
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
 	logLevel                  int
-	isInboundP2PEnabled       bool
+	isInboundP2PDisabled      bool
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -103,7 +103,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.MetricsEnabled = false
 	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 	cfg.LogLevel = c.logLevel
-	cfg.IsInboundP2PEnabled = c.isInboundP2PEnabled
+	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
 
 	return cfg
 }
@@ -278,8 +278,8 @@ func WithLogLevel(i int) Option {
 	}
 }
 
-func WithInboundP2PEnabled(b bool) Option {
+func WithInboundP2PDisabled(b bool) Option {
 	return func(c *Config) {
-		c.isInboundP2PEnabled = b
+		c.isInboundP2PDisabled = b
 	}
 }

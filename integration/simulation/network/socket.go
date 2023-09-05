@@ -67,7 +67,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		privateKey := seqPrivKey
 		hostAddress := seqHostAddress
 		nodeTypeStr := "sequencer"
-		isIncomingP2PEnabled := true
+		isInboundP2PDisabled := false
 
 		// if it's not the sequencer
 		if i != 0 {
@@ -76,9 +76,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 			hostAddress = crypto.PubkeyToAddress(n.wallets.NodeWallets[i].PrivateKey().PublicKey)
 
 			// only the validators can have the incoming p2p disabled
-			if i == simParams.NodeWithIncomingP2PDisabled {
-				isIncomingP2PEnabled = false
-			}
+			isInboundP2PDisabled = i == simParams.NodeWithInboundP2PDisabled
 		}
 
 		// create the nodes
@@ -98,7 +96,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithNodeType(nodeTypeStr),
 				node.WithL1Host("127.0.0.1"),
 				node.WithL1WSPort(simParams.StartPort+100),
-				node.WithInboundP2PEnabled(isIncomingP2PEnabled),
+				node.WithInboundP2PDisabled(isInboundP2PDisabled),
 				node.WithLogLevel(4),
 			),
 		)
