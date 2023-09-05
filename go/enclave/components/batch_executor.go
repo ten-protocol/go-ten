@@ -234,6 +234,7 @@ type ValueTransfers []common.ValueTransferEvent
 func (vt ValueTransfers) Len() int {
 	return len(vt)
 }
+
 func (vt ValueTransfers) EncodeIndex(index int, w *bytes.Buffer) {
 	transfer := vt[index]
 	if err := rlp.Encode(w, transfer); err != nil {

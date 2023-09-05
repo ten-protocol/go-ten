@@ -54,7 +54,7 @@ func (bp *l1BlockProcessor) Process(br *common.BlockAndReceipts) (*BlockIngestio
 		}
 	}
 
-	//todo @siliev - not sure if this is the best way to update the price, will pick up random stale blocks from forks?
+	// todo @siliev - not sure if this is the best way to update the price, will pick up random stale blocks from forks?
 	bp.gasOracle.ProcessL1Block(br.Block)
 
 	return ingestion, nil
