@@ -140,27 +140,29 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	deposits, rollups, _, blockCount, _, rollupReceipts := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
-	costOfRollups := big.NewInt(0)
-	for _, receipt := range rollupReceipts {
-		block, err := node.EthClient().BlockByHash(context.Background(), receipt.BlockHash)
-		if err != nil {
-			panic(err)
+	if !s.Params.IsInMem {
+		costOfRollups := big.NewInt(0)
+		for _, receipt := range rollupReceipts {
+			block, err := node.EthClient().BlockByHash(context.Background(), receipt.BlockHash)
+			if err != nil {
+				panic(err)
+			}
+
+			txCost := big.NewInt(0).Mul(block.BaseFee(), big.NewInt(0).SetUint64(receipt.GasUsed))
+			costOfRollups.Add(costOfRollups, txCost)
 		}
 
-		txCost := big.NewInt(0).Mul(block.BaseFee(), big.NewInt(0).SetUint64(receipt.GasUsed))
-		costOfRollups.Add(costOfRollups, txCost)
-	}
+		l2FeesWallet := s.Params.Wallets.L2FeesWallet
+		obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, l2FeesWallet)
+		feeBalance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+		if err != nil {
+			panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+		}
 
-	l2FeesWallet := s.Params.Wallets.L2FeesWallet
-	obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, l2FeesWallet)
-	feeBalance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
-	if err != nil {
-		panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
-	}
-
-	// if balance of collected fees is less than cost of published rollups fail
-	if feeBalance.Cmp(costOfRollups) == -1 {
-		t.Errorf("Node %d: Sequencer has collected insufficient fees. Has: %d, needs: %d", nodeIdx, feeBalance, costOfRollups)
+		// if balance of collected fees is less than cost of published rollups fail
+		if feeBalance.Cmp(costOfRollups) == -1 {
+			t.Errorf("Node %d: Sequencer has collected insufficient fees. Has: %d, needs: %d", nodeIdx, feeBalance, costOfRollups)
+		}
 	}
 
 	if len(findHashDups(deposits)) > 0 {

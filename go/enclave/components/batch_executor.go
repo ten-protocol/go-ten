@@ -160,7 +160,6 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	copyBatch := *batch
 	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
 	copyBatch.Transactions = successfulTxs
-	copyBatch.Header.BaseFee = big.NewInt(0).Set(batch.Header.BaseFee)
 	copyBatch.ResetHash()
 
 	if err = executor.populateOutboundCrossChainData(&copyBatch, block, txReceipts); err != nil {
