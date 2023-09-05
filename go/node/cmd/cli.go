@@ -41,6 +41,7 @@ type NodeConfigCLI struct {
 	nodeName                string
 	isDebugNamespaceEnabled bool
 	logLevel                int
+	isInboundP2PEnabled     bool
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
@@ -73,6 +74,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	edgelessDBImage := flag.String(edgelessDBImageFlag, "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2", flagUsageMap[edgelessDBImageFlag])
 	isDebugNamespaceEnabled := flag.Bool(isDebugNamespaceEnabledFlag, false, flagUsageMap[isDebugNamespaceEnabledFlag])
 	logLevel := flag.Int(logLevelFlag, 3, flagUsageMap[logLevelFlag])
+	isInboundP2PEnabled := flag.Bool(isInboundP2PEnabledFlag, true, flagUsageMap[isInboundP2PEnabledFlag])
 
 	flag.Parse()
 	cfg.nodeName = *nodeName
@@ -100,6 +102,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.hostWSPort = *hostWSPort
 	cfg.isDebugNamespaceEnabled = *isDebugNamespaceEnabled
 	cfg.logLevel = *logLevel
+	cfg.isInboundP2PEnabled = *isInboundP2PEnabled
 
 	cfg.nodeAction = flag.Arg(0)
 	if !validateNodeAction(cfg.nodeAction) {
