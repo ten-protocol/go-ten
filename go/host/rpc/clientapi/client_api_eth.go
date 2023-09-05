@@ -68,7 +68,7 @@ func (api *EthereumAPI) GetBlockByHash(_ context.Context, hash gethcommon.Hash, 
 
 // GasPrice is a placeholder for an RPC method required by MetaMask/Remix.
 func (api *EthereumAPI) GasPrice(context.Context) (*hexutil.Big, error) {
-	return (*hexutil.Big)(big.NewInt(1)), nil
+	return (*hexutil.Big)(big.NewInt(50)), nil
 }
 
 // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to the

@@ -64,6 +64,8 @@ func NewBatchExecutor(
 func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) common.L2Transactions {
 	transactions := make(common.L2Transactions, 0)
 
+	block, _ := executor.storage.FetchBlock(context.BlockPtr)
+
 	for _, tx := range context.Transactions {
 		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
 		if err != nil {
@@ -71,7 +73,8 @@ func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchE
 			continue
 		}
 		accBalance := stateDB.GetBalance(*sender)
-		cost, err := executor.gasOracle.GetGasCostForTx(tx)
+
+		cost, err := executor.gasOracle.GetGasCostForTx(tx, block)
 		if err != nil {
 			executor.logger.Warn("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
 			continue
@@ -217,7 +220,7 @@ func (executor *batchExecutor) ExecuteBatch(batch *core.Batch) (types.Receipts, 
 
 	if cb.Batch.Hash() != batch.Hash() {
 		// todo @stefan - generate a validator challenge here and return it
-		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v\n Incoming: %+v\n", cb.Batch.Header, batch.Header))
+		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v\n", cb.Batch.Header, batch.Header))
 		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
 	}
 

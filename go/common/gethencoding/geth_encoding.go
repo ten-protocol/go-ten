@@ -239,7 +239,7 @@ func CreateEthHeaderForBatch(h *common.BatchHeader, secret []byte) (*types.Heade
 		Number:      h.Number,
 		GasLimit:    1_000_000_000,
 		GasUsed:     0,
-		BaseFee:     new(big.Int).SetUint64(0),
+		BaseFee:     big.NewInt(0).SetUint64(0),
 		Coinbase:    h.Coinbase,
 		Time:        h.Time,
 		MixDigest:   randomness,

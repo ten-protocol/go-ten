@@ -9,7 +9,7 @@ import (
 
 type Oracle interface {
 	ProcessL1Block(block *types.Block)
-	GetGasCostForTx(tx *types.Transaction) (*big.Int, error)
+	GetGasCostForTx(tx *types.Transaction, block *types.Block) (*big.Int, error)
 }
 
 type oracle struct {
@@ -29,12 +29,12 @@ func (o *oracle) ProcessL1Block(block *types.Block) {
 	}
 }
 
-func (o *oracle) GetGasCostForTx(tx *types.Transaction) (*big.Int, error) {
+func (o *oracle) GetGasCostForTx(tx *types.Transaction, block *types.Block) (*big.Int, error) {
 	encodedTx, err := rlp.EncodeToBytes(tx)
 	if err != nil {
 		return nil, err
 	}
 
 	l1Gas := CalculateL1GasUsed(encodedTx, big.NewInt(0))
-	return big.NewInt(0).Mul(l1Gas, o.baseFee), nil
+	return big.NewInt(0).Mul(l1Gas, block.BaseFee()), nil
 }
