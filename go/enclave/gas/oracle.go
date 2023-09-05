@@ -35,6 +35,11 @@ func (o *oracle) GetGasCostForTx(tx *types.Transaction, block *types.Block) (*bi
 		return nil, err
 	}
 
+	blockBaseFee := block.BaseFee()
+	if blockBaseFee == nil {
+		return big.NewInt(0), nil
+	}
+
 	l1Gas := CalculateL1GasUsed(encodedTx, big.NewInt(0))
 	return big.NewInt(0).Mul(l1Gas, block.BaseFee()), nil
 }

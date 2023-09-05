@@ -63,7 +63,6 @@ func NewBatchExecutor(
 
 func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) common.L2Transactions {
 	transactions := make(common.L2Transactions, 0)
-
 	block, _ := executor.storage.FetchBlock(context.BlockPtr)
 
 	for _, tx := range context.Transactions {
