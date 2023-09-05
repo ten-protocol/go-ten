@@ -122,7 +122,7 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	min, max := minMax(heights)
 	// This checks that all the nodes are in sync. When a node falls behind with processing blocks it might highlight a problem.
 	if max-min > max/10 {
-		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
+		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d -> %+v", max, min, heights)
 	}
 }
 
@@ -242,7 +242,8 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 				client := clients[0]
 				batchOnNode, err := client.BatchHeaderByHash(batchHeader.Hash())
 				if err != nil {
-					t.Fatalf("Node %d: Could not find batch header [idx=%s, hash=%s]. Cause: %s", nodeIdx, batchHeader.Number, batchHeader.Hash(), err)
+					t.Errorf("Node %d: Could not find batch header [idx=%s, hash=%s]. Cause: %s", nodeIdx, batchHeader.Number, batchHeader.Hash(), err)
+					continue
 				}
 				if batchOnNode.Hash() != batchHeader.Hash() {
 					t.Errorf("Node %d: Batches mismatch!", nodeIdx)

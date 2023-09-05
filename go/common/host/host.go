@@ -42,3 +42,8 @@ type BatchMsg struct {
 	Batches []*common.ExtBatch // The batches being sent.
 	IsLive  bool               // true if these batches are being sent as new, false if in response to a p2p request
 }
+
+type P2PHostService interface {
+	Service
+	P2P
+}

@@ -47,6 +47,7 @@ type Config struct {
 	profilerEnabled           bool
 	coinbaseAddress           string
 	logLevel                  int
+	isInboundP2PEnabled       bool
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -107,6 +108,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.MetricsEnabled = false
 	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 	cfg.LogLevel = c.logLevel
+	cfg.IsInboundP2PEnabled = c.isInboundP2PEnabled
 
 	return cfg
 }
@@ -284,5 +286,11 @@ func WithProfiler(b bool) Option {
 func WithLogLevel(i int) Option {
 	return func(c *Config) {
 		c.logLevel = i
+	}
+}
+
+func WithInboundP2PEnabled(b bool) Option {
+	return func(c *Config) {
+		c.isInboundP2PEnabled = b
 	}
 }
