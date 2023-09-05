@@ -53,7 +53,7 @@ type Manager interface {
 
 	CreateSyntheticTransactions(messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions
 
-	ExecuteValueTransfers(transfers common.ValueTransferEvents, rollupState *state.StateDB) error
+	ExecuteValueTransfers(transfers common.ValueTransferEvents, rollupState *state.StateDB)
 
 	RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents)
 }

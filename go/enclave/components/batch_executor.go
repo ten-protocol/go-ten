@@ -61,19 +61,19 @@ func NewBatchExecutor(
 	}
 }
 
-func (bp *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) (common.L2Transactions, error) {
+func (executor *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecutionContext) common.L2Transactions {
 	transactions := make(common.L2Transactions, 0)
 
 	for _, tx := range context.Transactions {
 		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
 		if err != nil {
-			bp.logger.Warn("Unable to extract sender for tx", log.TxKey, tx.Hash())
+			executor.logger.Warn("Unable to extract sender for tx", log.TxKey, tx.Hash())
 			continue
 		}
 		accBalance := stateDB.GetBalance(*sender)
-		cost, err := bp.gasOracle.GetGasCostForTx(tx)
+		cost, err := executor.gasOracle.GetGasCostForTx(tx)
 		if err != nil {
-			bp.logger.Warn("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
+			executor.logger.Warn("Unable to get gas cost for tx", log.TxKey, tx.Hash(), log.ErrKey, err)
 			continue
 		}
 
@@ -82,7 +82,7 @@ func (bp *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecuti
 
 		if !isFreeTransaction {
 			if accBalance.Cmp(cost) == -1 {
-				bp.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
+				executor.logger.Info("insufficient account balance for tx", log.TxKey, tx.Hash(), "addr", sender.Hex())
 				continue
 			}
 			stateDB.SubBalance(*sender, cost)
@@ -90,7 +90,7 @@ func (bp *batchExecutor) payL1Fees(stateDB *state.StateDB, context *BatchExecuti
 		}
 		transactions = append(transactions, tx)
 	}
-	return transactions, nil
+	return transactions
 }
 
 func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
@@ -140,7 +140,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(messages, stateDB)
 	executor.crossChainProcessors.Local.ExecuteValueTransfers(transfers, stateDB)
 
-	transactionsToProcess, _ := executor.payL1Fees(stateDB, context)
+	transactionsToProcess := executor.payL1Fees(stateDB, context)
 
 	successfulTxs, txReceipts, err := executor.processTransactions(batch, 0, transactionsToProcess, stateDB, context.ChainConfig)
 	if err != nil {
@@ -236,7 +236,9 @@ func (vt ValueTransfers) Len() int {
 }
 func (vt ValueTransfers) EncodeIndex(index int, w *bytes.Buffer) {
 	transfer := vt[index]
-	rlp.Encode(w, transfer)
+	if err := rlp.Encode(w, transfer); err != nil {
+		panic(err)
+	}
 }
 
 func (executor *batchExecutor) CreateGenesisState(blkHash common.L1BlockHash, timeNow uint64) (*core.Batch, *types.Transaction, error) {

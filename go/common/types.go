@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
@@ -50,8 +49,8 @@ type (
 	CrossChainMessage  = MessageBus.StructsCrossChainMessage
 	CrossChainMessages = []CrossChainMessage
 	ValueTransferEvent struct {
-		Sender   gethcommon.Address
-		Receiver gethcommon.Address
+		Sender   common.Address
+		Receiver common.Address
 		Amount   *big.Int
 	}
 	ValueTransferEvents   = []ValueTransferEvent

@@ -192,11 +192,10 @@ func (m *MessageBusManager) ShouldAutoRelayMessage(message common.CrossChainMess
 	return message.Sender == *m.GetBusAddress()
 }
 
-func (m *MessageBusManager) ExecuteValueTransfers(transfers common.ValueTransferEvents, rollupState *state.StateDB) error {
+func (m *MessageBusManager) ExecuteValueTransfers(transfers common.ValueTransferEvents, rollupState *state.StateDB) {
 	for _, transfer := range transfers {
 		rollupState.AddBalance(transfer.Receiver, transfer.Amount)
 	}
-	return nil
 }
 
 // CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.
