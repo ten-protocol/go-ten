@@ -38,6 +38,8 @@ type EnclaveConfigToml struct {
 	DebugNamespaceEnabled     bool
 	MaxBatchSize              uint64
 	MaxRollupSize             uint64
+	GasPaymentAddress         string
+	BaseFee                   uint64
 }
 
 // ParseConfig returns a config.EnclaveConfig based on either the file identified by the `config` flag, or the flags

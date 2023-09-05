@@ -81,6 +81,10 @@ func NewUserWallet(pk *ecdsa.PrivateKey, rpcEndpoint string, logger gethlog.Logg
 	return wal
 }
 
+func (s *UserWallet) ChainID() *big.Int {
+	return big.NewInt(integration.ObscuroChainID)
+}
+
 func (s *UserWallet) SendFunds(ctx context.Context, addr gethcommon.Address, value *big.Int) (*gethcommon.Hash, error) {
 	err := s.EnsureClientSetup(ctx)
 	if err != nil {
