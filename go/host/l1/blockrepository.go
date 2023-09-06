@@ -180,7 +180,7 @@ func (r *Repository) resetLiveStream() (chan *types.Header, ethereum.Subscriptio
 			// break out of the loop if repository has stopped
 			return retry.FailFast(errors.New("repository is stopped"))
 		}
-		err := r.ethClient.Reconnect()
+		err := r.ethClient.ReconnectIfClosed()
 		if err != nil {
 			r.logger.Warn("failed to reconnect to L1", log.ErrKey, err)
 			return err
