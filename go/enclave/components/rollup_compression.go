@@ -22,8 +22,7 @@ import (
 /*
 RollupCompression - responsible for the compression logic
 
-# Compress the rollups published to the L1 to reduce cost
-
+## Problem
 The main overhead (after the tx payloads), are the batch headers.
 
 ## Requirements:
@@ -119,12 +118,6 @@ func (rc *RollupCompression) ProcessExtRollup(rollup *common.ExtRollup) error {
 	if err != nil {
 		return err
 	}
-	// adjust the sparse L1Proofs array to contains nils
-	for i, proof := range calldataRollupHeader.L1Proofs {
-		if len(proof.Bytes()) == 0 {
-			calldataRollupHeader.L1Proofs[i] = nil
-		}
-	}
 
 	// The recreation of batches is a 2-step process:
 
@@ -152,7 +145,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 	prev := startTime
 
 	l1Proofs := make([]*big.Int, len(batches))
-	var currentL1Proof *big.Int
+	var prevL1Height *big.Int
 
 	batchHashes := make([]common.L2BatchHash, len(batches))
 	batchHeaders := make([]*common.BatchHeader, len(batches))
@@ -184,15 +177,14 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		if err != nil {
 			return nil, err
 		}
-		l1Proofs[i] = nil
+
 		// only add an entry in the l1Proofs array when the value changes
-		if currentL1Proof == nil || block.NumberU64() != currentL1Proof.Uint64() {
+		if i == 0 {
 			l1Proofs[i] = block.Number()
-			currentL1Proof = block.Number()
+		} else {
+			l1Proofs[i] = big.NewInt(block.Number().Int64() - prevL1Height.Int64())
 		}
-		if i == 0 && currentL1Proof == nil {
-			return nil, fmt.Errorf("faile sanity check. the l1Proofs array must start with a non-nil value")
-		}
+		prevL1Height = block.Number()
 	}
 
 	if !isReorg {
@@ -221,19 +213,21 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 	startAtSeq := calldataRollupHeader.FirstBatchSequence.Int64()
 	currentHeight := calldataRollupHeader.FirstBatchHeight.Int64() - 1
 	currentTime := calldataRollupHeader.StartTime
-	var currentL1Proof *gethcommon.Hash
+	var currentL1Height *big.Int
 
 	for currentBatchIdx, batchTransactions := range transactionsPerBatch {
-		// the l1 proofs are stored as heights in a sparse array. There is a value only when the l1 proof changes
-		l1HeightOfProof := calldataRollupHeader.L1Proofs[currentBatchIdx]
-		if l1HeightOfProof != nil {
-			block, err := rc.storage.FetchCanonicaBlockByHeight(l1HeightOfProof)
-			if err != nil {
-				rc.logger.Error("Error decompressing rollup. Did not find l1 block", log.ErrKey, err)
-				return nil, err
-			}
-			h := block.Hash()
-			currentL1Proof = &h
+		// the l1 proofs are stored as deltas, which compress well as it should be a series of 1s and 0s
+		// the first element is the actual height
+		l1Delta := calldataRollupHeader.L1Proofs[currentBatchIdx]
+		if currentBatchIdx == 0 {
+			currentL1Height = l1Delta
+		} else {
+			currentL1Height = big.NewInt(l1Delta.Int64() + currentL1Height.Int64())
+		}
+		block, err := rc.storage.FetchCanonicaBlockByHeight(currentL1Height)
+		if err != nil {
+			rc.logger.Error("Error decompressing rollup. Did not find l1 block", log.ErrKey, err)
+			return nil, err
 		}
 
 		// todo - this should be 1 second
@@ -253,10 +247,6 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 		}
 		if !errors.Is(err, errutil.ErrNotFound) {
 			return nil, err
-		}
-
-		if currentL1Proof == nil {
-			return nil, fmt.Errorf("invalid rollup, the l1 proofs array is not well formed")
 		}
 
 		var h *common.BatchHeader
@@ -287,7 +277,7 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 			height:       big.NewInt(currentHeight),
 			txHash:       txHash,
 			time:         currentTime,
-			l1Proof:      *currentL1Proof,
+			l1Proof:      block.Hash(),
 			header:       h,
 		})
 		rc.logger.Info("Add canon batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight)
