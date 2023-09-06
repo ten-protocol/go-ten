@@ -30,11 +30,6 @@ import (
 	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 )
 
-type P2PHostService interface {
-	hostcommon.Service
-	hostcommon.P2P
-}
-
 // Implementation of host.Host.
 type host struct {
 	config   *config.HostConfig
@@ -51,7 +46,7 @@ type host struct {
 	metricRegistry gethmetrics.Registry
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p P2PHostService, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
+func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
 	database, err := db.CreateDBFromConfig(config, regMetrics, logger)
 	if err != nil {
 		logger.Crit("unable to create database for host", log.ErrKey, err)

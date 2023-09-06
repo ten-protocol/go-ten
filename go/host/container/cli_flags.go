@@ -34,6 +34,7 @@ const (
 	debugNamespaceEnabledName    = "debugNamespaceEnabled"
 	batchIntervalName            = "batchInterval"
 	rollupIntervalName           = "rollupInterval"
+	isInboundP2PDisabledName     = "isInboundP2PDisabled"
 )
 
 // Returns a map of the flag usages.
@@ -72,5 +73,6 @@ func getFlagUsageMap() map[string]string {
 		debugNamespaceEnabledName:    "Whether the debug names is enabled",
 		batchIntervalName:            "Duration between each batch. Can be put down as 1.0s",
 		rollupIntervalName:           "Duration between each rollup. Can be put down as 1.0s",
+		isInboundP2PDisabledName:     "Whether inbound p2p is enabled",
 	}
 }

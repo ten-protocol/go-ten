@@ -46,6 +46,7 @@ type Config struct {
 	debugNamespaceEnabled     bool
 	profilerEnabled           bool
 	logLevel                  int
+	isInboundP2PDisabled      bool
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -104,6 +105,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 	cfg.LogLevel = c.logLevel
 	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
+	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
 
 	return cfg
 }
@@ -275,5 +277,11 @@ func WithProfiler(b bool) Option {
 func WithLogLevel(i int) Option {
 	return func(c *Config) {
 		c.logLevel = i
+	}
+}
+
+func WithInboundP2PDisabled(b bool) Option {
+	return func(c *Config) {
+		c.isInboundP2PDisabled = b
 	}
 }

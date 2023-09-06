@@ -19,13 +19,12 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
-
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 )
 
@@ -53,10 +52,11 @@ func createInMemObscuroNode(
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
-	mockP2P *p2p.MockP2P,
+	mockP2P hostcommon.P2PHostService,
 	l1BusAddress gethcommon.Address,
 	l1StartBlk gethcommon.Hash,
 	batchInterval time.Duration,
+	incomingP2PDisabled bool,
 ) *container.HostContainer {
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
@@ -71,6 +71,7 @@ func createInMemObscuroNode(
 		ManagementContractAddress: *mgtContractAddress,
 		MessageBusAddress:         l1BusAddress,
 		BatchInterval:             batchInterval,
+		IsInboundP2PDisabled:      incomingP2PDisabled,
 	}
 
 	enclaveConfig := &config.EnclaveConfig{

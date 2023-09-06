@@ -88,6 +88,9 @@ type HostInputConfig struct {
 
 	// Min interval before creating the next rollup (only used by Sequencer nodes)
 	RollupInterval time.Duration
+
+	// Whether inbound p2p is enabled or not
+	IsInboundP2PDisabled bool
 }
 
 // ToHostConfig returns a HostConfig given a HostInputConfig
@@ -126,6 +129,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		DebugNamespaceEnabled:     p.DebugNamespaceEnabled,
 		BatchInterval:             p.BatchInterval,
 		RollupInterval:            p.RollupInterval,
+		IsInboundP2PDisabled:      p.IsInboundP2PDisabled,
 	}
 }
 
@@ -211,6 +215,8 @@ type HostConfig struct {
 	MetricsHTTPPort uint
 	// DebugNamespaceEnabled enables the debug namespace handler in the host rpc server
 	DebugNamespaceEnabled bool
+	// Whether p2p is enabled or not
+	IsInboundP2PDisabled bool
 }
 
 // DefaultHostParsedConfig returns a HostConfig with default values.
@@ -247,5 +253,6 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		DebugNamespaceEnabled:     false,
 		BatchInterval:             1 * time.Second,
 		RollupInterval:            5 * time.Second,
+		IsInboundP2PDisabled:      false,
 	}
 }
