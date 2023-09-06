@@ -136,6 +136,7 @@ func (r *Repository) FetchObscuroReceipts(block *common.L1Block) types.Receipts 
 			// put in a dummy receipt so that the index matches the transaction index
 			// (the receipts list maintains the indexes of the transactions, it is a sparse list)
 			receipts[idx] = &types.Receipt{Status: types.ReceiptStatusFailed}
+			continue
 		}
 		receipt, err := r.ethClient.TransactionReceipt(transaction.Hash())
 
