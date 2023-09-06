@@ -90,11 +90,11 @@ type CalldataRollupHeader struct {
 	FirstBatchHeight   *big.Int
 	FirstParentHash    L2BatchHash
 
-	StartTime  uint64
-	DeltaTimes []*big.Int // todo - minimize assuming a default of 1 sec and then store only exceptions
+	StartTime       uint64
+	BatchTimeDeltas []*big.Int // todo - minimize assuming a default of 1 sec and then store only exceptions
 
-	ReOrgs   []*BatchHeader // sparse list of reorged headers - non null only for reorgs.
-	L1Proofs []*big.Int     // Contains the L1 height on the indexes where it changes. Todo - can be optimised with deltas
+	ReOrgs         []*BatchHeader // sparse list of reorged headers - non null only for reorgs.
+	L1HeightDeltas []*big.Int     // Contains the L1 height on the indexes where it changes. Todo - can be optimised with deltas
 
 	// todo - these fields are for debugging the compression. Should be removed.
 	BatchHashes []L2BatchHash

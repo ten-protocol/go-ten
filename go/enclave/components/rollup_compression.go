@@ -108,13 +108,13 @@ func (rc *RollupCompression) CreateExtRollup(r *core.Rollup) (*common.ExtRollup,
 // ProcessExtRollup - given an External rollup, responsible with checking and saving all batches found inside
 func (rc *RollupCompression) ProcessExtRollup(rollup *common.ExtRollup) error {
 	transactionsPerBatch := make([][]*common.L2Tx, 0)
-	err := rc.decryptDecompressAndSerialise(rollup.BatchPayloads, &transactionsPerBatch)
+	err := rc.decryptDecompressAndDeserialise(rollup.BatchPayloads, &transactionsPerBatch)
 	if err != nil {
 		return err
 	}
 
 	calldataRollupHeader := new(common.CalldataRollupHeader)
-	err = rc.decryptDecompressAndSerialise(rollup.CalldataRollupHeader, calldataRollupHeader)
+	err = rc.decryptDecompressAndDeserialise(rollup.CalldataRollupHeader, calldataRollupHeader)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 	startTime := batches[0].Header.Time
 	prev := startTime
 
-	l1Proofs := make([]*big.Int, len(batches))
+	l1HeightDeltas := make([]*big.Int, len(batches))
 	var prevL1Height *big.Int
 
 	batchHashes := make([]common.L2BatchHash, len(batches))
@@ -178,11 +178,11 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 			return nil, err
 		}
 
-		// only add an entry in the l1Proofs array when the value changes
+		// the first element is the actual height
 		if i == 0 {
-			l1Proofs[i] = block.Number()
+			l1HeightDeltas[i] = block.Number()
 		} else {
-			l1Proofs[i] = big.NewInt(block.Number().Int64() - prevL1Height.Int64())
+			l1HeightDeltas[i] = big.NewInt(block.Number().Int64() - prevL1Height.Int64())
 		}
 		prevL1Height = block.Number()
 	}
@@ -196,9 +196,9 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		FirstBatchHeight:   batches[0].Number(), // todo - has to be canonical
 		FirstParentHash:    batches[0].Header.ParentHash,
 		StartTime:          startTime,
-		DeltaTimes:         deltaTimes,
+		BatchTimeDeltas:    deltaTimes,
 		ReOrgs:             reorgs,
-		L1Proofs:           l1Proofs,
+		L1HeightDeltas:     l1HeightDeltas,
 		BatchHashes:        batchHashes,
 		// BatchHeaders:       batchHeaders,
 	}
@@ -218,7 +218,7 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 	for currentBatchIdx, batchTransactions := range transactionsPerBatch {
 		// the l1 proofs are stored as deltas, which compress well as it should be a series of 1s and 0s
 		// the first element is the actual height
-		l1Delta := calldataRollupHeader.L1Proofs[currentBatchIdx]
+		l1Delta := calldataRollupHeader.L1HeightDeltas[currentBatchIdx]
 		if currentBatchIdx == 0 {
 			currentL1Height = l1Delta
 		} else {
@@ -232,7 +232,7 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 
 		// todo - this should be 1 second
 		// todo - multiply delta by something?
-		currentTime += calldataRollupHeader.DeltaTimes[currentBatchIdx].Uint64()
+		currentTime += calldataRollupHeader.BatchTimeDeltas[currentBatchIdx].Uint64()
 
 		// the transactions stored in a valid rollup belong to sequential batches
 		currentSeqNo := big.NewInt(startAtSeq + int64(currentBatchIdx))
@@ -368,7 +368,7 @@ func (rc *RollupCompression) serialiseCompressAndEncrypt(obj any) ([]byte, error
 	return encrypted, nil
 }
 
-func (rc *RollupCompression) decryptDecompressAndSerialise(blob []byte, obj any) error {
+func (rc *RollupCompression) decryptDecompressAndDeserialise(blob []byte, obj any) error {
 	plaintextBlob, err := rc.dataEncryptionService.Decrypt(blob)
 	if err != nil {
 		return err
