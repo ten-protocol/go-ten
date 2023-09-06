@@ -131,7 +131,9 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	enclaveClient := enclaverpc.NewClient(cfg, logger)
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
+
 	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
+
 	rpcServer := clientrpc.NewServer(cfg, logger)
 
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)
@@ -141,7 +143,7 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p host.P2PHostService, l1Client ethadapter.EthClient, enclaveClient common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer clientrpc.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
+func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, enclaveClient common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer clientrpc.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
 	h := host.NewHost(cfg, services, p2p, l1Client, enclaveClient, hostWallet, contractLib, logger, metricsService.Registry())
 
 	hostContainer := &HostContainer{

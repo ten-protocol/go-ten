@@ -36,7 +36,7 @@ const (
 	PathAuthenticate                    = "/authenticate/"
 	PathQuery                           = "/query/"
 	PathRevoke                          = "/revoke/"
-	PathObscuroGateway                  = "/og/"
+	PathObscuroGateway                  = "/"
 	PathHealth                          = "/health/"
 	WSProtocol                          = "ws://"
 	DefaultUser                         = "defaultUser"
@@ -48,6 +48,7 @@ const (
 	PersonalSignMessagePrefix           = "\x19Ethereum Signed Message:\n%d%s"
 	GetStorageAtUserIDRequestMethodName = "getUserID"
 	SuccessMsg                          = "success"
+	APIVersion1                         = "/v1"
 )
 
 var (

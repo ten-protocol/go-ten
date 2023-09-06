@@ -61,6 +61,7 @@ func (t *Testnet) Start() error {
 		node.WithL1Start(networkConfig.L1StartHash),
 		node.WithInMemoryHostDB(true),
 		node.WithDebugNamespaceEnabled(true),
+		node.WithLogLevel(4),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
 	)
 
@@ -100,6 +101,8 @@ func (t *Testnet) Start() error {
 		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
 		node.WithL1Start(networkConfig.L1StartHash),
 		node.WithInMemoryHostDB(true),
+		node.WithDebugNamespaceEnabled(true),
+		node.WithLogLevel(4),
 		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
 	)
 

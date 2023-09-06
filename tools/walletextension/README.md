@@ -27,3 +27,27 @@ It uses a container to wrap the services that are required to allow the wallet e
 To build a docker image use docker build command. Please note that you need to run it from the root of the repository.
 Ro run the container you can use `./docker_run.sh`. You can add parameters to the script, and they are passed to wallet extension 
 (example: `-host=0.0.0.0` to be able to access wallet extension endpoints via localhost).
+
+
+### HTTP Endpoints
+
+For interacting with Obscuro Gateway, there are the following HTTP endpoint available:
+
+- `GET /v1/join`
+
+It generates and returns userID which needs to be added as a query parameter "u" to the URL in your Metamask
+(or another provider) as it identifies you.
+
+- `POST /v1/authenticate?u=$UserId`
+
+With this endpoint, you submit a signed message in a format `Register <userID> for <account>`
+from that account which proves that you hold private keys for it, and it links that account with your userID.
+
+- `GET /v1/query/address?u=$UserId&a=$Address`
+
+This endpoint responds with a json of true or false if the address "a" is already registered for user "u"
+
+
+- `POST "/v1/revoke?u=$UserId"`
+
+When this endpoint is triggered, the userId with the authenticated viewing keys should be deleted.

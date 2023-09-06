@@ -30,7 +30,7 @@ func defaultObscuroClientConfig() obscuroscanConfig {
 	return obscuroscanConfig{
 		nodeID:        "",
 		rpcServerAddr: "http://testnet.obscu.ro:80",
-		address:       "127.0.0.1:3000",
+		address:       "127.0.0.1:3000/v1",
 		logPath:       "obscuroscan_logs.txt",
 	}
 }

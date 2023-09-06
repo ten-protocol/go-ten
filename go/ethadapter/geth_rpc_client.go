@@ -256,8 +256,12 @@ func (e *gethRPCClient) EstimateGasAndGasPrice(txData types.TxData, from gethcom
 	}, nil
 }
 
-// Reconnect closes the existing client connection and creates a new connection to the same address:port
-func (e *gethRPCClient) Reconnect() error {
+// ReconnectIfClosed closes the existing client connection and creates a new connection to the same address:port
+func (e *gethRPCClient) ReconnectIfClosed() error {
+	if e.Alive() {
+		// connection is not closed
+		return nil
+	}
 	e.client.Close()
 
 	client, err := connect(e.rpcAddress, e.timeout)

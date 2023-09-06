@@ -116,6 +116,8 @@ func (d *DockerNode) startHost() error {
 		// todo (@stefan): once the limiter is in, increase it back to 5 or 10s
 		"-batchInterval=1s",
 		"-rollupInterval=3s",
+		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
+		fmt.Sprintf("-isInboundP2PDisabled=%t", d.cfg.isInboundP2PDisabled),
 	}
 	if !d.cfg.hostInMemDB {
 		cmd = append(cmd, "-levelDBPath", _hostDataDir)
@@ -175,6 +177,7 @@ func (d *DockerNode) startEnclave() error {
 		fmt.Sprintf("-debugNamespaceEnabled=%t", d.cfg.debugNamespaceEnabled),
 		"-maxBatchSize=25600",
 		"-maxRollupSize=65536",
+		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
 	)
 
 	if d.cfg.sgxEnabled {

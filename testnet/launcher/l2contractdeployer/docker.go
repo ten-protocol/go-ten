@@ -49,7 +49,7 @@ func (n *ContractDeployer) Start() error {
         },
         "layer2" : {
             "obscuroEncRpcUrl" : "ws://%s:%d",
-            "url": "http://127.0.0.1:3000",
+            "url": "http://127.0.0.1:3000/v1",
             "live" : false,
             "saveDeployments" : true,
             "companionNetworks" : { "layer1" : "layer1" },

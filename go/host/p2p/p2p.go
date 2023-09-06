@@ -9,11 +9,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/subscription"
-	"github.com/pkg/errors"
-
 	"github.com/obscuronet/go-obscuro/go/common/measure"
 	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/obscuronet/go-obscuro/go/common/subscription"
+	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -74,6 +73,8 @@ func NewSocketP2PLayer(config *config.HostConfig, serviceLocator p2pServiceLocat
 		peerTracker:     newPeerTracker(),
 		metricsRegistry: metricReg,
 		logger:          logger,
+
+		isIncomingP2PDisabled: config.IsInboundP2PDisabled,
 	}
 }
 
@@ -93,13 +94,21 @@ type Service struct {
 	peerAddresses    []string
 	p2pTimeout       time.Duration
 
-	peerTracker        *peerTracker
-	metricsRegistry    gethmetrics.Registry
-	logger             gethlog.Logger
-	peerAddressesMutex sync.RWMutex
+	peerTracker           *peerTracker
+	metricsRegistry       gethmetrics.Registry
+	logger                gethlog.Logger
+	peerAddressesMutex    sync.RWMutex
+	isIncomingP2PDisabled bool
 }
 
 func (p *Service) Start() error {
+	p.running.Store(true)
+
+	if p.isIncomingP2PDisabled {
+		go p.RefreshPeerList()
+		return nil
+	}
+
 	// We listen for P2P connections.
 	listener, err := net.Listen("tcp", p.ourBindAddress)
 	if err != nil {
@@ -107,7 +116,7 @@ func (p *Service) Start() error {
 	}
 
 	p.logger.Info("P2P server started listening", "bindAddress", p.ourBindAddress, "publicAddress", p.ourPublicAddress)
-	p.running.Store(true)
+
 	p.listener = listener
 
 	go p.handleConnections()
@@ -140,6 +149,9 @@ func (p *Service) HealthStatus() host.HealthStatus {
 }
 
 func (p *Service) SubscribeForBatches(handler host.P2PBatchHandler) func() {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	return p.batchSubscribers.Subscribe(handler)
 }
 
@@ -148,6 +160,9 @@ func (p *Service) SubscribeForTx(handler host.P2PTxHandler) func() {
 }
 
 func (p *Service) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler) func() {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	return p.batchReqHandlers.Subscribe(handler)
 }
 
@@ -192,6 +207,9 @@ func (p *Service) SendTxToSequencer(tx common.EncryptedTx) error {
 }
 
 func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	if !p.isSequencer {
 		return errors.New("only sequencer can broadcast batches")
 	}
@@ -210,6 +228,9 @@ func (p *Service) BroadcastBatches(batches []*common.ExtBatch) error {
 }
 
 func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	if p.isSequencer {
 		return errors.New("sequencer cannot request batches from itself")
 	}
@@ -234,6 +255,9 @@ func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
 }
 
 func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtBatch) error {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	if !p.isSequencer {
 		return errors.New("only sequencer can respond to batch requests")
 	}
@@ -256,6 +280,9 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 // if there's more than 100 failures on a given fail type
 // if there's a known peer for which a message hasn't been received
 func (p *Service) verifyHealth() error {
+	if p.isIncomingP2PDisabled {
+		return nil
+	}
 	var noMsgReceivedPeers []string
 	for peer, lastMsgTimestamp := range p.peerTracker.receivedMessagesByPeer() {
 		if time.Now().After(lastMsgTimestamp.Add(_alertPeriod)) {
@@ -356,12 +383,15 @@ func (p *Service) broadcast(msg message) error {
 	copy(currentAddresses, p.peerAddresses)
 	p.peerAddressesMutex.RUnlock()
 
-	var wg sync.WaitGroup
 	for _, address := range currentAddresses {
-		wg.Add(1)
-		go p.sendBytesWithRetry(&wg, address, msgEncoded) //nolint: errcheck
+		closureAddr := address
+		go func() {
+			err := p.sendBytesWithRetry(closureAddr, msgEncoded)
+			if err != nil {
+				p.logger.Error("unsuccessful broadcast", log.ErrKey, err)
+			}
+		}()
 	}
-	wg.Wait()
 
 	return nil
 }
@@ -383,7 +413,7 @@ func (p *Service) send(msg message, to string) error {
 	if err != nil {
 		return fmt.Errorf("could not encode message to send to sequencer. Cause: %w", err)
 	}
-	err = p.sendBytesWithRetry(nil, to, msgEncoded)
+	err = p.sendBytesWithRetry(to, msgEncoded)
 	if err != nil {
 		return err
 	}
@@ -392,10 +422,7 @@ func (p *Service) send(msg message, to string) error {
 
 // Sends the bytes to the provided address.
 // Until introducing libp2p (or equivalent), we have a simple retry
-func (p *Service) sendBytesWithRetry(wg *sync.WaitGroup, address string, msgEncoded []byte) error {
-	if wg != nil {
-		defer wg.Done()
-	}
+func (p *Service) sendBytesWithRetry(address string, msgEncoded []byte) error {
 	// retry for about 2 seconds
 	err := retry.Do(func() error {
 		return p.sendBytes(address, msgEncoded)

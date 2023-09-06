@@ -32,6 +32,8 @@ func main() {
 		node.WithPCCSAddr(cliConfig.pccsAddr),
 		node.WithEdgelessDBImage(cliConfig.edgelessDBImage),
 		node.WithDebugNamespaceEnabled(cliConfig.isDebugNamespaceEnabled), // false
+		node.WithLogLevel(cliConfig.logLevel),
+		node.WithInboundP2PDisabled(cliConfig.isInboundP2PDisabled),
 	)
 
 	dockerNode := node.NewDockerNode(nodeCfg)
