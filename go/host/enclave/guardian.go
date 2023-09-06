@@ -546,7 +546,7 @@ func (g *Guardian) periodicRollupProduction() {
 			}
 			fromBatch := lastBatchNo.Uint64()
 			if lastBatchNo.Uint64() > common.L2GenesisSeqNo {
-				fromBatch += 1
+				fromBatch++
 			}
 			producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
 			if err != nil {

@@ -83,22 +83,22 @@ type RollupHeader struct {
 	LastBatchSeqNo uint64
 }
 
-// CalldataRollupHeader contains all information necessary to reconstruct the batches
-// included in the rollup
+// CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.
+// This data structure is serialised, compressed, and encrypted, before being serialised again in the rollup.
 type CalldataRollupHeader struct {
 	FirstBatchSequence *big.Int
 	FirstBatchHeight   *big.Int
 	FirstParentHash    L2BatchHash
 
-	// todo - this is for debugging the compression. Should be removed
+	StartTime  uint64
+	DeltaTimes []*big.Int // todo - minimize assuming a default of 1 sec and then store only exceptions
+
+	ReOrgs   []*BatchHeader // sparse list of reorged headers - non null only for reorgs.
+	L1Proofs []*big.Int     // Contains the L1 height on the indexes where it changes. Todo - can be optimised with deltas
+
+	// todo - these fields are for debugging the compression. Should be removed.
 	BatchHashes []L2BatchHash
 	// BatchHeaders []*BatchHeader
-
-	StartTime  uint64
-	DeltaTimes []uint64 // todo - minimize assuming a default of 1 sec and then store only exceptions
-
-	ReOrgs   []*BatchHeader // sparse list of reorged headers - non null only for reorgs
-	L1Proofs []*big.Int     // sequence number to l1 height, only when it changes
 }
 
 // MarshalJSON custom marshals the RollupHeader into a json

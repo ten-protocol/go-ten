@@ -23,7 +23,7 @@ type blockResolverInMem struct {
 	m          sync.RWMutex
 }
 
-func (n *blockResolverInMem) FetchCanonicaBlockByHeight(height *big.Int) (*types.Block, error) {
+func (n *blockResolverInMem) FetchCanonicaBlockByHeight(_ *big.Int) (*types.Block, error) {
 	panic("implement me")
 }
 
