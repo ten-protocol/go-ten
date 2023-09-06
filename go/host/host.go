@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
-
 	"github.com/obscuronet/go-obscuro/go/host/l2"
 
 	"github.com/obscuronet/go-obscuro/go/host/enclave"
@@ -46,13 +44,11 @@ type host struct {
 	metricRegistry gethmetrics.Registry
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
+func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
 	database, err := db.CreateDBFromConfig(config, regMetrics, logger)
 	if err != nil {
 		logger.Crit("unable to create database for host", log.ErrKey, err)
 	}
-	obscuroContracts := []gethcommon.Address{config.ManagementContractAddress, config.MessageBusAddress}
-	l1Repo := l1.NewL1Repository(ethClient, obscuroContracts, logger)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
 		// config
