@@ -33,6 +33,7 @@ type HostConfigToml struct {
 	L1RPCTimeout              int
 	P2PConnectionTimeout      int
 	ManagementContractAddress string
+	MessageBusAddress         string
 	LogLevel                  int
 	LogPath                   string
 	PrivateKeyString          string
@@ -40,6 +41,7 @@ type HostConfigToml struct {
 	ObscuroChainID            int64
 	ProfilerEnabled           bool
 	L1StartHash               string
+	SequencerID               string
 	MetricsEnabled            bool
 	MetricsHTTPPort           uint
 	UseInMemoryDB             bool
@@ -71,6 +73,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	l1RPCTimeoutSecs := flag.Uint64(l1RPCTimeoutSecsName, uint64(cfg.L1RPCTimeout.Seconds()), flagUsageMap[l1RPCTimeoutSecsName])
 	p2pConnectionTimeoutSecs := flag.Uint64(p2pConnectionTimeoutSecsName, uint64(cfg.P2PConnectionTimeout.Seconds()), flagUsageMap[p2pConnectionTimeoutSecsName])
 	managementContractAddress := flag.String(managementContractAddrName, cfg.ManagementContractAddress.Hex(), flagUsageMap[managementContractAddrName])
+	messageBusContractAddress := flag.String(messageBusContractAddrName, cfg.MessageBusAddress.Hex(), flagUsageMap[messageBusContractAddrName])
 	logLevel := flag.Int(logLevelName, cfg.LogLevel, flagUsageMap[logLevelName])
 	logPath := flag.String(logPathName, cfg.LogPath, flagUsageMap[logPathName])
 	l1ChainID := flag.Int64(l1ChainIDName, cfg.L1ChainID, flagUsageMap[l1ChainIDName])
@@ -78,6 +81,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	privateKeyStr := flag.String(privateKeyName, cfg.PrivateKeyString, flagUsageMap[privateKeyName])
 	profilerEnabled := flag.Bool(profilerEnabledName, cfg.ProfilerEnabled, flagUsageMap[profilerEnabledName])
 	l1StartHash := flag.String(l1StartHashName, cfg.L1StartHash.Hex(), flagUsageMap[l1StartHashName])
+	sequencerID := flag.String(sequencerIDName, cfg.SequencerID.Hex(), flagUsageMap[sequencerIDName])
 	metricsEnabled := flag.Bool(metricsEnabledName, cfg.MetricsEnabled, flagUsageMap[metricsEnabledName])
 	metricsHTPPPort := flag.Uint(metricsHTTPPortName, cfg.MetricsHTTPPort, flagUsageMap[metricsHTTPPortName])
 	useInMemoryDB := flag.Bool(useInMemoryDBName, cfg.UseInMemoryDB, flagUsageMap[useInMemoryDBName])
@@ -114,6 +118,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.L1RPCTimeout = time.Duration(*l1RPCTimeoutSecs) * time.Second
 	cfg.P2PConnectionTimeout = time.Duration(*p2pConnectionTimeoutSecs) * time.Second
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(*managementContractAddress)
+	cfg.MessageBusAddress = gethcommon.HexToAddress(*messageBusContractAddress)
 	cfg.PrivateKeyString = *privateKeyStr
 	cfg.LogLevel = *logLevel
 	cfg.LogPath = *logPath
@@ -121,6 +126,7 @@ func ParseConfig() (*config.HostInputConfig, error) {
 	cfg.ObscuroChainID = *obscuroChainID
 	cfg.ProfilerEnabled = *profilerEnabled
 	cfg.L1StartHash = gethcommon.HexToHash(*l1StartHash)
+	cfg.SequencerID = gethcommon.HexToAddress(*sequencerID)
 	cfg.MetricsEnabled = *metricsEnabled
 	cfg.MetricsHTTPPort = *metricsHTPPPort
 	cfg.UseInMemoryDB = *useInMemoryDB
@@ -182,6 +188,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		L1RPCTimeout:              time.Duration(tomlConfig.L1RPCTimeout) * time.Second,
 		P2PConnectionTimeout:      time.Duration(tomlConfig.P2PConnectionTimeout) * time.Second,
 		ManagementContractAddress: gethcommon.HexToAddress(tomlConfig.ManagementContractAddress),
+		MessageBusAddress:         gethcommon.HexToAddress(tomlConfig.MessageBusAddress),
 		LogLevel:                  tomlConfig.LogLevel,
 		LogPath:                   tomlConfig.LogPath,
 		PrivateKeyString:          tomlConfig.PrivateKeyString,
@@ -189,6 +196,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		ObscuroChainID:            tomlConfig.ObscuroChainID,
 		ProfilerEnabled:           tomlConfig.ProfilerEnabled,
 		L1StartHash:               gethcommon.HexToHash(tomlConfig.L1StartHash),
+		SequencerID:               gethcommon.HexToAddress(tomlConfig.SequencerID),
 		MetricsEnabled:            tomlConfig.MetricsEnabled,
 		MetricsHTTPPort:           tomlConfig.MetricsHTTPPort,
 		UseInMemoryDB:             tomlConfig.UseInMemoryDB,

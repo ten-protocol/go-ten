@@ -35,16 +35,18 @@ type Repository struct {
 	ethClient ethadapter.EthClient
 	logger    gethlog.Logger
 
-	running atomic.Bool
-	head    gethcommon.Hash
+	running                  atomic.Bool
+	head                     gethcommon.Hash
+	obscuroRelevantContracts []gethcommon.Address
 }
 
-func NewL1Repository(ethClient ethadapter.EthClient, logger gethlog.Logger) *Repository {
+func NewL1Repository(ethClient ethadapter.EthClient, obscuroRelevantContracts []gethcommon.Address, logger gethlog.Logger) *Repository {
 	return &Repository{
-		blockSubscribers: subscription.NewManager[host.L1BlockHandler](),
-		ethClient:        ethClient,
-		running:          atomic.Bool{},
-		logger:           logger,
+		blockSubscribers:         subscription.NewManager[host.L1BlockHandler](),
+		ethClient:                ethClient,
+		obscuroRelevantContracts: obscuroRelevantContracts,
+		running:                  atomic.Bool{},
+		logger:                   logger,
 	}
 }
 
@@ -125,10 +127,17 @@ func (r *Repository) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block,
 	return blk, nil
 }
 
-func (r *Repository) FetchReceipts(block *common.L1Block) types.Receipts {
-	receipts := make(types.Receipts, 0)
+// FetchObscuroReceipts returns all obscuro-relevant receipts for an L1 block
+func (r *Repository) FetchObscuroReceipts(block *common.L1Block) types.Receipts {
+	receipts := make([]*types.Receipt, len(block.Transactions()))
 
-	for _, transaction := range block.Transactions() {
+	for idx, transaction := range block.Transactions() {
+		if !r.isObscuroTransaction(transaction) {
+			// put in a dummy receipt so that the index matches the transaction index
+			// (the receipts list maintains the indexes of the transactions, it is a sparse list)
+			receipts[idx] = &types.Receipt{Status: types.ReceiptStatusFailed}
+			continue
+		}
 		receipt, err := r.ethClient.TransactionReceipt(transaction.Hash())
 
 		if err != nil || receipt == nil {
@@ -139,7 +148,7 @@ func (r *Repository) FetchReceipts(block *common.L1Block) types.Receipts {
 		r.logger.Trace("Adding receipt", "status", receipt.Status, log.TxKey, transaction.Hash(),
 			log.BlockHashKey, block.Hash(), log.CmpKey, log.CrossChainCmp)
 
-		receipts = append(receipts, receipt)
+		receipts[idx] = receipt
 	}
 
 	return receipts
@@ -197,6 +206,16 @@ func (r *Repository) resetLiveStream() (chan *types.Header, ethereum.Subscriptio
 
 func (r *Repository) FetchBlockByHeight(height *big.Int) (*types.Block, error) {
 	return r.ethClient.BlockByNumber(height)
+}
+
+// isObscuroTransaction will look at the 'to' address of the transaction, we are only interested in management contract and bridge transactions
+func (r *Repository) isObscuroTransaction(transaction *types.Transaction) bool {
+	for _, address := range r.obscuroRelevantContracts {
+		if transaction.To() != nil && *transaction.To() == address {
+			return true
+		}
+	}
+	return false
 }
 
 func increment(i *big.Int) *big.Int {

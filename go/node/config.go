@@ -98,11 +98,13 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.L1NodeWebsocketPort = uint(c.l1WSPort)
 	cfg.L1NodeHost = c.l1Host
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
+	cfg.MessageBusAddress = gethcommon.HexToAddress(c.messageBusContractAddress)
 	cfg.LogPath = testlog.LogFile()
 	cfg.ProfilerEnabled = c.profilerEnabled
 	cfg.MetricsEnabled = false
 	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 	cfg.LogLevel = c.logLevel
+	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
 	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
 
 	return cfg

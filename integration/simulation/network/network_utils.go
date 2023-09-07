@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/l1"
+
 	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -53,7 +55,7 @@ func createInMemObscuroNode(
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	mockP2P hostcommon.P2PHostService,
-	l1BusAddress *gethcommon.Address,
+	l1BusAddress gethcommon.Address,
 	l1StartBlk gethcommon.Hash,
 	batchInterval time.Duration,
 	incomingP2PDisabled bool,
@@ -67,7 +69,9 @@ func createInMemObscuroNode(
 		HasClientRPCHTTP:          false,
 		P2PPublicAddress:          fmt.Sprintf("%d", id),
 		L1StartHash:               l1StartBlk,
+		SequencerID:               gethcommon.BigToAddress(big.NewInt(0)),
 		ManagementContractAddress: *mgtContractAddress,
+		MessageBusAddress:         l1BusAddress,
 		BatchInterval:             batchInterval,
 		IsInboundP2PDisabled:      incomingP2PDisabled,
 	}
@@ -83,7 +87,7 @@ func createInMemObscuroNode(
 		GenesisJSON:               genesisJSON,
 		UseInMemoryDB:             true,
 		MinGasPrice:               big.NewInt(1),
-		MessageBusAddress:         *l1BusAddress,
+		MessageBusAddress:         l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
@@ -95,8 +99,8 @@ func createInMemObscuroNode(
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-
-	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
+	l1Repo := l1.NewL1Repository(ethClient, ethereummock.MgmtContractAddresses, hostLogger)
+	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
 
 	return currentContainer
 }

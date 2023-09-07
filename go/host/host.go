@@ -42,15 +42,13 @@ type host struct {
 	logger gethlog.Logger
 
 	metricRegistry gethmetrics.Registry
-	enclaveConfig  *common.ObscuroEnclaveInfo
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
+func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClient common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
 	database, err := db.CreateDBFromConfig(config, regMetrics, logger)
 	if err != nil {
 		logger.Crit("unable to create database for host", log.ErrKey, err)
 	}
-	l1Repo := l1.NewL1Repository(ethClient, logger)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
 		// config
@@ -199,20 +197,12 @@ func (h *host) HealthCheck() (*hostcommon.HealthCheck, error) {
 
 // ObscuroConfig returns info on the Obscuro network
 func (h *host) ObscuroConfig() (*common.ObscuroNetworkInfo, error) {
-	if h.enclaveConfig != nil {
-		enclaveConfig, err := h.EnclaveClient().Config()
-		if err != nil {
-			return nil, fmt.Errorf("unable to `retrieve` enclave info - %w", err)
-		}
-		h.enclaveConfig = enclaveConfig
-	}
-
 	return &common.ObscuroNetworkInfo{
 		ManagementContractAddress: h.config.ManagementContractAddress,
 		L1StartHash:               h.config.L1StartHash,
 
-		SequencerID:       h.enclaveConfig.SequencerID,
-		MessageBusAddress: h.enclaveConfig.MessageBusAddress,
+		SequencerID:       h.config.SequencerID,
+		MessageBusAddress: h.config.MessageBusAddress,
 	}, nil
 }
 

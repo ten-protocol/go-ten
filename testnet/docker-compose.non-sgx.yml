@@ -36,7 +36,9 @@ services:
       "--logPath=sys_out",
       "--logLevel=$LOGLEVEL",
       "--profilerEnabled=$PROFILERENABLED",
-      "--p2pPublicAddress=$P2PPUBLICADDRESS"
+      "--p2pPublicAddress=$P2PPUBLICADDRESS",
+      "--sequencerID=$SEQUENCERID",
+      "--messageBusAddress=$MSGBUSCONTRACTADDR"
     ]
 
   enclave:

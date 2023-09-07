@@ -119,7 +119,7 @@ func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.
 		return &params.L1SetupData{
 			ObscuroStartBlock:   mgmtContractReceipt.BlockHash,
 			MgmtContractAddress: mgmtContractReceipt.ContractAddress,
-			MessageBusAddr:      &l1BusAddress,
+			MessageBusAddr:      l1BusAddress,
 		}, nil
 	}
 
@@ -138,7 +138,7 @@ func DeployObscuroNetworkContracts(client ethadapter.EthClient, wallets *params.
 		MgmtContractAddress: mgmtContractReceipt.ContractAddress,
 		ObxErc20Address:     erc20ContractAddr[0],
 		EthErc20Address:     erc20ContractAddr[1],
-		MessageBusAddr:      &l1BusAddress,
+		MessageBusAddr:      l1BusAddress,
 	}, nil
 }
 
