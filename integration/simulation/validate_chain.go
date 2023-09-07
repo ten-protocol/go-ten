@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
@@ -52,6 +53,7 @@ const (
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
 // time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
+	time.Sleep(2 * time.Second)
 	checkTransactionsInjected(t, s)
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
 	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
@@ -126,22 +128,11 @@ func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uin
 	}
 }
 
-func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation, nodeIdx int) uint64 {
-	head, err := node.FetchHeadBlock()
-	if err != nil {
-		t.Errorf("Node %d: Could not find head block. Cause: %s", nodeIdx, err)
-	}
-	height := head.NumberU64()
+func checkCollectedL1Fees(t *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
 
-	if height < minHeight {
-		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeIdx, height, minHeight)
-	}
-
-	deposits, rollups, _, blockCount, _, rollupReceipts := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
-	s.Stats.TotalL1Blocks = uint64(blockCount)
+	costOfRollups := big.NewInt(0)
 
 	if !s.Params.IsInMem {
-		costOfRollups := big.NewInt(0)
 		for _, receipt := range rollupReceipts {
 			block, err := node.EthClient().BlockByHash(context.Background(), receipt.BlockHash)
 			if err != nil {
@@ -164,6 +155,23 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 			t.Errorf("Node %d: Sequencer has collected insufficient fees. Has: %d, needs: %d", nodeIdx, feeBalance, costOfRollups)
 		}
 	}
+}
+
+func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation, nodeIdx int) uint64 {
+	head, err := node.FetchHeadBlock()
+	if err != nil {
+		t.Errorf("Node %d: Could not find head block. Cause: %s", nodeIdx, err)
+	}
+	height := head.NumberU64()
+
+	if height < minHeight {
+		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeIdx, height, minHeight)
+	}
+
+	deposits, rollups, _, blockCount, _, rollupReceipts := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
+	s.Stats.TotalL1Blocks = uint64(blockCount)
+
+	checkCollectedL1Fees(t, node, s, nodeIdx, rollupReceipts)
 
 	if len(findHashDups(deposits)) > 0 {
 		dups := findHashDups(deposits)
@@ -352,6 +360,7 @@ func ExtractDataFromEthereumChain(
 }
 
 func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
+	time.Sleep(3 * time.Second)
 	mbusABI, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
 	gasBridgeRecords := s.TxInjector.TxTracker.GasBridgeTransactions
 	for _, record := range gasBridgeRecords {
