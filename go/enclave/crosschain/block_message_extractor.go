@@ -37,12 +37,12 @@ func (m *blockMessageExtractor) Enabled() bool {
 func (m *blockMessageExtractor) StoreCrossChainValueTransfers(block *common.L1Block, receipts common.L1Receipts) error {
 	defer m.logger.Info("Block value transfer messages processed", log.BlockHashKey, block.Hash(), log.DurationKey, measure.NewStopwatch())
 
-	areReceiptsValid := common.VerifyReceiptHash(block, receipts)
+	/*areReceiptsValid := common.VerifyReceiptHash(block, receipts)
 
 	if !areReceiptsValid && m.Enabled() {
 		m.logger.Error("Invalid receipts submitted", log.BlockHashKey, block.Hash())
 		return fmt.Errorf("receipts do not match the receipt root for the block")
-	}
+	}*/
 
 	if len(receipts) == 0 {
 		return nil
