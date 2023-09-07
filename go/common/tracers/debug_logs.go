@@ -29,9 +29,9 @@ func (l DebugLogs) MarshalJSON() ([]byte, error) {
 		Data           hexutil.Bytes     `json:"data" gencodec:"required"`
 		BlockNumber    uint64            `json:"blockNumber"`
 		TxHash         gethcommon.Hash   `json:"transactionHash" gencodec:"required"`
-		TxIndex        hexutil.Uint      `json:"transactionIndex"`
+		TxIndex        uint              `json:"transactionIndex"`
 		BlockHash      gethcommon.Hash   `json:"blockHash"`
-		Index          hexutil.Uint      `json:"logIndex"`
+		Index          uint              `json:"logIndex"`
 		Removed        bool              `json:"removed"`
 		LifecycleEvent bool              `json:"lifecycleEvent"`
 		RelAddress1    *gethcommon.Hash  `json:"relAddress1"`
@@ -44,9 +44,9 @@ func (l DebugLogs) MarshalJSON() ([]byte, error) {
 		l.Data,
 		l.BlockNumber,
 		l.TxHash,
-		hexutil.Uint(l.TxIndex),
+		l.TxIndex,
 		l.BlockHash,
-		hexutil.Uint(l.Index),
+		l.Index,
 		l.Removed,
 		l.LifecycleEvent,
 		l.RelAddress1,
