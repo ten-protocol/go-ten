@@ -22,6 +22,14 @@ var (
 	storeSecretTxAddr      = datagenerator.RandomAddress()
 	requestSecretTxAddr    = datagenerator.RandomAddress()
 	initializeSecretTxAddr = datagenerator.RandomAddress()
+	// MgmtContractAddresses make all these addresses available for the host to know what receipts will be forwarded to the enclave
+	MgmtContractAddresses = []gethcommon.Address{
+		depositTxAddr,
+		rollupTxAddr,
+		storeSecretTxAddr,
+		requestSecretTxAddr,
+		initializeSecretTxAddr,
+	}
 )
 
 // mockContractLib is an implementation of the mgmtcontractlib.MgmtContractLib

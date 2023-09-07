@@ -98,7 +98,9 @@ func (d *DockerNode) startHost() error {
 		"-l1NodePort", fmt.Sprintf("%d", d.cfg.l1WSPort),
 		"-enclaveRPCAddress", fmt.Sprintf("%s:%d", d.cfg.nodeName+"-enclave", d.cfg.enclaveWSPort),
 		"-managementContractAddress", d.cfg.managementContractAddr,
+		"-messageBusContractAddress", d.cfg.messageBusContractAddress,
 		"-l1Start", d.cfg.l1Start,
+		"-sequencerID", d.cfg.sequencerID,
 		"-privateKey", d.cfg.privateKey,
 		"-clientRPCHost", "0.0.0.0",
 		"-logPath", "sys_out",
@@ -117,7 +119,7 @@ func (d *DockerNode) startHost() error {
 		"-batchInterval=1s",
 		"-rollupInterval=3s",
 		fmt.Sprintf("-logLevel=%d", d.cfg.logLevel),
-		fmt.Sprintf("-isInboundP2PEnabled=%t", d.cfg.isInboundP2PEnabled),
+		fmt.Sprintf("-isInboundP2PDisabled=%t", d.cfg.isInboundP2PDisabled),
 	}
 	if !d.cfg.hostInMemDB {
 		cmd = append(cmd, "-levelDBPath", _hostDataDir)

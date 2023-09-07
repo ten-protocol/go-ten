@@ -47,7 +47,7 @@ type Config struct {
 	profilerEnabled           bool
 	coinbaseAddress           string
 	logLevel                  int
-	isInboundP2PEnabled       bool
+	isInboundP2PDisabled      bool
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -103,12 +103,14 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.L1NodeWebsocketPort = uint(c.l1WSPort)
 	cfg.L1NodeHost = c.l1Host
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
+	cfg.MessageBusAddress = gethcommon.HexToAddress(c.messageBusContractAddress)
 	cfg.LogPath = testlog.LogFile()
 	cfg.ProfilerEnabled = c.profilerEnabled
 	cfg.MetricsEnabled = false
 	cfg.DebugNamespaceEnabled = c.debugNamespaceEnabled
 	cfg.LogLevel = c.logLevel
-	cfg.IsInboundP2PEnabled = c.isInboundP2PEnabled
+	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
+	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
 
 	return cfg
 }
@@ -289,8 +291,8 @@ func WithLogLevel(i int) Option {
 	}
 }
 
-func WithInboundP2PEnabled(b bool) Option {
+func WithInboundP2PDisabled(b bool) Option {
 	return func(c *Config) {
-		c.isInboundP2PEnabled = b
+		c.isInboundP2PDisabled = b
 	}
 }

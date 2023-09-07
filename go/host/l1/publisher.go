@@ -110,7 +110,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 	// record the L1 head height before we submit the secret request, so we know which block to watch from
 	l1Head, err := p.ethClient.FetchHeadBlock()
 	if err != nil {
-		err = p.ethClient.Reconnect()
+		err = p.ethClient.ReconnectIfClosed()
 		if err != nil {
 			panic(errors.Wrap(err, "could not reconnect to eth client"))
 		}

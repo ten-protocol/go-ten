@@ -47,3 +47,8 @@ type P2PHostService interface {
 	Service
 	P2P
 }
+
+type L1RepoService interface {
+	Service
+	L1BlockRepository
+}

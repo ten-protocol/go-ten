@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/obscuronet/go-obscuro/go/host/l1"
+
 	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage/init/sqlite"
@@ -118,9 +120,11 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		EnclaveRPCTimeout:         network.EnclaveClientRPCTimeout,
 		L1RPCTimeout:              network.DefaultL1RPCTimeout,
 		ManagementContractAddress: n.l1Data.MgmtContractAddress,
+		MessageBusAddress:         n.l1Data.MessageBusAddr,
 		L1ChainID:                 integration.EthereumChainID,
 		ObscuroChainID:            integration.ObscuroChainID,
 		L1StartHash:               n.l1Data.ObscuroStartBlock,
+		SequencerID:               getHostID(0),
 		UseInMemoryDB:             false,
 		LevelDBPath:               n.hostDBFilepath,
 		DebugNamespaceEnabled:     true,
@@ -139,7 +143,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	enclaveClient := enclaverpc.NewClient(hostConfig, testlog.Logger().New(log.NodeIDKey, n.operatorIdx))
 	rpcServer := clientrpc.NewServer(hostConfig, n.logger)
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&hostConfig.ManagementContractAddress, n.logger)
-	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, enclaveClient, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger))
+	l1Repo := l1.NewL1Repository(n.l1Client, []gethcommon.Address{hostConfig.ManagementContractAddress, hostConfig.MessageBusAddress}, n.logger)
+	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, l1Repo, enclaveClient, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger))
 }
 
 func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveContainer {
@@ -164,7 +169,7 @@ func (n *InMemNodeOperator) createEnclaveContainer() *enclavecontainer.EnclaveCo
 		UseInMemoryDB:             false,
 		ManagementContractAddress: n.l1Data.MgmtContractAddress,
 		MinGasPrice:               big.NewInt(1),
-		MessageBusAddress:         *n.l1Data.MessageBusAddr,
+		MessageBusAddress:         n.l1Data.MessageBusAddr,
 		SqliteDBPath:              n.enclaveDBFilepath,
 		DebugNamespaceEnabled:     true,
 		MaxBatchSize:              1024 * 25,

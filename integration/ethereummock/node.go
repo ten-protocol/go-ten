@@ -467,7 +467,7 @@ func (m *Node) RemoveSubscription(id uuid.UUID) {
 	delete(m.subs, id)
 }
 
-func (m *Node) Reconnect() error {
+func (m *Node) ReconnectIfClosed() error {
 	return nil
 }
 

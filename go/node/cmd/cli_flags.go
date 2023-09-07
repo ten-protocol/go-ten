@@ -27,6 +27,7 @@ const (
 	edgelessDBImageFlag         = "edgeless_db_image"
 	isDebugNamespaceEnabledFlag = "is_debug_namespace_enabled"
 	logLevelFlag                = "log_level"
+	isInboundP2PDisabledFlag    = "is_inbound_p2p_disabled"
 )
 
 // Returns a map of the flag usages.
@@ -58,5 +59,6 @@ func getFlagUsageMap() map[string]string {
 		hostWSPortFlag:              "Host WebSocket bound port",
 		isDebugNamespaceEnabledFlag: "Enables the debug namespace for both enclave and host",
 		logLevelFlag:                "Sets the log level 1-Error, 5-Trace",
+		isInboundP2PDisabledFlag:    "Disables inbound p2p (for testing)",
 	}
 }

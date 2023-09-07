@@ -85,8 +85,8 @@ type L1BlockRepository interface {
 	// FetchNextBlock returns the next canonical block after a given block hash
 	// It returns the new block, a bool which is true if the block is the current L1 head and a bool if the block is on a different fork to prevBlock
 	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error)
-	// FetchReceipts returns the receipts for a given L1 block
-	FetchReceipts(block *common.L1Block) types.Receipts
+	// FetchObscuroReceipts returns the receipts for a given L1 block
+	FetchObscuroReceipts(block *common.L1Block) types.Receipts
 }
 
 // L1BlockHandler is an interface for receiving new blocks from the repository as they arrive

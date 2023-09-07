@@ -18,6 +18,7 @@ const (
 	l1RPCTimeoutSecsName         = "l1RPCTimeoutSecs"
 	p2pConnectionTimeoutSecsName = "p2pConnectionTimeoutSecs"
 	managementContractAddrName   = "managementContractAddress"
+	messageBusContractAddrName   = "messageBusContractAddress"
 	logLevelName                 = "logLevel"
 	logPathName                  = "logPath"
 	privateKeyName               = "privateKey"
@@ -25,6 +26,7 @@ const (
 	obscuroChainIDName           = "obscuroChainID"
 	profilerEnabledName          = "profilerEnabled"
 	l1StartHashName              = "l1Start"
+	sequencerIDName              = "sequencerID"
 	metricsEnabledName           = "metricsEnabled"
 	metricsHTTPPortName          = "metricsHTTPPort"
 	useInMemoryDBName            = "useInMemoryDB"
@@ -32,7 +34,7 @@ const (
 	debugNamespaceEnabledName    = "debugNamespaceEnabled"
 	batchIntervalName            = "batchInterval"
 	rollupIntervalName           = "rollupInterval"
-	isInboundP2PEnabledName      = "isInboundP2PEnabled"
+	isInboundP2PDisabledName     = "isInboundP2PDisabled"
 )
 
 // Returns a map of the flag usages.
@@ -55,6 +57,7 @@ func getFlagUsageMap() map[string]string {
 		l1RPCTimeoutSecsName:         "The timeout for connecting to, and communicating with, the Ethereum client",
 		p2pConnectionTimeoutSecsName: "The timeout for host <-> host P2P messaging",
 		managementContractAddrName:   "The management contract address on the L1",
+		messageBusContractAddrName:   "The message bus contract address on the L1",
 		logLevelName:                 "The verbosity level of logs. (Defaults to Info)",
 		logPathName:                  "The path to use for the host's log file",
 		privateKeyName:               "The private key for the L1 host account",
@@ -62,6 +65,7 @@ func getFlagUsageMap() map[string]string {
 		obscuroChainIDName:           "An integer representing the unique chain id of the Obscuro chain (default 777)",
 		profilerEnabledName:          "Runs a profiler instance (Defaults to false)",
 		l1StartHashName:              "The L1 block hash where the management contract was deployed",
+		sequencerIDName:              "The ID of the sequencer",
 		metricsEnabledName:           "Whether the metrics are enabled (Defaults to true)",
 		metricsHTTPPortName:          "The port on which the metrics are served (Defaults to 0.0.0.0:14000)",
 		useInMemoryDBName:            "Whether the host will use an in-memory DB rather than persist data",
@@ -69,6 +73,6 @@ func getFlagUsageMap() map[string]string {
 		debugNamespaceEnabledName:    "Whether the debug names is enabled",
 		batchIntervalName:            "Duration between each batch. Can be put down as 1.0s",
 		rollupIntervalName:           "Duration between each rollup. Can be put down as 1.0s",
-		isInboundP2PEnabledName:      "Whether inbound p2p is enabled",
+		isInboundP2PDisabledName:     "Whether inbound p2p is enabled",
 	}
 }

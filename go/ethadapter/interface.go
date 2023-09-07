@@ -42,7 +42,7 @@ type EthClient interface {
 	Stop() // tries to cleanly stop the client and release any resources
 
 	EthClient() *ethclient.Client // returns the underlying eth client
-	Reconnect() error             // closes and creates a new connection
+	ReconnectIfClosed() error     // closes and creates a new connection
 	Alive() bool                  // returns whether the connection is live or not
 }
 

@@ -63,7 +63,7 @@ jobs:
           location: 'uksouth'
           restart-policy: 'Never'
           environment-variables: PORT=80
-          command-line: ./wallet_extension_linux -host=0.0.0.0 -port=80 -portWS=3002 -nodeHost=${{ env.OBSCURO_GATEWAY_NODE_HOST }}
-          ports: '80'
+          command-line: ./wallet_extension_linux -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ env.OBSCURO_GATEWAY_NODE_HOST }}
+          ports: '80,81'
           cpu: 2
           memory: 2

@@ -415,7 +415,7 @@ func (e *enclaveImpl) SubmitL1Block(block types.Block, receipts types.Receipts, 
 	e.logger.Info("SubmitL1Block", log.BlockHeightKey, block.Number(), log.BlockHashKey, block.Hash())
 
 	// If the block and receipts do not match, reject the block.
-	br, err := common.ParseBlockAndReceipts(&block, &receipts, e.crossChainProcessors.Enabled())
+	br, err := common.ParseBlockAndReceipts(&block, &receipts)
 	if err != nil {
 		return nil, e.rejectBlockErr(fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
@@ -1395,13 +1395,6 @@ func (e *enclaveImpl) GetPublicTransactionData(pagination *common.QueryPaginatio
 	return &common.TransactionListingResponse{
 		TransactionsData: paginatedData,
 		Total:            totalData,
-	}, nil
-}
-
-func (e *enclaveImpl) Config() (*common.ObscuroEnclaveInfo, common.SystemError) {
-	return &common.ObscuroEnclaveInfo{
-		SequencerID:       e.config.SequencerID,
-		MessageBusAddress: e.config.MessageBusAddress,
 	}, nil
 }
 
