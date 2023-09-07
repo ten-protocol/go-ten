@@ -98,6 +98,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithL1WSPort(simParams.StartPort+100),
 				node.WithInboundP2PDisabled(isInboundP2PDisabled),
 				node.WithLogLevel(4),
+				node.WithDebugNamespaceEnabled(true),
 			),
 		)
 
