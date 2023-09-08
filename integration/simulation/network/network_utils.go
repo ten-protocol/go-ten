@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/obscuronet/go-obscuro/go/host/l1"
+
 	"github.com/obscuronet/go-obscuro/go/host"
 
 	"github.com/obscuronet/go-obscuro/go/common"
@@ -19,13 +21,12 @@ import (
 	"github.com/obscuronet/go-obscuro/go/host/container"
 	"github.com/obscuronet/go-obscuro/go/wallet"
 	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
-
 	"github.com/obscuronet/go-obscuro/integration/common/testlog"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	hostcommon "github.com/obscuronet/go-obscuro/go/common/host"
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 )
 
@@ -53,10 +54,11 @@ func createInMemObscuroNode(
 	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
-	mockP2P *p2p.MockP2P,
-	l1BusAddress *gethcommon.Address,
+	mockP2P hostcommon.P2PHostService,
+	l1BusAddress gethcommon.Address,
 	l1StartBlk gethcommon.Hash,
 	batchInterval time.Duration,
+	incomingP2PDisabled bool,
 ) *container.HostContainer {
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
@@ -67,8 +69,11 @@ func createInMemObscuroNode(
 		HasClientRPCHTTP:          false,
 		P2PPublicAddress:          fmt.Sprintf("%d", id),
 		L1StartHash:               l1StartBlk,
+		SequencerID:               gethcommon.BigToAddress(big.NewInt(0)),
 		ManagementContractAddress: *mgtContractAddress,
+		MessageBusAddress:         l1BusAddress,
 		BatchInterval:             batchInterval,
+		IsInboundP2PDisabled:      incomingP2PDisabled,
 	}
 
 	enclaveConfig := &config.EnclaveConfig{
@@ -82,7 +87,7 @@ func createInMemObscuroNode(
 		GenesisJSON:               genesisJSON,
 		UseInMemoryDB:             true,
 		MinGasPrice:               big.NewInt(1),
-		MessageBusAddress:         *l1BusAddress,
+		MessageBusAddress:         l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
 		MaxBatchSize:              1024 * 25,
 		MaxRollupSize:             1024 * 64,
@@ -94,8 +99,8 @@ func createInMemObscuroNode(
 	// create an in memory obscuro node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-
-	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
+	l1Repo := l1.NewL1Repository(ethClient, ethereummock.MgmtContractAddresses, hostLogger)
+	currentContainer := container.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClient, mgmtContractLib, ethWallet, nil, hostLogger, metricsService)
 
 	return currentContainer
 }

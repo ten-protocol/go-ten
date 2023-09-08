@@ -41,7 +41,8 @@ type SimParams struct {
 
 	ReceiptTimeout time.Duration // How long to wait for transactions to be confirmed.
 
-	StoppingDelay time.Duration // How long to wait between injection and verification
+	StoppingDelay              time.Duration // How long to wait between injection and verification
+	NodeWithInboundP2PDisabled int
 }
 
 type L1SetupData struct {
@@ -54,5 +55,5 @@ type L1SetupData struct {
 	// EthErc20Address - the address of the "ETH" ERC20
 	EthErc20Address common.Address
 	// MessageBusAddr - the address of the L1 message bus.
-	MessageBusAddr *common.Address
+	MessageBusAddr common.Address
 }

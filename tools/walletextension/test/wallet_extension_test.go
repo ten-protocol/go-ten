@@ -280,3 +280,46 @@ func TestCanSubscribeForLogsOverWebsockets(t *testing.T) {
 		}
 	}
 }
+
+func TestGetStorageAtForReturningUserID(t *testing.T) {
+	hostPort := _hostWSPort + _testOffset*8
+	walletHTTPPort := hostPort + 1
+	walletWSPort := hostPort + 2
+
+	createDummyHost(t, hostPort)
+	walExtCfg := createWalExtCfg(hostPort, walletHTTPPort, walletWSPort)
+	createWalExtCfg(hostPort, walletHTTPPort, walletWSPort)
+	createWalExt(t, walExtCfg)
+
+	// create userID
+	respJoin := makeHTTPEthJSONReqWithPath(walletHTTPPort, "v1/join")
+	userID := string(respJoin)
+
+	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
+	respBody := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"getUserID", "0", nil}, userID)
+	validateJSONResponse(t, respBody)
+
+	if !strings.Contains(string(respBody), userID) {
+		t.Fatalf("expected response containing '%s', got '%s'", userID, string(respBody))
+	}
+
+	// make a request to GetStorageAt with correct parameters, but userID that is not present in the database
+	invalidUserID := "abc123"
+	respBody2 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"getUserID", "0", nil}, invalidUserID)
+
+	if !strings.Contains(string(respBody2), "UserAccountManager doesn't exist for user: "+invalidUserID) {
+		t.Fatalf("expected response containing invalid userID '%s', got '%s'", invalidUserID, string(respBody2))
+	}
+
+	// make a request to GetStorageAt with userID that is in the database, but wrong parameters
+	respBody3 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetStorageAt, []interface{}{"abc", "0", nil}, userID)
+	if strings.Contains(string(respBody3), userID) {
+		t.Fatalf("expected response not containing userID as the parameters are wrong ")
+	}
+
+	// make a request with wrong rpcMethod
+	respBody4 := makeHTTPEthJSONReqWithUserID(walletHTTPPort, rpc.GetBalance, []interface{}{"getUserID", "0", nil}, userID)
+	if strings.Contains(string(respBody4), userID) {
+		t.Fatalf("expected response not containing userID as the parameters are wrong ")
+	}
+}

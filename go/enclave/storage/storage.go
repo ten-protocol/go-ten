@@ -86,7 +86,6 @@ func NewStorage(backingDB enclavedb.EnclaveDB, chainConfig *params.ChainConfig, 
 		db: backingDB,
 		stateDB: state.NewDatabaseWithConfig(backingDB, &trie.Config{
 			Cache:     cacheConfig.TrieCleanLimit,
-			Journal:   cacheConfig.TrieCleanJournal,
 			Preimages: cacheConfig.Preimages,
 		}),
 		chainConfig: chainConfig,
@@ -288,7 +287,7 @@ func (s *storageImpl) CreateStateDB(hash common.L2BatchHash) (*state.StateDB, er
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	callStart := time.Now()
 	defer s.logDuration("EmptyStateDB", callStart)
-	statedb, err := state.New(gethcommon.BigToHash(big.NewInt(0)), s.stateDB, nil)
+	statedb, err := state.New(types.EmptyRootHash, s.stateDB, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}
@@ -306,21 +305,6 @@ func (s *storageImpl) GetTransaction(txHash gethcommon.Hash) (*types.Transaction
 	callStart := time.Now()
 	defer s.logDuration("GetTransaction", callStart)
 	return enclavedb.ReadTransaction(s.db.GetSQLDB(), txHash)
-}
-
-func (s *storageImpl) GetSender(txHash gethcommon.Hash) (gethcommon.Address, error) {
-	callStart := time.Now()
-	defer s.logDuration("GetSender", callStart)
-	tx, _, _, _, err := s.GetTransaction(txHash) //nolint:dogsled
-	if err != nil {
-		return gethcommon.Address{}, err
-	}
-	// todo - make the signer a field of the rollup chain
-	msg, err := tx.AsMessage(types.NewLondonSigner(tx.ChainId()), nil)
-	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not convert transaction to message to retrieve sender address in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-	return msg.From(), nil
 }
 
 func (s *storageImpl) GetContractCreationTx(address gethcommon.Address) (*gethcommon.Hash, error) {
@@ -423,13 +407,13 @@ func (s *storageImpl) StoreExecutedBatch(batch *core.Batch, receipts []*types.Re
 			return fmt.Errorf("could not create state DB to filter logs. Cause: %w", err)
 		}
 
-		err2 := enclavedb.StoreEventLogs(dbTx, receipts, stateDB)
-		if err2 != nil {
-			return fmt.Errorf("could not save logs %w", err2)
+		err = enclavedb.StoreEventLogs(dbTx, receipts, stateDB)
+		if err != nil {
+			return fmt.Errorf("could not save logs %w", err)
 		}
 	}
 
-	if err := dbTx.Write(); err != nil {
+	if err = dbTx.Write(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 

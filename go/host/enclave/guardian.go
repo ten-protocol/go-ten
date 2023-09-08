@@ -5,14 +5,13 @@ import (
 	"math/big"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/go-obscuro/go/common/gethutil"
-
-	"github.com/kamilsk/breaker"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -65,13 +64,12 @@ type Guardian struct {
 	rollupInterval time.Duration
 	l1StartHash    gethcommon.Hash
 
-	running         atomic.Bool
-	hostInterrupter breaker.Interface // host hostInterrupter so we can stop quickly
+	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
 
 	logger gethlog.Logger
 }
 
-func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter breaker.Interface, logger gethlog.Logger) *Guardian {
+func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, db *db.DB, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
 		hostData:        hostData,
 		state:           NewStateTracker(logger),
@@ -87,7 +85,6 @@ func NewGuardian(cfg *config.HostConfig, hostData host.Identity, serviceLocator 
 }
 
 func (g *Guardian) Start() error {
-	g.running.Store(true)
 	go g.mainLoop()
 	if g.hostData.IsSequencer {
 		// if we are a sequencer then we need to start the periodic batch/rollup production
@@ -108,8 +105,6 @@ func (g *Guardian) Start() error {
 }
 
 func (g *Guardian) Stop() error {
-	g.running.Store(false)
-
 	err := g.enclaveClient.Stop()
 	if err != nil {
 		g.logger.Warn("error stopping enclave", log.ErrKey, err)
@@ -126,7 +121,7 @@ func (g *Guardian) Stop() error {
 func (g *Guardian) HealthStatus() host.HealthStatus {
 	// todo (@matt) do proper health status based on enclave state
 	errMsg := ""
-	if !g.running.Load() {
+	if !g.hostInterrupter.IsStopping() {
 		errMsg = "not running"
 	}
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
@@ -194,7 +189,7 @@ func (g *Guardian) HandleTransaction(tx common.EncryptedTx) {
 // required to improve the state (e.g. provide a secret, catch up with L1, etc.)
 func (g *Guardian) mainLoop() {
 	g.logger.Debug("starting guardian main loop")
-	for g.running.Load() {
+	for !g.hostInterrupter.IsStopping() {
 		// check enclave status on every loop (this will happen whenever we hit an error while trying to resolve a state,
 		// or after the monitoring interval if we are healthy)
 		g.checkEnclaveStatus()
@@ -332,7 +327,7 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 
 func (g *Guardian) catchupWithL1() error {
 	// while we are behind the L1 head and still running, fetch and submit L1 blocks
-	for g.running.Load() && g.state.GetStatus() == L1Catchup {
+	for !g.hostInterrupter.IsStopping() && g.state.GetStatus() == L1Catchup {
 		// generally we will be feeding the block after the enclave's current head
 		enclaveHead := g.state.GetEnclaveL1Head()
 		if enclaveHead == gethutil.EmptyHash {
@@ -360,7 +355,7 @@ func (g *Guardian) catchupWithL1() error {
 
 func (g *Guardian) catchupWithL2() error {
 	// while we are behind the L2 head and still running:
-	for g.running.Load() && g.state.GetStatus() == L2Catchup {
+	for !g.hostInterrupter.IsStopping() && g.state.GetStatus() == L2Catchup {
 		if g.hostData.IsSequencer {
 			return errors.New("l2 catchup is not supported for sequencer")
 		}
@@ -386,7 +381,7 @@ func (g *Guardian) catchupWithL2() error {
 // todo - @matt - think about removing the TryLock
 func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, error) {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
-	receipts := g.sl.L1Repo().FetchReceipts(block)
+	receipts := g.sl.L1Repo().FetchObscuroReceipts(block)
 	if !g.submitDataLock.TryLock() {
 		g.logger.Info("Unable to submit block, already submitting another block")
 		// we are already submitting a block, and we don't want to leak goroutines, we wil catch up with the block later
@@ -494,7 +489,7 @@ func (g *Guardian) periodicBatchProduction() {
 	batchProdTicker := time.NewTicker(interval)
 	// attempt to produce rollup every time the timer ticks until we are stopped/interrupted
 	for {
-		if !g.running.Load() {
+		if g.hostInterrupter.IsStopping() {
 			batchProdTicker.Stop()
 			return // stop periodic rollup production
 		}
@@ -528,7 +523,7 @@ func (g *Guardian) periodicRollupProduction() {
 	rollupTicker := time.NewTicker(interval)
 	// attempt to produce rollup every time the timer ticks until we are stopped/interrupted
 	for {
-		if !g.running.Load() {
+		if g.hostInterrupter.IsStopping() {
 			rollupTicker.Stop()
 			return // stop periodic rollup production
 		}
@@ -603,12 +598,6 @@ func (g *Guardian) streamEnclaveData() {
 
 			if resp.Logs != nil {
 				g.sl.LogSubs().SendLogsToSubscribers(&resp.Logs)
-			}
-
-		case <-time.After(1 * time.Second):
-			if !g.running.Load() {
-				// guardian service is stopped
-				return
 			}
 
 		case <-g.hostInterrupter.Done():

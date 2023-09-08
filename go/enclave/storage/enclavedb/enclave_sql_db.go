@@ -16,6 +16,41 @@ type enclaveDB struct {
 	logger gethlog.Logger
 }
 
+func (sqlDB *enclaveDB) Tail() (uint64, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (sqlDB *enclaveDB) TruncateHead(uint64) (uint64, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (sqlDB *enclaveDB) TruncateTail(uint64) (uint64, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (sqlDB *enclaveDB) MigrateTable(string, func([]byte) ([]byte, error)) error {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (sqlDB *enclaveDB) NewBatchWithSize(int) ethdb.Batch {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (sqlDB *enclaveDB) AncientDatadir() (string, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (sqlDB *enclaveDB) NewSnapshot() (ethdb.Snapshot, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func NewEnclaveDB(db *sql.DB, logger gethlog.Logger) (EnclaveDB, error) {
 	return &enclaveDB{sqldb: db, logger: logger}, nil
 }
@@ -124,7 +159,7 @@ func (sqlDB *enclaveDB) Sync() error {
 	return errNotSupported
 }
 
-func (sqlDB *enclaveDB) ReadAncients(fn func(reader ethdb.AncientReader) error) (err error) {
+func (sqlDB *enclaveDB) ReadAncients(fn func(reader ethdb.AncientReaderOp) error) (err error) {
 	// Unlike other ancient-related methods, this method does not return
 	// errNotSupported when invoked.
 	// The reason for this is that the caller might want to do several things:

@@ -22,7 +22,7 @@ type ObscuroNoOpConsensusEngine struct {
 	logger gethlog.Logger
 }
 
-func (e *ObscuroNoOpConsensusEngine) Finalize(_ consensus.ChainHeaderReader, _ *types.Header, _ *state.StateDB, _ []*types.Transaction, _ []*types.Header) {
+func (e *ObscuroNoOpConsensusEngine) Finalize(_ consensus.ChainHeaderReader, _ *types.Header, _ *state.StateDB, _ []*types.Transaction, _ []*types.Header, _ []*types.Withdrawal) {
 	// TODO implement me
 	panic("implement me")
 }
@@ -32,12 +32,12 @@ func (e *ObscuroNoOpConsensusEngine) Author(_ *types.Header) (common.Address, er
 	return PoolAddress, nil
 }
 
-func (e *ObscuroNoOpConsensusEngine) VerifyHeader(_ consensus.ChainHeaderReader, _ *types.Header, _ bool) error {
+func (e *ObscuroNoOpConsensusEngine) VerifyHeader(_ consensus.ChainHeaderReader, _ *types.Header) error {
 	e.logger.Crit("noop")
 	return nil
 }
 
-func (e *ObscuroNoOpConsensusEngine) VerifyHeaders(_ consensus.ChainHeaderReader, _ []*types.Header, _ []bool) (chan<- struct{}, <-chan error) {
+func (e *ObscuroNoOpConsensusEngine) VerifyHeaders(_ consensus.ChainHeaderReader, _ []*types.Header) (chan<- struct{}, <-chan error) {
 	e.logger.Crit("noop")
 	return nil, nil
 }
@@ -53,7 +53,7 @@ func (e *ObscuroNoOpConsensusEngine) Prepare(_ consensus.ChainHeaderReader, _ *t
 }
 
 func (e *ObscuroNoOpConsensusEngine) FinalizeAndAssemble(_ consensus.ChainHeaderReader, _ *types.Header, _ *state.StateDB, _ []*types.Transaction,
-	_ []*types.Header, _ []*types.Receipt,
+	_ []*types.Header, _ []*types.Receipt, _ []*types.Withdrawal,
 ) (*types.Block, error) {
 	e.logger.Crit("noop")
 	return nil, nil //nolint:nilnil

@@ -74,6 +74,14 @@ func (w *WalletExtension) ProxyEthRequest(request *accountmanager.RPCRequest, co
 	// proxyRequest will find the correct client to proxy the request (or try them all if appropriate)
 	var rpcResp interface{}
 
+	// wallet extension can override the GetStorageAt to retrieve the current userID
+	if request.Method == rpc.GetStorageAt {
+		if interceptedResponse := w.getStorageAtInterceptor(request, hexUserID); interceptedResponse != nil {
+			w.logger.Info("interception successful for getStorageAt, returning userID response")
+			return interceptedResponse, nil
+		}
+	}
+
 	// get account manager for current user (if there is no users in the query parameters - use defaultUser for WE endpoints)
 	selectedAccountManager, err := w.userAccountManager.GetUserAccountManager(hexUserID)
 	if err != nil {
@@ -345,4 +353,46 @@ func adjustStateRoot(rpcResp interface{}, respMap map[string]interface{}) {
 			}
 		}
 	}
+}
+
+// getStorageAtInterceptor checks if the parameters for getStorageAt are set to values that require interception
+// and return response or nil if the gateway should forward the request to the node.
+func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCRequest, hexUserID string) map[string]interface{} {
+	// check if parameters are correct, and we can intercept a request, otherwise return nil
+	if w.checkParametersForInterceptedGetStorageAt(request.Params) {
+		// check if userID in the parameters is also in our database
+		userID, err := common.GetUserIDbyte(hexUserID)
+		if err != nil {
+			w.logger.Warn("GetStorageAt called with appropriate parameters to return userID, but not found in the database: ", "userId", hexUserID)
+			return nil
+		}
+
+		key, err := w.storage.GetUserPrivateKey(userID)
+		if err != nil || len(key) == 0 {
+			w.logger.Info("Trying to get userID, but it is not present in our database: ")
+			return nil
+		}
+		response := map[string]interface{}{}
+		response[common.JSONKeyRPCVersion] = jsonrpc.Version
+		response[common.JSONKeyID] = request.ID
+		response[common.JSONKeyResult] = hexUserID
+		return response
+	}
+	w.logger.Info(fmt.Sprintf("parameters used in the request do not match requited parameters for interception: %s", request.Params))
+
+	return nil
+}
+
+// checkParametersForInterceptedGetStorageAt checks
+// if parameters for getStorageAt are in the correct format to intercept the function
+func (w *WalletExtension) checkParametersForInterceptedGetStorageAt(params []interface{}) bool {
+	if len(params) != 3 {
+		w.logger.Info(fmt.Sprintf("getStorageAt expects 3 parameters, but %d received", len(params)))
+		return false
+	}
+
+	if methodName, ok := params[0].(string); ok {
+		return methodName == common.GetStorageAtUserIDRequestMethodName
+	}
+	return false
 }

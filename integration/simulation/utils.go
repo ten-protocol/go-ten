@@ -60,7 +60,7 @@ func getHeadBatchHeader(client *obsclient.ObsClient) (*common.BatchHeader, error
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.
-func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethcommon.Address, l2ContractAddress *gethcommon.Address) *big.Int {
+func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethcommon.Address, l2ContractAddress *gethcommon.Address, idx int) *big.Int {
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
 
 	callMsg := ethereum.CallMsg{
@@ -71,7 +71,7 @@ func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethc
 
 	response, err := client.CallContract(ctx, callMsg, nil)
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed RPC call. Cause: %w", err))
+		panic(fmt.Errorf("node: %d - simulation failed due to failed RPC call. Cause: %w", idx, err))
 	}
 	b := new(big.Int)
 	// remove the "0x" prefix (we already confirmed it is present), convert the remaining hex value (base 16) to a balance number
