@@ -9,9 +9,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/common/compression"
-
 	testcommon "github.com/obscuronet/go-obscuro/integration/common"
 	"github.com/obscuronet/go-obscuro/integration/ethereummock"
 
@@ -171,13 +168,16 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	if reorgEfficiency > s.Params.L1EfficiencyThreshold {
 		t.Errorf("Node %d: The number of reorgs is too high: %d. ", nodeIdx, reorgs)
 	}
-	//if !s.Params.IsInMem {
-	//	checkRollups(t, s, nodeIdx, rollups)
-	//}
+	if !s.Params.IsInMem {
+		checkRollups(t, s, nodeIdx, rollups)
+	}
 
 	return height
 }
 
+// this function only performs a very brief check.
+// the ultimate check that everything works fine is that each node is able to respond to queries
+// and has processed all batches correctly.
 func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
 	if len(rollups) < 2 {
 		t.Errorf("Node %d: Found less than two submitted rollups! Successful simulation should always produce more than 2", nodeIdx)
@@ -188,8 +188,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 		return rollups[i].Header.LastBatchSeqNo < rollups[j].Header.LastBatchSeqNo
 	})
 
-	batchNumber := uint64(0)
-	for idx, rollup := range rollups {
+	for _, rollup := range rollups {
 		// todo - use the signature
 		if rollup.Header.Coinbase.Hex() != s.Params.Wallets.NodeWallets[0].Address().Hex() {
 			t.Errorf("Node %d: Found rollup produced by non-sequencer %s", nodeIdx, s.Params.Wallets.NodeWallets[0].Address().Hex())
@@ -200,72 +199,7 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 			t.Errorf("Node %d: No batches in rollup!", nodeIdx)
 			continue
 		}
-
-		if idx != 0 {
-			prevRollup := rollups[idx-1]
-			checkRollupPair(t, nodeIdx, prevRollup, rollup)
-		}
-		headers := extractBatchHeaders(rollup)
-
-		for _, batchHeader := range headers {
-			currHeight := batchHeader.Number.Uint64()
-			if currHeight != 0 && currHeight > batchNumber+1 {
-				t.Errorf("Node %d: Batch gap!", nodeIdx)
-			}
-			batchNumber = currHeight
-
-			for _, clients := range s.RPCHandles.AuthObsClients {
-				client := clients[0]
-				batchOnNode, err := client.BatchHeaderByHash(batchHeader.Hash())
-				if err != nil {
-					t.Fatalf("Node %d: Could not find batch header [idx=%s, hash=%s]. Cause: %s", nodeIdx, batchHeader.Number, batchHeader.Hash(), err)
-				}
-				if batchOnNode.Hash() != batchHeader.Hash() {
-					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
-				}
-			}
-		}
 	}
-}
-
-func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, rollup *common.ExtRollup) {
-	if len(prevRollup.CalldataRollupHeader) == 0 {
-		return
-	}
-
-	previousHeaders := extractBatchHeaders(prevRollup)
-	currentHeaders := extractBatchHeaders(rollup)
-
-	lastBatch := previousHeaders[len(previousHeaders)-1]
-	firstBatch := currentHeaders[0]
-	isValidChain := firstBatch.SequencerOrderNo.Uint64() == lastBatch.SequencerOrderNo.Uint64()
-	if !isValidChain {
-		t.Errorf("Node %d: Found badly chained batches in rollups! from %d to %d",
-			nodeIdx,
-			lastBatch.SequencerOrderNo.Uint64(),
-			firstBatch.SequencerOrderNo.Uint64())
-		return
-	}
-
-	//isValidChain = prevRollup.Header.HeadBatchHash.Hex() == firstBatch.ParentHash.Hex()
-	//if !isValidChain {
-	//	t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
-	//	return
-	//}
-}
-
-func extractBatchHeaders(rollup *common.ExtRollup) []common.BatchHeader {
-	dataCompressionService := compression.NewBrotliDataCompressionService()
-	headers := make([]common.BatchHeader, 0)
-	headersBlob, err := dataCompressionService.Decompress(rollup.CalldataRollupHeader)
-	if err != nil {
-		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
-	}
-	err = rlp.DecodeBytes(headersBlob, &headers)
-	if err != nil {
-		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
-	}
-	return headers
 }
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
