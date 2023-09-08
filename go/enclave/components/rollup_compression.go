@@ -196,12 +196,20 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 
 	l1DeltasBA := make([][]byte, len(l1HeightDeltas))
 	for i, delta := range l1HeightDeltas {
-		l1DeltasBA[i] = delta.Bytes()
+		v, err := delta.GobEncode()
+		if err != nil {
+			return nil, err
+		}
+		l1DeltasBA[i] = v
 	}
 
 	timeDeltasBA := make([][]byte, len(deltaTimes))
 	for i, delta := range deltaTimes {
-		l1DeltasBA[i] = delta.Bytes()
+		v, err := delta.GobEncode()
+		if err != nil {
+			return nil, err
+		}
+		timeDeltasBA[i] = v
 	}
 
 	reorgsBA, err := transformToByteArray(reorgs)
@@ -233,7 +241,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		ReOrgs:                reorgsBA,
 		L1HeightDeltas:        l1DeltasBA,
 		BatchHashes:           batchHashes,
-		// BatchHeaders:       batchHeaders,
+		BatchHeaders:          batchHeaders,
 	}
 
 	return calldataRollupHeader, nil
@@ -251,12 +259,17 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 	for currentBatchIdx, batchTransactions := range transactionsPerBatch {
 		// the l1 proofs are stored as deltas, which compress well as it should be a series of 1s and 0s
 		// the first element is the actual height
-		l1Delta := big.NewInt(0).SetBytes(calldataRollupHeader.L1HeightDeltas[currentBatchIdx])
+		l1Delta := big.NewInt(0)
+		err := l1Delta.GobDecode(calldataRollupHeader.L1HeightDeltas[currentBatchIdx])
+		if err != nil {
+			return nil, err
+		}
 		if currentBatchIdx == 0 {
 			currentL1Height = l1Delta
 		} else {
 			currentL1Height = big.NewInt(l1Delta.Int64() + currentL1Height.Int64())
 		}
+		rc.logger.Info("Height", "batchIdx", currentBatchIdx, "height", currentL1Height)
 		block, err := rc.storage.FetchCanonicaBlockByHeight(currentL1Height)
 		if err != nil {
 			rc.logger.Error("Error decompressing rollup. Did not find l1 block", log.ErrKey, err)
@@ -265,7 +278,11 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 
 		// todo - this should be 1 second
 		// todo - multiply delta by something?
-		timeDelta := big.NewInt(0).SetBytes(calldataRollupHeader.BatchTimeDeltas[currentBatchIdx])
+		timeDelta := big.NewInt(0)
+		err = timeDelta.GobDecode(calldataRollupHeader.BatchTimeDeltas[currentBatchIdx])
+		if err != nil {
+			return nil, err
+		}
 		currentTime += timeDelta.Uint64()
 
 		// the transactions stored in a valid rollup belong to sequential batches
@@ -335,6 +352,12 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 			if err != nil {
 				return err
 			}
+			// Sanity check
+			if genBatch.Hash() != calldataRollupHeader.BatchHashes[i] {
+				rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], genBatch.Header))
+				rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
+			}
+
 			err = rc.storage.StoreBatch(genBatch)
 			if err != nil {
 				return err
@@ -372,7 +395,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 			}
 			// Sanity check
 			if computedBatch.Batch.Hash() != calldataRollupHeader.BatchHashes[i] {
-				// rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], computedBatch.Batch.Header))
+				rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], computedBatch.Batch.Header))
 				rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
 			}
 
