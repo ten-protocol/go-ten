@@ -6,10 +6,11 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"golang.org/x/crypto/sha3"
 )
@@ -86,19 +87,20 @@ type RollupHeader struct {
 // CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.
 // This data structure is serialised, compressed, and encrypted, before being serialised again in the rollup.
 type CalldataRollupHeader struct {
-	FirstBatchSequence *big.Int
-	FirstBatchHeight   *big.Int
-	FirstParentHash    L2BatchHash
+	FirstBatchSequence    *big.Int
+	FirstCanonBatchHeight *big.Int
+	FirstCanonParentHash  L2BatchHash
 
 	StartTime       uint64
-	BatchTimeDeltas []*big.Int // todo - minimize assuming a default of 1 sec and then store only exceptions
+	BatchTimeDeltas [][]byte // todo - minimize assuming a default of 1 sec and then store only exceptions
 
-	ReOrgs         []*BatchHeader // sparse list of reorged headers - non null only for reorgs.
-	L1HeightDeltas []*big.Int     // Contains the L1 height on the indexes where it changes. Todo - can be optimised with deltas
+	L1HeightDeltas [][]byte // delta of the block height. Stored as a byte array because rlp can't encode negative numbers
 
 	// todo - these fields are for debugging the compression. Should be removed.
 	BatchHashes []L2BatchHash
 	// BatchHeaders []*BatchHeader
+
+	ReOrgs [][]byte `rlp:"optional"` // sparse list of reorged headers - non null only for reorgs.
 }
 
 // MarshalJSON custom marshals the RollupHeader into a json

@@ -107,10 +107,11 @@ func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, rollupLimiter limiters.
 		br.logger.Info("Added batch to rollup", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
 	}
 
+	// Sanity check that the rollup includes consecutive batches (according to the seqNo)
 	current := batches[0].SeqNo().Uint64()
 	for i, b := range batches {
 		if current+uint64(i) != b.SeqNo().Uint64() {
-			br.logger.Crit("invalid rollup")
+			return nil, fmt.Errorf("created invalid rollup with batches out of sequence")
 		}
 	}
 

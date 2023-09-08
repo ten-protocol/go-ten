@@ -49,18 +49,6 @@ func NewBatchExecutor(storage storage.Storage, cc *crosschain.Processors, genesi
 	}
 }
 
-func (executor *batchExecutor) ComputeBatchLight(BlockPtr common.L1BlockHash, ParentPtr common.L2BatchHash, Transactions common.L2Transactions, AtTime uint64, SequencerNo *big.Int) (*ComputedBatch, error) {
-	return executor.ComputeBatch(&BatchExecutionContext{
-		BlockPtr:     BlockPtr,
-		ParentPtr:    ParentPtr,
-		Transactions: Transactions,
-		AtTime:       AtTime,
-		// Creator:      executor,
-		ChainConfig: executor.chainConfig,
-		SequencerNo: SequencerNo,
-	})
-}
-
 func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
 	defer executor.logger.Info("Batch context processed", log.DurationKey, measure.NewStopwatch())
 
