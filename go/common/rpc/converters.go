@@ -199,7 +199,7 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 		GasUsed:                       header.GasUsed,
 		Time:                          header.Time,
 		TransfersTree:                 gethcommon.BytesToHash(header.TransferTree),
-		BaseFee:                       big.NewInt(int64(header.BaseFee)),
+		BaseFee:                       big.NewInt(0).SetUint64(header.BaseFee),
 		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
 		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
 		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),

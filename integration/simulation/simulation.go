@@ -172,6 +172,9 @@ func (s *Simulation) deployObscuroERC20s() {
 				GasFeeCap: gethcommon.Big1, // This field is used to derive the gas price for dynamic fee transactions.
 				Data:      contractBytes,
 			}
+
+			s.RPCHandles.ObscuroWalletRndClient(owner).EstimateGasAndGasPrice(&deployContractTx)
+
 			signedTx, err := owner.SignTransaction(&deployContractTx)
 			if err != nil {
 				panic(err)

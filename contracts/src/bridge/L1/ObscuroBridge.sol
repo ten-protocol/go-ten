@@ -78,6 +78,7 @@ contract ObscuroBridge is
         require(msg.value > 0, "Empty transfer.");
         bytes memory data = abi.encode(ValueTransfer(msg.value, receiver));
         queueMessage(remoteBridgeAddress, data, uint32(Topics.VALUE), 0, 0);
+        _messageBus().sendValueToL2{value: msg.value}(receiver, msg.value);
     }
 
     function sendERC20(
@@ -116,7 +117,7 @@ contract ObscuroBridge is
         if (hasRole(ERC20_TOKEN_ROLE, asset)) {
             _receiveTokens(asset, amount, receiver);
         } else if (hasRole(NATIVE_TOKEN_ROLE, asset)) {
-            _receiveNative(amount, receiver);
+            _receiveNative(receiver);
         } else {
             revert("Attempting to withdraw unknown asset.");
         }
@@ -130,8 +131,8 @@ contract ObscuroBridge is
         SafeERC20.safeTransfer(IERC20(asset), receiver, amount);
     }
 
-    function _receiveNative(uint256 amount, address receiver) private {
-        (bool sent, ) = receiver.call{value: amount}("");
+    function _receiveNative(address receiver) private {
+        (bool sent, ) = receiver.call("");
         require(sent, "Failed to send Ether");
     }
 }
