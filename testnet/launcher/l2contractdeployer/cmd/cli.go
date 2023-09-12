@@ -6,8 +6,7 @@ import (
 
 // L2ContractDeployerConfigCLI represents the configurations passed into the deployer over CLI
 type L2ContractDeployerConfigCLI struct {
-	l1Host                 string
-	l1HTTPPort             int
+	l1HTTPRPCAddr          string
 	privateKey             string
 	dockerImage            string
 	l2Host                 string
@@ -23,8 +22,7 @@ func ParseConfigCLI() *L2ContractDeployerConfigCLI {
 	cfg := &L2ContractDeployerConfigCLI{}
 	flagUsageMap := getFlagUsageMap()
 
-	l1Host := flag.String(l1HostFlag, "eth2network", flagUsageMap[l1HostFlag])
-	l1HTTPPort := flag.Int(l1HTTPPortFlag, 8025, flagUsageMap[l1HTTPPortFlag])
+	l1HTTPRPCAddr := flag.String(l1HTTPRPCAddressFlag, "http://eth2network:8025", flagUsageMap[l1HTTPRPCAddressFlag])
 	privateKey := flag.String(privateKeyFlag, "", flagUsageMap[privateKeyFlag])
 	dockerImage := flag.String(dockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", flagUsageMap[dockerImageFlag])
 	l2Host := flag.String(l2HostFlag, "", flagUsageMap[l2HostFlag])
@@ -36,8 +34,7 @@ func ParseConfigCLI() *L2ContractDeployerConfigCLI {
 
 	flag.Parse()
 
-	cfg.l1Host = *l1Host
-	cfg.l1HTTPPort = *l1HTTPPort
+	cfg.l1HTTPRPCAddr = *l1HTTPRPCAddr
 	cfg.privateKey = *privateKey
 	cfg.dockerImage = *dockerImage
 	cfg.l2Host = *l2Host

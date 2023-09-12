@@ -39,7 +39,7 @@ jobs:
       RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
       RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
       RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
-      L1_HOST: ${{ steps.outputVars.outputs.L1_HOST }}
+      L1_WS_RPC: ${{ steps.outputVars.outputs.L1_WS_RPC }}
       VM_BUILD_NUMBER: ${{ steps.outputVars.outputs.VM_BUILD_NUMBER }}
 
     steps:
@@ -62,8 +62,8 @@ jobs:
           echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
-          echo "L1_HOST=testnet-eth2network.uksouth.cloudapp.azure.com" >> $GITHUB_ENV
-          
+          echo "L1_WS_RPC=ws://testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
+
       - name: 'Sets env vars for dev-testnet'
         if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (github.event_name == 'schedule') }}
         run: |
@@ -72,7 +72,7 @@ jobs:
           echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
           echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
           echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
-          echo "L1_HOST=dev-testnet-eth2network.uksouth.cloudapp.azure.com" >> $GITHUB_ENV
+          echo "L1_WS_RPC=ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000" >> $GITHUB_ENV
 
       - name: 'Fetch latest VM hostnames by env tag and extract build number'
         id: fetch_hostnames
@@ -95,7 +95,7 @@ jobs:
           echo "RESOURCE_TAG_NAME=${{env.RESOURCE_TAG_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
           echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
-          echo "L1_HOST=${{env.L1_HOST}}" >> $GITHUB_OUTPUT
+          echo "L1_WS_RPC=${{env.L1_WS_RPC}}" >> $GITHUB_OUTPUT
           echo "VM_BUILD_NUMBER=${{env.VM_BUILD_NUMBER}}" >> $GITHUB_OUTPUT
 
       - name: 'Login to Azure docker registry'
@@ -174,7 +174,7 @@ jobs:
               -node_type=${{ matrix.node_type }} \
               -is_sgx_enabled=true \
               -host_id=${{ secrets[matrix.node_pk_addr] }} \
-              -l1_host=${{needs.build.outputs.L1_HOST}} \
+              -l1_ws_rpc=${{needs.build.outputs.L1_WS_RPC}} \
               -private_key=${{ secrets[matrix.node_pk_str] }} \
               -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com:10000 \

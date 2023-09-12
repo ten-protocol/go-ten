@@ -40,7 +40,7 @@ func (n *ContractDeployer) Start() error {
 		"NETWORK_JSON": fmt.Sprintf(`
 { 
         "layer1" : {
-            "url" : "http://%s:%d",
+            "url" : "%s",
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
@@ -49,7 +49,7 @@ func (n *ContractDeployer) Start() error {
             "accounts": [ "%s" ]
         }
     }
-`, n.cfg.l1Host, n.cfg.l1Port, n.cfg.privateKey),
+`, n.cfg.l1HTTPRPCAddress, n.cfg.privateKey),
 	}
 
 	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, nil, envs, nil, nil)

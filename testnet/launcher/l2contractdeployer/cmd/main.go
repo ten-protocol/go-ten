@@ -12,8 +12,7 @@ func main() {
 
 	l2ContractDeployer, err := l2cd.NewDockerContractDeployer(
 		l2cd.NewContractDeployerConfig(
-			l2cd.WithL1Host(cliConfig.l1Host),                                    // "eth2network"
-			l2cd.WithL1Port(cliConfig.l1HTTPPort),                                // 8025
+			l2cd.WithL1HTTPRPCAddress(cliConfig.l1HTTPRPCAddr),                   // "http://eth2network:8025"
 			l2cd.WithL2Host(cliConfig.l2Host),                                    // "host"
 			l2cd.WithL2WSPort(cliConfig.l2WSPort),                                // 81
 			l2cd.WithL1PrivateKey(cliConfig.privateKey),                          // "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"

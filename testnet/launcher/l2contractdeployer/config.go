@@ -5,9 +5,8 @@ type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1Host            string
+	l1HTTPRPCAddress  string
 	l1privateKey      string
-	l1Port            int
 	l2Port            int
 	l2Host            string
 	l2PrivateKey      string
@@ -27,15 +26,9 @@ func NewContractDeployerConfig(opts ...Option) *Config {
 	return defaultConfig
 }
 
-func WithL1Host(s string) Option {
+func WithL1HTTPRPCAddress(s string) Option {
 	return func(c *Config) {
-		c.l1Host = s
-	}
-}
-
-func WithL1Port(i int) Option {
-	return func(c *Config) {
-		c.l1Port = i
+		c.l1HTTPRPCAddress = s
 	}
 }
 
