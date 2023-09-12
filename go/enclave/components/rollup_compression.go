@@ -113,20 +113,8 @@ func (rc *RollupCompression) CreateExtRollup(r *core.Rollup) (*common.ExtRollup,
 
 // ProcessExtRollup - given an External rollup, responsible with checking and saving all batches found inside
 func (rc *RollupCompression) ProcessExtRollup(rollup *common.ExtRollup) error {
-	block, err := rc.storage.FetchBlock(rollup.Header.L1Proof)
-	if err != nil {
-		return err
-	}
-	canBlock, err := rc.storage.FetchCanonicaBlockByHeight(block.Number())
-	if err != nil {
-		return err
-	}
-	if canBlock.Hash() != block.Hash() {
-		return fmt.Errorf("can't process rollup created on a fork %s", rollup.Hash())
-	}
-
 	transactionsPerBatch := make([][]*common.L2Tx, 0)
-	err = rc.decryptDecompressAndDeserialise(rollup.BatchPayloads, &transactionsPerBatch)
+	err := rc.decryptDecompressAndDeserialise(rollup.BatchPayloads, &transactionsPerBatch)
 	if err != nil {
 		return err
 	}
@@ -140,7 +128,7 @@ func (rc *RollupCompression) ProcessExtRollup(rollup *common.ExtRollup) error {
 	// The recreation of batches is a 2-step process:
 
 	// 1. calculate fields like: sequence, height, time, l1Proof, from the implicit and explicit information from the metadata
-	incompleteBatches, err := rc.createIncompleteBatches(calldataRollupHeader, transactionsPerBatch)
+	incompleteBatches, err := rc.createIncompleteBatches(calldataRollupHeader, transactionsPerBatch, rollup.Header.L1Proof)
 	if err != nil {
 		return err
 	}
@@ -252,21 +240,26 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		BatchTimeDeltas:       timeDeltasBA,
 		ReOrgs:                reorgsBA,
 		L1HeightDeltas:        l1DeltasBA,
-		BatchHashes:           batchHashes,
-		BatchHeaders:          batchHeaders,
+		// BatchHashes:           batchHashes,
+		// BatchHeaders:          batchHeaders,
 	}
 
 	return calldataRollupHeader, nil
 }
 
 // the main logic to recreate the batches from the header. The logical pair of: `createRollupHeader`
-func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *common.CalldataRollupHeader, transactionsPerBatch [][]*common.L2Tx) ([]*batchFromRollup, error) {
+func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *common.CalldataRollupHeader, transactionsPerBatch [][]*common.L2Tx, rollupL1Head common.L1BlockHash) ([]*batchFromRollup, error) {
 	incompleteBatches := make([]*batchFromRollup, len(transactionsPerBatch))
 
 	startAtSeq := calldataRollupHeader.FirstBatchSequence.Int64()
 	currentHeight := calldataRollupHeader.FirstCanonBatchHeight.Int64() - 1
 	currentTime := int64(calldataRollupHeader.StartTime)
 	var currentL1Height *big.Int
+
+	rollupL1Block, err := rc.storage.FetchBlock(rollupL1Head)
+	if err != nil {
+		return nil, err
+	}
 
 	for currentBatchIdx, batchTransactions := range transactionsPerBatch {
 		// the l1 proofs are stored as deltas, which compress well as it should be a series of 1s and 0s
@@ -281,10 +274,10 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 		} else {
 			currentL1Height = big.NewInt(l1Delta.Int64() + currentL1Height.Int64())
 		}
-		// we only process rollups created on the canonical l1 chain
-		block, err := rc.storage.FetchCanonicaBlockByHeight(currentL1Height)
+
+		// get the block with the currentL1Height, relative to the rollupL1Block
+		block, err := rc.getAncestorOfHeight(currentL1Height, rollupL1Block)
 		if err != nil {
-			rc.logger.Error("Error decompressing rollup. Did not find l1 block", log.ErrKey, err)
 			return nil, err
 		}
 
@@ -345,6 +338,17 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 	return incompleteBatches, nil
 }
 
+func (rc *RollupCompression) getAncestorOfHeight(ancestorHeight *big.Int, head *types.Block) (*types.Block, error) {
+	if head.NumberU64() == ancestorHeight.Uint64() {
+		return head, nil
+	}
+	p, err := rc.storage.FetchBlock(head.ParentHash())
+	if err != nil {
+		return nil, err
+	}
+	return rc.getAncestorOfHeight(ancestorHeight, p)
+}
+
 func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeader *common.CalldataRollupHeader, incompleteBatches []*batchFromRollup) error { //nolint:gocognit
 	parentHash := calldataRollupHeader.FirstCanonParentHash
 
@@ -356,7 +360,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 		}
 	}
 
-	for i, incompleteBatch := range incompleteBatches {
+	for _, incompleteBatch := range incompleteBatches {
 		// check whether the batch is already stored in the database
 		b, err := rc.storage.FetchBatchBySeqNo(incompleteBatch.seqNo.Uint64())
 		if err == nil {
@@ -374,11 +378,11 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 			if err != nil {
 				return err
 			}
-			// Sanity check
-			if genBatch.Hash() != calldataRollupHeader.BatchHashes[i] {
-				rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], genBatch.Header))
-				rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
-			}
+			// Sanity check - uncomment when debugging
+			//if genBatch.Hash() != calldataRollupHeader.BatchHashes[i] {
+			//	rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], genBatch.Header))
+			//	rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
+			//}
 
 			err = rc.storage.StoreBatch(genBatch)
 			if err != nil {
@@ -415,11 +419,11 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 			if err != nil {
 				return err
 			}
-			// Sanity check
-			if computedBatch.Batch.Hash() != calldataRollupHeader.BatchHashes[i] {
-				rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], computedBatch.Batch.Header))
-				rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
-			}
+			// Sanity check - uncomment when debugging
+			//if computedBatch.Batch.Hash() != calldataRollupHeader.BatchHashes[i] {
+			//	rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], computedBatch.Batch.Header))
+			//	rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
+			//}
 
 			if _, err := computedBatch.Commit(true); err != nil {
 				return fmt.Errorf("cannot commit stateDB for incoming valid batch seq=%d. Cause: %w", incompleteBatch.seqNo, err)

@@ -96,9 +96,9 @@ type CalldataRollupHeader struct {
 
 	L1HeightDeltas [][]byte // delta of the block height. Stored as a byte array because rlp can't encode negative numbers
 
-	// todo - these fields are for debugging the compression. Should be removed.
-	BatchHashes  []L2BatchHash
-	BatchHeaders []*BatchHeader
+	// these fields are for debugging the compression. Uncomment if there are issues
+	// BatchHashes  []L2BatchHash
+	// BatchHeaders []*BatchHeader
 
 	ReOrgs [][]byte `rlp:"optional"` // sparse list of reorged headers - non null only for reorgs.
 }
