@@ -215,6 +215,13 @@ func (e *gethRPCClient) BalanceAt(address gethcommon.Address, blockNum *big.Int)
 	return e.client.BalanceAt(ctx, address, blockNum)
 }
 
+func (e *gethRPCClient) GetLogs(q ethereum.FilterQuery) ([]types.Log, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	return e.client.FilterLogs(ctx, q)
+}
+
 func (e *gethRPCClient) Stop() {
 	e.client.Close()
 }

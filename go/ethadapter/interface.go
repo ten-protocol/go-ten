@@ -26,6 +26,7 @@ type EthClient interface {
 	TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error)              // fetches the ethereum transaction receipt
 	Nonce(address gethcommon.Address) (uint64, error)                             // fetches the account nonce to use in the next transaction
 	BalanceAt(account gethcommon.Address, blockNumber *big.Int) (*big.Int, error) // fetches the balance of the account
+	GetLogs(q ethereum.FilterQuery) ([]types.Log, error)                          // fetches the logs for a given query
 
 	Info() Info                                                         // retrieves the node Info
 	FetchHeadBlock() (*types.Block, error)                              // retrieves the block at head height
