@@ -221,7 +221,8 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 		reorgsBA = nil
 	}
 
-	// get the first canonical batch
+	// get the first canonical batch ( which means there is no entry in the reorgs array for it)
+	// this is necessary because the height calculations always have to be performed according to what is perceived as a canonical batch.
 	firstCanonBatchHeight := batches[0].Number()
 	firstCanonParentHash := batches[0].Header.ParentHash
 	for i, reorg := range reorgs {
