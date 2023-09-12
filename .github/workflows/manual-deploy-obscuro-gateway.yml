@@ -1,5 +1,5 @@
 # Deploys Obscuro Gateway on Azure for Testnet
-# Builds the Obscuro Gateway image, pushes the image to dockerhub and starts the Obscuro Gateway on Azure
+# Builds the Obscuro Gateway image, pushes the image to dockerhub and starts the Obscuro Gateway on Azure VM
 
 name: '[M] Deploy Obscuro Gateway Testnet'
 run-name: '[M] Deploy Obscuro Gateway Testnet ( ${{ github.event.inputs.testnet_type }} )'
@@ -21,6 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: 'Extract branch name'
+        shell: bash
+        run: |
+          echo "Branch Name: ${GITHUB_REF_NAME}"
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
       - name: 'Set up Docker'
         uses: docker/setup-buildx-action@v1
 
@@ -29,12 +35,17 @@ jobs:
         run: |
           echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_testnet:latest" >> $GITHUB_ENV
           echo "OBSCURO_GATEWAY_NODE_HOST=testnet.obscu.ro" >> $GITHUB_ENV
+          echo "RESOURCE_STARTING_NAME=testnet" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscurogatewaytestnetlatest" >> $GITHUB_ENV
 
       - name: 'Set Obscuro Gateway variables for dev-testnet'
         if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
           echo "OBSCURO_GATEWAY_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_obscuro_gateway_testnet:latest" >> $GITHUB_ENV
           echo "OBSCURO_GATEWAY_NODE_HOST=dev-testnet.obscu.ro" >> $GITHUB_ENV
+          echo "RESOURCE_STARTING_NAME=dev-testnet" >> $GITHUB_ENV
+          echo "RESOURCE_TAG_NAME=obscurogatewaydevtestnetlatest" >> $GITHUB_ENV
+
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -53,17 +64,69 @@ jobs:
           DOCKER_BUILDKIT=1 docker build -t ${{ env.OBSCURO_GATEWAY_BUILD_TAG }} -f ./tools/walletextension/Dockerfile . 
           docker push ${{ env.OBSCURO_GATEWAY_BUILD_TAG }}
 
-      - name: 'Deploy to Azure Container Instances'
-        uses: 'azure/aci-deploy@v1'
+      # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
+      - name: 'Delete deployed VMs'
+        uses: azure/CLI@v1
         with:
-          resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: ${{ github.event.inputs.testnet_type }}-obscuro-gateway
-          image: ${{ env.OBSCURO_GATEWAY_BUILD_TAG }}
-          name: ${{ github.event.inputs.testnet_type }}-obscuro-gateway
-          location: 'uksouth'
-          restart-policy: 'Never'
-          environment-variables: PORT=80
-          command-line: ./wallet_extension_linux -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ env.OBSCURO_GATEWAY_NODE_HOST }}
-          ports: '80,81'
-          cpu: 2
-          memory: 2
+          inlineScript: |
+            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+
+      # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
+      - name: 'Delete VMs dependencies'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            $(az resource list --tag ${{env.RESOURCE_TAG_NAME}}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            
+
+      - name: 'Create VM for Gateway node on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm create -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}" \
+            --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
+            --public-ip-address-dns-name "obscurogateway-${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
+            --tags deploygroup=ObscuroNode-${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{needs.build.outputs.RESOURCE_TAG_NAME}}=true \
+            --vnet-name ObscuroGateway-${{needs.build.outputs.RESOURCE_STARTING_NAME}}-01VNET --subnet ObscuroGateway-${{needs.build.outputs.RESOURCE_STARTING_NAME}}-01Subnet \
+            --size Standard_D4s_v5 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-arm64:latest \
+            --public-ip-sku Basic --authentication-type password
+
+      - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm open-port -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}"  --port 80,81
+
+        # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
+      - name: 'Allow time for VM initialization'
+        shell: bash
+        run: sleep 30
+
+      - name: 'Start Obscuro gateway on Azure'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}"  \
+            --command-id RunShellScript \
+            --scripts 'mkdir -p /home/obscuro \
+            && sudo apt-get update \
+            && sudo apt-get install -y gcc \
+            && sudo snap refresh && sudo snap install --channel=1.18 go --classic \
+            && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
+            && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
+            && docker network create --driver bridge node_network || true \
+            && docker run -d --name datadog-agent \
+               --network node_network \
+               -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
+               -e DD_LOGS_ENABLED=true \
+               -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
+               -e DD_LOGS_CONFIG_AUTO_MULTI_LINE_DETECTION=true \
+               -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
+               -e DD_SITE="datadoghq.eu"  \
+               -v /var/run/docker.sock:/var/run/docker.sock:ro \
+               -v /proc/:/host/proc/:ro \
+               -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
+               -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
+               datadog/agent:latest \
+            && cd /home/obscuro/go-obscuro/ \
+            && docker run -p 80:80 -p 81:81 ${{ env.OBSCURO_GATEWAY_BUILD_TAG }} ./wallet_extension_linux -host=0.0.0.0 -port=80 -portWS=81 -nodeHost=${{ env.OBSCURO_GATEWAY_NODE_HOST }}'
