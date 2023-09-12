@@ -542,7 +542,11 @@ func (g *Guardian) periodicRollupProduction() {
 				g.logger.Warn("encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
 				continue
 			}
-			producedRollup, err := g.enclaveClient.CreateRollup(lastBatchNo.Uint64())
+			fromBatch := lastBatchNo.Uint64()
+			if lastBatchNo.Uint64() > common.L2GenesisSeqNo {
+				fromBatch++
+			}
+			producedRollup, err := g.enclaveClient.CreateRollup(fromBatch)
 			if err != nil {
 				g.logger.Error("unable to produce rollup", log.ErrKey, err)
 			} else {

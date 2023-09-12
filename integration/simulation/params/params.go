@@ -19,12 +19,7 @@ type SimParams struct {
 
 	SimulationTime time.Duration // how long the simulations should run for
 
-	// EfficiencyThresholds represents an acceptable "dead blocks" percentage for this simulation.
-	// dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.
-	// We test the results against this threshold to catch eventual protocol errors.
-	L1EfficiencyThreshold     float64
-	L2EfficiencyThreshold     float64 // number of dead obscuro blocks
-	L2ToL1EfficiencyThreshold float64 // number of ethereum blocks that don't include an obscuro node
+	L1EfficiencyThreshold float64
 
 	// MgmtContractLib allows parsing MgmtContract txs to and from the eth txs
 	MgmtContractLib mgmtcontractlib.MgmtContractLib

@@ -52,8 +52,7 @@ func NewBatchExecutor(storage storage.Storage, cc *crosschain.Processors, genesi
 func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*ComputedBatch, error) {
 	defer executor.logger.Info("Batch context processed", log.DurationKey, measure.NewStopwatch())
 
-	// Block is loaded first since if its missing this batch might be based on l1 fork we dont know about
-	// and we want to filter out all fork batches based on not knowing the l1 block
+	// sanity check that the l1 block exists. We don't have to execute batches of forks.
 	block, err := executor.storage.FetchBlock(context.BlockPtr)
 	if errors.Is(err, errutil.ErrNotFound) {
 		return nil, errutil.ErrBlockForBatchNotFound
@@ -64,6 +63,7 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 	// These variables will be used to create the new batch
 	parent, err := executor.storage.FetchBatch(context.ParentPtr)
 	if errors.Is(err, errutil.ErrNotFound) {
+		executor.logger.Error(fmt.Sprintf("can't find parent batch %s. Seq %d", context.ParentPtr, context.SequencerNo))
 		return nil, errutil.ErrAncestorBatchNotFound
 	}
 	if err != nil {
@@ -75,7 +75,8 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 		var err error
 		parentBlock, err = executor.storage.FetchBlock(parent.Header.L1Proof)
 		if err != nil {
-			executor.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
+			executor.logger.Error(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
+			return nil, err
 		}
 	}
 
