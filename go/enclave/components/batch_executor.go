@@ -75,7 +75,8 @@ func (executor *batchExecutor) ComputeBatch(context *BatchExecutionContext) (*Co
 		var err error
 		parentBlock, err = executor.storage.FetchBlock(parent.Header.L1Proof)
 		if err != nil {
-			executor.logger.Crit(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
+			executor.logger.Error(fmt.Sprintf("Could not retrieve a proof for batch %s", parent.Hash()), log.ErrKey, err)
+			return nil, err
 		}
 	}
 

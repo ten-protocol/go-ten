@@ -113,8 +113,20 @@ func (rc *RollupCompression) CreateExtRollup(r *core.Rollup) (*common.ExtRollup,
 
 // ProcessExtRollup - given an External rollup, responsible with checking and saving all batches found inside
 func (rc *RollupCompression) ProcessExtRollup(rollup *common.ExtRollup) error {
+	block, err := rc.storage.FetchBlock(rollup.Header.L1Proof)
+	if err != nil {
+		return err
+	}
+	canBlock, err := rc.storage.FetchCanonicaBlockByHeight(block.Number())
+	if err != nil {
+		return err
+	}
+	if canBlock.Hash() != block.Hash() {
+		return fmt.Errorf("can't process rollup created on a fork %s", rollup.Hash())
+	}
+
 	transactionsPerBatch := make([][]*common.L2Tx, 0)
-	err := rc.decryptDecompressAndDeserialise(rollup.BatchPayloads, &transactionsPerBatch)
+	err = rc.decryptDecompressAndDeserialise(rollup.BatchPayloads, &transactionsPerBatch)
 	if err != nil {
 		return err
 	}
@@ -269,6 +281,7 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 		} else {
 			currentL1Height = big.NewInt(l1Delta.Int64() + currentL1Height.Int64())
 		}
+		// we only process rollups created on the canonical l1 chain
 		block, err := rc.storage.FetchCanonicaBlockByHeight(currentL1Height)
 		if err != nil {
 			rc.logger.Error("Error decompressing rollup. Did not find l1 block", log.ErrKey, err)
@@ -420,6 +433,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeade
 			if err != nil {
 				return err
 			}
+			rc.batchRegistry.OnBatchExecuted(computedBatch.Batch, nil)
 
 			parentHash = computedBatch.Batch.Hash()
 		}
