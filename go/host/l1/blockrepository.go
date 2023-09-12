@@ -128,11 +128,23 @@ func (r *Repository) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block,
 }
 
 // FetchObscuroReceipts returns all obscuro-relevant receipts for an L1 block
-func (r *Repository) FetchObscuroReceipts(block *common.L1Block) types.Receipts {
+func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts, error) {
 	receipts := make([]*types.Receipt, len(block.Transactions()))
 
+	blkHash := block.Hash()
+	// we want to send receipts for any transactions that produced obscuro-relevant log events
+	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{BlockHash: &blkHash, Addresses: r.obscuroRelevantContracts})
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch logs for L1 block - %w", err)
+	}
+	// make a lookup map of the relevant tx hashes which need receipts
+	relevantTx := make(map[gethcommon.Hash]bool)
+	for _, l := range logs {
+		relevantTx[l.TxHash] = true
+	}
+
 	for idx, transaction := range block.Transactions() {
-		if !r.isObscuroTransaction(transaction) {
+		if !relevantTx[transaction.Hash()] && !r.isObscuroTransaction(transaction) {
 			// put in a dummy receipt so that the index matches the transaction index
 			// (the receipts list maintains the indexes of the transactions, it is a sparse list)
 			receipts[idx] = &types.Receipt{Status: types.ReceiptStatusFailed}
@@ -146,12 +158,12 @@ func (r *Repository) FetchObscuroReceipts(block *common.L1Block) types.Receipts 
 		}
 
 		r.logger.Trace("Adding receipt", "status", receipt.Status, log.TxKey, transaction.Hash(),
-			log.BlockHashKey, block.Hash(), log.CmpKey, log.CrossChainCmp)
+			log.BlockHashKey, blkHash, log.CmpKey, log.CrossChainCmp)
 
 		receipts[idx] = receipt
 	}
 
-	return receipts
+	return receipts, nil
 }
 
 // stream blocks from L1 as they arrive and forward them to subscribers, no guarantee of perfect ordering or that there won't be gaps.

@@ -381,11 +381,14 @@ func (g *Guardian) catchupWithL2() error {
 // todo - @matt - think about removing the TryLock
 func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, error) {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
-	receipts := g.sl.L1Repo().FetchObscuroReceipts(block)
 	if !g.submitDataLock.TryLock() {
 		g.logger.Info("Unable to submit block, already submitting another block")
 		// we are already submitting a block, and we don't want to leak goroutines, we wil catch up with the block later
 		return false, nil
+	}
+	receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
+	if err != nil {
+		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
 	resp, err := g.enclaveClient.SubmitL1Block(*block, receipts, isLatest)
 	g.submitDataLock.Unlock()
