@@ -175,7 +175,7 @@ func ExecuteObsCall(
 
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
-		logger.Info(fmt.Sprintf("Error applying msg %v:", msg), log.CtrErrKey, err)
+		logger.Debug(fmt.Sprintf("Error applying msg %v:", msg), log.CtrErrKey, err)
 		return result, err
 	}
 

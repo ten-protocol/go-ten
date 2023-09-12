@@ -6,10 +6,11 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
 	"golang.org/x/crypto/sha3"
 )
@@ -81,6 +82,25 @@ type RollupHeader struct {
 	R, S        *big.Int    // signature values
 
 	LastBatchSeqNo uint64
+}
+
+// CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.
+// This data structure is serialised, compressed, and encrypted, before being serialised again in the rollup.
+type CalldataRollupHeader struct {
+	FirstBatchSequence    *big.Int
+	FirstCanonBatchHeight *big.Int
+	FirstCanonParentHash  L2BatchHash
+
+	StartTime       uint64
+	BatchTimeDeltas [][]byte // todo - minimize assuming a default of 1 sec and then store only exceptions
+
+	L1HeightDeltas [][]byte // delta of the block height. Stored as a byte array because rlp can't encode negative numbers
+
+	// these fields are for debugging the compression. Uncomment if there are issues
+	// BatchHashes  []L2BatchHash
+	// BatchHeaders []*BatchHeader
+
+	ReOrgs [][]byte `rlp:"optional"` // sparse list of reorged headers - non null only for reorgs.
 }
 
 // MarshalJSON custom marshals the RollupHeader into a json

@@ -23,13 +23,13 @@ const (
 
 // DataEncryptionService handles the encryption and decryption of the transaction blobs stored inside a rollup.
 type DataEncryptionService interface {
-	Encrypt(blob []byte) []byte
-	Decrypt(encryptedTxs []byte) []byte
+	Encrypt(blob []byte) ([]byte, error)
+	Decrypt(blob []byte) ([]byte, error)
 }
 
 type dataEncryptionServiceImpl struct {
-	transactionCipher cipher.AEAD
-	logger            gethlog.Logger
+	cipher cipher.AEAD
+	logger gethlog.Logger
 }
 
 func NewDataEncryptionService(logger gethlog.Logger) DataEncryptionService {
@@ -38,38 +38,40 @@ func NewDataEncryptionService(logger gethlog.Logger) DataEncryptionService {
 	if err != nil {
 		logger.Crit("could not initialise AES cipher for enclave rollup key.", log.ErrKey, err)
 	}
-	transactionCipher, err := cipher.NewGCM(block)
+	cipher, err := cipher.NewGCM(block)
 	if err != nil {
 		logger.Crit("could not initialise wrapper for AES cipher for enclave rollup key. ", log.ErrKey, err)
 	}
 	return dataEncryptionServiceImpl{
-		transactionCipher: transactionCipher,
-		logger:            logger,
+		cipher: cipher,
+		logger: logger,
 	}
 }
 
 // todo (#1053) - modify this logic so that transactions with different reveal periods are in different blobs, as per the whitepaper.
-func (t dataEncryptionServiceImpl) Encrypt(encodedBatches []byte) []byte {
+func (t dataEncryptionServiceImpl) Encrypt(blob []byte) ([]byte, error) {
 	nonce := make([]byte, NonceLength)
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		t.logger.Crit("could not generate nonce to encrypt transactions.", log.ErrKey, err)
+		t.logger.Error("could not generate nonce to encrypt transactions.", log.ErrKey, err)
+		return nil, err
 	}
 
 	// todo - ensure this nonce is not used too many times (2^32?) with the same key, to avoid risk of repeat.
-	ciphertext := t.transactionCipher.Seal(nil, nonce, encodedBatches, nil)
+	ciphertext := t.cipher.Seal(nil, nonce, blob, nil)
 	// We prepend the nonce to the ciphertext, so that it can be retrieved when decrypting.
-	return append(nonce, ciphertext...) //nolint:makezero
+	return append(nonce, ciphertext...), nil //nolint:makezero
 }
 
-func (t dataEncryptionServiceImpl) Decrypt(encryptedBatches []byte) []byte {
+func (t dataEncryptionServiceImpl) Decrypt(blob []byte) ([]byte, error) {
 	// The nonce is prepended to the ciphertext.
-	nonce := encryptedBatches[0:NonceLength]
-	ciphertext := encryptedBatches[NonceLength:]
+	nonce := blob[0:NonceLength]
+	ciphertext := blob[NonceLength:]
 
-	encodedBatches, err := t.transactionCipher.Open(nil, nonce, ciphertext, nil)
+	plaintext, err := t.cipher.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
-		t.logger.Crit("could not decrypt encrypted L2 transactions.", log.ErrKey, err)
+		t.logger.Error("could not decrypt blob.", log.ErrKey, err)
+		return nil, err
 	}
 
-	return encodedBatches
+	return plaintext, nil
 }

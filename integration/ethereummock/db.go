@@ -2,6 +2,7 @@ package ethereummock
 
 import (
 	"bytes"
+	"math/big"
 	"sync"
 
 	"github.com/obscuronet/go-obscuro/go/enclave/storage"
@@ -20,6 +21,10 @@ import (
 type blockResolverInMem struct {
 	blockCache map[common.L1BlockHash]*types.Block
 	m          sync.RWMutex
+}
+
+func (n *blockResolverInMem) FetchCanonicaBlockByHeight(_ *big.Int) (*types.Block, error) {
+	panic("implement me")
 }
 
 func (n *blockResolverInMem) Proof(_ *core.Rollup) (*types.Block, error) {

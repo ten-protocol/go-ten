@@ -36,11 +36,12 @@ type SequencerSettings struct {
 }
 
 type sequencer struct {
-	blockProcessor components.L1BlockProcessor
-	batchProducer  components.BatchExecutor
-	batchRegistry  components.BatchRegistry
-	rollupProducer components.RollupProducer
-	rollupConsumer components.RollupConsumer
+	blockProcessor    components.L1BlockProcessor
+	batchProducer     components.BatchExecutor
+	batchRegistry     components.BatchRegistry
+	rollupProducer    components.RollupProducer
+	rollupConsumer    components.RollupConsumer
+	rollupCompression *components.RollupCompression
 
 	logger gethlog.Logger
 
@@ -60,6 +61,7 @@ func NewSequencer(
 	registry components.BatchRegistry,
 	rollupProducer components.RollupProducer,
 	rollupConsumer components.RollupConsumer,
+	rollupCompression *components.RollupCompression,
 
 	logger gethlog.Logger,
 
@@ -78,6 +80,7 @@ func NewSequencer(
 		batchRegistry:          registry,
 		rollupProducer:         rollupProducer,
 		rollupConsumer:         rollupConsumer,
+		rollupCompression:      rollupCompression,
 		logger:                 logger,
 		hostID:                 hostID,
 		chainConfig:            chainConfig,
@@ -250,7 +253,7 @@ func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) 
 
 	s.logger.Info("Created new head rollup", log.RollupHashKey, rollup.Hash(), "numBatches", len(rollup.Batches))
 
-	return rollup.ToExtRollup(s.dataEncryptionService, s.dataCompressionService)
+	return s.rollupCompression.CreateExtRollup(rollup)
 }
 
 func (s *sequencer) duplicateBatches(l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash) error {

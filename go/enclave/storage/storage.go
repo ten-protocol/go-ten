@@ -172,6 +172,19 @@ func (s *storageImpl) FetchBlock(blockHash common.L1BlockHash) (*types.Block, er
 	})
 }
 
+func (s *storageImpl) FetchCanonicaBlockByHeight(height *big.Int) (*types.Block, error) {
+	callStart := time.Now()
+	defer s.logDuration("FetchCanonicaBlockByHeight", callStart)
+	header, err := enclavedb.FetchBlockHeaderByHeight(s.db.GetSQLDB(), height)
+	if err != nil {
+		return nil, err
+	}
+	blockHash := header.Hash()
+	return s.getCachedBlock(blockHash, func(hash common.L1BlockHash) (*types.Block, error) {
+		return enclavedb.FetchBlock(s.db.GetSQLDB(), blockHash)
+	})
+}
+
 func (s *storageImpl) FetchHeadBlock() (*types.Block, error) {
 	callStart := time.Now()
 	defer s.logDuration("FetchHeadBlock", callStart)
@@ -537,6 +550,7 @@ func (s *storageImpl) cacheBlock(blockHash common.L1BlockHash, b *types.Block) {
 func (s *storageImpl) getCachedBlock(hash common.L1BlockHash, onFailed func(common.L1BlockHash) (*types.Block, error)) (*types.Block, error) {
 	value, err := s.blockCache.Get(context.Background(), hash)
 	if err != nil {
+		// todo metrics for cache misses
 		b, err := onFailed(hash)
 		if err != nil {
 			return b, err

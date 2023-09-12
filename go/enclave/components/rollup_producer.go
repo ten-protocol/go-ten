@@ -65,7 +65,7 @@ func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, limiter limiters.
 
 	newRollup := re.createNextRollup(batches)
 
-	re.logger.Info(fmt.Sprintf("Created new rollup %s with %d batches", newRollup.Hash(), len(newRollup.Batches)))
+	re.logger.Info(fmt.Sprintf("Created new rollup %s with %d batches. From %d to %d", newRollup.Hash(), len(newRollup.Batches), batches[0].SeqNo(), batches[len(batches)-1].SeqNo()))
 
 	return newRollup, nil
 }
