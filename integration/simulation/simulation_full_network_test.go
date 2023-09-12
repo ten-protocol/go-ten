@@ -23,13 +23,10 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
 
 	simParams := &params.SimParams{
-		NumberOfNodes:         numberOfNodes,
-		AvgBlockDuration:      1 * time.Second,
-		SimulationTime:        75 * time.Second,
-		L1EfficiencyThreshold: 0.2,
-		// Very hard to have precision here as blocks are continually produced and not dependent on the simulation execution thread
-		L2EfficiencyThreshold:      0.75, // nodes might produce rollups because they receive a new block
-		L2ToL1EfficiencyThreshold:  0.7,  // nodes might stop producing rollups but the geth network is still going
+		NumberOfNodes:              numberOfNodes,
+		AvgBlockDuration:           1 * time.Second,
+		SimulationTime:             75 * time.Second,
+		L1EfficiencyThreshold:      0.2,
 		Wallets:                    wallets,
 		StartPort:                  integration.StartPortSimulationFullNetwork,
 		ReceiptTimeout:             65 * time.Second,

@@ -253,7 +253,7 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 
 	startAtSeq := calldataRollupHeader.FirstBatchSequence.Int64()
 	currentHeight := calldataRollupHeader.FirstCanonBatchHeight.Int64() - 1
-	currentTime := calldataRollupHeader.StartTime
+	currentTime := int64(calldataRollupHeader.StartTime)
 	var currentL1Height *big.Int
 
 	for currentBatchIdx, batchTransactions := range transactionsPerBatch {
@@ -269,7 +269,6 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 		} else {
 			currentL1Height = big.NewInt(l1Delta.Int64() + currentL1Height.Int64())
 		}
-		rc.logger.Info("Height", "batchIdx", currentBatchIdx, "height", currentL1Height)
 		block, err := rc.storage.FetchCanonicaBlockByHeight(currentL1Height)
 		if err != nil {
 			rc.logger.Error("Error decompressing rollup. Did not find l1 block", log.ErrKey, err)
@@ -283,7 +282,7 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 		if err != nil {
 			return nil, err
 		}
-		currentTime += timeDelta.Uint64()
+		currentTime += timeDelta.Int64()
 
 		// the transactions stored in a valid rollup belong to sequential batches
 		currentSeqNo := big.NewInt(startAtSeq + int64(currentBatchIdx))
@@ -324,21 +323,31 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 			seqNo:        currentSeqNo,
 			height:       big.NewInt(currentHeight),
 			txHash:       txHash,
-			time:         currentTime,
+			time:         uint64(currentTime),
 			l1Proof:      block.Hash(),
 			header:       fullReorgedHeader,
 		}
-		rc.logger.Info("Add canon batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight)
+		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number(), "l1_hash", block.Hash())
 	}
 	return incompleteBatches, nil
 }
 
 func (rc *RollupCompression) executeAndSaveIncompleteBatches(calldataRollupHeader *common.CalldataRollupHeader, incompleteBatches []*batchFromRollup) error { //nolint:gocognit
 	parentHash := calldataRollupHeader.FirstCanonParentHash
+
+	if calldataRollupHeader.FirstBatchSequence.Uint64() != common.L2GenesisSeqNo {
+		_, err := rc.storage.FetchBatch(parentHash)
+		if err != nil {
+			rc.logger.Error("Could not find batch mentioned in the rollup. This should not happen.", log.ErrKey, err)
+			return err
+		}
+	}
+
 	for i, incompleteBatch := range incompleteBatches {
 		// check whether the batch is already stored in the database
-		_, err := rc.storage.FetchBatchBySeqNo(incompleteBatch.seqNo.Uint64())
+		b, err := rc.storage.FetchBatchBySeqNo(incompleteBatch.seqNo.Uint64())
 		if err == nil {
+			parentHash = b.Hash()
 			continue
 		}
 		if !errors.Is(err, errutil.ErrNotFound) {

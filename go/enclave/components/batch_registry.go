@@ -104,7 +104,7 @@ func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, rollupLimiter limiters.
 		}
 
 		batches = append(batches, batch)
-		br.logger.Info("Added batch to rollup", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
+		br.logger.Info("Added batch to rollup", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo(), log.BatchHeightKey, batch.Number(), "l1_proof", batch.Header.L1Proof)
 	}
 
 	// Sanity check that the rollup includes consecutive batches (according to the seqNo)

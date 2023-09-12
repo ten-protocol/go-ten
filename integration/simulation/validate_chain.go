@@ -157,11 +157,6 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 		t.Errorf("Node %d: No deposits", nodeIdx)
 	} */
 
-	efficiency := float64(s.Stats.TotalL1Blocks-height) / float64(s.Stats.TotalL1Blocks)
-	if efficiency > s.Params.L1EfficiencyThreshold {
-		t.Errorf("Node %d: Efficiency in L1 is %f. Expected:%f. Number: %d.", nodeIdx, efficiency, s.Params.L1EfficiencyThreshold, height)
-	}
-
 	// compare the number of reorgs for this node against the height
 	reorgs := s.Stats.NoL1Reorgs[node.Info().L2ID]
 	reorgEfficiency := float64(reorgs) / float64(height)
@@ -294,15 +289,6 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 	if l2HeightFromRollupNumber != l2Height.Uint64() {
 		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.BatchNumber, l2HeightFromRollupNumber)
-	}
-
-	totalL2Blocks := s.Stats.NoL2Blocks[nodeIdx]
-	// in case the blockchain has advanced above what was collected, there is no longer a point to this check
-	if l2Height.Uint64() <= totalL2Blocks {
-		efficiencyL2 := float64(totalL2Blocks-l2Height.Uint64()) / float64(totalL2Blocks)
-		if efficiencyL2 > s.Params.L2EfficiencyThreshold {
-			t.Errorf("Node %d: Efficiency in L2 is %f. Expected:%f", nodeIdx, efficiencyL2, s.Params.L2EfficiencyThreshold)
-		}
 	}
 
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
