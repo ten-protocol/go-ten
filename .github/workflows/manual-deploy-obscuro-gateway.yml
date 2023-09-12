@@ -1,8 +1,8 @@
 # Deploys Obscuro Gateway on Azure for Testnet
 # Builds the Obscuro Gateway image, pushes the image to dockerhub and starts the Obscuro Gateway on Azure VM
 
-name: '[M] Deploy Obscuro Gateway Testnet'
-run-name: '[M] Deploy Obscuro Gateway Testnet ( ${{ github.event.inputs.testnet_type }} )'
+name: '[M] Deploy Obscuro Gateway'
+run-name: '[M] Deploy Obscuro Gateway ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:
@@ -83,11 +83,11 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}" \
+            az vm create -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "obscurogateway-${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
-            --tags deploygroup=ObscuroNode-${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{needs.build.outputs.RESOURCE_TAG_NAME}}=true \
-            --vnet-name ObscuroGateway-${{needs.build.outputs.RESOURCE_STARTING_NAME}}-01VNET --subnet ObscuroGateway-${{needs.build.outputs.RESOURCE_STARTING_NAME}}-01Subnet \
+            --public-ip-address-dns-name "obscurogateway-${{env.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
+            --tags deploygroup=ObscuroNode-${{env.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{env.RESOURCE_TAG_NAME}}=true \
+            --vnet-name ObscuroGateway-${{env.RESOURCE_STARTING_NAME}}-01VNET --subnet ObscuroGateway-${{env.RESOURCE_STARTING_NAME}}-01Subnet \
             --size Standard_D4s_v5 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-arm64:latest \
             --public-ip-sku Basic --authentication-type password
 
@@ -95,7 +95,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}"  --port 80,81
+            az vm open-port -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}"  --port 80,81
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: 'Allow time for VM initialization'
@@ -106,7 +106,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}"  \
+            az vm run-command invoke -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts 'mkdir -p /home/obscuro \
             && sudo apt-get update \
