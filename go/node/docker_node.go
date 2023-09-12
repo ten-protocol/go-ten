@@ -94,7 +94,7 @@ func (d *DockerNode) Upgrade(networkCfg *NetworkConfig) error {
 func (d *DockerNode) startHost() error {
 	cmd := []string{
 		"/home/obscuro/go-obscuro/go/host/main/main",
-		"-l1WSRPCAddress", d.cfg.l1WSRPCAddr,
+		"-l1WSURL", d.cfg.l1WSURL,
 		"-enclaveRPCAddress", fmt.Sprintf("%s:%d", d.cfg.nodeName+"-enclave", d.cfg.enclaveWSPort),
 		"-managementContractAddress", d.cfg.managementContractAddr,
 		"-messageBusContractAddress", d.cfg.messageBusContractAddress,

@@ -24,7 +24,7 @@ type Config struct {
 	enclaveImage              string
 	hostImage                 string
 	nodeType                  string
-	l1WSRPCAddr               string
+	l1WSURL                   string
 	sequencerID               string
 	privateKey                string
 	hostP2PPort               int
@@ -94,7 +94,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.P2PPublicAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
 	cfg.P2PBindAddress = c.hostPublicP2PAddr
 
-	cfg.L1WebsocketURL = c.l1WSRPCAddr
+	cfg.L1WebsocketURL = c.l1WSURL
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
 	cfg.MessageBusAddress = gethcommon.HexToAddress(c.messageBusContractAddress)
 	cfg.LogPath = testlog.LogFile()
@@ -202,7 +202,7 @@ func WithL1Start(blockHash string) Option {
 
 func WithL1WebsocketURL(addr string) Option {
 	return func(c *Config) {
-		c.l1WSRPCAddr = addr
+		c.l1WSURL = addr
 	}
 }
 
