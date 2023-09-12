@@ -27,7 +27,7 @@ type HostConfigToml struct {
 	EnclaveRPCAddress         string
 	P2PBindAddress            string
 	P2PPublicAddress          string
-	L1WSRPCAddress            string
+	L1WebsocketRPCAddress     string
 	EnclaveRPCTimeout         int
 	L1RPCTimeout              int
 	P2PConnectionTimeout      int
@@ -179,7 +179,7 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		EnclaveRPCAddress:         tomlConfig.EnclaveRPCAddress,
 		P2PBindAddress:            tomlConfig.P2PBindAddress,
 		P2PPublicAddress:          tomlConfig.P2PPublicAddress,
-		L1WebsocketRPCAddress:     tomlConfig.L1WSRPCAddress,
+		L1WebsocketRPCAddress:     tomlConfig.L1WebsocketRPCAddress,
 		EnclaveRPCTimeout:         time.Duration(tomlConfig.EnclaveRPCTimeout) * time.Second,
 		L1RPCTimeout:              time.Duration(tomlConfig.L1RPCTimeout) * time.Second,
 		P2PConnectionTimeout:      time.Duration(tomlConfig.P2PConnectionTimeout) * time.Second,
