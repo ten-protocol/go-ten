@@ -128,7 +128,7 @@ func createInMemoryNode(t *testing.T) (node.Node, gethcommon.Address) {
 		node.WithEnclaveWSPort(_startPort+integration.DefaultEnclaveOffset),
 		node.WithHostHTTPPort(_startPort+integration.DefaultHostRPCHTTPOffset),
 		node.WithHostWSPort(_startPort+integration.DefaultHostRPCWSOffset),
-		node.WithL1WSRPCAddress(fmt.Sprintf("ws://%s:%d", _localhost, _startPort+integration.DefaultGethWSPortOffset)),
+		node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", _localhost, _startPort+integration.DefaultGethWSPortOffset)),
 		node.WithGenesis(true),
 		node.WithProfiler(true),
 	)

@@ -15,7 +15,7 @@ func main() {
 		node.WithSGXEnabled(cliConfig.isSGXEnabled),
 		node.WithEnclaveImage(cliConfig.enclaveDockerImage),                  // "local_enclave"
 		node.WithHostImage(cliConfig.hostDockerImage),                        // "local_host"
-		node.WithL1WSRPCAddress(cliConfig.l1WSRPCAddr),                       // "ws://eth2network:9000"
+		node.WithL1WebsocketURL(cliConfig.l1WebsocketURL),                    // "ws://eth2network:9000"
 		node.WithHostP2PPort(cliConfig.hostP2PPort),                          // 14000
 		node.WithHostP2PHost(cliConfig.hostP2PHost),                          // 0.0.0.0
 		node.WithHostPublicP2PAddr(cliConfig.hostP2PPublicAddr),              // node public facing ip and port

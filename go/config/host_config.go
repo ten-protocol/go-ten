@@ -37,8 +37,8 @@ type HostInputConfig struct {
 	P2PBindAddress string
 	// P2PPublicAddress is the advertised P2P server address
 	P2PPublicAddress string
-	// Websocket RPC address for interactions with the L1
-	L1WebsocketRPCAddress string
+	// L1WebsocketURL is the RPC address for interactions with the L1
+	L1WebsocketURL string
 	// Timeout duration for RPC requests to the enclave service
 	EnclaveRPCTimeout time.Duration
 	// Timeout duration for connecting to, and communicating with, the L1 node
@@ -104,7 +104,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		EnclaveRPCAddress:         p.EnclaveRPCAddress,
 		P2PBindAddress:            p.P2PBindAddress,
 		P2PPublicAddress:          p.P2PPublicAddress,
-		L1WebsocketRPCAddr:        p.L1WebsocketRPCAddress,
+		L1WebsocketURL:            p.L1WebsocketURL,
 		EnclaveRPCTimeout:         p.EnclaveRPCTimeout,
 		L1RPCTimeout:              p.L1RPCTimeout,
 		P2PConnectionTimeout:      p.P2PConnectionTimeout,
@@ -194,8 +194,8 @@ type HostConfig struct {
 	P2PBindAddress string
 	// P2PPublicAddress is the advertised P2P server address
 	P2PPublicAddress string
-	// The websocket RPC address for L1 requests
-	L1WebsocketRPCAddr string
+	// L1WebsocketURL is the RPC address for interactions with the L1
+	L1WebsocketURL string
 	// Timeout duration for RPC requests to the enclave service
 	EnclaveRPCTimeout time.Duration
 	// Timeout duration for connecting to, and communicating with, the L1 node
@@ -227,7 +227,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		EnclaveRPCAddress:         "127.0.0.1:11000",
 		P2PBindAddress:            "0.0.0.0:10000",
 		P2PPublicAddress:          "127.0.0.1:10000",
-		L1WebsocketRPCAddress:     "ws://127.0.0.1:8546",
+		L1WebsocketURL:            "ws://127.0.0.1:8546",
 		EnclaveRPCTimeout:         time.Duration(defaultRPCTimeoutSecs) * time.Second,
 		L1RPCTimeout:              time.Duration(defaultL1RPCTimeoutSecs) * time.Second,
 		P2PConnectionTimeout:      time.Duration(defaultP2PTimeoutSecs) * time.Second,

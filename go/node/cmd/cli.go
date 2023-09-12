@@ -21,7 +21,7 @@ type NodeConfigCLI struct {
 	isSGXEnabled            bool
 	enclaveDockerImage      string
 	hostDockerImage         string
-	l1WSRPCAddr             string
+	l1WebsocketURL          string
 	hostP2PPort             int
 	hostP2PHost             string
 	hostP2PPublicAddr       string
@@ -54,7 +54,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	isSGXEnabled := flag.Bool(isSGXEnabledFlag, false, flagUsageMap[isSGXEnabledFlag])
 	enclaveDockerImage := flag.String(enclaveDockerImageFlag, "", flagUsageMap[enclaveDockerImageFlag])
 	hostDockerImage := flag.String(hostDockerImageFlag, "", flagUsageMap[hostDockerImageFlag])
-	l1WSRPCAddr := flag.String(l1WSRPCAddressFlag, "ws://eth2network:9000", flagUsageMap[l1WSRPCAddressFlag])
+	l1WebsocketURL := flag.String(l1WebsocketURLFlag, "ws://eth2network:9000", flagUsageMap[l1WebsocketURLFlag])
 	hostP2PPort := flag.Int(hostP2PPortFlag, 14000, flagUsageMap[hostP2PPortFlag])
 	hostP2PHost := flag.String(hostP2PHostFlag, "0.0.0.0", flagUsageMap[hostP2PHostFlag])
 	hostP2PPublicAddr := flag.String(hostP2PPublicAddrFlag, "", flagUsageMap[hostP2PPublicAddrFlag])
@@ -81,7 +81,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.isSGXEnabled = *isSGXEnabled
 	cfg.enclaveDockerImage = *enclaveDockerImage
 	cfg.hostDockerImage = *hostDockerImage
-	cfg.l1WSRPCAddr = *l1WSRPCAddr
+	cfg.l1WebsocketURL = *l1WebsocketURL
 	cfg.hostP2PPort = *hostP2PPort
 	cfg.hostP2PHost = *hostP2PHost
 	cfg.hostP2PPublicAddr = *hostP2PPublicAddr

@@ -9,7 +9,7 @@ const (
 	isSGXEnabledFlag            = "is_sgx_enabled"
 	enclaveDockerImageFlag      = "enclave_docker_image"
 	hostDockerImageFlag         = "host_docker_image"
-	l1WSRPCAddressFlag          = "l1_ws_rpc"
+	l1WebsocketURLFlag          = "l1_ws_url"
 	hostHTTPPortFlag            = "host_http_port"
 	hostWSPortFlag              = "host_ws_port"
 	hostP2PPortFlag             = "host_p2p_port"
@@ -40,7 +40,7 @@ func getFlagUsageMap() map[string]string {
 		isSGXEnabledFlag:            "Whether the it should run on an SGX is enabled CPU",
 		enclaveDockerImageFlag:      "Docker image for the enclave",
 		hostDockerImageFlag:         "Docker image for the host",
-		l1WSRPCAddressFlag:          "Layer 1 websocket RPC address",
+		l1WebsocketURLFlag:          "Layer 1 websocket RPC address",
 		hostP2PPortFlag:             "Hosts p2p bound port",
 		hostP2PPublicAddrFlag:       "Hosts public p2p host.",
 		hostP2PHostFlag:             "Hosts p2p bound addr",

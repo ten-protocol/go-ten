@@ -94,7 +94,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.P2PPublicAddress = fmt.Sprintf("127.0.0.1:%d", c.hostP2PPort)
 	cfg.P2PBindAddress = c.hostPublicP2PAddr
 
-	cfg.L1WebsocketRPCAddress = c.l1WSRPCAddr
+	cfg.L1WebsocketURL = c.l1WSRPCAddr
 	cfg.ManagementContractAddress = gethcommon.HexToAddress(c.managementContractAddr)
 	cfg.MessageBusAddress = gethcommon.HexToAddress(c.messageBusContractAddress)
 	cfg.LogPath = testlog.LogFile()
@@ -200,7 +200,7 @@ func WithL1Start(blockHash string) Option {
 	}
 }
 
-func WithL1WSRPCAddress(addr string) Option {
+func WithL1WebsocketURL(addr string) Option {
 	return func(c *Config) {
 		c.l1WSRPCAddr = addr
 	}
