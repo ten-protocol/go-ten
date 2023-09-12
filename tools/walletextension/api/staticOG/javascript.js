@@ -10,7 +10,7 @@ const pathJoin = obscuroGatewayVersion + "/join/";
 const pathAuthenticate = obscuroGatewayVersion + "/authenticate/";
 const pathQuery = obscuroGatewayVersion + "/query/";
 const pathRevoke = obscuroGatewayVersion + "/revoke/";
-const obscuroChainIDDecimal = 777;
+const obscuroChainIDDecimal = 443;
 const methodPost = "post";
 const methodGet = "get";
 const jsonHeaders = {
@@ -32,7 +32,6 @@ let provider = null;
 async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
     // add network to MetaMask
     let chainIdHex = "0x" + chainIDDecimal.toString(16); // Convert to hexadecimal and prefix with '0x'
-
     try {
         await ethereum.request({
             method: 'wallet_addEthereumChain',
@@ -41,12 +40,16 @@ async function addNetworkToMetaMask(ethereum, userID, chainIDDecimal) {
                     chainId: chainIdHex,
                     chainName: 'Obscuro Testnet',
                     nativeCurrency: {
-                        name: 'Obscuro',
-                        symbol: 'OBX',
+                        name: 'Sepolia Ether',
+                        symbol: 'ETH',
                         decimals: 18
                     },
                     rpcUrls: [obscuroGatewayAddress+"/"+obscuroGatewayVersion+'/?u='+userID],
+<<<<<<< HEAD
                     blockExplorerUrls: null
+=======
+                    blockExplorerUrls: ['https://testnet.obscuroscan.io'],
+>>>>>>> 5ac5482f (Match network configuration with Chainlist)
                 },
             ],
         });
@@ -314,4 +317,8 @@ const initialize = async () => {
 
 }
 
+<<<<<<< HEAD
 window.addEventListener(eventDomLoaded, checkIfMetamaskIsLoaded);
+=======
+window.addEventListener(eventDomLoaded, initialize);
+>>>>>>> 5ac5482f (Match network configuration with Chainlist)
