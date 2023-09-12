@@ -72,11 +72,11 @@ func TestCanStartStandaloneObscuroHostAndEnclave(t *testing.T) {
 	}
 
 	// we create the node RPC client
-	rpcAddress := fmt.Sprintf("ws://127.0.0.1:%d", _startPort+integration.DefaultGethWSPortOffset)
+	wsURL := fmt.Sprintf("ws://127.0.0.1:%d", _startPort+integration.DefaultGethWSPortOffset)
 	var obscuroClient rpc.Client
 	wait := 30 // max wait in seconds
 	for {
-		obscuroClient, err = rpc.NewNetworkClient(rpcAddress)
+		obscuroClient, err = rpc.NewNetworkClient(wsURL)
 		if err == nil {
 			break
 		}

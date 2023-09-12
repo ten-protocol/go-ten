@@ -49,7 +49,7 @@ func (n *ContractDeployer) Start() error {
             "accounts": [ "%s" ]
         }
     }
-`, n.cfg.l1HTTPRPCAddress, n.cfg.privateKey),
+`, n.cfg.l1HTTPURL, n.cfg.privateKey),
 	}
 
 	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, nil, envs, nil, nil)

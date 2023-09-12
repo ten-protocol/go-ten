@@ -114,7 +114,7 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	ethWallet := wallet.NewInMemoryWalletFromConfig(cfg.PrivateKeyString, cfg.L1ChainID, log.New("wallet", cfg.LogLevel, cfg.LogPath))
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := ethadapter.NewEthClientFromAddress(cfg.L1WebsocketURL, cfg.L1RPCTimeout, cfg.ID, logger)
+	l1Client, err := ethadapter.NewEthClientFromURL(cfg.L1WebsocketURL, cfg.L1RPCTimeout, cfg.ID, logger)
 	if err != nil {
 		logger.Crit("could not create Ethereum client.", log.ErrKey, err)
 	}

@@ -2,7 +2,7 @@ package main
 
 // Flag names.
 const (
-	l1HTTPRPCAddressFlag       = "l1_ws_url"
+	l1HTTPURLFlag              = "l1_ws_url"
 	privateKeyFlag             = "private_key"
 	dockerImageFlag            = "docker_image"
 	l2HostFlag                 = "l2_host"
@@ -17,7 +17,7 @@ const (
 // While we could just use constants instead of a map, this approach allows us to test that all the expected flags are defined.
 func getFlagUsageMap() map[string]string {
 	return map[string]string{
-		l1HTTPRPCAddressFlag:       "Layer 1 network http RPC addr",
+		l1HTTPURLFlag:              "Layer 1 network http RPC addr",
 		privateKeyFlag:             "L1 and L2 private key used in the node",
 		dockerImageFlag:            "Docker image to run",
 		l2HostFlag:                 "Layer 2 network host addr",

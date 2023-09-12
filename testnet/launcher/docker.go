@@ -118,7 +118,7 @@ func (t *Testnet) Start() error {
 
 	l2ContractDeployer, err := l2cd.NewDockerContractDeployer(
 		l2cd.NewContractDeployerConfig(
-			l2cd.WithL1HTTPRPCAddress("http://eth2network:8025"),
+			l2cd.WithL1HTTPURL("http://eth2network:8025"),
 			l2cd.WithL2Host("sequencer-host"),
 			l2cd.WithL2WSPort(81),
 			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
@@ -182,7 +182,7 @@ func startEth2Network() error {
 func deployL1Contracts() (*node.NetworkConfig, error) {
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
 		l1cd.NewContractDeployerConfig(
-			l1cd.WithL1HTTPRPCAddress("http://eth2network:8025"),
+			l1cd.WithL1HTTPURL("http://eth2network:8025"),
 			l1cd.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1cd.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"),
 		),
@@ -208,11 +208,11 @@ func deployL1Contracts() (*node.NetworkConfig, error) {
 func waitForHealthyNode(port int) error { // todo: hook the cfg
 	timeStart := time.Now()
 
-	hostRPCAddress := fmt.Sprintf("http://localhost:%d", port)
+	hostURL := fmt.Sprintf("http://localhost:%d", port)
 	fmt.Println("Waiting for Obscuro node to be healthy...")
 	err := retry.Do(
 		func() error {
-			client, err := rpc.NewNetworkClient(hostRPCAddress)
+			client, err := rpc.NewNetworkClient(hostURL)
 			if err != nil {
 				return err
 			}

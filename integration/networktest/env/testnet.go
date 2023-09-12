@@ -28,16 +28,16 @@ type testnetConnector struct {
 	seqRPCAddress         string
 	validatorRPCAddresses []string
 	faucetHTTPAddress     string
-	l1RPCAddress          string
+	l1WSURL               string
 	faucetWallet          *userwallet.UserWallet
 }
 
-func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1RPCAddress string) networktest.NetworkConnector {
+func NewTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1WSURL string) networktest.NetworkConnector {
 	return &testnetConnector{
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
 		faucetHTTPAddress:     faucetHTTPAddress,
-		l1RPCAddress:          l1RPCAddress,
+		l1WSURL:               l1WSURL,
 	}
 }
 
@@ -50,7 +50,7 @@ func NewTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddress
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
 		faucetWallet:          userwallet.NewUserWallet(ecdsaKey, validatorRPCAddressses[0], testlog.Logger(), userwallet.WithChainID(big.NewInt(integration.ObscuroChainID))),
-		l1RPCAddress:          l1RPCAddress,
+		l1WSURL:               l1RPCAddress,
 	}
 }
 
@@ -94,7 +94,7 @@ func (t *testnetConnector) NumValidators() int {
 }
 
 func (t *testnetConnector) GetL1Client() (ethadapter.EthClient, error) {
-	client, err := ethadapter.NewEthClientFromAddress(t.l1RPCAddress, time.Minute, gethcommon.Address{}, testlog.Logger())
+	client, err := ethadapter.NewEthClientFromURL(t.l1WSURL, time.Minute, gethcommon.Address{}, testlog.Logger())
 	if err != nil {
 		return nil, err
 	}
