@@ -31,46 +31,33 @@ const (
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
-	client     *ethclient.Client  // the underlying eth rpc client
-	l2ID       gethcommon.Address // the address of the Obscuro node this client is dedicated to
-	timeout    time.Duration      // the timeout for connecting to, or communicating with, the L1 node
-	logger     gethlog.Logger
-	rpcAddress string
+	client  *ethclient.Client  // the underlying eth rpc client
+	l2ID    gethcommon.Address // the address of the Obscuro node this client is dedicated to
+	timeout time.Duration      // the timeout for connecting to, or communicating with, the L1 node
+	logger  gethlog.Logger
+	rpcURL  string
 }
 
-// NewEthClientFromAddress instantiates a new ethadapter.EthClient that connects to an ethereum node
-func NewEthClientFromAddress(rpcAddress string, timeout time.Duration, l2ID gethcommon.Address, logger gethlog.Logger) (EthClient, error) {
-	client, err := connect(rpcAddress, timeout)
+// NewEthClientFromURL instantiates a new ethadapter.EthClient that connects to an ethereum node
+func NewEthClientFromURL(rpcURL string, timeout time.Duration, l2ID gethcommon.Address, logger gethlog.Logger) (EthClient, error) {
+	client, err := connect(rpcURL, timeout)
 	if err != nil {
-		return nil, fmt.Errorf("unable to connect to the eth node (%s) - %w", rpcAddress, err)
+		return nil, fmt.Errorf("unable to connect to the eth node (%s) - %w", rpcURL, err)
 	}
 
-	logger.Trace(fmt.Sprintf("Initialized eth node connection - addr: %s", rpcAddress))
+	logger.Trace(fmt.Sprintf("Initialized eth node connection - addr: %s", rpcURL))
 	return &gethRPCClient{
-		client:     client,
-		l2ID:       l2ID,
-		timeout:    timeout,
-		logger:     logger,
-		rpcAddress: rpcAddress,
+		client:  client,
+		l2ID:    l2ID,
+		timeout: timeout,
+		logger:  logger,
+		rpcURL:  rpcURL,
 	}, nil
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
 func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethcommon.Address, logger gethlog.Logger) (EthClient, error) {
-	rpcAddress := fmt.Sprintf("ws://%s:%d", ipaddress, port)
-	client, err := connect(rpcAddress, timeout)
-	if err != nil {
-		return nil, fmt.Errorf("unable to connect to the eth node (%s) - %w", rpcAddress, err)
-	}
-
-	logger.Trace(fmt.Sprintf("Initialized eth node connection - addr: %s port: %d", ipaddress, port))
-	return &gethRPCClient{
-		client:     client,
-		l2ID:       l2ID,
-		timeout:    timeout,
-		logger:     logger.New(log.PackageKey, "gethrpcclient"),
-		rpcAddress: rpcAddress,
-	}, nil
+	return NewEthClientFromURL(fmt.Sprintf("ws://%s:%d", ipaddress, port), timeout, l2ID, logger)
 }
 
 func (e *gethRPCClient) FetchHeadBlock() (*types.Block, error) {
@@ -271,9 +258,9 @@ func (e *gethRPCClient) ReconnectIfClosed() error {
 	}
 	e.client.Close()
 
-	client, err := connect(e.rpcAddress, e.timeout)
+	client, err := connect(e.rpcURL, e.timeout)
 	if err != nil {
-		return fmt.Errorf("unable to connect to the eth node (%s) - %w", e.rpcAddress, err)
+		return fmt.Errorf("unable to connect to the eth node (%s) - %w", e.rpcURL, err)
 	}
 	e.client = client
 	return nil
@@ -289,11 +276,11 @@ func (e *gethRPCClient) Alive() bool {
 	return err == nil
 }
 
-func connect(rpcAddress string, connectionTimeout time.Duration) (*ethclient.Client, error) {
+func connect(rpcURL string, connectionTimeout time.Duration) (*ethclient.Client, error) {
 	var err error
 	var c *ethclient.Client
 	for start := time.Now(); time.Since(start) < connectionTimeout; time.Sleep(time.Second) {
-		c, err = ethclient.Dial(rpcAddress)
+		c, err = ethclient.Dial(rpcURL)
 		if err == nil {
 			break
 		}
