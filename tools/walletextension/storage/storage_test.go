@@ -2,19 +2,36 @@ package storage
 
 import (
 	"bytes"
+	"errors"
 	"testing"
+
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"github.com/stretchr/testify/require"
 )
 
-func TestAddAndGetUser(t *testing.T) {
-	storage, err := New("")
-	if err != nil {
-		t.Fatal(err)
-	}
+var tests = map[string]func(storage Storage, t *testing.T){
+	"testAddAndGetUser":     testAddAndGetUser,
+	"testAddAndGetAccounts": testAddAndGetAccounts,
+	"testDeleteUser":        testDeleteUser,
+	"testGetAllUsers":       testGetAllUsers,
+}
 
+func TestSQLiteGatewayDB(t *testing.T) {
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			storage, err := New("")
+			require.NoError(t, err)
+
+			test(storage, t)
+		})
+	}
+}
+
+func testAddAndGetUser(storage Storage, t *testing.T) {
 	userID := []byte("userID")
 	privateKey := []byte("privateKey")
 
-	err = storage.AddUser(userID, privateKey)
+	err := storage.AddUser(userID, privateKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,18 +46,13 @@ func TestAddAndGetUser(t *testing.T) {
 	}
 }
 
-func TestAddAndGetAccounts(t *testing.T) {
-	storage, err := New("")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func testAddAndGetAccounts(storage Storage, t *testing.T) {
 	userID := []byte("userID")
 	privateKey := []byte("privateKey")
 	accountAddress1 := []byte("accountAddress1")
 	signature1 := []byte("signature1")
 
-	err = storage.AddUser(userID, privateKey)
+	err := storage.AddUser(userID, privateKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,5 +97,49 @@ func TestAddAndGetAccounts(t *testing.T) {
 
 	if !foundAccount2 {
 		t.Errorf("Account 2 was not found in the result")
+	}
+}
+
+func testDeleteUser(storage Storage, t *testing.T) {
+	userID := []byte("testDeleteUserID")
+	privateKey := []byte("testDeleteUserPrivateKey")
+
+	err := storage.AddUser(userID, privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = storage.DeleteUser(userID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = storage.GetUserPrivateKey(userID)
+	if err == nil || !errors.Is(err, errutil.ErrNotFound) {
+		t.Fatal("Expected error when getting deleted user, but got none")
+	}
+}
+
+func testGetAllUsers(storage Storage, t *testing.T) {
+	initialUsers, err := storage.GetAllUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	userID := []byte("getAllUsersTestID")
+	privateKey := []byte("getAllUsersTestPrivateKey")
+
+	err = storage.AddUser(userID, privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	afterInsertUsers, err := storage.GetAllUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(afterInsertUsers) != len(initialUsers)+1 {
+		t.Errorf("Expected user count to increase by 1. Got %d initially and %d after insert", len(initialUsers), len(afterInsertUsers))
 	}
 }

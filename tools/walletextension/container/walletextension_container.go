@@ -23,7 +23,7 @@ import (
 type WalletExtensionContainer struct {
 	hostAddr           string
 	userAccountManager *useraccountmanager.UserAccountManager
-	storage            *storage.Storage
+	storage            storage.Storage
 	stopControl        *stopcontrol.StopControl
 	logger             gethlog.Logger
 	walletExt          *walletextension.WalletExtension
@@ -101,7 +101,7 @@ func NewWalletExtensionContainer(
 	hostAddr string,
 	walletExt *walletextension.WalletExtension,
 	userAccountManager *useraccountmanager.UserAccountManager,
-	storage *storage.Storage,
+	storage storage.Storage,
 	stopControl *stopcontrol.StopControl,
 	httpServer *api.Server,
 	wsServer *api.Server,
