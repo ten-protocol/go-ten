@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: sleep 30
 
-      - name: 'Start Obscuro gateway on Azure'
+      - name: 'Start Obscuro gateway Database on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -111,10 +111,9 @@ jobs:
                -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/ \
-            && docker run \  
-                --name db \
+            && docker run -d --name db \
                 -e MARIADB_ROOT_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_ROOT_PWD }} \
                 -e MARIADB_USER=obscurouser \
                 -e MARIADB_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }} \
                 -v /home/obscuro/go-obscuro/tools/walletextension/storage/database/001_init.sql:/docker-entrypoint-initdb.d/schema.sql \
-                mariadb'
+                mariadb:11.1.2-jammy'
