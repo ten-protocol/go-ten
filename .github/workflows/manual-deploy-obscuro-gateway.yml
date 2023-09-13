@@ -85,7 +85,7 @@ jobs:
           inlineScript: |
             az vm create -g Testnet -n "${{env.RESOURCE_STARTING_NAME}}-OG-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "obscurogateway-${{env.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}" \
+            --public-ip-address-dns-name "obscurogateway-${{env.RESOURCE_STARTING_NAME}}" \
             --tags deploygroup=ObscuroNode-${{env.RESOURCE_STARTING_NAME}}-${{ GITHUB.RUN_NUMBER }}  ${{env.RESOURCE_TAG_NAME}}=true \
             --vnet-name ObscuroGateway-${{env.RESOURCE_STARTING_NAME}}-01VNET --subnet ObscuroGateway-${{env.RESOURCE_STARTING_NAME}}-01Subnet \
             --size 	Standard_D4_v5 --image Canonical:0001-com-ubuntu-server-focal:20_04-lts-gen2:latest \
