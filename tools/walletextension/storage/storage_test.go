@@ -16,7 +16,7 @@ var tests = map[string]func(storage Storage, t *testing.T){
 	"testGetAllUsers":       testGetAllUsers,
 }
 
-func TestSQLLiteGatewayDB(t *testing.T) {
+func TestSQLiteGatewayDB(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			storage, err := New("")

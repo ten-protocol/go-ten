@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/obscuronet/go-obscuro/go/common/log"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/useraccountmanager"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -369,7 +371,7 @@ func (w *WalletExtension) getStorageAtInterceptor(request *accountmanager.RPCReq
 
 		_, err = w.storage.GetUserPrivateKey(userID)
 		if err != nil {
-			w.logger.Info("Trying to get userID, but it is not present in our database: ")
+			w.logger.Info("Trying to get userID, but it is not present in our database: ", log.ErrKey, err)
 			return nil
 		}
 		response := map[string]interface{}{}
