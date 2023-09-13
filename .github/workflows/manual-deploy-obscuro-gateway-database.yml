@@ -112,6 +112,7 @@ jobs:
                datadog/agent:latest \
             && cd /home/obscuro/go-obscuro/ \
             && docker run -d --name db \
+                -p 3306:3306 \
                 -e MARIADB_ROOT_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_ROOT_PWD }} \
                 -e MARIADB_USER=obscurouser \
                 -e MARIADB_PASSWORD=${{ secrets.OBSCURO_GATEWAY_MARIADB_USER_PWD }} \
