@@ -1,8 +1,12 @@
-package storage
+package database
 
 import (
 	"database/sql"
 	"fmt"
+	obscurocommon "github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
+	"os"
+	"path/filepath"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 	common "github.com/obscuronet/go-obscuro/tools/walletextension/common"
@@ -12,8 +16,12 @@ type SqliteDatabase struct {
 	db *sql.DB
 }
 
-func NewSqliteDatabase(dbName string) (*SqliteDatabase, error) {
-	db, err := sql.Open("sqlite3", dbName)
+func NewSqliteDatabase(dbPath string) (*SqliteDatabase, error) {
+	// load the db file
+	dbFilePath, err := createOrLoad(dbPath)
+
+	// open the db
+	db, err := sql.Open("sqlite3", dbFilePath)
 	if err != nil {
 		fmt.Println("Error opening database: ", err)
 		return nil, err
@@ -86,7 +94,7 @@ func (s *SqliteDatabase) GetUserPrivateKey(userID []byte) ([]byte, error) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			// No rows found for the given userID
-			return nil, nil
+			return nil, errutil.ErrNotFound
 		}
 		return nil, err
 	}
@@ -153,4 +161,26 @@ func (s *SqliteDatabase) GetAllUsers() ([]common.UserDB, error) {
 	}
 
 	return users, nil
+}
+
+func createOrLoad(dbPath string) (string, error) {
+	// If path is empty we create a random throwaway temp file, otherwise we use the path to the database
+	if dbPath == "" {
+		tempDir := filepath.Join("/tmp", "obscuro_gateway", obscurocommon.RandomStr(8))
+		err := os.MkdirAll(tempDir, os.ModePerm)
+		if err != nil {
+			fmt.Println("Error creating directory: ", tempDir, err)
+			return "", err
+		}
+		dbPath = filepath.Join(tempDir, "gateway_databse.db")
+	} else {
+		dir := filepath.Dir(dbPath)
+		err := os.MkdirAll(dir, 0o755)
+		if err != nil {
+			fmt.Println("Error creating directories:", err)
+			return "", err
+		}
+	}
+
+	return dbPath, nil
 }
