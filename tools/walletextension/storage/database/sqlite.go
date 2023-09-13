@@ -3,10 +3,11 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	obscurocommon "github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"os"
 	"path/filepath"
+
+	obscurocommon "github.com/obscuronet/go-obscuro/go/common"
+	"github.com/obscuronet/go-obscuro/go/common/errutil"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 	common "github.com/obscuronet/go-obscuro/tools/walletextension/common"
@@ -19,6 +20,9 @@ type SqliteDatabase struct {
 func NewSqliteDatabase(dbPath string) (*SqliteDatabase, error) {
 	// load the db file
 	dbFilePath, err := createOrLoad(dbPath)
+	if err != nil {
+		return nil, err
+	}
 
 	// open the db
 	db, err := sql.Open("sqlite3", dbFilePath)
