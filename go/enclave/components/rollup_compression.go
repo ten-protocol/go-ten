@@ -128,7 +128,7 @@ func (rc *RollupCompression) ProcessExtRollup(rollup *common.ExtRollup) error {
 	// The recreation of batches is a 2-step process:
 
 	// 1. calculate fields like: sequence, height, time, l1Proof, from the implicit and explicit information from the metadata
-	incompleteBatches, err := rc.createIncompleteBatches(calldataRollupHeader, transactionsPerBatch, rollup.Header.L1Proof)
+	incompleteBatches, err := rc.createIncompleteBatches(calldataRollupHeader, transactionsPerBatch, rollup.Header.CompressionL1Head)
 	if err != nil {
 		return err
 	}
@@ -249,7 +249,7 @@ func (rc *RollupCompression) createRollupHeader(batches []*core.Batch) (*common.
 }
 
 // the main logic to recreate the batches from the header. The logical pair of: `createRollupHeader`
-func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *common.CalldataRollupHeader, transactionsPerBatch [][]*common.L2Tx, rollupL1Head common.L1BlockHash) ([]*batchFromRollup, error) {
+func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *common.CalldataRollupHeader, transactionsPerBatch [][]*common.L2Tx, compressionL1Head common.L1BlockHash) ([]*batchFromRollup, error) {
 	incompleteBatches := make([]*batchFromRollup, len(transactionsPerBatch))
 
 	startAtSeq := calldataRollupHeader.FirstBatchSequence.Int64()
@@ -257,7 +257,7 @@ func (rc *RollupCompression) createIncompleteBatches(calldataRollupHeader *commo
 	currentTime := int64(calldataRollupHeader.StartTime)
 	var currentL1Height *big.Int
 
-	rollupL1Block, err := rc.storage.FetchBlock(rollupL1Head)
+	rollupL1Block, err := rc.storage.FetchBlock(compressionL1Head)
 	if err != nil {
 		return nil, err
 	}

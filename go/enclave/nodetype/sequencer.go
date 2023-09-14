@@ -30,6 +30,8 @@ import (
 	"github.com/obscuronet/go-obscuro/go/enclave/mempool"
 )
 
+const RollupDelay = 2 // number of L1 blocks to exclude when creating a rollup. This will minimize compression reorg issues.
+
 type SequencerSettings struct {
 	MaxBatchSize  uint64
 	MaxRollupSize uint64
@@ -239,10 +241,14 @@ func (s *sequencer) StoreExecutedBatch(batch *core.Batch, receipts types.Receipt
 }
 
 func (s *sequencer) CreateRollup(lastBatchNo uint64) (*common.ExtRollup, error) {
-	// todo @stefan - move this somewhere else, it shouldn't be in the batch registry.
 	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
 
-	rollup, err := s.rollupProducer.CreateRollup(lastBatchNo, rollupLimiter)
+	currentL1Head, err := s.storage.FetchHeadBlock()
+	if err != nil {
+		return nil, err
+	}
+	upToL1Height := currentL1Head.NumberU64() - RollupDelay
+	rollup, err := s.rollupProducer.CreateRollup(lastBatchNo, upToL1Height, rollupLimiter)
 	if err != nil {
 		return nil, err
 	}

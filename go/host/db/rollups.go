@@ -16,7 +16,7 @@ import (
 // DB methods relating to rollup transactions.
 
 // AddRollupHeader adds a rollup to the DB
-func (db *DB) AddRollupHeader(rollup *common.ExtRollup) error {
+func (db *DB) AddRollupHeader(rollup *common.ExtRollup, block *common.L1Block) error {
 	// Check if the Header is already stored
 	_, err := db.GetRollupHeader(rollup.Hash())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -33,7 +33,7 @@ func (db *DB) AddRollupHeader(rollup *common.ExtRollup) error {
 		return fmt.Errorf("could not write rollup header. Cause: %w", err)
 	}
 
-	if err := db.writeRollupByBlockHash(b, rollup.Header); err != nil {
+	if err := db.writeRollupByBlockHash(b, rollup.Header, block.Hash()); err != nil {
 		return fmt.Errorf("could not write rollup block. Cause: %w", err)
 	}
 
@@ -42,7 +42,7 @@ func (db *DB) AddRollupHeader(rollup *common.ExtRollup) error {
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return fmt.Errorf("could not retrieve rollup header at tip. Cause: %w", err)
 	}
-	if tipRollupHeader == nil || tipRollupHeader.L1ProofNumber.Cmp(rollup.Header.L1ProofNumber) == -1 {
+	if tipRollupHeader == nil || tipRollupHeader.LastBatchSeqNo < rollup.Header.LastBatchSeqNo {
 		err = db.writeTipRollupHeader(b, rollup.Hash())
 		if err != nil {
 			return fmt.Errorf("could not write new rollup hash at tip. Cause: %w", err)
@@ -122,13 +122,13 @@ func (db *DB) writeTipRollupHeader(w ethdb.KeyValueWriter, val gethcommon.Hash) 
 }
 
 // Stores if a rollup is in a block
-func (db *DB) writeRollupByBlockHash(w ethdb.KeyValueWriter, header *common.RollupHeader) error {
+func (db *DB) writeRollupByBlockHash(w ethdb.KeyValueWriter, header *common.RollupHeader, blockHash gethcommon.Hash) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(header)
 	if err != nil {
 		return err
 	}
-	key := rollupBlockKey(header.L1Proof)
+	key := rollupBlockKey(blockHash)
 
 	return w.Put(key, data)
 }

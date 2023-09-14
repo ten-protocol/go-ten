@@ -111,23 +111,16 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 		panic(err)
 	}
 
-	zipped, err := compress(t.Rollup)
-	if err != nil {
-		panic(err)
-	}
-	encRollupData := base64EncodeToString(zipped)
+	encRollupData := base64EncodeToString(t.Rollup)
 
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
 		AggregatorID:       decodedRollup.Header.Coinbase,
-		L1Block:            decodedRollup.Header.L1Proof,
 		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
 	}
 
 	crossChain := ManagementContract.StructsHeaderCrossChainData{
-		BlockNumber: decodedRollup.Header.L1ProofNumber,
-		BlockHash:   decodedRollup.Header.L1Proof,
-		Messages:    convertCrossChainMessages(decodedRollup.Header.CrossChainMessages),
+		Messages: convertCrossChainMessages(decodedRollup.Header.CrossChainMessages),
 	}
 
 	data, err := c.contractABI.Pack(
@@ -318,19 +311,6 @@ func (c *contractLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *a
 // base64EncodeToString encodes a byte array to a string
 func base64EncodeToString(bytes []byte) string {
 	return base64.StdEncoding.EncodeToString(bytes)
-}
-
-// compress the byte array using gzip
-func compress(in []byte) ([]byte, error) {
-	var b bytes.Buffer
-	gz := gzip.NewWriter(&b)
-	if _, err := gz.Write(in); err != nil {
-		return nil, err
-	}
-	if err := gz.Close(); err != nil {
-		return nil, err
-	}
-	return b.Bytes(), nil
 }
 
 // Base64DecodeFromString decodes a string to a byte array
