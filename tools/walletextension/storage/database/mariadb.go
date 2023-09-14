@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+
 	_ "github.com/go-sql-driver/mysql" // Importing MariaDB driver
 	"github.com/obscuronet/go-obscuro/go/common/errutil"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
@@ -16,7 +17,7 @@ type MariaDB struct {
 func NewMariaDB(dbURL string) (*MariaDB, error) {
 	db, err := sql.Open("mysql", dbURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %v", err)
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	return &MariaDB{db: db}, nil

@@ -2,6 +2,7 @@ package storage
 
 import (
 	"fmt"
+
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/storage/database"
 )
