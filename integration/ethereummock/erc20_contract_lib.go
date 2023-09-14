@@ -11,8 +11,8 @@ import (
 
 type contractLib struct{}
 
-func (c *contractLib) CreateDepositTx(tx *ethadapter.L1DepositTx, nonce uint64) types.TxData {
-	return encodeTx(tx, nonce, depositTxAddr)
+func (c *contractLib) CreateDepositTx(tx *ethadapter.L1DepositTx) types.TxData {
+	return encodeTx(tx, depositTxAddr)
 }
 
 // Return only deposit transactions to the management contract

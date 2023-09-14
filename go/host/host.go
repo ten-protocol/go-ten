@@ -221,4 +221,8 @@ func (h *host) validateConfig() {
 	if h.config.P2PPublicAddress == "" {
 		h.logger.Crit("the host must specify a public P2P address")
 	}
+
+	if h.config.L1BlockTime == 0 {
+		h.logger.Crit("the host must specify an L1 block time")
+	}
 }

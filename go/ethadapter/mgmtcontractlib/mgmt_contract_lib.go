@@ -24,10 +24,10 @@ const methodBytesLen = 4
 // MgmtContractLib provides methods for creating ethereum transactions by providing an L1Transaction, creating call
 // messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
-	CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) types.TxData
-	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx, nonce uint64) types.TxData
-	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData
-	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx, nonce uint64) types.TxData
+	CreateRollup(t *ethadapter.L1RollupTx) types.TxData
+	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData
+	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData
+	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData
 	GetHostAddresses() (ethereum.CallMsg, error)
 
 	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
@@ -98,7 +98,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	return nil
 }
 
-func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx) types.TxData {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		panic(err)
@@ -127,26 +127,24 @@ func (c *contractLibImpl) CreateRollup(t *ethadapter.L1RollupTx, nonce uint64) t
 	}
 
 	return &types.LegacyTx{
-		Nonce: nonce,
-		To:    c.addr,
-		Data:  data,
+		To:   c.addr,
+		Data: data,
 	}
 }
 
-func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData {
 	data, err := c.contractABI.Pack(RequestSecretMethod, base64EncodeToString(tx.Attestation))
 	if err != nil {
 		panic(err)
 	}
 
 	return &types.LegacyTx{
-		Nonce: nonce,
-		To:    c.addr,
-		Data:  data,
+		To:   c.addr,
+		Data: data,
 	}
 }
 
-func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, nonce uint64, verifyAttester bool) types.TxData {
+func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData {
 	data, err := c.contractABI.Pack(
 		RespondSecretMethod,
 		tx.AttesterID,
@@ -160,13 +158,12 @@ func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, 
 		panic(err)
 	}
 	return &types.LegacyTx{
-		Nonce: nonce,
-		To:    c.addr,
-		Data:  data,
+		To:   c.addr,
+		Data: data,
 	}
 }
 
-func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx, nonce uint64) types.TxData {
+func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData {
 	data, err := c.contractABI.Pack(
 		InitializeSecretMethod,
 		tx.AggregatorID,
@@ -178,9 +175,8 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecr
 		panic(err)
 	}
 	return &types.LegacyTx{
-		Nonce: nonce,
-		To:    c.addr,
-		Data:  data,
+		To:   c.addr,
+		Data: data,
 	}
 }
 
