@@ -87,6 +87,9 @@ type HostInputConfig struct {
 	// Min interval before creating the next rollup (only used by Sequencer nodes)
 	RollupInterval time.Duration
 
+	// The expected time between blocks on the L1 network
+	L1BlockTime time.Duration
+
 	// Whether inbound p2p is enabled or not
 	IsInboundP2PDisabled bool
 }
@@ -126,6 +129,7 @@ func (p HostInputConfig) ToHostConfig() *HostConfig {
 		DebugNamespaceEnabled:     p.DebugNamespaceEnabled,
 		BatchInterval:             p.BatchInterval,
 		RollupInterval:            p.RollupInterval,
+		L1BlockTime:               p.L1BlockTime,
 		IsInboundP2PDisabled:      p.IsInboundP2PDisabled,
 	}
 }
@@ -152,6 +156,8 @@ type HostConfig struct {
 	BatchInterval time.Duration
 	// Min interval before creating the next rollup (only used by Sequencer nodes)
 	RollupInterval time.Duration
+	// The expected time between blocks on the L1 network
+	L1BlockTime time.Duration
 
 	/////
 	// NODE CONFIG
@@ -247,6 +253,7 @@ func DefaultHostParsedConfig() *HostInputConfig {
 		DebugNamespaceEnabled:     false,
 		BatchInterval:             1 * time.Second,
 		RollupInterval:            5 * time.Second,
+		L1BlockTime:               15 * time.Second,
 		IsInboundP2PDisabled:      false,
 	}
 }

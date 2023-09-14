@@ -49,6 +49,7 @@ type HostConfigToml struct {
 	BatchInterval             string
 	RollupInterval            string
 	IsInboundP2PDisabled      bool
+	L1BlockTime               int
 }
 
 // ParseConfig returns a config.HostInputConfig based on either the file identified by the `config` flag, or the flags with
@@ -200,5 +201,6 @@ func fileBasedConfig(configPath string) (*config.HostInputConfig, error) {
 		BatchInterval:             batchInterval,
 		RollupInterval:            rollupInterval,
 		IsInboundP2PDisabled:      tomlConfig.IsInboundP2PDisabled,
+		L1BlockTime:               time.Duration(tomlConfig.L1BlockTime) * time.Second,
 	}, nil
 }

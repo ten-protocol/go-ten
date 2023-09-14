@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"sync/atomic"
 	"time"
+
+	"github.com/obscuronet/go-obscuro/go/common/stopcontrol"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -25,11 +26,6 @@ const (
 	l1TxTriesRollup = 3
 	// Attempts to send secret initialisation, request or response transactions to the L1. Worst-case, equates to 63 seconds, plus time per request.
 	l1TxTriesSecret = 7
-
-	// todo - these values have to be configurable
-	maxWaitForL1Receipt       = 100 * time.Second
-	retryIntervalForL1Receipt = 10 * time.Second
-	maxWaitForSecretResponse  = 120 * time.Second
 )
 
 type Publisher struct {
@@ -41,34 +37,48 @@ type Publisher struct {
 	repository host.L1BlockRepository
 	logger     gethlog.Logger
 
-	running atomic.Bool
+	hostStopper *stopcontrol.StopControl
+
+	maxWaitForL1Receipt       time.Duration
+	retryIntervalForL1Receipt time.Duration
 }
 
-func NewL1Publisher(hostData host.Identity, hostWallet wallet.Wallet, client ethadapter.EthClient, mgmtContract mgmtcontractlib.MgmtContractLib, repository host.L1BlockRepository, logger gethlog.Logger) *Publisher {
+func NewL1Publisher(
+	hostData host.Identity,
+	hostWallet wallet.Wallet,
+	client ethadapter.EthClient,
+	mgmtContract mgmtcontractlib.MgmtContractLib,
+	repository host.L1BlockRepository,
+	hostStopper *stopcontrol.StopControl,
+	logger gethlog.Logger,
+	maxWaitForL1Receipt time.Duration,
+	retryIntervalForL1Receipt time.Duration,
+) *Publisher {
 	return &Publisher{
-		hostData:        hostData,
-		hostWallet:      hostWallet,
-		ethClient:       client,
-		mgmtContractLib: mgmtContract,
-		repository:      repository,
-		logger:          logger,
+		hostData:                  hostData,
+		hostWallet:                hostWallet,
+		ethClient:                 client,
+		mgmtContractLib:           mgmtContract,
+		repository:                repository,
+		hostStopper:               hostStopper,
+		logger:                    logger,
+		maxWaitForL1Receipt:       maxWaitForL1Receipt,
+		retryIntervalForL1Receipt: retryIntervalForL1Receipt,
 	}
 }
 
 func (p *Publisher) Start() error {
-	p.running.Store(true)
 	return nil
 }
 
 func (p *Publisher) Stop() error {
-	p.running.Store(false)
 	return nil
 }
 
 func (p *Publisher) HealthStatus() host.HealthStatus {
 	// todo (@matt) do proper health status based on failed transactions or something
 	errMsg := ""
-	if !p.running.Load() {
+	if p.hostStopper.IsStopping() {
 		errMsg = "not running"
 	}
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
@@ -312,7 +322,7 @@ func (p *Publisher) waitForReceipt(txHash common.TxHash) error {
 			}
 			return err
 		},
-		retry.NewTimeoutStrategy(maxWaitForL1Receipt, retryIntervalForL1Receipt),
+		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
 	)
 	if err != nil {
 		return errors.Wrap(err, "receipt for L1 tx not found despite successful broadcast")

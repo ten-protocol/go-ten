@@ -52,6 +52,7 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 			params.L1SetupData.ObscuroStartBlock,
 			params.AvgBlockDuration/3,
 			true,
+			params.AvgBlockDuration,
 		)
 		obscuroHosts[i] = obscuroNodes[i].Host()
 	}
