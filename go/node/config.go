@@ -2,6 +2,7 @@ package node
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/obscuronet/go-obscuro/go/common"
 	"github.com/obscuronet/go-obscuro/go/config"
@@ -46,6 +47,7 @@ type Config struct {
 	profilerEnabled           bool
 	logLevel                  int
 	isInboundP2PDisabled      bool
+	l1BlockTime               time.Duration
 }
 
 func NewNodeConfig(opts ...Option) *Config {
@@ -104,6 +106,7 @@ func (c *Config) ToHostConfig() *config.HostInputConfig {
 	cfg.LogLevel = c.logLevel
 	cfg.SequencerID = gethcommon.HexToAddress(c.sequencerID)
 	cfg.IsInboundP2PDisabled = c.isInboundP2PDisabled
+	cfg.L1BlockTime = c.l1BlockTime
 
 	return cfg
 }
@@ -275,5 +278,11 @@ func WithLogLevel(i int) Option {
 func WithInboundP2PDisabled(b bool) Option {
 	return func(c *Config) {
 		c.isInboundP2PDisabled = b
+	}
+}
+
+func WithL1BlockTime(d time.Duration) Option {
+	return func(c *Config) {
+		c.l1BlockTime = d
 	}
 }

@@ -98,6 +98,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 				node.WithInboundP2PDisabled(isInboundP2PDisabled),
 				node.WithLogLevel(4),
 				node.WithDebugNamespaceEnabled(true),
+				node.WithL1BlockTime(simParams.AvgBlockDuration),
 			),
 		)
 

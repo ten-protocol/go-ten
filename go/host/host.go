@@ -74,7 +74,10 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
 	hostServices.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
-	hostServices.RegisterService(hostcommon.L1PublisherName, l1.NewL1Publisher(hostIdentity, ethWallet, ethClient, mgmtContractLib, l1Repo, logger))
+	maxWaitForL1Receipt := 4 * config.L1BlockTime   // wait ~4 blocks to see if tx gets published before retrying
+	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
+	l1Publisher := l1.NewL1Publisher(hostIdentity, ethWallet, ethClient, mgmtContractLib, l1Repo, host.stopControl, logger, maxWaitForL1Receipt, retryIntervalForL1Receipt)
+	hostServices.RegisterService(hostcommon.L1PublisherName, l1Publisher)
 	hostServices.RegisterService(hostcommon.L2BatchRepositoryName, l2Repo)
 	hostServices.RegisterService(hostcommon.EnclaveServiceName, enclService)
 	hostServices.RegisterService(hostcommon.LogSubscriptionServiceName, subsService)

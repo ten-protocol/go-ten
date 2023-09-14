@@ -59,6 +59,7 @@ func createInMemObscuroNode(
 	l1StartBlk gethcommon.Hash,
 	batchInterval time.Duration,
 	incomingP2PDisabled bool,
+	l1BlockTime time.Duration,
 ) *container.HostContainer {
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
@@ -74,6 +75,7 @@ func createInMemObscuroNode(
 		MessageBusAddress:         l1BusAddress,
 		BatchInterval:             batchInterval,
 		IsInboundP2PDisabled:      incomingP2PDisabled,
+		L1BlockTime:               l1BlockTime,
 	}
 
 	enclaveConfig := &config.EnclaveConfig{
