@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/common"
 	"github.com/obscuronet/go-obscuro/tools/walletextension/storage/database"
 )
@@ -14,6 +15,12 @@ type Storage interface {
 	GetAllUsers() ([]common.UserDB, error)
 }
 
-func New(dbPath string) (Storage, error) {
-	return database.NewSqliteDatabase(dbPath)
+func New(dbType string, dbConnectionURL, dbPath string) (Storage, error) {
+	switch dbType {
+	case "mariaDB":
+		return database.NewMariaDB(dbConnectionURL)
+	case "sqlite":
+		return database.NewSqliteDatabase(dbPath)
+	}
+	return nil, fmt.Errorf("unknown db %s", dbType)
 }

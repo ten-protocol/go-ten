@@ -42,7 +42,7 @@ func NewWalletExtensionContainerFromConfig(config config.Config, logger gethlog.
 	userAccountManager := useraccountmanager.NewUserAccountManager(unAuthedClient, logger)
 
 	// start the database
-	databaseStorage, err := storage.New(config.DBPathOverride)
+	databaseStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
 	}

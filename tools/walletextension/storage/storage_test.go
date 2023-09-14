@@ -19,7 +19,8 @@ var tests = map[string]func(storage Storage, t *testing.T){
 func TestSQLiteGatewayDB(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			storage, err := New("")
+			// storage, err := New("mariaDB", "obscurouser:password@tcp(127.0.0.1:3306)/ogdb", "") allows to run tests against a local instance of MariaDB
+			storage, err := New("sqlite", "", "")
 			require.NoError(t, err)
 
 			test(storage, t)
