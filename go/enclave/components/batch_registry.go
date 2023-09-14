@@ -116,11 +116,13 @@ func (br *batchRegistry) BatchesAfter(batchSeqNo uint64, upToL1Height uint64, ro
 		currentBatchSeq++
 	}
 
-	// Sanity check that the rollup includes consecutive batches (according to the seqNo)
-	current := resultBatches[0].SeqNo().Uint64()
-	for i, b := range resultBatches {
-		if current+uint64(i) != b.SeqNo().Uint64() {
-			return nil, fmt.Errorf("created invalid rollup with batches out of sequence")
+	if len(resultBatches) > 0 {
+		// Sanity check that the rollup includes consecutive batches (according to the seqNo)
+		current := resultBatches[0].SeqNo().Uint64()
+		for i, b := range resultBatches {
+			if current+uint64(i) != b.SeqNo().Uint64() {
+				return nil, fmt.Errorf("created invalid rollup with batches out of sequence")
+			}
 		}
 	}
 
