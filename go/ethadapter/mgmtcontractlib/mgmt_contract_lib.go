@@ -1,11 +1,8 @@
 package mgmtcontractlib
 
 import (
-	"bytes"
-	"compress/gzip"
 	"encoding/base64"
 	"fmt"
-	"io"
 	"math/big"
 	"strings"
 
@@ -82,11 +79,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 		if !found {
 			panic("call data not found for rollupData")
 		}
-		zipped := Base64DecodeFromString(callData.(string))
-		rollup, err := Decompress(zipped)
-		if err != nil {
-			panic(err)
-		}
+		rollup := Base64DecodeFromString(callData.(string))
 
 		return &ethadapter.L1RollupTx{
 			Rollup: rollup,
@@ -320,18 +313,6 @@ func Base64DecodeFromString(in string) []byte {
 		panic(err)
 	}
 	return bytesStr
-}
-
-// Decompress the byte array using gzip
-func Decompress(in []byte) ([]byte, error) {
-	reader := bytes.NewReader(in)
-	gz, err := gzip.NewReader(reader)
-	if err != nil {
-		return nil, err
-	}
-	defer gz.Close()
-
-	return io.ReadAll(gz)
 }
 
 func convertCrossChainMessages(messages []MessageBus.StructsCrossChainMessage) []ManagementContract.StructsCrossChainMessage {
