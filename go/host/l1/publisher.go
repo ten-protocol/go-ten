@@ -207,7 +207,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 			}
 
 			return string(header)
-		}}, "rollup_hash", producedRollup.Header.Hash().Hex(), "batches_len", len(producedRollup.BatchPayloads))
+		}}, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 
 	rollupTx := p.mgmtContractLib.CreateRollup(tx, p.hostWallet.GetNonceAndIncrement())
 	rollupTx, err = p.ethClient.EstimateGasAndGasPrice(rollupTx, p.hostWallet.Address())
@@ -222,7 +222,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	if err != nil {
 		p.logger.Error("could not issue rollup tx", log.ErrKey, err)
 	} else {
-		p.logger.Info("Rollup included in L1", "hash", producedRollup.Hash())
+		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
 	}
 }
 

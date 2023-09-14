@@ -154,7 +154,7 @@ func WriteRollup(dbtx DBTransaction, rollup *common.RollupHeader) error {
 		0,
 		0,
 		data,
-		rollup.L1Proof.Bytes(),
+		nil,
 	)
 	return nil
 }
