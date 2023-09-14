@@ -42,6 +42,7 @@ func createWalExtCfg(connectPort, wallHTTPPort, wallWSPort int) *config.Config {
 		DBPathOverride:          testDBPath.Name(),
 		WalletExtensionPortHTTP: wallHTTPPort,
 		WalletExtensionPortWS:   wallWSPort,
+		DBType:                  "sqlite",
 	}
 }
 
