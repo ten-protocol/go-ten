@@ -2,9 +2,10 @@ package devnetwork
 
 import (
 	"fmt"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"os"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/obscuronet/go-obscuro/go/host/l1"
 

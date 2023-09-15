@@ -1,10 +1,11 @@
 package devnetwork
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
