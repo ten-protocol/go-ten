@@ -22,7 +22,8 @@ const (
 	l1msgValue  = "(?,?)"
 	selectL1Msg = "select message from l1_msg "
 
-	rollupInsert = "insert into rollup values (?,?,?,?)"
+	rollupInsert = "replace into rollup values (?,?,?,?,?)"
+	rollupSelect = "select hash from rollup where compression_block in "
 
 	updateCanonicalBlock = "update block set is_canonical=? where hash in "
 
@@ -144,19 +145,42 @@ func FetchL1Messages(db *sql.DB, blockHash common.L1BlockHash) (common.CrossChai
 	return result, nil
 }
 
-func WriteRollup(dbtx DBTransaction, rollup *common.RollupHeader) error {
+func WriteRollup(dbtx DBTransaction, rollup *common.RollupHeader, internalHeader *common.CalldataRollupHeader) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(rollup)
 	if err != nil {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
 	}
 	dbtx.ExecuteSQL(rollupInsert,
-		0,
-		0,
+		rollup.Hash(),
+		internalHeader.FirstBatchSequence.Uint64(),
+		rollup.LastBatchSeqNo,
 		data,
-		nil,
+		rollup.CompressionL1Head.Bytes(),
 	)
 	return nil
+}
+
+func FetchReorgedRollup(db *sql.DB, reorgedBlocks []common.L1BlockHash) (*common.L2BatchHash, error) {
+	argPlaceholders := strings.Repeat("?,", len(reorgedBlocks))
+	argPlaceholders = argPlaceholders[0 : len(argPlaceholders)-1] // remove trailing comma
+
+	query := rollupSelect + " (" + argPlaceholders + ")"
+
+	args := make([]any, 0)
+	for _, value := range reorgedBlocks {
+		args = append(args, value.Bytes())
+	}
+	rollup := new(common.L2BatchHash)
+	err := db.QueryRow(query, args...).Scan(&rollup)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// make sure the error is converted to obscuro-wide not found error
+			return nil, errutil.ErrNotFound
+		}
+		return nil, err
+	}
+	return rollup, nil
 }
 
 func fetchBlockHeader(db *sql.DB, whereQuery string, args ...any) (*types.Header, error) {
